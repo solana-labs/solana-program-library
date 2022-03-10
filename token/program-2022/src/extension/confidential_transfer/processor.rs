@@ -4,7 +4,6 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{instruction::*, *},
-            transfer_fee::TransferFeeConfig,
             StateWithExtensions, StateWithExtensionsMut,
         },
         processor::Processor,
@@ -12,15 +11,21 @@ use {
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
-        clock::Clock,
         entrypoint::ProgramResult,
         instruction::Instruction,
         msg,
         program_error::ProgramError,
         pubkey::Pubkey,
-        sysvar::{instructions::get_instruction_relative, Sysvar},
+        sysvar::instructions::get_instruction_relative,
     },
-    solana_zk_token_sdk::{zk_token_elgamal::ops, zk_token_proof_program},
+    solana_zk_token_sdk::zk_token_proof_program,
+};
+// Remove feature once zk ops syscalls are enabled on all networks
+#[cfg(feature = "zk-ops")]
+use {
+    crate::extension::transfer_fee::TransferFeeConfig,
+    solana_program::{clock::Clock, sysvar::Sysvar},
+    solana_zk_token_sdk::zk_token_elgamal::ops,
 };
 
 fn decode_proof_instruction<T: Pod>(
@@ -246,6 +251,7 @@ fn process_empty_account(
 }
 
 /// Processes a [Deposit] instruction.
+#[cfg(feature = "zk-ops")]
 fn process_deposit(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -345,6 +351,7 @@ fn process_deposit(
 }
 
 /// Processes a [Withdraw] instruction.
+#[cfg(feature = "zk-ops")]
 fn process_withdraw(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -449,6 +456,7 @@ fn process_withdraw(
 }
 
 /// Processes an [Transfer] instruction.
+#[cfg(feature = "zk-ops")]
 fn process_transfer(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -595,6 +603,7 @@ fn process_transfer(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[cfg(feature = "zk-ops")]
 fn process_source_for_transfer(
     program_id: &Pubkey,
     token_account_info: &AccountInfo,
@@ -650,6 +659,7 @@ fn process_source_for_transfer(
     Ok(())
 }
 
+#[cfg(feature = "zk-ops")]
 fn process_destination_for_transfer(
     destination_token_account_info: &AccountInfo,
     mint_info: &AccountInfo,
@@ -730,6 +740,7 @@ fn process_destination_for_transfer(
 }
 
 /// Processes an [ApplyPendingBalance] instruction.
+#[cfg(feature = "zk-ops")]
 fn process_apply_pending_balance(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -806,6 +817,7 @@ fn process_allow_balance_credits(
 }
 
 /// Processes an [WithdrawWithheldTokensFromMint] instruction.
+#[cfg(feature = "zk-ops")]
 fn process_withdraw_withheld_tokens_from_mint(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -894,6 +906,7 @@ fn process_withdraw_withheld_tokens_from_mint(
     Ok(())
 }
 
+#[cfg(feature = "zk-ops")]
 fn process_withdraw_withheld_tokens_from_accounts(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -1009,6 +1022,7 @@ fn process_withdraw_withheld_tokens_from_accounts(
     Ok(())
 }
 
+#[cfg(feature = "zk-ops")]
 fn harvest_from_account<'a, 'b>(
     mint_key: &'b Pubkey,
     token_account_info: &'b AccountInfo<'a>,
@@ -1032,6 +1046,7 @@ fn harvest_from_account<'a, 'b>(
 }
 
 /// Processes an [HarvestWithheldTokensToMint] instruction.
+#[cfg(feature = "zk-ops")]
 fn process_harvest_withheld_tokens_to_mint(accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_account_info = next_account_info(account_info_iter)?;
@@ -1061,6 +1076,7 @@ fn process_harvest_withheld_tokens_to_mint(accounts: &[AccountInfo]) -> ProgramR
     Ok(())
 }
 
+#[allow(dead_code)]
 pub(crate) fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -1102,38 +1118,60 @@ pub(crate) fn process_instruction(
         }
         ConfidentialTransferInstruction::Deposit => {
             msg!("ConfidentialTransferInstruction::Deposit");
-            let data = decode_instruction_data::<DepositInstructionData>(input)?;
-            process_deposit(program_id, accounts, data.amount.into(), data.decimals)
+            #[cfg(feature = "zk-ops")]
+            {
+                let data = decode_instruction_data::<DepositInstructionData>(input)?;
+                process_deposit(program_id, accounts, data.amount.into(), data.decimals)
+            }
+            #[cfg(not(feature = "zk-ops"))]
+            Err(ProgramError::InvalidInstructionData)
         }
         ConfidentialTransferInstruction::Withdraw => {
             msg!("ConfidentialTransferInstruction::Withdraw");
-            let data = decode_instruction_data::<WithdrawInstructionData>(input)?;
-            process_withdraw(
-                program_id,
-                accounts,
-                data.amount.into(),
-                data.decimals,
-                data.new_decryptable_available_balance,
-                data.proof_instruction_offset as i64,
-            )
+            #[cfg(feature = "zk-ops")]
+            {
+                let data = decode_instruction_data::<WithdrawInstructionData>(input)?;
+                process_withdraw(
+                    program_id,
+                    accounts,
+                    data.amount.into(),
+                    data.decimals,
+                    data.new_decryptable_available_balance,
+                    data.proof_instruction_offset as i64,
+                )
+            }
+            #[cfg(not(feature = "zk-ops"))]
+            Err(ProgramError::InvalidInstructionData)
         }
         ConfidentialTransferInstruction::Transfer => {
             msg!("ConfidentialTransferInstruction::Transfer");
-            let data = decode_instruction_data::<TransferInstructionData>(input)?;
-            process_transfer(
-                program_id,
-                accounts,
-                data.new_source_decryptable_available_balance,
-                data.proof_instruction_offset as i64,
-            )
+            #[cfg(feature = "zk-ops")]
+            {
+                let data = decode_instruction_data::<TransferInstructionData>(input)?;
+                process_transfer(
+                    program_id,
+                    accounts,
+                    data.new_source_decryptable_available_balance,
+                    data.proof_instruction_offset as i64,
+                )
+            }
+            #[cfg(not(feature = "zk-ops"))]
+            Err(ProgramError::InvalidInstructionData)
         }
         ConfidentialTransferInstruction::ApplyPendingBalance => {
             msg!("ConfidentialTransferInstruction::ApplyPendingBalance");
-            process_apply_pending_balance(
-                program_id,
-                accounts,
-                decode_instruction_data::<ApplyPendingBalanceData>(input)?,
-            )
+            #[cfg(feature = "zk-ops")]
+            {
+                process_apply_pending_balance(
+                    program_id,
+                    accounts,
+                    decode_instruction_data::<ApplyPendingBalanceData>(input)?,
+                )
+            }
+            #[cfg(not(feature = "zk-ops"))]
+            {
+                Err(ProgramError::InvalidInstructionData)
+            }
         }
         ConfidentialTransferInstruction::DisableBalanceCredits => {
             msg!("ConfidentialTransferInstruction::DisableBalanceCredits");
@@ -1145,26 +1183,44 @@ pub(crate) fn process_instruction(
         }
         ConfidentialTransferInstruction::WithdrawWithheldTokensFromMint => {
             msg!("ConfidentialTransferInstruction::WithdrawWithheldTokensFromMint");
-            let data = decode_instruction_data::<WithdrawWithheldTokensFromMintData>(input)?;
-            process_withdraw_withheld_tokens_from_mint(
-                program_id,
-                accounts,
-                data.proof_instruction_offset as i64,
-            )
+            #[cfg(feature = "zk-ops")]
+            {
+                let data = decode_instruction_data::<WithdrawWithheldTokensFromMintData>(input)?;
+                process_withdraw_withheld_tokens_from_mint(
+                    program_id,
+                    accounts,
+                    data.proof_instruction_offset as i64,
+                )
+            }
+            #[cfg(not(feature = "zk-ops"))]
+            Err(ProgramError::InvalidInstructionData)
         }
         ConfidentialTransferInstruction::WithdrawWithheldTokensFromAccounts => {
             msg!("ConfidentialTransferInstruction::WithdrawWithheldTokensFromAccounts");
-            let data = decode_instruction_data::<WithdrawWithheldTokensFromAccountsData>(input)?;
-            process_withdraw_withheld_tokens_from_accounts(
-                program_id,
-                accounts,
-                data.num_token_accounts,
-                data.proof_instruction_offset as i64,
-            )
+            #[cfg(feature = "zk-ops")]
+            {
+                let data =
+                    decode_instruction_data::<WithdrawWithheldTokensFromAccountsData>(input)?;
+                process_withdraw_withheld_tokens_from_accounts(
+                    program_id,
+                    accounts,
+                    data.num_token_accounts,
+                    data.proof_instruction_offset as i64,
+                )
+            }
+            #[cfg(not(feature = "zk-ops"))]
+            Err(ProgramError::InvalidInstructionData)
         }
         ConfidentialTransferInstruction::HarvestWithheldTokensToMint => {
             msg!("ConfidentialTransferInstruction::HarvestWithheldTokensToMint");
-            process_harvest_withheld_tokens_to_mint(accounts)
+            #[cfg(feature = "zk-ops")]
+            {
+                process_harvest_withheld_tokens_to_mint(accounts)
+            }
+            #[cfg(not(feature = "zk-ops"))]
+            {
+                Err(ProgramError::InvalidInstructionData)
+            }
         }
     }
 }
