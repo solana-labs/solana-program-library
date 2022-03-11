@@ -82,7 +82,6 @@ export const AccountLayout = struct<RawAccount>([
 /** Byte length of a token account */
 export const ACCOUNT_SIZE = AccountLayout.span;
 
-
 /**
  * Retrieve information about a token account
  *
@@ -113,7 +112,7 @@ export async function getAccount(
  *
  * @return Token account information
  */
- export async function getMultipleAccounts(
+export async function getMultipleAccounts(
     connection: Connection,
     addresses: PublicKey[],
     commitment?: Commitment,
