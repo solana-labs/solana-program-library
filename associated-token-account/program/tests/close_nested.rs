@@ -442,19 +442,22 @@ async fn check_wrong_address_derivation_owner(
     let wrong_wallet = Keypair::new();
     let (mint, mint_authority) = create_mint(context, program_id).await;
 
-    let _ = create_associated_token_account(context, &wallet.pubkey(), &mint, program_id).await;
     let owner_associated_token_address =
-        get_associated_token_address_with_program_id(&mint, &wallet.pubkey(), program_id);
-    let nested_associated_token_address =
-        create_associated_token_account(context, &wrong_wallet.pubkey(), &mint, program_id).await;
+        create_associated_token_account(context, &wallet.pubkey(), &mint, program_id).await;
+    let nested_associated_token_address = create_associated_token_account(
+        context,
+        &owner_associated_token_address,
+        &mint,
+        program_id,
+    )
+    .await;
 
+    let wrong_owner_associated_token_address =
+        get_associated_token_address_with_program_id(&mint, &wrong_wallet.pubkey(), program_id);
+    let mut close = instruction::close_nested(&wallet.pubkey(), &mint, &mint, program_id);
+    close.accounts[3] = AccountMeta::new(wrong_owner_associated_token_address, false);
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::close_nested(
-            &wallet.pubkey(),
-            &mint,
-            &mint,
-            program_id,
-        )],
+        &[close],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wallet],
         context.last_blockhash,
@@ -465,10 +468,10 @@ async fn check_wrong_address_derivation_owner(
         mint,
         mint_authority,
         nested_associated_token_address,
-        owner_associated_token_address,
+        wrong_owner_associated_token_address,
         wallet,
         transaction,
-        Some(InstructionError::IllegalOwner),
+        Some(InstructionError::InvalidSeeds),
     )
     .await;
 }

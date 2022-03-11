@@ -40,12 +40,12 @@ pub enum AssociatedTokenAccountInstruction {
     /// The tokens are moved from the nested associated token account to the
     /// wallet's associated token account.
     ///
-    ///   0. `[writeable]` Nested associated token account, must be owned by `4`
+    ///   0. `[writeable]` Nested associated token account, must be owned by `3`
     ///   1. `[]` Token mint for the nested associated token account.
     ///   2. `[writeable]` Wallet's associated token account.
-    ///   3. `[]` Owner associated token account address, must be owned by `6`
+    ///   3. `[]` Owner associated token account address, must be owned by `5`
     ///   4. `[]` Token mint for the owner associated token account
-    ///   5. `[signer]` Wallet address for the owner associated token account
+    ///   5. `[writeable, signer]` Wallet address for the owner associated token account
     ///   6. `[]` SPL Token program
     CloseNested,
 }
