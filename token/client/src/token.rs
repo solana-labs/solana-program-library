@@ -1126,8 +1126,8 @@ where
             ),
             source_elgamal_keypair,
             (
-                &destination_extension.pubkey_elgamal.try_into().unwrap(),
-                &ct_mint.pubkey_auditor.try_into().unwrap(),
+                &destination_extension.encryption_pubkey.try_into().unwrap(),
+                &ct_mint.auditor_pubkey.try_into().unwrap(),
             ),
         )
         .map_err(TokenError::Proof)?;

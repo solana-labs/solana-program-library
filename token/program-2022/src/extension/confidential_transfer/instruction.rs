@@ -353,7 +353,7 @@ pub enum ConfidentialTransferInstruction {
 #[repr(C)]
 pub struct ConfigureAccountInstructionData {
     /// The public key associated with the account
-    pub elgamal_pubkey: EncryptionPubkey,
+    pub encryption_pubkey: EncryptionPubkey,
     /// The decryptable balance (always 0) once the configure account succeeds
     pub decryptable_zero_balance: DecryptableBalance,
 }
@@ -514,7 +514,7 @@ pub fn configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     mint: &Pubkey,
-    elgamal_pubkey: ElGamalPubkey,
+    encryption_pubkey: ElGamalPubkey,
     decryptable_zero_balance: AeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
@@ -535,7 +535,7 @@ pub fn configure_account(
         accounts,
         ConfidentialTransferInstruction::ConfigureAccount,
         &ConfigureAccountInstructionData {
-            elgamal_pubkey: elgamal_pubkey.into(),
+            encryption_pubkey: encryption_pubkey.into(),
             decryptable_zero_balance: decryptable_zero_balance.into(),
         },
     ))
