@@ -679,7 +679,8 @@ fn process_destination_for_transfer(
         return Err(TokenError::ConfidentialTransferDepositsAndTransfersDisabled.into());
     }
 
-    if *destination_encryption_pubkey != destination_confidential_transfer_account.encryption_pubkey {
+    if *destination_encryption_pubkey != destination_confidential_transfer_account.encryption_pubkey
+    {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
@@ -867,7 +868,8 @@ fn process_withdraw_withheld_tokens_from_mint(
     }
 
     // destination ElGamal pubkey should match in the proof data and destination account
-    if proof_data.destination_pubkey != destination_confidential_transfer_account.encryption_pubkey {
+    if proof_data.destination_pubkey != destination_confidential_transfer_account.encryption_pubkey
+    {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
@@ -988,7 +990,8 @@ fn process_withdraw_withheld_tokens_from_accounts(
     }
 
     // destination ElGamal pubkey should match in the proof data and destination account
-    if proof_data.destination_pubkey != destination_confidential_transfer_account.encryption_pubkey {
+    if proof_data.destination_pubkey != destination_confidential_transfer_account.encryption_pubkey
+    {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
