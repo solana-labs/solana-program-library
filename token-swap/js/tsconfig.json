@@ -1,11 +1,10 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "allowJs": true,
     "skipLibCheck": true,
     "declaration": true,
-    "declarationDir": "./dist",
-    "outDir": "./dist",
+    "declarationDir": "./dist/types",
+    "outDir": "./dist/esm",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,

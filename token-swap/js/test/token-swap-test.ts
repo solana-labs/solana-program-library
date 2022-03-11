@@ -10,9 +10,8 @@ import {AccountLayout, Token, TOKEN_PROGRAM_ID} from '@solana/spl-token';
 import {TokenSwap, CurveType, TOKEN_SWAP_PROGRAM_ID} from '../src';
 import {sendAndConfirmTransaction} from '../src/util/send-and-confirm-transaction';
 import {newAccountWithLamports} from '../src/util/new-account-with-lamports';
-import {url} from '../src/util/url';
 import {sleep} from '../src/util/sleep';
-import {Numberu64} from '../dist';
+import {Numberu64} from '../src';
 
 // The following globals are created by `createTokenSwap` and used by subsequent tests
 // Token swap
@@ -79,6 +78,7 @@ let connection: Connection;
 async function getConnection(): Promise<Connection> {
   if (connection) return connection;
 
+  const url = 'http://localhost:8899';
   connection = new Connection(url, 'recent');
   const version = await connection.getVersion();
 
