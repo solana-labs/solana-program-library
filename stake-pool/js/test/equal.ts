@@ -1,14 +1,4 @@
 import BN from 'bn.js';
-import {StakePoolAccount} from '../src';
-
-export function isStakePoolAccount(account: any): account is StakePoolAccount {
-  return (
-    account !== undefined &&
-    account.account !== undefined &&
-    account.account.data !== undefined &&
-    'manager' in account.account.data
-  );
-}
 
 /**
  * Helper function to do deep equality check because BNs are not equal.
@@ -23,9 +13,7 @@ export function deepStrictEqualBN(a: any, b: any) {
         for (const subkey in a[key]) {
           if (a[key][subkey] instanceof Object) {
             if (a[key][subkey] instanceof BN) {
-              expect(b[key][subkey].toString()).toEqual(
-                a[key][subkey].toString(),
-              );
+              expect(b[key][subkey].toString()).toEqual(a[key][subkey].toString());
             } else {
               for (const subsubkey in a[key][subkey]) {
                 if (a[key][subkey][subsubkey] instanceof BN) {
@@ -33,9 +21,7 @@ export function deepStrictEqualBN(a: any, b: any) {
                     a[key][subkey][subsubkey].toString(),
                   );
                 } else {
-                  expect(b[key][subkey][subsubkey]).toStrictEqual(
-                    a[key][subkey][subsubkey],
-                  );
+                  expect(b[key][subkey][subsubkey]).toStrictEqual(a[key][subkey][subsubkey]);
                 }
               }
             }

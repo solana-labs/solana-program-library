@@ -10,8 +10,9 @@ import {
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { createInitializeAccountInstruction } from '../instructions/index';
-import { ACCOUNT_SIZE, getMinimumBalanceForRentExemptAccount } from '../state/index';
+import { getMint } from '../state/index';
 import { createAssociatedTokenAccount } from './createAssociatedTokenAccount';
+import { getAccountLenForMint } from '../extensions/extensionType';
 
 /**
  * Create and initialize a new token account
@@ -39,13 +40,15 @@ export async function createAccount(
     if (!keypair) return await createAssociatedTokenAccount(connection, payer, mint, owner, confirmOptions, programId);
 
     // Otherwise, create the account with the provided keypair and return its public key
-    const lamports = await getMinimumBalanceForRentExemptAccount(connection);
+    const mintState = await getMint(connection, mint, confirmOptions?.commitment, programId);
+    const space = getAccountLenForMint(mintState);
+    const lamports = await connection.getMinimumBalanceForRentExemption(space);
 
     const transaction = new Transaction().add(
         SystemProgram.createAccount({
             fromPubkey: payer.publicKey,
             newAccountPubkey: keypair.publicKey,
-            space: ACCOUNT_SIZE,
+            space,
             lamports,
             programId,
         }),

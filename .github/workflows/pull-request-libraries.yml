@@ -4,10 +4,12 @@ on:
   pull_request:
     paths:
     - 'libraries/**'
+    - 'ci/*-version.sh'
   push:
     branches: [master]
     paths:
     - 'libraries/**'
+    - 'ci/*-version.sh'
 
 jobs:
   cargo-test-bpf:

@@ -5,11 +5,13 @@ on:
     paths:
     - 'binary-oracle-pair/**'
     - 'token/**'
+    - 'ci/*-version.sh'
   push:
     branches: [master]
     paths:
     - 'binary-oracle-pair/**'
     - 'token/**'
+    - 'ci/*-version.sh'
 
 jobs:
   cargo-test-bpf:

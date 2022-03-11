@@ -11,10 +11,17 @@ import {
     SystemProgram,
     sendAndConfirmTransaction,
 } from '@solana/web3.js';
-
-import { TOKEN_PROGRAM_ID, closeAccount, getAccount, createWrappedNativeAccount, syncNative } from '../../src';
-
-import { newAccountWithLamports, getConnection } from './common';
+import {
+    NATIVE_MINT,
+    NATIVE_MINT_2022,
+    TOKEN_PROGRAM_ID,
+    closeAccount,
+    getAccount,
+    createNativeMint,
+    createWrappedNativeAccount,
+    syncNative,
+} from '../../src';
+import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
 
 describe('native', () => {
     let connection: Connection;
@@ -22,10 +29,17 @@ describe('native', () => {
     let owner: Keypair;
     let account: PublicKey;
     let amount: number;
+    let nativeMint: PublicKey;
     before(async () => {
         amount = 1_000_000_000;
         connection = await getConnection();
         payer = await newAccountWithLamports(connection, 100_000_000_000);
+        if (TEST_PROGRAM_ID == TOKEN_PROGRAM_ID) {
+            nativeMint = NATIVE_MINT;
+        } else {
+            nativeMint = NATIVE_MINT_2022;
+            await createNativeMint(connection, payer, undefined, TEST_PROGRAM_ID, nativeMint);
+        }
     });
     beforeEach(async () => {
         owner = Keypair.generate();
@@ -36,11 +50,12 @@ describe('native', () => {
             amount,
             undefined,
             undefined,
-            TOKEN_PROGRAM_ID
+            TEST_PROGRAM_ID,
+            nativeMint
         );
     });
     it('works', async () => {
-        const accountInfo = await getAccount(connection, account, undefined, TOKEN_PROGRAM_ID);
+        const accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         expect(accountInfo.isNative).to.be.true;
         expect(accountInfo.amount).to.eql(BigInt(amount));
     });
@@ -67,7 +82,7 @@ describe('native', () => {
         );
 
         // no change in the amount
-        const preAccountInfo = await getAccount(connection, account, undefined, TOKEN_PROGRAM_ID);
+        const preAccountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         expect(preAccountInfo.isNative).to.be.true;
         expect(preAccountInfo.amount).to.eql(BigInt(amount));
 
@@ -79,8 +94,8 @@ describe('native', () => {
         }
 
         // sync, amount changes
-        await syncNative(connection, payer, account, undefined, TOKEN_PROGRAM_ID);
-        const postAccountInfo = await getAccount(connection, account, undefined, TOKEN_PROGRAM_ID);
+        await syncNative(connection, payer, account, undefined, TEST_PROGRAM_ID);
+        const postAccountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         expect(postAccountInfo.isNative).to.be.true;
         expect(postAccountInfo.amount).to.eql(BigInt(amount + additionalLamports));
     });
@@ -92,7 +107,7 @@ describe('native', () => {
             balance = preInfo.lamports;
         }
         const destination = Keypair.generate().publicKey;
-        await closeAccount(connection, payer, account, destination, owner, [], undefined, TOKEN_PROGRAM_ID);
+        await closeAccount(connection, payer, account, destination, owner, [], undefined, TEST_PROGRAM_ID);
         const nullInfo = await connection.getAccountInfo(account);
         expect(nullInfo).to.be.null;
         const destinationInfo = await connection.getAccountInfo(destination);
