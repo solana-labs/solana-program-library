@@ -1,6 +1,6 @@
 import { struct, u32, u8 } from '@solana/buffer-layout';
 import { publicKey, u64 } from '@solana/buffer-layout-utils';
-import { Commitment, Connection, PublicKey } from '@solana/web3.js';
+import { Commitment, Connection, PublicKey, AccountInfo } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
 import {
     TokenAccountNotFoundError,
@@ -99,32 +99,32 @@ export async function getAccount(
     programId = TOKEN_PROGRAM_ID
 ): Promise<Account> {
     const info = await connection.getAccountInfo(address, commitment);
-    if (!info) throw new TokenAccountNotFoundError();
-    if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
-    if (info.data.length < ACCOUNT_SIZE) throw new TokenInvalidAccountSizeError();
+    return unpackAccount(info, address, programId);
+}
 
-    const rawAccount = AccountLayout.decode(info.data.slice(0, ACCOUNT_SIZE));
-    let tlvData = Buffer.alloc(0);
-    if (info.data.length > ACCOUNT_SIZE) {
-        if (info.data.length === MULTISIG_SIZE) throw new TokenInvalidAccountSizeError();
-        if (info.data[ACCOUNT_SIZE] != AccountType.Account) throw new TokenInvalidAccountError();
-        tlvData = info.data.slice(ACCOUNT_SIZE + ACCOUNT_TYPE_SIZE);
+/**
+ * Retrieve information about multiple token accounts in a single RPC call
+ *
+ * @param connection Connection to use
+ * @param addresses  Token accounts
+ * @param commitment Desired level of commitment for querying the state
+ * @param programId  SPL Token program account
+ *
+ * @return Token account information
+ */
+export async function getMultipleAccounts(
+    connection: Connection,
+    addresses: PublicKey[],
+    commitment?: Commitment,
+    programId = TOKEN_PROGRAM_ID
+): Promise<Account[]> {
+    const infos = await connection.getMultipleAccountsInfo(addresses, commitment);
+    const accounts = [];
+    for (let i = 0; i < infos.length; i++) {
+        const account = unpackAccount(infos[i], addresses[i], programId);
+        accounts.push(account);
     }
-
-    return {
-        address,
-        mint: rawAccount.mint,
-        owner: rawAccount.owner,
-        amount: rawAccount.amount,
-        delegate: rawAccount.delegateOption ? rawAccount.delegate : null,
-        delegatedAmount: rawAccount.delegatedAmount,
-        isInitialized: rawAccount.state !== AccountState.Uninitialized,
-        isFrozen: rawAccount.state === AccountState.Frozen,
-        isNative: !!rawAccount.isNativeOption,
-        rentExemptReserve: rawAccount.isNativeOption ? rawAccount.isNative : null,
-        closeAuthority: rawAccount.closeAuthorityOption ? rawAccount.closeAuthority : null,
-        tlvData,
-    };
+    return accounts;
 }
 
 /** Get the minimum lamport balance for a base token account to be rent exempt
@@ -155,4 +155,33 @@ export async function getMinimumBalanceForRentExemptAccountWithExtensions(
 ): Promise<number> {
     const accountLen = getAccountLen(extensions);
     return await connection.getMinimumBalanceForRentExemption(accountLen, commitment);
+}
+
+function unpackAccount(info: AccountInfo<Buffer> | null, address: PublicKey, programId: PublicKey) {
+    if (!info) throw new TokenAccountNotFoundError();
+    if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
+    if (info.data.length < ACCOUNT_SIZE) throw new TokenInvalidAccountSizeError();
+
+    const rawAccount = AccountLayout.decode(info.data.slice(0, ACCOUNT_SIZE));
+    let tlvData = Buffer.alloc(0);
+    if (info.data.length > ACCOUNT_SIZE) {
+        if (info.data.length === MULTISIG_SIZE) throw new TokenInvalidAccountSizeError();
+        if (info.data[ACCOUNT_SIZE] != AccountType.Account) throw new TokenInvalidAccountError();
+        tlvData = info.data.slice(ACCOUNT_SIZE + ACCOUNT_TYPE_SIZE);
+    }
+
+    return {
+        address,
+        mint: rawAccount.mint,
+        owner: rawAccount.owner,
+        amount: rawAccount.amount,
+        delegate: rawAccount.delegateOption ? rawAccount.delegate : null,
+        delegatedAmount: rawAccount.delegatedAmount,
+        isInitialized: rawAccount.state !== AccountState.Uninitialized,
+        isFrozen: rawAccount.state === AccountState.Frozen,
+        isNative: !!rawAccount.isNativeOption,
+        rentExemptReserve: rawAccount.isNativeOption ? rawAccount.isNative : null,
+        closeAuthority: rawAccount.closeAuthorityOption ? rawAccount.closeAuthority : null,
+        tlvData,
+    };
 }
