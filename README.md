@@ -15,6 +15,7 @@ will graciously accept patches to ensure the programs here are portable across
 all implementations.
 
 Full documentation is available at https://spl.solana.com
+TypeDocs: https://solana-labs.github.io/solana-program-library/token/js/
 
 ## Development
 
