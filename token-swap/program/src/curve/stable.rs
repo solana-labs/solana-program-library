@@ -178,7 +178,7 @@ impl CurveCalculator for StableCurve {
         })
     }
 
-    /// Re-implementation of `remove_liquidty`:
+    /// Re-implementation of `remove_liquidity`:
     ///
     /// <https://github.com/curvefi/curve-contract/blob/80bbe179083c9a7062e4c482b0be3bfb7501f2bd/contracts/pool-templates/base/SwapTemplateBase.vy#L513>
     fn pool_tokens_to_trading_tokens(
