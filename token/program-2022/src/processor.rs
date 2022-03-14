@@ -27,11 +27,10 @@ use {
         msg,
         program::{invoke, invoke_signed, set_return_data},
         program_error::ProgramError,
-        program_memory::sol_memset,
         program_option::COption,
         program_pack::Pack,
         pubkey::Pubkey,
-        system_instruction,
+        system_instruction, system_program,
         sysvar::{rent::Rent, Sysvar},
     },
     std::convert::{TryFrom, TryInto},
@@ -875,7 +874,7 @@ impl Processor {
             return Err(ProgramError::InvalidAccountData);
         }
 
-        let mut source_account_data = source_account_info.data.borrow_mut();
+        let source_account_data = source_account_info.data.borrow();
         if let Ok(source_account) = StateWithExtensions::<Account>::unpack(&source_account_data) {
             if !source_account.base.is_native() && source_account.base.amount != 0 {
                 return Err(TokenError::NonNativeHasBalance.into());
@@ -935,8 +934,8 @@ impl Processor {
             .ok_or(TokenError::Overflow)?;
 
         **source_account_info.lamports.borrow_mut() = 0;
-        let data_len = source_account_data.len();
-        sol_memset(*source_account_data, 0, data_len);
+        drop(source_account_data);
+        delete_account(source_account_info)?;
 
         Ok(())
     }
@@ -1386,6 +1385,25 @@ impl Processor {
             &mint_extensions,
         ))
     }
+}
+
+/// Helper function to mostly delete an account in a test environment.  We could
+/// potentially muck around the bytes assuming that a vec is passed in, but that
+/// would be more trouble than it's worth.
+#[cfg(not(target_arch = "bpf"))]
+fn delete_account(account_info: &AccountInfo) -> Result<(), ProgramError> {
+    account_info.assign(&system_program::id());
+    let mut account_data = account_info.data.borrow_mut();
+    let data_len = account_data.len();
+    solana_program::program_memory::sol_memset(*account_data, 0, data_len);
+    Ok(())
+}
+
+/// Helper function to totally delete an account on-chain
+#[cfg(target_arch = "bpf")]
+fn delete_account(account_info: &AccountInfo) -> Result<(), ProgramError> {
+    account_info.assign(&system_program::id());
+    account_info.realloc(0, false)
 }
 
 #[cfg(test)]
