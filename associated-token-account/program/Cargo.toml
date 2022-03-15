@@ -1,6 +1,6 @@
 [package]
 name = "spl-associated-token-account"
-version = "1.0.4"
+version = "1.0.5"
 description = "Solana Program Library Associated Token Account"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -10,15 +10,19 @@ edition = "2018"
 [features]
 no-entrypoint = []
 test-bpf = []
+# When spl-token depends on spl-token-client, which depends on this with no-entrypoint,
+# all tests fail! Normally, we want no-entrypoint, except when testing spl-token
+no-token-entrypoint = [ "spl-token/no-entrypoint" ]
+default = [ "no-token-entrypoint" ]
 
 [dependencies]
 borsh = "0.9.1"
-solana-program = "1.9.2"
-spl-token = { version = "0.1", path = "../../token/program-2022", features = ["no-entrypoint"], package = "spl-token-2022" }
+solana-program = "1.9.5"
+spl-token = { version = "3.3", path = "../../token/program" }
 
 [dev-dependencies]
-solana-program-test = "1.9.2"
-solana-sdk = "1.9.2"
+solana-program-test = "1.9.5"
+solana-sdk = "1.9.5"
 
 [lib]
 crate-type = ["cdylib", "lib"]

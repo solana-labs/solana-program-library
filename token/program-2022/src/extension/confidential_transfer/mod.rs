@@ -17,12 +17,14 @@ pub mod processor;
 
 /// Confidential transfer mint configuration
 #[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct ConfidentialTransferMint {
     /// Authority to modify the `ConfidentialTransferMint` configuration
     ///
     /// Note that setting an authority of `Pubkey::default()` is the idiomatic way to disable
     /// future changes to the configuration.
+    ///
+    /// The legacy Token Multisig account is not supported as the authority
     pub authority: Pubkey,
 
     /// Indicate if newly configured accounts must be approved by the `authority` before they may be
@@ -45,7 +47,7 @@ impl Extension for ConfidentialTransferMint {
 
 /// Confidential account state
 #[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct ConfidentialTransferAccount {
     /// `true` if this account has been approved for use. All confidential transfer operations for
     /// the account will fail until approval is granted.

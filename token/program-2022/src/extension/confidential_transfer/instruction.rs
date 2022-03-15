@@ -3,7 +3,7 @@ use solana_zk_token_sdk::encryption::{auth_encryption::AeCiphertext, elgamal::El
 pub use solana_zk_token_sdk::zk_token_proof_instruction::*;
 use {
     crate::{
-        extension::confidential_transfer::ConfidentialTransferMint, id,
+        check_program_account, extension::confidential_transfer::ConfidentialTransferMint,
         instruction::TokenInstruction, pod::*,
     },
     bytemuck::{Pod, Zeroable},
@@ -312,6 +312,7 @@ pub(crate) fn decode_instruction_data<T: Pod>(input: &[u8]) -> Result<&T, Progra
 }
 
 fn encode_instruction<T: Pod>(
+    token_program_id: &Pubkey,
     accounts: Vec<AccountMeta>,
     instruction_type: ConfidentialTransferInstruction,
     instruction_data: &T,
@@ -320,156 +321,189 @@ fn encode_instruction<T: Pod>(
     data.push(ToPrimitive::to_u8(&instruction_type).unwrap());
     data.extend_from_slice(bytemuck::bytes_of(instruction_data));
     Instruction {
-        program_id: id(),
+        program_id: *token_program_id,
         accounts,
         data,
     }
 }
 
 /// Create a `InitializeMint` instruction
-pub fn initialize_mint(mint: Pubkey, auditor: &ConfidentialTransferMint) -> Instruction {
-    let accounts = vec![AccountMeta::new(mint, false)];
-    encode_instruction(
+pub fn initialize_mint(
+    token_program_id: &Pubkey,
+    mint: &Pubkey,
+    auditor: &ConfidentialTransferMint,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    let accounts = vec![AccountMeta::new(*mint, false)];
+    Ok(encode_instruction(
+        token_program_id,
         accounts,
         ConfidentialTransferInstruction::InitializeMint,
         auditor,
-    )
+    ))
 }
 /// Create a `UpdateMint` instruction
 pub fn update_mint(
-    mint: Pubkey,
+    token_program_id: &Pubkey,
+    mint: &Pubkey,
     new_auditor: &ConfidentialTransferMint,
-    authority: Pubkey,
-) -> Instruction {
+    authority: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
     let accounts = vec![
-        AccountMeta::new(mint, false),
-        AccountMeta::new_readonly(authority, true),
+        AccountMeta::new(*mint, false),
+        AccountMeta::new_readonly(*authority, true),
         AccountMeta::new_readonly(
             new_auditor.authority,
             new_auditor.authority != Pubkey::default(),
         ),
     ];
-    encode_instruction(
+    Ok(encode_instruction(
+        token_program_id,
         accounts,
         ConfidentialTransferInstruction::UpdateMint,
         new_auditor,
-    )
+    ))
 }
 
 /// Create a `ConfigureAccount` instruction
 #[cfg(not(target_arch = "bpf"))]
 pub fn configure_account(
-    token_account: Pubkey,
-    mint: Pubkey,
+    token_program_id: &Pubkey,
+    token_account: &Pubkey,
+    mint: &Pubkey,
     elgamal_pk: ElGamalPubkey,
     decryptable_zero_balance: AeCiphertext,
-    authority: Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-) -> Vec<Instruction> {
+) -> Result<Vec<Instruction>, ProgramError> {
+    check_program_account(token_program_id)?;
     let mut accounts = vec![
-        AccountMeta::new(token_account, false),
-        AccountMeta::new_readonly(mint, false),
-        AccountMeta::new_readonly(authority, multisig_signers.is_empty()),
+        AccountMeta::new(*token_account, false),
+        AccountMeta::new_readonly(*mint, false),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
-    vec![encode_instruction(
+    Ok(vec![encode_instruction(
+        token_program_id,
         accounts,
         ConfidentialTransferInstruction::ConfigureAccount,
         &ConfigureAccountInstructionData {
             elgamal_pk: elgamal_pk.into(),
             decryptable_zero_balance: decryptable_zero_balance.into(),
         },
-    )]
+    )])
 }
 
 /// Create an `ApproveAccount` instruction
-pub fn approve_account(mint: Pubkey, account_to_approve: Pubkey, authority: Pubkey) -> Instruction {
+pub fn approve_account(
+    token_program_id: &Pubkey,
+    mint: &Pubkey,
+    account_to_approve: &Pubkey,
+    authority: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
     let accounts = vec![
-        AccountMeta::new(account_to_approve, false),
-        AccountMeta::new_readonly(mint, false),
-        AccountMeta::new_readonly(authority, true),
+        AccountMeta::new(*account_to_approve, false),
+        AccountMeta::new_readonly(*mint, false),
+        AccountMeta::new_readonly(*authority, true),
     ];
-    encode_instruction(
+    Ok(encode_instruction(
+        token_program_id,
         accounts,
         ConfidentialTransferInstruction::ApproveAccount,
         &(),
-    )
+    ))
 }
 
 /// Create an inner `EmptyAccount` instruction
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
 pub fn inner_empty_account(
-    token_account: Pubkey,
-    authority: Pubkey,
+    token_program_id: &Pubkey,
+    token_account: &Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_instruction_offset: i8,
-) -> Instruction {
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
     let mut accounts = vec![
-        AccountMeta::new_readonly(token_account, false),
+        AccountMeta::new_readonly(*token_account, false),
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
-        AccountMeta::new_readonly(authority, multisig_signers.is_empty()),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
-    encode_instruction(
+    Ok(encode_instruction(
+        token_program_id,
         accounts,
         ConfidentialTransferInstruction::EmptyAccount,
         &EmptyAccountInstructionData {
             proof_instruction_offset,
         },
-    )
+    ))
 }
 
 /// Create a `EmptyAccount` instruction
 pub fn empty_account(
-    token_account: Pubkey,
-    authority: Pubkey,
+    token_program_id: &Pubkey,
+    token_account: &Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_data: &CloseAccountData,
-) -> Vec<Instruction> {
-    vec![
+) -> Result<Vec<Instruction>, ProgramError> {
+    Ok(vec![
         verify_close_account(proof_data),
-        inner_empty_account(token_account, authority, multisig_signers, -1),
-    ]
+        inner_empty_account(
+            token_program_id,
+            token_account,
+            authority,
+            multisig_signers,
+            -1,
+        )?, // calls check_program_account
+    ])
 }
 
 /// Create a `Deposit` instruction
+#[allow(clippy::too_many_arguments)]
 pub fn deposit(
-    source_token_account: Pubkey,
-    mint: Pubkey,
-    destination_token_account: Pubkey,
+    token_program_id: &Pubkey,
+    source_token_account: &Pubkey,
+    mint: &Pubkey,
+    destination_token_account: &Pubkey,
     amount: u64,
     decimals: u8,
-    authority: Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-) -> Vec<Instruction> {
+) -> Result<Vec<Instruction>, ProgramError> {
+    check_program_account(token_program_id)?;
     let mut accounts = vec![
-        AccountMeta::new(source_token_account, false),
-        AccountMeta::new(destination_token_account, false),
-        AccountMeta::new_readonly(mint, false),
-        AccountMeta::new_readonly(authority, multisig_signers.is_empty()),
+        AccountMeta::new(*source_token_account, false),
+        AccountMeta::new(*destination_token_account, false),
+        AccountMeta::new_readonly(*mint, false),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
-    vec![encode_instruction(
+    Ok(vec![encode_instruction(
+        token_program_id,
         accounts,
         ConfidentialTransferInstruction::Deposit,
         &DepositInstructionData {
             amount: amount.into(),
             decimals,
         },
-    )]
+    )])
 }
 
 /// Create a inner `Withdraw` instruction
@@ -477,29 +511,32 @@ pub fn deposit(
 /// This instruction is suitable for use with a cross-program `invoke`
 #[allow(clippy::too_many_arguments)]
 pub fn inner_withdraw(
-    source_token_account: Pubkey,
-    destination_token_account: Pubkey,
+    token_program_id: &Pubkey,
+    source_token_account: &Pubkey,
+    destination_token_account: &Pubkey,
     mint: &Pubkey,
     amount: u64,
     decimals: u8,
     new_decryptable_available_balance: pod::AeCiphertext,
-    authority: Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_instruction_offset: i8,
-) -> Instruction {
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
     let mut accounts = vec![
-        AccountMeta::new(source_token_account, false),
-        AccountMeta::new(destination_token_account, false),
+        AccountMeta::new(*source_token_account, false),
+        AccountMeta::new(*destination_token_account, false),
         AccountMeta::new_readonly(*mint, false),
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
-        AccountMeta::new_readonly(authority, multisig_signers.is_empty()),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
-    encode_instruction(
+    Ok(encode_instruction(
+        token_program_id,
         accounts,
         ConfidentialTransferInstruction::Withdraw,
         &WithdrawInstructionData {
@@ -508,26 +545,28 @@ pub fn inner_withdraw(
             new_decryptable_available_balance,
             proof_instruction_offset,
         },
-    )
+    ))
 }
 
 /// Create a `Withdraw` instruction
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_arch = "bpf"))]
 pub fn withdraw(
-    source_token_account: Pubkey,
-    destination_token_account: Pubkey,
+    token_program_id: &Pubkey,
+    source_token_account: &Pubkey,
+    destination_token_account: &Pubkey,
     mint: &Pubkey,
     amount: u64,
     decimals: u8,
     new_decryptable_available_balance: AeCiphertext,
-    authority: Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_data: &WithdrawData,
-) -> Vec<Instruction> {
-    vec![
+) -> Result<Vec<Instruction>, ProgramError> {
+    Ok(vec![
         verify_withdraw(proof_data),
         inner_withdraw(
+            token_program_id,
             source_token_account,
             destination_token_account,
             mint,
@@ -537,8 +576,8 @@ pub fn withdraw(
             authority,
             multisig_signers,
             -1,
-        ),
-    ]
+        )?, // calls check_program_account
+    ])
 }
 
 /// Create a inner `Transfer` instruction
@@ -546,51 +585,56 @@ pub fn withdraw(
 /// This instruction is suitable for use with a cross-program `invoke`
 #[allow(clippy::too_many_arguments)]
 pub fn inner_transfer(
-    source_token_account: Pubkey,
-    destination_token_account: Pubkey,
-    mint: Pubkey,
+    token_program_id: &Pubkey,
+    source_token_account: &Pubkey,
+    destination_token_account: &Pubkey,
+    mint: &Pubkey,
     new_source_decryptable_available_balance: pod::AeCiphertext,
-    authority: Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_instruction_offset: i8,
-) -> Instruction {
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
     let mut accounts = vec![
-        AccountMeta::new(source_token_account, false),
-        AccountMeta::new(destination_token_account, false),
-        AccountMeta::new_readonly(mint, false),
+        AccountMeta::new(*source_token_account, false),
+        AccountMeta::new(*destination_token_account, false),
+        AccountMeta::new_readonly(*mint, false),
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
-        AccountMeta::new_readonly(authority, multisig_signers.is_empty()),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
-    encode_instruction(
+    Ok(encode_instruction(
+        token_program_id,
         accounts,
         ConfidentialTransferInstruction::Transfer,
         &TransferInstructionData {
             new_source_decryptable_available_balance,
             proof_instruction_offset,
         },
-    )
+    ))
 }
 
 /// Create a `Transfer` instruction
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_arch = "bpf"))]
 pub fn transfer(
-    source_token_account: Pubkey,
-    destination_token_account: Pubkey,
-    mint: Pubkey,
+    token_program_id: &Pubkey,
+    source_token_account: &Pubkey,
+    destination_token_account: &Pubkey,
+    mint: &Pubkey,
     new_source_decryptable_available_balance: AeCiphertext,
-    authority: Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_data: &TransferData,
-) -> Vec<Instruction> {
-    vec![
+) -> Result<Vec<Instruction>, ProgramError> {
+    Ok(vec![
         verify_transfer(proof_data),
         inner_transfer(
+            token_program_id,
             source_token_account,
             destination_token_account,
             mint,
@@ -598,8 +642,8 @@ pub fn transfer(
             authority,
             multisig_signers,
             -1,
-        ),
-    ]
+        )?, // calls check_program_account
+    ])
 }
 
 /// Create a inner `ApplyPendingBalance` instruction
@@ -607,90 +651,103 @@ pub fn transfer(
 /// This instruction is suitable for use with a cross-program `invoke`
 #[allow(clippy::too_many_arguments)]
 pub fn inner_apply_pending_balance(
-    token_account: Pubkey,
+    token_program_id: &Pubkey,
+    token_account: &Pubkey,
     expected_pending_balance_credit_counter: u64,
     new_decryptable_available_balance: pod::AeCiphertext,
-    authority: Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-) -> Instruction {
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
     let mut accounts = vec![
-        AccountMeta::new(token_account, false),
-        AccountMeta::new_readonly(authority, multisig_signers.is_empty()),
+        AccountMeta::new(*token_account, false),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
-    encode_instruction(
+    Ok(encode_instruction(
+        token_program_id,
         accounts,
         ConfidentialTransferInstruction::ApplyPendingBalance,
         &ApplyPendingBalanceData {
             expected_pending_balance_credit_counter: expected_pending_balance_credit_counter.into(),
             new_decryptable_available_balance,
         },
-    )
+    ))
 }
 
 /// Create a `ApplyPendingBalance` instruction
 #[cfg(not(target_arch = "bpf"))]
 pub fn apply_pending_balance(
-    token_account: Pubkey,
+    token_program_id: &Pubkey,
+    token_account: &Pubkey,
     pending_balance_instructions: u64,
     new_decryptable_available_balance: AeCiphertext,
-    authority: Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-) -> Vec<Instruction> {
-    vec![inner_apply_pending_balance(
-        token_account,
-        pending_balance_instructions,
-        new_decryptable_available_balance.into(),
-        authority,
-        multisig_signers,
-    )]
+) -> Result<Vec<Instruction>, ProgramError> {
+    Ok(vec![
+        inner_apply_pending_balance(
+            token_program_id,
+            token_account,
+            pending_balance_instructions,
+            new_decryptable_available_balance.into(),
+            authority,
+            multisig_signers,
+        )?, // calls check_program_account
+    ])
 }
 
 /// Create a `EnableBalanceCredits` instruction
 pub fn enable_balance_credits(
-    token_account: Pubkey,
-    authority: Pubkey,
+    token_program_id: &Pubkey,
+    token_account: &Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-) -> Vec<Instruction> {
+) -> Result<Vec<Instruction>, ProgramError> {
+    check_program_account(token_program_id)?;
     let mut accounts = vec![
-        AccountMeta::new(token_account, false),
-        AccountMeta::new_readonly(authority, multisig_signers.is_empty()),
+        AccountMeta::new(*token_account, false),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
-    vec![encode_instruction(
+    Ok(vec![encode_instruction(
+        token_program_id,
         accounts,
         ConfidentialTransferInstruction::EnableBalanceCredits,
         &(),
-    )]
+    )])
 }
 
 /// Create a `DisableBalanceCredits` instruction
 #[cfg(not(target_arch = "bpf"))]
 pub fn disable_balance_credits(
-    token_account: Pubkey,
-    authority: Pubkey,
+    token_program_id: &Pubkey,
+    token_account: &Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-) -> Vec<Instruction> {
+) -> Result<Vec<Instruction>, ProgramError> {
+    check_program_account(token_program_id)?;
     let mut accounts = vec![
-        AccountMeta::new(token_account, false),
-        AccountMeta::new_readonly(authority, multisig_signers.is_empty()),
+        AccountMeta::new(*token_account, false),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
-    vec![encode_instruction(
+    Ok(vec![encode_instruction(
+        token_program_id,
         accounts,
         ConfidentialTransferInstruction::DisableBalanceCredits,
         &(),
-    )]
+    )])
 }

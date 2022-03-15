@@ -10,23 +10,27 @@ use crate::{
         realm::get_realm_data,
         token_owner_record::get_token_owner_record_data_for_realm,
     },
-    tools::spl_token::{assert_spl_token_mint_authority_is_signer, set_spl_token_mint_authority},
+    tools::spl_token::{
+        assert_spl_token_mint_authority_is_signer, set_spl_token_account_authority,
+    },
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
+    program_pack::Pack,
     pubkey::Pubkey,
     rent::Rent,
     sysvar::Sysvar,
 };
 use spl_governance_tools::account::create_and_serialize_account_signed;
+use spl_token::{instruction::AuthorityType, state::Mint};
 
 /// Processes CreateMintGovernance instruction
 pub fn process_create_mint_governance(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     config: GovernanceConfig,
-    transfer_mint_authority: bool,
+    transfer_mint_authorities: bool,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -84,13 +88,28 @@ pub fn process_create_mint_governance(
         rent,
     )?;
 
-    if transfer_mint_authority {
-        set_spl_token_mint_authority(
+    if transfer_mint_authorities {
+        set_spl_token_account_authority(
             governed_mint_info,
             governed_mint_authority_info,
             mint_governance_info.key,
+            AuthorityType::MintTokens,
             spl_token_info,
         )?;
+
+        // If the mint has freeze_authority then transfer it as well
+        let mint_data = Mint::unpack(&governed_mint_info.data.borrow())?;
+        // Note: The code assumes mint_authority==freeze_authority
+        //       If this is not the case then the caller should set freeze_authority accordingly before making the transfer
+        if mint_data.freeze_authority.is_some() {
+            set_spl_token_account_authority(
+                governed_mint_info,
+                governed_mint_authority_info,
+                mint_governance_info.key,
+                AuthorityType::FreezeAccount,
+                spl_token_info,
+            )?;
+        }
     } else {
         assert_spl_token_mint_authority_is_signer(
             governed_mint_info,

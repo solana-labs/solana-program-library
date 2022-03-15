@@ -10,13 +10,15 @@ version = "0.0.1"
 # When spl-token-2022 depends on this with no-entrypoint, all tests fail!
 # Normally, we want no-entrypoint, except when testing spl-token-2022
 [features]
-default = [ "spl-token-2022/no-entrypoint" ]
+default = [ "spl-token-2022/no-entrypoint", "spl-associated-token-account/no-token-entrypoint" ]
 
 [dependencies]
 async-trait = "0.1"
-solana-client = "=1.9.2"
-solana-program-test = "=1.9.2"
-solana-sdk = "=1.9.2"
-spl-associated-token-account = { version = "1.0", features = ["no-entrypoint"] }
+solana-client = "=1.9.5"
+solana-program-test = "=1.9.5"
+solana-sdk = "=1.9.5"
+# We never want the entrypoint for ATA, but we want the entrypoint for token when
+# testing token
+spl-associated-token-account = { version = "1.0.5", path = "../../associated-token-account/program", features = ["no-entrypoint"], default-features = false }
 spl-token-2022 = { version = "0.1", path="../program-2022" }
 thiserror = "1.0"

@@ -65,7 +65,7 @@ async fn fail_extension_no_space() {
         instruction::initialize_mint_close_authority(
             &spl_token_2022::id(),
             &mint_account.pubkey(),
-            COption::Some(mint_authority_pubkey),
+            Some(&mint_authority_pubkey),
         )
         .unwrap(),
         instruction::initialize_mint(
@@ -126,7 +126,7 @@ async fn fail_extension_after_mint_init() {
         instruction::initialize_mint_close_authority(
             &spl_token_2022::id(),
             &mint_account.pubkey(),
-            COption::Some(mint_authority_pubkey),
+            Some(&mint_authority_pubkey),
         )
         .unwrap(),
     ];
@@ -153,14 +153,14 @@ async fn fail_extension_after_mint_init() {
 
 #[tokio::test]
 async fn success_extension_and_base() {
-    let close_authority = COption::Some(Pubkey::new_unique());
+    let close_authority = Some(Pubkey::new_unique());
     let TestContext {
         decimals,
         mint_authority,
         token,
         ..
     } = TestContext::new(vec![ExtensionInitializationParams::MintCloseAuthority {
-        close_authority: close_authority.clone(),
+        close_authority,
     }])
     .await
     .unwrap();
@@ -266,7 +266,7 @@ async fn fail_account_init_after_mint_extension() {
         instruction::initialize_mint_close_authority(
             &spl_token_2022::id(),
             &token_account.pubkey(),
-            COption::Some(mint_authority_pubkey),
+            Some(&mint_authority_pubkey),
         )
         .unwrap(),
         instruction::initialize_account(
@@ -375,7 +375,7 @@ async fn fail_account_init_after_mint_init_with_extension() {
         instruction::initialize_mint_close_authority(
             &spl_token_2022::id(),
             &mint_account.pubkey(),
-            COption::Some(mint_authority_pubkey),
+            Some(&mint_authority_pubkey),
         )
         .unwrap(),
         instruction::initialize_mint(
@@ -441,12 +441,14 @@ async fn fail_fee_init_after_mint_init() {
         )
         .unwrap(),
         transfer_fee::instruction::initialize_transfer_fee_config(
-            mint_account.pubkey(),
-            COption::Some(Pubkey::new_unique()),
-            COption::Some(Pubkey::new_unique()),
+            &spl_token_2022::id(),
+            &mint_account.pubkey(),
+            Some(&Pubkey::new_unique()),
+            Some(&Pubkey::new_unique()),
             10,
             100,
-        ),
+        )
+        .unwrap(),
     ];
 
     let tx = Transaction::new_signed_with_payer(

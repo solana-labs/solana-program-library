@@ -1,5 +1,5 @@
 use {
-    solana_program_test::{processor, tokio::sync::Mutex, ProgramTest},
+    solana_program_test::{processor, tokio::sync::Mutex, ProgramTest, ProgramTestContext},
     solana_sdk::signer::{keypair::Keypair, Signer},
     spl_token_2022::{id, processor::Processor},
     spl_token_client::{
@@ -9,13 +9,13 @@ use {
     std::sync::Arc,
 };
 
-#[derive(Debug)]
 pub struct TestContext {
     pub decimals: u8,
     pub mint_authority: Keypair,
     pub token: Token<ProgramBanksClientProcessTransaction, Keypair>,
     pub alice: Keypair,
     pub bob: Keypair,
+    pub context: Arc<Mutex<ProgramTestContext>>, // ProgramTestContext needs to #[derive(Debug)]
 }
 
 impl TestContext {
@@ -23,14 +23,14 @@ impl TestContext {
         extension_init_params: Vec<ExtensionInitializationParams>,
     ) -> TokenResult<Self> {
         let program_test = ProgramTest::new("spl_token_2022", id(), processor!(Processor::process));
-        let ctx = program_test.start_with_context().await;
-        let ctx = Arc::new(Mutex::new(ctx));
+        let context = program_test.start_with_context().await;
+        let context = Arc::new(Mutex::new(context));
 
-        let payer = keypair_clone(&ctx.lock().await.payer);
+        let payer = keypair_clone(&context.lock().await.payer);
 
         let client: Arc<dyn ProgramClient<ProgramBanksClientProcessTransaction>> =
             Arc::new(ProgramBanksClient::new_from_context(
-                Arc::clone(&ctx),
+                Arc::clone(&context),
                 ProgramBanksClientProcessTransaction,
             ));
 
@@ -42,6 +42,7 @@ impl TestContext {
 
         let token = Token::create_mint(
             Arc::clone(&client),
+            &id(),
             payer,
             &mint_account,
             &mint_authority_pubkey,
@@ -57,6 +58,7 @@ impl TestContext {
             token,
             alice: Keypair::new(),
             bob: Keypair::new(),
+            context,
         })
     }
 }

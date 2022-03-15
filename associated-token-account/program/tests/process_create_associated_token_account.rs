@@ -46,6 +46,7 @@ async fn test_associated_token_address() {
             &payer.pubkey(),
             &wallet_address,
             &token_mint_address,
+            &spl_token::id(),
         )],
         Some(&payer.pubkey()),
     );
@@ -105,6 +106,7 @@ async fn test_create_with_fewer_lamports() {
             &payer.pubkey(),
             &wallet_address,
             &token_mint_address,
+            &spl_token::id(),
         )],
         Some(&payer.pubkey()),
     );
@@ -158,6 +160,7 @@ async fn test_create_with_excess_lamports() {
             &payer.pubkey(),
             &wallet_address,
             &token_mint_address,
+            &spl_token::id(),
         )],
         Some(&payer.pubkey()),
     );
@@ -183,8 +186,12 @@ async fn test_create_account_mismatch() {
     let (mut banks_client, payer, recent_blockhash) =
         program_test(token_mint_address, true).start().await;
 
-    let mut instruction =
-        create_associated_token_account(&payer.pubkey(), &wallet_address, &token_mint_address);
+    let mut instruction = create_associated_token_account(
+        &payer.pubkey(),
+        &wallet_address,
+        &token_mint_address,
+        &spl_token::id(),
+    );
     instruction.accounts[1] = AccountMeta::new(Pubkey::default(), false); // <-- Invalid associated_account_address
 
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
@@ -198,8 +205,12 @@ async fn test_create_account_mismatch() {
         TransactionError::InstructionError(0, InstructionError::InvalidSeeds)
     );
 
-    let mut instruction =
-        create_associated_token_account(&payer.pubkey(), &wallet_address, &token_mint_address);
+    let mut instruction = create_associated_token_account(
+        &payer.pubkey(),
+        &wallet_address,
+        &token_mint_address,
+        &spl_token::id(),
+    );
     instruction.accounts[2] = AccountMeta::new(Pubkey::default(), false); // <-- Invalid wallet_address
 
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
@@ -213,8 +224,12 @@ async fn test_create_account_mismatch() {
         TransactionError::InstructionError(0, InstructionError::InvalidSeeds)
     );
 
-    let mut instruction =
-        create_associated_token_account(&payer.pubkey(), &wallet_address, &token_mint_address);
+    let mut instruction = create_associated_token_account(
+        &payer.pubkey(),
+        &wallet_address,
+        &token_mint_address,
+        &spl_token::id(),
+    );
     instruction.accounts[3] = AccountMeta::new(Pubkey::default(), false); // <-- Invalid token_mint_address
 
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
@@ -250,8 +265,12 @@ async fn test_create_associated_token_account_using_legacy_implicit_instruction(
         None,
     );
 
-    let mut create_associated_token_account_ix =
-        create_associated_token_account(&payer.pubkey(), &wallet_address, &token_mint_address);
+    let mut create_associated_token_account_ix = create_associated_token_account(
+        &payer.pubkey(),
+        &wallet_address,
+        &token_mint_address,
+        &spl_token::id(),
+    );
 
     // Use implicit  instruction and rent account to replicate the legacy invocation
     create_associated_token_account_ix.data = vec![];
@@ -300,6 +319,7 @@ async fn test_create_associated_token_account_using_deprecated_instruction_creat
     );
 
     // Use legacy instruction creator
+    #[allow(deprecated)]
     let create_associated_token_account_ix = deprecated_create_associated_token_account(
         &payer.pubkey(),
         &wallet_address,

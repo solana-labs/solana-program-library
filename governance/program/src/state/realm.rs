@@ -70,7 +70,7 @@ pub struct Realm {
     pub reserved: [u8; 8],
 
     /// Realm authority. The authority must sign transactions which update the realm config
-    /// The authority can be transferer to Realm Governance and hence make the Realm self governed through proposals
+    /// The authority should be transferred to Realm Governance to make the Realm self governed through proposals
     pub authority: Option<Pubkey>,
 
     /// Governance Realm name

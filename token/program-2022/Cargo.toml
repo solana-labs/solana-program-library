@@ -18,14 +18,14 @@ bytemuck = { version = "1.7.2", features = ["derive"] }
 num-derive = "0.3"
 num-traits = "0.2"
 num_enum = "0.5.4"
-solana-program = "1.9.2"
-solana-zk-token-sdk = "0.1.0"
+solana-program = "1.9.5"
+solana-zk-token-sdk = "0.4.0"
 thiserror = "1.0"
 
 [dev-dependencies]
 lazy_static = "1.4.0"
-solana-program-test = "1.9.2"
-solana-sdk = "1.9.2"
+solana-program-test = "1.9.5"
+solana-sdk = "1.9.5"
 spl-token-client = { version = "0.0.1", path = "../rust", default-features = false }
 
 [lib]

@@ -17,8 +17,8 @@ use solana_program::{
     sysvar::Sysvar,
 };
 use spl_governance::state::{
-    governance::get_governance_data, proposal::get_proposal_data_for_governance,
-    token_owner_record::get_token_owner_record_data_for_realm,
+    governance::get_governance_data_for_realm, proposal::get_proposal_data_for_governance,
+    realm::get_realm_data, token_owner_record::get_token_owner_record_data_for_realm,
 };
 use spl_governance_tools::account::create_and_serialize_account;
 
@@ -28,13 +28,15 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     input: &[u8],
 ) -> ProgramResult {
+    msg!("VERSION:{:?}", env!("CARGO_PKG_VERSION"));
+
     let instruction = GovernanceChatInstruction::try_from_slice(input)
         .map_err(|_| ProgramError::InvalidInstructionData)?;
 
     match instruction {
-        GovernanceChatInstruction::PostMessage { body } => {
+        GovernanceChatInstruction::PostMessage { body, is_reply } => {
             msg!("GOVERNANCE-CHAT-INSTRUCTION: PostMessage");
-            process_post_message(program_id, accounts, body)
+            process_post_message(program_id, accounts, body, is_reply)
         }
     }
 }
@@ -44,33 +46,38 @@ pub fn process_post_message(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     body: MessageBody,
+    is_reply: bool,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
     let governance_program_info = next_account_info(account_info_iter)?; // 0
-    let governance_info = next_account_info(account_info_iter)?; // 1
-    let proposal_info = next_account_info(account_info_iter)?; // 2
-    let token_owner_record_info = next_account_info(account_info_iter)?; // 3
-    let governance_authority_info = next_account_info(account_info_iter)?; // 4
+    let realm_info = next_account_info(account_info_iter)?; // 1
+    let governance_info = next_account_info(account_info_iter)?; // 2
+    let proposal_info = next_account_info(account_info_iter)?; // 3
+    let token_owner_record_info = next_account_info(account_info_iter)?; // 4
+    let governance_authority_info = next_account_info(account_info_iter)?; // 5
 
-    let chat_message_info = next_account_info(account_info_iter)?; // 5
+    let chat_message_info = next_account_info(account_info_iter)?; // 6
 
-    let payer_info = next_account_info(account_info_iter)?; // 6
-    let system_info = next_account_info(account_info_iter)?; // 7
+    let payer_info = next_account_info(account_info_iter)?; // 7
+    let system_info = next_account_info(account_info_iter)?; // 8
 
-    let reply_to_info = next_account_info(account_info_iter); // 8
-
-    let reply_to_address = if let Ok(reply_to_info) = reply_to_info {
+    let reply_to_address = if is_reply {
+        let reply_to_info = next_account_info(account_info_iter)?; // 9
         assert_is_valid_chat_message(program_id, reply_to_info)?;
         Some(*reply_to_info.key)
     } else {
         None
     };
 
-    let governance_data = get_governance_data(governance_program_info.key, governance_info)?;
+    let governance_program_id = governance_program_info.key;
+    let realm_data = get_realm_data(governance_program_id, realm_info)?;
+
+    let governance_data =
+        get_governance_data_for_realm(governance_program_id, governance_info, realm_info.key)?;
 
     let token_owner_record_data = get_token_owner_record_data_for_realm(
-        governance_program_info.key,
+        governance_program_id,
         token_owner_record_info,
         &governance_data.realm,
     )?;
@@ -79,15 +86,22 @@ pub fn process_post_message(
 
     // deserialize proposal to assert it belongs to the given governance and hence belongs to the same realm as the token owner
     let _proposal_data = get_proposal_data_for_governance(
-        governance_program_info.key,
+        governance_program_id,
         proposal_info,
         governance_info.key,
     )?;
 
-    // The owner needs to have at least 1 governing token to comment on proposals
+    let voter_weight = token_owner_record_data.resolve_voter_weight(
+        governance_program_id,
+        account_info_iter, // 10
+        realm_info.key,
+        &realm_data,
+    )?;
+
+    // The owner needs to have at least voter weight of 1 to comment on proposals
     // Note: It can be either community or council token and is irrelevant to the proposal's governing token
     // Note: 1 is currently hardcoded but if different level is required then it should be added to realm config
-    if token_owner_record_data.governing_token_deposit_amount < 1 {
+    if voter_weight < 1 {
         return Err(GovernanceChatError::NotEnoughTokensToCommentProposal.into());
     }
 

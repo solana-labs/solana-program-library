@@ -12,15 +12,15 @@ test-bpf = []
 
 [dependencies]
 borsh = "0.9.1"
-solana-program = "1.9.2"
-spl-token = { version = "3.2", path = "../../token/program", features = ["no-entrypoint"] }
-spl-associated-token-account = {version = "1.0.3", features = ["no-entrypoint"]}
+solana-program = "1.9.5"
+spl-token = { version = "3.3", path = "../../token/program", features = ["no-entrypoint"] }
+spl-associated-token-account = {version = "1.0", path = "../../associated-token-account/program", features = ["no-entrypoint"]}
 metaplex-token-metadata = { version = "0.0.1", features = ["no-entrypoint"] }
 thiserror = "1.0"
 
 [dev-dependencies]
-solana-program-test = "1.9.2"
-solana-sdk = "1.9.2"
+solana-program-test = "1.9.5"
+solana-sdk = "1.9.5"
 
 [lib]
 crate-type = ["cdylib", "lib"]

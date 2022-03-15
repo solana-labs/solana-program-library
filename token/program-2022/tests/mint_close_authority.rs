@@ -17,14 +17,14 @@ use {
 
 #[tokio::test]
 async fn success_init() {
-    let close_authority = COption::Some(Pubkey::new_unique());
+    let close_authority = Some(Pubkey::new_unique());
     let TestContext {
         decimals,
         mint_authority,
         token,
         ..
     } = TestContext::new(vec![ExtensionInitializationParams::MintCloseAuthority {
-        close_authority: close_authority.clone(),
+        close_authority,
     }])
     .await
     .unwrap();
@@ -50,7 +50,7 @@ async fn set_authority() {
     let close_authority = Keypair::new();
     let TestContext { token, .. } =
         TestContext::new(vec![ExtensionInitializationParams::MintCloseAuthority {
-            close_authority: COption::Some(close_authority.pubkey()),
+            close_authority: Some(close_authority.pubkey()),
         }])
         .await
         .unwrap();
@@ -150,7 +150,7 @@ async fn success_close() {
     let close_authority = Keypair::new();
     let TestContext { token, .. } =
         TestContext::new(vec![ExtensionInitializationParams::MintCloseAuthority {
-            close_authority: COption::Some(close_authority.pubkey()),
+            close_authority: Some(close_authority.pubkey()),
         }])
         .await
         .unwrap();
@@ -212,7 +212,7 @@ async fn fail_close_with_supply() {
         mint_authority,
         ..
     } = TestContext::new(vec![ExtensionInitializationParams::MintCloseAuthority {
-        close_authority: COption::Some(close_authority.pubkey()),
+        close_authority: Some(close_authority.pubkey()),
     }])
     .await
     .unwrap();

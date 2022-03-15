@@ -54,7 +54,6 @@ use spl_governance::{
     tools::bpf_loader_upgradeable::get_program_data_address,
 };
 
-pub mod addins;
 pub mod cookies;
 
 use crate::program_test::cookies::{
@@ -62,18 +61,16 @@ use crate::program_test::cookies::{
 };
 
 use spl_governance_test_sdk::{
+    addins::ensure_voter_weight_addin_is_built,
     cookies::WalletCookie,
     tools::{clone_keypair, NopOverride},
     ProgramTestBench,
 };
 
-use self::{
-    addins::ensure_voter_weight_addin_is_built,
-    cookies::{
-        GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
-        GovernedTokenCookie, NativeTreasuryCookie, ProgramMetadataCookie, ProposalCookie,
-        ProposalInstructionCookie, RealmCookie, TokenOwnerRecordCookie, VoteRecordCookie,
-    },
+use self::cookies::{
+    GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
+    GovernedTokenCookie, NativeTreasuryCookie, ProgramMetadataCookie, ProposalCookie,
+    ProposalInstructionCookie, RealmCookie, TokenOwnerRecordCookie, VoteRecordCookie,
 };
 
 /// Yes/No Vote
@@ -179,6 +176,7 @@ impl GovernanceProgramTest {
             .create_mint(
                 &community_token_mint_keypair,
                 &community_token_mint_authority.pubkey(),
+                None,
             )
             .await;
 
@@ -200,6 +198,7 @@ impl GovernanceProgramTest {
                 .create_mint(
                     &council_token_mint_keypair,
                     &council_token_mint_authority.pubkey(),
+                    None,
                 )
                 .await;
 
@@ -965,16 +964,34 @@ impl GovernanceProgramTest {
 
     #[allow(dead_code)]
     pub async fn with_governed_mint(&mut self) -> GovernedMintCookie {
-        let mint_keypair = Keypair::new();
         let mint_authority = Keypair::new();
 
+        self.with_governed_mint_impl(&mint_authority, None).await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_freezable_governed_mint(&mut self) -> GovernedMintCookie {
+        let mint_authority = Keypair::new();
+
+        self.with_governed_mint_impl(&mint_authority, Some(&mint_authority.pubkey()))
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_governed_mint_impl(
+        &mut self,
+        mint_authority: &Keypair,
+        freeze_authority: Option<&Pubkey>,
+    ) -> GovernedMintCookie {
+        let mint_keypair = Keypair::new();
+
         self.bench
-            .create_mint(&mint_keypair, &mint_authority.pubkey())
+            .create_mint(&mint_keypair, &mint_authority.pubkey(), freeze_authority)
             .await;
 
         GovernedMintCookie {
             address: mint_keypair.pubkey(),
-            mint_authority,
+            mint_authority: clone_keypair(mint_authority),
             transfer_mint_authority: true,
         }
     }
@@ -985,7 +1002,7 @@ impl GovernanceProgramTest {
         let mint_authority = Keypair::new();
 
         self.bench
-            .create_mint(&mint_keypair, &mint_authority.pubkey())
+            .create_mint(&mint_keypair, &mint_authority.pubkey(), None)
             .await;
 
         let token_keypair = Keypair::new();
