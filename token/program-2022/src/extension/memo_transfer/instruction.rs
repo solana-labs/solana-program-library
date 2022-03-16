@@ -1,12 +1,14 @@
 use {
-    crate::{check_program_account, error::TokenError, instruction::TokenInstruction},
+    crate::{
+        check_program_account,
+        instruction::{encode_instruction, TokenInstruction},
+    },
     num_enum::{IntoPrimitive, TryFromPrimitive},
     solana_program::{
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
         pubkey::Pubkey,
     },
-    std::convert::TryFrom,
 };
 
 /// Default Account State extension instructions
@@ -44,30 +46,6 @@ pub enum RequiredMemoTransfersInstruction {
     Disable,
 }
 
-pub(crate) fn decode_instruction(
-    input: &[u8],
-) -> Result<RequiredMemoTransfersInstruction, ProgramError> {
-    if input.len() != 1 {
-        return Err(TokenError::InvalidInstruction.into());
-    }
-    RequiredMemoTransfersInstruction::try_from(input[0])
-        .map_err(|_| TokenError::InvalidInstruction.into())
-}
-
-fn encode_instruction(
-    token_program_id: &Pubkey,
-    accounts: Vec<AccountMeta>,
-    instruction_type: RequiredMemoTransfersInstruction,
-) -> Instruction {
-    let mut data = TokenInstruction::MemoTransferExtension.pack();
-    data.push(instruction_type.into());
-    Instruction {
-        program_id: *token_program_id,
-        accounts,
-        data,
-    }
-}
-
 /// Create an `Enable` instruction
 pub fn enable_required_transfer_memos(
     token_program_id: &Pubkey,
@@ -86,7 +64,9 @@ pub fn enable_required_transfer_memos(
     Ok(encode_instruction(
         token_program_id,
         accounts,
+        TokenInstruction::MemoTransferExtension,
         RequiredMemoTransfersInstruction::Enable,
+        &(),
     ))
 }
 
@@ -108,6 +88,8 @@ pub fn disable_required_transfer_memos(
     Ok(encode_instruction(
         token_program_id,
         accounts,
+        TokenInstruction::MemoTransferExtension,
         RequiredMemoTransfersInstruction::Disable,
+        &(),
     ))
 }

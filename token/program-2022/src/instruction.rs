@@ -5,7 +5,9 @@ use {
         check_program_account, check_spl_token_program_account,
         error::TokenError,
         extension::{transfer_fee::instruction::TransferFeeInstruction, ExtensionType},
+        pod::{pod_from_bytes, pod_get_packed_len},
     },
+    bytemuck::Pod,
     solana_program::{
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
@@ -13,7 +15,10 @@ use {
         pubkey::{Pubkey, PUBKEY_BYTES},
         system_program, sysvar,
     },
-    std::{convert::TryInto, mem::size_of},
+    std::{
+        convert::{TryFrom, TryInto},
+        mem::size_of,
+    },
 };
 
 /// Minimum number of multisignature signers (min N)
@@ -1678,6 +1683,42 @@ pub fn create_native_mint(
 /// Utility function that checks index is between MIN_SIGNERS and MAX_SIGNERS
 pub fn is_valid_signer_index(index: usize) -> bool {
     (MIN_SIGNERS..=MAX_SIGNERS).contains(&index)
+}
+
+/// Utility function for decoding just the instruction type
+pub(crate) fn decode_instruction_type<T: TryFrom<u8>>(input: &[u8]) -> Result<T, ProgramError> {
+    if input.is_empty() {
+        Err(ProgramError::InvalidInstructionData)
+    } else {
+        T::try_from(input[0]).map_err(|_| TokenError::InvalidInstruction.into())
+    }
+}
+
+/// Utility function for decoding instruction data
+pub(crate) fn decode_instruction_data<T: Pod>(input: &[u8]) -> Result<&T, ProgramError> {
+    if input.len() != pod_get_packed_len::<T>().saturating_add(1) {
+        Err(ProgramError::InvalidInstructionData)
+    } else {
+        pod_from_bytes(&input[1..])
+    }
+}
+
+/// Utility function for encoding instruction data
+pub(crate) fn encode_instruction<T: Into<u8>, D: Pod>(
+    token_program_id: &Pubkey,
+    accounts: Vec<AccountMeta>,
+    token_instruction_type: TokenInstruction,
+    instruction_type: T,
+    instruction_data: &D,
+) -> Instruction {
+    let mut data = token_instruction_type.pack();
+    data.push(T::into(instruction_type));
+    data.extend_from_slice(bytemuck::bytes_of(instruction_data));
+    Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    }
 }
 
 #[cfg(test)]
