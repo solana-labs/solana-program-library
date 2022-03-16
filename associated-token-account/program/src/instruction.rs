@@ -40,9 +40,13 @@ pub enum AssociatedTokenAccountInstruction {
     /// The tokens are moved from the nested associated token account to the
     /// wallet's associated token account.
     ///
+    /// Note: Nested token accounts are an anti-pattern, and almost always
+    /// created unintentionally, so this instruction should only be used to
+    /// recover from errors.
+    ///
     ///   0. `[writeable]` Nested associated token account, must be owned by `3`
-    ///   1. `[]` Token mint for the nested associated token account.
-    ///   2. `[writeable]` Wallet's associated token account.
+    ///   1. `[]` Token mint for the nested associated token account
+    ///   2. `[writeable]` Wallet's associated token account
     ///   3. `[]` Owner associated token account address, must be owned by `5`
     ///   4. `[]` Token mint for the owner associated token account
     ///   5. `[writeable, signer]` Wallet address for the owner associated token account

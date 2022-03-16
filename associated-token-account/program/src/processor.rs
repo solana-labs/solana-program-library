@@ -188,9 +188,10 @@ pub fn process_close_nested(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pr
     }
 
     // Check nested address derivation
-    let nested_associated_token_address = get_associated_token_address_with_program_id(
+    let (nested_associated_token_address, _) = get_associated_token_address_and_bump_seed_internal(
         owner_associated_token_account_info.key,
         nested_token_mint_info.key,
+        program_id,
         spl_token_program_id,
     );
     if nested_associated_token_address != *nested_associated_token_account_info.key {
@@ -199,22 +200,17 @@ pub fn process_close_nested(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pr
     }
 
     // Check destination address derivation
-    let destination_associated_token_address = get_associated_token_address_with_program_id(
-        wallet_account_info.key,
-        nested_token_mint_info.key,
-        spl_token_program_id,
-    );
+    let (destination_associated_token_address, _) =
+        get_associated_token_address_and_bump_seed_internal(
+            wallet_account_info.key,
+            nested_token_mint_info.key,
+            program_id,
+            spl_token_program_id,
+        );
     if destination_associated_token_address != *destination_associated_token_account_info.key {
         msg!("Error: Nested associated address does not match seed derivation");
         return Err(ProgramError::InvalidSeeds);
     }
-
-    let owner_associated_token_account_signer_seeds: &[&[_]] = &[
-        &wallet_account_info.key.to_bytes(),
-        &spl_token_program_id.to_bytes(),
-        &owner_token_mint_info.key.to_bytes(),
-        &[bump_seed],
-    ];
 
     if !wallet_account_info.is_signer {
         msg!("Wallet of the owner associated token account must sign");
@@ -266,6 +262,12 @@ pub fn process_close_nested(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pr
     };
 
     // Transfer everything out
+    let owner_associated_token_account_signer_seeds: &[&[_]] = &[
+        &wallet_account_info.key.to_bytes(),
+        &spl_token_program_id.to_bytes(),
+        &owner_token_mint_info.key.to_bytes(),
+        &[bump_seed],
+    ];
     invoke_signed(
         &spl_token_2022::instruction::transfer_checked(
             spl_token_program_id,
