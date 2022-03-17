@@ -6,6 +6,7 @@ use {
             confidential_transfer::{instruction::*, *},
             StateWithExtensions, StateWithExtensionsMut,
         },
+        instruction::{decode_instruction_data, decode_instruction_type},
         processor::Processor,
         state::{Account, Mint},
     },

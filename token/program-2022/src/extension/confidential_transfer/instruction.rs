@@ -3,11 +3,12 @@ use solana_zk_token_sdk::encryption::{auth_encryption::AeCiphertext, elgamal::El
 pub use solana_zk_token_sdk::zk_token_proof_instruction::*;
 use {
     crate::{
-        check_program_account, extension::confidential_transfer::*, instruction::TokenInstruction,
+        check_program_account,
+        extension::confidential_transfer::*,
+        instruction::{encode_instruction, TokenInstruction},
     },
     bytemuck::{Pod, Zeroable},
-    num_derive::{FromPrimitive, ToPrimitive},
-    num_traits::{FromPrimitive, ToPrimitive},
+    num_enum::{IntoPrimitive, TryFromPrimitive},
     solana_program::{
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
@@ -19,7 +20,7 @@ use {
 };
 
 /// Confidential Transfer extension instructions
-#[derive(Clone, Copy, Debug, FromPrimitive, ToPrimitive)]
+#[derive(Clone, Copy, Debug, TryFromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 pub enum ConfidentialTransferInstruction {
     /// Initializes confidential transfers for a mint.
@@ -434,40 +435,6 @@ pub struct WithdrawWithheldTokensFromAccountsData {
     pub proof_instruction_offset: i8,
 }
 
-pub(crate) fn decode_instruction_type(
-    input: &[u8],
-) -> Result<ConfidentialTransferInstruction, ProgramError> {
-    if input.is_empty() {
-        Err(ProgramError::InvalidInstructionData)
-    } else {
-        FromPrimitive::from_u8(input[0]).ok_or(ProgramError::InvalidInstructionData)
-    }
-}
-
-pub(crate) fn decode_instruction_data<T: Pod>(input: &[u8]) -> Result<&T, ProgramError> {
-    if input.is_empty() {
-        Err(ProgramError::InvalidInstructionData)
-    } else {
-        pod_from_bytes(&input[1..])
-    }
-}
-
-fn encode_instruction<T: Pod>(
-    token_program_id: &Pubkey,
-    accounts: Vec<AccountMeta>,
-    instruction_type: ConfidentialTransferInstruction,
-    instruction_data: &T,
-) -> Instruction {
-    let mut data = TokenInstruction::ConfidentialTransferExtension.pack();
-    data.push(ToPrimitive::to_u8(&instruction_type).unwrap());
-    data.extend_from_slice(bytemuck::bytes_of(instruction_data));
-    Instruction {
-        program_id: *token_program_id,
-        accounts,
-        data,
-    }
-}
-
 /// Create a `InitializeMint` instruction
 pub fn initialize_mint(
     token_program_id: &Pubkey,
@@ -479,6 +446,7 @@ pub fn initialize_mint(
     Ok(encode_instruction(
         token_program_id,
         accounts,
+        TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::InitializeMint,
         ct_mint,
     ))
@@ -503,6 +471,7 @@ pub fn update_mint(
     Ok(encode_instruction(
         token_program_id,
         accounts,
+        TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::UpdateMint,
         new_ct_mint,
     ))
@@ -533,6 +502,7 @@ pub fn configure_account(
     Ok(encode_instruction(
         token_program_id,
         accounts,
+        TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::ConfigureAccount,
         &ConfigureAccountInstructionData {
             encryption_pubkey: encryption_pubkey.into(),
@@ -557,6 +527,7 @@ pub fn approve_account(
     Ok(encode_instruction(
         token_program_id,
         accounts,
+        TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::ApproveAccount,
         &(),
     ))
@@ -586,6 +557,7 @@ pub fn inner_empty_account(
     Ok(encode_instruction(
         token_program_id,
         accounts,
+        TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::EmptyAccount,
         &EmptyAccountInstructionData {
             proof_instruction_offset,
@@ -640,6 +612,7 @@ pub fn deposit(
     Ok(encode_instruction(
         token_program_id,
         accounts,
+        TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::Deposit,
         &DepositInstructionData {
             amount: amount.into(),
@@ -680,6 +653,7 @@ pub fn inner_withdraw(
     Ok(encode_instruction(
         token_program_id,
         accounts,
+        TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::Withdraw,
         &WithdrawInstructionData {
             amount: amount.into(),
@@ -752,6 +726,7 @@ pub fn inner_transfer(
     Ok(encode_instruction(
         token_program_id,
         accounts,
+        TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::Transfer,
         &TransferInstructionData {
             new_source_decryptable_available_balance,
@@ -812,6 +787,7 @@ pub fn inner_apply_pending_balance(
     Ok(encode_instruction(
         token_program_id,
         accounts,
+        TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::ApplyPendingBalance,
         &ApplyPendingBalanceData {
             expected_pending_balance_credit_counter: expected_pending_balance_credit_counter.into(),
@@ -860,6 +836,7 @@ fn enable_or_disable_balance_credits(
     Ok(encode_instruction(
         token_program_id,
         accounts,
+        TokenInstruction::ConfidentialTransferExtension,
         instruction,
         &(),
     ))
@@ -923,6 +900,7 @@ pub fn inner_withdraw_withheld_tokens_from_mint(
     Ok(encode_instruction(
         token_program_id,
         accounts,
+        TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::WithdrawWithheldTokensFromMint,
         &WithdrawWithheldTokensFromMintData {
             proof_instruction_offset,
@@ -985,6 +963,7 @@ pub fn inner_withdraw_withheld_tokens_from_accounts(
     Ok(encode_instruction(
         token_program_id,
         accounts,
+        TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::WithdrawWithheldTokensFromAccounts,
         &WithdrawWithheldTokensFromAccountsData {
             proof_instruction_offset,
@@ -1033,6 +1012,7 @@ pub fn harvest_withheld_tokens_to_mint(
     Ok(encode_instruction(
         token_program_id,
         accounts,
+        TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::HarvestWithheldTokensToMint,
         &(),
     ))
