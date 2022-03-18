@@ -38,7 +38,8 @@ pub enum AssociatedTokenAccountInstruction {
     /// associated token account owned by an associated token account.
     ///
     /// The tokens are moved from the nested associated token account to the
-    /// wallet's associated token account.
+    /// wallet's associated token account, and the nested account lamports are
+    /// moved to the wallet.
     ///
     /// Note: Nested token accounts are an anti-pattern, and almost always
     /// created unintentionally, so this instruction should only be used to
@@ -51,7 +52,7 @@ pub enum AssociatedTokenAccountInstruction {
     ///   4. `[]` Token mint for the owner associated token account
     ///   5. `[writeable, signer]` Wallet address for the owner associated token account
     ///   6. `[]` SPL Token program
-    CloseNested,
+    RecoverNested,
 }
 
 fn build_associated_token_account_instruction(
@@ -118,8 +119,8 @@ pub fn create_associated_token_account_idempotent(
     )
 }
 
-/// Creates a `CloseNested` instruction
-pub fn close_nested(
+/// Creates a `RecoverNested` instruction
+pub fn recover_nested(
     wallet_address: &Pubkey,
     owner_token_mint_address: &Pubkey,
     nested_token_mint_address: &Pubkey,
@@ -141,7 +142,7 @@ pub fn close_nested(
         token_program_id,
     );
 
-    let instruction_data = AssociatedTokenAccountInstruction::CloseNested;
+    let instruction_data = AssociatedTokenAccountInstruction::RecoverNested;
 
     Instruction {
         program_id: id(),

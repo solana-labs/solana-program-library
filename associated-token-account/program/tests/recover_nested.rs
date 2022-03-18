@@ -83,7 +83,7 @@ async fn create_associated_token_account(
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn try_close_nested(
+async fn try_recover_nested(
     context: &mut ProgramTestContext,
     program_id: &Pubkey,
     nested_mint: Pubkey,
@@ -91,7 +91,7 @@ async fn try_close_nested(
     nested_associated_token_address: Pubkey,
     destination_token_address: Pubkey,
     wallet: Keypair,
-    close_transaction: Transaction,
+    recover_transaction: Transaction,
     expected_error: Option<InstructionError>,
 ) {
     let nested_account = context
@@ -127,7 +127,7 @@ async fn try_close_nested(
     // transfer / close nested account
     let result = context
         .banks_client
-        .process_transaction(close_transaction)
+        .process_transaction(recover_transaction)
         .await;
 
     if let Some(expected_error) = expected_error {
@@ -176,7 +176,7 @@ async fn check_same_mint(context: &mut ProgramTestContext, program_id: &Pubkey) 
     .await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::close_nested(
+        &[instruction::recover_nested(
             &wallet.pubkey(),
             &mint,
             &mint,
@@ -186,7 +186,7 @@ async fn check_same_mint(context: &mut ProgramTestContext, program_id: &Pubkey) 
         &[&context.payer, &wallet],
         context.last_blockhash,
     );
-    try_close_nested(
+    try_recover_nested(
         context,
         program_id,
         mint,
@@ -234,7 +234,7 @@ async fn check_different_mints(context: &mut ProgramTestContext, program_id: &Pu
         create_associated_token_account(context, &wallet.pubkey(), &nested_mint, program_id).await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::close_nested(
+        &[instruction::recover_nested(
             &wallet.pubkey(),
             &owner_mint,
             &nested_mint,
@@ -244,7 +244,7 @@ async fn check_different_mints(context: &mut ProgramTestContext, program_id: &Pu
         &[&context.payer, &wallet],
         context.last_blockhash,
     );
-    try_close_nested(
+    try_recover_nested(
         context,
         program_id,
         nested_mint,
@@ -289,15 +289,15 @@ async fn check_missing_wallet_signature(context: &mut ProgramTestContext, progra
     )
     .await;
 
-    let mut close = instruction::close_nested(&wallet.pubkey(), &mint, &mint, program_id);
-    close.accounts[5] = AccountMeta::new(wallet.pubkey(), false);
+    let mut recover = instruction::recover_nested(&wallet.pubkey(), &mint, &mint, program_id);
+    recover.accounts[5] = AccountMeta::new(wallet.pubkey(), false);
     let transaction = Transaction::new_signed_with_payer(
-        &[close],
+        &[recover],
         Some(&context.payer.pubkey()),
         &[&context.payer],
         context.last_blockhash,
     );
-    try_close_nested(
+    try_recover_nested(
         context,
         program_id,
         mint,
@@ -343,7 +343,7 @@ async fn check_wrong_signer(context: &mut ProgramTestContext, program_id: &Pubke
     .await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::close_nested(
+        &[instruction::recover_nested(
             &wrong_wallet.pubkey(),
             &mint,
             &mint,
@@ -353,7 +353,7 @@ async fn check_wrong_signer(context: &mut ProgramTestContext, program_id: &Pubke
         &[&context.payer, &wrong_wallet],
         context.last_blockhash,
     );
-    try_close_nested(
+    try_recover_nested(
         context,
         program_id,
         mint,
@@ -394,7 +394,7 @@ async fn check_not_nested(context: &mut ProgramTestContext, program_id: &Pubkey)
         create_associated_token_account(context, &wrong_wallet.pubkey(), &mint, program_id).await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::close_nested(
+        &[instruction::recover_nested(
             &wallet.pubkey(),
             &mint,
             &mint,
@@ -404,7 +404,7 @@ async fn check_not_nested(context: &mut ProgramTestContext, program_id: &Pubkey)
         &[&context.payer, &wallet],
         context.last_blockhash,
     );
-    try_close_nested(
+    try_recover_nested(
         context,
         program_id,
         mint,
@@ -454,15 +454,15 @@ async fn check_wrong_address_derivation_owner(
 
     let wrong_owner_associated_token_address =
         get_associated_token_address_with_program_id(&mint, &wrong_wallet.pubkey(), program_id);
-    let mut close = instruction::close_nested(&wallet.pubkey(), &mint, &mint, program_id);
-    close.accounts[3] = AccountMeta::new(wrong_owner_associated_token_address, false);
+    let mut recover = instruction::recover_nested(&wallet.pubkey(), &mint, &mint, program_id);
+    recover.accounts[3] = AccountMeta::new(wrong_owner_associated_token_address, false);
     let transaction = Transaction::new_signed_with_payer(
-        &[close],
+        &[recover],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wallet],
         context.last_blockhash,
     );
-    try_close_nested(
+    try_recover_nested(
         context,
         program_id,
         mint,
@@ -507,7 +507,7 @@ async fn check_owner_account_does_not_exist(context: &mut ProgramTestContext, pr
     .await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::close_nested(
+        &[instruction::recover_nested(
             &wallet.pubkey(),
             &mint,
             &mint,
@@ -517,7 +517,7 @@ async fn check_owner_account_does_not_exist(context: &mut ProgramTestContext, pr
         &[&context.payer, &wallet],
         context.last_blockhash,
     );
-    try_close_nested(
+    try_recover_nested(
         context,
         program_id,
         mint,
@@ -560,7 +560,7 @@ async fn fail_wrong_spl_token_program() {
     .await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::close_nested(
+        &[instruction::recover_nested(
             &wallet.pubkey(),
             &mint,
             &mint,
@@ -570,7 +570,7 @@ async fn fail_wrong_spl_token_program() {
         &[&context.payer, &wallet],
         context.last_blockhash,
     );
-    try_close_nested(
+    try_recover_nested(
         &mut context,
         &program_id,
         mint,
@@ -607,16 +607,17 @@ async fn fail_destination_not_wallet_ata() {
         create_associated_token_account(&mut context, &wrong_wallet.pubkey(), &mint, &program_id)
             .await;
 
-    let mut close = instruction::close_nested(&wallet.pubkey(), &mint, &mint, &program_id);
-    close.accounts[2] = AccountMeta::new(wrong_destination_associated_token_account_address, false);
+    let mut recover = instruction::recover_nested(&wallet.pubkey(), &mint, &mint, &program_id);
+    recover.accounts[2] =
+        AccountMeta::new(wrong_destination_associated_token_account_address, false);
 
     let transaction = Transaction::new_signed_with_payer(
-        &[close],
+        &[recover],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wallet],
         context.last_blockhash,
     );
-    try_close_nested(
+    try_recover_nested(
         &mut context,
         &program_id,
         mint,

@@ -56,8 +56,8 @@ pub fn process_instruction(
         AssociatedTokenAccountInstruction::CreateIdempotent => {
             process_create_associated_token_account(program_id, accounts, CreateMode::Idempotent)
         }
-        AssociatedTokenAccountInstruction::CloseNested => {
-            process_close_nested(program_id, accounts)
+        AssociatedTokenAccountInstruction::RecoverNested => {
+            process_recover_nested(program_id, accounts)
         }
     }
 }
@@ -161,8 +161,8 @@ fn process_create_associated_token_account(
     )
 }
 
-/// Processes `CloseNested` instruction
-pub fn process_close_nested(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+/// Processes `RecoverNested` instruction
+pub fn process_recover_nested(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
     let nested_associated_token_account_info = next_account_info(account_info_iter)?;
