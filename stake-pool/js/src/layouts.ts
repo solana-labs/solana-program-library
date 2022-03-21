@@ -1,14 +1,6 @@
-import {
-  publicKey,
-  struct,
-  u32,
-  u64,
-  u8,
-  option,
-  vec,
-} from '@project-serum/borsh';
-import {Lockup, PublicKey} from '@solana/web3.js';
-import {AccountInfo} from '@solana/spl-token';
+import { publicKey, struct, u32, u64, u8, option, vec } from '@project-serum/borsh';
+import { Lockup, PublicKey } from '@solana/web3.js';
+import { AccountInfo } from '@solana/spl-token';
 import BN from 'bn.js';
 
 export interface Fee {
@@ -62,7 +54,7 @@ export interface StakePool {
   preferredWithdrawValidatorVoteAddress?: PublicKey | undefined;
   stakeDepositFee: Fee;
   stakeWithdrawalFee: Fee;
-  nextWithdrawalFee?: Fee | undefined;
+  nextStakeWithdrawalFee?: Fee | undefined;
   stakeReferralFee: number;
   solDepositAuthority?: PublicKey | undefined;
   solDepositFee: Fee;
@@ -88,17 +80,14 @@ export const StakePoolLayout = struct<StakePool>([
   u64('totalLamports'),
   u64('poolTokenSupply'),
   u64('lastUpdateEpoch'),
-  struct(
-    [u64('unixTimestamp'), u64('epoch'), publicKey('custodian')],
-    'lockup',
-  ),
+  struct([u64('unixTimestamp'), u64('epoch'), publicKey('custodian')], 'lockup'),
   struct(feeFields, 'epochFee'),
   option(struct(feeFields), 'nextEpochFee'),
   option(publicKey(), 'preferredDepositValidatorVoteAddress'),
   option(publicKey(), 'preferredWithdrawValidatorVoteAddress'),
   struct(feeFields, 'stakeDepositFee'),
   struct(feeFields, 'stakeWithdrawalFee'),
-  option(struct(feeFields), 'nextWithdrawalFee'),
+  option(struct(feeFields), 'nextStakeWithdrawalFee'),
   u8('stakeReferralFee'),
   option(publicKey(), 'solDepositAuthority'),
   struct(feeFields, 'solDepositFee'),

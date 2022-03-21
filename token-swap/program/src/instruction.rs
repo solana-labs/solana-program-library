@@ -85,7 +85,7 @@ pub struct DepositSingleTokenTypeExactAmountIn {
     pub minimum_pool_token_amount: u64,
 }
 
-/// WithdrawAllTokenTypes instruction data
+/// WithdrawSingleTokenTypeExactAmountOut instruction data
 #[cfg_attr(feature = "fuzz", derive(Arbitrary))]
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
@@ -849,8 +849,8 @@ pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::curve::{base::CurveType, stable::StableCurve};
+    use std::sync::Arc;
 
     #[test]
     fn pack_initialize() {
@@ -871,7 +871,7 @@ mod tests {
         let nonce: u8 = 255;
         let amp: u64 = 1;
         let curve_type = CurveType::Stable;
-        let calculator = Box::new(StableCurve { amp });
+        let calculator = Arc::new(StableCurve { amp });
         let swap_curve = SwapCurve {
             curve_type,
             calculator,

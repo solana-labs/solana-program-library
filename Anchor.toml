@@ -1,12 +1,21 @@
-anchor_version = "0.16.1"
-solana_version = "1.7.11"
+anchor_version = "0.20.1"
+solana_version = "1.9.9"
 
 [workspace]
-members = ["governance/program"]
+members = [
+  "governance/program",
+  "memo/program",
+  "stake-pool/program",
+  "token/program",
+  "token/program-2022",
+]
 
 [provider]
 cluster = "mainnet"
 wallet = "~/.config/solana/id.json"
 
 [programs.mainnet]
-spl_governance = "GoVEr6xcF9QGrRFJC4kt9wiCdNqZzrG7KWdrm7viDnpa"
+spl_governance = "GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw"
+spl_stake_pool = "SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy"
+spl_token = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+spl_token_2022 = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"

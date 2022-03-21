@@ -42,28 +42,28 @@ def solana_test_validator():
 def validators(event_loop, async_client, payer) -> List[PublicKey]:
     num_validators = 3
     validators = []
-    futures = []
     for i in range(num_validators):
         vote = Keypair()
         node = Keypair()
-        futures.append(create_vote(async_client, payer, vote, node, payer.public_key, payer.public_key, 10))
+        event_loop.run_until_complete(
+            create_vote(async_client, payer, vote, node, payer.public_key, payer.public_key, 10)
+        )
         validators.append(vote.public_key)
-    event_loop.run_until_complete(asyncio.gather(*futures))
     return validators
 
 
 @pytest.fixture
-def stake_pool_addresses(event_loop, async_client, payer, validators) -> Tuple[PublicKey, PublicKey]:
+def stake_pool_addresses(event_loop, async_client, payer, validators, waiter) -> Tuple[PublicKey, PublicKey]:
     fee = Fee(numerator=1, denominator=1000)
     referral_fee = 20
+    event_loop.run_until_complete(waiter.wait_for_next_epoch_if_soon(async_client))
     stake_pool_addresses = event_loop.run_until_complete(
         create_all(async_client, payer, fee, referral_fee)
     )
-    futures = [
-        add_validator_to_pool(async_client, payer, stake_pool_addresses[0], validator)
-        for validator in validators
-    ]
-    event_loop.run_until_complete(asyncio.gather(*futures))
+    for validator in validators:
+        event_loop.run_until_complete(
+            add_validator_to_pool(async_client, payer, stake_pool_addresses[0], validator)
+        )
     return stake_pool_addresses
 
 

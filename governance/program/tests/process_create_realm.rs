@@ -10,6 +10,8 @@ use spl_governance::state::{
     realm::{get_realm_address, RealmConfigArgs},
 };
 
+use self::args::SetRealmConfigArgs;
+
 #[tokio::test]
 async fn test_create_realm() {
     // Arrange
@@ -31,17 +33,23 @@ async fn test_create_realm_with_non_default_config() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
-    let config_args = RealmConfigArgs {
+    let realm_config_args = RealmConfigArgs {
         use_council_mint: false,
-
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(1),
-        min_community_tokens_to_create_governance: 10,
+        min_community_weight_to_create_governance: 10,
         use_community_voter_weight_addin: false,
+        use_max_community_voter_weight_addin: false,
+    };
+
+    let set_realm_config_args = SetRealmConfigArgs {
+        realm_config_args,
+        community_voter_weight_addin: None,
+        max_community_voter_weight_addin: None,
     };
 
     // Act
     let realm_cookie = governance_test
-        .with_realm_using_config_args(&config_args)
+        .with_realm_using_config_args(&set_realm_config_args)
         .await;
 
     // Assert

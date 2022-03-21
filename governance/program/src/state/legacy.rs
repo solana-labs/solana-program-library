@@ -2,10 +2,12 @@
 
 use crate::state::{
     enums::{
-        GovernanceAccountType, InstructionExecutionFlags, InstructionExecutionStatus,
-        MintMaxVoteWeightSource, ProposalState, VoteThresholdPercentage,
+        GovernanceAccountType, InstructionExecutionFlags, ProposalState,
+        TransactionExecutionStatus, VoteThresholdPercentage,
     },
-    proposal_instruction::InstructionData,
+    governance::GovernanceConfig,
+    proposal_transaction::InstructionData,
+    realm::RealmConfig,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
@@ -13,58 +15,6 @@ use solana_program::{
     program_pack::IsInitialized,
     pubkey::Pubkey,
 };
-
-/// Realm Config instruction args
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct RealmConfigArgsV1 {
-    /// Indicates whether council_mint should be used
-    /// If yes then council_mint account must also be passed to the instruction
-    pub use_council_mint: bool,
-
-    /// Min number of community tokens required to create a governance
-    pub min_community_tokens_to_create_governance: u64,
-
-    /// The source used for community mint max vote weight source
-    pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
-}
-
-/// Instructions supported by the Governance program
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub enum GovernanceInstructionV1 {
-    /// Creates Governance Realm account which aggregates governances for given Community Mint and optional Council Mint
-    CreateRealm {
-        #[allow(dead_code)]
-        /// UTF-8 encoded Governance Realm name
-        name: String,
-
-        #[allow(dead_code)]
-        /// Realm config args     
-        config_args: RealmConfigArgsV1,
-    },
-
-    /// Deposits governing tokens (Community or Council) to Governance Realm and establishes your voter weight to be used for voting within the Realm
-    DepositGoverningTokens {
-        /// The amount to deposit into the realm
-        #[allow(dead_code)]
-        amount: u64,
-    },
-}
-
-/// Realm Config defining Realm parameters.
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct RealmConfigV1 {
-    /// Reserved space for future versions
-    pub reserved: [u8; 8],
-
-    /// Min number of community tokens required to create a governance
-    pub min_community_tokens_to_create_governance: u64,
-
-    /// The source used for community mint max vote weight source
-    pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
-
-    /// Optional council mint
-    pub council_mint: Option<Pubkey>,
-}
 
 /// Governance Realm Account
 /// Account PDA seeds" ['governance', name]
@@ -77,10 +27,15 @@ pub struct RealmV1 {
     pub community_mint: Pubkey,
 
     /// Configuration of the Realm
-    pub config: RealmConfigV1,
+    pub config: RealmConfig,
 
     /// Reserved space for future versions
-    pub reserved: [u8; 8],
+    pub reserved: [u8; 6],
+
+    /// The number of proposals in voting state in the Realm
+    /// Note: This is field introduced in V2 but it took space from reserved
+    /// and we have preserve it for V1 serialization roundtrip
+    pub voting_proposal_count: u16,
 
     /// Realm authority. The authority must sign transactions which update the realm config
     /// The authority should be transferred to Realm Governance to make the Realm self governed through proposals
@@ -92,7 +47,128 @@ pub struct RealmV1 {
 
 impl IsInitialized for RealmV1 {
     fn is_initialized(&self) -> bool {
-        self.account_type == GovernanceAccountType::Realm
+        self.account_type == GovernanceAccountType::RealmV1
+    }
+}
+
+/// Governance Token Owner Record
+/// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct TokenOwnerRecordV1 {
+    /// Governance account type
+    pub account_type: GovernanceAccountType,
+
+    /// The Realm the TokenOwnerRecord belongs to
+    pub realm: Pubkey,
+
+    /// Governing Token Mint the TokenOwnerRecord holds deposit for
+    pub governing_token_mint: Pubkey,
+
+    /// The owner (either single or multisig) of the deposited governing SPL Tokens
+    /// This is who can authorize a withdrawal of the tokens
+    pub governing_token_owner: Pubkey,
+
+    /// The amount of governing tokens deposited into the Realm
+    /// This amount is the voter weight used when voting on proposals
+    pub governing_token_deposit_amount: u64,
+
+    /// The number of votes cast by TokenOwner but not relinquished yet
+    /// Every time a vote is cast this number is increased and it's always decreased when relinquishing a vote regardless of the vote state
+    pub unrelinquished_votes_count: u32,
+
+    /// The total number of votes cast by the TokenOwner
+    /// If TokenOwner withdraws vote while voting is still in progress total_votes_count is decreased  and the vote doesn't count towards the total
+    pub total_votes_count: u32,
+
+    /// The number of outstanding proposals the TokenOwner currently owns
+    /// The count is increased when TokenOwner creates a proposal
+    /// and decreased  once it's either voted on (Succeeded or Defeated) or Cancelled
+    /// By default it's restricted to 1 outstanding Proposal per token owner
+    pub outstanding_proposal_count: u8,
+
+    /// Reserved space for future versions
+    pub reserved: [u8; 7],
+
+    /// A single account that is allowed to operate governance with the deposited governing tokens
+    /// It can be delegated to by the governing_token_owner or current governance_delegate
+    pub governance_delegate: Option<Pubkey>,
+}
+
+impl IsInitialized for TokenOwnerRecordV1 {
+    fn is_initialized(&self) -> bool {
+        self.account_type == GovernanceAccountType::TokenOwnerRecordV1
+    }
+}
+
+/// Governance Account
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct GovernanceV1 {
+    /// Account type. It can be Uninitialized, Governance, ProgramGovernance, TokenGovernance or MintGovernance
+    pub account_type: GovernanceAccountType,
+
+    /// Governance Realm
+    pub realm: Pubkey,
+
+    /// Account governed by this Governance and/or PDA identity seed
+    /// It can be Program account, Mint account, Token account or any other account
+    ///
+    /// Note: The account doesn't have to exist. In that case the field is only a PDA seed
+    ///
+    /// Note: Setting governed_account doesn't give any authority over the governed account
+    /// The relevant authorities for specific account types must still be transferred to the Governance PDA
+    /// Ex: mint_authority/freeze_authority for a Mint account
+    /// or upgrade_authority for a Program account should be transferred to the Governance PDA
+    pub governed_account: Pubkey,
+
+    /// Running count of proposals
+    pub proposals_count: u32,
+
+    /// Governance config
+    pub config: GovernanceConfig,
+
+    /// Reserved space for future versions
+    pub reserved: [u8; 6],
+
+    /// The number of proposals in voting state in the Governance
+    /// Note: This is field introduced in V2 but it took space from reserved
+    /// and we have preserve it for V1 serialization roundtrip
+    pub voting_proposal_count: u16,
+}
+
+/// Checks if the given account type is one of the Governance V1 account types
+pub fn is_governance_v1_account_type(account_type: &GovernanceAccountType) -> bool {
+    match account_type {
+        GovernanceAccountType::GovernanceV1
+        | GovernanceAccountType::ProgramGovernanceV1
+        | GovernanceAccountType::MintGovernanceV1
+        | GovernanceAccountType::TokenGovernanceV1 => true,
+        GovernanceAccountType::Uninitialized
+        | GovernanceAccountType::RealmV1
+        | GovernanceAccountType::RealmV2
+        | GovernanceAccountType::RealmConfig
+        | GovernanceAccountType::TokenOwnerRecordV1
+        | GovernanceAccountType::TokenOwnerRecordV2
+        | GovernanceAccountType::GovernanceV2
+        | GovernanceAccountType::ProgramGovernanceV2
+        | GovernanceAccountType::MintGovernanceV2
+        | GovernanceAccountType::TokenGovernanceV2
+        | GovernanceAccountType::ProposalV1
+        | GovernanceAccountType::ProposalV2
+        | GovernanceAccountType::SignatoryRecordV1
+        | GovernanceAccountType::SignatoryRecordV2
+        | GovernanceAccountType::ProposalInstructionV1
+        | GovernanceAccountType::ProposalTransactionV2
+        | GovernanceAccountType::VoteRecordV1
+        | GovernanceAccountType::VoteRecordV2
+        | GovernanceAccountType::ProgramMetadata => false,
+    }
+}
+
+impl IsInitialized for GovernanceV1 {
+    fn is_initialized(&self) -> bool {
+        is_governance_v1_account_type(&self.account_type)
     }
 }
 
@@ -186,6 +262,29 @@ impl IsInitialized for ProposalV1 {
     }
 }
 
+/// Account PDA seeds: ['governance', proposal, signatory]
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct SignatoryRecordV1 {
+    /// Governance account type
+    pub account_type: GovernanceAccountType,
+
+    /// Proposal the signatory is assigned for
+    pub proposal: Pubkey,
+
+    /// The account of the signatory who can sign off the proposal
+    pub signatory: Pubkey,
+
+    /// Indicates whether the signatory signed off the proposal
+    pub signed_off: bool,
+}
+
+impl IsInitialized for SignatoryRecordV1 {
+    fn is_initialized(&self) -> bool {
+        self.account_type == GovernanceAccountType::SignatoryRecordV1
+    }
+}
+
 /// Proposal instruction V1
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ProposalInstructionV1 {
@@ -210,7 +309,7 @@ pub struct ProposalInstructionV1 {
     pub executed_at: Option<UnixTimestamp>,
 
     /// Instruction execution status
-    pub execution_status: InstructionExecutionStatus,
+    pub execution_status: TransactionExecutionStatus,
 }
 
 impl IsInitialized for ProposalInstructionV1 {

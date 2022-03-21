@@ -21,7 +21,10 @@ use {
         id, instruction, processor,
         state::PoolRegistry,
     },
-    std::convert::TryInto,
+    std::{
+        convert::TryInto,
+        sync::Arc,
+    },
 };
 
 pub fn program_test() -> ProgramTest {
@@ -60,7 +63,7 @@ pub async fn create_standard_setup<'a>(
 
     let swap_curve = SwapCurve {
         curve_type: CurveType::ConstantProduct,
-        calculator: Box::new(ConstantProductCurve {}),
+        calculator: Arc::new(ConstantProductCurve {}),
     };
 
     let swap = TokenSwapAccounts::new(

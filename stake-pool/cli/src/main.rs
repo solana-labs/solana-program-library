@@ -38,9 +38,7 @@ use {
         system_instruction,
         transaction::Transaction,
     },
-    spl_associated_token_account::{
-        get_associated_token_address, instruction::create_associated_token_account,
-    },
+    spl_associated_token_account::get_associated_token_address,
     spl_stake_pool::state::ValidatorStakeInfo,
     spl_stake_pool::{
         self, find_stake_program_address, find_transient_stake_program_address,
@@ -52,6 +50,9 @@ use {
     std::cmp::Ordering,
     std::{process::exit, sync::Arc},
 };
+// use instruction::create_associated_token_account once ATA 1.0.5 is released
+#[allow(deprecated)]
+use spl_associated_token_account::create_associated_token_account;
 
 pub(crate) struct Config {
     rpc_client: RpcClient,
@@ -637,11 +638,11 @@ fn add_associated_token_account(
             .get_minimum_balance_for_rent_exemption(spl_token::state::Account::LEN)
             .unwrap();
 
+        #[allow(deprecated)]
         instructions.push(create_associated_token_account(
             &config.fee_payer.pubkey(),
             owner,
             mint,
-            &spl_token::id(),
         ));
 
         *rent_free_balances += min_account_balance;
@@ -1256,7 +1257,9 @@ fn prepare_withdraw_accounts(
 
             (
                 transient_stake_account_address,
-                validator.transient_stake_lamports,
+                validator
+                    .transient_stake_lamports
+                    .saturating_sub(min_balance),
                 Some(validator.vote_account_address),
             )
         },
@@ -1264,7 +1267,13 @@ fn prepare_withdraw_accounts(
 
     let reserve_stake = rpc_client.get_account(&stake_pool.reserve_stake)?;
 
-    accounts.push((stake_pool.reserve_stake, reserve_stake.lamports, None));
+    accounts.push((
+        stake_pool.reserve_stake,
+        reserve_stake.lamports
+            - rpc_client.get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
+            - 1,
+        None,
+    ));
 
     // Prepare the list of accounts to withdraw from
     let mut withdraw_from: Vec<WithdrawAccount> = vec![];

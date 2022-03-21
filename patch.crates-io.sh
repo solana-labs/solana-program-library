@@ -26,6 +26,38 @@ cd "$(dirname "$0")"
 source "$solana_dir"/scripts/read-cargo-variable.sh
 solana_ver=$(readCargoVariable version "$solana_dir"/sdk/Cargo.toml)
 
+crates_map=()
+crates_map+=("solana-account-decoder account-decoder")
+crates_map+=("solana-banks-client banks-client")
+crates_map+=("solana-banks-server banks-server")
+crates_map+=("solana-bpf-loader-program programs/bpf_loader")
+crates_map+=("solana-clap-utils clap-utils")
+crates_map+=("solana-cli-config cli-config")
+crates_map+=("solana-cli-output cli-output")
+crates_map+=("solana-client client")
+crates_map+=("solana-core core")
+crates_map+=("solana-logger logger")
+crates_map+=("solana-notifier notifier")
+crates_map+=("solana-remote-wallet remote-wallet")
+crates_map+=("solana-program sdk/program")
+crates_map+=("solana-program-test program-test")
+crates_map+=("solana-runtime runtime")
+crates_map+=("solana-sdk sdk")
+crates_map+=("solana-stake-program programs/stake")
+crates_map+=("solana-transaction-status transaction-status")
+crates_map+=("solana-version version")
+crates_map+=("solana-vote-program programs/vote")
+crates_map+=("solana-zk-token-sdk zk-token-sdk")
+
+patch_crates=()
+for map_entry in "${crates_map[@]}"; do
+  read -r crate_name crate_path <<<"$map_entry"
+  full_path="$solana_dir/$crate_path"
+  if [[ -r "$full_path/Cargo.toml" ]]; then
+    patch_crates+=("$crate_name = { path = \"$full_path\" }")
+  fi
+done
+
 echo "Patching in $solana_ver from $solana_dir"
 echo
 for crate in "${workspace_crates[@]}"; do
@@ -34,26 +66,7 @@ for crate in "${workspace_crates[@]}"; do
   else
     cat >> "$crate" <<PATCH
 [patch.crates-io]
-solana-account-decoder = {path = "$solana_dir/account-decoder" }
-solana-banks-client = { path = "$solana_dir/banks-client"}
-solana-banks-server = { path = "$solana_dir/banks-server"}
-solana-bpf-loader-program = { path = "$solana_dir/programs/bpf_loader" }
-solana-clap-utils = {path = "$solana_dir/clap-utils" }
-solana-cli-config = {path = "$solana_dir/cli-config" }
-solana-cli-output = {path = "$solana_dir/cli-output" }
-solana-client = { path = "$solana_dir/client"}
-solana-core = { path = "$solana_dir/core"}
-solana-logger = {path = "$solana_dir/logger" }
-solana-notifier = { path = "$solana_dir/notifier" }
-solana-remote-wallet = {path = "$solana_dir/remote-wallet" }
-solana-program = { path = "$solana_dir/sdk/program" }
-solana-program-test = { path = "$solana_dir/program-test" }
-solana-runtime = { path = "$solana_dir/runtime" }
-solana-sdk = { path = "$solana_dir/sdk" }
-solana-stake-program = { path = "$solana_dir/programs/stake" }
-solana-transaction-status = { path = "$solana_dir/transaction-status" }
-solana-version = { path = "$solana_dir/version" }
-solana-vote-program = { path = "$solana_dir/programs/vote" }
+$(printf "%s\n" "${patch_crates[@]}")
 PATCH
   fi
 done

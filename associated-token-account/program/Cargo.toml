@@ -10,19 +10,20 @@ edition = "2018"
 [features]
 no-entrypoint = []
 test-bpf = []
-# When spl-token depends on spl-token-client, which depends on this with no-entrypoint,
-# all tests fail! Normally, we want no-entrypoint, except when testing spl-token
-no-token-entrypoint = [ "spl-token/no-entrypoint" ]
-default = [ "no-token-entrypoint" ]
 
 [dependencies]
+assert_matches = "1.5.0"
 borsh = "0.9.1"
-solana-program = "1.9.5"
-spl-token = { version = "3.3", path = "../../token/program" }
+num-derive = "0.3"
+num-traits = "0.2"
+solana-program = "1.9.9"
+spl-token = { version = "3.3", path = "../../token/program", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "0.2", path = "../../token/program-2022", features = ["no-entrypoint"] }
+thiserror = "1.0"
 
 [dev-dependencies]
-solana-program-test = "1.9.5"
-solana-sdk = "1.9.5"
+solana-program-test = "1.9.9"
+solana-sdk = "1.9.9"
 
 [lib]
 crate-type = ["cdylib", "lib"]

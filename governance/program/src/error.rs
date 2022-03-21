@@ -33,7 +33,7 @@ pub enum GovernanceError {
 
     /// Governing Token Owner or Delegate  must sign transaction
     #[error("Governing Token Owner or Delegate  must sign transaction")]
-    GoverningTokenOwnerOrDelegateMustSign,
+    GoverningTokenOwnerOrDelegateMustSign, // 505
 
     /// All votes must be relinquished to withdraw governing tokens
     #[error("All votes must be relinquished to withdraw governing tokens")]
@@ -51,49 +51,49 @@ pub enum GovernanceError {
     #[error("Invalid Realm for TokenOwnerRecord")]
     InvalidRealmForTokenOwnerRecord,
 
-    /// Invalid Proposal for ProposalInstruction
-    #[error("Invalid Proposal for ProposalInstruction")]
-    InvalidProposalForProposalInstruction,
+    /// Invalid Proposal for ProposalTransaction,
+    #[error("Invalid Proposal for ProposalTransaction,")]
+    InvalidProposalForProposalTransaction, // 510
 
     /// Invalid Signatory account address
     #[error("Invalid Signatory account address")]
-    InvalidSignatoryAddress,
+    InvalidSignatoryAddress, // 511
 
     /// Signatory already signed off
     #[error("Signatory already signed off")]
-    SignatoryAlreadySignedOff,
+    SignatoryAlreadySignedOff, // 512
 
     /// Signatory must sign
     #[error("Signatory must sign")]
-    SignatoryMustSign,
+    SignatoryMustSign, // 513
 
     /// Invalid Proposal Owner
     #[error("Invalid Proposal Owner")]
-    InvalidProposalOwnerAccount,
+    InvalidProposalOwnerAccount, // 514
 
     /// Invalid Proposal for VoterRecord
     #[error("Invalid Proposal for VoterRecord")]
-    InvalidProposalForVoterRecord,
+    InvalidProposalForVoterRecord, // 515
 
     /// Invalid GoverningTokenOwner  for VoteRecord
     #[error("Invalid GoverningTokenOwner for VoteRecord")]
-    InvalidGoverningTokenOwnerForVoteRecord,
+    InvalidGoverningTokenOwnerForVoteRecord, // 516
 
     /// Invalid Governance config: Vote threshold percentage out of range"
     #[error("Invalid Governance config: Vote threshold percentage out of range")]
-    InvalidVoteThresholdPercentage,
+    InvalidVoteThresholdPercentage, // 517
 
     /// Proposal for the given Governance, Governing Token Mint and index already exists
     #[error("Proposal for the given Governance, Governing Token Mint and index already exists")]
-    ProposalAlreadyExists,
+    ProposalAlreadyExists, // 518
 
     /// Token Owner already voted on the Proposal
     #[error("Token Owner already voted on the Proposal")]
-    VoteAlreadyExists,
+    VoteAlreadyExists, // 519
 
     /// Owner doesn't have enough governing tokens to create Proposal
     #[error("Owner doesn't have enough governing tokens to create Proposal")]
-    NotEnoughTokensToCreateProposal,
+    NotEnoughTokensToCreateProposal, // 520
 
     /// Invalid State: Can't edit Signatories
     #[error("Invalid State: Can't edit Signatories")]
@@ -102,37 +102,37 @@ pub enum GovernanceError {
     /// Invalid Proposal state
     #[error("Invalid Proposal state")]
     InvalidProposalState,
-    /// Invalid State: Can't edit instructions
-    #[error("Invalid State: Can't edit instructions")]
-    InvalidStateCannotEditInstructions,
+    /// Invalid State: Can't edit transactions
+    #[error("Invalid State: Can't edit transactions")]
+    InvalidStateCannotEditTransactions,
 
-    /// Invalid State: Can't execute instruction
-    #[error("Invalid State: Can't execute instruction")]
-    InvalidStateCannotExecuteInstruction,
+    /// Invalid State: Can't execute transaction
+    #[error("Invalid State: Can't execute transaction")]
+    InvalidStateCannotExecuteTransaction,
 
-    /// Can't execute instruction within its hold up time
-    #[error("Can't execute instruction within its hold up time")]
-    CannotExecuteInstructionWithinHoldUpTime,
+    /// Can't execute transaction within its hold up time
+    #[error("Can't execute transaction within its hold up time")]
+    CannotExecuteTransactionWithinHoldUpTime,
 
-    /// Instruction already executed
-    #[error("Instruction already executed")]
-    InstructionAlreadyExecuted,
+    /// Transaction already executed
+    #[error("Transaction already executed")]
+    TransactionAlreadyExecuted,
 
-    /// Invalid Instruction index
-    #[error("Invalid Instruction index")]
-    InvalidInstructionIndex,
+    /// Invalid Transaction index
+    #[error("Invalid Transaction index")]
+    InvalidTransactionIndex,
 
-    /// Instruction hold up time is below the min specified by Governance
-    #[error("Instruction hold up time is below the min specified by Governance")]
-    InstructionHoldUpTimeBelowRequiredMin,
+    /// Transaction hold up time is below the min specified by Governance
+    #[error("Transaction hold up time is below the min specified by Governance")]
+    TransactionHoldUpTimeBelowRequiredMin,
 
-    /// Instruction at the given index for the Proposal already exists
-    #[error("Instruction at the given index for the Proposal already exists")]
-    InstructionAlreadyExists,
+    /// Transaction at the given index for the Proposal already exists
+    #[error("Transaction at the given index for the Proposal already exists")]
+    TransactionAlreadyExists,
 
     /// Invalid State: Can't sign off
     #[error("Invalid State: Can't sign off")]
-    InvalidStateCannotSignOff,
+    InvalidStateCannotSignOff, // 530
 
     /// Invalid State: Can't vote
     #[error("Invalid State: Can't vote")]
@@ -262,9 +262,9 @@ pub enum GovernanceError {
     #[error("Governance PDA must sign")]
     GovernancePdaMustSign,
 
-    /// Instruction already flagged with error
-    #[error("Instruction already flagged with error")]
-    InstructionAlreadyFlaggedWithError,
+    /// Transaction already flagged with error
+    #[error("Transaction already flagged with error")]
+    TransactionAlreadyFlaggedWithError,
 
     /// Invalid Realm for Governance
     #[error("Invalid Realm for Governance")]
@@ -280,7 +280,7 @@ pub enum GovernanceError {
 
     /// Realm authority must sign
     #[error("Realm authority must sign")]
-    RealmAuthorityMustSign,
+    RealmAuthorityMustSign, // 566
 
     /// Invalid governing token holding account
     #[error("Invalid governing token holding account")]
@@ -290,7 +290,7 @@ pub enum GovernanceError {
     #[error("Realm council mint change is not supported")]
     RealmCouncilMintChangeIsNotSupported,
 
-    /// Not supported mint max vote weight source
+    /// Not supported mint max vote weight sourcef
     #[error("Not supported mint max vote weight source")]
     MintMaxVoteWeightSourceNotSupported,
 
@@ -361,6 +361,38 @@ pub enum GovernanceError {
     /// Cannot execute defeated option
     #[error("Cannot execute defeated option")]
     CannotExecuteDefeatedOption,
+
+    /// VoterWeightRecord invalid action
+    #[error("VoterWeightRecord invalid action")]
+    VoterWeightRecordInvalidAction,
+
+    /// VoterWeightRecord invalid action target
+    #[error("VoterWeightRecord invalid action target")]
+    VoterWeightRecordInvalidActionTarget,
+
+    /// Invalid MaxVoterWeightRecord for Realm
+    #[error("Invalid MaxVoterWeightRecord for Realm")]
+    InvalidMaxVoterWeightRecordForRealm,
+
+    /// Invalid MaxVoterWeightRecord for GoverningTokenMint
+    #[error("Invalid MaxVoterWeightRecord for GoverningTokenMint")]
+    InvalidMaxVoterWeightRecordForGoverningTokenMint,
+
+    /// MaxVoterWeightRecord expired
+    #[error("MaxVoterWeightRecord expired")]
+    MaxVoterWeightRecordExpired,
+
+    /// Not supported VoteType
+    #[error("Not supported VoteType")]
+    NotSupportedVoteType,
+
+    /// RealmConfig change not allowed
+    #[error("RealmConfig change not allowed")]
+    RealmConfigChangeNotAllowed,
+
+    /// GovernanceConfig change not allowed
+    #[error("GovernanceConfig change not allowed")]
+    GovernanceConfigChangeNotAllowed,
 }
 
 impl PrintProgramError for GovernanceError {

@@ -3,6 +3,7 @@
 #![forbid(unsafe_code)]
 
 mod entrypoint;
+pub mod error;
 pub mod instruction;
 pub mod processor;
 pub mod tools;
@@ -11,7 +12,6 @@ pub mod tools;
 pub use solana_program;
 use solana_program::{
     instruction::{AccountMeta, Instruction},
-    program_pack::Pack,
     pubkey::Pubkey,
     sysvar,
 };

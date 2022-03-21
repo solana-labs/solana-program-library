@@ -1702,6 +1702,7 @@ mod tests {
             AuthorityType,
         },
     };
+    use std::sync::Arc;
 
     // Test program id for the swap program.
     const SWAP_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
@@ -2639,7 +2640,7 @@ mod tests {
         let curve_type = CurveType::ConstantProduct;
         let swap_curve = SwapCurve {
             curve_type,
-            calculator: Box::new(ConstantProductCurve {}),
+            calculator: Arc::new(ConstantProductCurve {}),
         };
 
         let mut accounts =
@@ -3166,7 +3167,7 @@ mod tests {
             let curve = ConstantProductCurve {};
             let swap_curve = SwapCurve {
                 curve_type: CurveType::ConstantProduct,
-                calculator: Box::new(curve),
+                calculator: Arc::new(curve),
             };
 
             let mut accounts = SwapAccountInfo::new(
@@ -3254,7 +3255,7 @@ mod tests {
             let curve = ConstantProductCurve {};
             let swap_curve = SwapCurve {
                 curve_type: CurveType::ConstantProduct,
-                calculator: Box::new(curve),
+                calculator: Arc::new(curve),
             };
             let new_key = Pubkey::new_unique();
             let required_mint = &new_key.to_string();
@@ -3334,7 +3335,7 @@ mod tests {
             let curve = ConstantProductCurve {};
             let swap_curve = SwapCurve {
                 curve_type: CurveType::ConstantProduct,
-                calculator: Box::new(curve),
+                calculator: Arc::new(curve),
             };
             let owner_key = &new_key.to_string();
             let required_mint = &new_key.to_string();
@@ -3416,7 +3417,7 @@ mod tests {
         let curve_type = CurveType::ConstantProduct;
         let swap_curve = SwapCurve {
             curve_type,
-            calculator: Box::new(ConstantProductCurve {}),
+            calculator: Arc::new(ConstantProductCurve {}),
         };
 
         let mut _accounts =
@@ -3450,7 +3451,7 @@ mod tests {
         let curve_type = CurveType::ConstantProduct;
         let swap_curve = SwapCurve {
             curve_type,
-            calculator: Box::new(ConstantProductCurve {}),
+            calculator: Arc::new(ConstantProductCurve {}),
         };
 
         let mut accounts =
@@ -4061,7 +4062,7 @@ mod tests {
         let curve_type = CurveType::ConstantProduct;
         let swap_curve = SwapCurve {
             curve_type,
-            calculator: Box::new(ConstantProductCurve {}),
+            calculator: Arc::new(ConstantProductCurve {}),
         };
 
         let withdrawer_key = Pubkey::new_unique();
@@ -4866,7 +4867,7 @@ mod tests {
         let curve_type = CurveType::ConstantProduct;
         let swap_curve = SwapCurve {
             curve_type,
-            calculator: Box::new(ConstantProductCurve {}),
+            calculator: Arc::new(ConstantProductCurve {}),
         };
 
         let mut accounts =
@@ -5375,7 +5376,7 @@ mod tests {
         let curve_type = CurveType::ConstantProduct;
         let swap_curve = SwapCurve {
             curve_type,
-            calculator: Box::new(ConstantProductCurve {}),
+            calculator: Arc::new(ConstantProductCurve {}),
         };
 
         let withdrawer_key = Pubkey::new_unique();
@@ -5999,7 +6000,7 @@ mod tests {
     fn check_valid_swap_curve(
         fees: Fees,
         curve_type: CurveType,
-        calculator: Box<dyn CurveCalculator>,
+        calculator: Arc<dyn CurveCalculator + Send + Sync>,
         token_a_amount: u64,
         token_b_amount: u64,
     ) {
@@ -6202,7 +6203,7 @@ mod tests {
         check_valid_swap_curve(
             fees.clone(),
             CurveType::ConstantProduct,
-            Box::new(ConstantProductCurve {}),
+            Arc::new(ConstantProductCurve {}),
             token_a_amount,
             token_b_amount,
         );
@@ -6210,7 +6211,7 @@ mod tests {
         check_valid_swap_curve(
             fees.clone(),
             CurveType::ConstantPrice,
-            Box::new(ConstantPriceCurve { token_b_price }),
+            Arc::new(ConstantPriceCurve { token_b_price }),
             token_a_amount,
             token_b_amount,
         );
@@ -6218,7 +6219,7 @@ mod tests {
         check_valid_swap_curve(
             fees,
             CurveType::Offset,
-            Box::new(OffsetCurve { token_b_offset }),
+            Arc::new(OffsetCurve { token_b_offset }),
             token_a_amount,
             token_b_amount,
         );
@@ -6247,7 +6248,7 @@ mod tests {
         check_valid_swap_curve(
             fees.clone(),
             CurveType::ConstantProduct,
-            Box::new(ConstantProductCurve {}),
+            Arc::new(ConstantProductCurve {}),
             token_a_amount,
             token_b_amount,
         );
@@ -6255,7 +6256,7 @@ mod tests {
         check_valid_swap_curve(
             fees.clone(),
             CurveType::ConstantPrice,
-            Box::new(ConstantPriceCurve { token_b_price }),
+            Arc::new(ConstantPriceCurve { token_b_price }),
             token_a_amount,
             token_b_amount / token_b_price,
         );
@@ -6263,7 +6264,7 @@ mod tests {
         check_valid_swap_curve(
             fees,
             CurveType::Offset,
-            Box::new(OffsetCurve { token_b_offset }),
+            Arc::new(OffsetCurve { token_b_offset }),
             token_a_amount,
             token_b_amount,
         );
@@ -6293,7 +6294,7 @@ mod tests {
         let curve_type = CurveType::ConstantProduct;
         let swap_curve = SwapCurve {
             curve_type,
-            calculator: Box::new(ConstantProductCurve {}),
+            calculator: Arc::new(ConstantProductCurve {}),
         };
         let mut accounts =
             SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
@@ -6819,7 +6820,7 @@ mod tests {
         let token_b_offset = 2_000_000;
         let swap_curve = SwapCurve {
             curve_type: CurveType::Offset,
-            calculator: Box::new(OffsetCurve { token_b_offset }),
+            calculator: Arc::new(OffsetCurve { token_b_offset }),
         };
         let user_key = Pubkey::new_unique();
         let swapper_key = Pubkey::new_unique();
@@ -6966,7 +6967,7 @@ mod tests {
         let token_b_offset = 2_000_000;
         let swap_curve = SwapCurve {
             curve_type: CurveType::Offset,
-            calculator: Box::new(OffsetCurve { token_b_offset }),
+            calculator: Arc::new(OffsetCurve { token_b_offset }),
         };
         let total_pool = swap_curve.calculator.new_pool_supply();
         let user_key = Pubkey::new_unique();
@@ -7047,7 +7048,7 @@ mod tests {
 
         let swap_curve = SwapCurve {
             curve_type: CurveType::ConstantPrice,
-            calculator: Box::new(ConstantPriceCurve { token_b_price }),
+            calculator: Arc::new(ConstantPriceCurve { token_b_price }),
         };
         let total_pool = swap_curve.calculator.new_pool_supply();
         let user_key = Pubkey::new_unique();

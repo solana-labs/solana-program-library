@@ -10,6 +10,7 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
+use std::sync::Arc;
 use std::cell::RefMut;
 
 /// Max number of accounts in registry
@@ -141,12 +142,12 @@ impl SwapVersion {
 
     /// Unpack the swap account based on its version, returning the result as a
     /// SwapState trait object
-    pub fn unpack(input: &[u8]) -> Result<Box<dyn SwapState>, ProgramError> {
+    pub fn unpack(input: &[u8]) -> Result<Arc<dyn SwapState>, ProgramError> {
         let (&version, rest) = input
             .split_first()
             .ok_or(ProgramError::InvalidAccountData)?;
         match version {
-            1 => Ok(Box::new(SwapV1::unpack(rest)?)),
+            1 => Ok(Arc::new(SwapV1::unpack(rest)?)),
             _ => Err(ProgramError::UninitializedAccount),
         }
     }
@@ -410,7 +411,7 @@ mod tests {
     #[test]
     fn swap_version_pack() {
         let curve_type = TEST_CURVE_TYPE.try_into().unwrap();
-        let calculator = Box::new(TEST_CURVE);
+        let calculator = Arc::new(TEST_CURVE);
         let swap_curve = SwapCurve {
             curve_type,
             calculator,
@@ -451,7 +452,7 @@ mod tests {
     #[test]
     fn swap_v1_pack() {
         let curve_type = TEST_CURVE_TYPE.try_into().unwrap();
-        let calculator = Box::new(TEST_CURVE);
+        let calculator = Arc::new(TEST_CURVE);
         let swap_curve = SwapCurve {
             curve_type,
             calculator,

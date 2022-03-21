@@ -1,6 +1,6 @@
 [package]
 name = "spl-governance-test-sdk"
-version = "0.1.0"
+version = "0.1.2"
 description = "Solana Program Library Governance Program Test SDK"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -16,9 +16,9 @@ num-derive = "0.3"
 num-traits = "0.2"
 serde = "1.0.127"
 serde_derive = "1.0.103"
-solana-program = "1.9.5"
-solana-program-test = "1.9.5"
-solana-sdk = "1.9.5"
+solana-program = "1.9.9"
+solana-program-test = "1.9.9"
+solana-sdk = "1.9.9"
 spl-token = { version = "3.3", path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 

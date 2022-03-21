@@ -26,8 +26,8 @@ async fn test_set_governance_config() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -36,7 +36,7 @@ async fn test_set_governance_config() {
         .unwrap();
 
     let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -50,8 +50,8 @@ async fn test_set_governance_config() {
     // Change vote_threshold_percentage on the new Governance config
     new_governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(40);
 
-    let proposal_instruction_cookie = governance_test
-        .with_set_governance_config_instruction(
+    let proposal_transaction_cookie = governance_test
+        .with_set_governance_config_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &new_governance_config,
@@ -71,18 +71,18 @@ async fn test_set_governance_config() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_instruction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
         .await;
 
     // Act
     governance_test
-        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .unwrap();
 
     // Assert
     let governance_account = governance_test
-        .get_governance_account(&account_governance_cookie.address)
+        .get_governance_account(&governance_cookie.address)
         .await;
 
     assert_eq!(new_governance_config, governance_account.config);
@@ -162,8 +162,8 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -172,7 +172,7 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
         .unwrap();
 
     let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -184,8 +184,8 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
     // Try to maliciously use a different governance account to change the given governance config
     let governed_account_cookie2 = governance_test.with_governed_account().await;
 
-    let account_governance_cookie2 = governance_test
-        .with_account_governance(
+    let governance_cookie2 = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie2,
             &token_owner_record_cookie,
@@ -197,12 +197,12 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
 
     let mut set_governance_config_ix = set_governance_config(
         &governance_test.program_id,
-        &account_governance_cookie2.address,
+        &governance_cookie2.address,
         new_governance_config,
     );
 
-    let proposal_instruction_cookie = governance_test
-        .with_instruction(
+    let proposal_transaction_cookie = governance_test
+        .with_proposal_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             0,
@@ -224,12 +224,12 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_instruction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
         .await;
 
     // Act
     let err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .err()
         .unwrap();

@@ -23,8 +23,8 @@ async fn test_set_realm_authority() {
         .await
         .unwrap();
 
-    let account_governance_cookie = governance_test
-        .with_account_governance(
+    let governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -32,11 +32,11 @@ async fn test_set_realm_authority() {
         .await
         .unwrap();
 
-    let new_realm_authority = account_governance_cookie.address;
+    let new_realm_authority = governance_cookie.address;
 
     // Act
     governance_test
-        .set_realm_authority(&realm_cookie, &Some(new_realm_authority))
+        .set_realm_authority(&realm_cookie, Some(&new_realm_authority))
         .await
         .unwrap();
 
@@ -59,7 +59,7 @@ async fn test_set_realm_authority_with_non_existing_new_authority_error() {
 
     // Act
     let err = governance_test
-        .set_realm_authority(&realm_cookie, &Some(new_realm_authority))
+        .set_realm_authority(&realm_cookie, Some(&new_realm_authority))
         .await
         .err()
         .unwrap();
@@ -77,7 +77,7 @@ async fn test_set_realm_authority_to_none() {
 
     // Act
     governance_test
-        .set_realm_authority(&realm_cookie, &None)
+        .set_realm_authority(&realm_cookie, None)
         .await
         .unwrap();
 
@@ -90,6 +90,29 @@ async fn test_set_realm_authority_to_none() {
 }
 
 #[tokio::test]
+async fn test_set_realm_authority_unchecked() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+
+    let new_realm_authority = Pubkey::new_unique();
+
+    // Act
+    governance_test
+        .set_realm_authority_impl(&realm_cookie, Some(&new_realm_authority), false)
+        .await
+        .unwrap();
+
+    // Assert
+    let realm_account = governance_test
+        .get_realm_account(&realm_cookie.address)
+        .await;
+
+    assert_eq!(realm_account.authority, Some(new_realm_authority));
+}
+
+#[tokio::test]
 async fn test_set_realm_authority_with_no_authority_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
@@ -97,7 +120,7 @@ async fn test_set_realm_authority_with_no_authority_error() {
     let realm_cookie = governance_test.with_realm().await;
 
     governance_test
-        .set_realm_authority(&realm_cookie, &None)
+        .set_realm_authority(&realm_cookie, None)
         .await
         .unwrap();
 
@@ -105,7 +128,7 @@ async fn test_set_realm_authority_with_no_authority_error() {
 
     // Act
     let err = governance_test
-        .set_realm_authority(&realm_cookie, &Some(new_realm_authority))
+        .set_realm_authority(&realm_cookie, Some(&new_realm_authority))
         .await
         .err()
         .unwrap();
@@ -129,7 +152,7 @@ async fn test_set_realm_authority_with_invalid_authority_error() {
 
     // Act
     let err = governance_test
-        .set_realm_authority(&realm_cookie, &Some(new_realm_authority))
+        .set_realm_authority(&realm_cookie, Some(&new_realm_authority))
         .await
         .err()
         .unwrap();
@@ -151,7 +174,8 @@ async fn test_set_realm_authority_with_authority_must_sign_error() {
     let err = governance_test
         .set_realm_authority_using_instruction(
             &realm_cookie,
-            &Some(new_realm_authority),
+            Some(&new_realm_authority),
+            true,
             |i| i.accounts[1].is_signer = false, // realm_authority
             Some(&[]),
         )
@@ -180,8 +204,8 @@ async fn test_set_realm_authority_with_governance_from_other_realm_error() {
         .await
         .unwrap();
 
-    let account_governance_cookie2 = governance_test
-        .with_account_governance(
+    let governance_cookie2 = governance_test
+        .with_governance(
             &realm_cookie2,
             &governed_account_cookie2,
             &token_owner_record_cookie2,
@@ -189,11 +213,11 @@ async fn test_set_realm_authority_with_governance_from_other_realm_error() {
         .await
         .unwrap();
 
-    let new_realm_authority = account_governance_cookie2.address;
+    let new_realm_authority = governance_cookie2.address;
 
     // Act
     let err = governance_test
-        .set_realm_authority(&realm_cookie, &Some(new_realm_authority))
+        .set_realm_authority(&realm_cookie, Some(&new_realm_authority))
         .await
         .err()
         .unwrap();

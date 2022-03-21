@@ -1,6 +1,5 @@
 //! Program state processor
 
-use borsh::BorshSerialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -9,14 +8,17 @@ use solana_program::{
 
 use crate::{
     error::GovernanceError,
-    state::{governance::assert_governance_for_realm, realm::get_realm_data_for_authority},
+    state::{
+        governance::assert_governance_for_realm,
+        realm::{get_realm_data_for_authority, SetRealmAuthorityAction},
+    },
 };
 
 /// Processes SetRealmAuthority instruction
 pub fn process_set_realm_authority(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    remove_authority: bool,
+    action: SetRealmAuthorityAction,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -30,16 +32,18 @@ pub fn process_set_realm_authority(
         return Err(GovernanceError::RealmAuthorityMustSign.into());
     }
 
-    let new_realm_authority = if remove_authority {
-        None
-    } else {
-        // Ensure the new realm authority is one of the governances from the realm
-        // Note: This is not a security feature because governance creation is only gated with min_community_tokens_to_create_governance
-        //       The check is done to prevent scenarios where the authority could be accidentally set to a wrong or none existing account
-        let new_realm_authority_info = next_account_info(account_info_iter)?; // 2
-        assert_governance_for_realm(program_id, new_realm_authority_info, realm_info.key)?;
+    let new_realm_authority = match action {
+        SetRealmAuthorityAction::SetUnchecked | SetRealmAuthorityAction::SetChecked => {
+            let new_realm_authority_info = next_account_info(account_info_iter)?; // 2
 
-        Some(*new_realm_authority_info.key)
+            if action == SetRealmAuthorityAction::SetChecked {
+                // Ensure the new realm authority is one of the governances from the realm
+                assert_governance_for_realm(program_id, new_realm_authority_info, realm_info.key)?;
+            }
+
+            Some(*new_realm_authority_info.key)
+        }
+        SetRealmAuthorityAction::Remove => None,
     };
 
     realm_data.authority = new_realm_authority;

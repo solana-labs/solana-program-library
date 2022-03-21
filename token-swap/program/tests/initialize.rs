@@ -24,6 +24,7 @@ use {
         id, instruction,
         state::{PoolRegistry, SwapVersion},
     },
+    std::sync::Arc,
 };
 
 #[tokio::test]
@@ -836,7 +837,7 @@ async fn fn_test_initialize_invalid_flat_swap() {
 
     let swap_curve = SwapCurve {
         curve_type: CurveType::ConstantPrice,
-        calculator: Box::new(ConstantPriceCurve { token_b_price }),
+        calculator: Arc::new(ConstantPriceCurve { token_b_price }),
     };
     let token_a_amount = 1000;
     let token_b_amount = 2000;
@@ -896,7 +897,7 @@ async fn fn_test_initialize_valid_flat_swap() {
 
     let swap_curve = SwapCurve {
         curve_type: CurveType::ConstantPrice,
-        calculator: Box::new(ConstantPriceCurve { token_b_price }),
+        calculator: Arc::new(ConstantPriceCurve { token_b_price }),
     };
     let token_a_amount = 1000;
     let token_b_amount = 2000;
@@ -942,7 +943,7 @@ async fn fn_test_initialize_invalid_offset_swap() {
 
     let swap_curve = SwapCurve {
         curve_type: CurveType::Offset,
-        calculator: Box::new(OffsetCurve { token_b_offset }),
+        calculator: Arc::new(OffsetCurve { token_b_offset }),
     };
     let token_a_amount = 1000;
     let token_b_amount = 2000;
@@ -1002,7 +1003,7 @@ async fn fn_test_initialize_valid_offset_swap() {
 
     let swap_curve = SwapCurve {
         curve_type: CurveType::Offset,
-        calculator: Box::new(OffsetCurve { token_b_offset }),
+        calculator: Arc::new(OffsetCurve { token_b_offset }),
     };
     let token_a_amount = 1000;
     let token_b_amount = 2000;

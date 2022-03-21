@@ -9,15 +9,16 @@ use solana_program::{
 };
 use spl_governance_tools::account::dispose_account;
 
-use crate::state::{
-    enums::ProposalState,
-    governance::get_governance_data,
-    proposal::get_proposal_data_for_governance_and_governing_mint,
-    token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint,
-    vote_record::{get_vote_record_data_for_proposal_and_token_owner, Vote},
+use crate::{
+    error::GovernanceError,
+    state::{
+        enums::ProposalState,
+        governance::get_governance_data,
+        proposal::get_proposal_data_for_governance_and_governing_mint,
+        token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint,
+        vote_record::{get_vote_record_data_for_proposal_and_token_owner, Vote},
+    },
 };
-
-use borsh::BorshSerialize;
 
 /// Processes RelinquishVote instruction
 pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
@@ -87,6 +88,9 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
                         .checked_sub(vote_record_data.voter_weight)
                         .unwrap(),
                 )
+            }
+            Vote::Abstain | Vote::Veto => {
+                return Err(GovernanceError::NotSupportedVoteType.into());
             }
         }
 

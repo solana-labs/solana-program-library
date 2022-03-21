@@ -21,8 +21,8 @@ async fn test_relinquish_voted_proposal() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -31,7 +31,7 @@ async fn test_relinquish_voted_proposal() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -83,8 +83,8 @@ async fn test_relinquish_active_yes_vote() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -98,7 +98,7 @@ async fn test_relinquish_active_yes_vote() {
         .await;
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -151,8 +151,8 @@ async fn test_relinquish_active_no_vote() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -166,7 +166,7 @@ async fn test_relinquish_active_no_vote() {
         .await;
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -219,8 +219,8 @@ async fn test_relinquish_vote_with_invalid_mint_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -229,7 +229,7 @@ async fn test_relinquish_vote_with_invalid_mint_error() {
         .unwrap();
 
     let mut proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -266,8 +266,8 @@ async fn test_relinquish_vote_with_governance_authority_must_sign_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -281,7 +281,7 @@ async fn test_relinquish_vote_with_governance_authority_must_sign_error() {
         .await;
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -327,8 +327,8 @@ async fn test_relinquish_vote_with_invalid_vote_record_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -347,7 +347,7 @@ async fn test_relinquish_vote_with_invalid_vote_record_error() {
         .await;
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -397,8 +397,8 @@ async fn test_relinquish_vote_with_already_relinquished_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -407,7 +407,7 @@ async fn test_relinquish_vote_with_already_relinquished_error() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -465,8 +465,8 @@ async fn test_relinquish_proposal_in_voting_state_after_vote_time_ended() {
         .mint_community_tokens(&realm_cookie, 200)
         .await;
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -475,7 +475,7 @@ async fn test_relinquish_proposal_in_voting_state_after_vote_time_ended() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -489,7 +489,7 @@ async fn test_relinquish_proposal_in_voting_state_after_vote_time_ended() {
     // Advance timestamp past max_voting_time
     governance_test
         .advance_clock_past_timestamp(
-            account_governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
+            governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
         )
         .await;
 

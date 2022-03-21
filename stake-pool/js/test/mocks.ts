@@ -1,11 +1,7 @@
-import {AccountInfo, LAMPORTS_PER_SOL, PublicKey} from '@solana/web3.js';
+import { AccountInfo, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import {ValidatorStakeInfo} from '../src';
-import {
-  ValidatorStakeInfoStatus,
-  AccountLayout,
-  ValidatorListLayout,
-} from '../src/layouts';
+import { ValidatorStakeInfo } from '../src';
+import { ValidatorStakeInfoStatus, AccountLayout, ValidatorListLayout } from '../src/layouts';
 
 export const stakePoolMock = {
   accountType: 1,
@@ -44,7 +40,7 @@ export const stakePoolMock = {
     denominator: new BN(0),
     numerator: new BN(0),
   },
-  nextWithdrawalFee: {
+  nextStakeWithdrawalFee: {
     denominator: new BN(0),
     numerator: new BN(0),
   },
@@ -75,10 +71,7 @@ export const validatorListMock = {
     {
       status: ValidatorStakeInfoStatus.ReadyForRemoval,
       voteAccountAddress: new PublicKey(
-        new BN(
-          'a9946a889af14fd3c9b33d5df309489d9699271a6b09ff3190fcb41cf21a2f8c',
-          'hex',
-        ),
+        new BN('a9946a889af14fd3c9b33d5df309489d9699271a6b09ff3190fcb41cf21a2f8c', 'hex'),
       ),
       lastUpdateEpoch: new BN('c3', 'hex'),
       activeStakeLamports: new BN(123),
@@ -89,10 +82,7 @@ export const validatorListMock = {
     {
       status: ValidatorStakeInfoStatus.Active,
       voteAccountAddress: new PublicKey(
-        new BN(
-          '3796d40645ee07e3c64117e3f73430471d4c40465f696ebc9b034c1fc06a9f7d',
-          'hex',
-        ),
+        new BN('3796d40645ee07e3c64117e3f73430471d4c40465f696ebc9b034c1fc06a9f7d', 'hex'),
       ),
       lastUpdateEpoch: new BN('c3', 'hex'),
       activeStakeLamports: new BN(LAMPORTS_PER_SOL * 100),
@@ -103,10 +93,7 @@ export const validatorListMock = {
     {
       status: ValidatorStakeInfoStatus.Active,
       voteAccountAddress: new PublicKey(
-        new BN(
-          'e4e37d6f2e80c0bb0f3da8a06304e57be5cda6efa2825b86780aa320d9784cf8',
-          'hex',
-        ),
+        new BN('e4e37d6f2e80c0bb0f3da8a06304e57be5cda6efa2825b86780aa320d9784cf8', 'hex'),
       ),
       lastUpdateEpoch: new BN('c3', 'hex'),
       activeStakeLamports: new BN(0),

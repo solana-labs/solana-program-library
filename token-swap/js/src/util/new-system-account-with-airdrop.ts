@@ -1,5 +1,3 @@
-// @flow
-
 import {Keypair, Connection} from '@solana/web3.js';
 
 /**

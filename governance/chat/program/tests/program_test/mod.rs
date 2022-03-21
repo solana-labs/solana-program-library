@@ -6,24 +6,24 @@ use solana_program_test::{processor, ProgramTest};
 use solana_sdk::{signature::Keypair, signer::Signer};
 use spl_governance::{
     instruction::{
-        create_account_governance, create_proposal, create_realm, create_token_owner_record,
+        create_governance, create_proposal, create_realm, create_token_owner_record,
         deposit_governing_tokens,
     },
     state::{
         enums::{MintMaxVoteWeightSource, VoteThresholdPercentage},
-        governance::{get_account_governance_address, GovernanceConfig},
+        governance::{get_governance_address, GovernanceConfig},
         proposal::{get_proposal_address, VoteType},
         realm::get_realm_address,
         token_owner_record::get_token_owner_record_address,
     },
 };
+use spl_governance_addin_mock::instruction::setup_voter_weight_record;
 use spl_governance_chat::{
     instruction::post_message,
     processor::process_instruction,
     state::{ChatMessage, GovernanceChatAccountType, MessageBody},
 };
-use spl_governance_test_sdk::{addins::ensure_voter_weight_addin_is_built, ProgramTestBench};
-use spl_governance_voter_weight_addin::instruction::deposit_voter_weight;
+use spl_governance_test_sdk::{addins::ensure_addin_mock_is_built, ProgramTestBench};
 
 use crate::program_test::cookies::{ChatMessageCookie, ProposalCookie};
 
@@ -46,8 +46,7 @@ impl GovernanceChatProgramTest {
 
     #[allow(dead_code)]
     pub async fn start_with_voter_weight_addin() -> Self {
-        ensure_voter_weight_addin_is_built();
-
+        ensure_addin_mock_is_built();
         Self::start_impl(true).await
     }
 
@@ -72,12 +71,8 @@ impl GovernanceChatProgramTest {
 
         let voter_weight_addin_id = if use_voter_weight_addin {
             let voter_weight_addin_id =
-                Pubkey::from_str("VoterWeight11111111111111111111111111111111").unwrap();
-            program_test.add_program(
-                "spl_governance_voter_weight_addin",
-                voter_weight_addin_id,
-                None,
-            );
+                Pubkey::from_str("VoterWeightAddin111111111111111111111111111").unwrap();
+            program_test.add_program("spl_governance_addin_mock", voter_weight_addin_id, None);
             Some(voter_weight_addin_id)
         } else {
             None
@@ -120,6 +115,7 @@ impl GovernanceChatProgramTest {
             &self.bench.payer.pubkey(),
             None,
             self.voter_weight_addin_id,
+            None,
             name.clone(),
             1,
             MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
@@ -183,12 +179,12 @@ impl GovernanceChatProgramTest {
         let governed_account_address = Pubkey::new_unique();
 
         let governance_config = GovernanceConfig {
-            min_community_tokens_to_create_proposal: 5,
-            min_council_tokens_to_create_proposal: 2,
-            min_instruction_hold_up_time: 10,
+            min_community_weight_to_create_proposal: 5,
+            min_council_weight_to_create_proposal: 2,
+            min_transaction_hold_up_time: 10,
             max_voting_time: 10,
             vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
-            vote_weight_source: spl_governance::state::enums::VoteWeightSource::Deposit,
+            vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
             proposal_cool_off_time: 0,
         };
 
@@ -201,15 +197,17 @@ impl GovernanceChatProgramTest {
 
         let voter_weight_record = if self.voter_weight_addin_id.is_some() {
             let voter_weight_record = Keypair::new();
-            let deposit_voter_weight_ix = deposit_voter_weight(
+            let deposit_voter_weight_ix = setup_voter_weight_record(
                 &self.voter_weight_addin_id.unwrap(),
-                &self.governance_program_id,
                 &realm_address,
                 &governing_token_mint_keypair.pubkey(),
-                &token_owner_record_address,
+                &token_owner.pubkey(),
                 &voter_weight_record.pubkey(),
                 &self.bench.payer.pubkey(),
                 amount,
+                None,
+                None,
+                None,
             );
 
             self.bench
@@ -222,10 +220,10 @@ impl GovernanceChatProgramTest {
             None
         };
 
-        let create_account_governance_ix = create_account_governance(
+        let create_governance_ix = create_governance(
             &self.governance_program_id,
             &realm_address,
-            &governed_account_address,
+            Some(&governed_account_address),
             &token_owner_record_address,
             &self.bench.payer.pubkey(),
             &token_owner.pubkey(),
@@ -234,13 +232,13 @@ impl GovernanceChatProgramTest {
         );
 
         self.bench
-            .process_transaction(&[create_account_governance_ix], Some(&[&token_owner]))
+            .process_transaction(&[create_governance_ix], Some(&[&token_owner]))
             .await
             .unwrap();
 
         // Create Proposal
 
-        let governance_address = get_account_governance_address(
+        let governance_address = get_governance_address(
             &self.governance_program_id,
             &realm_address,
             &governed_account_address,

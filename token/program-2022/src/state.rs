@@ -1,13 +1,19 @@
 //! State transition types
 
-use crate::instruction::MAX_SIGNERS;
-use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
-use num_enum::TryFromPrimitive;
-use solana_program::{
-    program_error::ProgramError,
-    program_option::COption,
-    program_pack::{IsInitialized, Pack, Sealed},
-    pubkey::Pubkey,
+use {
+    crate::{
+        extension::AccountType,
+        generic_token_account::{is_initialized_account, GenericTokenAccount},
+        instruction::MAX_SIGNERS,
+    },
+    arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs},
+    num_enum::{IntoPrimitive, TryFromPrimitive},
+    solana_program::{
+        program_error::ProgramError,
+        program_option::COption,
+        program_pack::{IsInitialized, Pack, Sealed},
+        pubkey::Pubkey,
+    },
 };
 
 /// Mint data.
@@ -113,6 +119,11 @@ impl Account {
     pub fn is_native(&self) -> bool {
         self.is_native.is_some()
     }
+    /// Checks if a token Account's owner is the system_program or the incinerator
+    pub fn is_owned_by_system_program_or_incinerator(&self) -> bool {
+        solana_program::system_program::check_id(&self.owner)
+            || solana_program::incinerator::check_id(&self.owner)
+    }
 }
 impl Sealed for Account {}
 impl IsInitialized for Account {
@@ -173,7 +184,7 @@ impl Pack for Account {
 
 /// Account state.
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, PartialEq, TryFromPrimitive)]
+#[derive(Clone, Copy, Debug, PartialEq, IntoPrimitive, TryFromPrimitive)]
 pub enum AccountState {
     /// Account is not yet initialized
     Uninitialized,
@@ -287,9 +298,26 @@ fn unpack_coption_u64(src: &[u8; 12]) -> Result<COption<u64>, ProgramError> {
     }
 }
 
+// `spl_token_program_2022::extension::AccountType::Account` ordinal value
+const ACCOUNTTYPE_ACCOUNT: u8 = AccountType::Account as u8;
+impl GenericTokenAccount for Account {
+    fn valid_account_data(account_data: &[u8]) -> bool {
+        // Use spl_token::state::Account::valid_account_data once possible
+        account_data.len() == Account::LEN && is_initialized_account(account_data)
+            || (account_data.len() >= Account::LEN
+                && account_data.len() != Multisig::LEN
+                && ACCOUNTTYPE_ACCOUNT
+                    == *account_data
+                        .get(spl_token::state::Account::get_packed_len())
+                        .unwrap_or(&(AccountType::Uninitialized as u8))
+                && is_initialized_account(account_data))
+    }
+}
+
 #[cfg(test)]
 pub(crate) mod test {
     use super::*;
+    use crate::generic_token_account::ACCOUNT_INITIALIZED_INDEX;
 
     pub const TEST_MINT: Mint = Mint {
         mint_authority: COption::Some(Pubkey::new_from_array([1; 32])),
@@ -399,5 +427,101 @@ pub(crate) mod test {
         assert_eq!(packed, expect);
         let unpacked = Multisig::unpack(&packed).unwrap();
         assert_eq!(unpacked, check);
+    }
+
+    #[test]
+    fn test_unpack_token_owner() {
+        // Account data length < Account::LEN, unpack will not return a key
+        let src: [u8; 12] = [0; 12];
+        let result = Account::unpack_account_owner(&src);
+        assert_eq!(result, Option::None);
+
+        // The right account data size and initialized, unpack will return some key
+        let mut src: [u8; Account::LEN] = [0; Account::LEN];
+        src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Initialized as u8;
+        let result = Account::unpack_account_owner(&src);
+        assert!(result.is_some());
+
+        // The right account data size and frozen, unpack will return some key
+        src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Frozen as u8;
+        let result = Account::unpack_account_owner(&src);
+        assert!(result.is_some());
+
+        // Account data length > account data size, but not a valid extension,
+        // unpack will not return a key
+        let mut src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
+        src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Initialized as u8;
+        let result = Account::unpack_account_owner(&src);
+        assert_eq!(result, Option::None);
+
+        // Account data length > account data size with a valid extension and initialized,
+        // expect some key returned
+        let mut src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
+        src[Account::LEN] = AccountType::Account as u8;
+        src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Initialized as u8;
+        let result = Account::unpack_account_owner(&src);
+        assert!(result.is_some());
+
+        // Account data length > account data size with a valid extension but uninitialized,
+        // expect None
+        src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Uninitialized as u8;
+        let result = Account::unpack_account_owner(&src);
+        assert!(result.is_none());
+
+        // Account data length is multi-sig data size with a valid extension and initalized,
+        // expect none
+        let mut src: [u8; Multisig::LEN] = [0; Multisig::LEN];
+        src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Initialized as u8;
+        src[Account::LEN] = AccountType::Account as u8;
+        let result = Account::unpack_account_owner(&src);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_unpack_token_mint() {
+        // Account data length < Account::LEN, unpack will not return a key
+        let src: [u8; 12] = [0; 12];
+        let result = Account::unpack_account_mint(&src);
+        assert_eq!(result, Option::None);
+
+        // The right account data size and initialized, unpack will return some key
+        let mut src: [u8; Account::LEN] = [0; Account::LEN];
+        src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Initialized as u8;
+        let result = Account::unpack_account_mint(&src);
+        assert!(result.is_some());
+
+        // The right account data size and frozen, unpack will return some key
+        src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Frozen as u8;
+        let result = Account::unpack_account_mint(&src);
+        assert!(result.is_some());
+
+        // Account data length > account data size, but not a valid extension,
+        // unpack will not return a key
+        let mut src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
+        src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Initialized as u8;
+        let result = Account::unpack_account_mint(&src);
+        assert_eq!(result, Option::None);
+
+        // Account data length > account data size with a valid extension and initalized,
+        // expect some key returned
+        let mut src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
+        src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Initialized as u8;
+        src[Account::LEN] = AccountType::Account as u8;
+        let result = Account::unpack_account_mint(&src);
+        assert!(result.is_some());
+
+        // Account data length > account data size with a valid extension but uninitalized,
+        // expect none
+        src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Uninitialized as u8;
+        let result = Account::unpack_account_mint(&src);
+        assert!(result.is_none());
+
+        // Account data length is multi-sig data size with a valid extension and initalized,
+        // expect none
+        let mut src: [u8; Multisig::LEN] = [0; Multisig::LEN];
+        src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Initialized as u8;
+        src[Account::LEN] = AccountType::Account as u8;
+        let result = Account::unpack_account_mint(&src);
+        assert!(result.is_none());
     }
 }

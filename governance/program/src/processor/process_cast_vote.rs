@@ -8,6 +8,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
@@ -23,10 +24,7 @@ use crate::{
         },
         vote_record::{get_vote_record_address_seeds, Vote, VoteRecordV2},
     },
-    tools::spl_token::get_spl_token_mint_supply,
 };
-
-use borsh::BorshSerialize;
 
 /// Processes CastVote instruction
 pub fn process_cast_vote(
@@ -51,22 +49,19 @@ pub fn process_cast_vote(
     let payer_info = next_account_info(account_info_iter)?; // 8
     let system_info = next_account_info(account_info_iter)?; // 9
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 10
-    let rent = &Rent::from_account_info(rent_sysvar_info)?;
-
-    let clock_info = next_account_info(account_info_iter)?; // 11
-    let clock = Clock::from_account_info(clock_info)?;
+    let rent = Rent::get()?;
+    let clock = Clock::get()?;
 
     if !vote_record_info.data_is_empty() {
         return Err(GovernanceError::VoteAlreadyExists.into());
     }
 
-    let realm_data = get_realm_data_for_governing_token_mint(
+    let mut realm_data = get_realm_data_for_governing_token_mint(
         program_id,
         realm_info,
         governing_token_mint_info.key,
     )?;
-    let governance_data =
+    let mut governance_data =
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
     let mut proposal_data = get_proposal_data_for_governance_and_governing_mint(
@@ -98,11 +93,19 @@ pub fn process_cast_vote(
         .checked_add(1)
         .unwrap();
 
+    // Note: When both voter_weight and max_voter_weight addins are used the realm_config will be deserialized twice in resolve_voter_weight() and resolve_max_voter_weight()
+    //      It can't be deserialized eagerly because some realms won't have the config if they don't use any of the advanced options
+    //      This extra deserialisation should be acceptable to keep things simple and encapsulated.
+    let realm_config_info = next_account_info(account_info_iter)?; //9
+
     let voter_weight = voter_token_owner_record_data.resolve_voter_weight(
         program_id,
-        account_info_iter,
+        realm_config_info,
+        account_info_iter, // voter_weight_record  10
         realm_info.key,
         &realm_data,
+        VoterWeightAction::CastVote,
+        proposal_info.key,
     )?;
 
     proposal_data.assert_valid_vote(&vote)?;
@@ -126,13 +129,23 @@ pub fn process_cast_vote(
                     .unwrap(),
             )
         }
+        Vote::Abstain | Vote::Veto => {
+            return Err(GovernanceError::NotSupportedVoteType.into());
+        }
     }
 
-    let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
-    if proposal_data.try_tip_vote(
-        governing_token_mint_supply,
-        &governance_data.config,
+    let max_voter_weight = proposal_data.resolve_max_voter_weight(
+        program_id,
+        realm_config_info,
+        governing_token_mint_info,
+        account_info_iter, // max_voter_weight_record  11
+        realm_info.key,
         &realm_data,
+    )?;
+
+    if proposal_data.try_tip_vote(
+        max_voter_weight,
+        &governance_data.config,
         clock.unix_timestamp,
     )? {
         // Deserialize proposal owner and validate it's the actual owner of the proposal
@@ -150,7 +163,18 @@ pub fn process_cast_vote(
             proposal_owner_record_data
                 .serialize(&mut *proposal_owner_record_info.data.borrow_mut())?;
         };
+
+        // Update Realm voting_proposal_count
+        realm_data.voting_proposal_count = realm_data.voting_proposal_count.saturating_sub(1);
+        realm_data.serialize(&mut *realm_info.data.borrow_mut())?;
+
+        // Update  Governance voting_proposal_count
+        governance_data.voting_proposal_count =
+            governance_data.voting_proposal_count.saturating_sub(1);
+        governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
     }
+
+    let governing_token_owner = voter_token_owner_record_data.governing_token_owner;
 
     voter_token_owner_record_data
         .serialize(&mut *voter_token_owner_record_info.data.borrow_mut())?;
@@ -161,10 +185,11 @@ pub fn process_cast_vote(
     let vote_record_data = VoteRecordV2 {
         account_type: GovernanceAccountType::VoteRecordV2,
         proposal: *proposal_info.key,
-        governing_token_owner: voter_token_owner_record_data.governing_token_owner,
+        governing_token_owner,
         voter_weight,
         vote,
         is_relinquished: false,
+        reserved_v2: [0; 8],
     };
 
     create_and_serialize_account_signed::<VoteRecordV2>(
@@ -174,7 +199,7 @@ pub fn process_cast_vote(
         &get_vote_record_address_seeds(proposal_info.key, voter_token_owner_record_info.key),
         program_id,
         system_info,
-        rent,
+        &rent,
     )?;
 
     Ok(())
