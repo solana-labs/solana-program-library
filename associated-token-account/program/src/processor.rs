@@ -208,7 +208,7 @@ pub fn process_recover_nested(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             spl_token_program_id,
         );
     if destination_associated_token_address != *destination_associated_token_account_info.key {
-        msg!("Error: Nested associated address does not match seed derivation");
+        msg!("Error: Destination associated address does not match seed derivation");
         return Err(ProgramError::InvalidSeeds);
     }
 
