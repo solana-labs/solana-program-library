@@ -3678,7 +3678,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance"
-version = "2.2.3"
+version = "2.2.4"
 dependencies = [
  "arrayref",
  "assert_matches",
@@ -3703,7 +3703,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance-addin-api"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "borsh",
  "solana-program",
@@ -3712,7 +3712,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance-addin-mock"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "arrayref",
  "assert_matches",
@@ -3736,7 +3736,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance-chat"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "arrayref",
  "assert_matches",
