@@ -4,7 +4,7 @@
 mod program_test;
 
 use {
-    program_test::program_test,
+    program_test::program_test_2022,
     solana_program::{instruction::*, pubkey::Pubkey, system_instruction, sysvar},
     solana_program_test::*,
     solana_sdk::{
@@ -28,7 +28,7 @@ async fn test_associated_token_address() {
     );
 
     let (mut banks_client, payer, recent_blockhash) =
-        program_test(token_mint_address, true).start().await;
+        program_test_2022(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
 
     let expected_token_account_len =
@@ -78,7 +78,7 @@ async fn test_create_with_fewer_lamports() {
     );
 
     let (mut banks_client, payer, recent_blockhash) =
-        program_test(token_mint_address, true).start().await;
+        program_test_2022(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_len =
         ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]);
@@ -138,7 +138,7 @@ async fn test_create_with_excess_lamports() {
     );
 
     let (mut banks_client, payer, recent_blockhash) =
-        program_test(token_mint_address, true).start().await;
+        program_test_2022(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
 
     let expected_token_account_len =
@@ -198,7 +198,7 @@ async fn test_create_account_mismatch() {
     );
 
     let (mut banks_client, payer, recent_blockhash) =
-        program_test(token_mint_address, true).start().await;
+        program_test_2022(token_mint_address, true).start().await;
 
     let mut instruction = create_associated_token_account(
         &payer.pubkey(),
@@ -269,7 +269,7 @@ async fn test_create_associated_token_account_using_legacy_implicit_instruction(
     );
 
     let (mut banks_client, payer, recent_blockhash) =
-        program_test(token_mint_address, true).start().await;
+        program_test_2022(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_len =
         ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]);
