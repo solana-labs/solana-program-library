@@ -129,6 +129,8 @@ describe("record-anchor", () => {
         systemProgram: anchor.web3.SystemProgram.programId
       }
     })
+
+    assert.ok(true);
   });
 
   it("Close Account Fail Wrong Authority ", async () => {
