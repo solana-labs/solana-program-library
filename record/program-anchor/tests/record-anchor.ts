@@ -21,7 +21,6 @@ describe("record-anchor", () => {
     });
 
     let offset = new anchor.BN(0);
-
     const tx1 = await program.rpc.write(offset, Buffer.from(data),{
       accounts: {
         recordAccount: recordAccount.publicKey,
@@ -35,6 +34,23 @@ describe("record-anchor", () => {
     const recordAccount = anchor.web3.Keypair.generate();
     let bytes = Uint8Array.from([0xf0, 0x9f, 0x90, 0x86, 0x86, 0x86, 0x86, 0x86]);
     await initializeStorageAccount(recordAccount, bytes);
+  });
+
+  it("Initialize Twice Failed ", async () => {
+    const recordAccount = anchor.web3.Keypair.generate();
+    let bytes = Uint8Array.from([0xf0, 0x9f, 0x90, 0x86, 0x86, 0x86, 0x86, 0x86]);
+    await initializeStorageAccount(recordAccount, bytes);
+
+    assert.rejects(async () => {
+      await program.rpc.initialize({
+        accounts: {
+          recordAccount: recordAccount.publicKey,
+          authority: provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId
+        },
+        signers: [recordAccount]
+      });
+    }, new Error("Account already initialized!"));
   });
 
   it("Write Success ", async () => {
@@ -56,6 +72,27 @@ describe("record-anchor", () => {
 
     const accountData = await program.account.recordData.fetch(recordAccount.publicKey) as any;
     assert.equal(Array.from(newData).toString(), accountData.data.toString());
+  });
+
+  it("Write Failed Wrong Authority! ", async () => {
+    const recordAccount = anchor.web3.Keypair.generate();
+    let bytes = Uint8Array.from([0xf0, 0x9f, 0x90, 0x86, 0x86, 0x86, 0x86, 0x86]);
+    await initializeStorageAccount(recordAccount, bytes);
+
+    let offset = new anchor.BN(0);
+
+    let newData = Uint8Array.from([0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0])
+    const wrongAuthority = anchor.web3.Keypair.generate();
+
+    assert.rejects(async () => {
+      await program.rpc.write(offset, Buffer.from(newData), {
+        accounts: {
+          recordAccount: recordAccount.publicKey,
+          authority: wrongAuthority.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId
+        }
+      });
+    }, new Error("Incorrect Authority"));
   });
 
   it("Set Authority Success ", async () => {
@@ -92,5 +129,25 @@ describe("record-anchor", () => {
         systemProgram: anchor.web3.SystemProgram.programId
       }
     })
+  });
+
+  it("Close Account Fail Wrong Authority ", async () => {
+    const recordAccount = anchor.web3.Keypair.generate();
+    let bytes = Uint8Array.from([0xf0, 0x9f, 0x90, 0x86, 0x86, 0x86, 0x86, 0x86]);
+    await initializeStorageAccount(recordAccount, bytes);
+
+    const reciever = anchor.web3.Keypair.generate();
+    const wrongAuthority = anchor.web3.Keypair.generate();
+
+    assert.rejects(async () => {
+      await program.rpc.closeAccount({
+        accounts: {
+          recordAccount: recordAccount.publicKey,
+          authority: wrongAuthority,
+          reciever: reciever.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId
+        }
+      })
+    }, new Error("Incorrect Authority"));
   });
 });
