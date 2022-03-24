@@ -70,7 +70,6 @@ pub struct Initialize<'info> {
 pub struct SetAuthority<'info> {
     #[account(mut, has_one = authority)]
     pub record_account: Account<'info, RecordData>,
-    #[account(mut)]
     pub authority: Signer<'info>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub new_authority: UncheckedAccount<'info>,
@@ -81,7 +80,6 @@ pub struct SetAuthority<'info> {
 pub struct CloseAccount<'info> {
     #[account(mut, has_one = authority)]
     pub record_account: Account<'info, RecordData>,
-    #[account(mut)]
     pub authority: Signer<'info>,
     #[account(mut)]
     /// CHECK: This is not dangerous because we don't read or write from this account
@@ -93,7 +91,6 @@ pub struct CloseAccount<'info> {
 pub struct Write<'info> {
     #[account(mut, has_one = authority)]
     pub record_account: Account<'info, RecordData>,
-    #[account(mut)]
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>
 }
