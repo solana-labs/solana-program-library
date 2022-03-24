@@ -1,6 +1,6 @@
 [package]
 name = "spl-governance-addin-mock"
-version = "0.1.1"
+version = "0.1.2"
 description = "Solana Program Library Governance Voter Weight Addin Program"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -21,7 +21,7 @@ serde = "1.0.127"
 serde_derive = "1.0.103"
 solana-program = "1.9.9"
 spl-token = { version = "3.3", path = "../../../token/program", features = [ "no-entrypoint" ] }
-spl-governance-addin-api= { version = "0.1.1", path ="../../addin-api"}
+spl-governance-addin-api= { version = "0.1.2", path ="../../addin-api"}
 spl-governance-tools= { version = "0.1.2", path ="../../tools"}
 thiserror = "1.0"
 
