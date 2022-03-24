@@ -25,7 +25,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(51_000);
+    test.set_bpf_compute_max_units(62_000);
 
     // 100 SOL collateral
     const SOL_DEPOSIT_AMOUNT_LAMPORTS: u64 = 100 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO;

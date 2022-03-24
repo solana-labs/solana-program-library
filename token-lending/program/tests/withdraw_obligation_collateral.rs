@@ -27,7 +27,7 @@ async fn test_withdraw_fixed_amount() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(33_000);
+    test.set_bpf_compute_max_units(40_000);
 
     const SOL_DEPOSIT_AMOUNT_LAMPORTS: u64 = 200 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO;
     const USDC_BORROW_AMOUNT_FRACTIONAL: u64 = 1_000 * FRACTIONAL_TO_USDC;
@@ -154,7 +154,7 @@ async fn test_withdraw_max_amount() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(28_000);
+    test.set_bpf_compute_max_units(33_000);
 
     const USDC_DEPOSIT_AMOUNT_FRACTIONAL: u64 =
         1_000 * FRACTIONAL_TO_USDC * INITIAL_COLLATERAL_RATIO;

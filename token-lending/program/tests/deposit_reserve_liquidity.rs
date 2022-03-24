@@ -16,7 +16,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(45_000);
+    test.set_bpf_compute_max_units(50_000);
 
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);

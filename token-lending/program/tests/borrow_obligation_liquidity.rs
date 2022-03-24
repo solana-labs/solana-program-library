@@ -28,7 +28,7 @@ async fn test_borrow_usdc_fixed_amount() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(45_000);
+    test.set_bpf_compute_max_units(55_000);
 
     const USDC_TOTAL_BORROW_FRACTIONAL: u64 = 1_000 * FRACTIONAL_TO_USDC;
     const FEE_AMOUNT: u64 = 100;
@@ -172,7 +172,7 @@ async fn test_borrow_sol_max_amount() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(45_000);
+    test.set_bpf_compute_max_units(60_000);
 
     const FEE_AMOUNT: u64 = 5000;
     const HOST_FEE_AMOUNT: u64 = 1000;

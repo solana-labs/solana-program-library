@@ -32,6 +32,17 @@ use std::{convert::TryInto, result::Result};
 use switchboard_program::{
     get_aggregator, get_aggregator_result, AggregatorState, RoundResult, SwitchboardAccountType,
 };
+use switchboard_v2::AggregatorAccountData;
+
+/// Mainnet program id for Switchboard v2.
+pub mod switchboard_v2_mainnet {
+    solana_program::declare_id!("SW1TCH7qEPTdLsDHRgPuMQjbQxKdH2aBStViMFnt64f");
+}
+
+/// Devnet program id for Switchboard v2.
+pub mod switchboard_v2_devnet {
+    solana_program::declare_id!("2TfB33aLaneQb5TNVwyDz3jSZXS6jdW2ARw1Dgf84XCG");
+}
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -2353,6 +2364,11 @@ fn get_switchboard_price(
     if *switchboard_feed_info.key == spl_token_lending::NULL_PUBKEY {
         return Err(LendingError::NullOracleConfig.into());
     }
+    if switchboard_feed_info.owner == &switchboard_v2_mainnet::id()
+        || switchboard_feed_info.owner == &switchboard_v2_devnet::id()
+    {
+        return get_switchboard_price_v2(switchboard_feed_info, clock);
+    }
 
     let account_buf = switchboard_feed_info.try_borrow_data()?;
     // first byte type discriminator
@@ -2385,6 +2401,32 @@ fn get_switchboard_price(
     let price = ((price_quotient as f64) * price_float) as u128;
 
     Decimal::from(price).try_div(price_quotient)
+}
+
+fn get_switchboard_price_v2(
+    switchboard_feed_info: &AccountInfo,
+    clock: &Clock,
+) -> Result<Decimal, ProgramError> {
+    const STALE_AFTER_SLOTS_ELAPSED: u64 = 240;
+
+    let feed = AggregatorAccountData::new(switchboard_feed_info)?;
+    let slots_elapsed = clock
+        .slot
+        .checked_sub(feed.latest_confirmed_round.round_open_slot)
+        .ok_or(LendingError::MathOverflow)?;
+    if slots_elapsed >= STALE_AFTER_SLOTS_ELAPSED {
+        msg!("Switchboard oracle price is stale");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+
+    let price_switchboard_desc = feed.get_result()?;
+    if price_switchboard_desc.mantissa < 0 {
+        msg!("Switchboard oracle price is negative which is not allowed");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+    let price = Decimal::from(price_switchboard_desc.mantissa as u128);
+    let exp = (10u64).checked_pow(price_switchboard_desc.scale).unwrap();
+    price.try_div(exp)
 }
 
 /// Issue a spl_token `InitializeAccount` instruction.
@@ -2624,7 +2666,10 @@ fn validate_switchboard_keys(
     if *switchboard_feed_info.key == spl_token_lending::NULL_PUBKEY {
         return Ok(());
     }
-    if &lending_market.switchboard_oracle_program_id != switchboard_feed_info.owner {
+    if switchboard_feed_info.owner != &lending_market.switchboard_oracle_program_id
+        && switchboard_feed_info.owner != &switchboard_v2_mainnet::id()
+        && switchboard_feed_info.owner != &switchboard_v2_devnet::id()
+    {
         msg!("Switchboard account provided is not owned by the switchboard oracle program");
         return Err(LendingError::InvalidOracleConfig.into());
     }

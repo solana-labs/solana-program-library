@@ -27,7 +27,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(28_000);
+    test.set_bpf_compute_max_units(43_000);
 
     const SOL_DEPOSIT_AMOUNT: u64 = 100;
     const USDC_BORROW_AMOUNT: u64 = 1_000;

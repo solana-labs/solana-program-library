@@ -25,7 +25,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(16_000);
+    test.set_bpf_compute_max_units(28_000);
 
     const SOL_RESERVE_LIQUIDITY_LAMPORTS: u64 = 100 * LAMPORTS_TO_SOL;
     const USDC_RESERVE_LIQUIDITY_FRACTIONAL: u64 = 100 * FRACTIONAL_TO_USDC;
