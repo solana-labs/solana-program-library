@@ -5,8 +5,8 @@ export type Parser<T> = (
     info: AccountInfo<Uint8Array>
 ) =>
     | {
-    pubkey: PublicKey;
-    info: AccountInfo<Uint8Array>;
-    data: T;
-}
+          pubkey: PublicKey;
+          info: AccountInfo<Uint8Array>;
+          data: T;
+      }
     | undefined;
