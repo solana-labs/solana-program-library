@@ -10,7 +10,7 @@ describe("memo", () => {
     const string = "letters";
     var codedString = Buffer.from(string);
 
-    const tx = await program.rpc.buildMemo(codedString);
+    const tx = await program.rpc.logMemo(codedString);
     console.log("Transaction Signature:", tx);
   });
 
@@ -19,45 +19,45 @@ describe("memo", () => {
     let bytes = Uint8Array.from([0xf0, 0x9f, 0x90, 0x86]);
     assert.equal(emoji.toString(), bytes.toString());
 
-    const tx1 = await program.rpc.buildMemo(Buffer.from("🐆"));
+    const tx1 = await program.rpc.logMemo(Buffer.from("🐆"));
 
-    const tx2 = await program.rpc.buildMemo(Buffer.from(bytes));
+    const tx2 = await program.rpc.logMemo(Buffer.from(bytes));
     console.log("Transaction Signature One:", tx1);
     console.log("Transaction Signature Two:", tx2);
   });
 
   it("Test 3 => Sending Signed Transaction", async () => {
-    const pubkey1 = anchor.web3.Keypair.generate();
-    const pubkey2 = anchor.web3.Keypair.generate();
-    const pubkey3 = anchor.web3.Keypair.generate();
+    const account1 = anchor.web3.Keypair.generate();
+    const account2 = anchor.web3.Keypair.generate();
+    const account3 = anchor.web3.Keypair.generate();
 
-    const tx = await program.rpc.buildMemo(Buffer.from("🐆"), {
+    const tx = await program.rpc.logMemo(Buffer.from("🐆"), {
       accounts: [],
       remainingAccounts: [
-        { pubkey: pubkey1.publicKey, isWritable: false, isSigner: true },
-        { pubkey: pubkey2.publicKey, isWritable: false, isSigner: true },
-        { pubkey: pubkey3.publicKey, isWritable: false, isSigner: true },
+        { pubkey: account1.publicKey, isWritable: false, isSigner: true },
+        { pubkey: account2.publicKey, isWritable: false, isSigner: true },
+        { pubkey: account3.publicKey, isWritable: false, isSigner: true },
       ],
-      signers: [pubkey1, pubkey2, pubkey3],
+      signers: [account1, account2, account3],
     });
     console.log("Transaction Signature:", tx);
   });
 
   it("Test 4 => Sending Unsigned Transaction with a Memo", async () => {
     // This test should fail because the transaction is not signed.
-    const pubkey1 = anchor.web3.Keypair.generate();
-    const pubkey2 = anchor.web3.Keypair.generate();
-    const pubkey3 = anchor.web3.Keypair.generate();
+    const account1 = anchor.web3.Keypair.generate();
+    const account2 = anchor.web3.Keypair.generate();
+    const account3 = anchor.web3.Keypair.generate();
 
     assert.rejects(() => {
-      program.rpc.buildMemo(Buffer.from("🐆"), {
+      program.rpc.logMemo(Buffer.from("🐆"), {
         accounts: [],
         remainingAccounts: [
-          { pubkey: pubkey1.publicKey, isWritable: false, isSigner: false },
-          { pubkey: pubkey2.publicKey, isWritable: false, isSigner: false },
-          { pubkey: pubkey3.publicKey, isWritable: false, isSigner: false },
+          { pubkey: account1.publicKey, isWritable: false, isSigner: false },
+          { pubkey: account2.publicKey, isWritable: false, isSigner: false },
+          { pubkey: account3.publicKey, isWritable: false, isSigner: false },
         ],
-        signers: [pubkey1, pubkey2, pubkey3],
+        signers: [account1, account2, account3],
       });
     }, new Error("unknown signer"));
 
@@ -66,19 +66,19 @@ describe("memo", () => {
 
   it("Test 5 => Sending a transaction with missing signers", async () => {
     // This test should fail because the transaction is not signed completely.
-    const pubkey1 = anchor.web3.Keypair.generate();
-    const pubkey2 = anchor.web3.Keypair.generate();
-    const pubkey3 = anchor.web3.Keypair.generate();
+    const account1 = anchor.web3.Keypair.generate();
+    const account2 = anchor.web3.Keypair.generate();
+    const account3 = anchor.web3.Keypair.generate();
 
     assert.rejects(async () => {
-      await program.rpc.buildMemo(Buffer.from("🐆"), {
+      await program.rpc.logMemo(Buffer.from("🐆"), {
         accounts: [],
         remainingAccounts: [
-          { pubkey: pubkey1.publicKey, isWritable: false, isSigner: true },
-          { pubkey: pubkey2.publicKey, isWritable: false, isSigner: false },
-          { pubkey: pubkey3.publicKey, isWritable: false, isSigner: true },
+          { pubkey: account1.publicKey, isWritable: false, isSigner: true },
+          { pubkey: account2.publicKey, isWritable: false, isSigner: false },
+          { pubkey: account3.publicKey, isWritable: false, isSigner: true },
         ],
-        signers: [pubkey1, pubkey2, pubkey3],
+        signers: [account1, account2, account3],
       });
     }, new Error("unknown signer"));
     console.log("Test failed successfully :)");
@@ -91,7 +91,7 @@ describe("memo", () => {
     ]);
 
     assert.rejects(() => {
-      program.rpc.buildMemo(Buffer.from(invalid_utf8));
+      program.rpc.logMemo(Buffer.from(invalid_utf8));
     }, new Error());
     console.log("Test failed successfully :)");
   });
