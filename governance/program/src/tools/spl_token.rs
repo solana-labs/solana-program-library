@@ -14,7 +14,7 @@ use solana_program::{
     system_instruction,
 };
 use spl_token::{
-    instruction::set_authority,
+    instruction::{set_authority, AuthorityType},
     state::{Account, Mint},
 };
 
@@ -287,34 +287,6 @@ pub fn assert_spl_token_mint_authority_is_signer(
     Ok(())
 }
 
-/// Sets new mint authority
-pub fn set_spl_token_mint_authority<'a>(
-    mint_info: &AccountInfo<'a>,
-    mint_authority: &AccountInfo<'a>,
-    new_mint_authority: &Pubkey,
-    spl_token_info: &AccountInfo<'a>,
-) -> Result<(), ProgramError> {
-    let set_authority_ix = set_authority(
-        &spl_token::id(),
-        mint_info.key,
-        Some(new_mint_authority),
-        spl_token::instruction::AuthorityType::MintTokens,
-        mint_authority.key,
-        &[],
-    )?;
-
-    invoke(
-        &set_authority_ix,
-        &[
-            mint_info.clone(),
-            mint_authority.clone(),
-            spl_token_info.clone(),
-        ],
-    )?;
-
-    Ok(())
-}
-
 /// Asserts current token owner matches the given owner and it's signer of the transaction
 pub fn assert_spl_token_owner_is_signer(
     token_info: &AccountInfo,
@@ -333,27 +305,28 @@ pub fn assert_spl_token_owner_is_signer(
     Ok(())
 }
 
-/// Sets new token account owner
-pub fn set_spl_token_owner<'a>(
-    token_info: &AccountInfo<'a>,
-    token_owner: &AccountInfo<'a>,
-    new_token_owner: &Pubkey,
+/// Sets spl-token account (Mint or TokenAccount) authority
+pub fn set_spl_token_account_authority<'a>(
+    account_info: &AccountInfo<'a>,
+    account_authority: &AccountInfo<'a>,
+    new_account_authority: &Pubkey,
+    authority_type: AuthorityType,
     spl_token_info: &AccountInfo<'a>,
 ) -> Result<(), ProgramError> {
     let set_authority_ix = set_authority(
         &spl_token::id(),
-        token_info.key,
-        Some(new_token_owner),
-        spl_token::instruction::AuthorityType::AccountOwner,
-        token_owner.key,
+        account_info.key,
+        Some(new_account_authority),
+        authority_type,
+        account_authority.key,
         &[],
     )?;
 
     invoke(
         &set_authority_ix,
         &[
-            token_info.clone(),
-            token_owner.clone(),
+            account_info.clone(),
+            account_authority.clone(),
             spl_token_info.clone(),
         ],
     )?;

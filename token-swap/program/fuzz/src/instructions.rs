@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use {
     arbitrary::Arbitrary,
     honggfuzz::fuzz,
@@ -459,12 +461,12 @@ fn get_swap_curve(curve_type: CurveType) -> SwapCurve {
     SwapCurve {
         curve_type,
         calculator: match curve_type {
-            CurveType::ConstantProduct => Box::new(ConstantProductCurve),
-            CurveType::ConstantPrice => Box::new(ConstantPriceCurve {
+            CurveType::ConstantProduct => Arc::new(ConstantProductCurve),
+            CurveType::ConstantPrice => Arc::new(ConstantPriceCurve {
                 token_b_price: 10_000_000,
             }),
-            CurveType::Stable => Box::new(StableCurve { amp: 100 }),
-            CurveType::Offset => Box::new(OffsetCurve {
+            CurveType::Stable => Arc::new(StableCurve { amp: 100 }),
+            CurveType::Offset => Arc::new(OffsetCurve {
                 token_b_offset: 100_000_000_000,
             }),
         },

@@ -1,10 +1,6 @@
-import {
-  StakePoolLayout,
-  ValidatorListLayout,
-  ValidatorList,
-} from '../src/layouts';
-import {deepStrictEqualBN} from './equal';
-import {stakePoolMock, validatorListMock} from './mocks';
+import { StakePoolLayout, ValidatorListLayout, ValidatorList } from '../src/layouts';
+import { deepStrictEqualBN } from './equal';
+import { stakePoolMock, validatorListMock } from './mocks';
 
 describe('layouts', () => {
   describe('StakePoolAccount', () => {

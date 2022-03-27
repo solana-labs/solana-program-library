@@ -27,8 +27,8 @@ async fn test_finalize_vote_to_succeeded() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance_using_config(
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -43,7 +43,7 @@ async fn test_finalize_vote_to_succeeded() {
         .await;
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -62,7 +62,7 @@ async fn test_finalize_vote_to_succeeded() {
     // Advance timestamp past max_voting_time
     governance_test
         .advance_clock_past_timestamp(
-            account_governance_cookie.account.config.max_voting_time as i64
+            governance_cookie.account.config.max_voting_time as i64
                 + proposal_account.voting_at.unwrap(),
         )
         .await;
@@ -72,7 +72,7 @@ async fn test_finalize_vote_to_succeeded() {
     // Act
 
     governance_test
-        .finalize_vote(&realm_cookie, &proposal_cookie)
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
         .await
         .unwrap();
 
@@ -91,12 +91,7 @@ async fn test_finalize_vote_to_succeeded() {
     assert_eq!(Some(210), proposal_account.max_vote_weight);
 
     assert_eq!(
-        Some(
-            account_governance_cookie
-                .account
-                .config
-                .vote_threshold_percentage
-        ),
+        Some(governance_cookie.account.config.vote_threshold_percentage),
         proposal_account.vote_threshold_percentage
     );
 
@@ -105,6 +100,18 @@ async fn test_finalize_vote_to_succeeded() {
         .await;
 
     assert_eq!(0, proposal_owner_record.outstanding_proposal_count);
+
+    let realm_account = governance_test
+        .get_realm_account(&realm_cookie.address)
+        .await;
+
+    assert_eq!(0, realm_account.voting_proposal_count);
+
+    let governance_account = governance_test
+        .get_governance_account(&governance_cookie.address)
+        .await;
+
+    assert_eq!(0, governance_account.voting_proposal_count);
 }
 
 #[tokio::test]
@@ -120,8 +127,8 @@ async fn test_finalize_vote_to_defeated() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -135,7 +142,7 @@ async fn test_finalize_vote_to_defeated() {
         .await;
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -154,7 +161,7 @@ async fn test_finalize_vote_to_defeated() {
     // Advance clock past max_voting_time
     governance_test
         .advance_clock_past_timestamp(
-            account_governance_cookie.account.config.max_voting_time as i64
+            governance_cookie.account.config.max_voting_time as i64
                 + proposal_account.voting_at.unwrap(),
         )
         .await;
@@ -162,7 +169,7 @@ async fn test_finalize_vote_to_defeated() {
     // Act
 
     governance_test
-        .finalize_vote(&realm_cookie, &proposal_cookie)
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
         .await
         .unwrap();
 
@@ -188,8 +195,8 @@ async fn test_finalize_vote_with_invalid_mint_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -203,7 +210,7 @@ async fn test_finalize_vote_with_invalid_mint_error() {
         .await;
 
     let mut proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -225,7 +232,7 @@ async fn test_finalize_vote_with_invalid_mint_error() {
     // Act
 
     let err = governance_test
-        .finalize_vote(&realm_cookie, &proposal_cookie)
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
         .await
         .err()
         .unwrap();
@@ -248,8 +255,8 @@ async fn test_finalize_vote_with_invalid_governance_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -263,7 +270,7 @@ async fn test_finalize_vote_with_invalid_governance_error() {
         .await;
 
     let mut proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -282,8 +289,8 @@ async fn test_finalize_vote_with_invalid_governance_error() {
     // Setup Governance for a different account
     let governed_account_cookie2 = governance_test.with_governed_account().await;
 
-    let account_governance_cookie2 = governance_test
-        .with_account_governance(
+    let governance_cookie2 = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie2,
             &token_owner_record_cookie,
@@ -291,12 +298,12 @@ async fn test_finalize_vote_with_invalid_governance_error() {
         .await
         .unwrap();
 
-    proposal_cookie.account.governance = account_governance_cookie2.address;
+    proposal_cookie.account.governance = governance_cookie2.address;
 
     // Act
 
     let err = governance_test
-        .finalize_vote(&realm_cookie, &proposal_cookie)
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
         .await
         .err()
         .unwrap();

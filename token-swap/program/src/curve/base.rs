@@ -16,6 +16,7 @@ use crate::curve::{
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
+use std::sync::Arc;
 
 #[cfg(feature = "fuzz")]
 use arbitrary::Arbitrary;
@@ -61,7 +62,7 @@ pub struct SwapCurve {
     pub curve_type: CurveType,
     /// The actual calculator, represented as a trait object to allow for many
     /// different types of curves
-    pub calculator: Box<dyn CurveCalculator>,
+    pub calculator: Arc<dyn CurveCalculator + Sync + Send>,
 }
 
 impl SwapCurve {
@@ -162,14 +163,14 @@ impl SwapCurve {
 }
 
 /// Default implementation for SwapCurve cannot be derived because of
-/// the contained Box.
+/// the contained Arc.
 impl Default for SwapCurve {
     fn default() -> Self {
         let curve_type: CurveType = Default::default();
         let calculator: ConstantProductCurve = Default::default();
         Self {
             curve_type,
-            calculator: Box::new(calculator),
+            calculator: Arc::new(calculator),
         }
     }
 }
@@ -216,13 +217,13 @@ impl Pack for SwapCurve {
             curve_type,
             calculator: match curve_type {
                 CurveType::ConstantProduct => {
-                    Box::new(ConstantProductCurve::unpack_from_slice(calculator)?)
+                    Arc::new(ConstantProductCurve::unpack_from_slice(calculator)?)
                 }
                 CurveType::ConstantPrice => {
-                    Box::new(ConstantPriceCurve::unpack_from_slice(calculator)?)
+                    Arc::new(ConstantPriceCurve::unpack_from_slice(calculator)?)
                 }
-                CurveType::Stable => Box::new(StableCurve::unpack_from_slice(calculator)?),
-                CurveType::Offset => Box::new(OffsetCurve::unpack_from_slice(calculator)?),
+                CurveType::Stable => Arc::new(StableCurve::unpack_from_slice(calculator)?),
+                CurveType::Offset => Arc::new(OffsetCurve::unpack_from_slice(calculator)?),
             },
         })
     }
@@ -268,7 +269,7 @@ mod tests {
         let curve_type = CurveType::ConstantProduct;
         let swap_curve = SwapCurve {
             curve_type,
-            calculator: Box::new(curve),
+            calculator: Arc::new(curve),
         };
 
         let mut packed = [0u8; SwapCurve::LEN];
@@ -310,7 +311,7 @@ mod tests {
         let curve = ConstantProductCurve {};
         let swap_curve = SwapCurve {
             curve_type: CurveType::ConstantProduct,
-            calculator: Box::new(curve),
+            calculator: Arc::new(curve),
         };
         let result = swap_curve
             .swap(
@@ -355,7 +356,7 @@ mod tests {
         let curve = ConstantProductCurve {};
         let swap_curve = SwapCurve {
             curve_type: CurveType::ConstantProduct,
-            calculator: Box::new(curve),
+            calculator: Arc::new(curve),
         };
         let result = swap_curve
             .swap(
@@ -382,7 +383,7 @@ mod tests {
         let fees = Fees::default();
         let swap_curve = SwapCurve {
             curve_type: CurveType::ConstantProduct,
-            calculator: Box::new(curve),
+            calculator: Arc::new(curve),
         };
         let result = swap_curve
             .swap(

@@ -4,10 +4,12 @@ on:
   pull_request:
     paths:
     - 'record/**'
+    - 'ci/*-version.sh'
   push:
     branches: [master]
     paths:
     - 'record/**'
+    - 'ci/*-version.sh'
 
 jobs:
   cargo-test-bpf:

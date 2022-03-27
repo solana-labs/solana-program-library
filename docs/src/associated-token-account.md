@@ -24,7 +24,7 @@ campaigns difficult and just generally increases the friction of token
 transfers. AToken allows the sender to create the associated token account for
 the receiver, so the token transfer just works.
 
-See the [SPL Token](token.md) program for more information about tokens in
+See the [SPL Token](token.mdx) program for more information about tokens in
 general.
 
 ## Background

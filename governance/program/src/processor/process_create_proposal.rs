@@ -1,6 +1,5 @@
 //! Program state processor
 
-use borsh::BorshSerialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     clock::Clock,
@@ -9,6 +8,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
@@ -48,11 +48,8 @@ pub fn process_create_proposal(
     let payer_info = next_account_info(account_info_iter)?; // 6
     let system_info = next_account_info(account_info_iter)?; // 7
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 8
-    let rent = &Rent::from_account_info(rent_sysvar_info)?;
-
-    let clock_info = next_account_info(account_info_iter)?; // 9
-    let clock = Clock::from_account_info(clock_info)?;
+    let rent = Rent::get()?;
+    let clock = Clock::get()?;
 
     if !proposal_info.data_is_empty() {
         return Err(GovernanceError::ProposalAlreadyExists.into());
@@ -77,11 +74,16 @@ pub fn process_create_proposal(
     proposal_owner_record_data
         .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
+    let realm_config_info = next_account_info(account_info_iter)?; // 10
+
     let voter_weight = proposal_owner_record_data.resolve_voter_weight(
         program_id,
+        realm_config_info,
         account_info_iter,
         realm_info.key,
         &realm_data,
+        VoterWeightAction::CreateProposal,
+        governance_info.key,
     )?;
 
     // Ensure proposal owner (TokenOwner) has enough tokens to create proposal and no outstanding proposals
@@ -105,9 +107,9 @@ pub fn process_create_proposal(
             label: o.to_string(),
             vote_weight: 0,
             vote_result: OptionVoteResult::None,
-            instructions_executed_count: 0,
-            instructions_count: 0,
-            instructions_next_index: 0,
+            transactions_executed_count: 0,
+            transactions_count: 0,
+            transactions_next_index: 0,
         })
         .collect();
 
@@ -126,6 +128,7 @@ pub fn process_create_proposal(
         name,
         description_link,
 
+        start_voting_at: None,
         draft_at: clock.unix_timestamp,
         signing_off_at: None,
         voting_at: None,
@@ -140,8 +143,14 @@ pub fn process_create_proposal(
         options: proposal_options,
         deny_vote_weight,
 
+        veto_vote_weight: None,
+        abstain_vote_weight: None,
+
         max_vote_weight: None,
+        max_voting_time: None,
         vote_threshold_percentage: None,
+
+        reserved: [0; 64],
     };
 
     create_and_serialize_account_signed::<ProposalV2>(
@@ -155,7 +164,7 @@ pub fn process_create_proposal(
         ),
         program_id,
         system_info,
-        rent,
+        &rent,
     )?;
 
     governance_data.proposals_count = governance_data.proposals_count.checked_add(1).unwrap();

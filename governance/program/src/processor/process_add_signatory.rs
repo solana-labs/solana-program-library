@@ -12,7 +12,7 @@ use spl_governance_tools::account::create_and_serialize_account_signed;
 use crate::state::{
     enums::GovernanceAccountType,
     proposal::get_proposal_data,
-    signatory_record::{get_signatory_record_address_seeds, SignatoryRecord},
+    signatory_record::{get_signatory_record_address_seeds, SignatoryRecordV2},
     token_owner_record::get_token_owner_record_data_for_proposal_owner,
 };
 
@@ -33,8 +33,7 @@ pub fn process_add_signatory(
     let payer_info = next_account_info(account_info_iter)?; // 4
     let system_info = next_account_info(account_info_iter)?; // 5
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 6
-    let rent = &Rent::from_account_info(rent_sysvar_info)?;
+    let rent = Rent::get()?;
 
     let mut proposal_data = get_proposal_data(program_id, proposal_info)?;
     proposal_data.assert_can_edit_signatories()?;
@@ -47,21 +46,22 @@ pub fn process_add_signatory(
 
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    let signatory_record_data = SignatoryRecord {
-        account_type: GovernanceAccountType::SignatoryRecord,
+    let signatory_record_data = SignatoryRecordV2 {
+        account_type: GovernanceAccountType::SignatoryRecordV2,
         proposal: *proposal_info.key,
         signatory,
         signed_off: false,
+        reserved_v2: [0; 8],
     };
 
-    create_and_serialize_account_signed::<SignatoryRecord>(
+    create_and_serialize_account_signed::<SignatoryRecordV2>(
         payer_info,
         signatory_record_info,
         &signatory_record_data,
         &get_signatory_record_address_seeds(proposal_info.key, &signatory),
         program_id,
         system_info,
-        rent,
+        &rent,
     )?;
 
     proposal_data.signatories_count = proposal_data.signatories_count.checked_add(1).unwrap();

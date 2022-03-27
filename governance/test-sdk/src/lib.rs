@@ -12,10 +12,12 @@ use solana_sdk::{account::Account, signature::Keypair, signer::Signer, transacti
 
 use bincode::deserialize;
 
+use spl_token::instruction::{set_authority, AuthorityType};
 use tools::clone_keypair;
 
 use crate::tools::map_transaction_error;
 
+pub mod addins;
 pub mod cookies;
 pub mod tools;
 
@@ -112,7 +114,12 @@ impl ProgramTestBench {
         }
     }
 
-    pub async fn create_mint(&mut self, mint_keypair: &Keypair, mint_authority: &Pubkey) {
+    pub async fn create_mint(
+        &mut self,
+        mint_keypair: &Keypair,
+        mint_authority: &Pubkey,
+        freeze_authority: Option<&Pubkey>,
+    ) {
         let mint_rent = self.rent.minimum_balance(spl_token::state::Mint::LEN);
 
         let instructions = [
@@ -127,13 +134,36 @@ impl ProgramTestBench {
                 &spl_token::id(),
                 &mint_keypair.pubkey(),
                 mint_authority,
-                None,
+                freeze_authority,
                 0,
             )
             .unwrap(),
         ];
 
         self.process_transaction(&instructions, Some(&[mint_keypair]))
+            .await
+            .unwrap();
+    }
+
+    /// Sets spl-token program account (Mint or TokenAccount) authority
+    pub async fn set_spl_token_account_authority(
+        &mut self,
+        account: &Pubkey,
+        account_authority: &Keypair,
+        new_authority: Option<&Pubkey>,
+        authority_type: AuthorityType,
+    ) {
+        let set_authority_ix = set_authority(
+            &spl_token::id(),
+            account,
+            new_authority,
+            authority_type,
+            &account_authority.pubkey(),
+            &[],
+        )
+        .unwrap();
+
+        self.process_transaction(&[set_authority_ix], Some(&[account_authority]))
             .await
             .unwrap();
     }

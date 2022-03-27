@@ -10,22 +10,22 @@ pub enum GovernanceAccountType {
     Uninitialized,
 
     /// Top level aggregation for governances with Community Token (and optional Council Token)
-    Realm,
+    RealmV1,
 
     /// Token Owner Record for given governing token owner within a Realm
-    TokenOwnerRecord,
+    TokenOwnerRecordV1,
 
-    /// Generic Account Governance account
-    AccountGovernance,
+    /// Governance account
+    GovernanceV1,
 
     /// Program Governance account
-    ProgramGovernance,
+    ProgramGovernanceV1,
 
     /// Proposal account for Governance account. A single Governance account can have multiple Proposal accounts
     ProposalV1,
 
     /// Proposal Signatory account
-    SignatoryRecord,
+    SignatoryRecordV1,
 
     /// Vote record account for a given Proposal.  Proposal can have 0..n voting records
     VoteRecordV1,
@@ -34,28 +34,60 @@ pub enum GovernanceAccountType {
     ProposalInstructionV1,
 
     /// Mint Governance account
-    MintGovernance,
+    MintGovernanceV1,
 
     /// Token Governance account
-    TokenGovernance,
+    TokenGovernanceV1,
 
-    /// Realm config account
+    /// Realm config account (introduced in V2)
     RealmConfig,
 
     /// Vote record account for a given Proposal.  Proposal can have 0..n voting records
     /// V2 adds support for multi option votes
     VoteRecordV2,
 
-    /// ProposalInstruction account which holds an instruction to execute for Proposal
-    /// V2 adds index for proposal option
-    ProposalInstructionV2,
+    /// ProposalTransaction account which holds instructions to execute for Proposal within a single Transaction
+    /// V2 replaces ProposalInstruction and adds index for proposal option and multiple instructions
+    ProposalTransactionV2,
 
     /// Proposal account for Governance account. A single Governance account can have multiple Proposal accounts
     /// V2 adds support for multiple vote options
     ProposalV2,
 
-    /// Program metadata account. It stores information about the particular SPL-Governance program instance
+    /// Program metadata account (introduced in V2)
+    /// It stores information about the particular SPL-Governance program instance
     ProgramMetadata,
+
+    /// Top level aggregation for governances with Community Token (and optional Council Token)
+    /// V2 adds the following fields:
+    /// 1) use_community_voter_weight_addin and use_max_community_voter_weight_addin to RealmConfig
+    /// 2) voting_proposal_count
+    /// 3) extra reserved space reserved_v2
+    RealmV2,
+
+    /// Token Owner Record for given governing token owner within a Realm
+    /// V2 adds extra reserved space reserved_v2
+    TokenOwnerRecordV2,
+
+    /// Governance account
+    /// V2 adds extra reserved space reserved_v2
+    GovernanceV2,
+
+    /// Program Governance account
+    /// V2 adds extra reserved space reserved_v2
+    ProgramGovernanceV2,
+
+    /// Mint Governance account
+    /// V2 adds extra reserved space reserved_v2
+    MintGovernanceV2,
+
+    /// Token Governance account
+    /// V2 adds extra reserved space reserved_v2
+    TokenGovernanceV2,
+
+    /// Proposal Signatory account
+    /// V2 adds extra reserved space reserved_v2
+    SignatoryRecordV2,
 }
 
 impl Default for GovernanceAccountType {
@@ -122,33 +154,43 @@ pub enum VoteThresholdPercentage {
     Quorum(u8),
 }
 
-/// The source of voter weights used to vote on proposals
+/// The type of vote tipping to use on a Proposal.
+///
+/// Vote tipping means that under some conditions voting will complete early.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub enum VoteWeightSource {
-    /// Governing token deposits into the Realm are used as voter weights
-    Deposit,
-    /// Governing token account snapshots as of the time a proposal entered voting state are used as voter weights
-    /// Note: Snapshot source is not supported in the current version
-    /// Support for account snapshots are required in solana and/or arweave as a prerequisite
-    Snapshot,
+pub enum VoteTipping {
+    /// Tip when there is no way for another option to win and the vote threshold
+    /// has been reached. This ignores voters withdrawing their votes.
+    ///
+    /// Currently only supported for the "yes" option in single choice votes.
+    Strict,
+
+    /// Tip when an option reaches the vote threshold and has more vote weight
+    /// than any other options.
+    ///
+    /// Currently only supported for the "yes" option in single choice votes.
+    Early,
+
+    /// Never tip the vote early.
+    Disabled,
 }
 
 /// The status of instruction execution
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub enum InstructionExecutionStatus {
-    /// Instruction was not executed yet
+pub enum TransactionExecutionStatus {
+    /// Transaction was not executed yet
     None,
 
-    /// Instruction was executed successfully
+    /// Transaction was executed successfully
     Success,
 
-    /// Instruction execution failed
+    /// Transaction execution failed
     Error,
 }
 
-/// Instruction execution flags defining how instructions are executed for a Proposal
+/// Transaction execution flags defining how instructions are executed for a Proposal
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum InstructionExecutionFlags {
