@@ -113,9 +113,7 @@ export const isReserve = (info: AccountInfo<Uint8Array>): boolean => {
 export const parseReserve: Parser<Reserve> = (pubkey: PublicKey, info: AccountInfo<Uint8Array>) => {
     if (!isReserve(info)) return;
 
-    const buffer = Uint8Array.from(info.data);
-    const reserve = ReserveLayout.decode(buffer);
-
+    const reserve = ReserveLayout.decode(info.data);
     if (!reserve.version) return;
 
     return {
