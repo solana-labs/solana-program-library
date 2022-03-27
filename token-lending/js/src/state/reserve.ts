@@ -1,8 +1,9 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
 import BigNumber from 'bignumber.js';
-import { blob, struct, u8 } from 'buffer-layout';
-import { decimal, Parser, publicKey, u64 } from '../util';
+import { blob, struct, u8 } from '@solana/buffer-layout';
+import { decimal, publicKey, u64 } from '@solana/buffer-layout-utils';
 import { LastUpdate, LastUpdateLayout } from './lastUpdate';
+import { Parser } from '../util';
 
 export interface Reserve {
     version: number;
@@ -11,6 +12,7 @@ export interface Reserve {
     liquidity: ReserveLiquidity;
     collateral: ReserveCollateral;
     config: ReserveConfig;
+    padding: Uint8Array;
 }
 
 export interface ReserveLiquidity {
@@ -104,16 +106,14 @@ export const ReserveLayout = struct<Reserve>([
 
 export const RESERVE_SIZE = ReserveLayout.span;
 
-export const isReserve = (info: AccountInfo<Buffer>): boolean => {
+export const isReserve = (info: AccountInfo<Uint8Array>): boolean => {
     return info.data.length === RESERVE_SIZE;
 };
 
-export const parseReserve: Parser<Reserve> = (pubkey: PublicKey, info: AccountInfo<Buffer>) => {
+export const parseReserve: Parser<Reserve> = (pubkey: PublicKey, info: AccountInfo<Uint8Array>) => {
     if (!isReserve(info)) return;
 
-    const buffer = Buffer.from(info.data);
-    const reserve = ReserveLayout.decode(buffer);
-
+    const reserve = ReserveLayout.decode(info.data);
     if (!reserve.version) return;
 
     return {

@@ -1,8 +1,9 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
 import BigNumber from 'bignumber.js';
-import { blob, seq, struct, u8 } from 'buffer-layout';
-import { decimal, Parser, publicKey, u64 } from '../util';
+import { blob, seq, struct, u8 } from '@solana/buffer-layout';
+import { decimal, publicKey, u64 } from '@solana/buffer-layout-utils';
 import { LastUpdate, LastUpdateLayout } from './lastUpdate';
+import { Parser } from '../util';
 
 export interface Obligation {
     version: number;
@@ -42,7 +43,7 @@ export interface ObligationDataFlat {
     unhealthyBorrowValue: BigNumber;
     depositsLen: number;
     borrowsLen: number;
-    dataFlat: Buffer;
+    dataFlat: Uint8Array;
 }
 
 /** @internal */
