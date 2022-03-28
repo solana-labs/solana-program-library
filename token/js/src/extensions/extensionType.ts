@@ -4,6 +4,7 @@ import { MULTISIG_SIZE } from '../state/multisig';
 import { ACCOUNT_TYPE_SIZE } from './accountType';
 import { MINT_CLOSE_AUTHORITY_SIZE } from './mintCloseAuthority';
 import { TRANSFER_FEE_AMOUNT_SIZE } from './transferFee';
+import { IMMUTABLE_OWNER_SIZE } from './immutableOwner';
 
 export enum ExtensionType {
     Uninitialized,
@@ -39,7 +40,7 @@ export function getTypeLen(e: ExtensionType): number {
         case ExtensionType.DefaultAccountState:
             return 1;
         case ExtensionType.ImmutableOwner:
-            return 0;
+            return IMMUTABLE_OWNER_SIZE;
         case ExtensionType.MemoTransfer:
             return 1;
         default:
