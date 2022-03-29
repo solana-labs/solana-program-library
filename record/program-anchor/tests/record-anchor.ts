@@ -120,12 +120,12 @@ describe("record-anchor", () => {
     let bytes = Uint8Array.from([0xf0, 0x9f, 0x90, 0x86, 0x86, 0x86, 0x86, 0x86]);
     await initializeStorageAccount(recordAccount, bytes);
 
-    const reciever = anchor.web3.Keypair.generate();
+    const recevier = anchor.web3.Keypair.generate();
     const tx = await program.rpc.closeAccount({
       accounts: {
         recordAccount: recordAccount.publicKey,
         authority: provider.wallet.publicKey,
-        reciever: reciever.publicKey,
+        recevier: recevier.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId
       }
     })
@@ -138,7 +138,7 @@ describe("record-anchor", () => {
     let bytes = Uint8Array.from([0xf0, 0x9f, 0x90, 0x86, 0x86, 0x86, 0x86, 0x86]);
     await initializeStorageAccount(recordAccount, bytes);
 
-    const reciever = anchor.web3.Keypair.generate();
+    const recevier = anchor.web3.Keypair.generate();
     const wrongAuthority = anchor.web3.Keypair.generate();
 
     assert.rejects(async () => {
@@ -146,7 +146,7 @@ describe("record-anchor", () => {
         accounts: {
           recordAccount: recordAccount.publicKey,
           authority: wrongAuthority,
-          reciever: reciever.publicKey,
+          recevier: recevier.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId
         }
       })

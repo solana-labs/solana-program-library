@@ -30,7 +30,7 @@ pub mod record_anchor {
     pub fn close_account(ctx: Context<CloseAccount>) -> Result<()> {
         msg!("RecordInstruction::CloseAccount");
         let data_info = &mut ctx.accounts.record_account;
-        let destination_info = &mut ctx.accounts.reciever;
+        let destination_info = &mut ctx.accounts.recevier;
 
         let destination_starting_lamports = destination_info.lamports();
         let data_lamports = data_info.to_account_info().lamports();
@@ -83,7 +83,7 @@ pub struct CloseAccount<'info> {
     pub authority: Signer<'info>,
     #[account(mut)]
     /// CHECK: This is not dangerous because we don't read or write from this account
-    pub reciever: UncheckedAccount<'info>,
+    pub recevier: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>
 }
 
