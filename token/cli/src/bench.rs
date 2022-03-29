@@ -1,17 +1,15 @@
-use crate::CommandResult;
-
 /// The `bench` subcommand
 use {
-    crate::{
-        config::Config, owner_address_arg,
-        rpc_client_utils::send_and_confirm_messages_with_spinner, Error,
-    },
+    crate::{config::Config, owner_address_arg, CommandResult, Error},
     clap::{value_t_or_exit, App, AppSettings, Arg, ArgMatches, SubCommand},
     solana_clap_utils::{
         input_parsers::pubkey_of_signer,
         input_validators::{is_amount, is_parsable, is_valid_pubkey},
     },
-    solana_client::rpc_client::RpcClient,
+    solana_client::{
+        rpc_client::RpcClient,
+        tpu_client::{TpuClient, TpuClientConfig},
+    },
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
         message::Message, native_token::Sol, program_pack::Pack, pubkey::Pubkey, signature::Signer,
@@ -461,12 +459,13 @@ fn send_messages(
     crate::check_fee_payer_balance(config, lamports_required)?;
 
     let start = Instant::now();
-    let transaction_errors = send_and_confirm_messages_with_spinner(
+    let tpu_client = TpuClient::new(
         config.rpc_client.clone(),
         &config.websocket_url,
-        messages,
-        &signers,
+        TpuClientConfig::default(),
     )?;
+    let transaction_errors =
+        tpu_client.send_and_confirm_messages_with_spinner(messages, &signers)?;
 
     for (i, transaction_error) in transaction_errors.into_iter().enumerate() {
         if let Some(transaction_error) = transaction_error {
