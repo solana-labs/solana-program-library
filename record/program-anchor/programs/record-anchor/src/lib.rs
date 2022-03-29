@@ -30,7 +30,7 @@ pub mod record_anchor {
     pub fn close_account(ctx: Context<CloseAccount>) -> Result<()> {
         msg!("RecordInstruction::CloseAccount");
         let data_info = &mut ctx.accounts.record_account;
-        let destination_info = &mut ctx.accounts.recevier;
+        let destination_info = &mut ctx.accounts.receiver;
 
         let destination_starting_lamports = destination_info.lamports();
         let data_lamports = data_info.to_account_info().lamports();
