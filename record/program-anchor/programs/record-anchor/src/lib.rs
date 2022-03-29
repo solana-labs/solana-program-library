@@ -13,7 +13,6 @@ pub mod record_anchor {
         let authority_info = *ctx.accounts.authority.key;
 
         data_info.authority = authority_info;
-        data_info.version = CURRENT_VERSION;
 
         Ok(())
     }
@@ -96,15 +95,11 @@ pub struct Write<'info> {
 }
 
 const DATA_SIZE: usize = 8;
-const CURRENT_VERSION: u8 = 1;
 const WRITABLE_START_INDEX: usize = 0;
 
 #[account]
 #[derive(Default)]
 pub struct RecordData {
-    /// Struct version, allows for upgrades to the program
-    pub version: u8,
-
     /// The account allowed to update the data
     pub authority: Pubkey,
 
