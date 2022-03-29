@@ -146,7 +146,7 @@ describe("record-anchor", () => {
         accounts: {
           recordAccount: recordAccount.publicKey,
           authority: wrongAuthority,
-          recevier: recevier.publicKey,
+          receiver: receiver.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId
         }
       })

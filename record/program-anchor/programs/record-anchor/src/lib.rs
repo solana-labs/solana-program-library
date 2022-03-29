@@ -83,7 +83,7 @@ pub struct CloseAccount<'info> {
     pub authority: Signer<'info>,
     #[account(mut)]
     /// CHECK: This is not dangerous because we don't read or write from this account
-    pub recevier: UncheckedAccount<'info>,
+    pub receiver: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>
 }
 
