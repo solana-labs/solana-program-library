@@ -45,7 +45,7 @@ pub mod record_anchor {
     pub fn write(ctx: Context<Write>, offset: u64, data: Vec<u8>) -> Result<()> {
         msg!("RecordInstruction::Write");
         let data_info = &mut ctx.accounts.record_account;
-        let start = WRITABLE_START_INDEX + offset as usize;
+        let start = offset as usize;
         let end = start + data.len();
         if end > data_info.data.len() {
             return Err(ProgramError::AccountDataTooSmall.into());
@@ -95,7 +95,6 @@ pub struct Write<'info> {
 }
 
 const DATA_SIZE: usize = 8;
-const WRITABLE_START_INDEX: usize = 0;
 
 #[account]
 #[derive(Default)]
