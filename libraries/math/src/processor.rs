@@ -115,7 +115,7 @@ pub fn process_instruction(
             Ok(())
         }
         MathInstruction::F32Exponentiate { base, exponent} => {
-            msg!("Calculating f32 Exponentiate");
+            msg!("Calculating f32 Exponent");
             sol_log_compute_units();
             let result = f32_exponentiate(base, exponent);
             sol_log_compute_units();

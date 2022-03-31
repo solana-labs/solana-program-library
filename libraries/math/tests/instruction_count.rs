@@ -149,9 +149,9 @@ async fn test_f32_divide() {
 
 #[tokio::test]
 async fn test_f32_exponentiate() {
-    let pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    //pc.set_compute_max_units();
+    pc.set_compute_max_units(1000);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
@@ -165,9 +165,9 @@ async fn test_f32_exponentiate() {
 
 #[tokio::test]
 async fn test_f32_natural_log() {
-    let pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    //pc.set_compute_max_units();
+    pc.set_compute_max_units(2900);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 

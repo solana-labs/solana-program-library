@@ -70,7 +70,7 @@ pub enum MathInstruction {
         /// The divisor
         divisor: f32,
     },
-////////////////////////////////////////////////////////////////////////////////////////////////
+
     /// Exponentiate a float base by a power
     /// 
     /// No accounts required for this instruction
@@ -88,10 +88,6 @@ pub enum MathInstruction {
         /// The argument
         argument: f32
     },
-
-    /// Evaluate the price of a european call option
-    /// 
-    /// No accaounts required for this instruction
 
     /// Don't do anything for comparison
     ///
@@ -183,7 +179,7 @@ pub fn f32_divide(dividend: f32, divisor: f32) -> Instruction {
 }
 
 
-/// Create F32 Multiplication instruction
+/// Create F32 Exponentiation instruction
 pub fn f32_exponentiate(base: f32, exponent: f32) -> Instruction {
     Instruction{
         program_id: id(),
