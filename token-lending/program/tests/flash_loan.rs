@@ -10,16 +10,16 @@ use solana_sdk::{
     signature::{Keypair, Signer},
     transaction::{Transaction, TransactionError},
 };
-use spl_token::solana_program::instruction::InstructionError;
-use spl_token_lending::{
+use solend_program::{
     error::LendingError, instruction::flash_loan, processor::process_instruction,
 };
+use spl_token::solana_program::instruction::InstructionError;
 
 #[tokio::test]
 async fn test_success() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -86,7 +86,7 @@ async fn test_success() {
 
     let mut transaction = Transaction::new_with_payer(
         &[flash_loan(
-            spl_token_lending::id(),
+            solend_program::id(),
             FLASH_LOAN_AMOUNT,
             usdc_test_reserve.liquidity_supply_pubkey,
             program_owned_token_account,
@@ -139,8 +139,8 @@ async fn test_success() {
 #[tokio::test]
 async fn test_failure() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -195,7 +195,7 @@ async fn test_failure() {
 
     let mut transaction = Transaction::new_with_payer(
         &[flash_loan(
-            spl_token_lending::id(),
+            solend_program::id(),
             FLASH_LOAN_AMOUNT,
             usdc_test_reserve.liquidity_supply_pubkey,
             program_owned_token_account,

@@ -9,17 +9,17 @@ use solana_sdk::{
     signature::{Keypair, Signer},
     transaction::Transaction,
 };
-use spl_token::instruction::approve;
-use spl_token_lending::{
+use solend_program::{
     instruction::deposit_obligation_collateral, processor::process_instruction,
     state::INITIAL_COLLATERAL_RATIO,
 };
+use spl_token::instruction::approve;
 
 #[tokio::test]
 async fn test_success() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -91,7 +91,7 @@ async fn test_success() {
             )
             .unwrap(),
             deposit_obligation_collateral(
-                spl_token_lending::id(),
+                solend_program::id(),
                 SOL_DEPOSIT_AMOUNT_LAMPORTS,
                 sol_test_reserve.user_collateral_pubkey,
                 sol_test_reserve.collateral_supply_pubkey,

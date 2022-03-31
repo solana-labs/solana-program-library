@@ -6,7 +6,7 @@ See https://spl.solana.com/token-lending for more details
 
 ## Install the CLI
 ```shell
-cargo install spl-token-lending-cli
+cargo install solend-program-cli
 ```
 
 ## Deploy a lending program (optional)
@@ -23,7 +23,7 @@ The lending market owner must sign to add reserves.
 
 ### Usage
 ```shell
-spl-token-lending \
+solend-program \
   --program      PUBKEY \
   --fee-payer    SIGNER \
   create-market \
@@ -33,11 +33,11 @@ spl-token-lending \
 - `--fee-payer` will sign to pay transaction fees.
 - `--market-owner` is the lending market owner pubkey.
 
-Run `spl-token-lending create-market --help` for more details and options.
+Run `solend-program create-market --help` for more details and options.
 
 ### Example
 ```shell
-spl-token-lending \
+solend-program \
   --program      6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH \
   --fee-payer    owner.json \
   create-market \
@@ -54,7 +54,7 @@ A reserve is a liquidity pool that can be deposited into, borrowed from, and opt
 
 ### Usage
 ```shell
-spl-token-lending \
+solend-program \
   --program      PUBKEY \
   --fee-payer    SIGNER \
   add-reserve \
@@ -76,11 +76,11 @@ spl-token-lending \
 - `--pyth-product` and `--pyth-price` are oracle
   accounts [provided by Pyth](https://pyth.network/developers/consumers/accounts).
 
-Run `spl-token-lending add-reserve --help` for more details and options.
+Run `solend-program add-reserve --help` for more details and options.
 
 ### Example
 ```shell
-spl-token-lending \
+solend-program \
   --program      6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH \
   --fee-payer    owner.json \
   add-reserve \

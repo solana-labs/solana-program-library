@@ -9,19 +9,19 @@ use solana_sdk::{
     signature::{Keypair, Signer},
     transaction::Transaction,
 };
-use spl_token::instruction::approve;
-use spl_token_lending::{
+use solend_program::{
     instruction::repay_obligation_liquidity,
     math::{Decimal, Rate, TryAdd, TryMul, TrySub},
     processor::process_instruction,
     state::INITIAL_COLLATERAL_RATIO,
 };
+use spl_token::instruction::approve;
 
 #[tokio::test]
 async fn test_success() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -107,7 +107,7 @@ async fn test_success() {
             )
             .unwrap(),
             repay_obligation_liquidity(
-                spl_token_lending::id(),
+                solend_program::id(),
                 USDC_BORROW_AMOUNT_FRACTIONAL,
                 usdc_test_reserve.user_liquidity_pubkey,
                 usdc_test_reserve.liquidity_supply_pubkey,

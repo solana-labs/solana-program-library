@@ -3637,6 +3637,45 @@ dependencies = [
 ]
 
 [[package]]
+name = "solend-program"
+version = "0.1.0"
+dependencies = [
+ "arrayref",
+ "assert_matches",
+ "base64 0.13.0",
+ "bytemuck",
+ "log",
+ "num-derive",
+ "num-traits",
+ "proptest",
+ "serde",
+ "serde_yaml",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-token",
+ "switchboard-program",
+ "switchboard-v2",
+ "thiserror",
+ "uint",
+]
+
+[[package]]
+name = "solend-program-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "solana-clap-utils",
+ "solana-cli-config",
+ "solana-client",
+ "solana-logger",
+ "solana-program",
+ "solana-sdk",
+ "solend-program",
+ "spl-token",
+]
+
+[[package]]
 name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3673,45 +3712,6 @@ dependencies = [
  "num_enum",
  "solana-program",
  "thiserror",
-]
-
-[[package]]
-name = "spl-token-lending"
-version = "0.1.0"
-dependencies = [
- "arrayref",
- "assert_matches",
- "base64 0.13.0",
- "bytemuck",
- "log",
- "num-derive",
- "num-traits",
- "proptest",
- "serde",
- "serde_yaml",
- "solana-program",
- "solana-program-test",
- "solana-sdk",
- "spl-token",
- "switchboard-program",
- "switchboard-v2",
- "thiserror",
- "uint",
-]
-
-[[package]]
-name = "spl-token-lending-cli"
-version = "0.1.0"
-dependencies = [
- "clap",
- "solana-clap-utils",
- "solana-cli-config",
- "solana-client",
- "solana-logger",
- "solana-program",
- "solana-sdk",
- "spl-token",
- "spl-token-lending",
 ]
 
 [[package]]

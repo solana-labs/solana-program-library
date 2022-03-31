@@ -10,7 +10,7 @@ use solana_sdk::{
     signature::{Keypair, Signer},
     transaction::{Transaction, TransactionError},
 };
-use spl_token_lending::{
+use solend_program::{
     error::LendingError,
     instruction::{init_reserve, update_reserve_config},
     math::Decimal,
@@ -21,8 +21,8 @@ use spl_token_lending::{
 #[tokio::test]
 async fn test_success() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -86,8 +86,8 @@ async fn test_success() {
 #[tokio::test]
 async fn test_init_reserve_null_oracles() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -97,9 +97,9 @@ async fn test_init_reserve_null_oracles() {
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
     let all_null_oracles = TestOracle {
-        pyth_product_pubkey: spl_token_lending::NULL_PUBKEY,
-        pyth_price_pubkey: spl_token_lending::NULL_PUBKEY,
-        switchboard_feed_pubkey: spl_token_lending::NULL_PUBKEY,
+        pyth_product_pubkey: solend_program::NULL_PUBKEY,
+        pyth_price_pubkey: solend_program::NULL_PUBKEY,
+        switchboard_feed_pubkey: solend_program::NULL_PUBKEY,
         price: Decimal::from(1u64),
     };
 
@@ -147,8 +147,8 @@ async fn test_init_reserve_null_oracles() {
 #[tokio::test]
 async fn test_null_switchboard() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -158,7 +158,7 @@ async fn test_null_switchboard() {
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
     let mut sol_oracle = add_sol_oracle(&mut test);
-    sol_oracle.switchboard_feed_pubkey = spl_token_lending::NULL_PUBKEY;
+    sol_oracle.switchboard_feed_pubkey = solend_program::NULL_PUBKEY;
 
     let (mut banks_client, payer, _recent_blockhash) = test.start().await;
 
@@ -213,8 +213,8 @@ async fn test_null_switchboard() {
 #[tokio::test]
 async fn test_already_initialized() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -242,7 +242,7 @@ async fn test_already_initialized() {
 
     let mut transaction = Transaction::new_with_payer(
         &[init_reserve(
-            spl_token_lending::id(),
+            solend_program::id(),
             42,
             usdc_test_reserve.config,
             usdc_test_reserve.user_liquidity_pubkey,
@@ -281,8 +281,8 @@ async fn test_already_initialized() {
 #[tokio::test]
 async fn test_invalid_fees() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -377,8 +377,8 @@ async fn test_invalid_fees() {
 #[tokio::test]
 async fn test_update_reserve_config() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -424,7 +424,7 @@ async fn test_update_reserve_config() {
     let (mut banks_client, payer, recent_blockhash) = test.start().await;
     let mut transaction = Transaction::new_with_payer(
         &[update_reserve_config(
-            spl_token_lending::id(),
+            solend_program::id(),
             new_config,
             test_reserve.pubkey,
             lending_market.pubkey,
@@ -445,8 +445,8 @@ async fn test_update_reserve_config() {
 #[tokio::test]
 async fn test_update_invalid_oracle_config() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -474,14 +474,14 @@ async fn test_update_invalid_oracle_config() {
     // Try setting both of the oracles to null: Should fail
     let mut transaction = Transaction::new_with_payer(
         &[update_reserve_config(
-            spl_token_lending::id(),
+            solend_program::id(),
             config,
             test_reserve.pubkey,
             lending_market.pubkey,
             lending_market.owner.pubkey(),
-            spl_token_lending::NULL_PUBKEY,
-            spl_token_lending::NULL_PUBKEY,
-            spl_token_lending::NULL_PUBKEY,
+            solend_program::NULL_PUBKEY,
+            solend_program::NULL_PUBKEY,
+            solend_program::NULL_PUBKEY,
         )],
         Some(&payer.pubkey()),
     );
@@ -502,14 +502,14 @@ async fn test_update_invalid_oracle_config() {
     // Set one of the oracles to null
     let mut transaction = Transaction::new_with_payer(
         &[update_reserve_config(
-            spl_token_lending::id(),
+            solend_program::id(),
             config,
             test_reserve.pubkey,
             lending_market.pubkey,
             lending_market.owner.pubkey(),
             oracle.pyth_product_pubkey,
             oracle.pyth_price_pubkey,
-            spl_token_lending::NULL_PUBKEY,
+            solend_program::NULL_PUBKEY,
         )],
         Some(&payer.pubkey()),
     );
@@ -523,21 +523,21 @@ async fn test_update_invalid_oracle_config() {
     );
     assert_eq!(
         updated_reserve.liquidity.switchboard_oracle_pubkey,
-        spl_token_lending::NULL_PUBKEY
+        solend_program::NULL_PUBKEY
     );
 
     // Setting both oracles to null still fails, even if one is
     // already null
     let mut transaction = Transaction::new_with_payer(
         &[update_reserve_config(
-            spl_token_lending::id(),
+            solend_program::id(),
             config,
             test_reserve.pubkey,
             lending_market.pubkey,
             lending_market.owner.pubkey(),
-            spl_token_lending::NULL_PUBKEY,
-            spl_token_lending::NULL_PUBKEY,
-            spl_token_lending::NULL_PUBKEY,
+            solend_program::NULL_PUBKEY,
+            solend_program::NULL_PUBKEY,
+            solend_program::NULL_PUBKEY,
         )],
         Some(&payer.pubkey()),
     );

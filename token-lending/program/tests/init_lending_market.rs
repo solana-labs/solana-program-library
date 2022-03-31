@@ -10,15 +10,15 @@ use solana_sdk::{
     signature::Signer,
     transaction::{Transaction, TransactionError},
 };
-use spl_token_lending::{
+use solend_program::{
     error::LendingError, instruction::init_lending_market, processor::process_instruction,
 };
 
 #[tokio::test]
 async fn test_success() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -35,8 +35,8 @@ async fn test_success() {
 #[tokio::test]
 async fn test_already_initialized() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -45,7 +45,7 @@ async fn test_already_initialized() {
 
     let mut transaction = Transaction::new_with_payer(
         &[init_lending_market(
-            spl_token_lending::id(),
+            solend_program::id(),
             existing_market.owner.pubkey(),
             existing_market.quote_currency,
             existing_market.pubkey,

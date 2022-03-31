@@ -10,7 +10,7 @@ use solana_sdk::{
     signature::{Keypair, Signer},
     transaction::{Transaction, TransactionError},
 };
-use spl_token_lending::{
+use solend_program::{
     error::LendingError,
     instruction::{refresh_obligation, withdraw_obligation_collateral},
     processor::process_instruction,
@@ -21,8 +21,8 @@ use std::u64;
 #[tokio::test]
 async fn test_withdraw_fixed_amount() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -102,12 +102,12 @@ async fn test_withdraw_fixed_amount() {
     let mut transaction = Transaction::new_with_payer(
         &[
             refresh_obligation(
-                spl_token_lending::id(),
+                solend_program::id(),
                 test_obligation.pubkey,
                 vec![sol_test_reserve.pubkey, usdc_test_reserve.pubkey],
             ),
             withdraw_obligation_collateral(
-                spl_token_lending::id(),
+                solend_program::id(),
                 WITHDRAW_AMOUNT,
                 sol_test_reserve.collateral_supply_pubkey,
                 sol_test_reserve.user_collateral_pubkey,
@@ -148,8 +148,8 @@ async fn test_withdraw_fixed_amount() {
 #[tokio::test]
 async fn test_withdraw_max_amount() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -212,12 +212,12 @@ async fn test_withdraw_max_amount() {
     let mut transaction = Transaction::new_with_payer(
         &[
             refresh_obligation(
-                spl_token_lending::id(),
+                solend_program::id(),
                 test_obligation.pubkey,
                 vec![usdc_test_reserve.pubkey],
             ),
             withdraw_obligation_collateral(
-                spl_token_lending::id(),
+                solend_program::id(),
                 WITHDRAW_AMOUNT,
                 usdc_test_reserve.collateral_supply_pubkey,
                 usdc_test_reserve.user_collateral_pubkey,
@@ -257,8 +257,8 @@ async fn test_withdraw_max_amount() {
 #[tokio::test]
 async fn test_withdraw_too_large() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -323,12 +323,12 @@ async fn test_withdraw_too_large() {
     let mut transaction = Transaction::new_with_payer(
         &[
             refresh_obligation(
-                spl_token_lending::id(),
+                solend_program::id(),
                 test_obligation.pubkey,
                 vec![sol_test_reserve.pubkey, usdc_test_reserve.pubkey],
             ),
             withdraw_obligation_collateral(
-                spl_token_lending::id(),
+                solend_program::id(),
                 WITHDRAW_AMOUNT,
                 sol_test_reserve.collateral_supply_pubkey,
                 sol_test_reserve.user_collateral_pubkey,

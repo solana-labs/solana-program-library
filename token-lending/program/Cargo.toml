@@ -1,9 +1,9 @@
 [package]
-name = "spl-token-lending"
+name = "solend-program"
 version = "0.1.0"
-description = "Solana Program Library Token Lending"
-authors = ["Solana Maintainers <maintainers@solana.foundation>"]
-repository = "https://github.com/solana-labs/solana-program-library"
+description = "Solend Program"
+authors = ["Solend Maintainers <maintainers@solend.fi>"]
+repository = "https://github.com/solendprotocol/solana-program-library"
 license = "Apache-2.0"
 edition = "2018"
 

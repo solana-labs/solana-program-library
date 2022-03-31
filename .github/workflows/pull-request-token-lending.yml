@@ -64,27 +64,3 @@ jobs:
           name: token-lending-programs
           path: "target/deploy/*.so"
           if-no-files-found: error
-
-  js-test:
-    runs-on: ubuntu-latest
-    env:
-      NODE_VERSION: 12.x
-    needs: cargo-test-bpf
-    steps:
-      - uses: actions/checkout@v2
-      - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v1
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - uses: actions/cache@v2
-        with:
-          path: ~/.npm
-          key: node-${{ hashFiles('token-lending/js/package-lock.json') }}
-          restore-keys: |
-            node-
-      - name: Download programs
-        uses: actions/download-artifact@v2
-        with:
-          name: token-lending-programs
-          path: target/deploy
-      - run: ./ci/js-test-token-lending.sh

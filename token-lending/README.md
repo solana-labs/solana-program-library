@@ -30,7 +30,7 @@ This is optional! You can skip these steps and use the [Token Lending CLI](./cli
 1. Install the Token and Token Lending CLIs:
    ```shell
    cargo install spl-token-cli
-   cargo install spl-token-lending-cli
+   cargo install solend-program-cli
    ```
    
 1. Clone the SPL repo:
@@ -101,7 +101,7 @@ This is optional! You can skip these steps and use the [Token Lending CLI](./cli
    solana program deploy \
      -k owner.json \
      --program-id lending.json \
-     target/deploy/spl_token_lending.so
+     target/deploy/solend_program.so
 
    # Program Id: 6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH
    ```

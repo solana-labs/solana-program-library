@@ -1,7 +1,7 @@
 //! Program state processor
 
 use crate::{
-    self as spl_token_lending,
+    self as solend_program,
     error::LendingError,
     instruction::LendingInstruction,
     math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub, WAD},
@@ -279,9 +279,9 @@ fn process_init_reserve(
         msg!("Lending market owner provided must be a signer");
         return Err(LendingError::InvalidSigner.into());
     }
-    if *switchboard_feed_info.key == spl_token_lending::NULL_PUBKEY
-        && (*pyth_price_info.key == spl_token_lending::NULL_PUBKEY
-            || *pyth_product_info.key == spl_token_lending::NULL_PUBKEY)
+    if *switchboard_feed_info.key == solend_program::NULL_PUBKEY
+        && (*pyth_price_info.key == solend_program::NULL_PUBKEY
+            || *pyth_product_info.key == solend_program::NULL_PUBKEY)
     {
         msg!("Both price oracles are null. At least one must be non-null");
         return Err(LendingError::InvalidOracleConfig.into());
@@ -2181,9 +2181,9 @@ fn process_update_reserve_config(
         validate_switchboard_keys(&lending_market, switchboard_feed_info)?;
         reserve.liquidity.switchboard_oracle_pubkey = *switchboard_feed_info.key;
     }
-    if reserve.liquidity.switchboard_oracle_pubkey == spl_token_lending::NULL_PUBKEY
-        && (*pyth_price_info.key == spl_token_lending::NULL_PUBKEY
-            || *pyth_product_info.key == spl_token_lending::NULL_PUBKEY)
+    if reserve.liquidity.switchboard_oracle_pubkey == solend_program::NULL_PUBKEY
+        && (*pyth_price_info.key == solend_program::NULL_PUBKEY
+            || *pyth_product_info.key == solend_program::NULL_PUBKEY)
     {
         msg!("At least one price oracle must have a non-null pubkey");
         return Err(LendingError::InvalidOracleConfig.into());
@@ -2280,7 +2280,7 @@ fn get_price(
 fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decimal, ProgramError> {
     const STALE_AFTER_SLOTS_ELAPSED: u64 = 240;
 
-    if *pyth_price_info.key == spl_token_lending::NULL_PUBKEY {
+    if *pyth_price_info.key == solend_program::NULL_PUBKEY {
         return Err(LendingError::NullOracleConfig.into());
     }
 
@@ -2361,7 +2361,7 @@ fn get_switchboard_price(
 ) -> Result<Decimal, ProgramError> {
     const STALE_AFTER_SLOTS_ELAPSED: u64 = 240;
 
-    if *switchboard_feed_info.key == spl_token_lending::NULL_PUBKEY {
+    if *switchboard_feed_info.key == solend_program::NULL_PUBKEY {
         return Err(LendingError::NullOracleConfig.into());
     }
     if switchboard_feed_info.owner == &switchboard_v2_mainnet::id()
@@ -2612,7 +2612,7 @@ fn validate_pyth_keys(
     pyth_product_info: &AccountInfo,
     pyth_price_info: &AccountInfo,
 ) -> ProgramResult {
-    if *pyth_price_info.key == spl_token_lending::NULL_PUBKEY {
+    if *pyth_price_info.key == solend_program::NULL_PUBKEY {
         return Ok(());
     }
     if &lending_market.oracle_program_id != pyth_product_info.owner {
@@ -2663,7 +2663,7 @@ fn validate_switchboard_keys(
     lending_market: &LendingMarket,
     switchboard_feed_info: &AccountInfo,
 ) -> ProgramResult {
-    if *switchboard_feed_info.key == spl_token_lending::NULL_PUBKEY {
+    if *switchboard_feed_info.key == solend_program::NULL_PUBKEY {
         return Ok(());
     }
     if switchboard_feed_info.owner != &lending_market.switchboard_oracle_program_id

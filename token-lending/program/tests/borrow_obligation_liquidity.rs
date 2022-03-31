@@ -10,7 +10,7 @@ use solana_sdk::{
     signature::{Keypair, Signer},
     transaction::{Transaction, TransactionError},
 };
-use spl_token_lending::{
+use solend_program::{
     error::LendingError,
     instruction::{borrow_obligation_liquidity, refresh_obligation, refresh_reserve},
     math::Decimal,
@@ -22,8 +22,8 @@ use std::u64;
 #[tokio::test]
 async fn test_borrow_usdc_fixed_amount() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -96,12 +96,12 @@ async fn test_borrow_usdc_fixed_amount() {
     let mut transaction = Transaction::new_with_payer(
         &[
             refresh_obligation(
-                spl_token_lending::id(),
+                solend_program::id(),
                 test_obligation.pubkey,
                 vec![sol_test_reserve.pubkey],
             ),
             borrow_obligation_liquidity(
-                spl_token_lending::id(),
+                solend_program::id(),
                 USDC_BORROW_AMOUNT_FRACTIONAL,
                 usdc_test_reserve.liquidity_supply_pubkey,
                 usdc_test_reserve.user_liquidity_pubkey,
@@ -166,8 +166,8 @@ async fn test_borrow_usdc_fixed_amount() {
 #[tokio::test]
 async fn test_borrow_sol_max_amount() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -240,12 +240,12 @@ async fn test_borrow_sol_max_amount() {
     let mut transaction = Transaction::new_with_payer(
         &[
             refresh_obligation(
-                spl_token_lending::id(),
+                solend_program::id(),
                 test_obligation.pubkey,
                 vec![usdc_test_reserve.pubkey],
             ),
             borrow_obligation_liquidity(
-                spl_token_lending::id(),
+                solend_program::id(),
                 u64::MAX,
                 sol_test_reserve.liquidity_supply_pubkey,
                 sol_test_reserve.user_liquidity_pubkey,
@@ -304,8 +304,8 @@ async fn test_borrow_sol_max_amount() {
 #[tokio::test]
 async fn test_borrow_too_large() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -368,12 +368,12 @@ async fn test_borrow_too_large() {
     let mut transaction = Transaction::new_with_payer(
         &[
             refresh_obligation(
-                spl_token_lending::id(),
+                solend_program::id(),
                 test_obligation.pubkey,
                 vec![sol_test_reserve.pubkey],
             ),
             borrow_obligation_liquidity(
-                spl_token_lending::id(),
+                solend_program::id(),
                 USDC_BORROW_AMOUNT_FRACTIONAL,
                 usdc_test_reserve.liquidity_supply_pubkey,
                 usdc_test_reserve.user_liquidity_pubkey,
@@ -407,8 +407,8 @@ async fn test_borrow_too_large() {
 #[tokio::test]
 async fn test_borrow_limit() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -471,12 +471,12 @@ async fn test_borrow_limit() {
     let mut transaction = Transaction::new_with_payer(
         &[
             refresh_obligation(
-                spl_token_lending::id(),
+                solend_program::id(),
                 test_obligation.pubkey,
                 vec![sol_test_reserve.pubkey],
             ),
             borrow_obligation_liquidity(
-                spl_token_lending::id(),
+                solend_program::id(),
                 reserve_config.borrow_limit + 1,
                 usdc_test_reserve.liquidity_supply_pubkey,
                 usdc_test_reserve.user_liquidity_pubkey,
@@ -510,12 +510,12 @@ async fn test_borrow_limit() {
     let mut transaction = Transaction::new_with_payer(
         &[
             refresh_obligation(
-                spl_token_lending::id(),
+                solend_program::id(),
                 test_obligation.pubkey,
                 vec![sol_test_reserve.pubkey],
             ),
             borrow_obligation_liquidity(
-                spl_token_lending::id(),
+                solend_program::id(),
                 u64::MAX,
                 usdc_test_reserve.liquidity_supply_pubkey,
                 usdc_test_reserve.user_liquidity_pubkey,
@@ -527,7 +527,7 @@ async fn test_borrow_limit() {
                 Some(usdc_test_reserve.liquidity_host_pubkey),
             ),
             refresh_reserve(
-                spl_token_lending::id(),
+                solend_program::id(),
                 usdc_test_reserve.pubkey,
                 usdc_oracle.pyth_price_pubkey,
                 usdc_oracle.switchboard_feed_pubkey,
@@ -548,18 +548,18 @@ async fn test_borrow_limit() {
     let mut transaction = Transaction::new_with_payer(
         &[
             refresh_reserve(
-                spl_token_lending::id(),
+                solend_program::id(),
                 usdc_test_reserve.pubkey,
                 usdc_oracle.pyth_price_pubkey,
                 usdc_oracle.switchboard_feed_pubkey,
             ),
             refresh_obligation(
-                spl_token_lending::id(),
+                solend_program::id(),
                 test_obligation.pubkey,
                 vec![sol_test_reserve.pubkey, usdc_test_reserve.pubkey],
             ),
             borrow_obligation_liquidity(
-                spl_token_lending::id(),
+                solend_program::id(),
                 u64::MAX,
                 usdc_test_reserve.liquidity_supply_pubkey,
                 usdc_test_reserve.user_liquidity_pubkey,

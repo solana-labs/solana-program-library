@@ -11,7 +11,7 @@ use solana_sdk::{
     signature::{Keypair, Signer},
     transaction::{Transaction, TransactionError},
 };
-use spl_token_lending::{
+use solend_program::{
     error::LendingError,
     instruction::{set_lending_market_owner, LendingInstruction},
     processor::process_instruction,
@@ -20,8 +20,8 @@ use spl_token_lending::{
 #[tokio::test]
 async fn test_success() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -34,7 +34,7 @@ async fn test_success() {
     let new_owner = Pubkey::new_unique();
     let mut transaction = Transaction::new_with_payer(
         &[set_lending_market_owner(
-            spl_token_lending::id(),
+            solend_program::id(),
             lending_market.pubkey,
             lending_market.owner.pubkey(),
             new_owner,
@@ -57,8 +57,8 @@ async fn test_success() {
 #[tokio::test]
 async fn test_invalid_owner() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -69,7 +69,7 @@ async fn test_invalid_owner() {
     let new_owner = Pubkey::new_unique();
     let mut transaction = Transaction::new_with_payer(
         &[set_lending_market_owner(
-            spl_token_lending::id(),
+            solend_program::id(),
             lending_market.pubkey,
             invalid_owner.pubkey(),
             new_owner,
@@ -95,8 +95,8 @@ async fn test_invalid_owner() {
 #[tokio::test]
 async fn test_owner_not_signer() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -106,7 +106,7 @@ async fn test_owner_not_signer() {
     let new_owner = Pubkey::new_unique();
     let mut transaction = Transaction::new_with_payer(
         &[Instruction {
-            program_id: spl_token_lending::id(),
+            program_id: solend_program::id(),
             accounts: vec![
                 AccountMeta::new(lending_market.pubkey, false),
                 AccountMeta::new_readonly(lending_market.owner.pubkey(), false),

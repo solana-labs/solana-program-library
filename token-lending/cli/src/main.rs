@@ -17,17 +17,17 @@ use {
         system_instruction,
         transaction::Transaction,
     },
+    solend_program::{
+        self,
+        instruction::{init_lending_market, init_reserve, update_reserve_config},
+        math::WAD,
+        state::{LendingMarket, Reserve, ReserveConfig, ReserveFees},
+    },
     spl_token::{
         amount_to_ui_amount,
         instruction::{approve, revoke},
         state::{Account as Token, Mint},
         ui_amount_to_amount,
-    },
-    spl_token_lending::{
-        self,
-        instruction::{init_lending_market, init_reserve, update_reserve_config},
-        math::WAD,
-        state::{LendingMarket, Reserve, ReserveConfig, ReserveFees},
     },
     std::{borrow::Borrow, process::exit, str::FromStr},
     system_instruction::create_account,
@@ -90,7 +90,7 @@ const SWITCHBOARD_PROGRAM_ID_DEV: &str = "7azgmy1pFXHikv36q1zZASvFq5vFa39TT9NweV
 fn main() {
     solana_logger::setup_with_default("solana=info");
 
-    let default_lending_program_id: &str = &spl_token_lending::id().to_string();
+    let default_lending_program_id: &str = &solend_program::id().to_string();
 
     let matches = App::new(crate_name!())
         .about(crate_description!())
@@ -369,6 +369,16 @@ fn main() {
                         .help("Amount of fee going to host account: [0, 100]"),
                 )
                 .arg(
+                    Arg::with_name("protocol_liquidation_fee")
+                        .long("protocol-liquidation-fee")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .default_value("30")
+                        .help("Amount of liquidation bonus going to fee reciever: [0, 100]"),
+                )
+                .arg(
                     Arg::with_name("deposit_limit")
                         .long("deposit-limit")
                         .validator(is_parsable::<u64>)
@@ -509,6 +519,15 @@ fn main() {
                         .takes_value(true)
                         .required(false)
                         .help("Amount of fee going to host account: [0, 100]"),
+                )
+                .arg(
+                    Arg::with_name("protocol_liquidation_fee")
+                        .long("protocol-liquidation-fee")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Amount of liquidation bonus going to fee reciever: [0, 100]"),
                 )
                 .arg(
                     Arg::with_name("deposit_limit")
@@ -1180,7 +1199,7 @@ fn command_update_reserve(
         reserve.config.protocol_liquidation_fee = reserve_config.protocol_liquidation_fee.unwrap();
     }
 
-    let mut new_pyth_product_pubkey = spl_token_lending::NULL_PUBKEY;
+    let mut new_pyth_product_pubkey = solend_program::NULL_PUBKEY;
     if pyth_price_pubkey.is_some() {
         println!(
             "Updating pyth oracle pubkey from {} to {}",

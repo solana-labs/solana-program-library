@@ -9,7 +9,7 @@ use solana_sdk::{
     signature::{Keypair, Signer},
     transaction::Transaction,
 };
-use spl_token_lending::{
+use solend_program::{
     instruction::refresh_reserve,
     math::{Decimal, Rate, TryAdd, TryDiv, TryMul},
     processor::process_instruction,
@@ -19,8 +19,8 @@ use spl_token_lending::{
 #[tokio::test]
 async fn test_success() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -91,13 +91,13 @@ async fn test_success() {
     let mut transaction = Transaction::new_with_payer(
         &[
             refresh_reserve(
-                spl_token_lending::id(),
+                solend_program::id(),
                 usdc_test_reserve.pubkey,
                 usdc_oracle.pyth_price_pubkey,
                 usdc_oracle.switchboard_feed_pubkey,
             ),
             refresh_reserve(
-                spl_token_lending::id(),
+                solend_program::id(),
                 sol_test_reserve.pubkey,
                 sol_oracle.pyth_price_pubkey,
                 sol_oracle.switchboard_feed_pubkey,

@@ -1,11 +1,11 @@
 [package]
-authors = ["Solana Maintainers <maintainers@solana.foundation>"]
-description = "SPL Token Lending CLI"
+authors = ["Solend Maintainers <maintainers@solend.fi>"]
+description = "Solend Program CLI"
 edition = "2018"
-homepage = "https://spl.solana.com/token-lending"
+homepage = "https://solend.fi"
 license = "Apache-2.0"
-name = "spl-token-lending-cli"
-repository = "https://github.com/solana-labs/solana-program-library"
+name = "solend-program-cli"
+repository = "https://github.com/solendprotocol/solana-program-library"
 version = "0.1.0"
 
 [dependencies]
@@ -16,9 +16,9 @@ solana-client = "=1.8.14"
 solana-logger = "=1.8.14"
 solana-sdk = "=1.8.14"
 solana-program = "=1.8.14"
-spl-token-lending = { path="../program", features = [ "no-entrypoint" ] }
+solend-program = { path="../program", features = [ "no-entrypoint" ] }
 spl-token = { version = "3.2.0", features=["no-entrypoint"] }
 
 [[bin]]
-name = "spl-token-lending"
+name = "solend-program"
 path = "src/main.rs"

@@ -11,8 +11,7 @@ use solana_sdk::{
     system_instruction::create_account,
     transaction::Transaction,
 };
-use spl_token::{instruction::approve, solana_program::program_pack::Pack};
-use spl_token_lending::{
+use solend_program::{
     instruction::{
         borrow_obligation_liquidity, deposit_obligation_collateral, init_obligation,
         refresh_obligation, refresh_reserve, repay_obligation_liquidity,
@@ -22,12 +21,13 @@ use spl_token_lending::{
     processor::process_instruction,
     state::{Obligation, INITIAL_COLLATERAL_RATIO},
 };
+use spl_token::{instruction::approve, solana_program::program_pack::Pack};
 
 #[tokio::test]
 async fn test_success() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -113,11 +113,11 @@ async fn test_success() {
                 &obligation_keypair.pubkey(),
                 rent.minimum_balance(Obligation::LEN),
                 Obligation::LEN as u64,
-                &spl_token_lending::id(),
+                &solend_program::id(),
             ),
             // 1
             init_obligation(
-                spl_token_lending::id(),
+                solend_program::id(),
                 obligation_pubkey,
                 lending_market.pubkey,
                 user_accounts_owner_pubkey,
@@ -134,7 +134,7 @@ async fn test_success() {
             .unwrap(),
             // 3
             deposit_obligation_collateral(
-                spl_token_lending::id(),
+                solend_program::id(),
                 SOL_DEPOSIT_AMOUNT_LAMPORTS,
                 sol_test_reserve.user_collateral_pubkey,
                 sol_test_reserve.collateral_supply_pubkey,
@@ -146,27 +146,27 @@ async fn test_success() {
             ),
             // 4
             refresh_reserve(
-                spl_token_lending::id(),
+                solend_program::id(),
                 usdc_test_reserve.pubkey,
                 usdc_oracle.pyth_price_pubkey,
                 usdc_oracle.switchboard_feed_pubkey,
             ),
             // 5
             refresh_reserve(
-                spl_token_lending::id(),
+                solend_program::id(),
                 sol_test_reserve.pubkey,
                 sol_oracle.pyth_price_pubkey,
                 sol_oracle.switchboard_feed_pubkey,
             ),
             // 6
             refresh_obligation(
-                spl_token_lending::id(),
+                solend_program::id(),
                 obligation_pubkey,
                 vec![sol_test_reserve.pubkey],
             ),
             // 7
             borrow_obligation_liquidity(
-                spl_token_lending::id(),
+                solend_program::id(),
                 USDC_BORROW_AMOUNT_FRACTIONAL,
                 usdc_test_reserve.liquidity_supply_pubkey,
                 usdc_test_reserve.user_liquidity_pubkey,
@@ -189,7 +189,7 @@ async fn test_success() {
             .unwrap(),
             // 9
             repay_obligation_liquidity(
-                spl_token_lending::id(),
+                solend_program::id(),
                 USDC_REPAY_AMOUNT_FRACTIONAL,
                 usdc_test_reserve.user_liquidity_pubkey,
                 usdc_test_reserve.liquidity_supply_pubkey,
@@ -200,20 +200,20 @@ async fn test_success() {
             ),
             // 10
             refresh_reserve(
-                spl_token_lending::id(),
+                solend_program::id(),
                 usdc_test_reserve.pubkey,
                 usdc_oracle.pyth_price_pubkey,
                 usdc_oracle.switchboard_feed_pubkey,
             ),
             // 11
             refresh_obligation(
-                spl_token_lending::id(),
+                solend_program::id(),
                 obligation_pubkey,
                 vec![sol_test_reserve.pubkey],
             ),
             // 12
             withdraw_obligation_collateral(
-                spl_token_lending::id(),
+                solend_program::id(),
                 SOL_DEPOSIT_AMOUNT_LAMPORTS,
                 sol_test_reserve.collateral_supply_pubkey,
                 sol_test_reserve.user_collateral_pubkey,
@@ -285,8 +285,8 @@ async fn test_success() {
 #[tokio::test]
 async fn test_success2() {
     let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
+        "solend_program",
+        solend_program::id(),
         processor!(process_instruction),
     );
 
@@ -372,11 +372,11 @@ async fn test_success2() {
                 &obligation_keypair.pubkey(),
                 rent.minimum_balance(Obligation::LEN),
                 Obligation::LEN as u64,
-                &spl_token_lending::id(),
+                &solend_program::id(),
             ),
             // 1
             init_obligation(
-                spl_token_lending::id(),
+                solend_program::id(),
                 obligation_pubkey,
                 lending_market.pubkey,
                 user_accounts_owner_pubkey,
@@ -393,7 +393,7 @@ async fn test_success2() {
             .unwrap(),
             // 3
             deposit_obligation_collateral(
-                spl_token_lending::id(),
+                solend_program::id(),
                 SOL_DEPOSIT_AMOUNT_LAMPORTS,
                 sol_test_reserve.user_collateral_pubkey,
                 sol_test_reserve.collateral_supply_pubkey,
@@ -405,27 +405,27 @@ async fn test_success2() {
             ),
             // 4
             refresh_reserve(
-                spl_token_lending::id(),
+                solend_program::id(),
                 usdc_test_reserve.pubkey,
                 usdc_oracle.pyth_price_pubkey,
                 usdc_oracle.switchboard_feed_pubkey,
             ),
             // 5
             refresh_reserve(
-                spl_token_lending::id(),
+                solend_program::id(),
                 sol_test_reserve.pubkey,
                 sol_oracle.pyth_price_pubkey,
                 sol_oracle.switchboard_feed_pubkey,
             ),
             // 6
             refresh_obligation(
-                spl_token_lending::id(),
+                solend_program::id(),
                 obligation_pubkey,
                 vec![sol_test_reserve.pubkey],
             ),
             // 7
             borrow_obligation_liquidity(
-                spl_token_lending::id(),
+                solend_program::id(),
                 USDC_BORROW_AMOUNT_FRACTIONAL,
                 usdc_test_reserve.liquidity_supply_pubkey,
                 usdc_test_reserve.user_liquidity_pubkey,
@@ -448,7 +448,7 @@ async fn test_success2() {
             .unwrap(),
             // 9
             repay_obligation_liquidity(
-                spl_token_lending::id(),
+                solend_program::id(),
                 USDC_REPAY_AMOUNT_FRACTIONAL,
                 usdc_test_reserve.user_liquidity_pubkey,
                 usdc_test_reserve.liquidity_supply_pubkey,
@@ -459,20 +459,20 @@ async fn test_success2() {
             ),
             // 10
             refresh_reserve(
-                spl_token_lending::id(),
+                solend_program::id(),
                 usdc_test_reserve.pubkey,
                 usdc_oracle.pyth_price_pubkey,
                 usdc_oracle.switchboard_feed_pubkey,
             ),
             // 11
             refresh_obligation(
-                spl_token_lending::id(),
+                solend_program::id(),
                 obligation_pubkey,
                 vec![sol_test_reserve.pubkey],
             ),
             // 12
             withdraw_obligation_collateral(
-                spl_token_lending::id(),
+                solend_program::id(),
                 SOL_DEPOSIT_AMOUNT_LAMPORTS,
                 sol_test_reserve.collateral_supply_pubkey,
                 sol_test_reserve.user_collateral_pubkey,
