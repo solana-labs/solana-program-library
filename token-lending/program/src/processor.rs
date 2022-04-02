@@ -1229,7 +1229,10 @@ fn _withdraw_obligation_collateral<'a>(
         msg!("Obligation deposited value is zero");
         return Err(LendingError::ObligationDepositsZero.into());
     } else {
-        let max_withdraw_value = obligation.max_withdraw_value()?;
+        let max_withdraw_value = obligation.max_withdraw_value(Rate::from_percent(
+            withdraw_reserve.config.loan_to_value_ratio,
+        ))?;
+
         if max_withdraw_value == Decimal::zero() {
             msg!("Maximum withdraw value is zero");
             return Err(LendingError::WithdrawTooLarge.into());
