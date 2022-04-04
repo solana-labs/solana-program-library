@@ -117,7 +117,7 @@ This is optional! You can skip these steps and use the [Token Lending CLI](./cli
       2.0 \
       -- owner.json
 
-   # Wrapping 5 SOL into AJ2sgpgj6ZeQazPPiDyTYqN9vbj58QMaZQykB9Sr6XY
+   # Wrapping 2 SOL into AJ2sgpgj6ZeQazPPiDyTYqN9vbj58QMaZQykB9Sr6XY
    ```
    You'll use this for initial reserve liquidity. Note the SPL Token account pubkey (e.g. `AJ2sgpgj6ZeQazPPiDyTYqN9vbj58QMaZQykB9Sr6XY`).
 
