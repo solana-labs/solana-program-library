@@ -114,7 +114,7 @@ This is optional! You can skip these steps and use the [Token Lending CLI](./cli
    ```shell
    spl-token wrap \
       --fee-payer owner.json \
-      5.0 \
+      2.0 \
       -- owner.json
 
    # Wrapping 5 SOL into AJ2sgpgj6ZeQazPPiDyTYqN9vbj58QMaZQykB9Sr6XY
