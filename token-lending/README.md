@@ -27,23 +27,23 @@ This is optional! You can skip these steps and use the [Token Lending CLI](./cli
 
 1. [Install the Solana CLI](https://docs.solana.com/cli/install-solana-cli-tools)
 
-1. Install the Token and Token Lending CLIs:
+2. Install the Token and Token Lending CLIs:
    ```shell
    cargo install spl-token-cli
    cargo install spl-token-lending-cli
    ```
    
-1. Clone the SPL repo:
+3. Clone the SPL repo:
    ```shell
    git clone https://github.com/solana-labs/solana-program-library.git
    ```
 
-1. Go to the new directory:
+4. Go to the new directory:
    ```shell
    cd solana-program-library
    ```
 
-1. Generate a keypair for yourself:
+5. Generate a keypair for yourself:
    ```shell
    solana-keygen new -o owner.json
 
@@ -57,7 +57,7 @@ This is optional! You can skip these steps and use the [Token Lending CLI](./cli
    ```
    This pubkey will be the owner of the lending market that can add reserves to it.
 
-1. Generate a keypair for the program:
+6. Generate a keypair for the program:
    ```shell
    solana-keygen new -o lending.json
 
@@ -71,54 +71,52 @@ This is optional! You can skip these steps and use the [Token Lending CLI](./cli
    ```
    This pubkey will be your Program ID.
 
-1. Open `./token-lending/program/src/lib.rs` in your editor. In the line
+7. Open `./token-lending/program/src/lib.rs` in your editor. In the line
    ```rust
    solana_program::declare_id!("6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH");
    ```
    replace the Program ID with yours.
 
-1. Build the program binaries:
+8. Build the program binaries:
    ```shell
    cargo build
    cargo build-bpf
    ```
 
-1. Prepare to deploy to devnet:
+9. Prepare to deploy to devnet:
    ```shell
    solana config set --url https://api.devnet.solana.com
    ```
 
-1. Score yourself some sweet SOL:
-   ```shell
-   # Note: airdrop requests are limited to 2 sol per request and 24 sol per account per day
-   solana airdrop -k owner.json 2
-   solana airdrop -k owner.json 2
-   solana airdrop -k owner.json 2
-   solana airdrop -k owner.json 2
-   solana airdrop -k owner.json 2
-   ```
-   You'll use this for transaction fees, rent for your program accounts, and initial reserve liquidity.
+10. Score yourself some sweet SOL:
+    ```shell
+    solana airdrop -k owner.json 10
+    solana airdrop -k owner.json 10
+    solana airdrop -k owner.json 10
+    ```
+    You'll use this for transaction fees, rent for your program accounts, and initial reserve liquidity. If you run 
+    into issues with the airdrop command, see the [docs](https://docs.solana.com/cli/transfer-tokens#airdrop-some-tokens-to-get-started) for more info.
 
-1. Deploy the program:
-   ```shell
-   solana program deploy \
-     -k owner.json \
-     --program-id lending.json \
-     target/deploy/spl_token_lending.so
+12. Deploy the program:
+    ```shell
+    solana program deploy \
+      -k owner.json \
+      --program-id lending.json \
+      target/deploy/spl_token_lending.so
 
-   # Program Id: 6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH
-   ```
-   If the deployment doesn't succeed, follow [this guide](https://docs.solana.com/cli/deploy-a-program#resuming-a-failed-deploy) to resume it.
+    # Program Id: 6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH
+    ```
+    If the deployment doesn't succeed, follow [this guide](https://docs.solana.com/cli/deploy-a-program#resuming-a-failed-deploy) to resume it.
 
-1. Wrap some of your SOL as an SPL Token:
-   ```shell
-   spl-token wrap \
-      --fee-payer owner.json \
-      2.0 \
-      -- owner.json
+13. Wrap some of your SOL as an SPL Token:
+    ```shell
+    spl-token wrap \
+       --fee-payer owner.json \
+       10.0 \
+       -- owner.json
 
-   # Wrapping 2 SOL into AJ2sgpgj6ZeQazPPiDyTYqN9vbj58QMaZQykB9Sr6XY
-   ```
-   You'll use this for initial reserve liquidity. Note the SPL Token account pubkey (e.g. `AJ2sgpgj6ZeQazPPiDyTYqN9vbj58QMaZQykB9Sr6XY`).
+    # Wrapping 10 SOL into AJ2sgpgj6ZeQazPPiDyTYqN9vbj58QMaZQykB9Sr6XY
+    ```
+    You'll use this for initial reserve liquidity. Note the SPL Token account pubkey (e.g. `AJ2sgpgj6ZeQazPPiDyTYqN9vbj58QMaZQykB9Sr6XY`).
 
-1. Use the [Token Lending CLI](./cli/README.md) to create a lending market and add reserves to it.
+14. Use the [Token Lending CLI](./cli/README.md) to create a lending market and add reserves to it.
