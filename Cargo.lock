@@ -3799,6 +3799,7 @@ dependencies = [
 name = "spl-math"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "borsh",
  "borsh-derive",
  "num-derive",

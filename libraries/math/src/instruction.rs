@@ -3,7 +3,10 @@
 use {
     crate::id,
     borsh::{BorshDeserialize, BorshSerialize},
-    solana_program::instruction::Instruction,
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        pubkey::Pubkey,
+    },
 };
 
 /// Instructions supported by the math program, used for testing instruction
@@ -74,6 +77,16 @@ pub enum MathInstruction {
     ///
     /// No accounts required for this instruction
     Noop,
+    /// Deserialize with Borsh
+    ///
+    /// Accounts required for this instruction:
+    /// 0. Stake account
+    Borsh,
+    /// Deserialize with Bincode
+    ///
+    /// Accounts required for this instruction:
+    /// 0. Stake account
+    Bincode,
 }
 
 /// Create PreciseSquareRoot instruction
@@ -165,6 +178,24 @@ pub fn noop() -> Instruction {
         program_id: id(),
         accounts: vec![],
         data: MathInstruction::Noop.try_to_vec().unwrap(),
+    }
+}
+
+/// Create Borsh instruction
+pub fn borsh(stake: &Pubkey) -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![AccountMeta::new_readonly(*stake, false)],
+        data: MathInstruction::Borsh.try_to_vec().unwrap(),
+    }
+}
+
+/// Create Bincode instruction
+pub fn bincode(stake: &Pubkey) -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![AccountMeta::new_readonly(*stake, false)],
+        data: MathInstruction::Bincode.try_to_vec().unwrap(),
     }
 }
 

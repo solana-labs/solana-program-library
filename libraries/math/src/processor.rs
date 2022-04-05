@@ -4,8 +4,13 @@ use {
     crate::{approximations::sqrt, instruction::MathInstruction, precise_number::PreciseNumber},
     borsh::BorshDeserialize,
     solana_program::{
-        account_info::AccountInfo, entrypoint::ProgramResult, log::sol_log_compute_units, msg,
+        account_info::{next_account_info, AccountInfo},
+        borsh::try_from_slice_unchecked,
+        entrypoint::ProgramResult,
+        log::sol_log_compute_units,
+        msg,
         pubkey::Pubkey,
+        stake::state::StakeState,
     },
 };
 
@@ -36,7 +41,7 @@ fn f32_divide(dividend: f32, divisor: f32) -> f32 {
 /// Instruction processor
 pub fn process_instruction(
     _program_id: &Pubkey,
-    _accounts: &[AccountInfo],
+    accounts: &[AccountInfo],
     input: &[u8],
 ) -> ProgramResult {
     let instruction = MathInstruction::try_from_slice(input).unwrap();
@@ -107,6 +112,20 @@ pub fn process_instruction(
         MathInstruction::Noop => {
             msg!("Do nothing");
             msg!("{}", 0_u64);
+            Ok(())
+        }
+        MathInstruction::Borsh => {
+            msg!("Borsh deserialization");
+            let account_info_iter = &mut accounts.iter();
+            let stake_info = next_account_info(account_info_iter)?;
+            let _stake = try_from_slice_unchecked::<StakeState>(&stake_info.data.borrow()).unwrap();
+            Ok(())
+        }
+        MathInstruction::Bincode => {
+            msg!("Bincode deserialization");
+            let account_info_iter = &mut accounts.iter();
+            let stake_info = next_account_info(account_info_iter)?;
+            let _stake = bincode::deserialize::<StakeState>(&stake_info.data.borrow()).unwrap();
             Ok(())
         }
     }

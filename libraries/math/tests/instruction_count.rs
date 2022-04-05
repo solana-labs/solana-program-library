@@ -3,7 +3,15 @@
 
 use {
     solana_program_test::*,
-    solana_sdk::{signature::Signer, transaction::Transaction},
+    solana_sdk::{
+        signature::Signer,
+        signer::keypair::Keypair,
+        stake::{
+            self,
+            state::{Authorized, Lockup},
+        },
+        transaction::Transaction,
+    },
     spl_math::{id, instruction, processor::process_instruction},
 };
 
@@ -158,5 +166,55 @@ async fn test_noop() {
     let mut transaction =
         Transaction::new_with_payer(&[instruction::noop()], Some(&payer.pubkey()));
     transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_borsh() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    pc.set_compute_max_units(1_500); //1492
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let stake = Keypair::new();
+    let mut instructions = stake::instruction::create_account(
+        &payer.pubkey(),
+        &stake.pubkey(),
+        &Authorized::default(),
+        &Lockup::default(),
+        1_000_000_000,
+    );
+    instructions.push(instruction::borsh(&stake.pubkey()));
+    let transaction = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&payer.pubkey()),
+        &[&payer, &stake],
+        recent_blockhash,
+    );
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_bincode() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    pc.set_compute_max_units(12_000); //11909
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+    let stake = Keypair::new();
+    let mut instructions = stake::instruction::create_account(
+        &payer.pubkey(),
+        &stake.pubkey(),
+        &Authorized::default(),
+        &Lockup::default(),
+        1_000_000_000,
+    );
+    instructions.push(instruction::bincode(&stake.pubkey()));
+    let transaction = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&payer.pubkey()),
+        &[&payer, &stake],
+        recent_blockhash,
+    );
     banks_client.process_transaction(transaction).await.unwrap();
 }
