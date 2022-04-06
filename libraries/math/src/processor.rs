@@ -35,11 +35,11 @@ fn f32_divide(dividend: f32, divisor: f32) -> f32 {
 
 #[inline(never)]
 fn f32_exponentiate(base: f32, exponent: f32) -> f32 {
-    base.powf(exponent)    
+    base.powf(exponent)
 }
 
 #[inline(never)]
-fn f32_natural_log(argument:f32) -> f32 {
+fn f32_natural_log(argument: f32) -> f32 {
     argument.ln()
 }
 
@@ -114,7 +114,7 @@ pub fn process_instruction(
             msg!("{}", result as u64);
             Ok(())
         }
-        MathInstruction::F32Exponentiate { base, exponent} => {
+        MathInstruction::F32Exponentiate { base, exponent } => {
             msg!("Calculating f32 Exponent");
             sol_log_compute_units();
             let result = f32_exponentiate(base, exponent);
@@ -122,7 +122,7 @@ pub fn process_instruction(
             msg!("{}", result as u64);
             Ok(())
         }
-        MathInstruction::F32NaturalLog { argument} => {
+        MathInstruction::F32NaturalLog { argument } => {
             msg!("Calculating f32 Natural Log");
             sol_log_compute_units();
             let result = f32_natural_log(argument);
@@ -169,14 +169,13 @@ mod tests {
     }
 
     #[test]
-    fn test_f32_exponentiate(){
+    fn test_f32_exponentiate() {
         assert_eq!(16.0, f32_exponentiate(4.0, 2.0));
         assert_eq!(4.0, f32_exponentiate(16.0, 0.5))
     }
 
     #[test]
-    fn test_f32_natural_log(){
-        
+    fn test_f32_natural_log() {
         let one = 1.0f32;
         // e^1
         let e = one.exp();
@@ -212,13 +211,11 @@ mod tests {
                 dividend: 2.0,
                 divisor: 2.0,
             },
-            MathInstruction::F32Exponentiate{
+            MathInstruction::F32Exponentiate {
                 base: 4.0,
                 exponent: 2.0,
             },
-            MathInstruction::F32NaturalLog{
-                argument: 2.718
-            },
+            MathInstruction::F32NaturalLog { argument: 2.718 },
             MathInstruction::Noop,
         ] {
             let input = math_instruction.try_to_vec().unwrap();

@@ -72,21 +72,21 @@ pub enum MathInstruction {
     },
 
     /// Exponentiate a float base by a power
-    /// 
+    ///
     /// No accounts required for this instruction
-    F32Exponentiate{
+    F32Exponentiate {
         /// The base
         base: f32,
         /// The exponent
-        exponent: f32
+        exponent: f32,
     },
 
     /// Natural Log of a float
-    /// 
+    ///
     /// No accounts required for this instruction
-    F32NaturalLog{
+    F32NaturalLog {
         /// The argument
-        argument: f32
+        argument: f32,
     },
 
     /// Don't do anything for comparison
@@ -178,13 +178,12 @@ pub fn f32_divide(dividend: f32, divisor: f32) -> Instruction {
     }
 }
 
-
 /// Create F32 Exponentiation instruction
 pub fn f32_exponentiate(base: f32, exponent: f32) -> Instruction {
-    Instruction{
+    Instruction {
         program_id: id(),
         accounts: vec![],
-        data: MathInstruction::F32Exponentiate{ base, exponent}
+        data: MathInstruction::F32Exponentiate { base, exponent }
             .try_to_vec()
             .unwrap(),
     }
@@ -192,10 +191,10 @@ pub fn f32_exponentiate(base: f32, exponent: f32) -> Instruction {
 
 /// Create F32 Natural Log instruction
 pub fn f32_natural_log(argument: f32) -> Instruction {
-    Instruction{
+    Instruction {
         program_id: id(),
         accounts: vec![],
-        data: MathInstruction::F32NaturalLog{ argument}
+        data: MathInstruction::F32NaturalLog { argument }
             .try_to_vec()
             .unwrap(),
     }
@@ -341,11 +340,9 @@ mod tests {
         assert_eq!(0, instruction.accounts.len());
         assert_eq!(
             instruction.data,
-            MathInstruction::F32NaturalLog {
-                argument: f32::MAX
-            }
-            .try_to_vec()
-            .unwrap()
+            MathInstruction::F32NaturalLog { argument: f32::MAX }
+                .try_to_vec()
+                .unwrap()
         );
         assert_eq!(instruction.program_id, crate::id())
     }
