@@ -18,7 +18,6 @@ pub mod memo {
             }
         }
         if missing_required_signature {
-            msg!("Missing required signature");
             return Err(ProgramError::MissingRequiredSignature.into());
         }
 
