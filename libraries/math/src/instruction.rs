@@ -178,7 +178,7 @@ pub fn f32_divide(dividend: f32, divisor: f32) -> Instruction {
     }
 }
 
-/// Create F32 Exponentiation instruction
+/// Create F32 Exponentiate instruction
 pub fn f32_exponentiate(base: f32, exponent: f32) -> Instruction {
     Instruction {
         program_id: id(),
