@@ -215,7 +215,7 @@ mod tests {
                 base: 4.0,
                 exponent: 2.0,
             },
-            MathInstruction::F32NaturalLog { argument: 2.718 },
+            MathInstruction::F32NaturalLog { argument: std::f32::consts::E },
             MathInstruction::Noop,
         ] {
             let input = math_instruction.try_to_vec().unwrap();

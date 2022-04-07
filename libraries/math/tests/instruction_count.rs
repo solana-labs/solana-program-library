@@ -151,7 +151,7 @@ async fn test_f32_divide() {
 async fn test_f32_exponentiate() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    pc.set_compute_max_units(1000);
+    pc.set_compute_max_units(1400);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
@@ -167,7 +167,7 @@ async fn test_f32_exponentiate() {
 async fn test_f32_natural_log() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    pc.set_compute_max_units(2900);
+    pc.set_compute_max_units(3200);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
