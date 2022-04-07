@@ -4,10 +4,12 @@ on:
   pull_request:
     paths:
     - 'examples/rust/**'
+    - 'ci/*-version.sh'
   push:
     branches: [master]
     paths:
     - 'examples/rust/**'
+    - 'ci/*-version.sh'
 
 jobs:
   cargo-test-bpf:

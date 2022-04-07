@@ -60,8 +60,6 @@ use output::*;
 mod sort;
 use sort::sort_and_parse_token_accounts;
 
-mod rpc_client_utils;
-
 mod bench;
 use bench::*;
 

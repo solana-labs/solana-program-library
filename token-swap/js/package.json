@@ -1,6 +1,6 @@
 {
   "name": "@solana/spl-token-swap",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "SPL Token Swap JavaScript API",
   "license": "MIT",
   "author": "Solana Maintainers <maintainers@solana.foundation>",
@@ -15,60 +15,45 @@
   "publishConfig": {
     "access": "public"
   },
-  "browser": "dist.browser/index.js",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "browserslist": [
-    "defaults",
-    "not IE 11",
-    "maintained node versions"
-  ],
+  "main": "dist/cjs/index.js",
+  "types": "dist/types/index.d.ts",
+  "module": "dist/esm/index.mjs",
+  "sideEffects": false,
+  "exports": {
+      "import": "./dist/esm/index.mjs",
+      "require": "./dist/cjs/index.js"
+  },
   "files": [
-    "/dist",
-    "/dist.browser"
+    "dist",
+    "src",
+    "README.md"
   ],
   "scripts": {
-    "build": "tsc && tsc -p tsconfig.browser.json && npm run generate:flow",
-    "prepare": "npm run build",
-    "start": "ts-node cli/main.ts",
-    "start-with-test-validator": "start-server-and-test 'solana-test-validator --bpf-program SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8 ../../target/deploy/spl_token_swap.so --reset --quiet' http://localhost:8899/health start",
+    "build": "tsc -p tsconfig.json && tsc-esm -p tsconfig.json && tsc -p tsconfig.cjs.json",
+    "postbuild": "echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json && echo '{\"type\":\"module\"}' > dist/esm/package.json",
+    "test": "ts-node test/main.ts",
+    "start-with-test-validator": "start-server-and-test 'solana-test-validator --bpf-program SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8 ../../target/deploy/spl_token_swap.so --reset --quiet' http://localhost:8899/health test",
     "lint": "npm run pretty && eslint .",
     "lint:fix": "npm run pretty:fix && eslint . --fix",
-    "generate:flow": "flowgen dist/index.d.ts -o dist/module.flow.js",
-    "lint:watch": "watch 'npm run lint:fix' . --wait=1",
     "build:program": "cargo build-bpf --manifest-path ../program/Cargo.toml",
-    "cluster:localnet": "rm -f .env",
-    "cluster:devnet": "cp cluster-devnet.env .env",
-    "cluster:testnet": "cp cluster-testnet.env .env",
-    "cluster:mainnet-beta": "cp cluster-mainnet-beta.env .env",
     "pretty": "prettier --check '{,???/**/}*.ts'",
     "pretty:fix": "prettier --write '{,???/**/}*.ts'"
   },
   "keywords": [],
   "dependencies": {
-    "@solana/web3.js": "^1.10.0",
     "bn.js": "^5.1.3",
-    "@solana/buffer-layout": "^3.0.0",
-    "dotenv": "10.0.0",
-    "json-to-pretty-yaml": "^1.2.2",
-    "mkdirp": "1.0.4"
+    "@solana/web3.js": "^1.10.0",
+    "@solana/buffer-layout": "^3.0.0"
   },
   "devDependencies": {
     "@solana/spl-token": "0.1.8",
     "@types/bn.js": "^5.1.0",
     "eslint": "^7.9.0",
     "eslint-plugin-import": "^2.22.0",
-    "flow-bin": "0.161.0",
-    "flow-typed": "^3.2.0",
-    "flowgen": "^1.14.1",
-    "mz": "^2.7.0",
     "prettier": "^2.1.2",
     "start-server-and-test": "^1.11.6",
     "ts-node": "^10.0.0",
     "typescript": "^4.2.4",
-    "watch": "^1.0.2"
-  },
-  "engines": {
-    "node": ">= 10"
+    "typescript-esm": "^2.0.0"
   }
 }

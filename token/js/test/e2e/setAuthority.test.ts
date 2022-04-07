@@ -6,7 +6,7 @@ import { Connection, Keypair, PublicKey, Signer } from '@solana/web3.js';
 
 import { AuthorityType, createMint, createAccount, getAccount, getMint, setAuthority } from '../../src';
 
-import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from './common';
+import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
 
 const TEST_TOKEN_DECIMALS = 2;
 describe('setAuthority', () => {

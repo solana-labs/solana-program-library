@@ -1,14 +1,24 @@
-import {Connection, PublicKey, TransactionInstruction} from '@solana/web3.js';
+import { Connection, PublicKey, TransactionInstruction } from '@solana/web3.js';
 import {
   AccountInfo,
   ASSOCIATED_TOKEN_PROGRAM_ID,
+  MintInfo,
   Token,
   TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
-import {AccountLayout} from '../layouts';
+import { AccountLayout } from '../layouts';
 
 const FAILED_TO_FIND_ACCOUNT = 'Failed to find account';
 const INVALID_ACCOUNT_OWNER = 'Invalid account owner';
+
+export async function getTokenMint(
+  connection: Connection,
+  tokenMintPubkey: PublicKey,
+): Promise<MintInfo | undefined> {
+  // @ts-ignore
+  const token = new Token(connection, tokenMintPubkey, TOKEN_PROGRAM_ID, null);
+  return token.getMintInfo();
+}
 
 /**
  * Retrieve the associated account or create one if not found.
@@ -27,6 +37,8 @@ export async function addAssociatedTokenAccount(
     owner,
   );
 
+  let rentFee = 0;
+
   // This is the optimum logic, considering TX fee, client-side computation,
   // RPC roundtrips and guaranteed idempotent.
   // Sadly we can't do this atomically;
@@ -41,10 +53,7 @@ export async function addAssociatedTokenAccount(
     // already been received some lamports (= became system accounts).
     // Assuming program derived addressing is safe, this is the only case
     // for the INVALID_ACCOUNT_OWNER in this code-path
-    if (
-      err.message === FAILED_TO_FIND_ACCOUNT ||
-      err.message === INVALID_ACCOUNT_OWNER
-    ) {
+    if (err.message === FAILED_TO_FIND_ACCOUNT || err.message === INVALID_ACCOUNT_OWNER) {
       instructions.push(
         Token.createAssociatedTokenAccountInstruction(
           ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -55,13 +64,17 @@ export async function addAssociatedTokenAccount(
           owner,
         ),
       );
+      rentFee = await connection.getMinimumBalanceForRentExemption(AccountLayout.span);
     } else {
       throw err;
     }
     console.warn(err);
   }
 
-  return associatedAddress;
+  return {
+    associatedAddress,
+    rentFee,
+  };
 }
 
 export async function getTokenAccount(

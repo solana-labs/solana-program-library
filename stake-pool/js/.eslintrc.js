@@ -1,31 +1,21 @@
 module.exports = {
-    "env": {
-        "es2021": true,
-        "node": true
-    },
-    "extends": [
-        "eslint:recommended",
-        "plugin:react/recommended",
-        "plugin:@typescript-eslint/recommended"
-    ],
-    "parser": "@typescript-eslint/parser",
-    "parserOptions": {
-        "ecmaFeatures": {
-            "jsx": true
-        },
-        "ecmaVersion": 13,
-        "sourceType": "module"
-    },
-    "plugins": [
-        "react",
-        "@typescript-eslint"
-    ],
-    "rules": {
-        "@typescript-eslint/no-explicit-any": "off"
-    },
-    "settings": {
-        "react": {
-            "version": "detect"
-        }
-    }
+  root: true,
+  env: {
+    es6: true,
+    node: true,
+    jest: true,
+  },
+  extends: ['plugin:@typescript-eslint/recommended', 'plugin:prettier/recommended'],
+  plugins: ['@typescript-eslint/eslint-plugin'],
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    sourceType: 'module',
+  },
+  rules: {
+    '@typescript-eslint/interface-name-prefix': 'off',
+    '@typescript-eslint/explicit-function-return-type': 'off',
+    '@typescript-eslint/explicit-module-boundary-types': 'off',
+    '@typescript-eslint/no-explicit-any': 'off',
+    '@typescript-eslint/ban-ts-comment': 'off',
+  },
 };

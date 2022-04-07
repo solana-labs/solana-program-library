@@ -2,12 +2,10 @@ use {
     crate::{
         check_program_account,
         extension::{
-            memo_transfer::{
-                instruction::{decode_instruction, RequiredMemoTransfersInstruction},
-                MemoTransfer,
-            },
+            memo_transfer::{instruction::RequiredMemoTransfersInstruction, MemoTransfer},
             StateWithExtensionsMut,
         },
+        instruction::decode_instruction_type,
         processor::Processor,
         state::Account,
     },
@@ -77,6 +75,7 @@ fn process_diasble_required_memo_transfers(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub(crate) fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -84,8 +83,7 @@ pub(crate) fn process_instruction(
 ) -> ProgramResult {
     check_program_account(program_id)?;
 
-    let instruction = decode_instruction(input)?;
-    match instruction {
+    match decode_instruction_type(input)? {
         RequiredMemoTransfersInstruction::Enable => {
             msg!("RequiredMemoTransfersInstruction::Enable");
             process_enable_required_memo_transfers(program_id, accounts)

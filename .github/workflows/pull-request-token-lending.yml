@@ -5,11 +5,13 @@ on:
     paths:
     - 'token-lending/**'
     - 'token/**'
+    - 'ci/*-version.sh'
   push:
     branches: [master]
     paths:
     - 'token-lending/**'
     - 'token/**'
+    - 'ci/*-version.sh'
 
 jobs:
   cargo-test-bpf:
@@ -67,7 +69,7 @@ jobs:
   js-test:
     runs-on: ubuntu-latest
     env:
-      NODE_VERSION: 12.x
+      NODE_VERSION: 14.x
     needs: cargo-test-bpf
     steps:
       - uses: actions/checkout@v2

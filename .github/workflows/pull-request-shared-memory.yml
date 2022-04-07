@@ -4,10 +4,12 @@ on:
   pull_request:
     paths:
     - 'shared-memory/**'
+    - 'ci/*-version.sh'
   push:
     branches: [master]
     paths:
     - 'shared-memory/**'
+    - 'ci/*-version.sh'
 
 jobs:
   cargo-test-bpf:

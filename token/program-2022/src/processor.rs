@@ -8,7 +8,7 @@ use {
             confidential_transfer::{self, ConfidentialTransferAccount},
             default_account_state::{self, DefaultAccountState},
             immutable_owner::ImmutableOwner,
-            memo_transfer::{self, memo_required},
+            memo_transfer::{self, check_previous_sibling_instruction_is_memo, memo_required},
             mint_close_authority::MintCloseAuthority,
             reallocate,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
@@ -270,7 +270,7 @@ impl Processor {
             None
         };
 
-        let dest_account_info = next_account_info(account_info_iter)?;
+        let destination_account_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
         let authority_info_data_len = authority_info.data_len();
 
@@ -320,7 +320,7 @@ impl Processor {
             }
         }
 
-        let self_transfer = cmp_pubkeys(source_account_info.key, dest_account_info.key);
+        let self_transfer = cmp_pubkeys(source_account_info.key, destination_account_info.key);
         match source_account.base.delegate {
             COption::Some(ref delegate) if cmp_pubkeys(authority_info.key, delegate) => {
                 Self::validate_owner(
@@ -357,7 +357,7 @@ impl Processor {
         // compute costs, ie:
         // if self_transfer || amount == 0
         check_program_account(source_account_info.owner)?;
-        check_program_account(dest_account_info.owner)?;
+        check_program_account(destination_account_info.owner)?;
 
         // This check MUST occur just before the amounts are manipulated
         // to ensure self-transfers are fully validated
@@ -366,18 +366,19 @@ impl Processor {
         }
 
         // self-transfer was dealt with earlier, so this *should* be safe
-        let mut dest_account_data = dest_account_info.data.borrow_mut();
-        let mut dest_account = StateWithExtensionsMut::<Account>::unpack(&mut dest_account_data)?;
+        let mut destination_account_data = destination_account_info.data.borrow_mut();
+        let mut destination_account =
+            StateWithExtensionsMut::<Account>::unpack(&mut destination_account_data)?;
 
-        if dest_account.base.is_frozen() {
+        if destination_account.base.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
-        if !cmp_pubkeys(&source_account.base.mint, &dest_account.base.mint) {
+        if !cmp_pubkeys(&source_account.base.mint, &destination_account.base.mint) {
             return Err(TokenError::MintMismatch.into());
         }
 
-        if memo_required(&dest_account) {
-            // TODO: use get_processed_instructions syscall to check for memo
+        if memo_required(&destination_account) {
+            check_previous_sibling_instruction_is_memo()?;
         }
 
         source_account.base.amount = source_account
@@ -386,13 +387,13 @@ impl Processor {
             .checked_sub(amount)
             .ok_or(TokenError::Overflow)?;
         let credited_amount = amount.checked_sub(fee).ok_or(TokenError::Overflow)?;
-        dest_account.base.amount = dest_account
+        destination_account.base.amount = destination_account
             .base
             .amount
             .checked_add(credited_amount)
             .ok_or(TokenError::Overflow)?;
         if fee > 0 {
-            if let Ok(extension) = dest_account.get_extension_mut::<TransferFeeAmount>() {
+            if let Ok(extension) = destination_account.get_extension_mut::<TransferFeeAmount>() {
                 let new_withheld_amount = u64::from(extension.withheld_amount)
                     .checked_add(fee)
                     .ok_or(TokenError::Overflow)?;
@@ -411,14 +412,14 @@ impl Processor {
                 .checked_sub(amount)
                 .ok_or(TokenError::Overflow)?;
 
-            let dest_starting_lamports = dest_account_info.lamports();
-            **dest_account_info.lamports.borrow_mut() = dest_starting_lamports
+            let destination_starting_lamports = destination_account_info.lamports();
+            **destination_account_info.lamports.borrow_mut() = destination_starting_lamports
                 .checked_add(amount)
                 .ok_or(TokenError::Overflow)?;
         }
 
         source_account.pack_base();
-        dest_account.pack_base();
+        destination_account.pack_base();
 
         Ok(())
     }
@@ -673,20 +674,21 @@ impl Processor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let mint_info = next_account_info(account_info_iter)?;
-        let dest_account_info = next_account_info(account_info_iter)?;
+        let destination_account_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
         let owner_info_data_len = owner_info.data_len();
 
-        let mut dest_account_data = dest_account_info.data.borrow_mut();
-        let mut dest_account = StateWithExtensionsMut::<Account>::unpack(&mut dest_account_data)?;
-        if dest_account.base.is_frozen() {
+        let mut destination_account_data = destination_account_info.data.borrow_mut();
+        let mut destination_account =
+            StateWithExtensionsMut::<Account>::unpack(&mut destination_account_data)?;
+        if destination_account.base.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
 
-        if dest_account.base.is_native() {
+        if destination_account.base.is_native() {
             return Err(TokenError::NativeNotSupported.into());
         }
-        if !cmp_pubkeys(mint_info.key, &dest_account.base.mint) {
+        if !cmp_pubkeys(mint_info.key, &destination_account.base.mint) {
             return Err(TokenError::MintMismatch.into());
         }
 
@@ -713,9 +715,9 @@ impl Processor {
         // compute costs, ie:
         // if amount == 0
         check_program_account(mint_info.owner)?;
-        check_program_account(dest_account_info.owner)?;
+        check_program_account(destination_account_info.owner)?;
 
-        dest_account.base.amount = dest_account
+        destination_account.base.amount = destination_account
             .base
             .amount
             .checked_add(amount)
@@ -728,7 +730,7 @@ impl Processor {
             .ok_or(TokenError::Overflow)?;
 
         mint.pack_base();
-        dest_account.pack_base();
+        destination_account.pack_base();
 
         Ok(())
     }
@@ -772,35 +774,40 @@ impl Processor {
             }
         }
 
-        match source_account.base.delegate {
-            COption::Some(ref delegate) if cmp_pubkeys(authority_info.key, delegate) => {
-                Self::validate_owner(
+        if !source_account
+            .base
+            .is_owned_by_system_program_or_incinerator()
+        {
+            match source_account.base.delegate {
+                COption::Some(ref delegate) if cmp_pubkeys(authority_info.key, delegate) => {
+                    Self::validate_owner(
+                        program_id,
+                        delegate,
+                        authority_info,
+                        authority_info_data_len,
+                        account_info_iter.as_slice(),
+                    )?;
+
+                    if source_account.base.delegated_amount < amount {
+                        return Err(TokenError::InsufficientFunds.into());
+                    }
+                    source_account.base.delegated_amount = source_account
+                        .base
+                        .delegated_amount
+                        .checked_sub(amount)
+                        .ok_or(TokenError::Overflow)?;
+                    if source_account.base.delegated_amount == 0 {
+                        source_account.base.delegate = COption::None;
+                    }
+                }
+                _ => Self::validate_owner(
                     program_id,
-                    delegate,
+                    &source_account.base.owner,
                     authority_info,
                     authority_info_data_len,
                     account_info_iter.as_slice(),
-                )?;
-
-                if source_account.base.delegated_amount < amount {
-                    return Err(TokenError::InsufficientFunds.into());
-                }
-                source_account.base.delegated_amount = source_account
-                    .base
-                    .delegated_amount
-                    .checked_sub(amount)
-                    .ok_or(TokenError::Overflow)?;
-                if source_account.base.delegated_amount == 0 {
-                    source_account.base.delegate = COption::None;
-                }
+                )?,
             }
-            _ => Self::validate_owner(
-                program_id,
-                &source_account.base.owner,
-                authority_info,
-                authority_info_data_len,
-                account_info_iter.as_slice(),
-            )?,
         }
 
         // Revisit this later to see if it's worth adding a check to reduce
@@ -830,18 +837,16 @@ impl Processor {
     pub fn process_close_account(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let source_account_info = next_account_info(account_info_iter)?;
-        let dest_account_info = next_account_info(account_info_iter)?;
+        let destination_account_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
         let authority_info_data_len = authority_info.data_len();
 
-        if cmp_pubkeys(source_account_info.key, dest_account_info.key) {
+        if cmp_pubkeys(source_account_info.key, destination_account_info.key) {
             return Err(ProgramError::InvalidAccountData);
         }
 
         let mut source_account_data = source_account_info.data.borrow_mut();
-        if let Ok(mut source_account) =
-            StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)
-        {
+        if let Ok(source_account) = StateWithExtensions::<Account>::unpack(&source_account_data) {
             if !source_account.base.is_native() && source_account.base.amount != 0 {
                 return Err(TokenError::NonNativeHasBalance.into());
             }
@@ -851,32 +856,32 @@ impl Processor {
                 .close_authority
                 .unwrap_or(source_account.base.owner);
 
-            Self::validate_owner(
-                program_id,
-                &authority,
-                authority_info,
-                authority_info_data_len,
-                account_info_iter.as_slice(),
-            )?;
+            if !source_account
+                .base
+                .is_owned_by_system_program_or_incinerator()
+            {
+                Self::validate_owner(
+                    program_id,
+                    &authority,
+                    authority_info,
+                    authority_info_data_len,
+                    account_info_iter.as_slice(),
+                )?;
+            } else if !solana_program::incinerator::check_id(destination_account_info.key) {
+                return Err(ProgramError::InvalidAccountData);
+            }
 
-            // TODO use get_extension when
-            // https://github.com/solana-labs/solana-program-library/pull/2822 lands
             if let Ok(confidential_transfer_state) =
-                source_account.get_extension_mut::<ConfidentialTransferAccount>()
+                source_account.get_extension::<ConfidentialTransferAccount>()
             {
                 confidential_transfer_state.closable()?
             }
 
-            // TODO use get_extension when
-            // https://github.com/solana-labs/solana-program-library/pull/2822 lands
-            if let Ok(transfer_fee_state) = source_account.get_extension_mut::<TransferFeeAmount>()
-            {
+            if let Ok(transfer_fee_state) = source_account.get_extension::<TransferFeeAmount>() {
                 transfer_fee_state.closable()?
             }
-        } else if let Ok(mut mint) =
-            StateWithExtensionsMut::<Mint>::unpack(&mut source_account_data)
-        {
-            let extension = mint.get_extension_mut::<MintCloseAuthority>()?;
+        } else if let Ok(mint) = StateWithExtensions::<Mint>::unpack(&source_account_data) {
+            let extension = mint.get_extension::<MintCloseAuthority>()?;
             let maybe_authority: Option<Pubkey> = extension.close_authority.into();
             let authority = maybe_authority.ok_or(TokenError::AuthorityTypeNotSupported)?;
             Self::validate_owner(
@@ -894,8 +899,8 @@ impl Processor {
             return Err(ProgramError::UninitializedAccount);
         }
 
-        let dest_starting_lamports = dest_account_info.lamports();
-        **dest_account_info.lamports.borrow_mut() = dest_starting_lamports
+        let destination_starting_lamports = destination_account_info.lamports();
+        **destination_account_info.lamports.borrow_mut() = destination_starting_lamports
             .checked_add(source_account_info.lamports())
             .ok_or(TokenError::Overflow)?;
 
@@ -1039,7 +1044,7 @@ impl Processor {
         let mint = StateWithExtensions::<Mint>::unpack(&mint_data)
             .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
         // TODO: update this with interest-bearing token extension logic
-        let ui_amount = spl_token::amount_to_ui_amount_string_trimmed(amount, mint.base.decimals);
+        let ui_amount = crate::amount_to_ui_amount_string_trimmed(amount, mint.base.decimals);
 
         set_return_data(&ui_amount.into_bytes());
         Ok(())
@@ -1055,8 +1060,7 @@ impl Processor {
         let mint = StateWithExtensions::<Mint>::unpack(&mint_data)
             .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
         // TODO: update this with interest-bearing token extension logic
-        let amount =
-            spl_token::try_ui_amount_into_amount(ui_amount.to_string(), mint.base.decimals)?;
+        let amount = crate::try_ui_amount_into_amount(ui_amount.to_string(), mint.base.decimals)?;
 
         set_return_data(&amount.to_le_bytes());
         Ok(())
@@ -1380,8 +1384,8 @@ impl PrintProgramError for TokenError {
             TokenError::ConfidentialTransferElGamalPubkeyMismatch => {
                 msg!("Error: ElGamal public key mismatch")
             }
-            TokenError::ConfidentialTransferAvailableBalanceMismatch => {
-                msg!("Error: Available balance mismatch")
+            TokenError::ConfidentialTransferBalanceMismatch => {
+                msg!("Error: Balance mismatch")
             }
             TokenError::MintHasSupply => {
                 msg!("Error: Mint has non-zero supply. Burn all tokens before closing the mint")
@@ -1406,6 +1410,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::AccountHasWithheldTransferFees => {
                 msg!("Error: An account can only be closed if its withheld fee balance is zero, harvest fees to the mint and try again");
+            }
+            TokenError::NoMemo => {
+                msg!("Error: No memo in previous instruction; required for recipient to receive a transfer");
             }
         }
     }

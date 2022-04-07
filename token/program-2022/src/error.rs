@@ -101,9 +101,9 @@ pub enum TokenError {
     /// ElGamal public key mismatch
     #[error("ElGamal public key mismatch")]
     ConfidentialTransferElGamalPubkeyMismatch,
-    /// Available balance mismatch
-    #[error("Available balance mismatch")]
-    ConfidentialTransferAvailableBalanceMismatch,
+    /// Balance mismatch
+    #[error("Balance mismatch")]
+    ConfidentialTransferBalanceMismatch,
     /// Mint has non-zero supply. Burn all tokens before closing the mint.
     #[error("Mint has non-zero supply. Burn all tokens before closing the mint")]
     MintHasSupply,
@@ -135,6 +135,9 @@ pub enum TokenError {
     /// mint and try again
     #[error("An account can only be closed if its withheld fee balance is zero, harvest fees to the mint and try again")]
     AccountHasWithheldTransferFees,
+    /// No memo in previous instruction; required for recipient to receive a transfer
+    #[error("No memo in previous instruction; required for recipient to receive a transfer")]
+    NoMemo,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {

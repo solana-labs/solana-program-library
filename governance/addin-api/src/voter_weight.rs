@@ -73,7 +73,7 @@ pub struct VoterWeightRecord {
 
 impl VoterWeightRecord {
     /// sha256("account:VoterWeightRecord")[..8]
-    pub const ACCOUNT_DISCRIMINATOR: [u8; 8] = *b"2ef99b4b";
+    pub const ACCOUNT_DISCRIMINATOR: [u8; 8] = [46, 249, 155, 75, 153, 248, 116, 9];
 }
 
 impl AccountMaxSize for VoterWeightRecord {}
@@ -81,5 +81,7 @@ impl AccountMaxSize for VoterWeightRecord {}
 impl IsInitialized for VoterWeightRecord {
     fn is_initialized(&self) -> bool {
         self.account_discriminator == VoterWeightRecord::ACCOUNT_DISCRIMINATOR
+            // Check for legacy discriminator which is not compatible with Anchor but is used by older plugins
+            || self.account_discriminator == *b"2ef99b4b"
     }
 }

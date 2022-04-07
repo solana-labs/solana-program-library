@@ -13,7 +13,7 @@ import {
     getAssociatedTokenAddress,
 } from '../../src';
 
-import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from './common';
+import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
 
 const TEST_TOKEN_DECIMALS = 2;
 describe('createMint', () => {

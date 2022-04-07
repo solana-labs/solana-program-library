@@ -12,7 +12,7 @@ use {
         program_error::ProgramError,
         program_pack::{IsInitialized, Pack, Sealed},
     },
-    spl_math::{precise_number::PreciseNumber, uint::U256},
+    spl_math::{checked_ceil_div::CheckedCeilDiv, precise_number::PreciseNumber, uint::U256},
     std::convert::TryFrom,
 };
 
@@ -133,14 +133,14 @@ fn compute_new_destination_amount(
     let b = new_source_amount.checked_add(d_val.checked_div(leverage)?)?;
 
     // Solve for y by approximating: y**2 + b*y = c
-    let mut y_prev: U256;
     let mut y = d_val;
     for _ in 0..ITERATIONS {
-        y_prev = y;
-        y = (checked_u8_power(&y, 2)?.checked_add(c)?)
-            .checked_div(checked_u8_mul(&y, 2)?.checked_add(b)?.checked_sub(d_val)?)?;
-        if y == y_prev {
+        let (y_new, _) = (checked_u8_power(&y, 2)?.checked_add(c)?)
+            .checked_ceil_div(checked_u8_mul(&y, 2)?.checked_add(b)?.checked_sub(d_val)?)?;
+        if y_new == y {
             break;
+        } else {
+            y = y_new;
         }
     }
     u128::try_from(y).ok()
@@ -155,6 +155,12 @@ impl CurveCalculator for StableCurve {
         swap_destination_amount: u128,
         _trade_direction: TradeDirection,
     ) -> Option<SwapWithoutFeesResult> {
+        if source_amount == 0 {
+            return Some(SwapWithoutFeesResult {
+                source_amount_swapped: 0,
+                destination_amount_swapped: 0,
+            });
+        }
         let leverage = compute_a(self.amp)?;
 
         let new_source_amount = swap_source_amount.checked_add(source_amount)?;
@@ -172,7 +178,7 @@ impl CurveCalculator for StableCurve {
         })
     }
 
-    /// Re-implementation of `remove_liquidty`:
+    /// Re-implementation of `remove_liquidity`:
     ///
     /// <https://github.com/curvefi/curve-contract/blob/80bbe179083c9a7062e4c482b0be3bfb7501f2bd/contracts/pool-templates/base/SwapTemplateBase.vy#L513>
     fn pool_tokens_to_trading_tokens(
@@ -409,9 +415,19 @@ mod tests {
         check_pool_token_rate(5, 501, 2, 10, 1, 101);
     }
 
+    #[test]
+    fn swap_zero() {
+        let curve = StableCurve { amp: 100 };
+        let result = curve.swap_without_fees(0, 100, 1_000_000_000_000_000, TradeDirection::AtoB);
+
+        let result = result.unwrap();
+        assert_eq!(result.source_amount_swapped, 0);
+        assert_eq!(result.destination_amount_swapped, 0);
+    }
+
     proptest! {
         #[test]
-        fn constant_product_swap_no_fee(
+        fn swap_no_fee(
             swap_source_amount in 100..1_000_000_000_000_000_000u128,
             swap_destination_amount in 100..1_000_000_000_000_000_000u128,
             source_amount in 100..100_000_000_000u128,
@@ -440,7 +456,8 @@ mod tests {
             let diff =
                 (sim_result as i128 - result.destination_amount_swapped as i128).abs();
 
-            let tolerance = std::cmp::max(1, sim_result as i128 / 1_000_000_000);
+            // tolerate a difference of 2 because of the ceiling during calculation
+            let tolerance = std::cmp::max(2, sim_result as i128 / 1_000_000_000);
 
             assert!(
                 diff <= tolerance,

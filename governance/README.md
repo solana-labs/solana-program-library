@@ -11,7 +11,7 @@ we may want a voting population to vote on disbursement of funds collectively.
 It can also control upgrades of itself and other programs through democratic means.
 
 In the simplest form the program can be used for Multisig control over a shared wallet (treasury account) or as
-a Mutlisig upgrade authority for Solana programs
+a Multisig upgrade authority for Solana programs
 
 ## Architecture
 
