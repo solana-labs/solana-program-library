@@ -20,8 +20,8 @@ export const depositReserveLiquidityInstruction = (
     reserveLiquiditySupply: PublicKey,
     reserveCollateralMint: PublicKey,
     lendingMarket: PublicKey,
-    lendingMarketAuthority: PublicKey,
-    transferAuthority: PublicKey
+    transferAuthority: PublicKey,
+    lendingMarketAuthority?: PublicKey
 ): TransactionInstruction => {
     const data = Buffer.alloc(DataLayout.span);
     DataLayout.encode(
@@ -39,11 +39,14 @@ export const depositReserveLiquidityInstruction = (
         { pubkey: reserveLiquiditySupply, isSigner: false, isWritable: true },
         { pubkey: reserveCollateralMint, isSigner: false, isWritable: true },
         { pubkey: lendingMarket, isSigner: false, isWritable: false },
-        { pubkey: lendingMarketAuthority, isSigner: false, isWritable: false },
         { pubkey: transferAuthority, isSigner: true, isWritable: false },
         { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
         { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     ];
+
+    if (lendingMarketAuthority) {
+        keys.push({pubkey: lendingMarketAuthority, isSigner: false, isWritable: false})
+    }
 
     return new TransactionInstruction({
         keys,
