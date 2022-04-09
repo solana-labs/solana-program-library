@@ -45,7 +45,7 @@ export const depositReserveLiquidityInstruction = (
     ];
 
     if (lendingMarketAuthority) {
-        keys.push({pubkey: lendingMarketAuthority, isSigner: false, isWritable: false})
+        keys.push({ pubkey: lendingMarketAuthority, isSigner: false, isWritable: false });
     }
 
     return new TransactionInstruction({
