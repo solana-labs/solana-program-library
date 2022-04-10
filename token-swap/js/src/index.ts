@@ -428,11 +428,16 @@ export class TokenSwap {
       curveParameters,
     );
 
+    const options = {
+      skipPreflight: false
+    }
+
     transaction.add(instruction);
     await sendAndConfirmTransaction(
       'createAccount and InitializeSwap',
       connection,
       transaction,
+      options,
       payer,
       tokenSwapAccount,
     );
@@ -462,6 +467,10 @@ export class TokenSwap {
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
   ): Promise<TransactionSignature> {
+    const options = {
+      skipPreflight: false
+    };
+
     return await sendAndConfirmTransaction(
       'swap',
       this.connection,
@@ -483,6 +492,7 @@ export class TokenSwap {
           minimumAmountOut,
         ),
       ),
+      options,
       this.payer,
       userTransferAuthority,
     );
@@ -561,6 +571,9 @@ export class TokenSwap {
     maximumTokenA: number | Numberu64,
     maximumTokenB: number | Numberu64,
   ): Promise<TransactionSignature> {
+    const options = {
+      skipPreflight: false
+    }
     return await sendAndConfirmTransaction(
       'depositAllTokenTypes',
       this.connection,
@@ -582,6 +595,7 @@ export class TokenSwap {
           maximumTokenB,
         ),
       ),
+      options,
       this.payer,
       userTransferAuthority,
     );
@@ -660,6 +674,9 @@ export class TokenSwap {
     minimumTokenA: number | Numberu64,
     minimumTokenB: number | Numberu64,
   ): Promise<TransactionSignature> {
+    const options = {
+      skipPreflight: false
+    }
     return await sendAndConfirmTransaction(
       'withdraw',
       this.connection,
@@ -682,6 +699,7 @@ export class TokenSwap {
           minimumTokenB,
         ),
       ),
+      options,
       this.payer,
       userTransferAuthority,
     );
@@ -757,6 +775,9 @@ export class TokenSwap {
     sourceTokenAmount: number | Numberu64,
     minimumPoolTokenAmount: number | Numberu64,
   ): Promise<TransactionSignature> {
+    const options = {
+      skipPreflight: false
+    }
     return await sendAndConfirmTransaction(
       'depositSingleTokenTypeExactAmountIn',
       this.connection,
@@ -776,6 +797,7 @@ export class TokenSwap {
           minimumPoolTokenAmount,
         ),
       ),
+      options,
       this.payer,
       userTransferAuthority,
     );
@@ -847,6 +869,9 @@ export class TokenSwap {
     destinationTokenAmount: number | Numberu64,
     maximumPoolTokenAmount: number | Numberu64,
   ): Promise<TransactionSignature> {
+    const options = {
+      skipPreflight: false
+    }
     return await sendAndConfirmTransaction(
       'withdrawSingleTokenTypeExactAmountOut',
       this.connection,
@@ -867,6 +892,7 @@ export class TokenSwap {
           maximumPoolTokenAmount,
         ),
       ),
+      options,
       this.payer,
       userTransferAuthority,
     );

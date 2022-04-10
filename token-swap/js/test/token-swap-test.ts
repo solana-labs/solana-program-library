@@ -407,12 +407,17 @@ export async function createAccountAndSwapAtomic(): Promise<void> {
     ),
   );
 
+  const options = {
+    skipPreflight: false
+  }
+
   // Send the instructions
   console.log('sending big instruction');
   await sendAndConfirmTransaction(
     'create account, approve transfer, swap',
     connection,
     transaction,
+    options,
     owner,
     newAccount,
     userTransferAuthority,
