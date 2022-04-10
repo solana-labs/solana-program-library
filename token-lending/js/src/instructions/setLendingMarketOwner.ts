@@ -1,7 +1,7 @@
 import { PublicKey, TransactionInstruction } from '@solana/web3.js';
-import { struct, u8 } from 'buffer-layout';
+import { struct, u8 } from '@solana/buffer-layout';
 import { LENDING_PROGRAM_ID } from '../constants';
-import { publicKey } from '../util';
+import { publicKey } from '@solana/buffer-layout-utils';
 import { LendingInstruction } from './instruction';
 
 interface Data {

@@ -32,7 +32,7 @@ This is optional! You can skip these steps and use the [Token Lending CLI](./cli
    cargo install spl-token-cli
    cargo install spl-token-lending-cli
    ```
-   
+
 1. Clone the SPL repo:
    ```shell
    git clone https://github.com/solana-labs/solana-program-library.git
@@ -94,7 +94,8 @@ This is optional! You can skip these steps and use the [Token Lending CLI](./cli
    solana airdrop -k owner.json 10
    solana airdrop -k owner.json 10
    ```
-   You'll use this for transaction fees, rent for your program accounts, and initial reserve liquidity.
+   You'll use this for transaction fees, rent for your program accounts, and initial reserve liquidity. If you run
+   into issues with the airdrop command, see the [docs](https://docs.solana.com/cli/transfer-tokens#airdrop-some-tokens-to-get-started) for more info.
 
 1. Deploy the program:
    ```shell

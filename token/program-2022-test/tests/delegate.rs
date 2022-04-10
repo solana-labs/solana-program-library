@@ -151,7 +151,7 @@ async fn run_basic(
 
     // now fails
     let error = token
-        .transfer_checked(&alice_account, &bob_account, &bob, 1, decimals)
+        .transfer_checked(&alice_account, &bob_account, &bob, 2, decimals)
         .await
         .unwrap_err();
     assert_eq!(

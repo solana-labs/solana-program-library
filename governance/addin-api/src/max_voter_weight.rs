@@ -40,11 +40,13 @@ impl AccountMaxSize for MaxVoterWeightRecord {}
 
 impl MaxVoterWeightRecord {
     /// sha256("account:MaxVoterWeightRecord")[..8]
-    pub const ACCOUNT_DISCRIMINATOR: [u8; 8] = *b"9d5ff297";
+    pub const ACCOUNT_DISCRIMINATOR: [u8; 8] = [157, 95, 242, 151, 16, 98, 26, 118];
 }
 
 impl IsInitialized for MaxVoterWeightRecord {
     fn is_initialized(&self) -> bool {
         self.account_discriminator == MaxVoterWeightRecord::ACCOUNT_DISCRIMINATOR
+         // Check for legacy discriminator which is not compatible with Anchor but is used by older plugins
+        || self.account_discriminator ==*b"9d5ff297"
     }
 }

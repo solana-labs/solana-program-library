@@ -34,6 +34,25 @@ pub enum AssociatedTokenAccountInstruction {
     ///   4. `[]` System program
     ///   5. `[]` SPL Token program
     CreateIdempotent,
+    /// Transfers from and closes a nested associated token account: an
+    /// associated token account owned by an associated token account.
+    ///
+    /// The tokens are moved from the nested associated token account to the
+    /// wallet's associated token account, and the nested account lamports are
+    /// moved to the wallet.
+    ///
+    /// Note: Nested token accounts are an anti-pattern, and almost always
+    /// created unintentionally, so this instruction should only be used to
+    /// recover from errors.
+    ///
+    ///   0. `[writeable]` Nested associated token account, must be owned by `3`
+    ///   1. `[]` Token mint for the nested associated token account
+    ///   2. `[writeable]` Wallet's associated token account
+    ///   3. `[]` Owner associated token account address, must be owned by `5`
+    ///   4. `[]` Token mint for the owner associated token account
+    ///   5. `[writeable, signer]` Wallet address for the owner associated token account
+    ///   6. `[]` SPL Token program
+    RecoverNested,
 }
 
 fn build_associated_token_account_instruction(
@@ -98,4 +117,44 @@ pub fn create_associated_token_account_idempotent(
         token_program_id,
         AssociatedTokenAccountInstruction::CreateIdempotent,
     )
+}
+
+/// Creates a `RecoverNested` instruction
+pub fn recover_nested(
+    wallet_address: &Pubkey,
+    owner_token_mint_address: &Pubkey,
+    nested_token_mint_address: &Pubkey,
+    token_program_id: &Pubkey,
+) -> Instruction {
+    let owner_associated_account_address = get_associated_token_address_with_program_id(
+        wallet_address,
+        owner_token_mint_address,
+        token_program_id,
+    );
+    let destination_associated_account_address = get_associated_token_address_with_program_id(
+        wallet_address,
+        nested_token_mint_address,
+        token_program_id,
+    );
+    let nested_associated_account_address = get_associated_token_address_with_program_id(
+        &owner_associated_account_address, // ATA is wrongly used as a wallet_address
+        nested_token_mint_address,
+        token_program_id,
+    );
+
+    let instruction_data = AssociatedTokenAccountInstruction::RecoverNested;
+
+    Instruction {
+        program_id: id(),
+        accounts: vec![
+            AccountMeta::new(nested_associated_account_address, false),
+            AccountMeta::new_readonly(*nested_token_mint_address, false),
+            AccountMeta::new(destination_associated_account_address, false),
+            AccountMeta::new_readonly(owner_associated_account_address, false),
+            AccountMeta::new_readonly(*owner_token_mint_address, false),
+            AccountMeta::new(*wallet_address, true),
+            AccountMeta::new_readonly(*token_program_id, false),
+        ],
+        data: instruction_data.try_to_vec().unwrap(),
+    }
 }

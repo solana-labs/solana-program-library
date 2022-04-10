@@ -1,9 +1,9 @@
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { PublicKey, SYSVAR_CLOCK_PUBKEY, SYSVAR_RENT_PUBKEY, TransactionInstruction } from '@solana/web3.js';
-import { struct, u8 } from 'buffer-layout';
+import { struct, u8 } from '@solana/buffer-layout';
 import { LENDING_PROGRAM_ID } from '../constants';
 import { ReserveConfig, ReserveConfigLayout } from '../state';
-import { u64 } from '../util';
+import { u64 } from '@solana/buffer-layout-utils';
 import { LendingInstruction } from './instruction';
 
 interface Data {

@@ -355,9 +355,9 @@ dependencies = [
 
 [[package]]
 name = "bytemuck_derive"
-version = "1.0.1"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e215f8c2f9f79cb53c8335e687ffd07d5bfcb6fe5fc80723762d0be46e7cc54"
+checksum = "562e382481975bc61d11275ac5e62a19abd00b0547d99516a415336f183dcd0e"
 dependencies = [
  "proc-macro2 1.0.36",
  "quote 1.0.14",
@@ -3678,7 +3678,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance"
-version = "2.2.3"
+version = "2.2.4"
 dependencies = [
  "arrayref",
  "assert_matches",
@@ -3703,7 +3703,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance-addin-api"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "borsh",
  "solana-program",
@@ -3712,7 +3712,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance-addin-mock"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "arrayref",
  "assert_matches",
@@ -3736,7 +3736,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance-chat"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "arrayref",
  "assert_matches",

@@ -79,7 +79,7 @@ Note that RPC service should be adequately scaled and put behind a load balancer
 
 ### Farm SDK
 
-A Rust library with a common code that is used by all Yield Farming tools and contracts. In addition to account management functionsб it includes definitions for all native and external protocols instructions and metadata objects.
+A Rust library with a common code that is used by all Yield Farming tools and contracts. In addition to account management functions, it includes definitions for all native and external protocols instructions and metadata objects.
 
 ### Farm Ctrl
 
