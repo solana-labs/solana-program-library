@@ -1,4 +1,7 @@
-import {ConfirmOptions, sendAndConfirmTransaction as realSendAndConfirmTransaction} from '@solana/web3.js';
+import {
+  ConfirmOptions,
+  sendAndConfirmTransaction as realSendAndConfirmTransaction,
+} from '@solana/web3.js';
 import type {
   Account,
   Connection,
