@@ -10,11 +10,11 @@ edition = "2018"
 [dependencies]
 chrono = "0.4.19"
 clap = "2.33.3"
-solana-clap-utils = "1.9.9"
-solana-cli-config = "1.9.9"
-solana-client = "1.9.9"
-solana-logger = "1.9.9"
-solana-sdk = "1.9.9"
+solana-clap-utils = "1.10.8"
+solana-cli-config = "1.10.8"
+solana-client = "1.10.8"
+solana-logger = "1.10.8"
+solana-sdk = "1.10.8"
 spl-feature-proposal = { version = "1.0", path = "../program", features = ["no-entrypoint"] }
 
 [[bin]]
