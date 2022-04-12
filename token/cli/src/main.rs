@@ -3117,30 +3117,43 @@ mod tests {
     use {
         super::*,
         solana_client::blockhash_query::Source,
-        //solana_test_validator::{TestValidatorGenesis, TestValidator},
-        solana_sdk::signature::{Keypair, Signer},
+        solana_sdk::{
+            bpf_loader,
+            signature::{Keypair, Signer},
+        },
+        solana_test_validator::{ProgramInfo, TestValidator, TestValidatorGenesis},
+        std::path::PathBuf,
     };
 
     fn clone_keypair(keypair: &Keypair) -> Keypair {
         Keypair::from_bytes(&keypair.to_bytes()).unwrap()
     }
 
-    fn test_config<'a>(payer: &Keypair, program_id: &Pubkey) -> Config<'a> {
-        //TODO use a test validator
-        let rpc_client =
-            RpcClient::new_with_commitment("http://localhost:8899", CommitmentConfig::recent());
-        let signature = rpc_client
-            .request_airdrop(&payer.pubkey(), 1_000_000_000)
-            .unwrap();
-        loop {
-            let confirmed = rpc_client.confirm_transaction(&signature).unwrap();
-            if confirmed {
-                break;
-            }
-        }
-        //let websocket_url = &test_validator.rpc_pubsub_url();
-        let websocket_url = "http://localhost:8900".to_string();
-        //let (rpc_client, _recent_blockhash, _fee_calculator) = test_validator.rpc_client();
+    fn validator_for_test() -> (TestValidator, Keypair) {
+        solana_logger::setup();
+        let mut test_validator_genesis = TestValidatorGenesis::default();
+        test_validator_genesis.add_programs_with_path(&[
+            ProgramInfo {
+                program_id: spl_token::id(),
+                loader: bpf_loader::id(),
+                program_path: PathBuf::from("../../target/deploy/spl_token.so"),
+            },
+            ProgramInfo {
+                program_id: spl_associated_token_account::id(),
+                loader: bpf_loader::id(),
+                program_path: PathBuf::from("../../target/deploy/spl_associated_token_account.so"),
+            },
+        ]);
+        test_validator_genesis.start()
+    }
+
+    fn test_config<'a>(
+        test_validator: &TestValidator,
+        payer: &Keypair,
+        program_id: &Pubkey,
+    ) -> Config<'a> {
+        let websocket_url = test_validator.rpc_pubsub_url();
+        let (rpc_client, _recent_blockhash, _fee_calculator) = test_validator.rpc_client();
         Config {
             rpc_client: Arc::new(rpc_client),
             websocket_url,
@@ -3235,13 +3248,8 @@ mod tests {
 
     #[test]
     fn create_token_default() {
-        //solana_logger::setup();
-        //let mut test_validator_genesis = TestValidatorGenesis::default();
-        //test_validator_genesis
-        //    .add_program("spl_token", spl_token::id());
-        //let (test_validator, payer) = test_validator_genesis.start();
-        let payer = Keypair::new();
-        let config = test_config(&payer, &spl_token::id());
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
         let result = process_test_command(&config, &payer, &["spl-token", "create-token"]);
         let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
         let mint = Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
@@ -3251,8 +3259,8 @@ mod tests {
 
     #[test]
     fn supply() {
-        let payer = Keypair::new();
-        let config = test_config(&payer, &spl_token::id());
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
         let token = create_token(&config, &payer);
         let result = process_test_command(
             &config,
@@ -3266,8 +3274,8 @@ mod tests {
 
     #[test]
     fn create_account_default() {
-        let payer = Keypair::new();
-        let config = test_config(&payer, &spl_token::id());
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
         let token = create_token(&config, &payer);
         let result = process_test_command(
             &config,
@@ -3279,8 +3287,8 @@ mod tests {
 
     #[test]
     fn account_info() {
-        let payer = Keypair::new();
-        let config = test_config(&payer, &spl_token::id());
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
         let token = create_token(&config, &payer);
         let _account = create_associated_account(&config, &payer, token);
         let result = process_test_command(
@@ -3304,8 +3312,8 @@ mod tests {
 
     #[test]
     fn balance() {
-        let payer = Keypair::new();
-        let config = test_config(&payer, &spl_token::id());
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
         let token = create_token(&config, &payer);
         let _account = create_associated_account(&config, &payer, token);
         let result = process_test_command(
@@ -3320,8 +3328,8 @@ mod tests {
 
     #[test]
     fn mint() {
-        let payer = Keypair::new();
-        let config = test_config(&payer, &spl_token::id());
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
         let token = create_token(&config, &payer);
         let account = create_associated_account(&config, &payer, token);
         let result = process_test_command(
@@ -3342,8 +3350,8 @@ mod tests {
 
     #[test]
     fn balance_after_mint() {
-        let payer = Keypair::new();
-        let config = test_config(&payer, &spl_token::id());
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
         let token = create_token(&config, &payer);
         let account = create_associated_account(&config, &payer, token);
         let ui_amount = 100.0;
@@ -3360,8 +3368,8 @@ mod tests {
 
     #[test]
     fn accounts() {
-        let payer = Keypair::new();
-        let config = test_config(&payer, &spl_token::id());
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
         let token1 = create_token(&config, &payer);
         let _account1 = create_associated_account(&config, &payer, token1);
         let token2 = create_token(&config, &payer);
@@ -3375,8 +3383,8 @@ mod tests {
 
     #[test]
     fn wrap() {
-        let payer = Keypair::new();
-        let config = test_config(&payer, &spl_token::id());
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
         let _result = process_test_command(&config, &payer, &["spl-token", "wrap", "0.5"]).unwrap();
         let account = get_associated_token_address_with_program_id(
             &payer.pubkey(),
@@ -3394,8 +3402,8 @@ mod tests {
 
     #[test]
     fn unwrap() {
-        let payer = Keypair::new();
-        let config = test_config(&payer, &spl_token::id());
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
         let bulk_signers: Vec<Box<dyn Signer>> = vec![Box::new(clone_keypair(&payer))];
         command_wrap(&config, 0.5, payer.pubkey(), None, bulk_signers).unwrap();
         let account = get_associated_token_address_with_program_id(
@@ -3414,8 +3422,8 @@ mod tests {
 
     #[test]
     fn transfer() {
-        let payer = Keypair::new();
-        let config = test_config(&payer, &spl_token::id());
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
 
         let token = create_token(&config, &payer);
         let source = create_associated_account(&config, &payer, token);
@@ -3451,8 +3459,8 @@ mod tests {
 
     #[test]
     fn transfer_fund_recipient() {
-        let payer = Keypair::new();
-        let config = test_config(&payer, &spl_token::id());
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
 
         let token = create_token(&config, &payer);
         let source = create_associated_account(&config, &payer, token);
@@ -3484,8 +3492,8 @@ mod tests {
 
     #[test]
     fn disable_mint_authority() {
-        let payer = Keypair::new();
-        let config = test_config(&payer, &spl_token::id());
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
 
         let token = create_token(&config, &payer);
         let result = process_test_command(
@@ -3508,8 +3516,8 @@ mod tests {
 
     #[test]
     fn gc() {
-        let payer = Keypair::new();
-        let mut config = test_config(&payer, &spl_token::id());
+        let (test_validator, payer) = validator_for_test();
+        let mut config = test_config(&test_validator, &payer, &spl_token::id());
 
         let token = create_token(&config, &payer);
         let _account = create_associated_account(&config, &payer, token);
@@ -3529,8 +3537,8 @@ mod tests {
 
     #[test]
     fn set_owner() {
-        let payer = Keypair::new();
-        let config = test_config(&payer, &spl_token::id());
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
         let token = create_token(&config, &payer);
         let aux = create_auxiliary_account(&config, &payer, token);
         let aux_string = aux.to_string();
