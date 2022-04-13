@@ -70,6 +70,25 @@ pub enum MathInstruction {
         /// The divisor
         divisor: f32,
     },
+
+    /// Exponentiate a float base by a power
+    ///
+    /// No accounts required for this instruction
+    F32Exponentiate {
+        /// The base
+        base: f32,
+        /// The exponent
+        exponent: f32,
+    },
+
+    /// Natural Log of a float
+    ///
+    /// No accounts required for this instruction
+    F32NaturalLog {
+        /// The argument
+        argument: f32,
+    },
+
     /// Don't do anything for comparison
     ///
     /// No accounts required for this instruction
@@ -87,7 +106,7 @@ pub fn precise_sqrt(radicand: u64) -> Instruction {
     }
 }
 
-/// Create SquareRoot instruction
+/// Create U64 SquareRoot instruction
 pub fn sqrt_u64(radicand: u64) -> Instruction {
     Instruction {
         program_id: id(),
@@ -98,7 +117,7 @@ pub fn sqrt_u64(radicand: u64) -> Instruction {
     }
 }
 
-/// Create SquareRoot instruction
+/// Create U128 SquareRoot instruction
 pub fn sqrt_u128(radicand: u128) -> Instruction {
     Instruction {
         program_id: id(),
@@ -109,7 +128,7 @@ pub fn sqrt_u128(radicand: u128) -> Instruction {
     }
 }
 
-/// Create PreciseSquareRoot instruction
+/// Create U64 Multiplication instruction
 pub fn u64_multiply(multiplicand: u64, multiplier: u64) -> Instruction {
     Instruction {
         program_id: id(),
@@ -123,7 +142,7 @@ pub fn u64_multiply(multiplicand: u64, multiplier: u64) -> Instruction {
     }
 }
 
-/// Create PreciseSquareRoot instruction
+/// Create U64 Division instruction
 pub fn u64_divide(dividend: u64, divisor: u64) -> Instruction {
     Instruction {
         program_id: id(),
@@ -134,7 +153,7 @@ pub fn u64_divide(dividend: u64, divisor: u64) -> Instruction {
     }
 }
 
-/// Create PreciseSquareRoot instruction
+/// Create F32 Multiplication instruction
 pub fn f32_multiply(multiplicand: f32, multiplier: f32) -> Instruction {
     Instruction {
         program_id: id(),
@@ -148,7 +167,7 @@ pub fn f32_multiply(multiplicand: f32, multiplier: f32) -> Instruction {
     }
 }
 
-/// Create PreciseSquareRoot instruction
+/// Create F32 Division instruction
 pub fn f32_divide(dividend: f32, divisor: f32) -> Instruction {
     Instruction {
         program_id: id(),
@@ -159,7 +178,29 @@ pub fn f32_divide(dividend: f32, divisor: f32) -> Instruction {
     }
 }
 
-/// Create PreciseSquareRoot instruction
+/// Create F32 Exponentiate instruction
+pub fn f32_exponentiate(base: f32, exponent: f32) -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![],
+        data: MathInstruction::F32Exponentiate { base, exponent }
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+/// Create F32 Natural Log instruction
+pub fn f32_natural_log(argument: f32) -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![],
+        data: MathInstruction::F32NaturalLog { argument }
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+/// Create Noop instruction
 pub fn noop() -> Instruction {
     Instruction {
         program_id: id(),
@@ -275,6 +316,35 @@ mod tests {
             .unwrap()
         );
         assert_eq!(instruction.program_id, crate::id());
+    }
+
+    #[test]
+    fn test_f32_exponentiate() {
+        let instruction = f32_exponentiate(f32::MAX, f32::MAX);
+        assert_eq!(0, instruction.accounts.len());
+        assert_eq!(
+            instruction.data,
+            MathInstruction::F32Exponentiate {
+                base: f32::MAX,
+                exponent: f32::MAX
+            }
+            .try_to_vec()
+            .unwrap()
+        );
+        assert_eq!(instruction.program_id, crate::id())
+    }
+
+    #[test]
+    fn test_f32_natural_log() {
+        let instruction = f32_natural_log(f32::MAX);
+        assert_eq!(0, instruction.accounts.len());
+        assert_eq!(
+            instruction.data,
+            MathInstruction::F32NaturalLog { argument: f32::MAX }
+                .try_to_vec()
+                .unwrap()
+        );
+        assert_eq!(instruction.program_id, crate::id())
     }
 
     #[test]

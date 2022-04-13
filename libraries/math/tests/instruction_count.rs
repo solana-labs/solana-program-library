@@ -148,6 +148,38 @@ async fn test_f32_divide() {
 }
 
 #[tokio::test]
+async fn test_f32_exponentiate() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    pc.set_compute_max_units(1400);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::f32_exponentiate(4_f32, 2_f32)],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_f32_natural_log() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    pc.set_compute_max_units(3500);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::f32_natural_log(1_f32.exp())],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
 async fn test_noop() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
