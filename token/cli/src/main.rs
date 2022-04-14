@@ -648,7 +648,15 @@ fn command_transfer(
     memo: Option<String>,
     bulk_signers: BulkSigners,
     no_wait: bool,
+    yolo: bool,
 ) -> CommandResult {
+    let recipient_account = config.rpc_client.get_account(&recipient).unwrap();
+    if recipient_account.owner != system_program::id() && !yolo {
+        return Err(
+            format!("Recipient is not a Account owned by System Program. Use --yolo if you know what you doing").into(),
+        );
+    }
+
     let sender = if let Some(sender) = sender {
         sender
     } else {
@@ -2013,6 +2021,12 @@ fn main() -> Result<(), Error> {
                         .help("Return signature immediately after submitting the transaction, instead of waiting for confirmations"),
                 )
                 .arg(
+                    Arg::with_name("yolo")
+                        .long("yolo")
+                        .takes_value(false)
+                        .help("Send tokens to the recipient even if the recipient is not a wallet owned by System Program."),
+                )
+                .arg(
                     Arg::with_name("recipient_is_ata_owner")
                         .long("recipient-is-ata-owner")
                         .takes_value(false)
@@ -2748,6 +2762,7 @@ fn main() -> Result<(), Error> {
                 memo,
                 bulk_signers,
                 matches.is_present("no_wait"),
+                matches.is_present("yolo"),
             )
         }
         ("burn", Some(arg_matches)) => {
