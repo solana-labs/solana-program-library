@@ -653,7 +653,8 @@ fn command_transfer(
     let recipient_account = config.rpc_client.get_account(&recipient).unwrap();
     if recipient_account.owner != system_program::id() && !yolo {
         return Err(
-            format!("Recipient is not a Account owned by System Program. Use --yolo if you know what you doing").into(),
+            ("Recipient is not a Account owned by System Program. Use --yolo if you know what you doing").to_string()
+                .into(),
         );
     }
 
