@@ -43,8 +43,8 @@ and [token-lending](https://github.com/solana-labs/solana-program-library/tree/m
 have been forked and deployed by prominent ecosystem projects, many of which
 have their own bug bounty programs.
 
-While we cannot guarantee a bounty from another entity, we can put you in touch
-with these teams, increasing your chances of receiving a bounty for your work.
+While we cannot guarantee a bounty from another entity, we can help determine who
+may be affected and put you in touch the corresponding teams.
 
 <a name="process"></a>
 ## Incident Response Process
