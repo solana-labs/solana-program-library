@@ -53,6 +53,7 @@ use std::{collections::HashMap, fmt::Display, process::exit, str::FromStr, sync:
 
 mod config;
 use config::Config;
+use config::KeypairOrPath;
 
 mod output;
 use output::*;
@@ -1688,10 +1689,27 @@ impl offline::ArgsConfig for SignOnlyNeedsDelegateAddress {
     }
 }
 
-fn main() -> Result<(), Error> {
-    let default_decimals = &format!("{}", native_mint::DECIMALS);
-    let default_program_id = spl_token::id().to_string();
-    let app_matches = App::new(crate_name!())
+fn minimum_signers_help_string() -> String {
+    format!(
+        "The minimum number of signers required to allow the operation. [{} <= M <= N]",
+        MIN_SIGNERS
+    )
+}
+
+fn multisig_member_help_string() -> String {
+    format!(
+        "The public keys for each of the N signing members of this account. [{} <= N <= {}]",
+        MIN_SIGNERS, MAX_SIGNERS
+    )
+}
+
+fn app<'a, 'b>(
+    default_decimals: &'a str,
+    default_program_id: &'a str,
+    minimum_signers_help: &'b str,
+    multisig_member_help: &'b str,
+) -> App<'a, 'b> {
+    App::new(crate_name!())
         .about(crate_description!())
         .version(crate_version!())
         .setting(AppSettings::SubcommandRequiredElseHelp)
@@ -1733,7 +1751,7 @@ fn main() -> Result<(), Error> {
                 .value_name("ADDRESS")
                 .takes_value(true)
                 .global(true)
-                .default_value(&default_program_id)
+                .default_value(default_program_id)
                 .validator(is_valid_pubkey)
                 .help("SPL Token program id"),
         )
@@ -1845,10 +1863,7 @@ fn main() -> Result<(), Error> {
                         .takes_value(true)
                         .index(1)
                         .required(true)
-                        .help(&format!("The minimum number of signers required \
-                            to allow the operation. [{} <= M <= N]",
-                            MIN_SIGNERS,
-                        )),
+                        .help(minimum_signers_help),
                 )
                 .arg(
                     Arg::with_name("multisig_member")
@@ -1859,10 +1874,7 @@ fn main() -> Result<(), Error> {
                         .required(true)
                         .min_values(MIN_SIGNERS as u64)
                         .max_values(MAX_SIGNERS as u64)
-                        .help(&format!("The public keys for each of the N \
-                            signing members of this account. [{} <= N <= {}]",
-                            MIN_SIGNERS, MAX_SIGNERS,
-                        )),
+                        .help(multisig_member_help),
                 )
                 .arg(
                     Arg::with_name("address_keypair")
@@ -2482,7 +2494,20 @@ fn main() -> Result<(), Error> {
                         .help("Specify the specific token account address to sync"),
                 ),
         )
-        .get_matches();
+}
+
+fn main() -> Result<(), Error> {
+    let default_decimals = format!("{}", native_mint::DECIMALS);
+    let default_program_id = spl_token::id().to_string();
+    let minimum_signers_help = minimum_signers_help_string();
+    let multisig_member_help = multisig_member_help_string();
+    let app_matches = app(
+        &default_decimals,
+        &default_program_id,
+        &minimum_signers_help,
+        &multisig_member_help,
+    )
+    .get_matches();
 
     let mut wallet_manager = None;
     let mut bulk_signers: Vec<Box<dyn Signer>> = Vec::new();
@@ -2591,7 +2616,7 @@ fn main() -> Result<(), Error> {
             websocket_url,
             output_format,
             fee_payer,
-            default_keypair_path: cli_config.keypair_path,
+            default_keypair: KeypairOrPath::Path(cli_config.keypair_path),
             nonce_account,
             nonce_authority,
             blockhash_query,
@@ -2603,15 +2628,27 @@ fn main() -> Result<(), Error> {
     };
 
     solana_logger::setup_with_default("solana=info");
+    let result = process_command(sub_command, matches, &config, wallet_manager, bulk_signers)
+        .map_err::<Error, _>(|err| DisplayError::new_as_boxed(err).into())?;
+    println!("{}", result);
+    Ok(())
+}
 
-    let result = match (sub_command, sub_matches) {
-        ("bench", Some(arg_matches)) => bench_process_command(
+fn process_command(
+    sub_command: &str,
+    sub_matches: &ArgMatches<'_>,
+    config: &Config,
+    mut wallet_manager: Option<Arc<RemoteWalletManager>>,
+    mut bulk_signers: Vec<Box<dyn Signer>>,
+) -> CommandResult {
+    match (sub_command, sub_matches) {
+        ("bench", arg_matches) => bench_process_command(
             arg_matches,
-            &config,
+            config,
             std::mem::take(&mut bulk_signers),
             &mut wallet_manager,
         ),
-        (CREATE_TOKEN, Some(arg_matches)) => {
+        (CREATE_TOKEN, arg_matches) => {
             let decimals = value_t_or_exit!(arg_matches, "decimals", u8);
             let mint_authority =
                 config.pubkey_or_default(arg_matches, "mint_authority", &mut wallet_manager);
@@ -2623,7 +2660,7 @@ fn main() -> Result<(), Error> {
             bulk_signers.push(token_signer);
 
             command_create_token(
-                &config,
+                config,
                 decimals,
                 token,
                 mint_authority,
@@ -2632,7 +2669,7 @@ fn main() -> Result<(), Error> {
                 bulk_signers,
             )
         }
-        ("create-account", Some(arg_matches)) => {
+        ("create-account", arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -2646,9 +2683,9 @@ fn main() -> Result<(), Error> {
             );
 
             let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager);
-            command_create_account(&config, token, owner, account, bulk_signers)
+            command_create_account(config, token, owner, account, bulk_signers)
         }
-        ("create-multisig", Some(arg_matches)) => {
+        ("create-multisig", arg_matches) => {
             let minimum_signers = value_of::<u8>(arg_matches, "minimum_signers").unwrap();
             let multisig_members =
                 pubkeys_of_multiple_signers(arg_matches, "multisig_member", &mut wallet_manager)
@@ -2670,14 +2707,14 @@ fn main() -> Result<(), Error> {
             bulk_signers.push(signer);
 
             command_create_multisig(
-                &config,
+                config,
                 account,
                 minimum_signers,
                 multisig_members,
                 bulk_signers,
             )
         }
-        ("authorize", Some(arg_matches)) => {
+        ("authorize", arg_matches) => {
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -2698,7 +2735,7 @@ fn main() -> Result<(), Error> {
                 pubkey_of_signer(arg_matches, "new_authority", &mut wallet_manager).unwrap();
             let force_authorize = arg_matches.is_present("force");
             command_authorize(
-                &config,
+                config,
                 address,
                 authority_type,
                 authority,
@@ -2707,11 +2744,11 @@ fn main() -> Result<(), Error> {
                 bulk_signers,
             )
         }
-        ("transfer", Some(arg_matches)) => {
+        ("transfer", arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let amount = match matches.value_of("amount").unwrap() {
+            let amount = match arg_matches.value_of("amount").unwrap() {
                 "ALL" => None,
                 amount => Some(amount.parse::<f64>().unwrap()),
             };
@@ -2725,16 +2762,16 @@ fn main() -> Result<(), Error> {
             bulk_signers.push(owner_signer);
 
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
-            let fund_recipient = matches.is_present("fund_recipient");
-            let allow_unfunded_recipient = matches.is_present("allow_empty_recipient")
-                || matches.is_present("allow_unfunded_recipient");
+            let fund_recipient = arg_matches.is_present("fund_recipient");
+            let allow_unfunded_recipient = arg_matches.is_present("allow_empty_recipient")
+                || arg_matches.is_present("allow_unfunded_recipient");
 
-            let recipient_is_ata_owner = matches.is_present("recipient_is_ata_owner");
-            let use_unchecked_instruction = matches.is_present("use_unchecked_instruction");
+            let recipient_is_ata_owner = arg_matches.is_present("recipient_is_ata_owner");
+            let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             let memo = value_t!(arg_matches, "memo", String).ok();
 
             command_transfer(
-                &config,
+                config,
                 token,
                 amount,
                 recipient,
@@ -2747,10 +2784,10 @@ fn main() -> Result<(), Error> {
                 use_unchecked_instruction,
                 memo,
                 bulk_signers,
-                matches.is_present("no_wait"),
+                arg_matches.is_present("no_wait"),
             )
         }
-        ("burn", Some(arg_matches)) => {
+        ("burn", arg_matches) => {
             let source = pubkey_of_signer(arg_matches, "source", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -2763,10 +2800,10 @@ fn main() -> Result<(), Error> {
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
-            let use_unchecked_instruction = matches.is_present("use_unchecked_instruction");
+            let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             let memo = value_t!(arg_matches, "memo", String).ok();
             command_burn(
-                &config,
+                config,
                 source,
                 owner,
                 amount,
@@ -2777,7 +2814,7 @@ fn main() -> Result<(), Error> {
                 bulk_signers,
             )
         }
-        ("mint", Some(arg_matches)) => {
+        ("mint", arg_matches) => {
             let (mint_authority_signer, mint_authority) =
                 config.signer_or_default(arg_matches, "mint_authority", &mut wallet_manager);
             bulk_signers.push(mint_authority_signer);
@@ -2792,9 +2829,9 @@ fn main() -> Result<(), Error> {
                 &mut wallet_manager,
             );
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
-            let use_unchecked_instruction = matches.is_present("use_unchecked_instruction");
+            let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             command_mint(
-                &config,
+                config,
                 token,
                 amount,
                 recipient,
@@ -2804,7 +2841,7 @@ fn main() -> Result<(), Error> {
                 bulk_signers,
             )
         }
-        ("freeze", Some(arg_matches)) => {
+        ("freeze", arg_matches) => {
             let (freeze_authority_signer, freeze_authority) =
                 config.signer_or_default(arg_matches, "freeze_authority", &mut wallet_manager);
             bulk_signers.push(freeze_authority_signer);
@@ -2815,14 +2852,14 @@ fn main() -> Result<(), Error> {
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
             command_freeze(
-                &config,
+                config,
                 account,
                 mint_address,
                 freeze_authority,
                 bulk_signers,
             )
         }
-        ("thaw", Some(arg_matches)) => {
+        ("thaw", arg_matches) => {
             let (freeze_authority_signer, freeze_authority) =
                 config.signer_or_default(arg_matches, "freeze_authority", &mut wallet_manager);
             bulk_signers.push(freeze_authority_signer);
@@ -2833,14 +2870,14 @@ fn main() -> Result<(), Error> {
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
             command_thaw(
-                &config,
+                config,
                 account,
                 mint_address,
                 freeze_authority,
                 bulk_signers,
             )
         }
-        ("wrap", Some(arg_matches)) => {
+        ("wrap", arg_matches) => {
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
             let account = if arg_matches.is_present("create_aux_account") {
                 let (signer, account) = new_throwaway_signer();
@@ -2855,17 +2892,17 @@ fn main() -> Result<(), Error> {
                 config.signer_or_default(arg_matches, "wallet_keypair", &mut wallet_manager);
             bulk_signers.push(wallet_signer);
 
-            command_wrap(&config, amount, wallet_address, account, bulk_signers)
+            command_wrap(config, amount, wallet_address, account, bulk_signers)
         }
-        ("unwrap", Some(arg_matches)) => {
+        ("unwrap", arg_matches) => {
             let (wallet_signer, wallet_address) =
                 config.signer_or_default(arg_matches, "wallet_keypair", &mut wallet_manager);
             bulk_signers.push(wallet_signer);
 
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
-            command_unwrap(&config, wallet_address, address, bulk_signers)
+            command_unwrap(config, wallet_address, address, bulk_signers)
         }
-        ("approve", Some(arg_matches)) => {
+        ("approve", arg_matches) => {
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             bulk_signers.push(owner_signer);
@@ -2880,9 +2917,9 @@ fn main() -> Result<(), Error> {
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
-            let use_unchecked_instruction = matches.is_present("use_unchecked_instruction");
+            let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             command_approve(
-                &config,
+                config,
                 account,
                 owner_address,
                 amount,
@@ -2893,7 +2930,7 @@ fn main() -> Result<(), Error> {
                 bulk_signers,
             )
         }
-        ("revoke", Some(arg_matches)) => {
+        ("revoke", arg_matches) => {
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             bulk_signers.push(owner_signer);
@@ -2905,14 +2942,14 @@ fn main() -> Result<(), Error> {
                 pubkey_of_signer(arg_matches, DELEGATE_ADDRESS_ARG.name, &mut wallet_manager)
                     .unwrap();
             command_revoke(
-                &config,
+                config,
                 account,
                 owner_address,
                 delegate_address,
                 bulk_signers,
             )
         }
-        ("close", Some(arg_matches)) => {
+        ("close", arg_matches) => {
             let (close_authority_signer, close_authority) =
                 config.signer_or_default(arg_matches, "close_authority", &mut wallet_manager);
             bulk_signers.push(close_authority_signer);
@@ -2923,47 +2960,47 @@ fn main() -> Result<(), Error> {
                 &mut wallet_manager,
             );
             let recipient = config.pubkey_or_default(arg_matches, "recipient", &mut wallet_manager);
-            command_close(&config, address, close_authority, recipient, bulk_signers)
+            command_close(config, address, close_authority, recipient, bulk_signers)
         }
-        ("balance", Some(arg_matches)) => {
+        ("balance", arg_matches) => {
             let address = config.associated_token_address_or_override(
                 arg_matches,
                 "address",
                 &mut wallet_manager,
             );
-            command_balance(&config, address)
+            command_balance(config, address)
         }
-        ("supply", Some(arg_matches)) => {
+        ("supply", arg_matches) => {
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            command_supply(&config, address)
+            command_supply(config, address)
         }
-        ("accounts", Some(arg_matches)) => {
+        ("accounts", arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
             let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager);
-            command_accounts(&config, token, owner)
+            command_accounts(config, token, owner)
         }
-        ("address", Some(arg_matches)) => {
+        ("address", arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
             let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager);
-            command_address(&config, token, owner)
+            command_address(config, token, owner)
         }
-        ("account-info", Some(arg_matches)) => {
+        ("account-info", arg_matches) => {
             let address = config.associated_token_address_or_override(
                 arg_matches,
                 "address",
                 &mut wallet_manager,
             );
-            command_account_info(&config, address)
+            command_account_info(config, address)
         }
-        ("multisig-info", Some(arg_matches)) => {
+        ("multisig-info", arg_matches) => {
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            command_multisig(&config, address)
+            command_multisig(config, address)
         }
-        ("gc", Some(arg_matches)) => {
+        ("gc", arg_matches) => {
             match config.output_format {
                 OutputFormat::Json | OutputFormat::JsonCompact => {
                     eprintln!(
@@ -2975,20 +3012,20 @@ fn main() -> Result<(), Error> {
             }
 
             let close_empty_associated_accounts =
-                matches.is_present("close_empty_associated_accounts");
+                arg_matches.is_present("close_empty_associated_accounts");
 
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             bulk_signers.push(owner_signer);
 
             command_gc(
-                &config,
+                config,
                 owner_address,
                 close_empty_associated_accounts,
                 bulk_signers,
             )
         }
-        ("sync-native", Some(arg_matches)) => {
+        ("sync-native", arg_matches) => {
             let address = config.associated_token_address_for_token_or_override(
                 arg_matches,
                 "address",
@@ -2996,13 +3033,10 @@ fn main() -> Result<(), Error> {
                 Some(native_mint::id()),
             );
 
-            command_sync_native(address, bulk_signers, &config)
+            command_sync_native(address, bulk_signers, config)
         }
         _ => unreachable!(),
     }
-    .map_err::<Error, _>(|err| DisplayError::new_as_boxed(err).into())?;
-    println!("{}", result);
-    Ok(())
 }
 
 fn format_output<T>(command_output: T, command_name: &str, config: &Config) -> String
@@ -3075,5 +3109,447 @@ fn handle_tx(
         Ok(TransactionReturnData::CliSignature(CliSignature {
             signature: signature.to_string(),
         }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        solana_client::blockhash_query::Source,
+        solana_sdk::{
+            bpf_loader,
+            signature::{Keypair, Signer},
+        },
+        solana_test_validator::{ProgramInfo, TestValidator, TestValidatorGenesis},
+        std::path::PathBuf,
+    };
+
+    fn clone_keypair(keypair: &Keypair) -> Keypair {
+        Keypair::from_bytes(&keypair.to_bytes()).unwrap()
+    }
+
+    fn validator_for_test() -> (TestValidator, Keypair) {
+        solana_logger::setup();
+        let mut test_validator_genesis = TestValidatorGenesis::default();
+        test_validator_genesis.add_programs_with_path(&[
+            ProgramInfo {
+                program_id: spl_token::id(),
+                loader: bpf_loader::id(),
+                program_path: PathBuf::from("../../target/deploy/spl_token.so"),
+            },
+            ProgramInfo {
+                program_id: spl_associated_token_account::id(),
+                loader: bpf_loader::id(),
+                program_path: PathBuf::from("../../target/deploy/spl_associated_token_account.so"),
+            },
+        ]);
+        test_validator_genesis.start()
+    }
+
+    fn test_config<'a>(
+        test_validator: &TestValidator,
+        payer: &Keypair,
+        program_id: &Pubkey,
+    ) -> Config<'a> {
+        let websocket_url = test_validator.rpc_pubsub_url();
+        let (rpc_client, _recent_blockhash, _fee_calculator) = test_validator.rpc_client();
+        Config {
+            rpc_client: Arc::new(rpc_client),
+            websocket_url,
+            output_format: OutputFormat::JsonCompact,
+            fee_payer: payer.pubkey(),
+            default_keypair: KeypairOrPath::Keypair(clone_keypair(payer)),
+            nonce_account: None,
+            nonce_authority: None,
+            blockhash_query: BlockhashQuery::All(Source::Cluster),
+            sign_only: false,
+            dump_transaction_message: false,
+            multisigner_pubkeys: vec![],
+            program_id: *program_id,
+        }
+    }
+
+    fn create_token(config: &Config, payer: &Keypair) -> Pubkey {
+        let token = Keypair::new();
+        let token_pubkey = token.pubkey();
+        let bulk_signers: Vec<Box<dyn Signer>> =
+            vec![Box::new(clone_keypair(payer)), Box::new(token)];
+
+        command_create_token(
+            config,
+            0,
+            token_pubkey,
+            payer.pubkey(),
+            false,
+            None,
+            bulk_signers,
+        )
+        .unwrap();
+        token_pubkey
+    }
+
+    fn create_auxiliary_account(config: &Config, payer: &Keypair, mint: Pubkey) -> Pubkey {
+        let auxiliary = Keypair::new();
+        let address = auxiliary.pubkey();
+        let bulk_signers: Vec<Box<dyn Signer>> =
+            vec![Box::new(clone_keypair(payer)), Box::new(auxiliary)];
+        command_create_account(config, mint, payer.pubkey(), Some(address), bulk_signers).unwrap();
+        address
+    }
+
+    fn create_associated_account(config: &Config, payer: &Keypair, mint: Pubkey) -> Pubkey {
+        let bulk_signers: Vec<Box<dyn Signer>> = vec![Box::new(clone_keypair(payer))];
+        command_create_account(config, mint, payer.pubkey(), None, bulk_signers).unwrap();
+        get_associated_token_address_with_program_id(&payer.pubkey(), &mint, &config.program_id)
+    }
+
+    fn mint_tokens(
+        config: &Config,
+        payer: &Keypair,
+        mint: Pubkey,
+        ui_amount: f64,
+        recipient: Pubkey,
+    ) {
+        let bulk_signers: Vec<Box<dyn Signer>> = vec![Box::new(clone_keypair(payer))];
+        command_mint(
+            config,
+            mint,
+            ui_amount,
+            recipient,
+            Some(native_mint::DECIMALS),
+            payer.pubkey(),
+            false,
+            bulk_signers,
+        )
+        .unwrap();
+    }
+
+    fn process_test_command(config: &Config, payer: &Keypair, args: &[&str]) -> CommandResult {
+        let default_decimals = format!("{}", native_mint::DECIMALS);
+        let default_program_id = spl_token::id().to_string();
+        let minimum_signers_help = minimum_signers_help_string();
+        let multisig_member_help = multisig_member_help_string();
+
+        let app_matches = app(
+            &default_decimals,
+            &default_program_id,
+            &minimum_signers_help,
+            &multisig_member_help,
+        )
+        .get_matches_from(args);
+        let (sub_command, sub_matches) = app_matches.subcommand();
+        let matches = sub_matches.unwrap();
+
+        let wallet_manager = None;
+        let bulk_signers: Vec<Box<dyn Signer>> = vec![Box::new(clone_keypair(payer))];
+        process_command(sub_command, matches, config, wallet_manager, bulk_signers)
+    }
+
+    #[test]
+    fn create_token_default() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+        let result = process_test_command(&config, &payer, &["spl-token", "create-token"]);
+        let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+        let mint = Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
+        let account = config.rpc_client.get_account(&mint).unwrap();
+        assert_eq!(account.owner, spl_token::id());
+    }
+
+    #[test]
+    fn supply() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+        let token = create_token(&config, &payer);
+        let result = process_test_command(
+            &config,
+            &payer,
+            &["spl-token", "supply", &token.to_string()],
+        );
+        let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+        assert_eq!(value["amount"], "0");
+        assert_eq!(value["uiAmountString"], "0");
+    }
+
+    #[test]
+    fn create_account_default() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+        let token = create_token(&config, &payer);
+        let result = process_test_command(
+            &config,
+            &payer,
+            &["spl-token", "create-account", &token.to_string()],
+        );
+        result.unwrap();
+    }
+
+    #[test]
+    fn account_info() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+        let token = create_token(&config, &payer);
+        let _account = create_associated_account(&config, &payer, token);
+        let result = process_test_command(
+            &config,
+            &payer,
+            &["spl-token", "account-info", &token.to_string()],
+        );
+        let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+        let account = get_associated_token_address_with_program_id(
+            &payer.pubkey(),
+            &token,
+            &config.program_id,
+        );
+        assert_eq!(value["address"], account.to_string());
+        assert_eq!(value["mint"], token.to_string());
+        assert_eq!(value["isAssociated"], true);
+        assert_eq!(value["isNative"], false);
+        assert_eq!(value["owner"], payer.pubkey().to_string());
+        assert_eq!(value["state"], "initialized");
+    }
+
+    #[test]
+    fn balance() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+        let token = create_token(&config, &payer);
+        let _account = create_associated_account(&config, &payer, token);
+        let result = process_test_command(
+            &config,
+            &payer,
+            &["spl-token", "balance", &token.to_string()],
+        );
+        let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+        assert_eq!(value["amount"], "0");
+        assert_eq!(value["uiAmountString"], "0");
+    }
+
+    #[test]
+    fn mint() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+        let token = create_token(&config, &payer);
+        let account = create_associated_account(&config, &payer, token);
+        let result = process_test_command(
+            &config,
+            &payer,
+            &["spl-token", "mint", &token.to_string(), "100"],
+        );
+        result.unwrap();
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&account)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.token_amount.amount, "100");
+        assert_eq!(ui_account.mint, token.to_string());
+        assert_eq!(ui_account.owner, payer.pubkey().to_string());
+    }
+
+    #[test]
+    fn balance_after_mint() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+        let token = create_token(&config, &payer);
+        let account = create_associated_account(&config, &payer, token);
+        let ui_amount = 100.0;
+        mint_tokens(&config, &payer, token, ui_amount, account);
+        let result = process_test_command(
+            &config,
+            &payer,
+            &["spl-token", "balance", &token.to_string()],
+        );
+        let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+        assert_eq!(value["amount"], format!("{}", ui_amount));
+        assert_eq!(value["uiAmountString"], format!("{}", ui_amount));
+    }
+
+    #[test]
+    fn accounts() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+        let token1 = create_token(&config, &payer);
+        let _account1 = create_associated_account(&config, &payer, token1);
+        let token2 = create_token(&config, &payer);
+        let _account2 = create_associated_account(&config, &payer, token2);
+        let token3 = create_token(&config, &payer);
+        let result = process_test_command(&config, &payer, &["spl-token", "accounts"]).unwrap();
+        assert!(result.contains(&token1.to_string()));
+        assert!(result.contains(&token2.to_string()));
+        assert!(!result.contains(&token3.to_string()));
+    }
+
+    #[test]
+    fn wrap() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+        let _result = process_test_command(&config, &payer, &["spl-token", "wrap", "0.5"]).unwrap();
+        let account = get_associated_token_address_with_program_id(
+            &payer.pubkey(),
+            &native_mint::id(),
+            &config.program_id,
+        );
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&account)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.mint, native_mint::id().to_string());
+        assert_eq!(ui_account.owner, payer.pubkey().to_string());
+    }
+
+    #[test]
+    fn unwrap() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+        let bulk_signers: Vec<Box<dyn Signer>> = vec![Box::new(clone_keypair(&payer))];
+        command_wrap(&config, 0.5, payer.pubkey(), None, bulk_signers).unwrap();
+        let account = get_associated_token_address_with_program_id(
+            &payer.pubkey(),
+            &native_mint::id(),
+            &config.program_id,
+        );
+        let result = process_test_command(
+            &config,
+            &payer,
+            &["spl-token", "unwrap", &account.to_string()],
+        );
+        result.unwrap();
+        config.rpc_client.get_token_account(&account).unwrap_err();
+    }
+
+    #[test]
+    fn transfer() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+
+        let token = create_token(&config, &payer);
+        let source = create_associated_account(&config, &payer, token);
+        let destination = create_auxiliary_account(&config, &payer, token);
+        let ui_amount = 100.0;
+        mint_tokens(&config, &payer, token, ui_amount, source);
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                "transfer",
+                &token.to_string(),
+                "10",
+                &destination.to_string(),
+            ],
+        );
+        result.unwrap();
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&source)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.token_amount.amount, "90");
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&destination)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.token_amount.amount, "10");
+    }
+
+    #[test]
+    fn transfer_fund_recipient() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+
+        let token = create_token(&config, &payer);
+        let source = create_associated_account(&config, &payer, token);
+        let recipient = Keypair::new().pubkey().to_string();
+        let ui_amount = 100.0;
+        mint_tokens(&config, &payer, token, ui_amount, source);
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                "transfer",
+                "--fund-recipient",
+                "--allow-unfunded-recipient",
+                &token.to_string(),
+                "10",
+                &recipient,
+            ],
+        );
+        result.unwrap();
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&source)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.token_amount.amount, "90");
+    }
+
+    #[test]
+    fn disable_mint_authority() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+
+        let token = create_token(&config, &payer);
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                "authorize",
+                &token.to_string(),
+                "mint",
+                "--disable",
+            ],
+        );
+        result.unwrap();
+
+        let account = config.rpc_client.get_account(&token).unwrap();
+        let mint = Mint::unpack(&account.data).unwrap();
+        assert_eq!(mint.mint_authority, COption::None);
+    }
+
+    #[test]
+    fn gc() {
+        let (test_validator, payer) = validator_for_test();
+        let mut config = test_config(&test_validator, &payer, &spl_token::id());
+
+        let token = create_token(&config, &payer);
+        let _account = create_associated_account(&config, &payer, token);
+        let _aux1 = create_auxiliary_account(&config, &payer, token);
+        let _aux2 = create_auxiliary_account(&config, &payer, token);
+        let _aux3 = create_auxiliary_account(&config, &payer, token);
+        let result = process_test_command(&config, &payer, &["spl-token", "accounts"]).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&result).unwrap();
+        assert_eq!(value["accounts"].as_array().unwrap().len(), 4);
+        config.output_format = OutputFormat::Display; // fixup eventually?
+        let _result = process_test_command(&config, &payer, &["spl-token", "gc"]).unwrap();
+        config.output_format = OutputFormat::JsonCompact;
+        let result = process_test_command(&config, &payer, &["spl-token", "accounts"]).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&result).unwrap();
+        assert_eq!(value["accounts"].as_array().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn set_owner() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+        let token = create_token(&config, &payer);
+        let aux = create_auxiliary_account(&config, &payer, token);
+        let aux_string = aux.to_string();
+        let _result = process_test_command(
+            &config,
+            &payer,
+            &["spl-token", "authorize", &aux_string, "owner", &aux_string],
+        )
+        .unwrap();
+        let ui_account = config.rpc_client.get_token_account(&aux).unwrap().unwrap();
+        assert_eq!(ui_account.mint, token.to_string());
+        assert_eq!(ui_account.owner, aux_string);
     }
 }
