@@ -167,8 +167,7 @@ impl VerboseDisplay for CliStakePool {
             &self.sol_referral_fee
         )?;
         writeln!(w)?;
-        writeln!(w, "Stake Accounts")?;
-        writeln!(w, "--------------")?;
+
         match &self.details {
             None => {}
             Some(details) => {
@@ -294,7 +293,6 @@ impl Display for CliStakePoolDetails {
 impl QuietDisplay for CliStakePoolDetails {}
 impl VerboseDisplay for CliStakePoolDetails {
     fn write_str(&self, w: &mut dyn Write) -> Result {
-        writeln!(w)?;
         writeln!(w, "Stake Accounts")?;
         writeln!(w, "--------------")?;
         writeln!(
