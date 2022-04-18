@@ -1,11 +1,9 @@
 import { struct } from '@solana/buffer-layout';
-import { Account } from '../state/account'
+import { Account } from '../state/account';
 import { ExtensionType, getExtensionData } from './extensionType';
 
 /** ImmutableOwner as stored by the program */
-export interface ImmutableOwner {
-
-}
+export interface ImmutableOwner {} // eslint-disable-line
 
 /** Buffer layout for de/serializing an account */
 export const ImmutableOwnerLayout = struct<ImmutableOwner>([]);

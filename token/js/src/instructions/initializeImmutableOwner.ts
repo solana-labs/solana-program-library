@@ -1,5 +1,4 @@
 import { struct, u8 } from '@solana/buffer-layout';
-import { publicKey } from '@solana/buffer-layout-utils';
 import { AccountMeta, PublicKey, TransactionInstruction } from '@solana/web3.js';
 import {
     TokenInvalidInstructionDataError,
@@ -23,7 +22,7 @@ export const initializeImmutableOwnerInstructionData = struct<InitializeImmutabl
  * Construct an InitializeImmutableOwner instruction
  *
  * @param account            Account
- * @param immutableOwner  Optional authority that can close the mint
+ * @param immutableOwner
  *
  * @return Instruction to add to a transaction
  */
@@ -75,8 +74,7 @@ export function decodeInitializeImmutableOwnerInstruction(
         keys: { account },
         data,
     } = decodeInitializeImmutableOwnerInstructionUnchecked(instruction);
-    if (data.instruction !== TokenInstruction.InitializeImmutableOwner)
-        throw new TokenInvalidInstructionTypeError();
+    if (data.instruction !== TokenInstruction.InitializeImmutableOwner) throw new TokenInvalidInstructionTypeError();
     if (!account) throw new TokenInvalidInstructionKeysError();
 
     return {
@@ -111,8 +109,7 @@ export function decodeInitializeImmutableOwnerInstructionUnchecked({
     keys: [account],
     data,
 }: TransactionInstruction): DecodedInitializeImmutableOwnerInstructionUnchecked {
-    const { instruction } =
-        initializeImmutableOwnerInstructionData.decode(data);
+    const { instruction } = initializeImmutableOwnerInstructionData.decode(data);
 
     return {
         programId,
@@ -120,7 +117,7 @@ export function decodeInitializeImmutableOwnerInstructionUnchecked({
             account: account,
         },
         data: {
-            instruction
+            instruction,
         },
     };
 }
