@@ -17,7 +17,6 @@ export interface InitializeImmutableOwnerInstructionData {
 /** TODO: docs */
 export const initializeImmutableOwnerInstructionData = struct<InitializeImmutableOwnerInstructionData>([
     u8('instruction'),
-    u8('immutableOwnerOption'),
 ]);
 
 /**
@@ -30,7 +29,6 @@ export const initializeImmutableOwnerInstructionData = struct<InitializeImmutabl
  */
 export function createInitializeImmutableOwnerInstruction(
     account: PublicKey,
-    immutableOwner: PublicKey | null,
     programId: PublicKey
 ): TransactionInstruction {
     const keys = [{ pubkey: account, isSigner: false, isWritable: true }];
