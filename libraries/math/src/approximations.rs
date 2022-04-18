@@ -95,7 +95,7 @@ mod tests {
 
     fn check_normal_cdf_f32(argument: f32) {
         let result = f32_normal_cdf(argument).unwrap();
-        let abs_difference: f32 = (result - 0.84134475).abs();
+        let abs_difference: f32 = (result - 0.841_344_8).abs();
         dbg!(result);
         assert!(abs_difference <= 0.001);
     }

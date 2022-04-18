@@ -184,7 +184,7 @@ async fn test_f32_normal_cdf() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
     // Dial down the BPF compute budget to detect if the operation gets bloated in the future
-    pc.set_compute_max_units(4_100);
+    pc.set_compute_max_units(3_100);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
