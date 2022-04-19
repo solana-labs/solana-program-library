@@ -3505,7 +3505,7 @@ mod tests {
     }
 
     #[test]
-    fn failing_to_transfer_fund_recipient_no_allow_unfunded_recipient() {
+    fn failing_to_allow_non_system_account_recipient() {
         let (test_validator, payer) = validator_for_test();
         let config = test_config(&test_validator, &payer, &spl_token::id());
 
@@ -3530,7 +3530,7 @@ mod tests {
     }
 
     #[test]
-    fn transfer_fund_recipient_no_allow_unfunded_recipient() {
+    fn allow_non_system_account_recipient() {
         let (test_validator, payer) = validator_for_test();
         let config = test_config(&test_validator, &payer, &spl_token::id());
 
