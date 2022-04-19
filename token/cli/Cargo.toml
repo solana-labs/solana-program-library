@@ -8,6 +8,9 @@ name = "spl-token-cli"
 repository = "https://github.com/solana-labs/solana-program-library"
 version = "2.0.15"
 
+[build-dependencies]
+walkdir = "2"
+
 [dependencies]
 clap = "2.33.3"
 console = "0.14.0"
@@ -27,6 +30,9 @@ solana-transaction-status = "=1.10.8"
 spl-token = { version = "3.3", path="../program", features = [ "no-entrypoint" ] }
 spl-associated-token-account = { version = "1.0.5", path="../../associated-token-account/program", features = [ "no-entrypoint" ] }
 spl-memo = { version = "3.0.1", path="../../memo/program", features = ["no-entrypoint"] }
+
+[dev-dependencies]
+solana-test-validator = "=1.10.8"
 
 [[bin]]
 name = "spl-token"
