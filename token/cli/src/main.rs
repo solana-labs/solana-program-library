@@ -2802,7 +2802,10 @@ fn process_command(
                 memo,
                 bulk_signers,
                 arg_matches.is_present("no_wait"),
+<<<<<<< HEAD
                 arg_matches.is_present("allow_non_system_account_recipient")
+=======
+>>>>>>> 9123a80a6a5b5f8a378a56c4501f99df7debda55
             )
         }
         ("burn", arg_matches) => {
