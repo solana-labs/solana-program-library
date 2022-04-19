@@ -2,17 +2,17 @@ import assert from 'assert';
 import BN from 'bn.js';
 import {Buffer} from 'buffer';
 import * as BufferLayout from '@solana/buffer-layout';
-import type {Connection, TransactionSignature} from '@solana/web3.js';
+import type {ConfirmOptions, Connection, TransactionSignature} from '@solana/web3.js';
 import {
   Account,
   PublicKey,
   SystemProgram,
   Transaction,
   TransactionInstruction,
+  sendAndConfirmTransaction
 } from '@solana/web3.js';
 
 import * as Layout from './layout';
-import {sendAndConfirmTransaction} from './util/send-and-confirm-transaction';
 import {loadAccount} from './util/account';
 
 export const TOKEN_SWAP_PROGRAM_ID: PublicKey = new PublicKey(
@@ -365,6 +365,7 @@ export class TokenSwap {
     hostFeeDenominator: number,
     curveType: number,
     curveParameters?: Numberu64,
+    confirmOptions?: ConfirmOptions
   ): Promise<TokenSwap> {
     let transaction;
     const tokenSwap = new TokenSwap(
@@ -428,18 +429,13 @@ export class TokenSwap {
       curveParameters,
     );
 
-    const options = {
-      skipPreflight: false,
-    };
-
     transaction.add(instruction);
+    // 'createAccount and InitializeSwap'
     await sendAndConfirmTransaction(
-      'createAccount and InitializeSwap',
       connection,
       transaction,
-      options,
-      payer,
-      tokenSwapAccount,
+      [payer, tokenSwapAccount],
+      confirmOptions
     );
 
     return tokenSwap;
@@ -466,13 +462,10 @@ export class TokenSwap {
     userTransferAuthority: Account,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
+    confirmOptions: ConfirmOptions
   ): Promise<TransactionSignature> {
-    const options = {
-      skipPreflight: false,
-    };
-
+    // swap
     return await sendAndConfirmTransaction(
-      'swap',
       this.connection,
       new Transaction().add(
         TokenSwap.swapInstruction(
@@ -492,9 +485,8 @@ export class TokenSwap {
           minimumAmountOut,
         ),
       ),
-      options,
-      this.payer,
-      userTransferAuthority,
+      [this.payer, userTransferAuthority],
+      confirmOptions
     );
   }
 
@@ -570,12 +562,10 @@ export class TokenSwap {
     poolTokenAmount: number | Numberu64,
     maximumTokenA: number | Numberu64,
     maximumTokenB: number | Numberu64,
+    confirmOptions: ConfirmOptions
   ): Promise<TransactionSignature> {
-    const options = {
-      skipPreflight: false,
-    };
+    // depositAllTokenTypes
     return await sendAndConfirmTransaction(
-      'depositAllTokenTypes',
       this.connection,
       new Transaction().add(
         TokenSwap.depositAllTokenTypesInstruction(
@@ -595,9 +585,8 @@ export class TokenSwap {
           maximumTokenB,
         ),
       ),
-      options,
-      this.payer,
-      userTransferAuthority,
+      [this.payer,userTransferAuthority],
+      confirmOptions
     );
   }
 
@@ -673,12 +662,10 @@ export class TokenSwap {
     poolTokenAmount: number | Numberu64,
     minimumTokenA: number | Numberu64,
     minimumTokenB: number | Numberu64,
+    confirmOptions: ConfirmOptions
   ): Promise<TransactionSignature> {
-    const options = {
-      skipPreflight: false,
-    };
+    // withdraw
     return await sendAndConfirmTransaction(
-      'withdraw',
       this.connection,
       new Transaction().add(
         TokenSwap.withdrawAllTokenTypesInstruction(
@@ -699,9 +686,8 @@ export class TokenSwap {
           minimumTokenB,
         ),
       ),
-      options,
-      this.payer,
-      userTransferAuthority,
+      [this.payer, userTransferAuthority],
+      confirmOptions
     );
   }
 
@@ -774,12 +760,10 @@ export class TokenSwap {
     userTransferAuthority: Account,
     sourceTokenAmount: number | Numberu64,
     minimumPoolTokenAmount: number | Numberu64,
+    confirmOptions: ConfirmOptions
   ): Promise<TransactionSignature> {
-    const options = {
-      skipPreflight: false,
-    };
+    // depositSingleTokenTypeExactAmountIn
     return await sendAndConfirmTransaction(
-      'depositSingleTokenTypeExactAmountIn',
       this.connection,
       new Transaction().add(
         TokenSwap.depositSingleTokenTypeExactAmountInInstruction(
@@ -797,9 +781,8 @@ export class TokenSwap {
           minimumPoolTokenAmount,
         ),
       ),
-      options,
-      this.payer,
-      userTransferAuthority,
+      [this.payer, userTransferAuthority],
+      confirmOptions
     );
   }
 
@@ -868,12 +851,10 @@ export class TokenSwap {
     userTransferAuthority: Account,
     destinationTokenAmount: number | Numberu64,
     maximumPoolTokenAmount: number | Numberu64,
+    confirmOptions: ConfirmOptions
   ): Promise<TransactionSignature> {
-    const options = {
-      skipPreflight: false,
-    };
+    // withdrawSingleTokenTypeExactAmountOut
     return await sendAndConfirmTransaction(
-      'withdrawSingleTokenTypeExactAmountOut',
       this.connection,
       new Transaction().add(
         TokenSwap.withdrawSingleTokenTypeExactAmountOutInstruction(
@@ -892,9 +873,8 @@ export class TokenSwap {
           maximumPoolTokenAmount,
         ),
       ),
-      options,
-      this.payer,
-      userTransferAuthority,
+      [this.payer, userTransferAuthority],
+      confirmOptions
     );
   }
 
