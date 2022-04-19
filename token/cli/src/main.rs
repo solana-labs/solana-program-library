@@ -648,16 +648,8 @@ fn command_transfer(
     memo: Option<String>,
     bulk_signers: BulkSigners,
     no_wait: bool,
-    yolo: bool,
+    allow_non_system_account_recipient: bool,
 ) -> CommandResult {
-    let recipient_account = config.rpc_client.get_account(&recipient).unwrap();
-    if recipient_account.owner != system_program::id() && !yolo {
-        return Err(
-            ("Recipient is not a Account owned by System Program. Use --yolo if you know what you doing").to_string()
-                .into(),
-        );
-    }
-
     let sender = if let Some(sender) = sender {
         sender
     } else {
@@ -711,24 +703,34 @@ fn command_transfer(
     let mut recipient_token_account = recipient;
     let mut minimum_balance_for_rent_exemption = 0;
 
-    let recipient_is_token_account = if !config.sign_only {
+    let recipient_is_token_account = if !config.sign_only{
         let recipient_account_info = config
             .rpc_client
-            .get_account_with_commitment(&recipient, config.rpc_client.commitment())?
-            .value
-            .map(|account| {
-                account.owner == config.program_id && account.data.len() == Account::LEN
-            });
-
-        if recipient_account_info.is_none() && !allow_unfunded_recipient {
-            return Err("Error: The recipient address is not funded. \
-                                    Add `--allow-unfunded-recipient` to complete the transfer \
-                                   "
-            .into());
+            .get_account_with_commitment(&recipient,config.rpc_client.commitment())?
+            .value;
+        if let Some(account) = recipient_account_info {
+            if account.owner == config.program_id && account.data.len() == Account::LEN {
+                true
+            } 
+            else if account.owner != system_program::id() && !allow_non_system_account_recipient {
+                return Err("Error: The recipient address is not owned by System Account. \
+                                     Add `--allow-non-system-account-recipient` to complete the transfer. \
+                                    ".into());
+            }
+            else{
+                false
+            }
         }
-
-        recipient_account_info.unwrap_or(false)
-    } else {
+        else if recipient_account_info.is_none() &&  !allow_unfunded_recipient{
+            return Err("Error: The recipient address is not funded. \
+                                 Add `--allow-unfunded-recipient` to complete the transfer \
+                                ".into());
+        }
+        else{
+            false
+        }
+    }
+    else {
         !recipient_is_ata_owner
     };
 
@@ -2022,8 +2024,8 @@ fn main() -> Result<(), Error> {
                         .help("Return signature immediately after submitting the transaction, instead of waiting for confirmations"),
                 )
                 .arg(
-                    Arg::with_name("yolo")
-                        .long("yolo")
+                    Arg::with_name("allow_non_system_account_recipient")
+                        .long("allow-non-system-account-recipient")
                         .takes_value(false)
                         .help("Send tokens to the recipient even if the recipient is not a wallet owned by System Program."),
                 )
@@ -2763,7 +2765,7 @@ fn main() -> Result<(), Error> {
                 memo,
                 bulk_signers,
                 matches.is_present("no_wait"),
-                matches.is_present("yolo"),
+                matches.is_present("allow_non_system_account_recipient"),
             )
         }
         ("burn", Some(arg_matches)) => {
