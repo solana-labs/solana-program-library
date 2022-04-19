@@ -17,22 +17,37 @@ import {
     setAuthority,
     ExtensionType,
     createInitializeImmutableOwnerInstruction,
+    createInitializeAccountInstruction,
+    createMint,
     getAccountLen,
 } from '../../src';
 
 import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
-
+const TEST_TOKEN_DECIMALS = 2;
 const EXTENSIONS = [ExtensionType.ImmutableOwner];
 describe('immutableOwner', () => {
     let connection: Connection;
     let payer: Signer;
     let owner: Keypair;
     let account: PublicKey;
+    let mint: PublicKey;
     before(async () => {
         connection = await getConnection();
         payer = await newAccountWithLamports(connection, 1000000000);
     });
     beforeEach(async () => {
+        const mintAuthority = Keypair.generate();
+        const mintKeypair = Keypair.generate();
+        mint = await createMint(
+            connection,
+            payer,
+            mintAuthority.publicKey,
+            mintAuthority.publicKey,
+            TEST_TOKEN_DECIMALS,
+            mintKeypair,
+            undefined,
+            TEST_PROGRAM_ID
+        );
         owner = Keypair.generate();
         const accountLen = getAccountLen(EXTENSIONS);
         const lamports = await connection.getMinimumBalanceForRentExemption(accountLen);
@@ -46,7 +61,8 @@ describe('immutableOwner', () => {
                 lamports,
                 programId: TEST_PROGRAM_ID,
             }),
-            createInitializeImmutableOwnerInstruction(account, TEST_PROGRAM_ID)
+            createInitializeImmutableOwnerInstruction(account, TEST_PROGRAM_ID),
+            createInitializeAccountInstruction(account, mint, owner.publicKey, TEST_PROGRAM_ID)
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, accountKeypair], undefined);
     });
