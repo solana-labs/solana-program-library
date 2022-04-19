@@ -704,34 +704,30 @@ fn command_transfer(
     let mut recipient_token_account = recipient;
     let mut minimum_balance_for_rent_exemption = 0;
 
-    let recipient_is_token_account = if !config.sign_only{
+    let recipient_is_token_account = if !config.sign_only {
         let recipient_account_info = config
             .rpc_client
-            .get_account_with_commitment(&recipient,config.rpc_client.commitment())?
+            .get_account_with_commitment(&recipient, config.rpc_client.commitment())?
             .value;
         if let Some(account) = recipient_account_info {
             if account.owner == config.program_id && account.data.len() == Account::LEN {
                 true
-            } 
-            else if account.owner != system_program::id() && !allow_non_system_account_recipient {
+            } else if account.owner != system_program::id() && !allow_non_system_account_recipient {
                 return Err("Error: The recipient address is not owned by System Account. \
                                      Add `--allow-non-system-account-recipient` to complete the transfer. \
                                     ".into());
-            }
-            else{
+            } else {
                 false
             }
-        }
-        else if recipient_account_info.is_none() &&  !allow_unfunded_recipient{
+        } else if recipient_account_info.is_none() && !allow_unfunded_recipient {
             return Err("Error: The recipient address is not funded. \
                                  Add `--allow-unfunded-recipient` to complete the transfer \
-                                ".into());
-        }
-        else{
+                                "
+            .into());
+        } else {
             false
         }
-    }
-    else {
+    } else {
         !recipient_is_ata_owner
     };
 
@@ -2802,10 +2798,7 @@ fn process_command(
                 memo,
                 bulk_signers,
                 arg_matches.is_present("no_wait"),
-<<<<<<< HEAD
-                arg_matches.is_present("allow_non_system_account_recipient")
-=======
->>>>>>> 9123a80a6a5b5f8a378a56c4501f99df7debda55
+                arg_matches.is_present("allow_non_system_account_recipient"),
             )
         }
         ("burn", arg_matches) => {
