@@ -713,7 +713,7 @@ fn command_transfer(
             if account.owner == config.program_id && account.data.len() == Account::LEN {
                 true
             } else if account.owner != system_program::id() && !allow_non_system_account_recipient {
-                return Err("Error: The recipient address is not owned by System Account. \
+                return Err("Error: The recipient address is not owned by the System Program. \
                                      Add `--allow-non-system-account-recipient` to complete the transfer. \
                                     ".into());
             } else {
@@ -3488,6 +3488,65 @@ mod tests {
                 "spl-token",
                 "transfer",
                 "--fund-recipient",
+                "--allow-unfunded-recipient",
+                &token.to_string(),
+                "10",
+                &recipient,
+            ],
+        );
+        result.unwrap();
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&source)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.token_amount.amount, "90");
+    }
+
+    #[test]
+    fn failing_to_transfer_fund_recipient_no_allow_unfunded_recipient() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+
+        let token = create_token(&config, &payer);
+        let source = create_associated_account(&config, &payer, token);
+        let recipient = token.to_string();
+        let ui_amount = 100.0;
+        mint_tokens(&config, &payer, token, ui_amount, source);
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                "transfer",
+                "--fund-recipient",
+                &token.to_string(),
+                "10",
+                &recipient,
+            ],
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn transfer_fund_recipient_no_allow_unfunded_recipient() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+
+        let token = create_token(&config, &payer);
+        let source = create_associated_account(&config, &payer, token);
+        let recipient = token.to_string();
+        let ui_amount = 100.0;
+        mint_tokens(&config, &payer, token, ui_amount, source);
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                "transfer",
+                "--fund-recipient",
+                "--allow-non-system-account-recipient",
                 "--allow-unfunded-recipient",
                 &token.to_string(),
                 "10",
