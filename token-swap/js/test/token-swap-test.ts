@@ -4,11 +4,11 @@ import {
   PublicKey,
   SystemProgram,
   Transaction,
+  sendAndConfirmTransaction
 } from '@solana/web3.js';
 import {AccountLayout, Token, TOKEN_PROGRAM_ID} from '@solana/spl-token';
 
 import {TokenSwap, CurveType, TOKEN_SWAP_PROGRAM_ID} from '../src';
-import {sendAndConfirmTransaction} from '../src/util/send-and-confirm-transaction';
 import {newAccountWithLamports} from '../src/util/new-account-with-lamports';
 import {sleep} from '../src/util/sleep';
 import {Numberu64} from '../src';
@@ -253,6 +253,10 @@ export async function depositAllTokenTypes(): Promise<void> {
   console.log('Creating depositor pool token account');
   const newAccountPool = await tokenPool.createAccount(owner.publicKey);
 
+  const confirmOptions = {
+    skipPreflight: true
+  }
+
   console.log('Depositing into swap');
   await tokenSwap.depositAllTokenTypes(
     userAccountA,
@@ -262,6 +266,7 @@ export async function depositAllTokenTypes(): Promise<void> {
     POOL_TOKEN_AMOUNT,
     tokenA,
     tokenB,
+    confirmOptions
   );
 
   let info;
@@ -314,6 +319,10 @@ export async function withdrawAllTokenTypes(): Promise<void> {
     POOL_TOKEN_AMOUNT,
   );
 
+  const confirmOptions = {
+    skipPreflight: true
+  }
+
   console.log('Withdrawing pool tokens for A and B tokens');
   await tokenSwap.withdrawAllTokenTypes(
     userAccountA,
@@ -323,6 +332,7 @@ export async function withdrawAllTokenTypes(): Promise<void> {
     POOL_TOKEN_AMOUNT,
     tokenA,
     tokenB,
+    confirmOptions
   );
 
   //const poolMintInfo = await tokenPool.getMintInfo();
@@ -407,15 +417,17 @@ export async function createAccountAndSwapAtomic(): Promise<void> {
     ),
   );
 
+  const confirmOptions = {
+    skipPreflight: true
+  }
+
   // Send the instructions
   console.log('sending big instruction');
   await sendAndConfirmTransaction(
-    'create account, approve transfer, swap',
     connection,
     transaction,
-    owner,
-    newAccount,
-    userTransferAuthority,
+    [owner, newAccount, userTransferAuthority],
+    confirmOptions
   );
 
   let info;
@@ -443,6 +455,10 @@ export async function swap(): Promise<void> {
     ? await tokenPool.createAccount(owner.publicKey)
     : null;
 
+  const confirmOptions = {
+    skipPreflight: true
+  }
+
   console.log('Swapping');
   await tokenSwap.swap(
     userAccountA,
@@ -453,6 +469,7 @@ export async function swap(): Promise<void> {
     userTransferAuthority,
     SWAP_AMOUNT_IN,
     SWAP_AMOUNT_OUT,
+    confirmOptions
   );
 
   await sleep(500);
@@ -541,6 +558,10 @@ export async function depositSingleTokenTypeExactAmountIn(): Promise<void> {
   console.log('Creating depositor pool token account');
   const newAccountPool = await tokenPool.createAccount(owner.publicKey);
 
+  const confirmOptions = {
+    skipPreflight: true
+  }
+
   console.log('Depositing token A into swap');
   await tokenSwap.depositSingleTokenTypeExactAmountIn(
     userAccountA,
@@ -548,6 +569,7 @@ export async function depositSingleTokenTypeExactAmountIn(): Promise<void> {
     userTransferAuthority,
     depositAmount,
     poolTokenA,
+    confirmOptions
   );
 
   let info;
@@ -564,6 +586,7 @@ export async function depositSingleTokenTypeExactAmountIn(): Promise<void> {
     userTransferAuthority,
     depositAmount,
     poolTokenB,
+    confirmOptions
   );
 
   info = await mintB.getAccountInfo(userAccountB);
@@ -625,6 +648,10 @@ export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
     adjustedPoolTokenA + adjustedPoolTokenB,
   );
 
+  const confirmOptions = {
+    skipPreflight: true
+  }
+
   console.log('Withdrawing token A only');
   await tokenSwap.withdrawSingleTokenTypeExactAmountOut(
     userAccountA,
@@ -632,6 +659,7 @@ export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
     userTransferAuthority,
     withdrawAmount,
     adjustedPoolTokenA,
+    confirmOptions
   );
 
   let info;
@@ -650,6 +678,7 @@ export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
     userTransferAuthority,
     withdrawAmount,
     adjustedPoolTokenB,
+    confirmOptions
   );
 
   info = await mintB.getAccountInfo(userAccountB);
