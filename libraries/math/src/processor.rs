@@ -1,7 +1,11 @@
 //! Program state processor
 
 use {
-    crate::{approximations::sqrt, instruction::MathInstruction, precise_number::PreciseNumber},
+    crate::{
+        approximations::{f32_normal_cdf, sqrt},
+        instruction::MathInstruction,
+        precise_number::PreciseNumber,
+    },
     borsh::BorshDeserialize,
     solana_program::{
         account_info::AccountInfo, entrypoint::ProgramResult, log::sol_log_compute_units, msg,
@@ -33,11 +37,13 @@ fn f32_divide(dividend: f32, divisor: f32) -> f32 {
     dividend / divisor
 }
 
+/// f32_exponentiate
 #[inline(never)]
 fn f32_exponentiate(base: f32, exponent: f32) -> f32 {
     base.powf(exponent)
 }
 
+/// f32_natural_log
 #[inline(never)]
 fn f32_natural_log(argument: f32) -> f32 {
     argument.ln()
@@ -126,6 +132,14 @@ pub fn process_instruction(
             msg!("Calculating f32 Natural Log");
             sol_log_compute_units();
             let result = f32_natural_log(argument);
+            sol_log_compute_units();
+            msg!("{}", result as u64);
+            Ok(())
+        }
+        MathInstruction::F32NormalCDF { argument } => {
+            msg!("Calculating f32 Normal CDF");
+            sol_log_compute_units();
+            let result = f32_normal_cdf(argument);
             sol_log_compute_units();
             msg!("{}", result as u64);
             Ok(())

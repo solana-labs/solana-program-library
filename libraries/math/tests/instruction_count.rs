@@ -180,6 +180,21 @@ async fn test_f32_natural_log() {
 }
 
 #[tokio::test]
+async fn test_f32_normal_cdf() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    // Dial down the BPF compute budget to detect if the operation gets bloated in the future
+    pc.set_compute_max_units(3_100);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction =
+        Transaction::new_with_payer(&[instruction::f32_normal_cdf(0_f32)], Some(&payer.pubkey()));
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
 async fn test_noop() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
