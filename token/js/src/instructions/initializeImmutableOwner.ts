@@ -21,8 +21,8 @@ export const initializeImmutableOwnerInstructionData = struct<InitializeImmutabl
 /**
  * Construct an InitializeImmutableOwner instruction
  *
- * @param account            Account
- * @param immutableOwner
+ * @param account           Immutable Owner Account
+ * @param programId         SPL Token program account
  *
  * @return Instruction to add to a transaction
  */
