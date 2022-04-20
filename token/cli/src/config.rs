@@ -10,12 +10,23 @@ use solana_sdk::{pubkey::Pubkey, signature::Signer};
 use spl_associated_token_account::*;
 use std::{process::exit, sync::Arc};
 
+#[cfg(test)]
+use solana_sdk::signer::keypair::Keypair;
+
+pub(crate) enum KeypairOrPath {
+    /// Used for testing environments to avoid touching the filesystem
+    #[cfg(test)]
+    Keypair(Keypair),
+    /// Used for real CLI usage
+    Path(String),
+}
+
 pub(crate) struct Config<'a> {
     pub(crate) rpc_client: Arc<RpcClient>,
     pub(crate) websocket_url: String,
     pub(crate) output_format: OutputFormat,
     pub(crate) fee_payer: Pubkey,
-    pub(crate) default_keypair_path: String,
+    pub(crate) default_keypair: KeypairOrPath,
     pub(crate) nonce_account: Option<Pubkey>,
     pub(crate) nonce_authority: Option<Pubkey>,
     pub(crate) blockhash_query: BlockhashQuery,
@@ -138,8 +149,11 @@ impl<'a> Config<'a> {
             return Ok(address);
         }
 
-        let path = &self.default_keypair_path;
-        pubkey_from_path(matches, path, "default", wallet_manager)
+        match &self.default_keypair {
+            #[cfg(test)]
+            KeypairOrPath::Keypair(keypair) => Ok(keypair.pubkey()),
+            KeypairOrPath::Path(path) => pubkey_from_path(matches, path, "default", wallet_manager),
+        }
     }
 
     fn default_signer(
@@ -159,7 +173,15 @@ impl<'a> Config<'a> {
             );
         }
 
-        let path = &self.default_keypair_path;
-        signer_from_path_with_config(matches, path, "default", wallet_manager, config)
+        match &self.default_keypair {
+            #[cfg(test)]
+            KeypairOrPath::Keypair(keypair) => {
+                let cloned = Keypair::from_bytes(&keypair.to_bytes()).unwrap();
+                Ok(Box::new(cloned))
+            }
+            KeypairOrPath::Path(path) => {
+                signer_from_path_with_config(matches, path, "default", wallet_manager, config)
+            }
+        }
     }
 }

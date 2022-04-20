@@ -8,6 +8,9 @@ name = "spl-token-cli"
 repository = "https://github.com/solana-labs/solana-program-library"
 version = "2.0.15"
 
+[build-dependencies]
+walkdir = "2"
+
 [dependencies]
 clap = "2.33.3"
 console = "0.14.0"
@@ -15,18 +18,21 @@ indicatif = "0.16.2"
 serde = "1.0.130"
 serde_derive = "1.0.103"
 serde_json = "1.0.68"
-solana-account-decoder = "=1.9.9"
-solana-clap-utils = "=1.9.9"
-solana-cli-config = "=1.9.9"
-solana-cli-output = "=1.9.9"
-solana-client = "=1.9.9"
-solana-logger = "=1.9.9"
-solana-remote-wallet = "=1.9.9"
-solana-sdk = "=1.9.9"
-solana-transaction-status = "=1.9.9"
+solana-account-decoder = "=1.10.8"
+solana-clap-utils = "=1.10.8"
+solana-cli-config = "=1.10.8"
+solana-cli-output = "=1.10.8"
+solana-client = "=1.10.8"
+solana-logger = "=1.10.8"
+solana-remote-wallet = "=1.10.8"
+solana-sdk = "=1.10.8"
+solana-transaction-status = "=1.10.8"
 spl-token = { version = "3.3", path="../program", features = [ "no-entrypoint" ] }
 spl-associated-token-account = { version = "1.0.5", path="../../associated-token-account/program", features = [ "no-entrypoint" ] }
 spl-memo = { version = "3.0.1", path="../../memo/program", features = ["no-entrypoint"] }
+
+[dev-dependencies]
+solana-test-validator = "=1.10.8"
 
 [[bin]]
 name = "spl-token"

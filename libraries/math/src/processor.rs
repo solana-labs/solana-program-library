@@ -1,7 +1,11 @@
 //! Program state processor
 
 use {
-    crate::{approximations::sqrt, instruction::MathInstruction, precise_number::PreciseNumber},
+    crate::{
+        approximations::{f32_normal_cdf, sqrt},
+        instruction::MathInstruction,
+        precise_number::PreciseNumber,
+    },
     borsh::BorshDeserialize,
     solana_program::{
         account_info::AccountInfo, entrypoint::ProgramResult, log::sol_log_compute_units, msg,
@@ -31,6 +35,18 @@ fn f32_multiply(multiplicand: f32, multiplier: f32) -> f32 {
 #[inline(never)]
 fn f32_divide(dividend: f32, divisor: f32) -> f32 {
     dividend / divisor
+}
+
+/// f32_exponentiate
+#[inline(never)]
+fn f32_exponentiate(base: f32, exponent: f32) -> f32 {
+    base.powf(exponent)
+}
+
+/// f32_natural_log
+#[inline(never)]
+fn f32_natural_log(argument: f32) -> f32 {
+    argument.ln()
 }
 
 /// Instruction processor
@@ -104,6 +120,30 @@ pub fn process_instruction(
             msg!("{}", result as u64);
             Ok(())
         }
+        MathInstruction::F32Exponentiate { base, exponent } => {
+            msg!("Calculating f32 Exponent");
+            sol_log_compute_units();
+            let result = f32_exponentiate(base, exponent);
+            sol_log_compute_units();
+            msg!("{}", result as u64);
+            Ok(())
+        }
+        MathInstruction::F32NaturalLog { argument } => {
+            msg!("Calculating f32 Natural Log");
+            sol_log_compute_units();
+            let result = f32_natural_log(argument);
+            sol_log_compute_units();
+            msg!("{}", result as u64);
+            Ok(())
+        }
+        MathInstruction::F32NormalCDF { argument } => {
+            msg!("Calculating f32 Normal CDF");
+            sol_log_compute_units();
+            let result = f32_normal_cdf(argument);
+            sol_log_compute_units();
+            msg!("{}", result as u64);
+            Ok(())
+        }
         MathInstruction::Noop => {
             msg!("Do nothing");
             msg!("{}", 0_u64);
@@ -143,6 +183,24 @@ mod tests {
     }
 
     #[test]
+    fn test_f32_exponentiate() {
+        assert_eq!(16.0, f32_exponentiate(4.0, 2.0));
+        assert_eq!(4.0, f32_exponentiate(16.0, 0.5))
+    }
+
+    #[test]
+    fn test_f32_natural_log() {
+        let one = 1.0f32;
+        // e^1
+        let e = one.exp();
+
+        // ln(e) - 1 == 0
+        let abs_difference = (f32_natural_log(e) - 1.0).abs();
+
+        assert!(abs_difference <= f32::EPSILON);
+    }
+
+    #[test]
     fn test_process_instruction() {
         let program_id = Pubkey::new_unique();
         for math_instruction in &[
@@ -166,6 +224,13 @@ mod tests {
             MathInstruction::F32Divide {
                 dividend: 2.0,
                 divisor: 2.0,
+            },
+            MathInstruction::F32Exponentiate {
+                base: 4.0,
+                exponent: 2.0,
+            },
+            MathInstruction::F32NaturalLog {
+                argument: std::f32::consts::E,
             },
             MathInstruction::Noop,
         ] {
