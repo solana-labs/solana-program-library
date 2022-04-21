@@ -738,7 +738,7 @@ fn command_transfer(
     } else {
         !recipient_is_ata_owner
     };
-    
+
     if !recipient_is_token_account {
         recipient_token_account = get_associated_token_address_with_program_id(
             &recipient,
