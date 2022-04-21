@@ -1212,12 +1212,12 @@ where
             ),
             source_elgamal_keypair,
             (
-                &destination_extension.pubkey_elgamal.try_into().unwrap(),
-                &ct_mint.pubkey_auditor.try_into().unwrap(),
+                &destination_extension.encryption_pubkey.try_into().unwrap(),
+                &ct_mint.auditor_pubkey.try_into().unwrap(),
             ),
             fee_parameters,
             &ct_mint
-                .pubkey_withdraw_withheld_authority
+                .withdraw_withheld_authority_pubkey
                 .try_into()
                 .unwrap(),
         )
