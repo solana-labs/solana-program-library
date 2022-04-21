@@ -4,6 +4,7 @@ import {
   SystemProgram,
   TransactionInstruction,
 } from '@solana/web3.js';
+import { deserialize, deserializeUnchecked, Schema, serialize } from 'borsh';
 
 import { deleteNameRegistry, NAME_PROGRAM_ID } from './bindings';
 import {
@@ -20,7 +21,6 @@ import {
   Numberu32,
   Numberu64,
 } from './utils';
-import { deserialize, deserializeUnchecked, Schema, serialize } from 'borsh';
 
 ////////////////////////////////////////////////////
 // Global Variables
@@ -139,14 +139,6 @@ export async function changeVerifiedPubkey(
   ];
 
   // Delete the current reverse registry
-  const currentHashedVerifiedPubkey = await getHashedName(
-    currentVerifiedPubkey.toString()
-  );
-  const currentReverseRegistryKey = await getNameAccountKey(
-    currentHashedVerifiedPubkey,
-    TWITTER_VERIFICATION_AUTHORITY,
-    undefined
-  );
   instructions.push(
     await deleteNameRegistry(
       connection,
@@ -254,7 +246,7 @@ export async function getHandleAndRegistryKey(
     TWITTER_ROOT_PARENT_REGISTRY_KEY
   );
 
-  let reverseRegistryState = await ReverseTwitterRegistryState.retrieve(
+  const reverseRegistryState = await ReverseTwitterRegistryState.retrieve(
     connection,
     reverseRegistryKey
   );
@@ -298,8 +290,8 @@ export async function getTwitterHandleandRegistryKeyViaFilters(
 
   for (const f of filteredAccounts) {
     if (f.accountInfo.data.length > NameRegistryState.HEADER_LEN + 32) {
-      let data = f.accountInfo.data.slice(NameRegistryState.HEADER_LEN);
-      let state: ReverseTwitterRegistryState = deserialize(
+      const data = f.accountInfo.data.slice(NameRegistryState.HEADER_LEN);
+      const state: ReverseTwitterRegistryState = deserialize(
         ReverseTwitterRegistryState.schema,
         ReverseTwitterRegistryState,
         data
@@ -380,7 +372,7 @@ export class ReverseTwitterRegistryState {
     connection: Connection,
     reverseTwitterAccountKey: PublicKey
   ): Promise<ReverseTwitterRegistryState> {
-    let reverseTwitterAccount = await connection.getAccountInfo(
+    const reverseTwitterAccount = await connection.getAccountInfo(
       reverseTwitterAccountKey,
       'processed'
     );
@@ -388,7 +380,7 @@ export class ReverseTwitterRegistryState {
       throw new Error('Invalid reverse Twitter account provided');
     }
 
-    let res: ReverseTwitterRegistryState = deserializeUnchecked(
+    const res: ReverseTwitterRegistryState = deserializeUnchecked(
       this.schema,
       ReverseTwitterRegistryState,
       reverseTwitterAccount.data.slice(NameRegistryState.HEADER_LEN)
@@ -412,7 +404,7 @@ export async function createReverseTwitterRegistry(
     TWITTER_VERIFICATION_AUTHORITY,
     TWITTER_ROOT_PARENT_REGISTRY_KEY
   );
-  let reverseTwitterRegistryStateBuff = serialize(
+  const reverseTwitterRegistryStateBuff = serialize(
     ReverseTwitterRegistryState.schema,
     new ReverseTwitterRegistryState({
       twitterRegistryKey: twitterRegistryKey.toBytes(),

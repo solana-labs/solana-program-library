@@ -105,7 +105,7 @@ export function updateInstruction(
   ];
 
   const data = Buffer.concat(buffers);
-  let keys = [
+  const keys = [
     {
       pubkey: nameAccountKey,
       isSigner: false,
@@ -139,7 +139,7 @@ export function transferInstruction(
   newOwnerKey: PublicKey,
   currentNameOwnerKey: PublicKey,
   nameClassKey?: PublicKey,
-  nameParent?:PublicKey
+  nameParent?: PublicKey
 ): TransactionInstruction {
   const buffers = [Buffer.from(Int8Array.from([2])), newOwnerKey.toBuffer()];
 
@@ -166,7 +166,7 @@ export function transferInstruction(
     });
   }
 
-  if(nameParent){
+  if (nameParent) {
     keys.push({
       pubkey: nameParent,
       isSigner: false,

@@ -56,3 +56,21 @@ jobs:
 
       - name: Build and test
         run: ./ci/cargo-test-bpf.sh name-service
+
+  js-test:
+    runs-on: ubuntu-latest
+    env:
+      NODE_VERSION: 14.x
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/yarn
+          key: node-${{ hashFiles('name-service/js/yarn.lock') }}
+          restore-keys: |
+            node-
+      - run: ./ci/js-test-name-service.sh
