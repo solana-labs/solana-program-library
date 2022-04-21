@@ -708,29 +708,37 @@ fn command_transfer(
         let recipient_account_info = config
             .rpc_client
             .get_account_with_commitment(&recipient, config.rpc_client.commitment())?
-            .value;
-        if let Some(account) = recipient_account_info {
-            if account.owner == config.program_id && account.data.len() == Account::LEN {
-                true
-            } else if account.owner != system_program::id() && !allow_non_system_account_recipient {
+            .value
+            .map(|account| {
+                (
+                    account.owner == config.program_id && account.data.len() == Account::LEN,
+                    account.owner == system_program::id(),
+                )
+            });
+        if let Some((recipient_is_token_account, recipient_is_system_account)) =
+            recipient_account_info
+        {
+            if !recipient_is_token_account
+                && !recipient_is_system_account
+                && !allow_non_system_account_recipient
+            {
                 return Err("Error: The recipient address is not owned by the System Program. \
                                      Add `--allow-non-system-account-recipient` to complete the transfer. \
                                     ".into());
-            } else {
-                false
             }
         } else if recipient_account_info.is_none() && !allow_unfunded_recipient {
             return Err("Error: The recipient address is not funded. \
-                                 Add `--allow-unfunded-recipient` to complete the transfer \
-                                "
+                                    Add `--allow-unfunded-recipient` to complete the transfer. \
+                                   "
             .into());
-        } else {
-            false
         }
+        recipient_account_info
+            .map(|(recipient_is_token_account, _)| recipient_is_token_account)
+            .unwrap_or(false)
     } else {
         !recipient_is_ata_owner
     };
-
+    
     if !recipient_is_token_account {
         recipient_token_account = get_associated_token_address_with_program_id(
             &recipient,
