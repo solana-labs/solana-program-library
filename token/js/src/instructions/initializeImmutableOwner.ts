@@ -8,12 +8,12 @@ import {
 } from '../errors';
 import { TokenInstruction } from './types';
 
-/** TODO: docs */
+/** Deserialized instruction for the initiation of an immutable owner account */
 export interface InitializeImmutableOwnerInstructionData {
     instruction: TokenInstruction.InitializeImmutableOwner;
 }
 
-/** TODO: docs */
+/** The struct that represents the instruction data as it is read by the program */
 export const initializeImmutableOwnerInstructionData = struct<InitializeImmutableOwnerInstructionData>([
     u8('instruction'),
 ]);
@@ -57,7 +57,7 @@ export interface DecodedInitializeImmutableOwnerInstruction {
 /**
  * Decode an InitializeImmutableOwner instruction and validate it
  *
- * @param instruction Transaction instruction to decode
+ * @param instruction InitializeImmutableOwner instruction to decode
  * @param programId   SPL Token program account
  *
  * @return Decoded, valid instruction
