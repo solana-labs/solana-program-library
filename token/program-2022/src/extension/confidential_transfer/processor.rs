@@ -1,6 +1,6 @@
 use {
     crate::{
-        check_program_account, cmp_pubkeys,
+        check_program_account,
         error::TokenError,
         extension::{
             confidential_transfer::{instruction::*, *},
@@ -482,7 +482,7 @@ fn process_transfer(
     if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
         // mint is extended for fees
         let proof_data = decode_proof_instruction::<TransferWithFeeData>(
-            ProofInstruction::VerifyTransferWithFee,
+            ProofInstruction::VerifyTransfer,
             &previous_instruction,
         )?;
 
@@ -551,13 +551,6 @@ fn process_transfer(
             &ciphertext_hi,
             new_source_decryptable_available_balance,
         )?;
-
-        let fee = if cmp_pubkeys(token_account_info.key, destination_token_account_info.key) {
-            None
-        } else {
-            Some(proof_data.ciphertext_fee)
-        };
-
         process_destination_for_transfer(
             destination_token_account_info,
             mint_info,
