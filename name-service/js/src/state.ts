@@ -35,7 +35,7 @@ export class NameRegistryState {
     connection: Connection,
     nameAccountKey: PublicKey
   ): Promise<NameRegistryState> {
-    let nameAccount = await connection.getAccountInfo(
+    const nameAccount = await connection.getAccountInfo(
       nameAccountKey,
       'processed'
     );
@@ -43,7 +43,7 @@ export class NameRegistryState {
       throw new Error('Invalid name account provided');
     }
 
-    let res: NameRegistryState = deserializeUnchecked(
+    const res: NameRegistryState = deserializeUnchecked(
       this.schema,
       NameRegistryState,
       nameAccount.data
