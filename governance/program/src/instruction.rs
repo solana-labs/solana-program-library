@@ -225,7 +225,7 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Proposal account
     ///   2. `[]` TokenOwnerRecord account of the Proposal owner
     ///   3. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   4. `[writable]` ProposalTransaction, account. PDA seeds: ['governance',proposal,index]
+    ///   4. `[writable]` ProposalTransaction, account. PDA seeds: ['governance', proposal, option_index, index]
     ///   5. `[signer]` Payer
     ///   6. `[]` System program
     ///   7. `[]` Rent sysvar
