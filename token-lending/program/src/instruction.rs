@@ -308,6 +308,20 @@ pub enum LendingInstruction {
         /// The amount that is to be borrowed - u64::MAX for up to 100% of available liquidity
         amount: u64,
     },
+    ///14
+    /// Closes obligation account to retrieve SOL rent from the obligation account to loanee
+    /// Only supports non-native accounts if balances are zero
+    /// 
+    /// Accounts expected by this instruction: 
+    /// 
+    /// 0. `[writeable]` Obligation account
+    /// 1. `[writeable]` Obigation owner
+    /// 2. `[writeable]` Destination account
+    /// 3. `[writeable]` Collateral reserve (source) account
+    /// 4. `[]` Lending market account
+    /// 5. `[signer]` Transfer (lending market) authority account
+    /// 6. `[]` Token program id
+    CloseObligationAccount,
 }
 
 impl LendingInstruction {
@@ -394,6 +408,7 @@ impl LendingInstruction {
                 let (amount, _rest) = Self::unpack_u64(rest)?;
                 Self::FlashLoan { amount }
             }
+            14 => Self::CloseObligationAccount,
             _ => {
                 msg!("Instruction cannot be unpacked");
                 return Err(LendingError::InstructionUnpackError.into());
@@ -541,6 +556,9 @@ impl LendingInstruction {
             Self::FlashLoan { amount } => {
                 buf.push(13);
                 buf.extend_from_slice(&amount.to_le_bytes());
+            }
+            Self::CloseObligationAccount => {
+                buf.push(14);
             }
         }
         buf
@@ -982,6 +1000,35 @@ pub fn flash_loan(
     }
 }
 
+///Creates a 'CloseObligationAccount' instruction
+pub fn close_obligation_account(
+    program_id: Pubkey,
+    obligation_pubkey: Pubkey,
+    obligation_owner_pubkey: Pubkey,
+    destination_pubkey: Pubkey,
+    reserve_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
+        &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
+        &program_id,
+    );
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(obligation_pubkey, false),
+            AccountMeta::new(obligation_owner_pubkey, false),
+            AccountMeta::new(destination_pubkey, false),
+            AccountMeta::new(reserve_pubkey, false),
+            AccountMeta::new_readonly(lending_market_pubkey, false),
+            AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+            AccountMeta::new(spl_token::id(), false),
+
+        ],
+        data: LendingInstruction::CloseObligationAccount.pack(),
+}
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1386,4 +1433,30 @@ mod tests {
             LendingInstruction::FlashLoan { amount }.pack()
         );
     }
+
+    #[test]
+    fn test_close_obligation_account(){
+        let program_id = Pubkey::new_unique();
+        let obligation_pubkey = Pubkey::new_unique();
+        let obligation_owner_pubkey = Pubkey::new_unique();
+        let destination_pubkey = Pubkey::new_unique();
+        let reserve_pubkey = Pubkey::new_unique();
+        let lending_market_pubkey = Pubkey::new_unique();
+        let instruction = close_obligation_account(
+            program_id,
+            obligation_pubkey,
+            obligation_owner_pubkey,
+            destination_pubkey,
+            reserve_pubkey,
+            lending_market_pubkey,
+        );
+        assert_eq!(instruction.program_id, program_id);
+        assert_eq!(instruction.accounts.len(), 6);
+        assert_eq!(
+            instruction.data,
+            LendingInstruction::CloseObligationAccount.pack()
+        );
+    }
 }
+
+
