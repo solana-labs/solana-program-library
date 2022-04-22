@@ -51,26 +51,3 @@ exclude = [
 
 [profile.dev]
 split-debuginfo = "unpacked"
-[patch.crates-io]
-solana-account-decoder = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/account-decoder" }
-solana-banks-client = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/banks-client" }
-solana-banks-server = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/banks-server" }
-solana-bpf-loader-program = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/programs/bpf_loader" }
-solana-clap-utils = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/clap-utils" }
-solana-cli-config = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/cli-config" }
-solana-cli-output = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/cli-output" }
-solana-client = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/client" }
-solana-core = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/core" }
-solana-logger = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/logger" }
-solana-notifier = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/notifier" }
-solana-remote-wallet = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/remote-wallet" }
-solana-program = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/sdk/program" }
-solana-program-test = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/program-test" }
-solana-runtime = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/runtime" }
-solana-sdk = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/sdk" }
-solana-stake-program = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/programs/stake" }
-solana-test-validator = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/test-validator" }
-solana-transaction-status = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/transaction-status" }
-solana-version = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/version" }
-solana-vote-program = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/programs/vote" }
-solana-zk-token-sdk = { path = "/Users/samkim/Projects/solana-privacy/playground/solana-program-library/token/twoxtx-solana/zk-token-sdk" }
