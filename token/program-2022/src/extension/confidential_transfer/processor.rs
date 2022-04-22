@@ -33,6 +33,10 @@ fn decode_proof_instruction<T: Pod>(
     expected: ProofInstruction,
     instruction: &Instruction,
 ) -> Result<&T, ProgramError> {
+    if ProofInstruction::decode_type(&instruction.data) != Some(expected) {
+        msg!("decode type failed ----------------------------------");
+    }
+
     if instruction.program_id != zk_token_proof_program::id()
         || ProofInstruction::decode_type(&instruction.data) != Some(expected)
     {
@@ -241,11 +245,6 @@ fn process_empty_account(
     }
 
     confidential_transfer_account.available_balance = EncryptedBalance::zeroed();
-
-    if confidential_transfer_account.withheld_amount != EncryptedWithheldAmount::zeroed() {
-        msg!("Withheld amount is not zero");
-        return Err(ProgramError::InvalidAccountData);
-    }
     confidential_transfer_account.closable()?;
 
     Ok(())
@@ -482,7 +481,7 @@ fn process_transfer(
     if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
         // mint is extended for fees
         let proof_data = decode_proof_instruction::<TransferWithFeeData>(
-            ProofInstruction::VerifyTransfer,
+            ProofInstruction::VerifyTransferWithFee,
             &previous_instruction,
         )?;
 
@@ -578,6 +577,7 @@ fn process_transfer(
             proof_data.ciphertext_hi.commitment,
             proof_data.ciphertext_hi.source_handle,
         ));
+
         process_source_for_transfer(
             program_id,
             token_account_info,
@@ -1161,6 +1161,16 @@ pub(crate) fn process_instruction(
             }
             #[cfg(not(feature = "zk-ops"))]
             Err(ProgramError::InvalidInstructionData)
+        }
+        ConfidentialTransferInstruction::TransferWithFee => {
+            msg!("ConfidentialTransferInstruction::TransferWithFee");
+            let data = decode_instruction_data::<TransferWithFeeInstructionData>(input)?;
+            process_transfer(
+                program_id,
+                accounts,
+                data.new_source_decryptable_available_balance,
+                data.proof_instruction_offset as i64,
+            )
         }
         ConfidentialTransferInstruction::ApplyPendingBalance => {
             msg!("ConfidentialTransferInstruction::ApplyPendingBalance");

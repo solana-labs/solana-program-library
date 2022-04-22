@@ -2,6 +2,7 @@ use crate::client::{ProgramClient, ProgramClientError, SendTransaction};
 use solana_program_test::tokio::time;
 use solana_sdk::{
     account::Account as BaseAccount,
+    epoch_info::EpochInfo,
     hash::Hash,
     instruction::Instruction,
     program_error::ProgramError,
@@ -22,6 +23,7 @@ use spl_token_2022::{
     solana_zk_token_sdk::{
         encryption::{auth_encryption::*, elgamal::*},
         errors::ProofError,
+        instruction::transfer_with_fee::FeeParameters,
     },
     state::{Account, AccountState, Mint},
 };
@@ -1134,6 +1136,80 @@ where
 
         self.process_ixs(
             &confidential_transfer::instruction::transfer(
+                &self.program_id,
+                source_token_account,
+                destination_token_account,
+                &self.pubkey,
+                new_source_decryptable_available_balance,
+                &source_token_authority.pubkey(),
+                &[],
+                &proof_data,
+            )?,
+            &[source_token_authority],
+        )
+        .await
+    }
+
+    /// Transfer tokens confidentially with fee
+    #[allow(clippy::too_many_arguments)]
+    pub async fn confidential_transfer_transfer_with_fee<S2: Signer>(
+        &self,
+        source_token_account: &Pubkey,
+        destination_token_account: &Pubkey,
+        source_token_authority: &S2,
+        amount: u64,
+        source_available_balance: u64,
+        source_elgamal_keypair: &ElGamalKeypair,
+        new_source_decryptable_available_balance: AeCiphertext,
+        epoch_info: &EpochInfo,
+    ) -> TokenResult<T::Output> {
+        let source_state = self.get_account_info(source_token_account).await.unwrap();
+        let source_extension =
+            source_state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;
+
+        let destination_state = self
+            .get_account_info(destination_token_account)
+            .await
+            .unwrap();
+        let destination_extension = destination_state
+            .get_extension::<confidential_transfer::ConfidentialTransferAccount>(
+        )?;
+
+        let mint_state = self.get_mint_info().await.unwrap();
+        let transfer_fee_config = mint_state
+            .get_extension::<transfer_fee::TransferFeeConfig>()
+            .unwrap();
+
+        let fee_parameters = transfer_fee_config.get_epoch_fee(epoch_info.epoch);
+
+        let ct_mint = mint_state
+            .get_extension::<confidential_transfer::ConfidentialTransferMint>()
+            .unwrap();
+
+        let proof_data = confidential_transfer::instruction::TransferWithFeeData::new(
+            amount,
+            (
+                source_available_balance,
+                &source_extension.available_balance.try_into().unwrap(),
+            ),
+            source_elgamal_keypair,
+            (
+                &destination_extension.encryption_pubkey.try_into().unwrap(),
+                &ct_mint.auditor_pubkey.try_into().unwrap(),
+            ),
+            FeeParameters {
+                fee_rate_basis_points: u16::from(fee_parameters.transfer_fee_basis_points),
+                maximum_fee: u64::from(fee_parameters.maximum_fee),
+            },
+            &ct_mint
+                .withdraw_withheld_authority_pubkey
+                .try_into()
+                .unwrap(),
+        )
+        .map_err(TokenError::Proof)?;
+
+        self.process_ixs(
+            &confidential_transfer::instruction::transfer_with_fee(
                 &self.program_id,
                 source_token_account,
                 destination_token_account,
