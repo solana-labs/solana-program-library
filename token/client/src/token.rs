@@ -1198,8 +1198,8 @@ where
                 &ct_mint.auditor_pubkey.try_into().unwrap(),
             ),
             FeeParameters {
-                fee_rate_basis_points: fee_parameters.transfer_fee_basis_points,
-                maximum_fee: fee_parameters.maximum_fee,
+                fee_rate_basis_points: u16::from(fee_parameters.transfer_fee_basis_points),
+                maximum_fee: u64::from(fee_parameters.maximum_fee),
             },
             &ct_mint
                 .withdraw_withheld_authority_pubkey
