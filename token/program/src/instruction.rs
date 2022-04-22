@@ -1392,7 +1392,7 @@ pub fn get_account_data_size(
 
     Ok(Instruction {
         program_id: *token_program_id,
-        accounts: vec![AccountMeta::new(*mint_pubkey, false)],
+        accounts: vec![AccountMeta::new_readonly(*mint_pubkey, false)],
         data: TokenInstruction::GetAccountDataSize.pack(),
     })
 }
