@@ -1180,25 +1180,7 @@ where
             .get_extension::<transfer_fee::TransferFeeConfig>()
             .unwrap();
 
-        // Zkp generator requires transfer fee parameters as input
-        let fee_parameters =
-            if u64::from(transfer_fee_config.newer_transfer_fee.epoch) < epoch_info.epoch {
-                FeeParameters {
-                    fee_rate_basis_points: transfer_fee_config
-                        .older_transfer_fee
-                        .transfer_fee_basis_points
-                        .into(),
-                    maximum_fee: transfer_fee_config.older_transfer_fee.maximum_fee.into(),
-                }
-            } else {
-                FeeParameters {
-                    fee_rate_basis_points: transfer_fee_config
-                        .newer_transfer_fee
-                        .transfer_fee_basis_points
-                        .into(),
-                    maximum_fee: transfer_fee_config.newer_transfer_fee.maximum_fee.into(),
-                }
-            };
+        let fee_parameters = transfer_fee_config.get_epoch_fee(epoch_info.epoch);
 
         let ct_mint = mint_state
             .get_extension::<confidential_transfer::ConfidentialTransferMint>()
@@ -1215,7 +1197,10 @@ where
                 &destination_extension.encryption_pubkey.try_into().unwrap(),
                 &ct_mint.auditor_pubkey.try_into().unwrap(),
             ),
-            fee_parameters,
+            FeeParameters {
+                fee_rate_basis_points: fee_parameters.transfer_fee_basis_points,
+                maximum_fee: fee_parameters.maximum_fee,
+            },
             &ct_mint
                 .withdraw_withheld_authority_pubkey
                 .try_into()
