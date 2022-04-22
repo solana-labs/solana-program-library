@@ -6,10 +6,11 @@ use {
     program_test::{TestContext, TokenContext},
     solana_program_test::tokio,
     solana_sdk::{
-        instruction::InstructionError, pubkey::Pubkey, signature::Signer, signer::keypair::Keypair,
-        transaction::TransactionError, transport::TransportError,
+        epoch_info::EpochInfo, instruction::InstructionError, pubkey::Pubkey, signature::Signer,
+        signer::keypair::Keypair, transaction::TransactionError, transport::TransportError,
     },
     spl_token_2022::{
+        error::TokenError,
         extension::{
             confidential_transfer::{
                 ConfidentialTransferAccount, ConfidentialTransferMint, EncryptedWithheldAmount,
@@ -27,6 +28,20 @@ use {
     },
     std::convert::TryInto,
 };
+
+const TEST_MAXIMUM_FEE: u64 = 100;
+const TEST_FEE_BASIS_POINTS: u16 = 250;
+
+fn test_epoch_info() -> EpochInfo {
+    EpochInfo {
+        epoch: 0,
+        slot_index: 0,
+        slots_in_epoch: 0,
+        absolute_slot: 0,
+        block_height: 0,
+        transaction_count: None,
+    }
+}
 
 struct ConfidentialTransferMintWithKeypairs {
     ct_mint: ConfidentialTransferMint,
@@ -701,5 +716,196 @@ async fn ct_transfer() {
             .ae_key
             .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
         Some(42),
+    );
+}
+
+#[tokio::test]
+async fn ct_transfer_with_fee() {
+    let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
+        ConfidentialTransferMintWithKeypairs::new();
+
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(Pubkey::new_unique()),
+                withdraw_withheld_authority: Some(Pubkey::new_unique()),
+                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+                maximum_fee: TEST_MAXIMUM_FEE,
+            },
+            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+        ])
+        .await
+        .unwrap();
+
+    let TokenContext {
+        token,
+        alice,
+        bob,
+        mint_authority,
+        decimals,
+        ..
+    } = context.token_context.unwrap();
+
+    let epoch_info = test_epoch_info();
+
+    let alice_meta =
+        ConfidentialTokenAccountMeta::with_tokens(&token, &alice, &mint_authority, 100, decimals)
+            .await;
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob).await;
+
+    // Self-transfer of 0 tokens
+    token
+        .confidential_transfer_transfer_with_fee(
+            &alice_meta.token_account,
+            &alice_meta.token_account,
+            &alice,
+            0,   // amount
+            100, // available balance
+            &alice_meta.elgamal_keypair,
+            alice_meta.ae_key.encrypt(100_u64),
+            &epoch_info,
+        )
+        .await
+        .unwrap();
+
+    // Self-transfer of N tokens
+    token
+        .confidential_transfer_transfer_with_fee(
+            &alice_meta.token_account,
+            &alice_meta.token_account,
+            &alice,
+            100, // amount
+            100, // available balance
+            &alice_meta.elgamal_keypair,
+            alice_meta.ae_key.encrypt(100_u64),
+            &epoch_info,
+        )
+        .await
+        .unwrap();
+
+    // Fee is 2.5%, so what is left in 97 in Alice account
+    token
+        .confidential_transfer_apply_pending_balance(
+            &alice_meta.token_account,
+            &alice,
+            2,
+            alice_meta.ae_key.encrypt(97_u64),
+        )
+        .await
+        .unwrap();
+
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert_eq!(
+        alice_meta
+            .ae_key
+            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
+        Some(97),
+    );
+
+    token
+        .confidential_transfer_transfer_with_fee(
+            &alice_meta.token_account,
+            &bob_meta.token_account,
+            &alice,
+            97, // amount
+            97, // available balance
+            &alice_meta.elgamal_keypair,
+            alice_meta.ae_key.encrypt(0_u64),
+            &epoch_info,
+        )
+        .await
+        .unwrap();
+
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert_eq!(
+        alice_meta
+            .ae_key
+            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
+        Some(0),
+    );
+
+    // Alice account cannot be closed since there are withheld fees from self-transfer
+    let error = token
+        .confidential_transfer_empty_account(
+            &alice_meta.token_account,
+            &alice,
+            &alice_meta.elgamal_keypair,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                1,
+                InstructionError::Custom(TokenError::ConfidentialTransferAccountHasBalance as u32)
+            )
+        )))
+    );
+
+    let err = token
+        .confidential_transfer_empty_account(
+            &bob_meta.token_account,
+            &bob,
+            &bob_meta.elgamal_keypair,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(1, InstructionError::InvalidAccountData)
+        )))
+    );
+
+    let state = token
+        .get_account_info(&bob_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert_eq!(
+        bob_meta
+            .ae_key
+            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
+        Some(0),
+    );
+
+    token
+        .confidential_transfer_apply_pending_balance(
+            &bob_meta.token_account,
+            &bob,
+            1,
+            bob_meta.ae_key.encrypt(94_u64),
+        )
+        .await
+        .unwrap();
+
+    let state = token
+        .get_account_info(&bob_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert_eq!(
+        bob_meta
+            .ae_key
+            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
+        Some(94),
     );
 }
