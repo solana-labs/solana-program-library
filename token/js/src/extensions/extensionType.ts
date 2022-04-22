@@ -4,6 +4,7 @@ import { MULTISIG_SIZE } from '../state/multisig';
 import { ACCOUNT_TYPE_SIZE } from './accountType';
 import { MINT_CLOSE_AUTHORITY_SIZE } from './mintCloseAuthority';
 import { IMMUTABLE_OWNER_SIZE } from './immutableOwner';
+import { TRANSFER_FEE_CONFIG_SIZE, TRANSFER_FEE_AMOUNT_SIZE } from './transferFee';
 
 export enum ExtensionType {
     Uninitialized,
@@ -27,9 +28,9 @@ export function getTypeLen(e: ExtensionType): number {
         case ExtensionType.Uninitialized:
             return 0;
         case ExtensionType.TransferFeeConfig:
-            return 108;
+            return TRANSFER_FEE_CONFIG_SIZE;
         case ExtensionType.TransferFeeAmount:
-            return 8;
+            return TRANSFER_FEE_AMOUNT_SIZE;
         case ExtensionType.MintCloseAuthority:
             return MINT_CLOSE_AUTHORITY_SIZE;
         case ExtensionType.ConfidentialTransferMint:
