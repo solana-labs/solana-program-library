@@ -610,7 +610,7 @@ impl Processor {
                     mint.base.freeze_authority = new_authority;
                     mint.pack_base();
                 }
-                AuthorityType::CloseAccount => {
+                AuthorityType::CloseMint => {
                     let extension = mint.get_extension_mut::<MintCloseAuthority>()?;
                     let maybe_close_authority: Option<Pubkey> = extension.close_authority.into();
                     let close_authority =
