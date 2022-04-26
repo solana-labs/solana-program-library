@@ -53,6 +53,7 @@ pub enum DefaultAccountStateInstruction {
     Update,
 }
 
+/// Utility function for decoding a DefaultAccountState instruction and its data
 pub fn decode_instruction(
     input: &[u8],
 ) -> Result<(DefaultAccountStateInstruction, AccountState), ProgramError> {
