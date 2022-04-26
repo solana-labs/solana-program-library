@@ -915,12 +915,14 @@ pub enum AuthorityType {
     FreezeAccount,
     /// Owner of a given token account
     AccountOwner,
-    /// Authority to close a mint or token account
+    /// Authority to close a token account
     CloseAccount,
     /// Authority to set the transfer fee
     TransferFeeConfig,
     /// Authority to withdraw withheld tokens from a mint
     WithheldWithdraw,
+    /// Authority to close a mint account
+    CloseMint,
 }
 
 impl AuthorityType {
@@ -932,6 +934,7 @@ impl AuthorityType {
             AuthorityType::CloseAccount => 3,
             AuthorityType::TransferFeeConfig => 4,
             AuthorityType::WithheldWithdraw => 5,
+            AuthorityType::CloseMint => 6,
         }
     }
 
@@ -943,6 +946,7 @@ impl AuthorityType {
             3 => Ok(AuthorityType::CloseAccount),
             4 => Ok(AuthorityType::TransferFeeConfig),
             5 => Ok(AuthorityType::WithheldWithdraw),
+            6 => Ok(AuthorityType::CloseMint),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }
