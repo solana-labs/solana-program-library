@@ -1690,7 +1690,7 @@ pub fn is_valid_signer_index(index: usize) -> bool {
 }
 
 /// Utility function for decoding just the instruction type
-pub(crate) fn decode_instruction_type<T: TryFrom<u8>>(input: &[u8]) -> Result<T, ProgramError> {
+pub fn decode_instruction_type<T: TryFrom<u8>>(input: &[u8]) -> Result<T, ProgramError> {
     if input.is_empty() {
         Err(ProgramError::InvalidInstructionData)
     } else {
@@ -1699,7 +1699,7 @@ pub(crate) fn decode_instruction_type<T: TryFrom<u8>>(input: &[u8]) -> Result<T,
 }
 
 /// Utility function for decoding instruction data
-pub(crate) fn decode_instruction_data<T: Pod>(input: &[u8]) -> Result<&T, ProgramError> {
+pub fn decode_instruction_data<T: Pod>(input: &[u8]) -> Result<&T, ProgramError> {
     if input.len() != pod_get_packed_len::<T>().saturating_add(1) {
         Err(ProgramError::InvalidInstructionData)
     } else {
