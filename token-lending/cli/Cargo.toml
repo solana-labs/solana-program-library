@@ -10,12 +10,12 @@ version = "0.1.0"
 
 [dependencies]
 clap = "2.33.3"
-solana-clap-utils = "1.10.8"
-solana-cli-config = "1.10.8"
-solana-client = "1.10.8"
-solana-logger = "1.10.8"
-solana-sdk = "1.10.8"
-solana-program = "1.10.8"
+solana-clap-utils = "1.10.10"
+solana-cli-config = "1.10.10"
+solana-client = "1.10.10"
+solana-logger = "1.10.10"
+solana-sdk = "1.10.10"
+solana-program = "1.10.10"
 spl-token-lending = { path="../program", features = [ "no-entrypoint" ] }
 spl-token = { path="../../token/program", features = [ "no-entrypoint" ]  }
 
