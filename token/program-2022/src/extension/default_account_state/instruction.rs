@@ -53,7 +53,7 @@ pub enum DefaultAccountStateInstruction {
     Update,
 }
 
-pub(crate) fn decode_instruction(
+pub fn decode_instruction(
     input: &[u8],
 ) -> Result<(DefaultAccountStateInstruction, AccountState), ProgramError> {
     if input.len() != 2 {
