@@ -310,16 +310,12 @@ pub enum LendingInstruction {
     },
     ///14
     /// Closes obligation account to retrieve SOL rent from the obligation account to loanee
-    /// Only supports non-native accounts if balances are zero
     /// 
     /// Accounts expected by this instruction: 
     /// 
-    /// 0. `[writeable]` Obligation account
-    /// 1. `[writeable]` Obigation owner
-    /// 2. `[writeable]` Destination account
-    /// 3. `[writeable]` Collateral reserve (source) account
-    /// 4. `[]` Lending market account
-    /// 5. `[signer]` Transfer (lending market) authority account
+    /// 0. `[writable]` Obligation account
+    /// 1. `[signer]` Obigation owner
+    /// 2. `[writable]` Destination account
     /// 6. `[]` Token program id
     CloseObligationAccount,
 }
@@ -1026,8 +1022,9 @@ pub fn close_obligation_account(
 
         ],
         data: LendingInstruction::CloseObligationAccount.pack(),
+    }
 }
-}
+
 
 #[cfg(test)]
 mod tests {
@@ -1435,23 +1432,18 @@ mod tests {
     }
 
     #[test]
-    fn test_close_obligation_account(){
+    fn test_close_obligation_account() {
         let program_id = Pubkey::new_unique();
         let obligation_pubkey = Pubkey::new_unique();
         let obligation_owner_pubkey = Pubkey::new_unique();
-        let destination_pubkey = Pubkey::new_unique();
-        let reserve_pubkey = Pubkey::new_unique();
-        let lending_market_pubkey = Pubkey::new_unique();
         let instruction = close_obligation_account(
             program_id,
             obligation_pubkey,
             obligation_owner_pubkey,
             destination_pubkey,
-            reserve_pubkey,
-            lending_market_pubkey,
         );
         assert_eq!(instruction.program_id, program_id);
-        assert_eq!(instruction.accounts.len(), 6);
+        assert_eq!(instruction.accounts.len(), 4);
         assert_eq!(
             instruction.data,
             LendingInstruction::CloseObligationAccount.pack()

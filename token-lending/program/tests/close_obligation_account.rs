@@ -16,15 +16,15 @@ use spl_token_lending::{
 };
 
 #[tokio::test]
-async fn test_success() {
-    let mut test = ProgramTest::new(
+async fn test_repay_then_close_obligation() {
+    let mut test = Program::new(
         "spl_token_lending",
         spl_token_lending::id(),
         processor!(process_instruction),
     );
 
-    // limit to track compute unit increase
-    test.set_compute_max_units(36_000);
+    //limit to track compute unit increase
+    test.set_bpf_compute_max_units(36_000);
 
     const SOL_DEPOSIT_AMOUNT_LAMPORTS: u64 = 100 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO;
     const USDC_BORROW_AMOUNT_FRACTIONAL: u64 = 1_000 * FRACTIONAL_TO_USDC;
@@ -86,10 +86,8 @@ async fn test_success() {
 
     let (mut banks_client, payer, recent_blockhash) = test.start().await;
 
-    let initial_user_liquidity_balance =
-        get_token_balance(&mut banks_client, usdc_test_reserve.user_liquidity_pubkey).await;
-    let initial_liquidity_supply_balance =
-        get_token_balance(&mut banks_client, usdc_test_reserve.liquidity_supply_pubkey).await;
+    let initial_user_liquidity_balance = get_token_balance(&mut banks_client, usdc_test_reserve.user_liquidity_pubkey).await;
+    let initial_liquidity_supply_balance = get_token_balance(&mut banks_client, usdc_test_reserve.liquidity_supply_pubkey).await;
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -127,19 +125,20 @@ async fn test_success() {
     );
     assert!(banks_client.process_transaction(transaction).await.is_ok());
 
-    let user_liquidity_balance =
-        get_token_balance(&mut banks_client, usdc_test_reserve.user_liquidity_pubkey).await;
+    let user_liquidity_balance = get_token_balance(&mut banks_client, usdc_test_reserve.user_liquidity.pubkey).await;
     assert_eq!(
         user_liquidity_balance,
         initial_user_liquidity_balance - USDC_BORROW_AMOUNT_FRACTIONAL
     );
 
-    let liquidity_supply_balance =
-        get_token_balance(&mut banks_client, usdc_test_reserve.liquidity_supply_pubkey).await;
+    let liquidity_supply_balance = get_token_balance(&mut banks_client, usdc_test_reserve.liquidity_supply_pubkey).await;
     assert_eq!(
         liquidity_supply_balance,
         initial_liquidity_supply_balance + USDC_BORROW_AMOUNT_FRACTIONAL
     );
+
+    let obligation_balance = get_token_balance(&mut banks_client, test_obligation.pubkey).await;
+    assert!(obligation_balance < 1);
 
     let obligation = test_obligation.get_state(&mut banks_client).await;
     assert_eq!(obligation.borrows.len(), 0);

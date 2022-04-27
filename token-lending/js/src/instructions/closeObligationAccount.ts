@@ -14,17 +14,13 @@ export const closeObligationAccountInstruction = (
     obligation: PublicKey,
     obligationOwner: PublicKey,
     destination: PublicKey,
-    reserve: PublicKey,
-    lendingMarketAuthority: PublicKey
 ): TransactionInstruction => {
     const data = Buffer.alloc(DataLayout.span);
     DataLayout.encode({ instruction: LendingInstruction.CloseObligationAccount }, data);
     const keys = [
         { pubkey: obligation, isSigner: false, isWritable: true },
-        { pubkey: obligationOwner, isSigner: false, isWritable: true },
+        { pubkey: obligationOwner, isSigner: true, isWritable: true },
         { pubkey: destination, isSigner: false, isWritable: true },
-        { pubkey: reserve, isSigner: false, isWritable: false },
-        { pubkey: lendingMarketAuthority, isSigner: true, isWritable: false },
         { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     ] 
     
