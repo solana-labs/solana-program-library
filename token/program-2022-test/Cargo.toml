@@ -15,10 +15,10 @@ walkdir = "2"
 
 [dev-dependencies]
 async-trait = "0.1"
-solana-program = "=1.10.8"
-solana-program-test = "=1.10.8"
-solana-sdk = "=1.10.8"
+solana-program = "=1.10.10"
+solana-program-test = "=1.10.10"
+solana-sdk = "=1.10.10"
 spl-associated-token-account = { version = "1.0.5", path = "../../associated-token-account/program" }
 spl-memo = { version = "3.0.1", path = "../../memo/program", features = ["no-entrypoint"] }
-spl-token-2022 = { version = "0.2", path="../program-2022", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "0.3", path="../program-2022", features = ["no-entrypoint"] }
 spl-token-client = { version = "0.0.1", path = "../client" }

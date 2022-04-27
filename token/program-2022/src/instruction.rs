@@ -915,12 +915,14 @@ pub enum AuthorityType {
     FreezeAccount,
     /// Owner of a given token account
     AccountOwner,
-    /// Authority to close a mint or token account
+    /// Authority to close a token account
     CloseAccount,
     /// Authority to set the transfer fee
     TransferFeeConfig,
     /// Authority to withdraw withheld tokens from a mint
     WithheldWithdraw,
+    /// Authority to close a mint account
+    CloseMint,
 }
 
 impl AuthorityType {
@@ -932,6 +934,7 @@ impl AuthorityType {
             AuthorityType::CloseAccount => 3,
             AuthorityType::TransferFeeConfig => 4,
             AuthorityType::WithheldWithdraw => 5,
+            AuthorityType::CloseMint => 6,
         }
     }
 
@@ -943,6 +946,7 @@ impl AuthorityType {
             3 => Ok(AuthorityType::CloseAccount),
             4 => Ok(AuthorityType::TransferFeeConfig),
             5 => Ok(AuthorityType::WithheldWithdraw),
+            6 => Ok(AuthorityType::CloseMint),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }
@@ -1686,7 +1690,7 @@ pub fn is_valid_signer_index(index: usize) -> bool {
 }
 
 /// Utility function for decoding just the instruction type
-pub(crate) fn decode_instruction_type<T: TryFrom<u8>>(input: &[u8]) -> Result<T, ProgramError> {
+pub fn decode_instruction_type<T: TryFrom<u8>>(input: &[u8]) -> Result<T, ProgramError> {
     if input.is_empty() {
         Err(ProgramError::InvalidInstructionData)
     } else {
@@ -1695,7 +1699,7 @@ pub(crate) fn decode_instruction_type<T: TryFrom<u8>>(input: &[u8]) -> Result<T,
 }
 
 /// Utility function for decoding instruction data
-pub(crate) fn decode_instruction_data<T: Pod>(input: &[u8]) -> Result<&T, ProgramError> {
+pub fn decode_instruction_data<T: Pod>(input: &[u8]) -> Result<&T, ProgramError> {
     if input.len() != pod_get_packed_len::<T>().saturating_add(1) {
         Err(ProgramError::InvalidInstructionData)
     } else {
