@@ -32,7 +32,7 @@ impl BinaryOption {
         self.circulation = self
             .circulation
             .checked_add(n)
-            .ok_or(BinaryOptionError::InvalidSupply)?;
+            .ok_or(BinaryOptionError::AmountOverflow)?;
         Ok(())
     }
 
