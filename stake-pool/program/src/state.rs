@@ -1,6 +1,5 @@
 //! State transition types
 
-use spl_token::state::{Account, AccountState};
 use {
     crate::{
         big_vec::BigVec, error::StakePoolError, MAX_WITHDRAWAL_FEE_INCREASE,
@@ -20,6 +19,7 @@ use {
         stake::state::Lockup,
     },
     spl_math::checked_ceil_div::CheckedCeilDiv,
+    spl_token::state::{Account, AccountState},
     std::{convert::TryFrom, fmt, matches},
 };
 
@@ -535,7 +535,7 @@ impl Default for StakeStatus {
 pub struct ValidatorStakeInfo {
     /// Amount of active stake delegated to this validator, minus the minimum
     /// required stake amount of rent-exemption + `crate::MINIMUM_ACTIVE_STAKE`
-    /// (currently 0.001 SOL).
+    /// (currently 1 SOL).
     ///
     /// Note that if `last_update_epoch` does not match the current epoch then
     /// this field may not be accurate
@@ -823,10 +823,8 @@ mod test {
     use {
         super::*,
         proptest::prelude::*,
-        solana_program::borsh::{
-            get_instance_packed_len, get_packed_len, try_from_slice_unchecked,
-        },
         solana_program::{
+            borsh::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
             clock::{DEFAULT_SLOTS_PER_EPOCH, DEFAULT_S_PER_SLOT, SECONDS_PER_DAY},
             native_token::LAMPORTS_PER_SOL,
         },

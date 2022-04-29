@@ -19,7 +19,10 @@ use {
         transaction::{Transaction, TransactionError},
         transport::TransportError,
     },
-    spl_stake_pool::{error::StakePoolError, find_stake_program_address, id, instruction, state},
+    spl_stake_pool::{
+        error::StakePoolError, find_stake_program_address, id, instruction, state,
+        MINIMUM_RESERVE_LAMPORTS,
+    },
 };
 
 async fn setup() -> (
@@ -32,7 +35,12 @@ async fn setup() -> (
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .unwrap();
 
@@ -391,7 +399,12 @@ async fn fail_add_too_many_validator_stake_accounts() {
     let mut stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts.max_validators = 1;
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .unwrap();
 

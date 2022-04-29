@@ -15,11 +15,13 @@ use {
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
-        transaction::Transaction,
-        transaction::TransactionError,
+        transaction::{Transaction, TransactionError},
         transport::TransportError,
     },
-    spl_stake_pool::{error::StakePoolError, id, instruction, minimum_stake_lamports, state},
+    spl_stake_pool::{
+        error::StakePoolError, id, instruction, minimum_stake_lamports, state,
+        MINIMUM_RESERVE_LAMPORTS,
+    },
     spl_token::error as token_error,
 };
 
@@ -40,7 +42,7 @@ async fn setup() -> (
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            1,
+            MINIMUM_RESERVE_LAMPORTS,
         )
         .await
         .unwrap();
@@ -616,7 +618,12 @@ async fn fail_with_unknown_validator() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .unwrap();
 

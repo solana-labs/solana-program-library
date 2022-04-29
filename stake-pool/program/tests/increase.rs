@@ -15,7 +15,7 @@ use {
     },
     spl_stake_pool::{
         error::StakePoolError, find_transient_stake_program_address, id, instruction,
-        MINIMUM_ACTIVE_STAKE,
+        MINIMUM_ACTIVE_STAKE, MINIMUM_RESERVE_LAMPORTS,
     },
 };
 
@@ -29,7 +29,7 @@ async fn setup() -> (
 ) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
-    let reserve_lamports = 100_000_000_000;
+    let reserve_lamports = 100_000_000_000 + MINIMUM_RESERVE_LAMPORTS;
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -54,7 +54,7 @@ async fn setup() -> (
         &recent_blockhash,
         &stake_pool_accounts,
         &validator_stake_account,
-        5_000_000,
+        MINIMUM_ACTIVE_STAKE,
     )
     .await
     .unwrap();
@@ -96,7 +96,7 @@ async fn success() {
 
     let rent = banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
-    let increase_amount = reserve_lamports - stake_rent - 1;
+    let increase_amount = reserve_lamports - stake_rent - MINIMUM_RESERVE_LAMPORTS;
     let error = stake_pool_accounts
         .increase_validator_stake(
             &mut banks_client,

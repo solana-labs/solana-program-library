@@ -12,7 +12,7 @@ use {
         signature::{Keypair, Signer},
         transaction::TransactionError,
     },
-    spl_stake_pool::{error::StakePoolError, state::StakePool},
+    spl_stake_pool::{error::StakePoolError, state::StakePool, MINIMUM_RESERVE_LAMPORTS},
 };
 
 async fn setup() -> (
@@ -27,7 +27,7 @@ async fn setup() -> (
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            1,
+            MINIMUM_RESERVE_LAMPORTS,
         )
         .await
         .unwrap();
@@ -260,7 +260,12 @@ async fn fail_with_wrong_validator_list() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let mut stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .unwrap();
 
@@ -289,7 +294,12 @@ async fn fail_with_wrong_pool_fee_account() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let mut stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .unwrap();
 
@@ -318,7 +328,12 @@ async fn fail_with_wrong_reserve() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let mut stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .unwrap();
 

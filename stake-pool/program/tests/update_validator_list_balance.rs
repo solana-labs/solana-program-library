@@ -14,7 +14,7 @@ use {
     spl_stake_pool::{
         find_transient_stake_program_address, id, instruction,
         state::{StakePool, StakeStatus, ValidatorList},
-        MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE,
+        MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE, MINIMUM_RESERVE_LAMPORTS,
     },
     spl_token::state::Mint,
 };
@@ -43,7 +43,7 @@ async fn setup(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            reserve_stake_amount + 1,
+            reserve_stake_amount + MINIMUM_RESERVE_LAMPORTS,
         )
         .await
         .unwrap();
@@ -456,7 +456,7 @@ async fn merge_into_validator_stake() {
     .await;
     assert_eq!(
         reserve_stake.lamports,
-        1 + stake_rent * (1 + stake_accounts.len() as u64)
+        MINIMUM_RESERVE_LAMPORTS + stake_rent * (1 + stake_accounts.len() as u64)
     );
 }
 
@@ -575,7 +575,7 @@ async fn merge_transient_stake_after_remove() {
         .unwrap();
     assert_eq!(
         reserve_stake.lamports,
-        reserve_lamports + deactivated_lamports + 2 * stake_rent + 1
+        reserve_lamports + deactivated_lamports + 2 * stake_rent + MINIMUM_RESERVE_LAMPORTS
     );
 
     // Update stake pool balance and cleanup, should be gone
@@ -682,6 +682,9 @@ async fn success_ignoring_hijacked_transient_stake() {
     let (mut context, stake_pool_accounts, stake_accounts, _, lamports, _, mut slot) =
         setup(num_validators).await;
 
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+
     let pre_lamports = get_validator_list_sum(
         &mut context.banks_client,
         &stake_pool_accounts.reserve_stake.pubkey(),
@@ -737,7 +740,7 @@ async fn success_ignoring_hijacked_transient_stake() {
             system_instruction::transfer(
                 &context.payer.pubkey(),
                 &transient_stake_address,
-                1_000_000_000,
+                stake_rent + MINIMUM_RESERVE_LAMPORTS,
             ),
             stake::instruction::initialize(
                 &transient_stake_address,

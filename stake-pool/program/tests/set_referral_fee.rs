@@ -14,6 +14,7 @@ use {
     spl_stake_pool::{
         error, id, instruction,
         state::{FeeType, StakePool},
+        MINIMUM_RESERVE_LAMPORTS,
     },
 };
 
@@ -28,7 +29,7 @@ async fn setup(fee: Option<u8>) -> (ProgramTestContext, StakePoolAccounts, u8) {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            1,
+            MINIMUM_RESERVE_LAMPORTS,
         )
         .await
         .unwrap();

@@ -15,16 +15,14 @@ use {
     borsh::{BorshDeserialize, BorshSerialize},
     num_traits::FromPrimitive,
     solana_program::{
-        account_info::next_account_info,
-        account_info::AccountInfo,
+        account_info::{next_account_info, AccountInfo},
         borsh::try_from_slice_unchecked,
         clock::{Clock, Epoch},
         decode_error::DecodeError,
         entrypoint::ProgramResult,
         msg,
         program::{invoke, invoke_signed},
-        program_error::PrintProgramError,
-        program_error::ProgramError,
+        program_error::{PrintProgramError, ProgramError},
         program_pack::Pack,
         pubkey::Pubkey,
         rent::Rent,
@@ -747,7 +745,7 @@ impl Processor {
         stake_pool.manager_fee_account = *manager_fee_info.key;
         stake_pool.token_program_id = *token_program_info.key;
         stake_pool.total_lamports = total_lamports;
-        stake_pool.pool_token_supply = 0;
+        stake_pool.pool_token_supply = total_lamports;
         stake_pool.last_update_epoch = Clock::get()?.epoch;
         stake_pool.lockup = stake::state::Lockup::default();
         stake_pool.epoch_fee = epoch_fee;

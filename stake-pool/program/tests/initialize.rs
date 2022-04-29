@@ -15,10 +15,12 @@ use {
     },
     solana_program_test::*,
     solana_sdk::{
-        instruction::InstructionError, signature::Keypair, signature::Signer,
-        transaction::Transaction, transaction::TransactionError, transport::TransportError,
+        instruction::InstructionError,
+        signature::{Keypair, Signer},
+        transaction::{Transaction, TransactionError},
+        transport::TransportError,
     },
-    spl_stake_pool::{error, id, instruction, state},
+    spl_stake_pool::{error, id, instruction, state, MINIMUM_RESERVE_LAMPORTS},
 };
 
 async fn create_required_accounts(
@@ -58,7 +60,7 @@ async fn create_required_accounts(
             withdrawer: stake_pool_accounts.withdraw_authority,
         },
         &stake::state::Lockup::default(),
-        1,
+        MINIMUM_RESERVE_LAMPORTS,
     )
     .await;
 }
@@ -68,7 +70,12 @@ async fn success() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .unwrap();
 
@@ -93,7 +100,12 @@ async fn fail_double_initialize() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .unwrap();
 
@@ -103,7 +115,12 @@ async fn fail_double_initialize() {
     second_stake_pool_accounts.stake_pool = stake_pool_accounts.stake_pool;
 
     let transaction_error = second_stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &latest_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &latest_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .err()
         .unwrap();
@@ -124,7 +141,12 @@ async fn fail_with_already_initialized_validator_list() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .unwrap();
 
@@ -134,7 +156,12 @@ async fn fail_with_already_initialized_validator_list() {
     second_stake_pool_accounts.validator_list = stake_pool_accounts.validator_list;
 
     let transaction_error = second_stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &latest_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &latest_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .err()
         .unwrap();
@@ -160,7 +187,12 @@ async fn fail_with_high_fee() {
     };
 
     let transaction_error = stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .err()
         .unwrap();
@@ -186,7 +218,12 @@ async fn fail_with_high_withdrawal_fee() {
     };
 
     let transaction_error = stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .err()
         .unwrap();
@@ -720,7 +757,12 @@ async fn fail_with_wrong_withdraw_authority() {
     stake_pool_accounts.withdraw_authority = Keypair::new().pubkey();
 
     let transaction_error = stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .err()
         .unwrap();
@@ -1096,7 +1138,7 @@ async fn fail_with_bad_reserve() {
                 withdrawer: stake_pool_accounts.withdraw_authority,
             },
             &stake::state::Lockup::default(),
-            1,
+            MINIMUM_RESERVE_LAMPORTS,
         )
         .await;
 
@@ -1147,7 +1189,7 @@ async fn fail_with_bad_reserve() {
                 withdrawer: wrong_authority,
             },
             &stake::state::Lockup::default(),
-            1,
+            MINIMUM_RESERVE_LAMPORTS,
         )
         .await;
 
@@ -1201,7 +1243,7 @@ async fn fail_with_bad_reserve() {
                 custodian: wrong_authority,
                 ..stake::state::Lockup::default()
             },
-            1,
+            MINIMUM_RESERVE_LAMPORTS,
         )
         .await;
 
@@ -1243,7 +1285,8 @@ async fn fail_with_bad_reserve() {
     {
         let bad_stake = Keypair::new();
         let rent = banks_client.get_rent().await.unwrap();
-        let lamports = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+        let lamports = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>())
+            + MINIMUM_RESERVE_LAMPORTS;
 
         let transaction = Transaction::new_signed_with_payer(
             &[system_instruction::create_account(
@@ -1305,7 +1348,7 @@ async fn success_with_extra_reserve_lamports() {
             &mut banks_client,
             &payer,
             &recent_blockhash,
-            1 + init_lamports,
+            MINIMUM_RESERVE_LAMPORTS + init_lamports,
         )
         .await
         .unwrap();
