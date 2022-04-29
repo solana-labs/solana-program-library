@@ -45,7 +45,7 @@ use {
         find_withdraw_authority_program_address,
         instruction::{FundingType, PreferredValidatorType},
         state::{Fee, FeeType, StakePool, ValidatorList},
-        MINIMUM_ACTIVE_STAKE,
+        MINIMUM_ACTIVE_STAKE, MINIMUM_RESERVE_LAMPORTS,
     },
     std::cmp::Ordering,
     std::{process::exit, sync::Arc},
@@ -250,7 +250,7 @@ fn command_create_pool(
     let reserve_stake_balance = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
-        + 1;
+        + MINIMUM_RESERVE_LAMPORTS;
     let mint_account_balance = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(spl_token::state::Mint::LEN)?;
@@ -1058,7 +1058,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     let minimum_reserve_stake_balance = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
-        + 1;
+        + MINIMUM_RESERVE_LAMPORTS;
     let cli_stake_pool_stake_account_infos = validator_list
         .validators
         .iter()
@@ -1271,7 +1271,7 @@ fn prepare_withdraw_accounts(
         stake_pool.reserve_stake,
         reserve_stake.lamports
             - rpc_client.get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
-            - 1,
+            - MINIMUM_RESERVE_LAMPORTS,
         None,
     ));
 
