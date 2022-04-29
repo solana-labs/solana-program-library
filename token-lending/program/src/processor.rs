@@ -1713,10 +1713,6 @@ fn process_close_obligation_account(
     let destination_account_info = next_account_info(account_info_iter)?;
 
     let obligation = Obligation::unpack(&obligation_info.data.borrow())?;
-    if obligation_info.owner != program_id {
-        msg!("Obligation provided is not owned by the lending program");
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
     if &obligation.owner != obligation_owner_info.key {
         msg!("Obligation owner does not match the obligation owner provided");
         return Err(LendingError::InvalidObligationOwner.into());
@@ -1725,17 +1721,20 @@ fn process_close_obligation_account(
         msg!("Obligation borrows must be zero");
         return Err(LendingError::NonZeroObligationBorrow.into());
     }
-
     if !obligation.deposits.is_empty() {
         msg!("Obligation deposits must be zero");
         return Err(LendingError::NonZeroObligationDeposit.into());
     }
-
+    
+    if obligation_info.owner != program_id {
+        msg!("Obligation provided is not owned by the lending program");
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
     if !obligation_owner_info.is_signer {
         msg!("Obligation owner provided must be a signer");
         return Err(LendingError::InvalidSigner.into());
     }
-    
+
     let destination_starting_lamports = destination_account_info.lamports();
     **destination_account_info.lamports.borrow_mut() = destination_starting_lamports
         .checked_add(obligation_info.lamports())

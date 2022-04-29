@@ -1002,22 +1002,13 @@ pub fn close_obligation_account(
     obligation_pubkey: Pubkey,
     obligation_owner_pubkey: Pubkey,
     destination_pubkey: Pubkey,
-    reserve_pubkey: Pubkey,
-    lending_market_pubkey: Pubkey,
 ) -> Instruction {
-    let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
-        &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
-        &program_id,
-    );
     Instruction {
         program_id,
         accounts: vec![
             AccountMeta::new(obligation_pubkey, false),
             AccountMeta::new(obligation_owner_pubkey, false),
             AccountMeta::new(destination_pubkey, false),
-            AccountMeta::new(reserve_pubkey, false),
-            AccountMeta::new_readonly(lending_market_pubkey, false),
-            AccountMeta::new_readonly(lending_market_authority_pubkey, false),
             AccountMeta::new(spl_token::id(), false),
 
         ],
@@ -1436,6 +1427,7 @@ mod tests {
         let program_id = Pubkey::new_unique();
         let obligation_pubkey = Pubkey::new_unique();
         let obligation_owner_pubkey = Pubkey::new_unique();
+        let destination_pubkey = Pubkey::new_unique();
         let instruction = close_obligation_account(
             program_id,
             obligation_pubkey,
