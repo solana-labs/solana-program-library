@@ -309,14 +309,13 @@ pub enum LendingInstruction {
         amount: u64,
     },
     ///14
-    /// Closes obligation account to retrieve SOL rent from the obligation account to loanee
+    /// Closes obligation account to retrieve SOL rent from the obligation account to provided destination
     /// 
     /// Accounts expected by this instruction: 
     /// 
     /// 0. `[writable]` Obligation account
     /// 1. `[signer]` Obigation owner
     /// 2. `[writable]` Destination account
-    /// 6. `[]` Token program id
     CloseObligationAccount,
 }
 
@@ -1007,10 +1006,8 @@ pub fn close_obligation_account(
         program_id,
         accounts: vec![
             AccountMeta::new(obligation_pubkey, false),
-            AccountMeta::new(obligation_owner_pubkey, false),
+            AccountMeta::new_readonly(obligation_owner_pubkey, true),
             AccountMeta::new(destination_pubkey, false),
-            AccountMeta::new(spl_token::id(), false),
-
         ],
         data: LendingInstruction::CloseObligationAccount.pack(),
     }
@@ -1435,7 +1432,7 @@ mod tests {
             destination_pubkey,
         );
         assert_eq!(instruction.program_id, program_id);
-        assert_eq!(instruction.accounts.len(), 4);
+        assert_eq!(instruction.accounts.len(), 3);
         assert_eq!(
             instruction.data,
             LendingInstruction::CloseObligationAccount.pack()

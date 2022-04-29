@@ -88,7 +88,7 @@ async fn test_close_obligation_without_repay() {
 
     let initial_liquidity_supply =
         get_token_balance(&mut banks_client, usdc_test_reserve.liquidity_supply_pubkey).await;
-
+    
     let mut transaction = Transaction::new_with_payer(
         &[
             refresh_obligation(
@@ -125,7 +125,7 @@ async fn test_close_obligation_without_repay() {
             .unwrap_err()
             .unwrap(),
         TransactionError::InstructionError(
-            1,
+            2,
             InstructionError::Custom(LendingError::NonZeroObligationBorrow as u32)
         )
     );
@@ -204,6 +204,7 @@ async fn test_repay_then_close_obligation() {
 
     let initial_user_liquidity_balance = get_token_balance(&mut banks_client, usdc_test_reserve.user_liquidity_pubkey).await;
     let initial_liquidity_supply_balance = get_token_balance(&mut banks_client, usdc_test_reserve.liquidity_supply_pubkey).await;
+    let rent = banks_client.get_rent().await.unwrap();
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -231,6 +232,12 @@ async fn test_repay_then_close_obligation() {
                 lending_market.pubkey,
                 user_transfer_authority.pubkey(),
             ),
+            close_obligation_account(
+                spl_token_lending::id(),
+                test_obligation.pubkey,
+                usdc_test_reserve.user_liquidity_pubkey,
+                usdc_test_reserve.user_liquidity_pubkey,
+            ),
         ],
         Some(&payer.pubkey()),
     );
@@ -243,14 +250,14 @@ async fn test_repay_then_close_obligation() {
 
     let user_liquidity_balance = get_token_balance(&mut banks_client, usdc_test_reserve.user_liquidity.pubkey).await;
     assert_eq!(
-        user_liquidity_balance,
-        initial_user_liquidity_balance - USDC_BORROW_AMOUNT_FRACTIONAL
+        user_liquidity_balance + rent.minimum_balance(Obligation::LEN),
+        initial_user_liquidity_balance 
     );
 
     let liquidity_supply_balance = get_token_balance(&mut banks_client, usdc_test_reserve.liquidity_supply_pubkey).await;
     assert_eq!(
         liquidity_supply_balance,
-        initial_liquidity_supply_balance + USDC_BORROW_AMOUNT_FRACTIONAL
+        initial_liquidity_supply_balance
     );
 
     let obligation_balance = get_token_balance(&mut banks_client, test_obligation.pubkey).await;
@@ -258,4 +265,6 @@ async fn test_repay_then_close_obligation() {
 
     let obligation = test_obligation.get_state(&mut banks_client).await;
     assert_eq!(obligation.borrows.len(), 0);
+    assert_eq!(obligation.deposits.len(), 0);
+    assert_eq!(obligation.data, [0u8; Obligation::LEN]);
 }

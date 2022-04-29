@@ -1732,7 +1732,7 @@ fn process_close_obligation_account(
     }
     if !obligation_owner_info.is_signer {
         msg!("Obligation owner provided must be a signer");
-        return Err(LendingError::InvalidSigner.into());
+        return Err(ProgramError::MissingRequiredSignature.into());
     }
 
     let destination_starting_lamports = destination_account_info.lamports();
@@ -1742,7 +1742,7 @@ fn process_close_obligation_account(
     
     **obligation_info.lamports.borrow_mut() = 0;
 
-    sol_memset(*obligation_info.data.borrow_mut(), 0, Account::LEN); 
+    sol_memset(*obligation_info.data.borrow_mut(), 0, Obligation::LEN); 
 
     Ok(())
 }
