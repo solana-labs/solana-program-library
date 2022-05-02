@@ -671,7 +671,7 @@ impl ProposalV2 {
             .unwrap()
             .checked_add(proposal_transaction_data.hold_up_time as i64)
             .unwrap()
-            >= current_unix_timestamp
+            > current_unix_timestamp
         {
             return Err(GovernanceError::CannotExecuteTransactionWithinHoldUpTime.into());
         }
@@ -2270,5 +2270,32 @@ mod test {
             get_account_data::<ProposalV1>(&program_id, &account_info).unwrap();
 
         assert_eq!(proposal_v1_source, proposal_v1_target)
+    }
+
+    #[test]
+    pub fn test_assert_can_execute_proposal_with_zero_hold_up_time() {
+        let mut proposal = create_test_proposal();
+
+        let now = 123_i64;
+
+        proposal.state = ProposalState::Succeeded;
+        proposal.voting_completed_at = Some(now);
+        proposal.options[0].vote_result = OptionVoteResult::Succeeded;
+
+        let transaction = ProposalTransactionV2 {
+            account_type: GovernanceAccountType::ProposalTransactionV2,
+            proposal: Pubkey::new_unique(),
+            option_index: 0,
+            transaction_index: 0,
+            hold_up_time: 0, // important
+            instructions: vec![],
+            executed_at: None,
+            execution_status: TransactionExecutionStatus::None,
+            reserved_v2: [0; 8],
+        };
+
+        proposal
+            .assert_can_execute_transaction(&transaction, now)
+            .unwrap();
     }
 }
