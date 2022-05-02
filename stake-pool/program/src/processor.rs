@@ -134,6 +134,17 @@ fn check_account_owner(
     }
 }
 
+/// Checks if a stake acount can be managed by the pool
+fn stake_is_usable_by_pool(
+    meta: &stake::state::Meta,
+    expected_authority: &Pubkey,
+    expected_lockup: &stake::state::Lockup,
+) -> bool {
+    meta.authorized.staker == *expected_authority
+        && meta.authorized.withdrawer == *expected_authority
+        && meta.lockup == *expected_lockup
+}
+
 /// Create a transient stake account without transferring lamports
 fn create_transient_stake_account<'a>(
     transient_stake_account_info: AccountInfo<'a>,
@@ -1541,10 +1552,11 @@ impl Processor {
             //  * not a stake -> ignore
             match transient_stake_state {
                 Some(stake::state::StakeState::Initialized(meta)) => {
-                    // if transient account was hijacked, ignore it
-                    if meta.authorized.staker == *withdraw_authority_info.key
-                        && meta.authorized.withdrawer == *withdraw_authority_info.key
-                    {
+                    if stake_is_usable_by_pool(
+                        &meta,
+                        withdraw_authority_info.key,
+                        &stake_pool.lockup,
+                    ) {
                         if no_merge {
                             transient_stake_lamports = transient_stake_info.lamports();
                         } else {
@@ -1569,10 +1581,11 @@ impl Processor {
                     }
                 }
                 Some(stake::state::StakeState::Stake(meta, stake)) => {
-                    // if transient account was hijacked, ignore it
-                    if meta.authorized.staker == *withdraw_authority_info.key
-                        && meta.authorized.withdrawer == *withdraw_authority_info.key
-                    {
+                    if stake_is_usable_by_pool(
+                        &meta,
+                        withdraw_authority_info.key,
+                        &stake_pool.lockup,
+                    ) {
                         let account_stake = meta
                             .rent_exempt_reserve
                             .saturating_add(stake.delegation.stake);
