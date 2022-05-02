@@ -7,7 +7,7 @@ use solana_program_test::tokio;
 use program_test::*;
 use spl_governance::{
     error::GovernanceError,
-    state::enums::{ProposalState, VoteThresholdPercentage},
+    state::enums::{ProposalState, VoteThreshold},
 };
 
 #[tokio::test]
@@ -20,7 +20,7 @@ async fn test_finalize_vote_to_succeeded() {
 
     let mut governance_config = governance_test.get_default_governance_config();
 
-    governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(40);
+    governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(40);
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
@@ -91,8 +91,8 @@ async fn test_finalize_vote_to_succeeded() {
     assert_eq!(Some(210), proposal_account.max_vote_weight);
 
     assert_eq!(
-        Some(governance_cookie.account.config.vote_threshold_percentage),
-        proposal_account.vote_threshold_percentage
+        Some(governance_cookie.account.config.community_vote_threshold),
+        proposal_account.vote_threshold
     );
 
     let proposal_owner_record = governance_test

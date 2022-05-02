@@ -6,8 +6,7 @@ use program_test::*;
 use solana_program_test::tokio;
 use solana_sdk::{signature::Keypair, signer::Signer};
 use spl_governance::{
-    error::GovernanceError, instruction::set_governance_config,
-    state::enums::VoteThresholdPercentage,
+    error::GovernanceError, instruction::set_governance_config, state::enums::VoteThreshold,
 };
 use spl_governance_test_sdk::tools::ProgramInstructionError;
 
@@ -48,7 +47,7 @@ async fn test_set_governance_config() {
     let mut new_governance_config = governance_test.get_default_governance_config();
 
     // Change vote_threshold_percentage on the new Governance config
-    new_governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(40);
+    new_governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(40);
 
     let proposal_transaction_cookie = governance_test
         .with_set_governance_config_transaction(

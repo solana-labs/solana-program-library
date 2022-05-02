@@ -3,7 +3,7 @@
 use crate::state::{
     enums::{
         GovernanceAccountType, InstructionExecutionFlags, ProposalState,
-        TransactionExecutionStatus, VoteThresholdPercentage,
+        TransactionExecutionStatus, VoteThreshold,
     },
     governance::GovernanceConfig,
     proposal_transaction::InstructionData,
@@ -247,7 +247,7 @@ pub struct ProposalV1 {
     /// The vote threshold percentage at the time Proposal was decided
     /// It's used to show correct vote results for historical proposals in cases when the threshold
     /// was changed for governance config after vote was completed.
-    pub vote_threshold_percentage: Option<VoteThresholdPercentage>,
+    pub vote_threshold: Option<VoteThreshold>,
 
     /// Proposal name
     pub name: String,

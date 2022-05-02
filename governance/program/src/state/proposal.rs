@@ -25,7 +25,7 @@ use crate::{
     state::{
         enums::{
             GovernanceAccountType, InstructionExecutionFlags, MintMaxVoteWeightSource,
-            ProposalState, TransactionExecutionStatus, VoteThresholdPercentage, VoteTipping,
+            ProposalState, TransactionExecutionStatus, VoteThreshold, VoteTipping,
         },
         governance::GovernanceConfig,
         proposal_transaction::ProposalTransactionV2,
@@ -186,11 +186,11 @@ pub struct ProposalV2 {
     /// Note: This field is not used in the current version
     pub max_voting_time: Option<u32>,
 
-    /// The vote threshold percentage at the time Proposal was decided
+    /// The vote threshold at the time Proposal was decided
     /// It's used to show correct vote results for historical proposals in cases when the threshold
     /// was changed for governance config after vote was completed.
-    /// TODO: Use this field to override for the threshold from parent Governance (only higher value possible)
-    pub vote_threshold_percentage: Option<VoteThresholdPercentage>,
+    /// TODO: Use this field to override the threshold from parent Governance (only higher value possible)
+    pub vote_threshold: Option<VoteThreshold>,
 
     /// Reserved space for future versions
     pub reserved: [u8; 64],
@@ -318,7 +318,7 @@ impl ProposalV2 {
 
         // Capture vote params to correctly display historical results
         self.max_vote_weight = Some(max_voter_weight);
-        self.vote_threshold_percentage = Some(config.vote_threshold_percentage.clone());
+        self.vote_threshold = Some(config.community_vote_threshold.clone());
 
         Ok(())
     }
@@ -332,7 +332,7 @@ impl ProposalV2 {
     ) -> Result<ProposalState, ProgramError> {
         // Get the min vote weight required for options to pass
         let min_vote_threshold_weight =
-            get_min_vote_threshold_weight(&config.vote_threshold_percentage, max_vote_weight)
+            get_min_vote_threshold_weight(&config.community_vote_threshold, max_vote_weight)
                 .unwrap();
 
         // If the proposal has a reject option then any other option must beat it regardless of the configured min_vote_threshold_weight
@@ -517,7 +517,7 @@ impl ProposalV2 {
 
             // Capture vote params to correctly display historical results
             self.max_vote_weight = Some(max_voter_weight);
-            self.vote_threshold_percentage = Some(config.vote_threshold_percentage.clone());
+            self.vote_threshold = Some(config.community_vote_threshold.clone());
 
             Ok(true)
         } else {
@@ -560,7 +560,7 @@ impl ProposalV2 {
         }
 
         let min_vote_threshold_weight =
-            get_min_vote_threshold_weight(&config.vote_threshold_percentage, max_vote_weight)
+            get_min_vote_threshold_weight(&config.community_vote_threshold, max_vote_weight)
                 .unwrap();
 
         match config.vote_tipping {
@@ -799,7 +799,7 @@ impl ProposalV2 {
                 closed_at: self.closed_at,
                 execution_flags: self.execution_flags,
                 max_vote_weight: self.max_vote_weight,
-                vote_threshold_percentage: self.vote_threshold_percentage,
+                vote_threshold: self.vote_threshold,
                 name: self.name,
                 description_link: self.description_link,
             };
@@ -811,14 +811,14 @@ impl ProposalV2 {
     }
 }
 
-/// Converts threshold in percentages to actual vote weight
+/// Converts given vote threshold (ex. in percentages) to absolute vote weight
 /// and returns the min weight required for a proposal option to pass
 fn get_min_vote_threshold_weight(
-    vote_threshold_percentage: &VoteThresholdPercentage,
+    vote_threshold: &VoteThreshold,
     max_vote_weight: u64,
 ) -> Result<u64, ProgramError> {
-    let yes_vote_threshold_percentage = match vote_threshold_percentage {
-        VoteThresholdPercentage::YesVote(yes_vote_threshold_percentage) => {
+    let yes_vote_threshold_percentage = match vote_threshold {
+        VoteThreshold::YesVotePercentage(yes_vote_threshold_percentage) => {
             *yes_vote_threshold_percentage
         }
         _ => {
@@ -894,7 +894,7 @@ pub fn get_proposal_data(
             execution_flags: proposal_data_v1.execution_flags,
             max_vote_weight: proposal_data_v1.max_vote_weight,
             max_voting_time: None,
-            vote_threshold_percentage: proposal_data_v1.vote_threshold_percentage,
+            vote_threshold: proposal_data_v1.vote_threshold,
             name: proposal_data_v1.name,
             description_link: proposal_data_v1.description_link,
             reserved: [0; 64],
@@ -1001,7 +1001,7 @@ mod test {
     use solana_program::clock::Epoch;
 
     use crate::state::{
-        enums::{MintMaxVoteWeightSource, VoteThresholdPercentage},
+        enums::{MintMaxVoteWeightSource, VoteThreshold},
         legacy::ProposalV1,
         realm::RealmConfig,
         vote_record::VoteChoice,
@@ -1049,7 +1049,7 @@ mod test {
             execution_flags: InstructionExecutionFlags::Ordered,
 
             max_voting_time: Some(0),
-            vote_threshold_percentage: Some(VoteThresholdPercentage::YesVote(100)),
+            vote_threshold: Some(VoteThreshold::YesVotePercentage(100)),
 
             reserved: [0; 64],
         }
@@ -1116,7 +1116,7 @@ mod test {
             min_council_weight_to_create_proposal: 1,
             min_transaction_hold_up_time: 10,
             max_voting_time: 5,
-            vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
+            community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             vote_tipping: VoteTipping::Strict,
             proposal_cool_off_time: 0,
         }
@@ -1301,7 +1301,7 @@ mod test {
         #[allow(dead_code)]
         name: &'static str,
         governing_token_supply: u64,
-        vote_threshold_percentage: u8,
+        yes_vote_threshold_percentage: u8,
         yes_votes_count: u64,
         no_votes_count: u64,
         expected_tipped_state: ProposalState,
@@ -1314,7 +1314,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "45:10 @40 -- Nays can still outvote Yeahs",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 40,
+                yes_vote_threshold_percentage: 40,
                 yes_votes_count: 45,
                 no_votes_count: 10,
                 expected_tipped_state: ProposalState::Voting,
@@ -1323,7 +1323,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "49:50 @40 -- In best case scenario it can be 50:50 tie and hence Defeated",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 40,
+                yes_vote_threshold_percentage: 40,
                 yes_votes_count: 49,
                 no_votes_count: 50,
                 expected_tipped_state: ProposalState::Defeated,
@@ -1332,7 +1332,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "40:40 @40 -- Still can go either way",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 40,
+                yes_vote_threshold_percentage: 40,
                 yes_votes_count: 40,
                 no_votes_count: 40,
                 expected_tipped_state: ProposalState::Voting,
@@ -1341,7 +1341,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "45:45 @40 -- Still can go either way",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 40,
+                yes_vote_threshold_percentage: 40,
                 yes_votes_count: 45,
                 no_votes_count: 45,
                 expected_tipped_state: ProposalState::Voting,
@@ -1350,7 +1350,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "50:10 @40 -- Nay sayers can still tie up",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 40,
+                yes_vote_threshold_percentage: 40,
                 yes_votes_count: 50,
                 no_votes_count: 10,
                 expected_tipped_state: ProposalState::Voting,
@@ -1359,7 +1359,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "50:50 @40 -- It's a tie and hence Defeated",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 40,
+                yes_vote_threshold_percentage: 40,
                 yes_votes_count: 50,
                 no_votes_count: 50,
                 expected_tipped_state: ProposalState::Defeated,
@@ -1368,7 +1368,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "45:51 @ 40 -- Nays won",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 40,
+                yes_vote_threshold_percentage: 40,
                 yes_votes_count: 45,
                 no_votes_count: 51,
                 expected_tipped_state: ProposalState::Defeated,
@@ -1377,7 +1377,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "40:55 @ 40 -- Nays won",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 40,
+                yes_vote_threshold_percentage: 40,
                 yes_votes_count: 40,
                 no_votes_count: 55,
                 expected_tipped_state: ProposalState::Defeated,
@@ -1387,7 +1387,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "50:10 @50 -- +1 tie breaker required to tip",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 50,
+                yes_vote_threshold_percentage: 50,
                 yes_votes_count: 50,
                 no_votes_count: 10,
                 expected_tipped_state: ProposalState::Voting,
@@ -1396,7 +1396,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "10:50 @50 -- +1 tie breaker vote not possible any longer",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 50,
+                yes_vote_threshold_percentage: 50,
                 yes_votes_count: 10,
                 no_votes_count: 50,
                 expected_tipped_state: ProposalState::Defeated,
@@ -1405,7 +1405,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "50:50 @50 -- +1 tie breaker vote not possible any longer",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 50,
+                yes_vote_threshold_percentage: 50,
                 yes_votes_count: 50,
                 no_votes_count: 50,
                 expected_tipped_state: ProposalState::Defeated,
@@ -1414,7 +1414,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "51:10 @ 50 -- Nay sayers can't outvote any longer",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 50,
+                yes_vote_threshold_percentage: 50,
                 yes_votes_count: 51,
                 no_votes_count: 10,
                 expected_tipped_state: ProposalState::Succeeded,
@@ -1423,7 +1423,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "10:51 @ 50 -- Nays won",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 50,
+                yes_vote_threshold_percentage: 50,
                 yes_votes_count: 10,
                 no_votes_count: 51,
                 expected_tipped_state: ProposalState::Defeated,
@@ -1433,7 +1433,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "10:10 @ 60 -- Can still go either way",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 60,
+                yes_vote_threshold_percentage: 60,
                 yes_votes_count: 10,
                 no_votes_count: 10,
                 expected_tipped_state: ProposalState::Voting,
@@ -1442,7 +1442,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "55:10 @ 60 -- Can still go either way",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 60,
+                yes_vote_threshold_percentage: 60,
                 yes_votes_count: 55,
                 no_votes_count: 10,
                 expected_tipped_state: ProposalState::Voting,
@@ -1451,7 +1451,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "60:10 @ 60 -- Yeah reached the required threshold",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 60,
+                yes_vote_threshold_percentage: 60,
                 yes_votes_count: 60,
                 no_votes_count: 10,
                 expected_tipped_state: ProposalState::Succeeded,
@@ -1460,7 +1460,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "61:10 @ 60 -- Yeah won",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 60,
+                yes_vote_threshold_percentage: 60,
                 yes_votes_count: 61,
                 no_votes_count: 10,
                 expected_tipped_state: ProposalState::Succeeded,
@@ -1469,7 +1469,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "10:40 @ 60 -- Yeah can still outvote Nay",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 60,
+                yes_vote_threshold_percentage: 60,
                 yes_votes_count: 10,
                 no_votes_count: 40,
                 expected_tipped_state: ProposalState::Voting,
@@ -1478,7 +1478,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "60:40 @ 60 -- Yeah won",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 60,
+                yes_vote_threshold_percentage: 60,
                 yes_votes_count: 60,
                 no_votes_count: 40,
                 expected_tipped_state: ProposalState::Succeeded,
@@ -1487,7 +1487,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "10:41 @ 60 -- Aye can't outvote Nay any longer",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 60,
+                yes_vote_threshold_percentage: 60,
                 yes_votes_count: 10,
                 no_votes_count: 41,
                 expected_tipped_state: ProposalState::Defeated,
@@ -1496,7 +1496,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "100:0",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 100,
+                yes_vote_threshold_percentage: 100,
                 yes_votes_count: 100,
                 no_votes_count: 0,
                 expected_tipped_state: ProposalState::Succeeded,
@@ -1505,7 +1505,7 @@ mod test {
             Just(VoteCastTestCase {
                 name: "0:100",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 100,
+                yes_vote_threshold_percentage: 100,
                 yes_votes_count: 0,
                 no_votes_count: 100,
                 expected_tipped_state: ProposalState::Defeated,
@@ -1526,7 +1526,7 @@ mod test {
             proposal.state = ProposalState::Voting;
 
             let mut governance_config = create_test_governance_config();
-            governance_config.vote_threshold_percentage =  VoteThresholdPercentage::YesVote(test_case.vote_threshold_percentage);
+            governance_config.community_vote_threshold =  VoteThreshold::YesVotePercentage(test_case.yes_vote_threshold_percentage);
 
             let current_timestamp = 15_i64;
 
@@ -1570,7 +1570,7 @@ mod test {
             proposal.state = ProposalState::Voting;
 
             let mut governance_config = create_test_governance_config();
-            governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(test_case.vote_threshold_percentage);
+            governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(test_case.yes_vote_threshold_percentage);
 
             let current_timestamp = 16_i64;
 
@@ -1630,8 +1630,8 @@ mod test {
 
 
             let mut governance_config = create_test_governance_config();
-            let  yes_vote_threshold_percentage = VoteThresholdPercentage::YesVote(yes_vote_threshold_percentage);
-            governance_config.vote_threshold_percentage = yes_vote_threshold_percentage.clone();
+            let  yes_vote_threshold_percentage = VoteThreshold::YesVotePercentage(yes_vote_threshold_percentage);
+            governance_config.community_vote_threshold = yes_vote_threshold_percentage.clone();
 
             let current_timestamp = 15_i64;
 
@@ -1674,9 +1674,9 @@ mod test {
 
 
             let mut governance_config = create_test_governance_config();
-            let  yes_vote_threshold_percentage = VoteThresholdPercentage::YesVote(yes_vote_threshold_percentage);
+            let  yes_vote_threshold_percentage = VoteThreshold::YesVotePercentage(yes_vote_threshold_percentage);
 
-            governance_config.vote_threshold_percentage = yes_vote_threshold_percentage.clone();
+            governance_config.community_vote_threshold = yes_vote_threshold_percentage.clone();
 
             let current_timestamp = 16_i64;
 
@@ -1711,7 +1711,7 @@ mod test {
         proposal.state = ProposalState::Voting;
 
         let mut governance_config = create_test_governance_config();
-        governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(60);
+        governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(60);
 
         let current_timestamp = 15_i64;
 
@@ -1750,7 +1750,7 @@ mod test {
         proposal.state = ProposalState::Voting;
 
         let mut governance_config = create_test_governance_config();
-        governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(60);
+        governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(60);
 
         let current_timestamp = 15_i64;
 
@@ -1793,7 +1793,7 @@ mod test {
         proposal.state = ProposalState::Voting;
 
         let mut governance_config = create_test_governance_config();
-        governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(60);
+        governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(60);
 
         let current_timestamp = 15_i64;
 
@@ -1830,7 +1830,7 @@ mod test {
         proposal.state = ProposalState::Voting;
 
         let mut governance_config = create_test_governance_config();
-        governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(60);
+        governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(60);
 
         let current_timestamp = 16_i64;
         let community_token_supply = 200;
@@ -1868,7 +1868,7 @@ mod test {
         proposal.state = ProposalState::Voting;
 
         let mut governance_config = create_test_governance_config();
-        governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(60);
+        governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(60);
 
         let current_timestamp = 16_i64;
         let community_token_supply = 200;
@@ -2233,7 +2233,7 @@ mod test {
             closed_at: Some(206),
             execution_flags: InstructionExecutionFlags::None,
             max_vote_weight: Some(250),
-            vote_threshold_percentage: Some(VoteThresholdPercentage::YesVote(65)),
+            vote_threshold: Some(VoteThreshold::YesVotePercentage(65)),
             name: "proposal".to_string(),
             description_link: "proposal-description".to_string(),
         };

@@ -8,7 +8,7 @@ use program_test::*;
 use spl_governance::{
     error::GovernanceError,
     state::{
-        enums::{ProposalState, VoteThresholdPercentage},
+        enums::{ProposalState, VoteThreshold},
         proposal::{OptionVoteResult, VoteType},
         vote_record::{Vote, VoteChoice},
     },
@@ -465,7 +465,7 @@ async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_succ
 
     // 100 tokes approval quorum
     let mut governance_config = governance_test.get_default_governance_config();
-    governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(30);
+    governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(30);
 
     let mut governance_cookie = governance_test
         .with_governance_using_config(
@@ -626,7 +626,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
 
     // 100 tokes approval quorum
     let mut governance_config = governance_test.get_default_governance_config();
-    governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(30);
+    governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(30);
 
     let mut governance_cookie = governance_test
         .with_mint_governance_using_config(
@@ -830,7 +830,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
 
     // 100 tokes approval quorum
     let mut governance_config = governance_test.get_default_governance_config();
-    governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(30);
+    governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(30);
 
     let mut governance_cookie = governance_test
         .with_mint_governance_using_config(
