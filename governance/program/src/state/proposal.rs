@@ -822,7 +822,7 @@ fn get_min_vote_threshold_weight(
             *yes_vote_threshold_percentage
         }
         _ => {
-            return Err(GovernanceError::VoteThresholdPercentageTypeNotSupported.into());
+            return Err(GovernanceError::VoteThresholdTypeNotSupported.into());
         }
     };
 
@@ -1118,7 +1118,8 @@ mod test {
             max_voting_time: 5,
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             vote_tipping: VoteTipping::Strict,
-            proposal_cool_off_time: 0,
+            council_vote_threshold: VoteThreshold::YesVotePercentage(60),
+            reserved: [0; 2],
         }
     }
 

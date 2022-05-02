@@ -246,17 +246,17 @@ pub enum GovernanceError {
     #[error("Current token owner must sign transaction")]
     TokenOwnerMustSign,
 
-    /// Given VoteThresholdPercentageType is not supported
-    #[error("Given VoteThresholdPercentageType is not supported")]
-    VoteThresholdPercentageTypeNotSupported,
+    /// Given VoteThresholdType is not supported
+    #[error("Given VoteThresholdType is not supported")]
+    VoteThresholdTypeNotSupported,
 
     /// Given VoteWeightSource is not supported
     #[error("Given VoteWeightSource is not supported")]
     VoteWeightSourceNotSupported,
 
-    /// Proposal cool off time is not supported
-    #[error("Proposal cool off time is not supported")]
-    ProposalCoolOffTimeNotSupported,
+    /// Reserved1
+    #[error("Reserved1")]
+    Reserved1,
 
     /// Governance PDA must sign
     #[error("Governance PDA must sign")]

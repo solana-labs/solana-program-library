@@ -39,10 +39,12 @@ pub struct GovernanceConfig {
     /// Conditions under which a vote will complete early
     pub vote_tipping: VoteTipping,
 
-    /// The time period in seconds within which a Proposal can be still cancelled after being voted on
-    /// Once cool off time expires Proposal can't be cancelled any longer and becomes a law
-    /// Note: This field is not implemented in the current version
-    pub proposal_cool_off_time: u32,
+    /// The type of the vote threshold used for council vote
+    /// Note: In the current version only YesVote threshold is supported
+    pub council_vote_threshold: VoteThreshold,
+
+    /// Reserved space for future versions
+    pub reserved: [u8; 2],
 
     /// Minimum council weight a governance token owner must possess to be able to create a proposal
     pub min_council_weight_to_create_proposal: u64,
@@ -377,19 +379,23 @@ pub fn assert_valid_create_governance_args(
 pub fn assert_is_valid_governance_config(
     governance_config: &GovernanceConfig,
 ) -> Result<(), ProgramError> {
-    match governance_config.community_vote_threshold {
+    assert_is_valid_vote_threshold(&governance_config.community_vote_threshold)?;
+    assert_is_valid_vote_threshold(&governance_config.council_vote_threshold)?;
+
+    Ok(())
+}
+
+/// Asserts the provided vote_threshold is valid
+pub fn assert_is_valid_vote_threshold(vote_threshold: &VoteThreshold) -> Result<(), ProgramError> {
+    match *vote_threshold {
         VoteThreshold::YesVotePercentage(yes_vote_threshold_percentage) => {
             if !(1..=100).contains(&yes_vote_threshold_percentage) {
                 return Err(GovernanceError::InvalidVoteThresholdPercentage.into());
             }
         }
         _ => {
-            return Err(GovernanceError::VoteThresholdPercentageTypeNotSupported.into());
+            return Err(GovernanceError::VoteThresholdTypeNotSupported.into());
         }
-    }
-
-    if governance_config.proposal_cool_off_time > 0 {
-        return Err(GovernanceError::ProposalCoolOffTimeNotSupported.into());
     }
 
     Ok(())
