@@ -16,6 +16,7 @@ import stake.instructions as st
 from stake.state import StakeAuthorize
 from stake_pool.constants import \
     MAX_VALIDATORS_TO_UPDATE, \
+    MINIMUM_RESERVE_LAMPORTS, \
     STAKE_POOL_PROGRAM_ID, \
     find_stake_program_address, \
     find_transient_stake_program_address, \
@@ -98,7 +99,7 @@ async def create_all(client: AsyncClient, manager: Keypair, fee: Fee, referral_f
         STAKE_POOL_PROGRAM_ID, stake_pool.public_key)
 
     reserve_stake = Keypair()
-    await create_stake(client, manager, reserve_stake, pool_withdraw_authority, 1)
+    await create_stake(client, manager, reserve_stake, pool_withdraw_authority, MINIMUM_RESERVE_LAMPORTS)
 
     pool_mint = Keypair()
     await create_mint(client, manager, pool_mint, pool_withdraw_authority)

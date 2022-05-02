@@ -7,13 +7,14 @@ use {
     solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey, stake},
     solana_program_test::*,
     solana_sdk::{
-        stake::state::{Authorized, Lockup, StakeState},
         signature::{Keypair, Signer},
+        stake::state::{Authorized, Lockup, StakeState},
         system_instruction,
         transaction::Transaction,
     },
     spl_stake_pool::{
-        find_withdraw_authority_program_address, find_transient_stake_program_address, id, instruction,
+        find_transient_stake_program_address, find_withdraw_authority_program_address, id,
+        instruction,
         state::{StakePool, StakeStatus, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE, MINIMUM_RESERVE_LAMPORTS,
     },
@@ -686,10 +687,20 @@ async fn success_ignoring_hijacked_transient_stake_with_authorized() {
 #[tokio::test]
 async fn success_ignoring_hijacked_transient_stake_with_lockup() {
     let hijacker = Pubkey::new_unique();
-    check_ignored_hijacked_transient_stake(None, Some(&Lockup { custodian: hijacker, ..Lockup::default() })).await;
+    check_ignored_hijacked_transient_stake(
+        None,
+        Some(&Lockup {
+            custodian: hijacker,
+            ..Lockup::default()
+        }),
+    )
+    .await;
 }
 
-async fn check_ignored_hijacked_transient_stake(hijack_authorized: Option<&Authorized>, hijack_lockup: Option<&Lockup>) {
+async fn check_ignored_hijacked_transient_stake(
+    hijack_authorized: Option<&Authorized>,
+    hijack_lockup: Option<&Lockup>,
+) {
     let num_validators = 1;
     let (mut context, stake_pool_accounts, stake_accounts, _, lamports, _, mut slot) =
         setup(num_validators).await;

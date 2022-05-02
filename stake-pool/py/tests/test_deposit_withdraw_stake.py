@@ -7,6 +7,7 @@ from stake.actions import create_stake, delegate_stake
 from stake.constants import STAKE_LEN
 from stake.state import StakeState
 from stake_pool.actions import deposit_stake, withdraw_stake, update_stake_pool
+from stake_pool.constants import MINIMUM_ACTIVE_STAKE
 from stake_pool.state import StakePool
 
 
@@ -17,7 +18,7 @@ async def test_deposit_withdraw_stake(async_client, validators, payer, stake_poo
     data = resp['result']['value']['data']
     stake_pool = StakePool.decode(data[0], data[1])
     validator = next(iter(validators))
-    stake_amount = 1_000_000
+    stake_amount = MINIMUM_ACTIVE_STAKE
     stake = Keypair()
     await create_stake(async_client, payer, stake, payer.public_key, stake_amount)
     stake = stake.public_key
