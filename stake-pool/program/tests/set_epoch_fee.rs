@@ -14,6 +14,7 @@ use {
     spl_stake_pool::{
         error, id, instruction,
         state::{Fee, FeeType, StakePool},
+        MINIMUM_RESERVE_LAMPORTS,
     },
 };
 
@@ -25,7 +26,7 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts, Fee) {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            1,
+            MINIMUM_RESERVE_LAMPORTS,
         )
         .await
         .unwrap();
@@ -180,7 +181,7 @@ async fn fail_not_updated() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            1,
+            MINIMUM_RESERVE_LAMPORTS,
         )
         .await
         .unwrap();

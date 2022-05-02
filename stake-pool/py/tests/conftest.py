@@ -92,7 +92,7 @@ def async_client(event_loop, solana_test_validator) -> Iterator[AsyncClient]:
 @pytest.fixture
 def payer(event_loop, async_client) -> Keypair:
     payer = Keypair()
-    airdrop_lamports = 10_000_000_000
+    airdrop_lamports = 20_000_000_000
     event_loop.run_until_complete(airdrop(async_client, payer.public_key, airdrop_lamports))
     return payer
 

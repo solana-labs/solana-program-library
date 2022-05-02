@@ -24,7 +24,7 @@ use {
         find_transient_stake_program_address, find_withdraw_authority_program_address, id,
         instruction, processor,
         state::{self, FeeType, ValidatorList},
-        MINIMUM_ACTIVE_STAKE,
+        MINIMUM_ACTIVE_STAKE, MINIMUM_RESERVE_LAMPORTS,
     },
 };
 
@@ -1575,5 +1575,5 @@ pub async fn get_validator_list_sum(
         .sum();
     let rent = banks_client.get_rent().await.unwrap();
     let rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
-    validator_sum + reserve_stake.lamports - rent - 1
+    validator_sum + reserve_stake.lamports - rent - MINIMUM_RESERVE_LAMPORTS
 }

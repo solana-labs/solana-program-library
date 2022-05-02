@@ -7,13 +7,10 @@ from solana.publickey import PublicKey
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Confirmed
 
-from stake.constants import STAKE_LEN
+from stake.constants import STAKE_LEN, LAMPORTS_PER_SOL
 from stake_pool.actions import decrease_validator_stake, increase_validator_stake, update_stake_pool
+from stake_pool.constants import MINIMUM_ACTIVE_STAKE
 from stake_pool.state import StakePool, ValidatorList
-
-
-LAMPORTS_PER_SOL: int = 1_000_000_000
-MINIMUM_INCREASE_LAMPORTS: int = LAMPORTS_PER_SOL // 100
 
 
 async def get_client(endpoint: str) -> AsyncClient:
@@ -87,10 +84,10 @@ decrease of {lamports_to_decrease} below the rent exmption')
                     ))
             elif validator.active_stake_lamports < lamports_per_validator:
                 lamports_to_increase = lamports_per_validator - validator.active_stake_lamports
-                if lamports_to_increase < MINIMUM_INCREASE_LAMPORTS:
+                if lamports_to_increase < MINIMUM_ACTIVE_STAKE:
                     print(f'Skipping increase on {validator.vote_account_address}, \
 currently at {validator.active_stake_lamports} lamports, \
-increase of {lamports_to_increase} less than the minimum of {MINIMUM_INCREASE_LAMPORTS}')
+increase of {lamports_to_increase} less than the minimum of {MINIMUM_ACTIVE_STAKE}')
                 else:
                     futures.append(increase_validator_stake(
                         async_client, staker, staker, stake_pool_address,

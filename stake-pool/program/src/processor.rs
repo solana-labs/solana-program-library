@@ -15,16 +15,14 @@ use {
     borsh::{BorshDeserialize, BorshSerialize},
     num_traits::FromPrimitive,
     solana_program::{
-        account_info::next_account_info,
-        account_info::AccountInfo,
+        account_info::{next_account_info, AccountInfo},
         borsh::try_from_slice_unchecked,
         clock::{Clock, Epoch},
         decode_error::DecodeError,
         entrypoint::ProgramResult,
         msg,
         program::{invoke, invoke_signed},
-        program_error::PrintProgramError,
-        program_error::ProgramError,
+        program_error::{PrintProgramError, ProgramError},
         program_pack::Pack,
         pubkey::Pubkey,
         rent::Rent,
@@ -134,6 +132,17 @@ fn check_account_owner(
     } else {
         Ok(())
     }
+}
+
+/// Checks if a stake acount can be managed by the pool
+fn stake_is_usable_by_pool(
+    meta: &stake::state::Meta,
+    expected_authority: &Pubkey,
+    expected_lockup: &stake::state::Lockup,
+) -> bool {
+    meta.authorized.staker == *expected_authority
+        && meta.authorized.withdrawer == *expected_authority
+        && meta.lockup == *expected_lockup
 }
 
 /// Create a transient stake account without transferring lamports
@@ -747,7 +756,7 @@ impl Processor {
         stake_pool.manager_fee_account = *manager_fee_info.key;
         stake_pool.token_program_id = *token_program_info.key;
         stake_pool.total_lamports = total_lamports;
-        stake_pool.pool_token_supply = 0;
+        stake_pool.pool_token_supply = total_lamports;
         stake_pool.last_update_epoch = Clock::get()?.epoch;
         stake_pool.lockup = stake::state::Lockup::default();
         stake_pool.epoch_fee = epoch_fee;
@@ -1543,10 +1552,11 @@ impl Processor {
             //  * not a stake -> ignore
             match transient_stake_state {
                 Some(stake::state::StakeState::Initialized(meta)) => {
-                    // if transient account was hijacked, ignore it
-                    if meta.authorized.staker == *withdraw_authority_info.key
-                        && meta.authorized.withdrawer == *withdraw_authority_info.key
-                    {
+                    if stake_is_usable_by_pool(
+                        &meta,
+                        withdraw_authority_info.key,
+                        &stake_pool.lockup,
+                    ) {
                         if no_merge {
                             transient_stake_lamports = transient_stake_info.lamports();
                         } else {
@@ -1571,10 +1581,11 @@ impl Processor {
                     }
                 }
                 Some(stake::state::StakeState::Stake(meta, stake)) => {
-                    // if transient account was hijacked, ignore it
-                    if meta.authorized.staker == *withdraw_authority_info.key
-                        && meta.authorized.withdrawer == *withdraw_authority_info.key
-                    {
+                    if stake_is_usable_by_pool(
+                        &meta,
+                        withdraw_authority_info.key,
+                        &stake_pool.lockup,
+                    ) {
                         let account_stake = meta
                             .rent_exempt_reserve
                             .saturating_add(stake.delegation.stake);

@@ -10,14 +10,13 @@ use {
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
-        transaction::Transaction,
-        transaction::TransactionError,
+        transaction::{Transaction, TransactionError},
     },
     spl_stake_pool::{
         error::StakePoolError,
         id,
         instruction::{self, FundingType},
-        state,
+        state, MINIMUM_RESERVE_LAMPORTS,
     },
 };
 
@@ -30,7 +29,7 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts, Keypair, Pubkey, u64
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            1,
+            MINIMUM_RESERVE_LAMPORTS,
         )
         .await
         .unwrap();
