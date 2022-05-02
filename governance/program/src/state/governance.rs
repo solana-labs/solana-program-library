@@ -4,7 +4,7 @@ use borsh::maybestd::io::Write;
 use crate::{
     error::GovernanceError,
     state::{
-        enums::{GovernanceAccountType, VoteThresholdPercentage, VoteTipping},
+        enums::{GovernanceAccountType, VoteThreshold, VoteTipping},
         legacy::{is_governance_v1_account_type, GovernanceV1},
         realm::assert_is_valid_realm,
     },
@@ -23,9 +23,9 @@ use spl_governance_tools::{
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GovernanceConfig {
-    /// The type of the vote threshold used for voting
+    /// The type of the vote threshold used for community vote
     /// Note: In the current version only YesVote threshold is supported
-    pub vote_threshold_percentage: VoteThresholdPercentage,
+    pub community_vote_threshold: VoteThreshold,
 
     /// Minimum community weight a governance token owner must possess to be able to create a proposal
     pub min_community_weight_to_create_proposal: u64,
@@ -377,8 +377,8 @@ pub fn assert_valid_create_governance_args(
 pub fn assert_is_valid_governance_config(
     governance_config: &GovernanceConfig,
 ) -> Result<(), ProgramError> {
-    match governance_config.vote_threshold_percentage {
-        VoteThresholdPercentage::YesVote(yes_vote_threshold_percentage) => {
+    match governance_config.community_vote_threshold {
+        VoteThreshold::YesVotePercentage(yes_vote_threshold_percentage) => {
             if !(1..=100).contains(&yes_vote_threshold_percentage) {
                 return Err(GovernanceError::InvalidVoteThresholdPercentage.into());
             }

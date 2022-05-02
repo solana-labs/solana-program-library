@@ -148,7 +148,7 @@ pub fn process_create_proposal(
 
         max_vote_weight: None,
         max_voting_time: None,
-        vote_threshold_percentage: None,
+        vote_threshold: None,
 
         reserved: [0; 64],
     };

@@ -5,7 +5,7 @@ use solana_program_test::*;
 
 use program_test::*;
 use solana_sdk::signature::Keypair;
-use spl_governance::{error::GovernanceError, state::enums::VoteThresholdPercentage};
+use spl_governance::{error::GovernanceError, state::enums::VoteThreshold};
 use spl_governance_tools::error::GovernanceToolsError;
 
 #[tokio::test]
@@ -94,7 +94,7 @@ async fn test_create_governance_with_invalid_config_error() {
 
     // Arrange
     let mut config = governance_test.get_default_governance_config();
-    config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(0); // below 1% threshold
+    config.community_vote_threshold = VoteThreshold::YesVotePercentage(0); // below 1% threshold
 
     // Act
     let err = governance_test
@@ -114,7 +114,7 @@ async fn test_create_governance_with_invalid_config_error() {
 
     // Arrange
     let mut config = governance_test.get_default_governance_config();
-    config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(101); // Above 100% threshold
+    config.community_vote_threshold = VoteThreshold::YesVotePercentage(101); // Above 100% threshold
 
     // Act
     let err = governance_test

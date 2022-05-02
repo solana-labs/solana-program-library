@@ -8,7 +8,7 @@ use solana_program_test::tokio;
 use program_test::*;
 use spl_governance::{
     error::GovernanceError,
-    state::enums::{ProposalState, VoteThresholdPercentage, VoteTipping},
+    state::enums::{ProposalState, VoteThreshold, VoteTipping},
 };
 
 #[tokio::test]
@@ -72,8 +72,8 @@ async fn test_cast_vote() {
 
     assert_eq!(Some(100), proposal_account.max_vote_weight);
     assert_eq!(
-        Some(governance_cookie.account.config.vote_threshold_percentage),
-        proposal_account.vote_threshold_percentage
+        Some(governance_cookie.account.config.community_vote_threshold),
+        proposal_account.vote_threshold
     );
 
     let token_owner_record = governance_test
@@ -550,7 +550,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_succeeded() {
     let mut governance_config = governance_test.get_default_governance_config();
 
     governance_config.vote_tipping = VoteTipping::Early;
-    governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(15);
+    governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(15);
 
     let token_owner_record_cookie1 = governance_test
         .with_community_token_deposit(&realm_cookie)
@@ -714,7 +714,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_defeated() {
     let mut governance_config = governance_test.get_default_governance_config();
 
     governance_config.vote_tipping = VoteTipping::Early;
-    governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(40);
+    governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(40);
 
     // 100 votes
     let token_owner_record_cookie1 = governance_test
@@ -817,7 +817,7 @@ async fn test_cast_vote_with_threshold_below_50_and_vote_not_tipped() {
 
     let mut governance_config = governance_test.get_default_governance_config();
 
-    governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(40);
+    governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(40);
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
@@ -888,7 +888,7 @@ async fn test_cast_vote_with_disabled_tipping_yes_votes() {
     let mut governance_config = governance_test.get_default_governance_config();
 
     governance_config.vote_tipping = VoteTipping::Disabled;
-    governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(10);
+    governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(10);
 
     let token_owner_record_cookie1 = governance_test
         .with_community_token_deposit(&realm_cookie)
@@ -959,7 +959,7 @@ async fn test_cast_vote_with_disabled_tipping_no_votes() {
     let mut governance_config = governance_test.get_default_governance_config();
 
     governance_config.vote_tipping = VoteTipping::Disabled;
-    governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(10);
+    governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(10);
 
     let token_owner_record_cookie1 = governance_test
         .with_community_token_deposit(&realm_cookie)

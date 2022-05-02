@@ -10,7 +10,7 @@ use spl_governance::{
         deposit_governing_tokens,
     },
     state::{
-        enums::{MintMaxVoteWeightSource, VoteThresholdPercentage},
+        enums::{MintMaxVoteWeightSource, VoteThreshold},
         governance::{get_governance_address, GovernanceConfig},
         proposal::{get_proposal_address, VoteType},
         realm::get_realm_address,
@@ -183,7 +183,7 @@ impl GovernanceChatProgramTest {
             min_council_weight_to_create_proposal: 2,
             min_transaction_hold_up_time: 10,
             max_voting_time: 10,
-            vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
+            community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
             proposal_cool_off_time: 0,
         };
