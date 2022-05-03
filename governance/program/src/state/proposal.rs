@@ -1529,18 +1529,17 @@ mod test {
 
             proposal.state = ProposalState::Voting;
 
-            let mut governance_config = create_test_governance_config();
-            governance_config.community_vote_threshold =  VoteThreshold::YesVotePercentage(test_case.yes_vote_threshold_percentage);
+            let governance_config = create_test_governance_config();
 
             let current_timestamp = 15_i64;
 
             let realm = create_test_realm();
 
             let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,test_case.governing_token_supply).unwrap();
-            let vote_threshold = &governance_config.community_vote_threshold;
+            let vote_threshold = VoteThreshold::YesVotePercentage(test_case.yes_vote_threshold_percentage);
 
             // Act
-            proposal.try_tip_vote(max_voter_weight, &governance_config,current_timestamp,vote_threshold).unwrap();
+            proposal.try_tip_vote(max_voter_weight, &governance_config,current_timestamp,&vote_threshold).unwrap();
 
             // Assert
             assert_eq!(proposal.state,test_case.expected_tipped_state,"CASE: {:?}",test_case);
@@ -1574,17 +1573,16 @@ mod test {
 
             proposal.state = ProposalState::Voting;
 
-            let mut governance_config = create_test_governance_config();
-            governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(test_case.yes_vote_threshold_percentage);
+            let governance_config = create_test_governance_config();
 
             let current_timestamp = 16_i64;
 
             let realm = create_test_realm();
             let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,test_case.governing_token_supply).unwrap();
-            let vote_threshold = &governance_config.community_vote_threshold;
+            let vote_threshold = VoteThreshold::YesVotePercentage(test_case.yes_vote_threshold_percentage);
 
             // Act
-            proposal.finalize_vote(max_voter_weight, &governance_config,current_timestamp,vote_threshold).unwrap();
+            proposal.finalize_vote(max_voter_weight, &governance_config,current_timestamp,&vote_threshold).unwrap();
 
             // Assert
             assert_eq!(proposal.state,test_case.expected_finalized_state,"CASE: {:?}",test_case);
@@ -1635,18 +1633,17 @@ mod test {
             proposal.state = ProposalState::Voting;
 
 
-            let mut governance_config = create_test_governance_config();
+            let governance_config = create_test_governance_config();
             let  yes_vote_threshold_percentage = VoteThreshold::YesVotePercentage(yes_vote_threshold_percentage);
-            governance_config.community_vote_threshold = yes_vote_threshold_percentage.clone();
 
             let current_timestamp = 15_i64;
 
             let realm = create_test_realm();
             let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,governing_token_supply).unwrap();
-            let vote_threshold = &governance_config.community_vote_threshold;
+            let vote_threshold = yes_vote_threshold_percentage.clone();
 
             // Act
-            proposal.try_tip_vote(max_voter_weight, &governance_config, current_timestamp,vote_threshold).unwrap();
+            proposal.try_tip_vote(max_voter_weight, &governance_config, current_timestamp,&vote_threshold).unwrap();
 
             // Assert
             let yes_vote_threshold_count = get_min_vote_threshold_weight(&yes_vote_threshold_percentage,governing_token_supply).unwrap();
@@ -1680,19 +1677,18 @@ mod test {
             proposal.state = ProposalState::Voting;
 
 
-            let mut governance_config = create_test_governance_config();
+            let governance_config = create_test_governance_config();
             let  yes_vote_threshold_percentage = VoteThreshold::YesVotePercentage(yes_vote_threshold_percentage);
 
-            governance_config.community_vote_threshold = yes_vote_threshold_percentage.clone();
 
             let current_timestamp = 16_i64;
 
             let realm = create_test_realm();
             let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,governing_token_supply).unwrap();
-            let vote_threshold = &governance_config.community_vote_threshold;
+            let vote_threshold = yes_vote_threshold_percentage.clone();
 
             // Act
-            proposal.finalize_vote(max_voter_weight, &governance_config,current_timestamp,vote_threshold).unwrap();
+            proposal.finalize_vote(max_voter_weight, &governance_config,current_timestamp,&vote_threshold).unwrap();
 
             // Assert
             let no_vote_weight = proposal.deny_vote_weight.unwrap();
@@ -1718,9 +1714,7 @@ mod test {
 
         proposal.state = ProposalState::Voting;
 
-        let mut governance_config = create_test_governance_config();
-        governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(60);
-
+        let governance_config = create_test_governance_config();
         let current_timestamp = 15_i64;
 
         let community_token_supply = 200;
@@ -1737,7 +1731,7 @@ mod test {
             .get_max_voter_weight_from_mint_supply(&realm, community_token_supply)
             .unwrap();
 
-        let vote_threshold = &governance_config.community_vote_threshold;
+        let vote_threshold = &VoteThreshold::YesVotePercentage(60);
 
         // Act
         proposal
@@ -1764,8 +1758,7 @@ mod test {
 
         proposal.state = ProposalState::Voting;
 
-        let mut governance_config = create_test_governance_config();
-        governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(60);
+        let governance_config = create_test_governance_config();
 
         let current_timestamp = 15_i64;
 
@@ -1787,7 +1780,7 @@ mod test {
             .get_max_voter_weight_from_mint_supply(&realm, community_token_supply)
             .unwrap();
 
-        let vote_threshold = &governance_config.community_vote_threshold;
+        let vote_threshold = VoteThreshold::YesVotePercentage(60);
 
         // Act
         proposal
@@ -1795,7 +1788,7 @@ mod test {
                 max_voter_weight,
                 &governance_config,
                 current_timestamp,
-                vote_threshold,
+                &vote_threshold,
             )
             .unwrap();
 
@@ -1814,8 +1807,7 @@ mod test {
 
         proposal.state = ProposalState::Voting;
 
-        let mut governance_config = create_test_governance_config();
-        governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(60);
+        let governance_config = create_test_governance_config();
 
         let current_timestamp = 15_i64;
 
@@ -1832,7 +1824,7 @@ mod test {
             .get_max_voter_weight_from_mint_supply(&realm, community_token_supply)
             .unwrap();
 
-        let vote_threshold = &governance_config.community_vote_threshold;
+        let vote_threshold = VoteThreshold::YesVotePercentage(60);
 
         // Act
         proposal
@@ -1840,7 +1832,7 @@ mod test {
                 max_voter_weight,
                 &governance_config,
                 current_timestamp,
-                vote_threshold,
+                &vote_threshold,
             )
             .unwrap();
 
@@ -1858,8 +1850,7 @@ mod test {
 
         proposal.state = ProposalState::Voting;
 
-        let mut governance_config = create_test_governance_config();
-        governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(60);
+        let governance_config = create_test_governance_config();
 
         let current_timestamp = 16_i64;
         let community_token_supply = 200;
@@ -1876,7 +1867,7 @@ mod test {
             .get_max_voter_weight_from_mint_supply(&realm, community_token_supply)
             .unwrap();
 
-        let vote_threshold = &governance_config.community_vote_threshold;
+        let vote_threshold = VoteThreshold::YesVotePercentage(60);
 
         // Act
         proposal
@@ -1884,7 +1875,7 @@ mod test {
                 max_voter_weight,
                 &governance_config,
                 current_timestamp,
-                vote_threshold,
+                &vote_threshold,
             )
             .unwrap();
 
@@ -1903,8 +1894,7 @@ mod test {
 
         proposal.state = ProposalState::Voting;
 
-        let mut governance_config = create_test_governance_config();
-        governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(60);
+        let governance_config = create_test_governance_config();
 
         let current_timestamp = 16_i64;
         let community_token_supply = 200;
@@ -1924,7 +1914,7 @@ mod test {
             .get_max_voter_weight_from_mint_supply(&realm, community_token_supply)
             .unwrap();
 
-        let vote_threshold = &governance_config.community_vote_threshold;
+        let vote_threshold = VoteThreshold::YesVotePercentage(60);
 
         // Act
         proposal
@@ -1932,7 +1922,7 @@ mod test {
                 max_voter_weight,
                 &governance_config,
                 current_timestamp,
-                vote_threshold,
+                &vote_threshold,
             )
             .unwrap();
 
