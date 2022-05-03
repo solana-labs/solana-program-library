@@ -742,6 +742,29 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    pub async fn mint_council_tokens(&mut self, realm_cookie: &RealmCookie, amount: u64) {
+        let token_account_keypair = Keypair::new();
+        let council_mint = realm_cookie.account.config.council_mint.unwrap();
+
+        self.bench
+            .create_empty_token_account(
+                &token_account_keypair,
+                &council_mint,
+                &self.bench.payer.pubkey(),
+            )
+            .await;
+
+        self.bench
+            .mint_tokens(
+                &council_mint,
+                realm_cookie.council_mint_authority.as_ref().unwrap(),
+                &token_account_keypair.pubkey(),
+                amount,
+            )
+            .await;
+    }
+
+    #[allow(dead_code)]
     async fn with_subsequent_governing_token_deposit(
         &mut self,
         realm: &Pubkey,
