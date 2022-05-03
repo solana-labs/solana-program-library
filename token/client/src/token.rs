@@ -1283,4 +1283,112 @@ where
         )
         .await
     }
+
+    /// Withdraw withheld confidential tokens from mint
+    pub async fn confidential_transfer_withdraw_withheld_tokens_from_mint<S2: Signer>(
+        &self,
+        withdraw_withheld_authority: &S2,
+        withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
+        destination_token_account: &Pubkey,
+        amount: u64,
+    ) -> TokenResult<T::Output> {
+        let mint_state = self.get_mint_info().await.unwrap();
+
+        let ct_mint = mint_state
+            .get_extension::<confidential_transfer::ConfidentialTransferMint>()
+            .unwrap();
+
+        let destination_state = self
+            .get_account_info(destination_token_account)
+            .await
+            .unwrap();
+        let destination_extension = destination_state
+            .get_extension::<confidential_transfer::ConfidentialTransferAccount>(
+        )?;
+
+        let proof_data = confidential_transfer::instruction::WithdrawWithheldTokensData::new(
+            withdraw_withheld_authority_elgamal_keypair,
+            &destination_extension.encryption_pubkey.try_into().unwrap(),
+            &ct_mint.withheld_amount.try_into().unwrap(),
+            amount,
+        )
+        .map_err(TokenError::Proof)?;
+
+        self.process_ixs(
+            &confidential_transfer::instruction::withdraw_withheld_tokens_from_mint(
+                &self.program_id,
+                &self.pubkey,
+                destination_token_account,
+                &withdraw_withheld_authority.pubkey(),
+                &[],
+                &proof_data,
+            )?,
+            &[withdraw_withheld_authority],
+        )
+        .await
+    }
+
+    /// Withdraw withheld confidential tokens from accounts
+    pub async fn confidential_transfer_withdraw_withheld_tokens_from_accounts<S2: Signer>(
+        &self,
+        withdraw_withheld_authority: &S2,
+        withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
+        destination_token_account: &Pubkey,
+        amount: u64,
+        sources: &[&Pubkey],
+    ) -> TokenResult<T::Output> {
+        let mint_state = self.get_mint_info().await.unwrap();
+
+        let ct_mint = mint_state
+            .get_extension::<confidential_transfer::ConfidentialTransferMint>()
+            .unwrap();
+
+        let destination_state = self
+            .get_account_info(destination_token_account)
+            .await
+            .unwrap();
+        let destination_extension = destination_state
+            .get_extension::<confidential_transfer::ConfidentialTransferAccount>(
+        )?;
+
+        let proof_data = confidential_transfer::instruction::WithdrawWithheldTokensData::new(
+            withdraw_withheld_authority_elgamal_keypair,
+            &destination_extension.encryption_pubkey.try_into().unwrap(),
+            &ct_mint.withheld_amount.try_into().unwrap(),
+            amount,
+        )
+        .map_err(TokenError::Proof)?;
+
+        self.process_ixs(
+            &confidential_transfer::instruction::withdraw_withheld_tokens_from_accounts(
+                &self.program_id,
+                &self.pubkey,
+                destination_token_account,
+                &withdraw_withheld_authority.pubkey(),
+                &[],
+                sources,
+                &proof_data,
+            )?,
+            &[withdraw_withheld_authority],
+        )
+        .await
+    }
+
+    /// Harvest withheld confidential tokens to mint
+    pub async fn confidential_transfer_harvest_withheld_tokens_to_mint<S2: Signer>(
+        &self,
+        sources: &[&Pubkey],
+    ) -> TokenResult<T::Output> {
+        self.process_ixs::<[&dyn Signer; 0]>(
+            &[
+                confidential_transfer::instruction::harvest_withheld_tokens_to_mint(
+                    &self.program_id,
+                    &self.pubkey,
+                    sources,
+                )?,
+            ],
+            &[],
+        )
+        .await
+    }
 }
