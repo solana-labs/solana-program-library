@@ -418,7 +418,11 @@ pub fn assert_is_valid_governance_config(
     assert_is_valid_vote_threshold(&governance_config.community_vote_threshold)?;
     assert_is_valid_vote_threshold(&governance_config.council_vote_threshold)?;
 
-    // TODO: Should we check for both community and council votes Disabled?
+    if governance_config.community_vote_threshold == VoteThreshold::Disabled
+        && governance_config.council_vote_threshold == VoteThreshold::Disabled
+    {
+        return Err(GovernanceError::AllVoteThresholdsDisabled.into());
+    }
 
     Ok(())
 }
@@ -494,7 +498,7 @@ mod test {
     }
 
     #[test]
-    fn test_assert_config_invalid_with_council_vote_threshold_of_zero_yes_vote() {
+    fn test_assert_config_invalid_with_council_zero_yes_vote_threshold() {
         // Arrange
         let governance_config = GovernanceConfig {
             community_vote_threshold: VoteThreshold::YesVotePercentage(1),
@@ -514,5 +518,51 @@ mod test {
 
         // Assert
         assert_eq!(err, GovernanceError::InvalidVoteThresholdPercentage.into());
+    }
+
+    #[test]
+    fn test_assert_config_invalid_with_community_vote_zero_yes_vote_threshold() {
+        // Arrange
+        let governance_config = GovernanceConfig {
+            community_vote_threshold: VoteThreshold::YesVotePercentage(0),
+            min_community_weight_to_create_proposal: 1,
+            min_transaction_hold_up_time: 1,
+            max_voting_time: 1,
+            vote_tipping: VoteTipping::Strict,
+            council_vote_threshold: VoteThreshold::YesVotePercentage(1),
+            reserved: [0; 2],
+            min_council_weight_to_create_proposal: 1,
+        };
+
+        // Act
+        let err = assert_is_valid_governance_config(&governance_config)
+            .err()
+            .unwrap();
+
+        // Assert
+        assert_eq!(err, GovernanceError::InvalidVoteThresholdPercentage.into());
+    }
+
+    #[test]
+    fn test_assert_config_invalid_with_all_vote_thresholds_disabled() {
+        // Arrange
+        let governance_config = GovernanceConfig {
+            community_vote_threshold: VoteThreshold::Disabled,
+            min_community_weight_to_create_proposal: 1,
+            min_transaction_hold_up_time: 1,
+            max_voting_time: 1,
+            vote_tipping: VoteTipping::Strict,
+            council_vote_threshold: VoteThreshold::Disabled,
+            reserved: [0; 2],
+            min_council_weight_to_create_proposal: 1,
+        };
+
+        // Act
+        let err = assert_is_valid_governance_config(&governance_config)
+            .err()
+            .unwrap();
+
+        // Assert
+        assert_eq!(err, GovernanceError::AllVoteThresholdsDisabled.into());
     }
 }

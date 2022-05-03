@@ -393,6 +393,10 @@ pub enum GovernanceError {
     /// GovernanceConfig change not allowed
     #[error("GovernanceConfig change not allowed")]
     GovernanceConfigChangeNotAllowed,
+
+    /// All vote thresholds can't be disabled
+    #[error("All vote thresholds can't be disabled")]
+    AllVoteThresholdsDisabled,
 }
 
 impl PrintProgramError for GovernanceError {
