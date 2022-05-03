@@ -211,10 +211,10 @@ pub fn get_governance_data(
         try_from_slice_unchecked(&governance_info.data.borrow())?;
 
     // If the account is V1 version then translate to V2
-    if is_governance_v1_account_type(&account_type) {
+    let mut governance_data = if is_governance_v1_account_type(&account_type) {
         let governance_data_v1 = get_account_data::<GovernanceV1>(program_id, governance_info)?;
 
-        return Ok(GovernanceV2 {
+        GovernanceV2 {
             account_type,
             realm: governance_data_v1.realm,
             governed_account: governance_data_v1.governed_account,
@@ -225,10 +225,25 @@ pub fn get_governance_data(
 
             // Add the extra reserved_v2 padding
             reserved_v2: [0; 128],
-        });
+        }
+    } else {
+        get_account_data::<GovernanceV2>(program_id, governance_info)?
+    };
+
+    // In previous versions of spl-gov (<= 2.2.4) we had config.proposal_cool_off_time:u32 which was unused and always 0
+    // In version 2.3.0 proposal_cool_off_time was replaced with council_vote_threshold:VoteThreshold
+    //
+    // If we read a legacy account then council_vote_threshold == VoteThreshold::YesVotePercentage(0)
+    // and we coerce it to be equal to community_vote_threshold which was used for both council and community thresholds before
+    //
+    // Note: assert_is_valid_governance_config() prevents setting council_vote_threshold to VoteThreshold::YesVotePercentage(0)
+    // which gives as guarantee that it is a legacy account layout set with proposal_cool_off_time = 0
+    if governance_data.config.council_vote_threshold == VoteThreshold::YesVotePercentage(0) {
+        governance_data.config.council_vote_threshold =
+            governance_data.config.community_vote_threshold.clone();
     }
 
-    get_account_data::<GovernanceV2>(program_id, governance_info)
+    Ok(governance_data)
 }
 
 /// Deserializes Governance account, checks owner program and asserts governance belongs to the given ream
@@ -408,7 +423,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_deserialize_governance_without_council_threshold() {
+    fn test_deserialize_legacy_governance_account_without_council_threshold() {
         // Arrange
 
         // Legacy GovernanceV2 with
@@ -420,7 +435,7 @@ mod test {
             0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 10, 10, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 100, 0,
             0, 0, 1, //
             // proposal_cool_off_time:
-            0, 10, 0, 0, // ---------
+            0, 0, 0, 0, // ---------
             1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -452,5 +467,28 @@ mod test {
             governance.config.community_vote_threshold,
             governance.config.council_vote_threshold
         );
+    }
+
+    #[test]
+    fn test_assert_config_invalid_with_council_vote_threshold_of_zero_yes_vote() {
+        // Arrange
+        let governance_config = GovernanceConfig {
+            community_vote_threshold: VoteThreshold::YesVotePercentage(1),
+            min_community_weight_to_create_proposal: 1,
+            min_transaction_hold_up_time: 1,
+            max_voting_time: 1,
+            vote_tipping: VoteTipping::Strict,
+            council_vote_threshold: VoteThreshold::YesVotePercentage(0),
+            reserved: [0; 2],
+            min_council_weight_to_create_proposal: 1,
+        };
+
+        // Act
+        let err = assert_is_valid_governance_config(&governance_config)
+            .err()
+            .unwrap();
+
+        // Assert
+        assert_eq!(err, GovernanceError::InvalidVoteThresholdPercentage.into());
     }
 }
