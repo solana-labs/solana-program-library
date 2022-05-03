@@ -534,7 +534,7 @@ mod test {
     }
 
     #[test]
-    fn test_assert_config_invalid_with_community_vote_zero_yes_vote_threshold() {
+    fn test_assert_config_invalid_with_community_zero_yes_vote_threshold() {
         // Arrange
         let governance_config = GovernanceConfig {
             community_vote_threshold: VoteThreshold::YesVotePercentage(0),
