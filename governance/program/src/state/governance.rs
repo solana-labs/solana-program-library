@@ -403,42 +403,24 @@ pub fn assert_is_valid_vote_threshold(vote_threshold: &VoteThreshold) -> Result<
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use solana_program::clock::Epoch;
 
-    pub fn create_test_governance() -> GovernanceV2 {
-        GovernanceV2 {
-            account_type: GovernanceAccountType::GovernanceV2,
-            realm: Pubkey::new_unique(),
-            governed_account: Pubkey::new_unique(),
-            proposals_count: 1,
-            config: GovernanceConfig {
-                community_vote_threshold: VoteThreshold::YesVotePercentage(10),
-                min_community_weight_to_create_proposal: 10,
-                min_transaction_hold_up_time: 10,
-                max_voting_time: 100,
-                vote_tipping: VoteTipping::Early,
-                council_vote_threshold: VoteThreshold::QuorumPercentage(5),
-                reserved: [0; 2],
-                min_council_weight_to_create_proposal: 1,
-            },
-            reserved: [0; 6],
-            voting_proposal_count: 1,
-            reserved_v2: [0; 128],
-        }
-    }
+    use super::*;
 
     #[test]
     fn test_deserialize_governance_without_council_threshold() {
         // Arrange
-        let governance = create_test_governance();
 
-        let gg = [
+        // Legacy GovernanceV2 with
+        // 1) config.community_vote_threshold = YesVotePercentage(10)
+        // 2) config.proposal_cool_off_tim = 0
+        let mut account_data = [
             18, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 10, 10, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 100, 0,
             0, 0, 1, //
             // proposal_cool_off_time:
-            0, 5, 0, 0, // ---------
+            0, 10, 0, 0, // ---------
             1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -446,23 +428,29 @@ mod test {
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ];
 
-        let gg2 = [
-            18, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 10, 10, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 100, 0,
-            0, 0, 1, 1, 5, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0,
-        ];
+        let program_id = Pubkey::new_unique();
+
+        let info_key = Pubkey::new_unique();
+        let mut lamports = 10u64;
+
+        let governance_info = AccountInfo::new(
+            &info_key,
+            false,
+            false,
+            &mut lamports,
+            &mut account_data[..],
+            &program_id,
+            false,
+            Epoch::default(),
+        );
 
         // Act
-        let vec = governance.try_to_vec().unwrap();
-
-        print!("VEC {:?}", vec);
+        let governance = get_governance_data(&program_id, &governance_info).unwrap();
 
         // Assert
+        assert_eq!(
+            governance.config.community_vote_threshold,
+            governance.config.council_vote_threshold
+        );
     }
 }
