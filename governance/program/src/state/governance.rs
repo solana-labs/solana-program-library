@@ -197,6 +197,19 @@ impl GovernanceV2 {
         Ok(())
     }
 
+    /// Asserts the provided voting population represented by the given governing_token_mint
+    /// can vote on proposals for the Governance
+    pub fn assert_governing_token_mint_can_vote(
+        &self,
+        realm_data: &RealmV2,
+        governing_token_mint: &Pubkey,
+    ) -> Result<(), ProgramError> {
+        // resolve_vote_threshold() asserts the vote threshold exists for the given governing_token_mint and is not disabled
+        let _ = self.resolve_vote_threshold(realm_data, governing_token_mint)?;
+
+        Ok(())
+    }
+
     /// Resolves VoteThreshold for the given realm and governing token
     pub fn resolve_vote_threshold(
         &self,
