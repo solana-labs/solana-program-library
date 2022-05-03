@@ -324,6 +324,7 @@ async fn test_finalize_council_vote() {
     let mut governance_config = governance_test.get_default_governance_config();
     governance_config.council_vote_threshold = VoteThreshold::YesVotePercentage(40);
 
+    // Deposit 100 council tokens
     let token_owner_record_cookie = governance_test
         .with_council_token_deposit(&realm_cookie)
         .await
@@ -339,7 +340,7 @@ async fn test_finalize_council_vote() {
         .await
         .unwrap();
 
-    // Total 210 tokens
+    // Total 210 council tokens in circulation
     governance_test
         .mint_council_tokens(&realm_cookie, 110)
         .await;
@@ -349,6 +350,7 @@ async fn test_finalize_council_vote() {
         .await
         .unwrap();
 
+    // Cast vote with 47% weight, above 40% quorum but below 50%+1 to tip automatically
     governance_test
         .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await

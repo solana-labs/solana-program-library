@@ -1193,7 +1193,7 @@ impl GovernanceProgramTest {
             max_voting_time: 10,
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
-            council_vote_threshold: VoteThreshold::YesVotePercentage(60),
+            council_vote_threshold: VoteThreshold::YesVotePercentage(80),
             reserved: [0; 2],
         }
     }
