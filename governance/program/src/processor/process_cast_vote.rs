@@ -143,10 +143,14 @@ pub fn process_cast_vote(
         &realm_data,
     )?;
 
+    let vote_threshold =
+        governance_data.resolve_vote_threshold(&realm_data, governing_token_mint_info.key)?;
+
     if proposal_data.try_tip_vote(
         max_voter_weight,
         &governance_data.config,
         clock.unix_timestamp,
+        &vote_threshold,
     )? {
         // Deserialize proposal owner and validate it's the actual owner of the proposal
         let mut proposal_owner_record_data = get_token_owner_record_data_for_proposal_owner(

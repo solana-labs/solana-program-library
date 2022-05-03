@@ -254,9 +254,9 @@ pub enum GovernanceError {
     #[error("Given VoteWeightSource is not supported")]
     VoteWeightSourceNotSupported,
 
-    /// Reserved1
-    #[error("Reserved1")]
-    Reserved1,
+    /// GoverningTokenMint not allowed to vote
+    #[error("GoverningTokenMint not allowed to vote")]
+    GoverningTokenMintNotAllowedToVote,
 
     /// Governance PDA must sign
     #[error("Governance PDA must sign")]

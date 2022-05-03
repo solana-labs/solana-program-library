@@ -6,7 +6,7 @@ use crate::{
     state::{
         enums::{GovernanceAccountType, VoteThreshold, VoteTipping},
         legacy::{is_governance_v1_account_type, GovernanceV1},
-        realm::assert_is_valid_realm,
+        realm::{assert_is_valid_realm, RealmV2},
     },
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
@@ -24,7 +24,7 @@ use spl_governance_tools::{
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GovernanceConfig {
     /// The type of the vote threshold used for community vote
-    /// Note: In the current version only YesVote threshold is supported
+    /// Note: In the current version only YesVotePercentage and Disabled thresholds are supported
     pub community_vote_threshold: VoteThreshold,
 
     /// Minimum community weight a governance token owner must possess to be able to create a proposal
@@ -40,7 +40,7 @@ pub struct GovernanceConfig {
     pub vote_tipping: VoteTipping,
 
     /// The type of the vote threshold used for council vote
-    /// Note: In the current version only YesVote threshold is supported
+    /// Note: In the current version only YesVotePercentage and Disabled thresholds are supported
     pub council_vote_threshold: VoteThreshold,
 
     /// Reserved space for future versions
@@ -195,6 +195,27 @@ impl GovernanceV2 {
         }
 
         Ok(())
+    }
+
+    /// Resolves VoteThreshold for the given realm and governing token
+    pub fn resolve_vote_threshold(
+        &self,
+        realm_data: &RealmV2,
+        governing_token_mint: &Pubkey,
+    ) -> Result<VoteThreshold, ProgramError> {
+        let vote_threshold = if realm_data.community_mint == *governing_token_mint {
+            &self.config.community_vote_threshold
+        } else if realm_data.config.council_mint == Some(*governing_token_mint) {
+            &self.config.council_vote_threshold
+        } else {
+            return Err(GovernanceError::InvalidGoverningTokenMint.into());
+        };
+
+        if *vote_threshold == VoteThreshold::Disabled {
+            return Err(GovernanceError::GoverningTokenMintNotAllowedToVote.into());
+        }
+
+        Ok(vote_threshold.clone())
     }
 }
 
@@ -397,6 +418,8 @@ pub fn assert_is_valid_governance_config(
     assert_is_valid_vote_threshold(&governance_config.community_vote_threshold)?;
     assert_is_valid_vote_threshold(&governance_config.council_vote_threshold)?;
 
+    // TODO: Should we check for both community and council votes Disabled?
+
     Ok(())
 }
 
@@ -408,9 +431,10 @@ pub fn assert_is_valid_vote_threshold(vote_threshold: &VoteThreshold) -> Result<
                 return Err(GovernanceError::InvalidVoteThresholdPercentage.into());
             }
         }
-        _ => {
+        VoteThreshold::QuorumPercentage(_) => {
             return Err(GovernanceError::VoteThresholdTypeNotSupported.into());
         }
+        VoteThreshold::Disabled => {}
     }
 
     Ok(())
