@@ -256,7 +256,7 @@ pub enum GovernanceError {
 
     /// GoverningTokenMint not allowed to vote
     #[error("GoverningTokenMint not allowed to vote")]
-    GoverningTokenMintNotAllowedToVote,
+    GoverningTokenMintNotAllowedToVote, // 560
 
     /// Governance PDA must sign
     #[error("Governance PDA must sign")]

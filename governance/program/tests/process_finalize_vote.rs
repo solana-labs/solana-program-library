@@ -323,6 +323,7 @@ async fn test_finalize_council_vote() {
 
     let mut governance_config = governance_test.get_default_governance_config();
     governance_config.council_vote_threshold = VoteThreshold::YesVotePercentage(40);
+    governance_config.community_vote_threshold = VoteThreshold::Disabled;
 
     // Deposit 100 council tokens
     let token_owner_record_cookie = governance_test

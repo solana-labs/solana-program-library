@@ -1206,11 +1206,15 @@ async fn test_cast_council_vote() {
         .await
         .unwrap();
 
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.community_vote_threshold = VoteThreshold::Disabled;
+
     let mut governance_cookie = governance_test
-        .with_governance(
+        .with_governance_using_config(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
+            &governance_config,
         )
         .await
         .unwrap();
