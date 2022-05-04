@@ -264,8 +264,8 @@ pub fn get_governance_data(
         get_account_data::<GovernanceV2>(program_id, governance_info)?
     };
 
-    // In previous versions of spl-gov (<= 2.2.4) we had config.proposal_cool_off_time:u32 which was unused and always 0
-    // In version 2.3.0 proposal_cool_off_time was replaced with council_vote_threshold:VoteThreshold
+    // In previous versions of spl-gov (< 3) we had config.proposal_cool_off_time:u32 which was unused and always 0
+    // In version 3.0.0 proposal_cool_off_time was replaced with council_vote_threshold:VoteThreshold
     //
     // If we read a legacy account then council_vote_threshold == VoteThreshold::YesVotePercentage(0)
     // and we coerce it to be equal to community_vote_threshold which was used for both council and community thresholds before
@@ -437,6 +437,10 @@ pub fn assert_is_valid_governance_config(
         return Err(GovernanceError::AllVoteThresholdsDisabled.into());
     }
 
+    if governance_config.reserved != [0, 0] {
+        return Err(GovernanceError::ReservedBufferMustBeEmpty.into());
+    }
+
     Ok(())
 }
 
@@ -577,5 +581,28 @@ mod test {
 
         // Assert
         assert_eq!(err, GovernanceError::AllVoteThresholdsDisabled.into());
+    }
+
+    #[test]
+    fn test_assert_config_invalid_with_reserved_buffer_set() {
+        // Arrange
+        let governance_config = GovernanceConfig {
+            community_vote_threshold: VoteThreshold::YesVotePercentage(10),
+            min_community_weight_to_create_proposal: 1,
+            min_transaction_hold_up_time: 1,
+            max_voting_time: 1,
+            vote_tipping: VoteTipping::Strict,
+            council_vote_threshold: VoteThreshold::Disabled,
+            reserved: [0, 1],
+            min_council_weight_to_create_proposal: 1,
+        };
+
+        // Act
+        let err = assert_is_valid_governance_config(&governance_config)
+            .err()
+            .unwrap();
+
+        // Assert
+        assert_eq!(err, GovernanceError::ReservedBufferMustBeEmpty.into());
     }
 }

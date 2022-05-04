@@ -397,6 +397,10 @@ pub enum GovernanceError {
     /// All vote thresholds can't be disabled
     #[error("All vote thresholds can't be disabled")]
     AllVoteThresholdsDisabled,
+
+    /// Reserved buffer must be empty
+    #[error("Reserved buffer must be empty")]
+    ReservedBufferMustBeEmpty,
 }
 
 impl PrintProgramError for GovernanceError {
