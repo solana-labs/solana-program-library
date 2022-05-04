@@ -1,6 +1,6 @@
 use {
     async_trait::async_trait,
-    solana_client::rpc_client::RpcClient,
+    solana_client::nonblocking::rpc_client::RpcClient,
     solana_program_test::{tokio::sync::Mutex, BanksClient, ProgramTestContext},
     solana_sdk::{
         account::Account, hash::Hash, pubkey::Pubkey, signature::Signature,
@@ -72,7 +72,12 @@ impl SendTransactionRpc for ProgramRpcClientSendTransaction {
         client: &'a RpcClient,
         transaction: &'a Transaction,
     ) -> BoxFuture<'a, ProgramClientResult<Self::Output>> {
-        Box::pin(async move { client.send_transaction(transaction).map_err(Into::into) })
+        Box::pin(async move {
+            client
+                .send_transaction(transaction)
+                .await
+                .map_err(Into::into)
+        })
     }
 }
 
@@ -215,11 +220,12 @@ where
     ) -> ProgramClientResult<u64> {
         self.client
             .get_minimum_balance_for_rent_exemption(data_len)
+            .await
             .map_err(Into::into)
     }
 
     async fn get_latest_blockhash(&self) -> ProgramClientResult<Hash> {
-        self.client.get_latest_blockhash().map_err(Into::into)
+        self.client.get_latest_blockhash().await.map_err(Into::into)
     }
 
     async fn send_transaction(&self, transaction: &Transaction) -> ProgramClientResult<ST::Output> {
@@ -229,7 +235,8 @@ where
     async fn get_account(&self, address: Pubkey) -> ProgramClientResult<Option<Account>> {
         Ok(self
             .client
-            .get_account_with_commitment(&address, self.client.commitment())?
+            .get_account_with_commitment(&address, self.client.commitment())
+            .await?
             .value)
     }
 }
