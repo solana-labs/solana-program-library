@@ -192,25 +192,25 @@ where
 }
 
 /// Program client for `RpcClient` from crate `solana-client`.
-pub struct ProgramRpcClient<'a, ST> {
-    client: &'a RpcClient,
+pub struct ProgramRpcClient<ST> {
+    client: Arc<RpcClient>,
     send: ST,
 }
 
-impl<ST> fmt::Debug for ProgramRpcClient<'_, ST> {
+impl<ST> fmt::Debug for ProgramRpcClient<ST> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ProgramRpcClient").finish()
     }
 }
 
-impl<'a, ST> ProgramRpcClient<'a, ST> {
-    pub fn new(client: &'a RpcClient, send: ST) -> Self {
+impl<ST> ProgramRpcClient<ST> {
+    pub fn new(client: Arc<RpcClient>, send: ST) -> Self {
         Self { client, send }
     }
 }
 
 #[async_trait]
-impl<ST> ProgramClient<ST> for ProgramRpcClient<'_, ST>
+impl<ST> ProgramClient<ST> for ProgramRpcClient<ST>
 where
     ST: SendTransactionRpc + Send + Sync,
 {
@@ -229,7 +229,7 @@ where
     }
 
     async fn send_transaction(&self, transaction: &Transaction) -> ProgramClientResult<ST::Output> {
-        self.send.send(self.client, transaction).await
+        self.send.send(&self.client, transaction).await
     }
 
     async fn get_account(&self, address: Pubkey) -> ProgramClientResult<Option<Account>> {
