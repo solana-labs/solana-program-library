@@ -91,15 +91,19 @@ impl Obligation {
     }
 
     /// Calculate the maximum collateral value that can be withdrawn
-    pub fn max_withdraw_value(&self) -> Result<Decimal, ProgramError> {
-        let required_deposit_value = self
-            .borrowed_value
-            .try_mul(self.deposited_value)?
-            .try_div(self.allowed_borrow_value)?;
-        if required_deposit_value >= self.deposited_value {
+    pub fn max_withdraw_value(
+        &self,
+        withdraw_collateral_ltv: Rate,
+    ) -> Result<Decimal, ProgramError> {
+        if self.allowed_borrow_value <= self.borrowed_value {
             return Ok(Decimal::zero());
         }
-        self.deposited_value.try_sub(required_deposit_value)
+        if withdraw_collateral_ltv == Rate::zero() {
+            return Ok(self.deposited_value);
+        }
+        self.allowed_borrow_value
+            .try_sub(self.borrowed_value)?
+            .try_div(withdraw_collateral_ltv)
     }
 
     /// Calculate the maximum liquidity value that can be borrowed
