@@ -74,7 +74,7 @@ impl SendTransactionRpc for ProgramRpcClientSendTransaction {
     ) -> BoxFuture<'a, ProgramClientResult<Self::Output>> {
         Box::pin(async move {
             client
-                .send_transaction(transaction)
+                .send_and_confirm_transaction(transaction)
                 .await
                 .map_err(Into::into)
         })
