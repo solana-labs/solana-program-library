@@ -1,10 +1,13 @@
-use async_trait::async_trait;
-use solana_client::rpc_client::RpcClient;
-use solana_program_test::{tokio::sync::Mutex, BanksClient, ProgramTestContext};
-use solana_sdk::{
-    account::Account, hash::Hash, pubkey::Pubkey, signature::Signature, transaction::Transaction,
+use {
+    async_trait::async_trait,
+    solana_client::rpc_client::RpcClient,
+    solana_program_test::{tokio::sync::Mutex, BanksClient, ProgramTestContext},
+    solana_sdk::{
+        account::Account, hash::Hash, pubkey::Pubkey, signature::Signature,
+        transaction::Transaction,
+    },
+    std::{fmt, future::Future, pin::Pin, sync::Arc},
 };
-use std::{fmt, future::Future, pin::Pin, sync::Arc};
 
 type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
