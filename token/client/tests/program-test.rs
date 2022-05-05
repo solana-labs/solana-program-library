@@ -1,17 +1,19 @@
-use solana_program_test::{
-    tokio::{self, sync::Mutex},
-    ProgramTest,
+use {
+    solana_program_test::{
+        tokio::{self, sync::Mutex},
+        ProgramTest,
+    },
+    solana_sdk::{
+        program_option::COption,
+        signer::{keypair::Keypair, Signer},
+    },
+    spl_token_2022::{instruction, state},
+    spl_token_client::{
+        client::{ProgramBanksClient, ProgramBanksClientProcessTransaction, ProgramClient},
+        token::Token,
+    },
+    std::sync::Arc,
 };
-use solana_sdk::{
-    program_option::COption,
-    signer::{keypair::Keypair, Signer},
-};
-use spl_token_2022::{instruction, state};
-use spl_token_client::{
-    client::{ProgramBanksClient, ProgramBanksClientProcessTransaction, ProgramClient},
-    token::Token,
-};
-use std::sync::Arc;
 
 struct TestContext {
     pub decimals: u8,
