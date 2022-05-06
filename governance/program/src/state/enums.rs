@@ -163,6 +163,11 @@ pub enum VoteThreshold {
     // It can be implemented once Solana runtime supports accounts resizing to accommodate u64 size extension
     // Alternatively we could use the reserved space if it becomes a priority
     // Absolute(u64)
+    //
+    // Vote threshold which is always accepted
+    // It can be used in a setup where the only security gate is proposal creation
+    // and once created it's automatically approved
+    // Any
 }
 
 /// The type of vote tipping to use on a Proposal.
