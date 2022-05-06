@@ -431,6 +431,8 @@ pub fn assert_is_valid_governance_config(
     assert_is_valid_vote_threshold(&governance_config.community_vote_threshold)?;
     assert_is_valid_vote_threshold(&governance_config.council_vote_threshold)?;
 
+    // Setting both thresholds to Disabled for now, however we might reconsider it as
+    // a way to disable Governance permanently
     if governance_config.community_vote_threshold == VoteThreshold::Disabled
         && governance_config.council_vote_threshold == VoteThreshold::Disabled
     {
