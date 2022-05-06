@@ -5362,7 +5362,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance"
-version = "2.2.4"
+version = "3.0.0"
 dependencies = [
  "arrayref",
  "assert_matches",
@@ -5420,7 +5420,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance-chat"
-version = "0.2.5"
+version = "0.2.6"
 dependencies = [
  "arrayref",
  "assert_matches",

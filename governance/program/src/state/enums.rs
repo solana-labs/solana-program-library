@@ -137,7 +137,9 @@ impl Default for ProposalState {
     }
 }
 
-/// The type of the vote threshold percentage used to resolve a vote on a Proposal
+/// The type of the vote threshold used to resolve a vote on a Proposal
+///
+/// Note: In the current version only YesVotePercentage and Disabled thresholds are supported
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoteThreshold {
@@ -152,6 +154,20 @@ pub enum VoteThreshold {
     /// Once the quorum is achieved a simple majority (50%+1) of Yes votes is required for the vote to succeed
     /// Note: Quorum is not implemented in the current version
     QuorumPercentage(u8),
+
+    /// Disabled vote threshold indicates the given voting population (community or council) is not allowed to vote
+    /// on proposals for the given Governance
+    Disabled,
+    //
+    // Absolute vote threshold expressed in the voting mint units
+    // It can be implemented once Solana runtime supports accounts resizing to accommodate u64 size extension
+    // Alternatively we could use the reserved space if it becomes a priority
+    // Absolute(u64)
+    //
+    // Vote threshold which is always accepted
+    // It can be used in a setup where the only security gate is proposal creation
+    // and once created it's automatically approved
+    // Any
 }
 
 /// The type of vote tipping to use on a Proposal.

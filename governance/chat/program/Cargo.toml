@@ -1,6 +1,6 @@
 [package]
 name = "spl-governance-chat"
-version = "0.2.5"
+version = "0.2.6"
 description = "Solana Program Library Governance Chat Program"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -21,7 +21,7 @@ serde = "1.0.127"
 serde_derive = "1.0.103"
 solana-program = "1.10.10"
 spl-token = { version = "3.3", path = "../../../token/program", features = [ "no-entrypoint" ] }
-spl-governance= { version = "2.2.4", path ="../../program", features = [ "no-entrypoint" ]}
+spl-governance= { version = "3.0.0", path ="../../program", features = [ "no-entrypoint" ]}
 spl-governance-tools= { version = "0.1.2", path ="../../tools"}
 spl-governance-addin-api= { version = "0.1.2", path ="../../addin-api"}
 thiserror = "1.0"

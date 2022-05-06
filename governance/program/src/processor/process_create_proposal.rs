@@ -64,6 +64,9 @@ pub fn process_create_proposal(
     let mut governance_data =
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
+    governance_data
+        .assert_governing_token_mint_can_vote(&realm_data, governing_token_mint_info.key)?;
+
     let mut proposal_owner_record_data = get_token_owner_record_data_for_realm(
         program_id,
         proposal_owner_record_info,

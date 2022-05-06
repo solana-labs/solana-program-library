@@ -6,7 +6,7 @@ use crate::{
     state::{
         enums::{GovernanceAccountType, VoteThreshold, VoteTipping},
         legacy::{is_governance_v1_account_type, GovernanceV1},
-        realm::assert_is_valid_realm,
+        realm::{assert_is_valid_realm, RealmV2},
     },
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
@@ -24,7 +24,7 @@ use spl_governance_tools::{
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GovernanceConfig {
     /// The type of the vote threshold used for community vote
-    /// Note: In the current version only YesVote threshold is supported
+    /// Note: In the current version only YesVotePercentage and Disabled thresholds are supported
     pub community_vote_threshold: VoteThreshold,
 
     /// Minimum community weight a governance token owner must possess to be able to create a proposal
@@ -39,10 +39,12 @@ pub struct GovernanceConfig {
     /// Conditions under which a vote will complete early
     pub vote_tipping: VoteTipping,
 
-    /// The time period in seconds within which a Proposal can be still cancelled after being voted on
-    /// Once cool off time expires Proposal can't be cancelled any longer and becomes a law
-    /// Note: This field is not implemented in the current version
-    pub proposal_cool_off_time: u32,
+    /// The type of the vote threshold used for council vote
+    /// Note: In the current version only YesVotePercentage and Disabled thresholds are supported
+    pub council_vote_threshold: VoteThreshold,
+
+    /// Reserved space for future versions
+    pub reserved: [u8; 2],
 
     /// Minimum council weight a governance token owner must possess to be able to create a proposal
     pub min_council_weight_to_create_proposal: u64,
@@ -194,6 +196,40 @@ impl GovernanceV2 {
 
         Ok(())
     }
+
+    /// Asserts the provided voting population represented by the given governing_token_mint
+    /// can vote on proposals for the Governance
+    pub fn assert_governing_token_mint_can_vote(
+        &self,
+        realm_data: &RealmV2,
+        governing_token_mint: &Pubkey,
+    ) -> Result<(), ProgramError> {
+        // resolve_vote_threshold() asserts the vote threshold exists for the given governing_token_mint and is not disabled
+        let _ = self.resolve_vote_threshold(realm_data, governing_token_mint)?;
+
+        Ok(())
+    }
+
+    /// Resolves VoteThreshold for the given realm and governing token
+    pub fn resolve_vote_threshold(
+        &self,
+        realm_data: &RealmV2,
+        governing_token_mint: &Pubkey,
+    ) -> Result<VoteThreshold, ProgramError> {
+        let vote_threshold = if realm_data.community_mint == *governing_token_mint {
+            &self.config.community_vote_threshold
+        } else if realm_data.config.council_mint == Some(*governing_token_mint) {
+            &self.config.council_vote_threshold
+        } else {
+            return Err(GovernanceError::InvalidGoverningTokenMint.into());
+        };
+
+        if *vote_threshold == VoteThreshold::Disabled {
+            return Err(GovernanceError::GoverningTokenMintNotAllowedToVote.into());
+        }
+
+        Ok(vote_threshold.clone())
+    }
 }
 
 /// Deserializes Governance account and checks owner program
@@ -209,10 +245,10 @@ pub fn get_governance_data(
         try_from_slice_unchecked(&governance_info.data.borrow())?;
 
     // If the account is V1 version then translate to V2
-    if is_governance_v1_account_type(&account_type) {
+    let mut governance_data = if is_governance_v1_account_type(&account_type) {
         let governance_data_v1 = get_account_data::<GovernanceV1>(program_id, governance_info)?;
 
-        return Ok(GovernanceV2 {
+        GovernanceV2 {
             account_type,
             realm: governance_data_v1.realm,
             governed_account: governance_data_v1.governed_account,
@@ -223,10 +259,25 @@ pub fn get_governance_data(
 
             // Add the extra reserved_v2 padding
             reserved_v2: [0; 128],
-        });
+        }
+    } else {
+        get_account_data::<GovernanceV2>(program_id, governance_info)?
+    };
+
+    // In previous versions of spl-gov (< 3) we had config.proposal_cool_off_time:u32 which was unused and always 0
+    // In version 3.0.0 proposal_cool_off_time was replaced with council_vote_threshold:VoteThreshold
+    //
+    // If we read a legacy account then council_vote_threshold == VoteThreshold::YesVotePercentage(0)
+    // and we coerce it to be equal to community_vote_threshold which was used for both council and community thresholds before
+    //
+    // Note: assert_is_valid_governance_config() prevents setting council_vote_threshold to VoteThreshold::YesVotePercentage(0)
+    // which gives as guarantee that it is a legacy account layout set with proposal_cool_off_time = 0
+    if governance_data.config.council_vote_threshold == VoteThreshold::YesVotePercentage(0) {
+        governance_data.config.council_vote_threshold =
+            governance_data.config.community_vote_threshold.clone();
     }
 
-    get_account_data::<GovernanceV2>(program_id, governance_info)
+    Ok(governance_data)
 }
 
 /// Deserializes Governance account, checks owner program and asserts governance belongs to the given ream
@@ -377,20 +428,183 @@ pub fn assert_valid_create_governance_args(
 pub fn assert_is_valid_governance_config(
     governance_config: &GovernanceConfig,
 ) -> Result<(), ProgramError> {
-    match governance_config.community_vote_threshold {
+    assert_is_valid_vote_threshold(&governance_config.community_vote_threshold)?;
+    assert_is_valid_vote_threshold(&governance_config.council_vote_threshold)?;
+
+    // Setting both thresholds to Disabled for now, however we might reconsider it as
+    // a way to disable Governance permanently
+    if governance_config.community_vote_threshold == VoteThreshold::Disabled
+        && governance_config.council_vote_threshold == VoteThreshold::Disabled
+    {
+        return Err(GovernanceError::AtLeastOneVoteThresholdRequired.into());
+    }
+
+    if governance_config.reserved != [0, 0] {
+        return Err(GovernanceError::ReservedBufferMustBeEmpty.into());
+    }
+
+    Ok(())
+}
+
+/// Asserts the provided vote_threshold is valid
+pub fn assert_is_valid_vote_threshold(vote_threshold: &VoteThreshold) -> Result<(), ProgramError> {
+    match *vote_threshold {
         VoteThreshold::YesVotePercentage(yes_vote_threshold_percentage) => {
             if !(1..=100).contains(&yes_vote_threshold_percentage) {
                 return Err(GovernanceError::InvalidVoteThresholdPercentage.into());
             }
         }
-        _ => {
-            return Err(GovernanceError::VoteThresholdPercentageTypeNotSupported.into());
+        VoteThreshold::QuorumPercentage(_) => {
+            return Err(GovernanceError::VoteThresholdTypeNotSupported.into());
         }
-    }
-
-    if governance_config.proposal_cool_off_time > 0 {
-        return Err(GovernanceError::ProposalCoolOffTimeNotSupported.into());
+        VoteThreshold::Disabled => {}
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use solana_program::clock::Epoch;
+
+    use super::*;
+
+    #[test]
+    fn test_deserialize_legacy_governance_account_without_council_threshold() {
+        // Arrange
+
+        // Legacy GovernanceV2 with
+        // 1) config.community_vote_threshold = YesVotePercentage(10)
+        // 2) config.proposal_cool_off_tim = 0
+        let mut account_data = [
+            18, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 10, 10, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 100, 0,
+            0, 0, 1, //
+            // proposal_cool_off_time:
+            0, 0, 0, 0, // ---------
+            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ];
+
+        let program_id = Pubkey::new_unique();
+
+        let info_key = Pubkey::new_unique();
+        let mut lamports = 10u64;
+
+        let governance_info = AccountInfo::new(
+            &info_key,
+            false,
+            false,
+            &mut lamports,
+            &mut account_data[..],
+            &program_id,
+            false,
+            Epoch::default(),
+        );
+
+        // Act
+        let governance = get_governance_data(&program_id, &governance_info).unwrap();
+
+        // Assert
+        assert_eq!(
+            governance.config.community_vote_threshold,
+            governance.config.council_vote_threshold
+        );
+    }
+
+    #[test]
+    fn test_assert_config_invalid_with_council_zero_yes_vote_threshold() {
+        // Arrange
+        let governance_config = GovernanceConfig {
+            community_vote_threshold: VoteThreshold::YesVotePercentage(1),
+            min_community_weight_to_create_proposal: 1,
+            min_transaction_hold_up_time: 1,
+            max_voting_time: 1,
+            vote_tipping: VoteTipping::Strict,
+            council_vote_threshold: VoteThreshold::YesVotePercentage(0),
+            reserved: [0; 2],
+            min_council_weight_to_create_proposal: 1,
+        };
+
+        // Act
+        let err = assert_is_valid_governance_config(&governance_config)
+            .err()
+            .unwrap();
+
+        // Assert
+        assert_eq!(err, GovernanceError::InvalidVoteThresholdPercentage.into());
+    }
+
+    #[test]
+    fn test_assert_config_invalid_with_community_zero_yes_vote_threshold() {
+        // Arrange
+        let governance_config = GovernanceConfig {
+            community_vote_threshold: VoteThreshold::YesVotePercentage(0),
+            min_community_weight_to_create_proposal: 1,
+            min_transaction_hold_up_time: 1,
+            max_voting_time: 1,
+            vote_tipping: VoteTipping::Strict,
+            council_vote_threshold: VoteThreshold::YesVotePercentage(1),
+            reserved: [0; 2],
+            min_council_weight_to_create_proposal: 1,
+        };
+
+        // Act
+        let err = assert_is_valid_governance_config(&governance_config)
+            .err()
+            .unwrap();
+
+        // Assert
+        assert_eq!(err, GovernanceError::InvalidVoteThresholdPercentage.into());
+    }
+
+    #[test]
+    fn test_assert_config_invalid_with_all_vote_thresholds_disabled() {
+        // Arrange
+        let governance_config = GovernanceConfig {
+            community_vote_threshold: VoteThreshold::Disabled,
+            min_community_weight_to_create_proposal: 1,
+            min_transaction_hold_up_time: 1,
+            max_voting_time: 1,
+            vote_tipping: VoteTipping::Strict,
+            council_vote_threshold: VoteThreshold::Disabled,
+            reserved: [0; 2],
+            min_council_weight_to_create_proposal: 1,
+        };
+
+        // Act
+        let err = assert_is_valid_governance_config(&governance_config)
+            .err()
+            .unwrap();
+
+        // Assert
+        assert_eq!(err, GovernanceError::AtLeastOneVoteThresholdRequired.into());
+    }
+
+    #[test]
+    fn test_assert_config_invalid_with_reserved_buffer_set() {
+        // Arrange
+        let governance_config = GovernanceConfig {
+            community_vote_threshold: VoteThreshold::YesVotePercentage(10),
+            min_community_weight_to_create_proposal: 1,
+            min_transaction_hold_up_time: 1,
+            max_voting_time: 1,
+            vote_tipping: VoteTipping::Strict,
+            council_vote_threshold: VoteThreshold::Disabled,
+            reserved: [0, 1],
+            min_council_weight_to_create_proposal: 1,
+        };
+
+        // Act
+        let err = assert_is_valid_governance_config(&governance_config)
+            .err()
+            .unwrap();
+
+        // Assert
+        assert_eq!(err, GovernanceError::ReservedBufferMustBeEmpty.into());
+    }
 }

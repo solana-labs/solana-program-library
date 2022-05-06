@@ -312,3 +312,91 @@ async fn test_finalize_vote_with_invalid_governance_error() {
 
     assert_eq!(err, GovernanceError::InvalidGovernanceForProposal.into());
 }
+
+#[tokio::test]
+async fn test_finalize_council_vote() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.council_vote_threshold = VoteThreshold::YesVotePercentage(40);
+    governance_config.community_vote_threshold = VoteThreshold::Disabled;
+
+    // Deposit 100 council tokens
+    let token_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    // Total 210 council tokens in circulation
+    governance_test
+        .mint_council_tokens(&realm_cookie, 110)
+        .await;
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    // Cast vote with 47% weight, above 40% quorum but below 50%+1 to tip automatically
+    governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .await
+        .unwrap();
+
+    // Ensure not tipped
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    assert_eq!(ProposalState::Voting, proposal_account.state);
+
+    // Advance timestamp past max_voting_time
+    governance_test
+        .advance_clock_past_timestamp(
+            governance_cookie.account.config.max_voting_time as i64
+                + proposal_account.voting_at.unwrap(),
+        )
+        .await;
+
+    let clock = governance_test.bench.get_clock().await;
+
+    // Act
+
+    governance_test
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
+        .await
+        .unwrap();
+
+    // Assert
+
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    assert_eq!(proposal_account.state, ProposalState::Succeeded);
+    assert_eq!(
+        Some(clock.unix_timestamp),
+        proposal_account.voting_completed_at
+    );
+
+    assert_eq!(Some(210), proposal_account.max_vote_weight);
+
+    assert_eq!(
+        Some(governance_cookie.account.config.council_vote_threshold),
+        proposal_account.vote_threshold
+    );
+}

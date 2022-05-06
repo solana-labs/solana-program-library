@@ -54,10 +54,14 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         &realm_data,
     )?;
 
+    let vote_threshold =
+        governance_data.resolve_vote_threshold(&realm_data, governing_token_mint_info.key)?;
+
     proposal_data.finalize_vote(
         max_voter_weight,
         &governance_data.config,
         clock.unix_timestamp,
+        &vote_threshold,
     )?;
 
     let mut proposal_owner_record_data = get_token_owner_record_data_for_proposal_owner(

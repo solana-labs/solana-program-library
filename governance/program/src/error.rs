@@ -246,17 +246,17 @@ pub enum GovernanceError {
     #[error("Current token owner must sign transaction")]
     TokenOwnerMustSign,
 
-    /// Given VoteThresholdPercentageType is not supported
-    #[error("Given VoteThresholdPercentageType is not supported")]
-    VoteThresholdPercentageTypeNotSupported,
+    /// Given VoteThresholdType is not supported
+    #[error("Given VoteThresholdType is not supported")]
+    VoteThresholdTypeNotSupported,
 
     /// Given VoteWeightSource is not supported
     #[error("Given VoteWeightSource is not supported")]
     VoteWeightSourceNotSupported,
 
-    /// Proposal cool off time is not supported
-    #[error("Proposal cool off time is not supported")]
-    ProposalCoolOffTimeNotSupported,
+    /// GoverningTokenMint not allowed to vote
+    #[error("GoverningTokenMint not allowed to vote")]
+    GoverningTokenMintNotAllowedToVote, // 560
 
     /// Governance PDA must sign
     #[error("Governance PDA must sign")]
@@ -393,6 +393,14 @@ pub enum GovernanceError {
     /// GovernanceConfig change not allowed
     #[error("GovernanceConfig change not allowed")]
     GovernanceConfigChangeNotAllowed,
+
+    /// At least one VoteThreshold is required
+    #[error("At least one VoteThreshold is required")]
+    AtLeastOneVoteThresholdRequired,
+
+    /// Reserved buffer must be empty
+    #[error("Reserved buffer must be empty")]
+    ReservedBufferMustBeEmpty,
 }
 
 impl PrintProgramError for GovernanceError {

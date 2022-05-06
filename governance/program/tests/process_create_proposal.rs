@@ -7,7 +7,7 @@ mod program_test;
 
 use program_test::*;
 use solana_sdk::signature::Keypair;
-use spl_governance::error::GovernanceError;
+use spl_governance::{error::GovernanceError, state::enums::VoteThreshold};
 
 #[tokio::test]
 async fn test_create_community_proposal() {
@@ -460,5 +460,85 @@ async fn test_create_council_proposal_using_community_tokens() {
     assert_eq!(
         community_token_owner_record_cookie.address,
         proposal_account.token_owner_record
+    );
+}
+
+#[tokio::test]
+async fn test_create_proposal_with_disabled_council_vote_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.council_vote_threshold = VoteThreshold::Disabled;
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    // Act
+    let err = governance_test
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        err,
+        GovernanceError::GoverningTokenMintNotAllowedToVote.into()
+    );
+}
+
+#[tokio::test]
+async fn test_create_proposal_with_disabled_community_vote_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.community_vote_threshold = VoteThreshold::Disabled;
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    // Act
+    let err = governance_test
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        err,
+        GovernanceError::GoverningTokenMintNotAllowedToVote.into()
     );
 }
