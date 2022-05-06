@@ -434,7 +434,7 @@ pub fn assert_is_valid_governance_config(
     if governance_config.community_vote_threshold == VoteThreshold::Disabled
         && governance_config.council_vote_threshold == VoteThreshold::Disabled
     {
-        return Err(GovernanceError::AllVoteThresholdsDisabled.into());
+        return Err(GovernanceError::AtLeastOneVoteThresholdRequired.into());
     }
 
     if governance_config.reserved != [0, 0] {
@@ -580,7 +580,7 @@ mod test {
             .unwrap();
 
         // Assert
-        assert_eq!(err, GovernanceError::AllVoteThresholdsDisabled.into());
+        assert_eq!(err, GovernanceError::AtLeastOneVoteThresholdRequired.into());
     }
 
     #[test]

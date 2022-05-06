@@ -394,9 +394,9 @@ pub enum GovernanceError {
     #[error("GovernanceConfig change not allowed")]
     GovernanceConfigChangeNotAllowed,
 
-    /// All vote thresholds can't be disabled
-    #[error("All vote thresholds can't be disabled")]
-    AllVoteThresholdsDisabled,
+    /// At least one VoteThreshold is required
+    #[error("At least one VoteThreshold is required")]
+    AtLeastOneVoteThresholdRequired,
 
     /// Reserved buffer must be empty
     #[error("Reserved buffer must be empty")]
