@@ -1015,5 +1015,3 @@ async fn ct_transfer_with_fee() {
         Some(94),
     );
 }
-
-
