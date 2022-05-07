@@ -150,6 +150,46 @@ impl ConfidentialTokenAccountMeta {
             .unwrap();
         meta
     }
+
+    async fn check_balances<T>(
+        &self,
+        token: &Token<T, Keypair>,
+        expected: ConfidentialTokenAccountBalances,
+    ) where
+        T: SendTransaction,
+    {
+        let state = token.get_account_info(&self.token_account).await.unwrap();
+        let extension = state
+            .get_extension::<ConfidentialTransferAccount>()
+            .unwrap();
+
+        assert_eq!(
+            extension
+                .pending_balance
+                .decrypt(&self.elgamal_keypair.secret)
+                .unwrap(),
+            expected.pending_balance,
+        );
+        assert_eq!(
+            extension
+                .available_balance
+                .decrypt(&self.elgamal_keypair.secret)
+                .unwrap(),
+            expected.available_balance,
+        );
+        assert_eq!(
+            self.ae_key
+                .decrypt(&extension.decryptable_available_balance.try_into().unwrap())
+                .unwrap(),
+            expected.decryptable_available_balance,
+        );
+    }
+}
+
+struct ConfidentialTokenAccountBalances {
+    pending_balance: u64,
+    available_balance: u64,
+    decryptable_available_balance: u64,
 }
 
 #[tokio::test]
@@ -411,14 +451,17 @@ async fn ct_deposit() {
     assert_eq!(extension.pending_balance_credit_counter, 1.into());
     assert_eq!(extension.expected_pending_balance_credit_counter, 0.into());
     assert_eq!(extension.actual_pending_balance_credit_counter, 0.into());
-    assert_ne!(
-        extension.pending_balance,
-        zk_token_elgamal::pod::ElGamalCiphertext::zeroed()
-    );
-    assert_eq!(
-        extension.available_balance,
-        zk_token_elgamal::pod::ElGamalCiphertext::zeroed()
-    );
+
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance: 42,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
 
     let new_decryptable_available_balance = alice_meta.ae_key.encrypt(42_u64);
     token
@@ -445,14 +488,17 @@ async fn ct_deposit() {
     assert_eq!(extension.pending_balance_credit_counter, 1.into());
     assert_eq!(extension.expected_pending_balance_credit_counter, 1.into());
     assert_eq!(extension.actual_pending_balance_credit_counter, 1.into());
-    assert_eq!(
-        extension.pending_balance,
-        zk_token_elgamal::pod::ElGamalCiphertext::zeroed()
-    );
-    assert_ne!(
-        extension.available_balance,
-        zk_token_elgamal::pod::ElGamalCiphertext::zeroed()
-    );
+
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance: 0,
+                available_balance: 42,
+                decryptable_available_balance: 42,
+            },
+        )
+        .await;
 }
 
 #[tokio::test]
@@ -474,6 +520,7 @@ async fn ct_withdraw() {
         decimals,
         ..
     } = context.token_context.unwrap();
+
     let alice_meta =
         ConfidentialTokenAccountMeta::with_tokens(&token, &alice, &mint_authority, 42, decimals)
             .await;
@@ -503,15 +550,17 @@ async fn ct_withdraw() {
         .await
         .unwrap();
     assert_eq!(state.base.amount, 21);
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-    assert_eq!(
-        alice_meta
-            .ae_key
-            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
-        Some(21),
-    );
+
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance: 0,
+                available_balance: 21,
+                decryptable_available_balance: 21,
+            },
+        )
+        .await;
 
     token
         .confidential_transfer_withdraw(
@@ -532,15 +581,17 @@ async fn ct_withdraw() {
         .await
         .unwrap();
     assert_eq!(state.base.amount, 42);
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-    assert_eq!(
-        alice_meta
-            .ae_key
-            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
-        Some(0),
-    );
+
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance: 0,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
 
     token
         .confidential_transfer_empty_account(
@@ -591,6 +642,17 @@ async fn ct_transfer() {
         .await
         .unwrap();
 
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance: 0,
+                available_balance: 42,
+                decryptable_available_balance: 42,
+            },
+        )
+        .await;
+
     // Self-transfer of N tokens
     token
         .confidential_transfer_transfer(
@@ -600,10 +662,21 @@ async fn ct_transfer() {
             42, // amount
             42, // available balance
             &alice_meta.elgamal_keypair,
-            alice_meta.ae_key.encrypt(42_u64),
+            alice_meta.ae_key.encrypt(0_u64),
         )
         .await
         .unwrap();
+
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance: 42,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
 
     token
         .confidential_transfer_apply_pending_balance(
@@ -615,19 +688,16 @@ async fn ct_transfer() {
         .await
         .unwrap();
 
-    let state = token
-        .get_account_info(&alice_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-    assert_eq!(
-        alice_meta
-            .ae_key
-            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
-        Some(42),
-    );
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance: 0,
+                available_balance: 42,
+                decryptable_available_balance: 42,
+            },
+        )
+        .await;
 
     token
         .confidential_transfer_transfer(
@@ -642,19 +712,16 @@ async fn ct_transfer() {
         .await
         .unwrap();
 
-    let state = token
-        .get_account_info(&alice_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-    assert_eq!(
-        alice_meta
-            .ae_key
-            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
-        Some(0),
-    );
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance: 0,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
 
     token
         .confidential_transfer_empty_account(
@@ -687,6 +754,8 @@ async fn ct_transfer() {
     let extension = state
         .get_extension::<ConfidentialTransferAccount>()
         .unwrap();
+
+    // TODO: verify bob_meta pending and available balance once syscall lands
     assert_eq!(
         bob_meta
             .ae_key
@@ -711,6 +780,8 @@ async fn ct_transfer() {
     let extension = state
         .get_extension::<ConfidentialTransferAccount>()
         .unwrap();
+
+    // TODO: verify bob_meta pending and available balance once syscall lands
     assert_eq!(
         bob_meta
             .ae_key
@@ -769,7 +840,20 @@ async fn ct_transfer_with_fee() {
         .await
         .unwrap();
 
-    // Self-transfer of N tokens
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance: 0,
+                available_balance: 100,
+                decryptable_available_balance: 100,
+            },
+        )
+        .await;
+
+    // Fee is 2.5%, so what is left is 97 in Alice account
+    //
+    // TODO: make self transfers not not take fees
     token
         .confidential_transfer_transfer_with_fee(
             &alice_meta.token_account,
@@ -778,13 +862,23 @@ async fn ct_transfer_with_fee() {
             100, // amount
             100, // available balance
             &alice_meta.elgamal_keypair,
-            alice_meta.ae_key.encrypt(100_u64),
+            alice_meta.ae_key.encrypt(0_u64),
             &epoch_info,
         )
         .await
         .unwrap();
 
-    // Fee is 2.5%, so what is left in 97 in Alice account
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance: 97,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
+
     token
         .confidential_transfer_apply_pending_balance(
             &alice_meta.token_account,
@@ -795,19 +889,16 @@ async fn ct_transfer_with_fee() {
         .await
         .unwrap();
 
-    let state = token
-        .get_account_info(&alice_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-    assert_eq!(
-        alice_meta
-            .ae_key
-            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
-        Some(97),
-    );
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance: 0,
+                available_balance: 97,
+                decryptable_available_balance: 97,
+            },
+        )
+        .await;
 
     token
         .confidential_transfer_transfer_with_fee(
@@ -822,6 +913,17 @@ async fn ct_transfer_with_fee() {
         )
         .await
         .unwrap();
+
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance: 0,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
 
     let state = token
         .get_account_info(&alice_meta.token_account)
@@ -878,6 +980,8 @@ async fn ct_transfer_with_fee() {
     let extension = state
         .get_extension::<ConfidentialTransferAccount>()
         .unwrap();
+
+    // TODO: check pending and available balance once curve syscall lands
     assert_eq!(
         bob_meta
             .ae_key
@@ -902,6 +1006,8 @@ async fn ct_transfer_with_fee() {
     let extension = state
         .get_extension::<ConfidentialTransferAccount>()
         .unwrap();
+
+    // TODO: check pending and available balance once curve syscall lands
     assert_eq!(
         bob_meta
             .ae_key
