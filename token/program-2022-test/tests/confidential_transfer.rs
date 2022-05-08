@@ -60,8 +60,10 @@ impl ConfidentialTransferMintWithKeypairs {
         let ct_mint = ConfidentialTransferMint {
             authority: ct_mint_authority.pubkey().into(),
             auto_approve_new_accounts: true.into(),
-            auditor_pubkey: ct_mint_transfer_auditor.public.into(),
-            withdraw_withheld_authority_pubkey: ct_mint_withdraw_withheld_authority.public.into(),
+            auditor_encryption_pubkey: ct_mint_transfer_auditor.public.into(),
+            withdraw_withheld_authority_encryption_pubkey: ct_mint_withdraw_withheld_authority
+                .public
+                .into(),
             withheld_amount: EncryptedWithheldAmount::zeroed(),
         };
         Self {

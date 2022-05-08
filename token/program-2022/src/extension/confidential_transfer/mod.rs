@@ -50,14 +50,14 @@ pub struct ConfidentialTransferMint {
     /// * If non-zero, transfers must include ElGamal cypertext with this public key permitting the
     /// auditor to decode the transfer amount.
     /// * If all zero, auditing is currently disabled.
-    pub auditor_pubkey: EncryptionPubkey,
+    pub auditor_encryption_pubkey: EncryptionPubkey,
 
     /// * If non-zero, transfers must include ElGamal cypertext of the transfer fee with this
     /// public key. If this is the case, but the base mint is not extended for fees, then any
     /// transfer will fail.
     /// * If all zero, transfer fee is disabled. If this is the case, but the base mint is extended
     /// for fees, then any transfer will fail.
-    pub withdraw_withheld_authority_pubkey: EncryptionPubkey,
+    pub withdraw_withheld_authority_encryption_pubkey: EncryptionPubkey,
 
     /// Withheld transfer fee confidential tokens that have been moved to the mint for withdrawal.
     /// This will always be zero if fees are never enabled.
@@ -79,10 +79,10 @@ pub struct ConfidentialTransferAccount {
     /// The public key associated with ElGamal encryption
     pub encryption_pubkey: EncryptionPubkey,
 
-    /// The pending balance (encrypted by `pubkey_elgamal`)
+    /// The pending balance (encrypted by `encryption_pubkey`)
     pub pending_balance: EncryptedBalance,
 
-    /// The available balance (encrypted by `pubkey_elgamal`)
+    /// The available balance (encrypted by `encrypiton_pubkey`)
     pub available_balance: EncryptedBalance,
 
     /// The decryptable available balance

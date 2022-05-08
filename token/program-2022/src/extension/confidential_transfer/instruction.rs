@@ -1,5 +1,5 @@
 #[cfg(not(target_arch = "bpf"))]
-use solana_zk_token_sdk::encryption::{auth_encryption::AeCiphertext, elgamal::ElGamalPubkey};
+use solana_zk_token_sdk::encryption::auth_encryption::AeCiphertext;
 pub use solana_zk_token_sdk::zk_token_proof_instruction::*;
 use {
     crate::{
@@ -516,7 +516,7 @@ pub fn configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     mint: &Pubkey,
-    encryption_pubkey: ElGamalPubkey,
+    encryption_pubkey: EncryptionPubkey,
     decryptable_zero_balance: AeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
@@ -538,7 +538,7 @@ pub fn configure_account(
         TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::ConfigureAccount,
         &ConfigureAccountInstructionData {
-            encryption_pubkey: encryption_pubkey.into(),
+            encryption_pubkey,
             decryptable_zero_balance: decryptable_zero_balance.into(),
         },
     ))

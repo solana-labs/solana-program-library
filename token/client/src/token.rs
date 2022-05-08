@@ -949,7 +949,7 @@ where
                 &self.program_id,
                 token_account,
                 &self.pubkey,
-                elgamal_pubkey,
+                elgamal_pubkey.into(),
                 decryptable_zero_balance,
                 &authority.pubkey(),
                 &[],
@@ -1131,7 +1131,7 @@ where
             source_elgamal_keypair,
             (
                 &destination_extension.encryption_pubkey.try_into().unwrap(),
-                &ct_mint.auditor_pubkey.try_into().unwrap(),
+                &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
             ),
         )
         .map_err(TokenError::Proof)?;
@@ -1197,14 +1197,14 @@ where
             source_elgamal_keypair,
             (
                 &destination_extension.encryption_pubkey.try_into().unwrap(),
-                &ct_mint.auditor_pubkey.try_into().unwrap(),
+                &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
             ),
             FeeParameters {
                 fee_rate_basis_points: u16::from(fee_parameters.transfer_fee_basis_points),
                 maximum_fee: u64::from(fee_parameters.maximum_fee),
             },
             &ct_mint
-                .withdraw_withheld_authority_pubkey
+                .withdraw_withheld_authority_encryption_pubkey
                 .try_into()
                 .unwrap(),
         )
