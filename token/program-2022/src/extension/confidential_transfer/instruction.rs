@@ -538,7 +538,7 @@ pub fn configure_account(
         TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::ConfigureAccount,
         &ConfigureAccountInstructionData {
-            encryption_pubkey: encryption_pubkey,
+            encryption_pubkey,
             decryptable_zero_balance: decryptable_zero_balance.into(),
         },
     ))
