@@ -285,16 +285,16 @@ pub enum GovernanceInstruction {
     ///   0. `[writable]` Realm account
     ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
-    ///   4. `[writable]` TokenOwnerRecord of the Proposal owner    
-    ///   3. `[writable]` TokenOwnerRecord of the voter. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
-    ///   4. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   5. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal,governing_token_owner_record]
-    ///   6. `[]` Governing Token Mint
-    ///   7. `[signer]` Payer
-    ///   8. `[]` System program
-    ///   9. `[]` Realm Config
-    ///   10. `[]` Optional Voter Weight Record
-    ///   11. `[]` Optional Max Voter Weight Record
+    ///   3. `[writable]` TokenOwnerRecord of the Proposal owner
+    ///   4. `[writable]` TokenOwnerRecord of the voter. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///   5. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///   6. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal,governing_token_owner_record]
+    ///   7. `[]` Governing Token Mint
+    ///   8. `[signer]` Payer
+    ///   9. `[]` System program
+    ///   10. `[]` Realm Config
+    ///   11. `[]` Optional Voter Weight Record
+    ///   12. `[]` Optional Max Voter Weight Record
     CastVote {
         #[allow(dead_code)]
         /// User's vote
@@ -333,9 +333,10 @@ pub enum GovernanceInstruction {
     /// The actual transaction being executed will be signed by Governance PDA the Proposal belongs to
     /// For example to execute Program upgrade the ProgramGovernance PDA would be used as the singer
     ///
-    ///   0. `[writable]` Proposal account
-    ///   1. `[writable]` ProposalTransaction account you wish to execute
-    ///   2+ Any extra accounts that are part of the transaction, in order
+    ///   0. `[]` Governance account
+    ///   1. `[writable]` Proposal account
+    ///   2. `[writable]` ProposalTransaction account you wish to execute
+    ///   3+ Any extra accounts that are part of the transaction, in order
     ExecuteTransaction,
 
     /// Creates Mint Governance account which governs a mint
