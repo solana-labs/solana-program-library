@@ -8,11 +8,11 @@ use {
     solana_farm_client::client::FarmClient,
     solana_farm_sdk::{
         farm::{Farm, FarmRoute, FarmType},
-        git_token::GitToken,
         pack::{optional_pubkey_deserialize, pubkey_deserialize},
         program::protocol::orca::OrcaFarmState,
         refdb::StorageType,
         string::str_to_as64,
+        token::GitToken,
     },
     solana_sdk::{hash::Hasher, pubkey::Pubkey},
 };
@@ -26,6 +26,7 @@ struct JsonRaydiumFarm {
     reward_b: String,
     #[serde(rename = "isStake")]
     is_stake: bool,
+    #[allow(dead_code)]
     fusion: bool,
     legacy: bool,
     dual: bool,
@@ -53,6 +54,7 @@ struct JsonRaydiumFarm {
 
 #[derive(Deserialize, Debug)]
 struct JsonSaberFarm {
+    #[allow(dead_code)]
     name: String,
     tokens: Vec<GitToken>,
     #[serde(rename = "lpToken")]
@@ -103,7 +105,7 @@ fn load_raydium_farm(
     last_index: u32,
 ) {
     let mut last_index = last_index;
-    let router_id = client.get_program_id(&"RaydiumRouter".to_string()).unwrap();
+    let router_id = client.get_program_id("RaydiumRouter").unwrap();
     let farms = parsed["farms"].as_array().unwrap();
     for val in farms {
         let json_farm: JsonRaydiumFarm = serde_json::from_value(val.clone()).unwrap();
@@ -147,12 +149,12 @@ fn load_raydium_farm(
             refdb_index: index,
             refdb_counter: counter,
             lp_token_ref: Some(client.get_token_ref(&json_farm.lp.to_uppercase()).unwrap()),
-            reward_token_a_ref: Some(
+            first_reward_token_ref: Some(
                 client
                     .get_token_ref(&json_farm.reward.to_uppercase())
                     .unwrap(),
             ),
-            reward_token_b_ref: if json_farm.reward_b.is_empty() {
+            second_reward_token_ref: if json_farm.reward_b.is_empty() {
                 None
             } else {
                 Some(
@@ -167,8 +169,8 @@ fn load_raydium_farm(
                 farm_id: json_farm.farm_id,
                 farm_authority: json_farm.farm_authority,
                 farm_lp_token_account: json_farm.farm_lp_token_account,
-                farm_reward_token_a_account: json_farm.farm_reward_token_account,
-                farm_reward_token_b_account: json_farm.farm_reward_token_account_b,
+                farm_first_reward_token_account: json_farm.farm_reward_token_account,
+                farm_second_reward_token_account: json_farm.farm_reward_token_account_b,
             },
         };
 
@@ -185,15 +187,11 @@ fn load_saber_farm(
 ) {
     let mut last_index = last_index;
     let pools = parsed["pools"].as_array().unwrap();
-    let router_id = client.get_program_id(&"SaberRouter".to_string()).unwrap();
+    let router_id = client.get_program_id("SaberRouter").unwrap();
 
-    let farm_program_id = client
-        .get_program_id(&"SaberQuarryMine".to_string())
-        .unwrap();
-    let redeemer_program = client.get_program_id(&"SaberRedeemer".to_string()).unwrap();
-    let mint_proxy_program = client
-        .get_program_id(&"SaberMintProxy".to_string())
-        .unwrap();
+    let farm_program_id = client.get_program_id("SaberQuarryMine").unwrap();
+    let redeemer_program = client.get_program_id("SaberRedeemer").unwrap();
+    let mint_proxy_program = client.get_program_id("SaberMintProxy").unwrap();
     let redeemer = json_to_pubkey(&parsed["addresses"]["redeemer"]);
     let sbr_mint = client.get_token("SBR").unwrap().mint;
     let sbr_vault =
@@ -203,9 +201,7 @@ fn load_saber_farm(
     let iou_fees_account =
         spl_associated_token_account::get_associated_token_address(&rewarder, &iou_mint);
     let mint_wrapper = json_to_pubkey(&parsed["addresses"]["mintWrapper"]);
-    let mint_wrapper_program = client
-        .get_program_id(&"SaberMintWrapper".to_string())
-        .unwrap();
+    let mint_wrapper_program = client.get_program_id("SaberMintWrapper").unwrap();
 
     // minter
     let minter = Pubkey::find_program_address(
@@ -273,8 +269,8 @@ fn load_saber_farm(
             refdb_index: index,
             refdb_counter: counter,
             lp_token_ref: Some(client.get_token_ref(&farm_token_name).unwrap()),
-            reward_token_a_ref: Some(client.get_token_ref("SBR").unwrap()),
-            reward_token_b_ref: Some(client.get_token_ref("IOU").unwrap()),
+            first_reward_token_ref: Some(client.get_token_ref("SBR").unwrap()),
+            second_reward_token_ref: Some(client.get_token_ref("IOU").unwrap()),
             router_program_id: router_id,
             farm_program_id,
             route: FarmRoute::Saber {
@@ -306,12 +302,12 @@ fn load_orca_farm(
     last_index: u32,
 ) {
     let mut last_index = last_index;
-    let router_id = client.get_program_id(&"OrcaRouter".to_string()).unwrap();
-    let farm_program_id = client.get_program_id(&"OrcaStake".to_string()).unwrap();
+    let router_id = client.get_program_id("OrcaRouter").unwrap();
+    let farm_program_id = client.get_program_id("OrcaStake").unwrap();
     let farms = parsed["farms"].as_array().unwrap();
     for val in farms {
         let json_farm: JsonOrcaFarm = serde_json::from_value(val.clone()).unwrap();
-        let upper_name = json_farm.name.to_uppercase().replace("_", "-");
+        let upper_name = json_farm.name.to_uppercase().replace('_', "-");
         let lp_token_name = if upper_name.ends_with("-DD") {
             "LP.ORC.".to_string() + &upper_name[..upper_name.len() - 3] + "-AQ"
         } else if upper_name.ends_with("-AQ") {
@@ -350,11 +346,11 @@ fn load_orca_farm(
             refdb_index: index,
             refdb_counter: counter,
             lp_token_ref: Some(client.get_token_ref(&lp_token_name).unwrap()),
-            reward_token_a_ref: Some(get_token_ref_with_mint(
+            first_reward_token_ref: Some(get_token_ref_with_mint(
                 client,
                 &json_farm.reward_token_mint,
             )),
-            reward_token_b_ref: None,
+            second_reward_token_ref: None,
             router_program_id: router_id,
             farm_program_id,
             route: FarmRoute::Orca {

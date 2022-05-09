@@ -1,7 +1,7 @@
 //! Orca specific functions
 
 use {
-    crate::{math, pack::check_data_len, program::account},
+    crate::{error::FarmError, math, pack::check_data_len, program::account},
     arrayref::{array_ref, array_refs},
     solana_program::{account_info::AccountInfo, msg, program_error::ProgramError, pubkey::Pubkey},
 };
@@ -15,6 +15,8 @@ pub mod orca_stake {
 }
 
 pub const ORCA_FEE: f64 = 0.003;
+pub const ORCA_FEE_NUMERATOR: u64 = 3;
+pub const ORCA_FEE_DENOMINATOR: u64 = 1000;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct OrcaUserStakeInfo {
@@ -168,17 +170,22 @@ pub fn get_pool_deposit_amounts<'a, 'b>(
     }
 
     if max_token_a_amount == 0 {
-        let estimated_coin_amount = math::checked_as_u64(
-            token_a_balance as f64 * max_token_b_amount as f64 / (token_b_balance as f64),
-        )?;
+        let estimated_coin_amount = math::checked_as_u64(math::checked_div(
+            math::checked_mul(token_a_balance as u128, max_token_b_amount as u128)?,
+            token_b_balance as u128,
+        )?)?;
         token_a_amount = if estimated_coin_amount > 1 {
             estimated_coin_amount - 1
         } else {
             0
         };
     } else if max_token_b_amount == 0 {
-        token_b_amount = math::checked_as_u64(
-            token_b_balance as f64 * max_token_a_amount as f64 / (token_a_balance as f64),
+        token_b_amount = math::checked_add(
+            math::checked_as_u64(math::checked_div(
+                math::checked_mul(token_b_balance as u128, max_token_a_amount as u128)?,
+                token_a_balance as u128,
+            )?)?,
+            1,
         )?;
     }
 
@@ -190,11 +197,7 @@ pub fn get_pool_deposit_amounts<'a, 'b>(
         token_b_balance,
     )?;
 
-    Ok((
-        min_lp_tokens_out,
-        token_a_amount,
-        math::checked_add(token_b_amount, 1)?,
-    ))
+    Ok((min_lp_tokens_out, token_a_amount, token_b_amount))
 }
 
 pub fn get_pool_withdrawal_amounts<'a, 'b>(
@@ -216,11 +219,15 @@ pub fn get_pool_withdrawal_amounts<'a, 'b>(
     if lp_token_supply == 0 {
         return Ok((0, 0));
     }
-    let stake = lp_token_amount as f64 / lp_token_supply as f64;
-
     Ok((
-        math::checked_as_u64(token_a_balance as f64 * stake)?,
-        math::checked_as_u64(token_b_balance as f64 * stake)?,
+        math::checked_as_u64(math::checked_div(
+            math::checked_mul(token_a_balance as u128, lp_token_amount as u128)?,
+            lp_token_supply as u128,
+        )?)?,
+        math::checked_as_u64(math::checked_div(
+            math::checked_mul(token_b_balance as u128, lp_token_amount as u128)?,
+            lp_token_supply as u128,
+        )?)?,
     ))
 }
 
@@ -240,26 +247,46 @@ pub fn get_pool_swap_amounts<'a, 'b>(
         get_pool_token_balances(pool_token_a_account, pool_token_b_account)?;
     if token_a_balance == 0 || token_b_balance == 0 {
         msg!("Error: Can't swap in an empty pool");
-        return Err(ProgramError::Custom(412));
+        return Err(FarmError::EmptyPool.into());
     }
-    let token_a_balance = token_a_balance as f64;
-    let token_b_balance = token_b_balance as f64;
+    let token_a_balance = token_a_balance as u128;
+    let token_b_balance = token_b_balance as u128;
     if token_a_amount_in == 0 {
         // b to a
-        let amount_in_no_fee = ((token_b_amount_in as f64 * (1.0 - ORCA_FEE)) as u64) as f64;
-        let estimated_token_a_amount = (token_a_balance
-            - token_a_balance * token_b_balance / (token_b_balance + amount_in_no_fee))
-            as u64;
+        let amount_in_no_fee =
+            math::get_no_fee_amount(token_b_amount_in, ORCA_FEE_NUMERATOR, ORCA_FEE_DENOMINATOR)?
+                as u128;
+        let estimated_token_a_amount = math::checked_as_u64(math::checked_div(
+            math::checked_mul(token_a_balance, amount_in_no_fee)?,
+            math::checked_add(token_b_balance, amount_in_no_fee)?,
+        )?)?;
 
-        Ok((token_b_amount_in, estimated_token_a_amount))
+        Ok((
+            token_b_amount_in,
+            math::get_no_fee_amount(
+                estimated_token_a_amount,
+                ORCA_FEE_NUMERATOR,
+                ORCA_FEE_DENOMINATOR,
+            )?,
+        ))
     } else {
         // a to b
-        let amount_in_no_fee = ((token_a_amount_in as f64 * (1.0 - ORCA_FEE)) as u64) as f64;
-        let estimated_token_b_amount = (token_b_balance
-            - token_a_balance * token_b_balance / (token_a_balance + amount_in_no_fee))
-            as u64;
+        let amount_in_no_fee =
+            math::get_no_fee_amount(token_a_amount_in, ORCA_FEE_NUMERATOR, ORCA_FEE_DENOMINATOR)?
+                as u128;
+        let estimated_token_b_amount = math::checked_as_u64(math::checked_div(
+            math::checked_mul(token_b_balance as u128, amount_in_no_fee)?,
+            math::checked_add(token_a_balance as u128, amount_in_no_fee)?,
+        )?)?;
 
-        Ok((token_a_amount_in, estimated_token_b_amount))
+        Ok((
+            token_a_amount_in,
+            math::get_no_fee_amount(
+                estimated_token_b_amount,
+                ORCA_FEE_NUMERATOR,
+                ORCA_FEE_DENOMINATOR,
+            )?,
+        ))
     }
 }
 
@@ -272,25 +299,37 @@ pub fn estimate_lp_tokens_amount(
 ) -> Result<u64, ProgramError> {
     if pool_token_a_balance != 0 && pool_token_b_balance != 0 {
         Ok(std::cmp::min(
-            math::checked_as_u64(
-                (token_a_deposit as f64 / pool_token_a_balance as f64)
-                    * account::get_token_supply(lp_token_mint)? as f64,
-            )?,
-            math::checked_as_u64(
-                (token_b_deposit as f64 / pool_token_b_balance as f64)
-                    * account::get_token_supply(lp_token_mint)? as f64,
-            )?,
+            math::checked_as_u64(math::checked_div(
+                math::checked_mul(
+                    token_a_deposit as u128,
+                    account::get_token_supply(lp_token_mint)? as u128,
+                )?,
+                pool_token_a_balance as u128,
+            )?)?,
+            math::checked_as_u64(math::checked_div(
+                math::checked_mul(
+                    token_b_deposit as u128,
+                    account::get_token_supply(lp_token_mint)? as u128,
+                )?,
+                pool_token_b_balance as u128,
+            )?)?,
         ))
     } else if pool_token_a_balance != 0 {
-        math::checked_as_u64(
-            (token_a_deposit as f64 / pool_token_a_balance as f64)
-                * account::get_token_supply(lp_token_mint)? as f64,
-        )
+        math::checked_as_u64(math::checked_div(
+            math::checked_mul(
+                token_a_deposit as u128,
+                account::get_token_supply(lp_token_mint)? as u128,
+            )?,
+            pool_token_a_balance as u128,
+        )?)
     } else if pool_token_b_balance != 0 {
-        math::checked_as_u64(
-            (token_b_deposit as f64 / pool_token_b_balance as f64)
-                * account::get_token_supply(lp_token_mint)? as f64,
-        )
+        math::checked_as_u64(math::checked_div(
+            math::checked_mul(
+                token_b_deposit as u128,
+                account::get_token_supply(lp_token_mint)? as u128,
+            )?,
+            pool_token_b_balance as u128,
+        )?)
     } else {
         Ok(0)
     }

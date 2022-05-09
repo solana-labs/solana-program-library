@@ -12,9 +12,9 @@ impl Shutdown for VaultInstruction {
             // Don't do anything special on shutdown for this Vault, just disable deposits and withdrawals
             let mut vault_info = VaultInfo::new(vault_info_account);
             msg!("disable_deposit");
-            vault_info.disable_deposit()?;
+            vault_info.disable_deposits()?;
             msg!("disable_withdrawal");
-            vault_info.disable_withdrawal()?;
+            vault_info.disable_withdrawals()?;
             //pda::close_account(admin_account, vault_info_account)
         }
         Ok(())

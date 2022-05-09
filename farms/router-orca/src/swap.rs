@@ -40,28 +40,36 @@ pub fn swap(
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        let (amount_in, mut minimum_amount_out) = orca::get_pool_swap_amounts(
+        let (amount_in, mut min_amount_out) = orca::get_pool_swap_amounts(
             pool_token_a_account,
             pool_token_b_account,
             token_a_amount_in,
             token_b_amount_in,
         )?;
-        if min_token_amount_out > minimum_amount_out {
-            minimum_amount_out = min_token_amount_out;
+        if min_token_amount_out > min_amount_out {
+            min_amount_out = min_token_amount_out;
+        }
+        if amount_in == 0 || min_amount_out == 0 {
+            msg!("Nothing to do: Not enough tokens to swap");
+            return Ok(());
         }
 
         let data = instruction::Swap {
             amount_in,
-            minimum_amount_out,
+            minimum_amount_out: min_amount_out,
         };
 
         msg!(
-            "Swap tokens in the pool. amount_in: {}, minimum_amount_out: {}",
+            "Swap tokens in the pool. amount_in: {}, min_amount_out: {}",
             amount_in,
-            minimum_amount_out
+            min_amount_out
         );
 
         if token_a_amount_in == 0 {
+            if !account::check_token_account_owner(user_token_a_account, user_account.key)? {
+                return Err(ProgramError::IllegalOwner);
+            }
+
             let initial_balance_in = account::get_token_balance(user_token_b_account)?;
             let initial_balance_out = account::get_token_balance(user_token_a_account)?;
 
@@ -86,9 +94,13 @@ pub fn swap(
             account::check_tokens_received(
                 user_token_a_account,
                 initial_balance_out,
-                minimum_amount_out,
+                min_amount_out,
             )?;
         } else {
+            if !account::check_token_account_owner(user_token_b_account, user_account.key)? {
+                return Err(ProgramError::IllegalOwner);
+            }
+
             let initial_balance_in = account::get_token_balance(user_token_a_account)?;
             let initial_balance_out = account::get_token_balance(user_token_b_account)?;
 
@@ -113,7 +125,7 @@ pub fn swap(
             account::check_tokens_received(
                 user_token_b_account,
                 initial_balance_out,
-                minimum_amount_out,
+                min_amount_out,
             )?;
         }
     } else {

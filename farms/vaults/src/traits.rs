@@ -59,25 +59,25 @@ pub trait Features {
         external_fee: f64,
     ) -> ProgramResult;
 
-    fn enable_deposit(
+    fn enable_deposits(
         vault: &Vault,
         vault_info: &mut VaultInfo,
         accounts: &[AccountInfo],
     ) -> ProgramResult;
 
-    fn disable_deposit(
+    fn disable_deposits(
         vault: &Vault,
         vault_info: &mut VaultInfo,
         accounts: &[AccountInfo],
     ) -> ProgramResult;
 
-    fn enable_withdrawal(
+    fn enable_withdrawals(
         vault: &Vault,
         vault_info: &mut VaultInfo,
         accounts: &[AccountInfo],
     ) -> ProgramResult;
 
-    fn disable_withdrawal(
+    fn disable_withdrawals(
         vault: &Vault,
         vault_info: &mut VaultInfo,
         accounts: &[AccountInfo],

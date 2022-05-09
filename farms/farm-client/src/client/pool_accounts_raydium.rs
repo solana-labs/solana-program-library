@@ -115,7 +115,9 @@ impl FarmClient {
             serum_coin_vault_account,
             serum_pc_vault_account,
             serum_vault_signer,
-            ..
+            serum_bids,
+            serum_asks,
+            serum_event_queue,
         } = pool.route
         {
             accounts.push(AccountMeta::new_readonly(*wallet_address, true));
@@ -156,6 +158,18 @@ impl FarmClient {
             accounts.push(AccountMeta::new(amm_target, false));
             accounts.push(AccountMeta::new(serum_market, false));
             accounts.push(AccountMeta::new_readonly(serum_program_id, false));
+            accounts.push(AccountMeta::new(
+                serum_bids.ok_or(ProgramError::UninitializedAccount)?,
+                false,
+            ));
+            accounts.push(AccountMeta::new(
+                serum_asks.ok_or(ProgramError::UninitializedAccount)?,
+                false,
+            ));
+            accounts.push(AccountMeta::new(
+                serum_event_queue.ok_or(ProgramError::UninitializedAccount)?,
+                false,
+            ));
             accounts.push(AccountMeta::new(serum_coin_vault_account, false));
             accounts.push(AccountMeta::new(serum_pc_vault_account, false));
             accounts.push(AccountMeta::new_readonly(serum_vault_signer, false));

@@ -77,7 +77,7 @@ pub enum AmmInstructionType {
 }
 
 impl AmmInstruction {
-    pub const MAX_LEN: usize = 25;
+    pub const MAX_LEN: usize = std::mem::size_of::<AmmInstruction>();
     pub const USER_INIT_LEN: usize = 1;
     pub const ADD_LIQUIDITY_LEN: usize = 17;
     pub const REMOVE_LIQUIDITY_LEN: usize = 9;
@@ -87,6 +87,20 @@ impl AmmInstruction {
     pub const HARVEST_LEN: usize = 1;
     pub const WRAP_TOKEN_LEN: usize = 9;
     pub const UNWRAP_TOKEN_LEN: usize = 9;
+
+    pub const fn get_size(&self) -> usize {
+        match self {
+            Self::UserInit { .. } => Self::USER_INIT_LEN,
+            Self::AddLiquidity { .. } => Self::ADD_LIQUIDITY_LEN,
+            Self::RemoveLiquidity { .. } => Self::REMOVE_LIQUIDITY_LEN,
+            Self::Swap { .. } => Self::SWAP_LEN,
+            Self::Stake { .. } => Self::STAKE_LEN,
+            Self::Unstake { .. } => Self::UNSTAKE_LEN,
+            Self::Harvest { .. } => Self::HARVEST_LEN,
+            Self::WrapToken { .. } => Self::WRAP_TOKEN_LEN,
+            Self::UnwrapToken { .. } => Self::UNWRAP_TOKEN_LEN,
+        }
+    }
 
     pub fn pack(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
         match self {

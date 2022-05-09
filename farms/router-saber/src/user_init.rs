@@ -1,15 +1,18 @@
 //! Initialize a new user for a Saber farm instruction
 
-use solana_program::{
-    account_info::AccountInfo,
-    entrypoint::ProgramResult,
-    hash::Hasher,
-    instruction::{AccountMeta, Instruction},
-    msg,
-    program::invoke,
-    program_error::ProgramError,
-    pubkey::Pubkey,
-    system_program,
+use {
+    solana_farm_sdk::program::account,
+    solana_program::{
+        account_info::AccountInfo,
+        entrypoint::ProgramResult,
+        hash::Hasher,
+        instruction::{AccountMeta, Instruction},
+        msg,
+        program::invoke,
+        program_error::ProgramError,
+        pubkey::Pubkey,
+        system_program,
+    },
 };
 
 pub fn user_init(accounts: &[AccountInfo]) -> ProgramResult {
@@ -18,6 +21,7 @@ pub fn user_init(accounts: &[AccountInfo]) -> ProgramResult {
     #[allow(clippy::deprecated_cfg_attr)]
     #[cfg_attr(rustfmt, rustfmt_skip)]
     if let [
+        funding_account,
         user_account,
         farm_program_id,
         lp_token_mint,
@@ -31,6 +35,9 @@ pub fn user_init(accounts: &[AccountInfo]) -> ProgramResult {
     {
         if &quarry_mine::id() != farm_program_id.key {
             return Err(ProgramError::IncorrectProgramId);
+        }
+        if !account::is_empty(miner)? {
+            return Err(ProgramError::AccountAlreadyInitialized);
         }
 
         let (miner_derived, bump) = Pubkey::find_program_address(
@@ -54,12 +61,12 @@ pub fn user_init(accounts: &[AccountInfo]) -> ProgramResult {
         data.push(bump);
 
         let saber_accounts = vec![
-            AccountMeta::new_readonly(*user_account.key, true),
+            AccountMeta::new(*funding_account.key, true),
             AccountMeta::new(*miner.key, false),
             AccountMeta::new(*quarry.key, false),
             AccountMeta::new(*rewarder.key, false),
             AccountMeta::new_readonly(system_program::id(), false),
-            AccountMeta::new_readonly(*user_account.key, true),
+            AccountMeta::new_readonly(*funding_account.key, true),
             AccountMeta::new(*lp_token_mint.key, false),
             AccountMeta::new(*miner_vault.key, false),
             AccountMeta::new_readonly(spl_token::id(), false),

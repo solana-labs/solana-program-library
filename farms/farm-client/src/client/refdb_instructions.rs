@@ -4,6 +4,7 @@ use {
     crate::error::FarmClientError,
     solana_farm_sdk::{
         farm::Farm,
+        fund::Fund,
         id::{main_router, ProgramIDType},
         instruction::{main_router::MainInstruction, refdb::RefDbInstruction},
         pool::Pool,
@@ -141,8 +142,10 @@ impl FarmClient {
         admin_address: &Pubkey,
         storage_type: refdb::StorageType,
         object_name: &str,
-        refdb_index: Option<usize>,
     ) -> Result<Instruction, FarmClientError> {
+        let refdb_index = self
+            .get_refdb_index(&storage_type.to_string(), object_name)
+            .unwrap();
         self.new_instruction_refdb_delete(
             admin_address,
             &storage_type.to_string(),
@@ -183,8 +186,13 @@ impl FarmClient {
         &self,
         admin_address: &Pubkey,
         name: &str,
-        refdb_index: Option<usize>,
     ) -> Result<Instruction, FarmClientError> {
+        let refdb_index = if self.get_program_id(name).is_ok() {
+            self.get_refdb_index(&refdb::StorageType::Program.to_string(), name)
+                .unwrap()
+        } else {
+            None
+        };
         self.new_instruction_refdb_delete(
             admin_address,
             &refdb::StorageType::Program.to_string(),
@@ -196,6 +204,66 @@ impl FarmClient {
                 reference: refdb::Reference::Empty,
             },
         )
+    }
+
+    /// Creates a new Instruction for recording Fund's metadata on-chain
+    pub fn new_instruction_add_fund(
+        &self,
+        admin_address: &Pubkey,
+        fund: Fund,
+    ) -> Result<Instruction, FarmClientError> {
+        // fill in accounts and instruction data
+        let mut inst = Instruction {
+            program_id: main_router::id(),
+            data: Vec::<u8>::new(),
+            accounts: vec![
+                AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(
+                    find_refdb_pda(&refdb::StorageType::Fund.to_string()).0,
+                    false,
+                ),
+                AccountMeta::new(
+                    find_target_pda(refdb::StorageType::Fund, &fund.name).0,
+                    false,
+                ),
+                AccountMeta::new_readonly(system_program::id(), false),
+            ],
+        };
+        inst.data = MainInstruction::AddFund { fund }.to_vec()?;
+
+        Ok(inst)
+    }
+
+    /// Creates a new Instruction for removing Fund's on-chain metadata
+    pub fn new_instruction_remove_fund(
+        &self,
+        admin_address: &Pubkey,
+        fund_name: &str,
+    ) -> Result<Instruction, FarmClientError> {
+        // fill in accounts and instruction data
+        let name = str_to_as64(fund_name)?;
+        let refdb_index = if let Ok(fund) = self.get_fund(fund_name) {
+            fund.refdb_index
+        } else {
+            None
+        };
+        let mut inst = Instruction {
+            program_id: main_router::id(),
+            data: Vec::<u8>::new(),
+            accounts: vec![
+                AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(
+                    find_refdb_pda(&refdb::StorageType::Fund.to_string()).0,
+                    false,
+                ),
+                AccountMeta::new(find_target_pda(refdb::StorageType::Fund, &name).0, false),
+                AccountMeta::new_readonly(system_program::id(), false),
+            ],
+        };
+
+        inst.data = MainInstruction::RemoveFund { name, refdb_index }.to_vec()?;
+
+        Ok(inst)
     }
 
     /// Creates a new Instruction for recording Vault's metadata on-chain
@@ -234,6 +302,11 @@ impl FarmClient {
     ) -> Result<Instruction, FarmClientError> {
         // fill in accounts and instruction data
         let name = str_to_as64(vault_name)?;
+        let refdb_index = if let Ok(vault) = self.get_vault(vault_name) {
+            vault.refdb_index
+        } else {
+            None
+        };
         let mut inst = Instruction {
             program_id: main_router::id(),
             data: Vec::<u8>::new(),
@@ -248,7 +321,7 @@ impl FarmClient {
             ],
         };
 
-        inst.data = MainInstruction::RemoveVault { name }.to_vec()?;
+        inst.data = MainInstruction::RemoveVault { name, refdb_index }.to_vec()?;
 
         Ok(inst)
     }
@@ -290,6 +363,11 @@ impl FarmClient {
     ) -> Result<Instruction, FarmClientError> {
         // fill in accounts and instruction data
         let name = str_to_as64(pool_name)?;
+        let refdb_index = if let Ok(pool) = self.get_pool(pool_name) {
+            pool.refdb_index
+        } else {
+            None
+        };
         let mut inst = Instruction {
             program_id: main_router::id(),
             data: Vec::<u8>::new(),
@@ -304,7 +382,7 @@ impl FarmClient {
             ],
         };
 
-        inst.data = MainInstruction::RemovePool { name }.to_vec()?;
+        inst.data = MainInstruction::RemovePool { name, refdb_index }.to_vec()?;
 
         Ok(inst)
     }
@@ -346,6 +424,11 @@ impl FarmClient {
     ) -> Result<Instruction, FarmClientError> {
         // fill in accounts and instruction data
         let name = str_to_as64(farm_name)?;
+        let refdb_index = if let Ok(farm) = self.get_farm(farm_name) {
+            farm.refdb_index
+        } else {
+            None
+        };
         let mut inst = Instruction {
             program_id: main_router::id(),
             data: Vec::<u8>::new(),
@@ -360,7 +443,7 @@ impl FarmClient {
             ],
         };
 
-        inst.data = MainInstruction::RemoveFarm { name }.to_vec()?;
+        inst.data = MainInstruction::RemoveFarm { name, refdb_index }.to_vec()?;
 
         Ok(inst)
     }
@@ -402,6 +485,11 @@ impl FarmClient {
     ) -> Result<Instruction, FarmClientError> {
         // fill in accounts and instruction data
         let name = str_to_as64(token_name)?;
+        let refdb_index = if let Ok(token) = self.get_token(token_name) {
+            token.refdb_index
+        } else {
+            None
+        };
         let mut inst = Instruction {
             program_id: main_router::id(),
             data: Vec::<u8>::new(),
@@ -416,7 +504,7 @@ impl FarmClient {
             ],
         };
 
-        inst.data = MainInstruction::RemoveToken { name }.to_vec()?;
+        inst.data = MainInstruction::RemoveToken { name, refdb_index }.to_vec()?;
 
         Ok(inst)
     }

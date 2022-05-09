@@ -2,7 +2,8 @@
 
 use {
     crate::error::FarmClientError,
-    solana_sdk::{instruction::Instruction, pubkey::Pubkey, system_instruction},
+    solana_account_decoder::parse_token::{parse_token, TokenAccountType},
+    solana_sdk::{instruction::Instruction, pubkey::Pubkey, system_instruction, system_program},
     spl_associated_token_account::create_associated_token_account,
     spl_token::instruction as spl_token_instruction,
 };
@@ -91,10 +92,27 @@ impl FarmClient {
         destination_wallet: &Pubkey,
         sol_ui_amount: f64,
     ) -> Result<Instruction, FarmClientError> {
+        if wallet_address == destination_wallet {
+            return Err(FarmClientError::ValueError(
+                "Source and destination addresses are the same".to_string(),
+            ));
+        }
+        if let Ok(account) = self.rpc_client.get_account(destination_wallet) {
+            if destination_wallet != &self.get_associated_token_address(wallet_address, "SOL")?
+                && (account.owner != system_program::id() || !account.data.is_empty())
+            {
+                return Err(FarmClientError::ValueError(
+                    "Destination account is not a SOL wallet".to_string(),
+                ));
+            }
+        }
         Ok(system_instruction::transfer(
             wallet_address,
             destination_wallet,
-            self.ui_amount_to_tokens_with_decimals(sol_ui_amount, spl_token::native_mint::DECIMALS),
+            self.ui_amount_to_tokens_with_decimals(
+                sol_ui_amount,
+                spl_token::native_mint::DECIMALS,
+            )?,
         ))
     }
 
@@ -106,6 +124,13 @@ impl FarmClient {
         destination_wallet: &Pubkey,
         ui_amount: f64,
     ) -> Result<Instruction, FarmClientError> {
+        if let Ok(account) = self.rpc_client.get_account(destination_wallet) {
+            if account.owner != system_program::id() || !account.data.is_empty() {
+                return Err(FarmClientError::ValueError(
+                    "Destination account is not a SOL wallet".to_string(),
+                ));
+            }
+        }
         let token_addr = self.get_associated_token_address(wallet_address, token_name)?;
         let destination_address =
             self.get_associated_token_address(destination_wallet, token_name)?;
@@ -160,5 +185,81 @@ impl FarmClient {
             wallet_address,
             &[],
         )?)
+    }
+
+    /// Creates a new complete set of instructions for SOL wrapping
+    pub fn all_instructions_wrap_sol(
+        &self,
+        wallet_address: &Pubkey,
+        ui_amount: f64,
+    ) -> Result<Vec<Instruction>, FarmClientError> {
+        let target_account = self.get_associated_token_address(wallet_address, "SOL")?;
+        let mut inst = vec![];
+        if !self.has_active_token_account(wallet_address, "SOL") {
+            inst.push(self.new_instruction_create_token_account(wallet_address, "SOL")?);
+        } else {
+            self.check_ata_owner(wallet_address, "SOL")?;
+        }
+        inst.push(self.new_instruction_transfer(wallet_address, &target_account, ui_amount)?);
+        Ok(inst)
+    }
+
+    /// Creates a new complete set of instructions for SOL unwrapping
+    pub fn all_instructions_unwrap_sol(
+        &self,
+        wallet_address: &Pubkey,
+    ) -> Result<Vec<Instruction>, FarmClientError> {
+        let inst = vec![self.new_instruction_close_token_account(wallet_address, "SOL")?];
+        Ok(inst)
+    }
+
+    /// Creates a new complete set of instructions for tokens transfer
+    pub fn all_instructions_token_transfer(
+        &self,
+        wallet_address: &Pubkey,
+        token_name: &str,
+        destination_wallet: &Pubkey,
+        ui_amount: f64,
+    ) -> Result<Vec<Instruction>, FarmClientError> {
+        if wallet_address == destination_wallet {
+            return Err(FarmClientError::ValueError(
+                "Source and destination addresses are the same".to_string(),
+            ));
+        }
+        let mut inst = vec![];
+        if !self.has_active_token_account(wallet_address, token_name) {
+            return Err(FarmClientError::RecordNotFound(format!(
+                "Source account with token {}",
+                token_name
+            )));
+        }
+        let data = self.rpc_client.get_account_data(destination_wallet)?;
+        let res = parse_token(data.as_slice(), Some(0));
+        if let Ok(TokenAccountType::Account(_)) = res {
+            return Err(FarmClientError::ValueError(
+                "Destination must be a base wallet address, token address will be derived"
+                    .to_string(),
+            ));
+        }
+
+        if !self.has_active_token_account(destination_wallet, token_name) {
+            let token = self.get_token(token_name)?;
+            inst.push(create_associated_token_account(
+                wallet_address,
+                destination_wallet,
+                &token.mint,
+            ));
+        } else {
+            self.check_ata_owner(destination_wallet, token_name)?;
+        }
+
+        inst.push(self.new_instruction_token_transfer(
+            wallet_address,
+            token_name,
+            destination_wallet,
+            ui_amount,
+        )?);
+
+        Ok(inst)
     }
 }

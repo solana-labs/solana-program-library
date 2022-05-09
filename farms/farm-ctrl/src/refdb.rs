@@ -33,6 +33,7 @@ pub fn init_all(client: &FarmClient, config: &Config) {
     init(client, config, StorageType::Pool);
     init(client, config, StorageType::Farm);
     init(client, config, StorageType::Vault);
+    init(client, config, StorageType::Fund);
 }
 
 pub fn drop(client: &FarmClient, config: &Config, target: StorageType) {
@@ -50,6 +51,7 @@ pub fn drop(client: &FarmClient, config: &Config, target: StorageType) {
 }
 
 pub fn drop_all(client: &FarmClient, config: &Config) {
+    drop(client, config, StorageType::Fund);
     drop(client, config, StorageType::Vault);
     drop(client, config, StorageType::Farm);
     drop(client, config, StorageType::Pool);

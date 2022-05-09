@@ -37,6 +37,9 @@ pub fn add_liquidity(
         if !orca::check_pool_program_id(pool_program_id.key) {
             return Err(ProgramError::IncorrectProgramId);
         }
+        if !account::check_token_account_owner(user_lp_token_account, user_account.key)? {
+            return Err(ProgramError::IllegalOwner);
+        }
 
         let (lp_token_amount, token_a_amount, token_b_amount) = orca::get_pool_deposit_amounts(
             pool_token_a_account,

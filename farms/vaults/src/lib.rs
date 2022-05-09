@@ -1,6 +1,5 @@
 #![forbid(unsafe_code)]
 
-pub mod clock;
 mod entrypoint;
 pub mod strategies;
 pub mod traits;

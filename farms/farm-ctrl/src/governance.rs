@@ -6,12 +6,12 @@ use {
     solana_farm_client::client::FarmClient,
     solana_farm_sdk::{
         id::{
-            main_router_admin, ProgramIDType, DAO_CUSTODY_NAME, DAO_MINT_NAME, DAO_PROGRAM_NAME,
-            DAO_TOKEN_NAME,
+            main_router_admin, zero, ProgramIDType, DAO_CUSTODY_NAME, DAO_MINT_NAME,
+            DAO_PROGRAM_NAME, DAO_TOKEN_NAME,
         },
         refdb::StorageType,
         string::str_to_as64,
-        token::{Token, TokenType},
+        token::{OracleType, Token, TokenType},
     },
     solana_sdk::{program_pack::Pack, pubkey::Pubkey},
     spl_associated_token_account::{create_associated_token_account, get_associated_token_address},
@@ -83,6 +83,8 @@ pub fn init(client: &FarmClient, config: &Config, dao_program: &Pubkey, mint_ui_
             decimals: 6,
             chain_id: 101,
             mint: mint_address,
+            oracle_type: OracleType::Unsupported,
+            oracle_account: zero::id(),
         };
 
         inst.push(client.new_instruction_add_token(&wallet, token).unwrap());
@@ -132,7 +134,9 @@ pub fn init(client: &FarmClient, config: &Config, dao_program: &Pubkey, mint_ui_
                 &dao_token_address,
                 &wallet,
                 &[],
-                client.ui_amount_to_tokens_with_decimals(mint_ui_amount, 6),
+                client
+                    .ui_amount_to_tokens_with_decimals(mint_ui_amount, 6)
+                    .unwrap(),
             )
             .unwrap(),
         );
@@ -160,7 +164,7 @@ pub fn init(client: &FarmClient, config: &Config, dao_program: &Pubkey, mint_ui_
             None,
             None,
             DAO_PROGRAM_NAME.to_string(),
-            client.ui_amount_to_tokens_with_decimals(1.0, 6),
+            client.ui_amount_to_tokens_with_decimals(1.0, 6).unwrap(),
             MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
         ));
     }
@@ -173,7 +177,7 @@ pub fn init(client: &FarmClient, config: &Config, dao_program: &Pubkey, mint_ui_
         &wallet,
         &wallet,
         &wallet,
-        client.ui_amount_to_tokens_with_decimals(1.0, 6),
+        client.ui_amount_to_tokens_with_decimals(1.0, 6).unwrap(),
         &mint_address,
     ));
 
@@ -189,7 +193,7 @@ pub fn init(client: &FarmClient, config: &Config, dao_program: &Pubkey, mint_ui_
     inst.clear();
     let dao_config = GovernanceConfig {
         vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
-        min_community_tokens_to_create_proposal: (mint_ui_amount as f64 * 0.01) as u64,
+        min_community_tokens_to_create_proposal: (mint_ui_amount * 0.01) as u64,
         min_instruction_hold_up_time: 0,
         max_voting_time: 259200,
         vote_weight_source: VoteWeightSource::Deposit,

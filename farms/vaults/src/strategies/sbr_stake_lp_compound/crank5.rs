@@ -1,7 +1,7 @@
 //! Crank step 5 instruction handler
 
 use {
-    crate::{clock::check_min_crank_interval, vault_info::VaultInfo},
+    crate::{strategies::common, vault_info::VaultInfo},
     solana_farm_sdk::{
         program::{account, protocol::saber},
         vault::{Vault, VaultStrategy},
@@ -29,18 +29,23 @@ pub fn crank5(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
         ] = accounts
     {
         // validate accounts
-        if vault_authority.key != &vault.vault_authority
-            || &account::get_token_account_owner(vault_miner_account)? != vault_stake_info.key
+        if vault_authority.key != &vault.vault_authority ||
+           !account::check_token_account_owner(vault_miner_account, vault_stake_info.key)?
         {
             msg!("Error: Invalid Vault accounts");
             return Err(ProgramError::InvalidArgument);
         }
         if let VaultStrategy::StakeLpCompoundRewards {
+            farm_id: farm_id_key,
             lp_token_custody: lp_token_custody_key,
             vault_stake_info: vault_stake_info_key,
             ..
         } = vault.strategy
         {
+            if &farm_id_key != quarry.key {
+                msg!("Error: Invalid farm id");
+                return Err(ProgramError::InvalidArgument);
+            }
             if &vault_stake_info_key != vault_stake_info.key {
                 msg!("Error: Invalid Vault Stake Info account");
                 return Err(ProgramError::InvalidArgument);
@@ -55,7 +60,7 @@ pub fn crank5(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
         }
 
         let vault_info = VaultInfo::new(vault_info_account);
-        check_min_crank_interval(&vault_info)?;
+        common::check_min_crank_interval(&vault_info)?;
 
         // read balances
         let lp_token_balance = account::get_token_balance(lp_token_custody)?;

@@ -2,6 +2,7 @@
 
 use {
     crate::{
+        error::FarmError,
         pack::{
             as64_deserialize, as64_serialize, check_data_len, pack_array_string64,
             unpack_array_string64,
@@ -40,8 +41,14 @@ impl Header {
     pub const LEN: usize = 73;
     const REF_TYPE_OFFSET: usize = 8;
     const NAME_OFFSET: usize = 9;
+}
 
-    pub fn pack(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+impl Packed for Header {
+    fn get_size(&self) -> usize {
+        Header::LEN
+    }
+
+    fn pack(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
         check_data_len(output, Header::LEN)?;
 
         let output = array_mut_ref![output, 0, Header::LEN];
@@ -56,7 +63,7 @@ impl Header {
         Ok(Header::LEN)
     }
 
-    pub fn to_vec(&self) -> Result<Vec<u8>, ProgramError> {
+    fn to_vec(&self) -> Result<Vec<u8>, ProgramError> {
         let mut output: [u8; Header::LEN] = [0; Header::LEN];
         if let Ok(len) = self.pack(&mut output[..]) {
             Ok(output[..len].to_vec())
@@ -65,7 +72,7 @@ impl Header {
         }
     }
 
-    pub fn unpack(input: &[u8]) -> Result<Header, ProgramError> {
+    fn unpack(input: &[u8]) -> Result<Header, ProgramError> {
         check_data_len(input, Header::LEN)?;
 
         let input = array_ref![input, 0, Header::LEN];
@@ -96,7 +103,7 @@ pub enum Reference {
 }
 
 impl Reference {
-    pub const MAX_LEN: usize = 32;
+    pub const MAX_LEN: usize = std::mem::size_of::<Reference>();
     pub const PUBKEY_LEN: usize = size_of::<Pubkey>();
     pub const U8_LEN: usize = size_of::<u8>();
     pub const U16_LEN: usize = size_of::<u16>();
@@ -165,6 +172,7 @@ pub enum StorageType {
     Pool,
     Farm,
     Token,
+    Fund,
     Other,
 }
 
@@ -172,6 +180,7 @@ impl StorageType {
     pub const fn get_default_size(storage_type: StorageType) -> usize {
         match storage_type {
             StorageType::Program => 25000usize,
+            StorageType::Fund => 10000usize,
             StorageType::Vault => 25000usize,
             StorageType::Pool => 50000usize,
             StorageType::Farm => 25000usize,
@@ -214,6 +223,7 @@ impl std::fmt::Display for StorageType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
             StorageType::Program => write!(f, "Program"),
+            StorageType::Fund => write!(f, "Fund"),
             StorageType::Vault => write!(f, "Vault"),
             StorageType::Pool => write!(f, "Pool"),
             StorageType::Farm => write!(f, "Farm"),
@@ -227,13 +237,14 @@ impl std::str::FromStr for StorageType {
     type Err = ProgramError;
 
     fn from_str(s: &str) -> Result<Self, ProgramError> {
-        match s {
-            "Program" => Ok(StorageType::Program),
-            "Vault" => Ok(StorageType::Vault),
-            "Pool" => Ok(StorageType::Pool),
-            "Farm" => Ok(StorageType::Farm),
-            "Token" => Ok(StorageType::Token),
-            "Other" => Ok(StorageType::Other),
+        match s.to_lowercase().as_str() {
+            "program" => Ok(StorageType::Program),
+            "fund" => Ok(StorageType::Fund),
+            "vault" => Ok(StorageType::Vault),
+            "pool" => Ok(StorageType::Pool),
+            "farm" => Ok(StorageType::Farm),
+            "token" => Ok(StorageType::Token),
+            "other" => Ok(StorageType::Other),
             _ => Err(ProgramError::InvalidArgument),
         }
     }
@@ -548,7 +559,7 @@ impl RefDB {
     pub fn drop(data: &mut [u8]) -> Result<usize, ProgramError> {
         check_data_len(data, Header::LEN)?;
         if data.len() > 2000 {
-            Err(ProgramError::Custom(431))
+            Err(FarmError::RefdbTooLarge.into())
         } else {
             data.fill(0);
             Ok(data.len())
@@ -756,16 +767,16 @@ impl RefDB {
             // if the counter was specified we check that value is equal to stored,
             // to make sure there were no intermediate updates
             if record.counter > 0 && cur_counter != record.counter as usize {
-                return Err(ProgramError::Custom(409));
+                return Err(FarmError::RefdbRecordCounterMismatch.into());
             }
             // check that we are either writing to an empty slot or record name matches
             if record.index.is_some() && record.name != cur_name {
-                return Err(ProgramError::Custom(409));
+                return Err(FarmError::RefdbRecordNameMismatch.into());
             }
         }
         // check that reference data type matches storage
         if RefDB::get_reference_type(data)? != record.reference.get_type() {
-            return Err(ProgramError::Custom(409));
+            return Err(FarmError::RefdbRecordTypeMismatch.into());
         }
         // update storage counters
         let storage_counter = RefDB::get_storage_counter(data)?;
@@ -804,7 +815,7 @@ impl RefDB {
         if let Some(index) = RefDB::find_index(data, name)? {
             RefDB::update_at(data, index, reference)
         } else {
-            Err(ProgramError::Custom(404))
+            Err(FarmError::RefdbRecordNotFound.into())
         }
     }
 
@@ -860,11 +871,11 @@ impl RefDB {
         // if the counter was specified we check that value is equal to stored,
         // to make sure there were no intermediate updates
         if record.counter > 0 && stored_counter != record.counter as usize {
-            return Err(ProgramError::Custom(409));
+            return Err(FarmError::RefdbRecordCounterMismatch.into());
         }
         // check that we are deleting record with matching name
         if record.name != stored_name {
-            return Err(ProgramError::Custom(409));
+            return Err(FarmError::RefdbRecordNameMismatch.into());
         }
         // update data and counters
         let counter = RefDB::get_storage_counter(data)?;
@@ -883,11 +894,15 @@ impl RefDB {
     }
 
     /// Deletes the record from the storage using the name only.
-    pub fn delete_with_name(data: &mut [u8], name: &ArrayString64) -> Result<usize, ProgramError> {
+    pub fn delete_with_name(
+        data: &mut [u8],
+        name: &ArrayString64,
+        index: Option<u32>,
+    ) -> Result<usize, ProgramError> {
         RefDB::delete(
             data,
             &Record {
-                index: None,
+                index,
                 counter: 0,
                 tag: 0,
                 name: *name,
@@ -1270,7 +1285,8 @@ mod tests {
         // delete record
         assert!(RefDB::delete_with_name(
             data.as_mut_slice(),
-            &ArrayString64::from_utf8("test record4").unwrap()
+            &ArrayString64::from_utf8("test record4").unwrap(),
+            None
         )
         .is_err());
         assert_eq!(RefDB::get_total_records(data.as_slice()).unwrap(), 3);
@@ -1280,7 +1296,8 @@ mod tests {
 
         assert!(RefDB::delete_with_name(
             data.as_mut_slice(),
-            &ArrayString64::from_utf8("test record2").unwrap()
+            &ArrayString64::from_utf8("test record2").unwrap(),
+            None
         )
         .is_ok());
         assert_eq!(RefDB::get_total_records(data.as_slice()).unwrap(), 3);

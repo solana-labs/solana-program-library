@@ -2,7 +2,7 @@
 
 use {
     crate::refdb_init::{check_or_init_refdb, check_or_init_refdb_target},
-    solana_farm_sdk::{farm::Farm, refdb, refdb::RefDB},
+    solana_farm_sdk::{farm::Farm, refdb, refdb::RefDB, traits::Packed},
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,

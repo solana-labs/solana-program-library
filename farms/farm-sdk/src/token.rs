@@ -5,8 +5,9 @@ use {
     arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs},
     num_enum::TryFromPrimitive,
     serde::{Deserialize, Serialize},
-    serde_json::to_string,
+    serde_json::{to_string, Value},
     solana_program::{program_error::ProgramError, pubkey::Pubkey},
+    std::collections::HashMap,
 };
 
 #[repr(u8)]
@@ -19,6 +20,7 @@ pub enum TokenType {
     SplToken,
     LpToken,
     VtToken,
+    FundToken,
 }
 
 #[repr(u8)]
@@ -26,6 +28,20 @@ pub enum TokenType {
 pub enum TokenSelector {
     TokenA,
     TokenB,
+}
+
+#[repr(u8)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, TryFromPrimitive)]
+pub enum OracleType {
+    Pyth,
+    Chainlink,
+    Unsupported,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
+pub struct OraclePrice {
+    pub price: u64,
+    pub exponent: i32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
@@ -50,6 +66,28 @@ pub struct Token {
         serialize_with = "pubkey_serialize"
     )]
     pub mint: Pubkey,
+    pub oracle_type: OracleType,
+    #[serde(
+        deserialize_with = "pubkey_deserialize",
+        serialize_with = "pubkey_serialize"
+    )]
+    pub oracle_account: Pubkey,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GitToken {
+    #[serde(rename = "chainId")]
+    pub chain_id: i32,
+    pub address: String,
+    pub symbol: String,
+    pub name: String,
+    pub decimals: i32,
+    #[serde(rename = "logoURI", default)]
+    pub logo_uri: String,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    #[serde(flatten)]
+    pub extra: HashMap<String, Value>,
 }
 
 impl Named for Token {
@@ -59,13 +97,15 @@ impl Named for Token {
 }
 
 impl Token {
-    pub const LEN: usize = 171;
+    pub const LEN: usize = 204;
+}
 
-    pub fn get_size(&self) -> usize {
+impl Packed for Token {
+    fn get_size(&self) -> usize {
         Token::LEN
     }
 
-    pub fn pack(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+    fn pack(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
         check_data_len(output, Token::LEN)?;
 
         let output = array_mut_ref![output, 0, Token::LEN];
@@ -79,7 +119,9 @@ impl Token {
             decimals_out,
             chain_id_out,
             mint_out,
-        ) = mut_array_refs![output, 64, 64, 1, 5, 2, 1, 2, 32];
+            oracle_type_out,
+            oracle_account_out,
+        ) = mut_array_refs![output, 64, 64, 1, 5, 2, 1, 2, 32, 1, 32];
         pack_array_string64(&self.name, name_out);
         pack_array_string64(&self.description, description_out);
         token_type_out[0] = self.token_type as u8;
@@ -88,11 +130,13 @@ impl Token {
         decimals_out[0] = self.decimals;
         *chain_id_out = self.chain_id.to_le_bytes();
         mint_out.copy_from_slice(self.mint.as_ref());
+        oracle_type_out[0] = self.oracle_type as u8;
+        oracle_account_out.copy_from_slice(self.oracle_account.as_ref());
 
         Ok(Token::LEN)
     }
 
-    pub fn to_vec(&self) -> Result<Vec<u8>, ProgramError> {
+    fn to_vec(&self) -> Result<Vec<u8>, ProgramError> {
         let mut output: [u8; Token::LEN] = [0; Token::LEN];
         if let Ok(len) = self.pack(&mut output[..]) {
             Ok(output[..len].to_vec())
@@ -101,13 +145,23 @@ impl Token {
         }
     }
 
-    pub fn unpack(input: &[u8]) -> Result<Token, ProgramError> {
+    fn unpack(input: &[u8]) -> Result<Token, ProgramError> {
         check_data_len(input, Token::LEN)?;
 
         let input = array_ref![input, 0, Token::LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (name, description, token_type, refdb_index, refdb_counter, decimals, chain_id, mint) =
-            array_refs![input, 64, 64, 1, 5, 2, 1, 2, 32];
+        let (
+            name,
+            description,
+            token_type,
+            refdb_index,
+            refdb_counter,
+            decimals,
+            chain_id,
+            mint,
+            oracle_type,
+            oracle_account,
+        ) = array_refs![input, 64, 64, 1, 5, 2, 1, 2, 32, 1, 32];
 
         Ok(Self {
             name: unpack_array_string64(name)?,
@@ -119,6 +173,9 @@ impl Token {
             decimals: decimals[0],
             chain_id: u16::from_le_bytes(*chain_id),
             mint: Pubkey::new_from_array(*mint),
+            oracle_type: OracleType::try_from_primitive(oracle_type[0])
+                .or(Err(ProgramError::InvalidAccountData))?,
+            oracle_account: Pubkey::new_from_array(*oracle_account),
         })
     }
 }
@@ -133,6 +190,7 @@ impl std::fmt::Display for TokenType {
             TokenType::SplToken => write!(f, "SplToken"),
             TokenType::LpToken => write!(f, "LpToken"),
             TokenType::VtToken => write!(f, "VtToken"),
+            TokenType::FundToken => write!(f, "FundToken"),
         }
     }
 }
@@ -140,5 +198,49 @@ impl std::fmt::Display for TokenType {
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", to_string(&self).unwrap())
+    }
+}
+
+impl std::fmt::Display for TokenSelector {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            TokenSelector::TokenA => write!(f, "TokenA"),
+            TokenSelector::TokenB => write!(f, "TokenB"),
+        }
+    }
+}
+
+impl std::str::FromStr for TokenSelector {
+    type Err = ProgramError;
+
+    fn from_str(s: &str) -> Result<Self, ProgramError> {
+        match s.to_lowercase().as_str() {
+            "tokena" => Ok(TokenSelector::TokenA),
+            "tokenb" => Ok(TokenSelector::TokenB),
+            _ => Err(ProgramError::InvalidArgument),
+        }
+    }
+}
+
+impl std::fmt::Display for OracleType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            OracleType::Pyth => write!(f, "Pyth"),
+            OracleType::Chainlink => write!(f, "Chainlink"),
+            OracleType::Unsupported => write!(f, "Unsupported"),
+        }
+    }
+}
+
+impl std::str::FromStr for OracleType {
+    type Err = ProgramError;
+
+    fn from_str(s: &str) -> Result<Self, ProgramError> {
+        match s.to_lowercase().as_str() {
+            "pyth" => Ok(OracleType::Pyth),
+            "chainlink" => Ok(OracleType::Chainlink),
+            "unsupported" => Ok(OracleType::Unsupported),
+            _ => Err(ProgramError::InvalidArgument),
+        }
     }
 }

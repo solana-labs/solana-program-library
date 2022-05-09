@@ -195,6 +195,12 @@
       "address": ""
     },
     {
+      "name": "Funds",
+      "description": "",
+      "program_type": "TokensRef",
+      "address": ""
+    },
+    {
       "name": "MainRouter",
       "description": "",
       "program_type": "MainRouter",
@@ -220,6 +226,12 @@
     },
     {
       "name": "FarmGovernance",
+      "description": "",
+      "program_type": "System",
+      "address": ""
+    },
+    {
+      "name": "FarmFund",
       "description": "",
       "program_type": "System",
       "address": ""

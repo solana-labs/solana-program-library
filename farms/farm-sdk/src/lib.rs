@@ -1,7 +1,8 @@
 #![forbid(unsafe_code)]
 
+pub mod error;
 pub mod farm;
-pub mod git_token;
+pub mod fund;
 pub mod id;
 pub mod instruction;
 pub mod log;

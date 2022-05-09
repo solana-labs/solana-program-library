@@ -7,17 +7,90 @@ use {
     solana_farm_client::client::FarmClient,
     solana_farm_sdk::{
         farm::{FarmRoute, FarmType},
-        git_token::GitToken,
-        id::main_router_admin,
+        fund::{Fund, FundType},
+        id::{main_router_admin, zero},
+        pool::PoolRoute,
         program::pda::find_target_pda,
         refdb::StorageType,
-        string::{str_to_as64, to_pretty_json},
+        string::{str_to_as64, to_pretty_json, ArrayString64},
+        token::GitToken,
         vault::{Vault, VaultStrategy, VaultType},
     },
     solana_sdk::pubkey::Pubkey,
     std::collections::HashMap,
     std::str::FromStr,
 };
+
+pub fn generate_fund(
+    _client: &FarmClient,
+    _config: &Config,
+    fund_address: &Pubkey,
+    fund_name: &str,
+    token_name: &str,
+) {
+    let fund = Fund {
+        name: str_to_as64(fund_name).unwrap(),
+        description: ArrayString64::default(),
+        version: 1,
+        fund_type: FundType::General,
+        official: true,
+        refdb_index: None,
+        refdb_counter: 0,
+        metadata_bump: find_target_pda(StorageType::Fund, &str_to_as64(fund_name).unwrap()).1,
+        authority_bump: Pubkey::find_program_address(
+            &[b"fund_authority", fund_name.as_bytes()],
+            fund_address,
+        )
+        .1,
+        fund_token_bump: Pubkey::find_program_address(
+            &[b"fund_token_mint", fund_name.as_bytes()],
+            fund_address,
+        )
+        .1,
+        fund_program_id: *fund_address,
+        fund_authority: Pubkey::find_program_address(
+            &[b"fund_authority", fund_name.as_bytes()],
+            fund_address,
+        )
+        .0,
+        fund_manager: zero::id(),
+        fund_token_ref: find_target_pda(StorageType::Token, &str_to_as64(token_name).unwrap()).0,
+        info_account: Pubkey::find_program_address(
+            &[b"info_account", fund_name.as_bytes()],
+            fund_address,
+        )
+        .0,
+        admin_account: main_router_admin::id(),
+        vaults_assets_info: Pubkey::find_program_address(
+            &[b"vaults_assets_info", fund_name.as_bytes()],
+            fund_address,
+        )
+        .0,
+        custodies_assets_info: Pubkey::find_program_address(
+            &[b"custodies_assets_info", fund_name.as_bytes()],
+            fund_address,
+        )
+        .0,
+    };
+    println!("{}", to_pretty_json(&fund).unwrap());
+
+    let token = GitToken {
+        chain_id: 101,
+        address: Pubkey::find_program_address(
+            &[b"fund_token_mint", fund_name.as_bytes()],
+            fund_address,
+        )
+        .0
+        .to_string(),
+        symbol: token_name.to_string(),
+        name: fund_name.to_string() + " Token",
+        decimals: 6,
+        logo_uri: String::default(),
+        tags: vec!["fund-token".to_string()],
+        extra: HashMap::<String, Value>::default(),
+    };
+    println!("{}", to_pretty_json(&token).unwrap());
+}
 
 pub fn generate_rdm_stc_vault(
     client: &FarmClient,
@@ -32,11 +105,11 @@ pub fn generate_rdm_stc_vault(
         .get_token_by_ref(&farm.lp_token_ref.unwrap())
         .unwrap();
     let pool = client.find_pools_with_lp(lp_token.name.as_str()).unwrap()[0];
-    let farm_reward_token_b_account = match farm.route {
+    let farm_second_reward_token_account = match farm.route {
         FarmRoute::Raydium {
-            farm_reward_token_b_account,
+            farm_second_reward_token_account,
             ..
-        } => farm_reward_token_b_account,
+        } => farm_second_reward_token_account,
         _ => None,
     };
     let vault = Vault {
@@ -57,7 +130,7 @@ pub fn generate_rdm_stc_vault(
             vault_address,
         )
         .1,
-        lock_required: false,
+        lock_required: true,
         unlock_required: true,
         vault_program_id: *vault_address,
         vault_authority: Pubkey::find_program_address(
@@ -80,7 +153,7 @@ pub fn generate_rdm_stc_vault(
             .0,
         ),
         fees_account_b: if farm.farm_type == FarmType::DualReward
-            || farm_reward_token_b_account.is_some()
+            || farm_second_reward_token_account.is_some()
         {
             Some(
                 Pubkey::find_program_address(
@@ -93,8 +166,20 @@ pub fn generate_rdm_stc_vault(
             None
         },
         strategy: VaultStrategy::StakeLpCompoundRewards {
-            pool_id_ref: client.get_pool_ref(pool.name.as_str()).unwrap(),
-            farm_id_ref: client.get_farm_ref(&farm_name).unwrap(),
+            pool_router_id: pool.router_program_id,
+            pool_id: match pool.route {
+                PoolRoute::Raydium { amm_id, .. } => amm_id,
+                PoolRoute::Saber { swap_account, .. } => swap_account,
+                PoolRoute::Orca { amm_id, .. } => amm_id,
+            },
+            pool_ref: client.get_pool_ref(&pool.name).unwrap(),
+            farm_router_id: farm.router_program_id,
+            farm_id: match farm.route {
+                FarmRoute::Raydium { farm_id, .. } => farm_id,
+                FarmRoute::Saber { quarry, .. } => quarry,
+                FarmRoute::Orca { farm_id, .. } => farm_id,
+            },
+            farm_ref: client.get_farm_ref(&farm.name).unwrap(),
             lp_token_custody: Pubkey::find_program_address(
                 &[b"lp_token_custody", vault_name.as_bytes()],
                 vault_address,
@@ -118,7 +203,7 @@ pub fn generate_rdm_stc_vault(
             )
             .0,
             token_b_reward_custody: if farm.farm_type == FarmType::DualReward
-                || farm_reward_token_b_account.is_some()
+                || farm_second_reward_token_account.is_some()
             {
                 Some(
                     Pubkey::find_program_address(
@@ -145,7 +230,7 @@ pub fn generate_rdm_stc_vault(
             },
         },
     };
-    println!("{}", to_pretty_json(&vault).unwrap());
+    println!("{},", to_pretty_json(&vault).unwrap());
 
     let token = GitToken {
         chain_id: 101,
@@ -167,7 +252,7 @@ pub fn generate_rdm_stc_vault(
         tags: vec!["vt-token".to_string()],
         extra: HashMap::<String, Value>::default(),
     };
-    println!("{}", to_pretty_json(&token).unwrap());
+    eprintln!("{},", to_pretty_json(&token).unwrap());
 }
 
 pub fn generate_sbr_stc_vault(
@@ -233,8 +318,20 @@ pub fn generate_sbr_stc_vault(
             .0,
         ),
         strategy: VaultStrategy::StakeLpCompoundRewards {
-            pool_id_ref: client.get_pool_ref(pool.name.as_str()).unwrap(),
-            farm_id_ref: client.get_farm_ref(&farm_name).unwrap(),
+            pool_router_id: pool.router_program_id,
+            pool_id: match pool.route {
+                PoolRoute::Raydium { amm_id, .. } => amm_id,
+                PoolRoute::Saber { swap_account, .. } => swap_account,
+                PoolRoute::Orca { amm_id, .. } => amm_id,
+            },
+            pool_ref: client.get_pool_ref(&pool.name).unwrap(),
+            farm_router_id: farm.router_program_id,
+            farm_id: match farm.route {
+                FarmRoute::Raydium { farm_id, .. } => farm_id,
+                FarmRoute::Saber { quarry, .. } => quarry,
+                FarmRoute::Orca { farm_id, .. } => farm_id,
+            },
+            farm_ref: client.get_farm_ref(&farm.name).unwrap(),
             lp_token_custody: Pubkey::find_program_address(
                 &[b"lp_token_custody", vault_name.as_bytes()],
                 vault_address,
@@ -297,7 +394,7 @@ pub fn generate_sbr_stc_vault(
         tags: vec!["vt-token".to_string()],
         extra: HashMap::<String, Value>::default(),
     };
-    println!("{}", to_pretty_json(&token).unwrap());
+    eprintln!("{},", to_pretty_json(&token).unwrap());
 }
 
 pub fn generate(
@@ -335,6 +432,13 @@ pub fn generate(
                 panic!("Unexpected Vault name: {}", param1);
             }
         }
+        StorageType::Fund => generate_fund(
+            client,
+            config,
+            &Pubkey::from_str(object).unwrap(),
+            param1,
+            param2,
+        ),
         _ => {
             panic!("Target is not supported: {}", target);
         }

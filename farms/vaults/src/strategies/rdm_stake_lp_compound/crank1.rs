@@ -1,9 +1,10 @@
 //! Crank step 1 instruction handler
 
 use {
-    crate::{clock::check_min_crank_interval, strategies::common, vault_info::VaultInfo},
+    crate::{strategies::common, vault_info::VaultInfo},
     solana_farm_sdk::{
         id::zero,
+        math,
         program::{account, pda, protocol::raydium},
         vault::Vault,
     },
@@ -31,8 +32,8 @@ pub fn crank1(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
         farm_id,
         farm_authority,
         farm_lp_token_account,
-        farm_reward_token_a_account,
-        farm_reward_token_b_account,
+        farm_first_reward_token_account,
+        farm_second_reward_token_account,
         clock_program
         ] = accounts
     {
@@ -49,10 +50,12 @@ pub fn crank1(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
             token_a_reward_custody,
             token_b_reward_custody,
             vault_stake_info,
+            None,
+            Some(farm_id.key),
             false,
         )?;
 
-        let dual_rewards = *farm_reward_token_b_account.key != zero::id();
+        let dual_rewards = *farm_second_reward_token_account.key != zero::id();
 
         if Some(*fees_account_a.key) != vault.fees_account_a
             || (dual_rewards && Some(*fees_account_b.key) != vault.fees_account_b)
@@ -62,7 +65,7 @@ pub fn crank1(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
         }
 
         let mut vault_info = VaultInfo::new(vault_info_account);
-        check_min_crank_interval(&vault_info)?;
+        common::check_min_crank_interval(&vault_info)?;
 
         // harvest
         let seeds: &[&[&[u8]]] = &[&[
@@ -89,8 +92,8 @@ pub fn crank1(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
                 token_b_reward_custody.clone(),
                 farm_program.clone(),
                 farm_lp_token_account.clone(),
-                farm_reward_token_a_account.clone(),
-                farm_reward_token_b_account.clone(),
+                farm_first_reward_token_account.clone(),
+                farm_second_reward_token_account.clone(),
                 clock_program.clone(),
                 spl_token_program.clone(),
                 farm_id.clone(),
@@ -120,8 +123,9 @@ pub fn crank1(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
             msg!("Error: Invalid fee. fee: {}", fee);
             return Err(ProgramError::Custom(260));
         }
-        let fees_a = account::to_token_amount(token_a_rewards as f64 * fee, 0)?;
-        let fees_b = account::to_token_amount(token_b_rewards as f64 * fee, 0)?;
+        let fees_a = math::checked_as_u64(token_a_rewards as f64 * fee)?;
+        let fees_b = math::checked_as_u64(token_b_rewards as f64 * fee)?;
+
         msg!(
             "Apply fees. fee: {}, fees_a: {}, fees_b: {}",
             fee,

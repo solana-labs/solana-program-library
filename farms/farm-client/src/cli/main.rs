@@ -50,15 +50,34 @@ fn main() {
             let target = config::get_target(subcommand_matches);
             printer::list_all(&client, &config, &target);
         }
+        ("protocols", Some(_subcommand_matches)) => {
+            let protocols = client.get_protocols().unwrap();
+            for protocol in protocols {
+                println!("{}", protocol);
+            }
+        }
         ("pool-price", Some(subcommand_matches)) => {
             let pools = config::get_vec_str_val(subcommand_matches, "pool_name");
             for pool in pools {
                 println!("{} price: {}", pool, client.get_pool_price(&pool).unwrap());
             }
         }
+        ("oracle-price", Some(subcommand_matches)) => {
+            let symbol = config::get_str_val(subcommand_matches, "symbol");
+            let max_price_age_sec =
+                config::get_integer_val(subcommand_matches, "max_price_age_sec");
+            let max_price_error = config::get_floating_val(subcommand_matches, "max_price_error");
+            println!(
+                "{} price: {}",
+                symbol,
+                client
+                    .get_oracle_price(&symbol, max_price_age_sec, max_price_error)
+                    .unwrap()
+            );
+        }
         ("transfer", Some(subcommand_matches)) => {
             let destination = config::get_pubkey_val(subcommand_matches, "wallet");
-            let amount = config::get_amount_val(subcommand_matches, "amount");
+            let amount = config::get_floating_val(subcommand_matches, "amount");
             println!(
                 "Done: {}",
                 client
@@ -69,11 +88,33 @@ fn main() {
         ("token-transfer", Some(subcommand_matches)) => {
             let token_name = config::get_str_val(subcommand_matches, "token_name");
             let destination = config::get_pubkey_val(subcommand_matches, "wallet");
-            let amount = config::get_amount_val(subcommand_matches, "amount");
+            let amount = config::get_floating_val(subcommand_matches, "amount");
             println!(
                 "Done: {}",
                 client
                     .token_transfer(config.keypair.as_ref(), &token_name, &destination, amount)
+                    .unwrap()
+            );
+        }
+        ("wrap-sol", Some(subcommand_matches)) => {
+            let amount = config::get_floating_val(subcommand_matches, "amount");
+            println!(
+                "Done: {}",
+                client.wrap_sol(config.keypair.as_ref(), amount).unwrap()
+            );
+        }
+        ("unwrap-sol", Some(_subcommand_matches)) => {
+            println!(
+                "Done: {}",
+                client.unwrap_sol(config.keypair.as_ref()).unwrap()
+            );
+        }
+        ("sync-token-balance", Some(subcommand_matches)) => {
+            let token_name = config::get_str_val(subcommand_matches, "token_name");
+            println!(
+                "Done: {}",
+                client
+                    .sync_token_balance(config.keypair.as_ref(), &token_name)
                     .unwrap()
             );
         }
@@ -86,6 +127,50 @@ fn main() {
                     client
                         .get_associated_token_address(&wallet, &token)
                         .unwrap()
+                );
+            }
+        }
+        ("token-data", Some(subcommand_matches)) => {
+            let tokens = config::get_vec_str_val(subcommand_matches, "token_name");
+            for token in tokens {
+                println!(
+                    "{} data:\n{:#?}",
+                    token,
+                    client.get_token_account_data(&wallet, &token).unwrap()
+                );
+            }
+        }
+        ("token-create", Some(subcommand_matches)) => {
+            let tokens = config::get_vec_str_val(subcommand_matches, "token_name");
+            for token in tokens {
+                println!(
+                    "{} created: {}",
+                    token,
+                    client
+                        .get_or_create_token_account(config.keypair.as_ref(), &token)
+                        .unwrap()
+                );
+            }
+        }
+        ("token-close", Some(subcommand_matches)) => {
+            let tokens = config::get_vec_str_val(subcommand_matches, "token_name");
+            for token in tokens {
+                println!(
+                    "{} closed: {}",
+                    token,
+                    client
+                        .close_token_account(config.keypair.as_ref(), &token)
+                        .unwrap()
+                );
+            }
+        }
+        ("token-supply", Some(subcommand_matches)) => {
+            let tokens = config::get_vec_str_val(subcommand_matches, "token_name");
+            for token in tokens {
+                println!(
+                    "{} supply: {}",
+                    token,
+                    client.get_token_supply(&token).unwrap()
                 );
             }
         }
@@ -129,18 +214,6 @@ fn main() {
                 }
             }
         }
-        ("token-create", Some(subcommand_matches)) => {
-            let tokens = config::get_vec_str_val(subcommand_matches, "token_name");
-            for token in tokens {
-                println!(
-                    "{} address: {}",
-                    token,
-                    client
-                        .get_or_create_token_account(config.keypair.as_ref(), &token)
-                        .unwrap()
-                );
-            }
-        }
         ("vault-info", Some(subcommand_matches)) => {
             let object = config::get_str_val(subcommand_matches, "vault_name");
             let vault = client.get_vault(&object).unwrap();
@@ -154,6 +227,80 @@ fn main() {
                 .unwrap();
             let user_info = client.get_vault_user_info(&wallet, &object).unwrap();
             printer::print_object(&config, &account, &user_info);
+        }
+        ("fund-info", Some(subcommand_matches)) => {
+            let object = config::get_str_val(subcommand_matches, "fund_name");
+            let fund = client.get_fund(&object).unwrap();
+            let fund_info = client.get_fund_info(&object).unwrap();
+            printer::print_object(&config, &fund.info_account, &fund_info);
+        }
+        ("fund-user-info", Some(subcommand_matches)) => {
+            let object = config::get_str_val(subcommand_matches, "fund_name");
+            let token = config::get_str_val(subcommand_matches, "token_name");
+            let account = client
+                .get_fund_user_info_account(&wallet, &object, &token)
+                .unwrap();
+            let user_info = client.get_fund_user_info(&wallet, &object, &token).unwrap();
+            printer::print_object(&config, &account, &user_info);
+        }
+        ("fund-assets", Some(subcommand_matches)) => {
+            let object = config::get_str_val(subcommand_matches, "fund_name");
+            let asset_type = config::get_str_val_raw(subcommand_matches, "asset_type")
+                .parse()
+                .unwrap();
+            let account = client.get_fund_assets_account(&object, asset_type).unwrap();
+            let fund_assets = client.get_fund_assets(&object, asset_type).unwrap();
+            printer::print_object(&config, &account, &fund_assets);
+        }
+        ("fund-custody", Some(subcommand_matches)) => {
+            let object = config::get_str_val(subcommand_matches, "fund_name");
+            let token = config::get_str_val(subcommand_matches, "token_name");
+            let custody_type = config::get_str_val_raw(subcommand_matches, "custody_type")
+                .parse()
+                .unwrap();
+            let account = client
+                .get_fund_custody_account(&object, &token, custody_type)
+                .unwrap();
+            let fund_custody = client
+                .get_fund_custody_with_balance(&object, &token, custody_type)
+                .unwrap();
+            printer::print_object(&config, &account, &fund_custody);
+        }
+        ("fund-custodies", Some(subcommand_matches)) => {
+            let object = config::get_str_val(subcommand_matches, "fund_name");
+            let custodies = client.get_fund_custodies_with_balance(&object).unwrap();
+            printer::print_objects(&config, &custodies);
+        }
+        ("fund-vault", Some(subcommand_matches)) => {
+            let object = config::get_str_val(subcommand_matches, "fund_name");
+            let vault = config::get_str_val(subcommand_matches, "vault_name");
+            let vault_type = config::get_str_val_raw(subcommand_matches, "vault_type")
+                .parse()
+                .unwrap();
+            let account = client
+                .get_fund_vault_account(&object, &vault, vault_type)
+                .unwrap();
+            let fund_vault = client.get_fund_vault(&object, &vault, vault_type).unwrap();
+            printer::print_object(&config, &account, &fund_vault);
+        }
+        ("fund-vaults", Some(subcommand_matches)) => {
+            let object = config::get_str_val(subcommand_matches, "fund_name");
+            let vaults = client.get_fund_vaults(&object).unwrap();
+            printer::print_objects(&config, &vaults);
+        }
+        ("find-funds", Some(subcommand_matches)) => {
+            let object = config::get_str_val(subcommand_matches, "fund_name");
+            let vault_name_pattern = config::get_str_val(subcommand_matches, "vault_name_pattern");
+            match client.find_funds(&object, &vault_name_pattern) {
+                Ok(pools) => {
+                    for pool in pools {
+                        println!("{}", pool.name);
+                    }
+                }
+                Err(e) => {
+                    println!("{}", e);
+                }
+            }
         }
         ("find-pools", Some(subcommand_matches)) => {
             let protocol = config::get_str_val(subcommand_matches, "protocol");
@@ -210,12 +357,25 @@ fn main() {
                 }
             }
         }
+        ("find-vaults-with-lp", Some(subcommand_matches)) => {
+            let vt_token = config::get_str_val(subcommand_matches, "token_name");
+            match client.find_vaults_with_vt(&vt_token) {
+                Ok(vaults) => {
+                    for vault in vaults {
+                        println!("{}", vault.name);
+                    }
+                }
+                Err(e) => {
+                    println!("{}", e);
+                }
+            }
+        }
         ("swap", Some(subcommand_matches)) => {
             let protocol = config::get_str_val(subcommand_matches, "protocol");
             let token_from = config::get_str_val(subcommand_matches, "token_name");
             let token_to = config::get_str_val(subcommand_matches, "token_name2");
-            let amount_in = config::get_amount_val(subcommand_matches, "amount");
-            let min_amount_out = config::get_amount_val(subcommand_matches, "amount2");
+            let amount_in = config::get_floating_val(subcommand_matches, "amount");
+            let min_amount_out = config::get_floating_val(subcommand_matches, "amount2");
             println!(
                 "Done: {}",
                 client
@@ -232,8 +392,8 @@ fn main() {
         }
         ("deposit-pool", Some(subcommand_matches)) => {
             let pool_name = config::get_str_val(subcommand_matches, "pool_name");
-            let token_a_amount = config::get_amount_val(subcommand_matches, "amount");
-            let token_b_amount = config::get_amount_val(subcommand_matches, "amount2");
+            let token_a_amount = config::get_floating_val(subcommand_matches, "amount");
+            let token_b_amount = config::get_floating_val(subcommand_matches, "amount2");
             println!(
                 "Done: {}",
                 client
@@ -248,7 +408,7 @@ fn main() {
         }
         ("withdraw-pool", Some(subcommand_matches)) => {
             let pool_name = config::get_str_val(subcommand_matches, "pool_name");
-            let amount = config::get_amount_val(subcommand_matches, "amount");
+            let amount = config::get_floating_val(subcommand_matches, "amount");
             println!(
                 "Done: {}",
                 client
@@ -258,7 +418,7 @@ fn main() {
         }
         ("stake", Some(subcommand_matches)) => {
             let farm_name = config::get_str_val(subcommand_matches, "farm_name");
-            let amount = config::get_amount_val(subcommand_matches, "amount");
+            let amount = config::get_floating_val(subcommand_matches, "amount");
             println!(
                 "Done: {}",
                 client
@@ -275,7 +435,7 @@ fn main() {
         }
         ("unstake", Some(subcommand_matches)) => {
             let farm_name = config::get_str_val(subcommand_matches, "farm_name");
-            let amount = config::get_amount_val(subcommand_matches, "amount");
+            let amount = config::get_floating_val(subcommand_matches, "amount");
             println!(
                 "Done: {}",
                 client
@@ -285,8 +445,8 @@ fn main() {
         }
         ("deposit-vault", Some(subcommand_matches)) => {
             let vault_name = config::get_str_val(subcommand_matches, "vault_name");
-            let token_a_amount = config::get_amount_val(subcommand_matches, "amount");
-            let token_b_amount = config::get_amount_val(subcommand_matches, "amount2");
+            let token_a_amount = config::get_floating_val(subcommand_matches, "amount");
+            let token_b_amount = config::get_floating_val(subcommand_matches, "amount2");
             println!(
                 "Done: {}",
                 client
@@ -301,7 +461,7 @@ fn main() {
         }
         ("deposit-vault-locked", Some(subcommand_matches)) => {
             let vault_name = config::get_str_val(subcommand_matches, "vault_name");
-            let amount = config::get_amount_val(subcommand_matches, "amount");
+            let amount = config::get_floating_val(subcommand_matches, "amount");
             println!(
                 "Done: {}",
                 client
@@ -311,7 +471,7 @@ fn main() {
         }
         ("withdraw-vault", Some(subcommand_matches)) => {
             let vault_name = config::get_str_val(subcommand_matches, "vault_name");
-            let amount = config::get_amount_val(subcommand_matches, "amount");
+            let amount = config::get_floating_val(subcommand_matches, "amount");
             println!(
                 "Done: {}",
                 client
@@ -321,11 +481,125 @@ fn main() {
         }
         ("withdraw-vault-unlocked", Some(subcommand_matches)) => {
             let vault_name = config::get_str_val(subcommand_matches, "vault_name");
-            let amount = config::get_amount_val(subcommand_matches, "amount");
+            let amount = config::get_floating_val(subcommand_matches, "amount");
             println!(
                 "Done: {}",
                 client
                     .remove_unlocked_liquidity_vault(config.keypair.as_ref(), &vault_name, amount)
+                    .unwrap()
+            );
+        }
+        ("crank-vault", Some(subcommand_matches)) => {
+            let vault_name = config::get_str_val(subcommand_matches, "vault_name");
+            let step = config::get_integer_val(subcommand_matches, "step");
+            println!(
+                "Done: {}",
+                client
+                    .crank_vault(config.keypair.as_ref(), &vault_name, step)
+                    .unwrap()
+            );
+        }
+        ("crank-vaults", Some(subcommand_matches)) => {
+            let step = config::get_integer_val(subcommand_matches, "step");
+            println!(
+                "Done: {} vaults cranked",
+                client.crank_vaults(config.keypair.as_ref(), step).unwrap()
+            );
+        }
+        ("request-deposit-fund", Some(subcommand_matches)) => {
+            let fund_name = config::get_str_val(subcommand_matches, "fund_name");
+            let token = config::get_str_val(subcommand_matches, "token_name");
+            let amount = config::get_floating_val(subcommand_matches, "amount");
+            println!(
+                "Done: {}",
+                client
+                    .request_deposit_fund(config.keypair.as_ref(), &fund_name, &token, amount)
+                    .unwrap()
+            );
+        }
+        ("cancel-deposit-fund", Some(subcommand_matches)) => {
+            let fund_name = config::get_str_val(subcommand_matches, "fund_name");
+            let token = config::get_str_val(subcommand_matches, "token_name");
+            println!(
+                "Done: {}",
+                client
+                    .cancel_deposit_fund(config.keypair.as_ref(), &fund_name, &token)
+                    .unwrap()
+            );
+        }
+        ("request-withdrawal-fund", Some(subcommand_matches)) => {
+            let fund_name = config::get_str_val(subcommand_matches, "fund_name");
+            let token = config::get_str_val(subcommand_matches, "token_name");
+            let amount = config::get_floating_val(subcommand_matches, "amount");
+            println!(
+                "Done: {}",
+                client
+                    .request_withdrawal_fund(config.keypair.as_ref(), &fund_name, &token, amount)
+                    .unwrap()
+            );
+        }
+        ("cancel-withdrawal-fund", Some(subcommand_matches)) => {
+            let fund_name = config::get_str_val(subcommand_matches, "fund_name");
+            let token = config::get_str_val(subcommand_matches, "token_name");
+            println!(
+                "Done: {}",
+                client
+                    .cancel_withdrawal_fund(config.keypair.as_ref(), &fund_name, &token)
+                    .unwrap()
+            );
+        }
+        ("start-liquidation-fund", Some(subcommand_matches)) => {
+            let fund_name = config::get_str_val(subcommand_matches, "fund_name");
+            println!(
+                "Done: {}",
+                client
+                    .start_liquidation_fund(config.keypair.as_ref(), &fund_name)
+                    .unwrap()
+            );
+        }
+        ("update-fund-assets-with-custody", Some(subcommand_matches)) => {
+            let fund_name = config::get_str_val(subcommand_matches, "fund_name");
+            let custody_id = config::get_integer_val(subcommand_matches, "custody_id");
+            println!(
+                "Done: {}",
+                client
+                    .update_fund_assets_with_custody(
+                        config.keypair.as_ref(),
+                        &fund_name,
+                        custody_id as u32
+                    )
+                    .unwrap()
+            );
+        }
+        ("update-fund-assets-with-custodies", Some(subcommand_matches)) => {
+            let fund_name = config::get_str_val(subcommand_matches, "fund_name");
+            println!(
+                "Done: {} custodies processed",
+                client
+                    .update_fund_assets_with_custodies(config.keypair.as_ref(), &fund_name)
+                    .unwrap()
+            );
+        }
+        ("update-fund-assets-with-vault", Some(subcommand_matches)) => {
+            let fund_name = config::get_str_val(subcommand_matches, "fund_name");
+            let vault_id = config::get_integer_val(subcommand_matches, "vault_id");
+            println!(
+                "Done: {}",
+                client
+                    .update_fund_assets_with_vault(
+                        config.keypair.as_ref(),
+                        &fund_name,
+                        vault_id as u32
+                    )
+                    .unwrap()
+            );
+        }
+        ("update-fund-assets-with-vaults", Some(subcommand_matches)) => {
+            let fund_name = config::get_str_val(subcommand_matches, "fund_name");
+            println!(
+                "Done: {} vaults processed",
+                client
+                    .update_fund_assets_with_vaults(config.keypair.as_ref(), &fund_name)
                     .unwrap()
             );
         }
@@ -375,7 +649,7 @@ fn main() {
                 );
             }
             ("tokens-deposit", Some(subcommand_matches)) => {
-                let amount = config::get_amount_val(subcommand_matches, "amount");
+                let amount = config::get_floating_val(subcommand_matches, "amount");
                 println!(
                     "Done: {}",
                     client
@@ -612,7 +886,7 @@ fn main() {
                     get_instruction_args(subcommand_matches);
                 let token_name = config::get_str_val(subcommand_matches, "token_name");
                 let destination = config::get_pubkey_val(subcommand_matches, "wallet");
-                let amount = config::get_amount_val(subcommand_matches, "amount");
+                let amount = config::get_floating_val(subcommand_matches, "amount");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client
                     .new_instruction_token_transfer(
@@ -639,7 +913,7 @@ fn main() {
             ("instruction-verify-token-transfer", Some(subcommand_matches)) => {
                 let token_name = config::get_str_val(subcommand_matches, "token_name");
                 let destination = config::get_pubkey_val(subcommand_matches, "wallet");
-                let amount = config::get_amount_val(subcommand_matches, "amount");
+                let amount = config::get_floating_val(subcommand_matches, "amount");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client
                     .new_instruction_token_transfer(
@@ -658,8 +932,8 @@ fn main() {
                 let protocol = config::get_str_val(subcommand_matches, "protocol");
                 let token_from = config::get_str_val(subcommand_matches, "token_name");
                 let token_to = config::get_str_val(subcommand_matches, "token_name2");
-                let amount_in = config::get_amount_val(subcommand_matches, "amount");
-                let min_amount_out = config::get_amount_val(subcommand_matches, "amount2");
+                let amount_in = config::get_floating_val(subcommand_matches, "amount");
+                let min_amount_out = config::get_floating_val(subcommand_matches, "amount2");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client
                     .new_instruction_swap(
@@ -689,8 +963,8 @@ fn main() {
                 let protocol = config::get_str_val(subcommand_matches, "protocol");
                 let token_from = config::get_str_val(subcommand_matches, "token_name");
                 let token_to = config::get_str_val(subcommand_matches, "token_name2");
-                let amount_in = config::get_amount_val(subcommand_matches, "amount");
-                let min_amount_out = config::get_amount_val(subcommand_matches, "amount2");
+                let amount_in = config::get_floating_val(subcommand_matches, "amount");
+                let min_amount_out = config::get_floating_val(subcommand_matches, "amount2");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client
                     .new_instruction_swap(
@@ -709,8 +983,8 @@ fn main() {
                 let (governance_name, proposal_index, instruction_index) =
                     get_instruction_args(subcommand_matches);
                 let pool_name = config::get_str_val(subcommand_matches, "pool_name");
-                let token_a_amount = config::get_amount_val(subcommand_matches, "amount");
-                let token_b_amount = config::get_amount_val(subcommand_matches, "amount2");
+                let token_a_amount = config::get_floating_val(subcommand_matches, "amount");
+                let token_b_amount = config::get_floating_val(subcommand_matches, "amount2");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client
                     .new_instruction_add_liquidity_pool(
@@ -736,8 +1010,8 @@ fn main() {
             }
             ("instruction-verify-deposit-pool", Some(subcommand_matches)) => {
                 let pool_name = config::get_str_val(subcommand_matches, "pool_name");
-                let token_a_amount = config::get_amount_val(subcommand_matches, "amount");
-                let token_b_amount = config::get_amount_val(subcommand_matches, "amount2");
+                let token_a_amount = config::get_floating_val(subcommand_matches, "amount");
+                let token_b_amount = config::get_floating_val(subcommand_matches, "amount2");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client
                     .new_instruction_add_liquidity_pool(
@@ -754,7 +1028,7 @@ fn main() {
                 let (governance_name, proposal_index, instruction_index) =
                     get_instruction_args(subcommand_matches);
                 let pool_name = config::get_str_val(subcommand_matches, "pool_name");
-                let amount = config::get_amount_val(subcommand_matches, "amount");
+                let amount = config::get_floating_val(subcommand_matches, "amount");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client
                     .new_instruction_remove_liquidity_pool(&custody_authority, &pool_name, amount)
@@ -775,7 +1049,7 @@ fn main() {
             }
             ("instruction-verify-withdraw-pool", Some(subcommand_matches)) => {
                 let pool_name = config::get_str_val(subcommand_matches, "pool_name");
-                let amount = config::get_amount_val(subcommand_matches, "amount");
+                let amount = config::get_floating_val(subcommand_matches, "amount");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client
                     .new_instruction_remove_liquidity_pool(&custody_authority, &pool_name, amount)
@@ -787,7 +1061,7 @@ fn main() {
                 let (governance_name, proposal_index, instruction_index) =
                     get_instruction_args(subcommand_matches);
                 let farm_name = config::get_str_val(subcommand_matches, "farm_name");
-                let amount = config::get_amount_val(subcommand_matches, "amount");
+                let amount = config::get_floating_val(subcommand_matches, "amount");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client
                     .new_instruction_stake(&custody_authority, &farm_name, amount)
@@ -808,7 +1082,7 @@ fn main() {
             }
             ("instruction-verify-stake", Some(subcommand_matches)) => {
                 let farm_name = config::get_str_val(subcommand_matches, "farm_name");
-                let amount = config::get_amount_val(subcommand_matches, "amount");
+                let amount = config::get_floating_val(subcommand_matches, "amount");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client
                     .new_instruction_stake(&custody_authority, &farm_name, amount)
@@ -851,7 +1125,7 @@ fn main() {
                 let (governance_name, proposal_index, instruction_index) =
                     get_instruction_args(subcommand_matches);
                 let farm_name = config::get_str_val(subcommand_matches, "farm_name");
-                let amount = config::get_amount_val(subcommand_matches, "amount");
+                let amount = config::get_floating_val(subcommand_matches, "amount");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client
                     .new_instruction_unstake(&custody_authority, &farm_name, amount)
@@ -872,7 +1146,7 @@ fn main() {
             }
             ("instruction-verify-unstake", Some(subcommand_matches)) => {
                 let farm_name = config::get_str_val(subcommand_matches, "farm_name");
-                let amount = config::get_amount_val(subcommand_matches, "amount");
+                let amount = config::get_floating_val(subcommand_matches, "amount");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client
                     .new_instruction_unstake(&custody_authority, &farm_name, amount)
@@ -884,8 +1158,8 @@ fn main() {
                 let (governance_name, proposal_index, instruction_index) =
                     get_instruction_args(subcommand_matches);
                 let vault_name = config::get_str_val(subcommand_matches, "vault_name");
-                let token_a_amount = config::get_amount_val(subcommand_matches, "amount");
-                let token_b_amount = config::get_amount_val(subcommand_matches, "amount2");
+                let token_a_amount = config::get_floating_val(subcommand_matches, "amount");
+                let token_b_amount = config::get_floating_val(subcommand_matches, "amount2");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client
                     .new_instruction_add_liquidity_vault(
@@ -911,8 +1185,8 @@ fn main() {
             }
             ("instruction-verify-deposit-vault", Some(subcommand_matches)) => {
                 let vault_name = config::get_str_val(subcommand_matches, "vault_name");
-                let token_a_amount = config::get_amount_val(subcommand_matches, "amount");
-                let token_b_amount = config::get_amount_val(subcommand_matches, "amount2");
+                let token_a_amount = config::get_floating_val(subcommand_matches, "amount");
+                let token_b_amount = config::get_floating_val(subcommand_matches, "amount2");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client
                     .new_instruction_add_liquidity_vault(
@@ -929,7 +1203,7 @@ fn main() {
                 let (governance_name, proposal_index, instruction_index) =
                     get_instruction_args(subcommand_matches);
                 let vault_name = config::get_str_val(subcommand_matches, "vault_name");
-                let amount = config::get_amount_val(subcommand_matches, "amount");
+                let amount = config::get_floating_val(subcommand_matches, "amount");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client
                     .new_instruction_remove_liquidity_vault(&custody_authority, &vault_name, amount)
@@ -950,7 +1224,7 @@ fn main() {
             }
             ("instruction-verify-withdraw-vault", Some(subcommand_matches)) => {
                 let vault_name = config::get_str_val(subcommand_matches, "vault_name");
-                let amount = config::get_amount_val(subcommand_matches, "amount");
+                let amount = config::get_floating_val(subcommand_matches, "amount");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client
                     .new_instruction_remove_liquidity_vault(&custody_authority, &vault_name, amount)
@@ -967,7 +1241,7 @@ fn main() {
                     "fee_token",
                 ) as u8)
                 .unwrap();
-                let amount = config::get_amount_val(subcommand_matches, "amount");
+                let amount = config::get_floating_val(subcommand_matches, "amount");
                 let receiver = config::get_pubkey_val(subcommand_matches, "receiver");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client
@@ -1000,7 +1274,7 @@ fn main() {
                     "fee_token",
                 ) as u8)
                 .unwrap();
-                let amount = config::get_amount_val(subcommand_matches, "amount");
+                let amount = config::get_floating_val(subcommand_matches, "amount");
                 let receiver = config::get_pubkey_val(subcommand_matches, "receiver");
                 let custody_authority = client.governance_get_address(DAO_CUSTODY_NAME).unwrap();
                 let instruction = client

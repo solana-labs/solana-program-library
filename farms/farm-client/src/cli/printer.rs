@@ -15,6 +15,13 @@ pub fn print(client: &FarmClient, config: &Config, target: &str, object: &str) {
         "program" => {
             println!("{}: {}", object, client.get_program_id(object).unwrap());
         }
+        "fund" => {
+            print_object(
+                config,
+                &client.get_fund_ref(&object.to_uppercase()).unwrap(),
+                &client.get_fund(&object.to_uppercase()).unwrap(),
+            );
+        }
         "vault" => {
             print_object(
                 config,
@@ -44,7 +51,9 @@ pub fn print(client: &FarmClient, config: &Config, target: &str, object: &str) {
             );
         }
         _ => {
-            error!("Unrecognized target. Must be one of: token, pool, farm, vault, or program.");
+            error!(
+                "Unrecognized target. Must be one of: token, pool, farm, vault, fund or program."
+            );
         }
     }
 }
@@ -54,6 +63,9 @@ pub fn print_with_ref(client: &FarmClient, config: &Config, target: &str, object
     match target {
         "program" => {
             println!("{}: {}", client.get_program_name(&ref_key).unwrap(), object);
+        }
+        "fund" => {
+            print_object(config, &ref_key, &client.get_fund_by_ref(&ref_key).unwrap());
         }
         "vault" => {
             print_object(
@@ -76,7 +88,9 @@ pub fn print_with_ref(client: &FarmClient, config: &Config, target: &str, object
             );
         }
         _ => {
-            error!("Unrecognized target. Must be one of: token, pool, farm, vault, or program.");
+            error!(
+                "Unrecognized target. Must be one of: token, pool, farm, vault, fund or program."
+            );
         }
     }
 }
@@ -89,6 +103,12 @@ pub fn print_all(client: &FarmClient, config: &Config, target: &str) {
             let storage = client.get_program_ids().unwrap();
             for (name, key) in storage.iter() {
                 println!("{}: {}", name, key);
+            }
+        }
+        "fund" => {
+            let storage = client.get_funds().unwrap();
+            for (name, key) in storage.iter() {
+                print_object(config, &client.get_fund_ref(name).unwrap(), key);
             }
         }
         "vault" => {
@@ -133,6 +153,12 @@ pub fn list_all(client: &FarmClient, _config: &Config, target: &str) {
                 println!("{}: {}", name, key);
             }
         }
+        "fund" => {
+            let storage = client.get_fund_refs().unwrap();
+            for (name, key) in storage.iter() {
+                println!("{}: {}", name, key);
+            }
+        }
         "vault" => {
             let storage = client.get_vault_refs().unwrap();
             for (name, key) in storage.iter() {
@@ -158,7 +184,9 @@ pub fn list_all(client: &FarmClient, _config: &Config, target: &str) {
             }
         }
         _ => {
-            error!("Unrecognized target. Must be one of: token, pool, farm, vault, or program.");
+            error!(
+                "Unrecognized target. Must be one of: token, pool, farm, vault, fund or program."
+            );
         }
     }
 
@@ -173,5 +201,18 @@ where
         println!("{}: {}", key, object);
     } else {
         println!("{}: {}", key, to_pretty_json(object).unwrap());
+    }
+}
+
+pub fn print_objects<T>(config: &Config, objects: &[T])
+where
+    T: Sized + Serialize + std::fmt::Display,
+{
+    for object in objects {
+        if config.no_pretty_print {
+            println!("{}", object);
+        } else {
+            println!("{}", to_pretty_json(object).unwrap());
+        }
     }
 }

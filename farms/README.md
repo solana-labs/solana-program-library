@@ -8,13 +8,13 @@ It is powered by Solana blockchain to allow for frequent automatic compounding, 
 
 One of the distinct features of this platform is the On-chain Reference Database. Metadata for all objects: Tokens, Pools, Farms, Vaults, etc., is stored in the blockchain, so clients don't need any state or hard-coded data.
 
-Solana Yield Farming provides an unified interface to Vaults, regular AMM Pools, Farms, and basic operations on tokens and accounts. Currently, Raydium, Saber, and Orca protocols are supported, but others are under development.
+Solana Yield Farming provides an unified interface to Funds, Vaults, regular AMM Pools, Farms, and basic operations on tokens and accounts. Currently, Raydium, Saber, and Orca protocols are supported, but others are under development.
 
 This source code is an example that third parties can utilize to create and use their own version of a yield farming or aggregation service.
 
 ### Farm Client
 
-A Rust library that can be used by off-chain programs to interact with Routers, Vaults, perform admin operations, metadata queries, and some common operations with wallets and accounts.
+A Rust library that can be used by off-chain programs to interact with Routers, Funds, Vaults, perform admin operations, metadata queries, and some common operations with wallets and accounts.
 
 The Client's methods accept human-readable names (tokens, polls, etc.) and UI (decimal) amounts, so you can simply call:
 
@@ -83,11 +83,13 @@ A Rust library with a common code that is used by all Yield Farming tools and co
 
 ### Farm Ctrl
 
-A command-line tool for on-chain data management (init/upload/delete/lookup) and vaults control (init/enable/disable/set parameters etc). It can also generate metadata for Vaults and Vault tokens. Metadata for external protocols, like Raydium, needs to be extracted from relative sources. While such tools are not included, you can find target format examples in the `farm-ctrl/src/metadata` folder.
+A command-line tool for on-chain data management (init/upload/delete/lookup), funds, and vaults control (init/enable/disable/set parameters etc). It can also generate metadata for Funds, Vaults, and their liquidity tokens. Metadata for external protocols, like Raydium, needs to be extracted from relative sources. While such tools are not included, you can find target format examples in the `farm-ctrl/src/metadata` folder.
 
 ### Vaults
 
-A Vault contract implementation. Individual yield farming strategies are stored under the `strategies` sub-folder. `RDM-STAKE-LP-COMPOUND` strategy works as follows:
+Vaults are on-chain programs that implement various yield farming strategies. Under the hood, they interact with underlying liquidity pools and other Defi protocols to generate an extra yield for users that wouldn't be possible with passive investments. Individual yield farming strategies are stored under the `strategies` sub-folder.
+
+`RDM-STAKE-LP-COMPOUND` strategy works as follows:
 
 - User deposits tokens into a Vault with add_liquidity transaction. For example, Vault `RDM.STC.RAY-SRM` takes RAY and SRM tokens. To get a list of available Vaults, one can use the `client.get_vaults()` function or `api/v1/vaults` RPC call. Vault tokens are minted back to the user to represent their share in the Vault.
 - Vault sends user tokens to the corresponding Raydium Pool, receives LP tokens, and stakes them to the Raydium Farm.
@@ -103,6 +105,14 @@ An on-chain program that handles the creation, updates, and deletion of all meta
 ### Protocol Routers (Raydium, Saber, and Orca)
 
 An on-chain programs that demonstrates interaction with Raydium, Saber, and Orca pools and farms. They performs in and out amounts calculations and safety checks for tokens spent and received. They don't hold user funds but validate, wrap, and send instructions to the AMMs and farms.
+
+### Fund
+
+A Fund program implements a decentralized, non-custodial, and trustless capital management protocol. It is built on top of supported liquidity protocols, including Farm Vaults. Fund Managers are responsible for selecting a portfolio of assets that their Fund will hold. These assets can be in various forms: individual tokens, liquidity invested into different pools, staked into farms, or deposited into Farm Vaults.
+
+Fund Managers are allowed to perform a specific set of operations with tokens: swap, add/remove liquidity, stake/unstake/harvest, etc., and only in approved pools, while all other actions are forbidden. This is enforced by the Fund program and allows investors to earn passive returns while maintaining custody of their assets (by holding Fund tokens that are minted upon each deposit and can be withdrawn for underlying assets).
+
+There could be any number of Funds, each implementing its assets management strategy, and because of the blockchain nature, historical performance and current allocations are always transparent, so investors can make an informed decision on which Funds they want to invest in.
 
 ## Build
 
@@ -144,10 +154,9 @@ cd farms/farm-sdk
 cargo test
 ```
 
-Integration tests are located in the `farm-client/tests` directory and can be started as following:
+Integration tests are located in the `farm-client/tests` and `fund/tests` directories and can be started as following:
 
 ```sh
-cd farms/farm-client
 cargo test -- --nocapture --test-threads=1 --ignored
 ```
 
@@ -158,11 +167,12 @@ Bear in mind that integration tests execute transactions, and it will cost you s
 To deploy on-chain programs, use the standard `solana program deploy`:
 
 ```sh
-solana program deploy --commitment finalized target/deploy/solana_farm_vaults.so
-solana program deploy --commitment finalized target/deploy/solana_farm_router_raydium.so
-solana program deploy --commitment finalized target/deploy/solana_farm_router_saber.so
-solana program deploy --commitment finalized target/deploy/solana_farm_router_orca.so
-solana program deploy --commitment finalized --upgrade-authority main_admin.json --program-id main_router.json target/deploy/solana_farm_router_main.so
+solana program deploy target/deploy/solana_farm_fund.so
+solana program deploy target/deploy/solana_farm_vaults.so
+solana program deploy target/deploy/solana_farm_router_raydium.so
+solana program deploy target/deploy/solana_farm_router_saber.so
+solana program deploy target/deploy/solana_farm_router_orca.so
+solana program deploy --upgrade-authority main_admin.json --program-id main_router.json target/deploy/solana_farm_router_main.so
 ```
 
 To start JSON RPC service:
@@ -217,6 +227,19 @@ And then upload it:
 ```sh
 solana-farm-ctrl --keypair main_admin.json load Token src/metadata/tokens/vault_tokens/vault_tokens.json
 solana-farm-ctrl --keypair main_admin.json load Vault src/metadata/vaults/stc_saber/vaults.json
+```
+
+To generate metadata for Funds run:
+
+```sh
+solana-farm-ctrl --keypair main_admin.json generate Fund [FUND_PROGRAM_ADDRESS] [FUND_NAME]
+```
+
+And then upload it:
+
+```sh
+solana-farm-ctrl --keypair main_admin.json load Token src/metadata/tokens/fund_tokens/fund_tokens.json
+solana-farm-ctrl --keypair main_admin.json load Fund src/metadata/fund/funds.json
 ```
 
 ## Governance

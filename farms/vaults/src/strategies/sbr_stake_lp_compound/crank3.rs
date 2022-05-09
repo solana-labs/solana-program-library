@@ -1,7 +1,7 @@
 //! Crank step 3 instruction handler
 
 use {
-    crate::{clock::check_min_crank_interval, vault_info::VaultInfo},
+    crate::{strategies::common, vault_info::VaultInfo},
     solana_farm_sdk::{
         id::zero,
         program::{
@@ -61,6 +61,10 @@ pub fn crank3(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
             ..
         } = vault.strategy
         {
+            if amm_id.key != &saber::saber_to_usdc_amm::id(){
+                msg!("Error: Invalid pool id");
+                return Err(ProgramError::InvalidArgument);
+            }
             if &usdc_token_custody_key != usdc_token_custody.key
                 || &wrapped_token_custody_key.or(Some(zero::id())).unwrap()
                     != wrapped_token_custody.key
@@ -75,7 +79,7 @@ pub fn crank3(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
         }
 
         let mut vault_info = VaultInfo::new(vault_info_account);
-        check_min_crank_interval(&vault_info)?;
+        common::check_min_crank_interval(&vault_info)?;
         vault_info.update_crank_time()?;
         vault_info.set_crank_step(3)?;
 

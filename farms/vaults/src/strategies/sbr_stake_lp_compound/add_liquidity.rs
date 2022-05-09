@@ -41,11 +41,19 @@ impl AddLiquidity for VaultInstruction {
             ] = accounts
         {
             // validate accounts
+            if !user_account.is_signer {
+                return Err(ProgramError::MissingRequiredSignature);
+            }
             if let VaultStrategy::StakeLpCompoundRewards {
+                pool_id: pool_id_key,
                 lp_token_custody: lp_token_custody_key,
                 ..
             } = vault.strategy
             {
+                if &pool_id_key != swap_account.key {
+                    msg!("Error: Invalid pool id");
+                    return Err(ProgramError::InvalidArgument);
+                }
                 if &lp_token_custody_key != lp_token_custody.key {
                     msg!("Error: Invalid custody accounts");
                     return Err(ProgramError::InvalidArgument);
@@ -125,7 +133,7 @@ impl AddLiquidity for VaultInstruction {
             user_info.add_lp_tokens_debt(lp_tokens_received)?;
 
             // update Vault stats
-            msg!("Update Vault stats",);
+            msg!("Update Vault stats");
             vault_info.add_liquidity(tokens_a_spent, tokens_b_spent)?;
 
             Ok(())

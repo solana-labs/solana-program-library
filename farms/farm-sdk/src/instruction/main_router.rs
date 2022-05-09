@@ -3,25 +3,51 @@
 use {
     crate::{
         farm::Farm,
+        fund::Fund,
         instruction::refdb::RefDbInstruction,
-        pack::{check_data_len, pack_array_string64, unpack_array_string64},
+        pack::{
+            check_data_len, pack_array_string64, pack_option_u32, unpack_array_string64,
+            unpack_option_u32,
+        },
         pool::Pool,
         string::ArrayString64,
         token::Token,
+        traits::Packed,
         vault::Vault,
     },
-    arrayref::{array_mut_ref, array_ref, mut_array_refs},
+    arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs},
     num_enum::TryFromPrimitive,
     solana_program::program_error::ProgramError,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MainInstruction {
+    /// Record Fund's metadata on-chain
+    ///
+    /// # Account references
+    ///   0. [SIGNER] Funding account, must be main router admin
+    ///   1. [WRITE] Fund's RefDB refdb_index PDA
+    ///   2. [WRITE] Fund's RefDB data PDA
+    ///   3. [] Sytem program
+    AddFund { fund: Fund },
+
+    /// Delete Fund's metadata
+    ///
+    /// # Account references
+    ///   0. [SIGNER] Funding account, must be main router admin
+    ///   1. [WRITE] Fund's RefDB refdb_index PDA
+    ///   2. [WRITE] Fund's RefDB data PDA
+    ///   3. [] Sytem program
+    RemoveFund {
+        name: ArrayString64,
+        refdb_index: Option<u32>,
+    },
+
     /// Record Vault's metadata on-chain
     ///
     /// # Account references
     ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Vault's RefDB index PDA
+    ///   1. [WRITE] Vault's RefDB refdb_index PDA
     ///   2. [WRITE] Vault's RefDB data PDA
     ///   3. [] Sytem program
     AddVault { vault: Vault },
@@ -30,16 +56,19 @@ pub enum MainInstruction {
     ///
     /// # Account references
     ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Vault's RefDB index PDA
+    ///   1. [WRITE] Vault's RefDB refdb_index PDA
     ///   2. [WRITE] Vault's RefDB data PDA
     ///   3. [] Sytem program
-    RemoveVault { name: ArrayString64 },
+    RemoveVault {
+        name: ArrayString64,
+        refdb_index: Option<u32>,
+    },
 
     /// Record Pool's metadata on-chain
     ///
     /// # Account references
     ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Pool's RefDB index PDA
+    ///   1. [WRITE] Pool's RefDB refdb_index PDA
     ///   2. [WRITE] Pool's RefDB data PDA
     ///   3. [] Sytem program
     AddPool { pool: Pool },
@@ -48,16 +77,19 @@ pub enum MainInstruction {
     ///
     /// # Account references
     ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Pool's RefDB index PDA
+    ///   1. [WRITE] Pool's RefDB refdb_index PDA
     ///   2. [WRITE] Pool's RefDB data PDA
     ///   3. [] Sytem program
-    RemovePool { name: ArrayString64 },
+    RemovePool {
+        name: ArrayString64,
+        refdb_index: Option<u32>,
+    },
 
     /// Record Farm's metadata on-chain
     ///
     /// # Account references
     ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Farm's RefDB index PDA
+    ///   1. [WRITE] Farm's RefDB refdb_index PDA
     ///   2. [WRITE] Farm's RefDB data PDA
     ///   3. [] Sytem program
     AddFarm { farm: Farm },
@@ -66,16 +98,19 @@ pub enum MainInstruction {
     ///
     /// # Account references
     ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Farm's RefDB index PDA
+    ///   1. [WRITE] Farm's RefDB refdb_index PDA
     ///   2. [WRITE] Farm's RefDB data PDA
     ///   3. [] Sytem program
-    RemoveFarm { name: ArrayString64 },
+    RemoveFarm {
+        name: ArrayString64,
+        refdb_index: Option<u32>,
+    },
 
     /// Record Token's metadata on-chain
     ///
     /// # Account references
     ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Token's RefDB index PDA
+    ///   1. [WRITE] Token's RefDB refdb_index PDA
     ///   2. [WRITE] Token's RefDB data PDA
     ///   3. [] Sytem program
     AddToken { token: Token },
@@ -84,10 +119,13 @@ pub enum MainInstruction {
     ///
     /// # Account references
     ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Token's RefDB index PDA
+    ///   1. [WRITE] Token's RefDB refdb_index PDA
     ///   2. [WRITE] Token's RefDB data PDA
     ///   3. [] Sytem program
-    RemoveToken { name: ArrayString64 },
+    RemoveToken {
+        name: ArrayString64,
+        refdb_index: Option<u32>,
+    },
 
     /// Perform generic RefDB instruction
     ///
@@ -99,6 +137,8 @@ pub enum MainInstruction {
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, TryFromPrimitive)]
 pub enum MainInstructionType {
+    AddFund,
+    RemoveFund,
     AddVault,
     RemoveVault,
     AddPool,
@@ -112,10 +152,11 @@ pub enum MainInstructionType {
 
 impl MainInstruction {
     pub const MAX_LEN: usize = MainInstruction::max(Vault::MAX_LEN + 1, Pool::MAX_LEN + 1);
-    pub const REMOVE_VAULT_LEN: usize = 65;
-    pub const REMOVE_POOL_LEN: usize = 65;
-    pub const REMOVE_FARM_LEN: usize = 65;
-    pub const REMOVE_TOKEN_LEN: usize = 65;
+    pub const REMOVE_FUND_LEN: usize = 70;
+    pub const REMOVE_VAULT_LEN: usize = 70;
+    pub const REMOVE_POOL_LEN: usize = 70;
+    pub const REMOVE_FARM_LEN: usize = 70;
+    pub const REMOVE_TOKEN_LEN: usize = 70;
 
     const fn max(a: usize, b: usize) -> usize {
         [a, b][(a < b) as usize]
@@ -124,14 +165,26 @@ impl MainInstruction {
     pub fn pack(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
         check_data_len(output, 1)?;
         match self {
+            Self::AddFund { fund } => self.pack_add_fund(output, fund),
+            Self::RemoveFund { name, refdb_index } => {
+                self.pack_remove_fund(output, name, refdb_index)
+            }
             Self::AddVault { vault } => self.pack_add_vault(output, vault),
-            Self::RemoveVault { name } => self.pack_remove_vault(output, name),
+            Self::RemoveVault { name, refdb_index } => {
+                self.pack_remove_vault(output, name, refdb_index)
+            }
             Self::AddPool { pool } => self.pack_add_pool(output, pool),
-            Self::RemovePool { name } => self.pack_remove_pool(output, name),
+            Self::RemovePool { name, refdb_index } => {
+                self.pack_remove_pool(output, name, refdb_index)
+            }
             Self::AddFarm { farm } => self.pack_add_farm(output, farm),
-            Self::RemoveFarm { name } => self.pack_remove_farm(output, name),
+            Self::RemoveFarm { name, refdb_index } => {
+                self.pack_remove_farm(output, name, refdb_index)
+            }
             Self::AddToken { token } => self.pack_add_token(output, token),
-            Self::RemoveToken { name } => self.pack_remove_token(output, name),
+            Self::RemoveToken { name, refdb_index } => {
+                self.pack_remove_token(output, name, refdb_index)
+            }
             Self::RefDbInstruction { instruction } => {
                 self.pack_refdb_instruction(output, instruction)
             }
@@ -152,6 +205,8 @@ impl MainInstruction {
         let instruction_type = MainInstructionType::try_from_primitive(input[0])
             .or(Err(ProgramError::InvalidInstructionData))?;
         match instruction_type {
+            MainInstructionType::AddFund => MainInstruction::unpack_add_fund(input),
+            MainInstructionType::RemoveFund => MainInstruction::unpack_remove_fund(input),
             MainInstructionType::AddVault => MainInstruction::unpack_add_vault(input),
             MainInstructionType::RemoveVault => MainInstruction::unpack_remove_vault(input),
             MainInstructionType::AddPool => MainInstruction::unpack_add_pool(input),
@@ -166,6 +221,32 @@ impl MainInstruction {
         }
     }
 
+    fn pack_add_fund(&self, output: &mut [u8], fund: &Fund) -> Result<usize, ProgramError> {
+        let packed = fund.pack(&mut output[1..])?;
+        let instruction_type_out = array_mut_ref![output, 0, 1];
+        instruction_type_out[0] = MainInstructionType::AddFund as u8;
+
+        Ok(packed + 1)
+    }
+
+    fn pack_remove_fund(
+        &self,
+        output: &mut [u8],
+        name: &ArrayString64,
+        refdb_index: &Option<u32>,
+    ) -> Result<usize, ProgramError> {
+        check_data_len(output, MainInstruction::REMOVE_FUND_LEN)?;
+
+        let output = array_mut_ref![output, 0, MainInstruction::REMOVE_FUND_LEN];
+        let (instruction_type_out, name_out, refdb_index_out) = mut_array_refs![output, 1, 64, 5];
+
+        instruction_type_out[0] = MainInstructionType::RemoveFund as u8;
+        pack_array_string64(name, name_out);
+        pack_option_u32(*refdb_index, refdb_index_out);
+
+        Ok(MainInstruction::REMOVE_FUND_LEN)
+    }
+
     fn pack_add_vault(&self, output: &mut [u8], vault: &Vault) -> Result<usize, ProgramError> {
         let packed = vault.pack(&mut output[1..])?;
         let instruction_type_out = array_mut_ref![output, 0, 1];
@@ -178,14 +259,16 @@ impl MainInstruction {
         &self,
         output: &mut [u8],
         name: &ArrayString64,
+        refdb_index: &Option<u32>,
     ) -> Result<usize, ProgramError> {
         check_data_len(output, MainInstruction::REMOVE_VAULT_LEN)?;
 
         let output = array_mut_ref![output, 0, MainInstruction::REMOVE_VAULT_LEN];
-        let (instruction_type_out, name_out) = mut_array_refs![output, 1, 64];
+        let (instruction_type_out, name_out, refdb_index_out) = mut_array_refs![output, 1, 64, 5];
 
         instruction_type_out[0] = MainInstructionType::RemoveVault as u8;
         pack_array_string64(name, name_out);
+        pack_option_u32(*refdb_index, refdb_index_out);
 
         Ok(MainInstruction::REMOVE_VAULT_LEN)
     }
@@ -202,14 +285,16 @@ impl MainInstruction {
         &self,
         output: &mut [u8],
         name: &ArrayString64,
+        refdb_index: &Option<u32>,
     ) -> Result<usize, ProgramError> {
         check_data_len(output, MainInstruction::REMOVE_POOL_LEN)?;
 
         let output = array_mut_ref![output, 0, MainInstruction::REMOVE_POOL_LEN];
-        let (instruction_type_out, name_out) = mut_array_refs![output, 1, 64];
+        let (instruction_type_out, name_out, refdb_index_out) = mut_array_refs![output, 1, 64, 5];
 
         instruction_type_out[0] = MainInstructionType::RemovePool as u8;
         pack_array_string64(name, name_out);
+        pack_option_u32(*refdb_index, refdb_index_out);
 
         Ok(MainInstruction::REMOVE_POOL_LEN)
     }
@@ -226,14 +311,16 @@ impl MainInstruction {
         &self,
         output: &mut [u8],
         name: &ArrayString64,
+        refdb_index: &Option<u32>,
     ) -> Result<usize, ProgramError> {
         check_data_len(output, MainInstruction::REMOVE_FARM_LEN)?;
 
         let output = array_mut_ref![output, 0, MainInstruction::REMOVE_FARM_LEN];
-        let (instruction_type_out, name_out) = mut_array_refs![output, 1, 64];
+        let (instruction_type_out, name_out, refdb_index_out) = mut_array_refs![output, 1, 64, 5];
 
         instruction_type_out[0] = MainInstructionType::RemoveFarm as u8;
         pack_array_string64(name, name_out);
+        pack_option_u32(*refdb_index, refdb_index_out);
 
         Ok(MainInstruction::REMOVE_FARM_LEN)
     }
@@ -250,14 +337,16 @@ impl MainInstruction {
         &self,
         output: &mut [u8],
         name: &ArrayString64,
+        refdb_index: &Option<u32>,
     ) -> Result<usize, ProgramError> {
         check_data_len(output, MainInstruction::REMOVE_TOKEN_LEN)?;
 
         let output = array_mut_ref![output, 0, MainInstruction::REMOVE_TOKEN_LEN];
-        let (instruction_type_out, name_out) = mut_array_refs![output, 1, 64];
+        let (instruction_type_out, name_out, refdb_index_out) = mut_array_refs![output, 1, 64, 5];
 
         instruction_type_out[0] = MainInstructionType::RemoveToken as u8;
         pack_array_string64(name, name_out);
+        pack_option_u32(*refdb_index, refdb_index_out);
 
         Ok(MainInstruction::REMOVE_TOKEN_LEN)
     }
@@ -274,6 +363,24 @@ impl MainInstruction {
         Ok(packed + 1)
     }
 
+    fn unpack_add_fund(input: &[u8]) -> Result<MainInstruction, ProgramError> {
+        let fund = Fund::unpack(&input[1..])?;
+        Ok(Self::AddFund { fund })
+    }
+
+    fn unpack_remove_fund(input: &[u8]) -> Result<MainInstruction, ProgramError> {
+        check_data_len(input, MainInstruction::REMOVE_FUND_LEN)?;
+
+        let input = array_ref![input, 1, MainInstruction::REMOVE_FUND_LEN - 1];
+        #[allow(clippy::ptr_offset_with_cast)]
+        let (name, refdb_index) = array_refs![input, 64, 5];
+
+        Ok(Self::RemoveFund {
+            name: unpack_array_string64(name)?,
+            refdb_index: unpack_option_u32(refdb_index)?,
+        })
+    }
+
     fn unpack_add_vault(input: &[u8]) -> Result<MainInstruction, ProgramError> {
         let vault = Vault::unpack(&input[1..])?;
         Ok(Self::AddVault { vault })
@@ -281,9 +388,14 @@ impl MainInstruction {
 
     fn unpack_remove_vault(input: &[u8]) -> Result<MainInstruction, ProgramError> {
         check_data_len(input, MainInstruction::REMOVE_VAULT_LEN)?;
+
         let input = array_ref![input, 1, MainInstruction::REMOVE_VAULT_LEN - 1];
+        #[allow(clippy::ptr_offset_with_cast)]
+        let (name, refdb_index) = array_refs![input, 64, 5];
+
         Ok(Self::RemoveVault {
-            name: unpack_array_string64(input)?,
+            name: unpack_array_string64(name)?,
+            refdb_index: unpack_option_u32(refdb_index)?,
         })
     }
 
@@ -294,9 +406,14 @@ impl MainInstruction {
 
     fn unpack_remove_pool(input: &[u8]) -> Result<MainInstruction, ProgramError> {
         check_data_len(input, MainInstruction::REMOVE_POOL_LEN)?;
+
         let input = array_ref![input, 1, MainInstruction::REMOVE_POOL_LEN - 1];
+        #[allow(clippy::ptr_offset_with_cast)]
+        let (name, refdb_index) = array_refs![input, 64, 5];
+
         Ok(Self::RemovePool {
-            name: unpack_array_string64(input)?,
+            name: unpack_array_string64(name)?,
+            refdb_index: unpack_option_u32(refdb_index)?,
         })
     }
 
@@ -307,9 +424,14 @@ impl MainInstruction {
 
     fn unpack_remove_farm(input: &[u8]) -> Result<MainInstruction, ProgramError> {
         check_data_len(input, MainInstruction::REMOVE_FARM_LEN)?;
+
         let input = array_ref![input, 1, MainInstruction::REMOVE_FARM_LEN - 1];
+        #[allow(clippy::ptr_offset_with_cast)]
+        let (name, refdb_index) = array_refs![input, 64, 5];
+
         Ok(Self::RemoveFarm {
-            name: unpack_array_string64(input)?,
+            name: unpack_array_string64(name)?,
+            refdb_index: unpack_option_u32(refdb_index)?,
         })
     }
 
@@ -320,9 +442,14 @@ impl MainInstruction {
 
     fn unpack_remove_token(input: &[u8]) -> Result<MainInstruction, ProgramError> {
         check_data_len(input, MainInstruction::REMOVE_TOKEN_LEN)?;
+
         let input = array_ref![input, 1, MainInstruction::REMOVE_TOKEN_LEN - 1];
+        #[allow(clippy::ptr_offset_with_cast)]
+        let (name, refdb_index) = array_refs![input, 64, 5];
+
         Ok(Self::RemoveToken {
-            name: unpack_array_string64(input)?,
+            name: unpack_array_string64(name)?,
+            refdb_index: unpack_option_u32(refdb_index)?,
         })
     }
 
@@ -335,6 +462,8 @@ impl MainInstruction {
 impl std::fmt::Display for MainInstructionType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
+            MainInstructionType::AddFund => write!(f, "AddFund"),
+            MainInstructionType::RemoveFund => write!(f, "RemoveFund"),
             MainInstructionType::AddVault => write!(f, "AddVault"),
             MainInstructionType::RemoveVault => write!(f, "RemoveVault"),
             MainInstructionType::AddPool => write!(f, "AddPool"),

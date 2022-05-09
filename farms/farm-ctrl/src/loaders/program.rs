@@ -9,6 +9,7 @@ use {
     solana_sdk::pubkey::Pubkey,
 };
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 struct JsonProgram {
     name: String,
@@ -18,6 +19,7 @@ struct JsonProgram {
     address: Pubkey,
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 struct JsonPrograms {
     name: String,
@@ -35,7 +37,7 @@ pub fn load(client: &FarmClient, config: &Config, data: &str, remove_mode: bool)
                 program.name
             );
             client
-                .remove_program_id(config.keypair.as_ref(), &program.name, None)
+                .remove_program_id(config.keypair.as_ref(), &program.name)
                 .unwrap();
         } else {
             if config.skip_existing && client.get_program_id(&program.name).is_ok() {

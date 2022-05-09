@@ -1,9 +1,9 @@
 //! User info account management.
 
 use {
-    crate::clock,
     solana_farm_sdk::{
         math::checked_add,
+        program::clock,
         refdb,
         refdb::{RefDB, Reference, ReferenceType},
         string::{str_to_as64, ArrayString64},
@@ -212,12 +212,11 @@ impl<'a, 'b> UserInfo<'a, 'b> {
                 token_debt_total = data;
             }
         }
-        // safe to use unchecked sub
-        if token_debt_total <= token_removed {
-            token_debt_total = 0;
+        token_debt_total = if let Some(res) = token_debt_total.checked_sub(token_removed) {
+            res
         } else {
-            token_debt_total -= token_removed;
-        }
+            0
+        };
         RefDB::update_at(
             &mut self.data,
             UserInfo::LP_TOKENS_DEBT,
@@ -311,7 +310,7 @@ impl<'a, 'b> UserInfo<'a, 'b> {
                     if let Ok(key) = Pubkey::create_program_address(
                         &[
                             b"user_info_account",
-                            &user_account.to_bytes()[..],
+                            user_account.as_ref(),
                             vault.name.as_bytes(),
                             &[data as u8],
                         ],

@@ -12,7 +12,7 @@ use {
     },
     solana_farm_sdk::{
         id::main_router, instruction::vault::VaultInstruction, log::sol_log_params_short,
-        program::pda, refdb, string::ArrayString64, vault::Vault,
+        program::pda, refdb, string::ArrayString64, traits::Packed, vault::Vault,
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -156,37 +156,37 @@ pub fn process_instruction(
                 external_fee as f64,
             )?
         }
-        VaultInstruction::EnableDeposit => {
-            log_start("EnableDeposit", &vault.name);
+        VaultInstruction::EnableDeposits => {
+            log_start("EnableDeposits", &vault.name);
             check_authority(user_account, &vault)?;
-            VaultInstruction::enable_deposit(
+            VaultInstruction::enable_deposits(
                 &vault,
                 &mut VaultInfo::new(vault_info_account),
                 accounts,
             )?
         }
-        VaultInstruction::DisableDeposit => {
-            log_start("DisableDeposit", &vault.name);
+        VaultInstruction::DisableDeposits => {
+            log_start("DisableDeposits", &vault.name);
             check_authority(user_account, &vault)?;
-            VaultInstruction::disable_deposit(
+            VaultInstruction::disable_deposits(
                 &vault,
                 &mut VaultInfo::new(vault_info_account),
                 accounts,
             )?
         }
-        VaultInstruction::EnableWithdrawal => {
-            log_start("EnableWithdrawal", &vault.name);
+        VaultInstruction::EnableWithdrawals => {
+            log_start("EnableWithdrawals", &vault.name);
             check_authority(user_account, &vault)?;
-            VaultInstruction::enable_withdrawal(
+            VaultInstruction::enable_withdrawals(
                 &vault,
                 &mut VaultInfo::new(vault_info_account),
                 accounts,
             )?
         }
-        VaultInstruction::DisableWithdrawal => {
-            log_start("DisableWithdrawal", &vault.name);
+        VaultInstruction::DisableWithdrawals => {
+            log_start("DisableWithdrawals", &vault.name);
             check_authority(user_account, &vault)?;
-            VaultInstruction::disable_withdrawal(
+            VaultInstruction::disable_withdrawals(
                 &vault,
                 &mut VaultInfo::new(vault_info_account),
                 accounts,

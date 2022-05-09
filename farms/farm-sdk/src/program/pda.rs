@@ -3,6 +3,7 @@
 use {
     crate::{
         id::{main_router, main_router_admin},
+        program::account,
         refdb,
         string::ArrayString64,
     },
@@ -62,7 +63,15 @@ pub fn init_token_account<'a, 'b>(
     base_address: &Pubkey,
     seeds: &[&[u8]],
 ) -> ProgramResult {
-    if !target_account.data_is_empty() {
+    if !account::is_empty(target_account)? {
+        if !account::check_token_account_owner(target_account, owner_account.key)? {
+            return Err(ProgramError::IllegalOwner);
+        }
+        if target_account.data_len() != spl_token::state::Account::get_packed_len()
+            || mint_account.key != &account::get_token_account_mint(target_account)?
+        {
+            return Err(ProgramError::InvalidAccountData);
+        }
         return Ok(());
     }
 
@@ -98,7 +107,15 @@ pub fn init_associated_token_account<'a, 'b>(
     mint_account: &'a AccountInfo<'b>,
     rent_program: &'a AccountInfo<'b>,
 ) -> ProgramResult {
-    if !target_account.data_is_empty() {
+    if !account::is_empty(target_account)? {
+        if !account::check_token_account_owner(target_account, wallet_account.key)? {
+            return Err(ProgramError::IllegalOwner);
+        }
+        if target_account.data_len() != spl_token::state::Account::get_packed_len()
+            || mint_account.key != &account::get_token_account_mint(target_account)?
+        {
+            return Err(ProgramError::InvalidAccountData);
+        }
         return Ok(());
     }
 
@@ -118,17 +135,15 @@ pub fn init_associated_token_account<'a, 'b>(
     )
 }
 
-pub fn close_token_account<'a, 'b>(
+pub fn close_token_account_with_seeds<'a, 'b>(
     receiving_account: &'a AccountInfo<'b>,
     target_account: &'a AccountInfo<'b>,
     authority_account: &'a AccountInfo<'b>,
-    base_address: &Pubkey,
-    seeds: &[&[u8]],
+    seeds: &[&[&[u8]]],
 ) -> ProgramResult {
-    if target_account.data_is_empty() {
+    if account::is_empty(target_account)? {
         return Ok(());
     }
-    let (_, bump) = Pubkey::find_program_address(seeds, base_address);
 
     program::invoke_signed(
         &spl_token::instruction::close_account(
@@ -143,9 +158,27 @@ pub fn close_token_account<'a, 'b>(
             receiving_account.clone(),
             authority_account.clone(),
         ],
+        seeds,
+    )
+}
+
+pub fn close_token_account<'a, 'b>(
+    receiving_account: &'a AccountInfo<'b>,
+    target_account: &'a AccountInfo<'b>,
+    authority_account: &'a AccountInfo<'b>,
+    base_address: &Pubkey,
+    seeds: &[&[u8]],
+) -> Result<u8, ProgramError> {
+    let (_, bump) = Pubkey::find_program_address(seeds, base_address);
+
+    close_token_account_with_seeds(
+        receiving_account,
+        target_account,
+        authority_account,
         &[&[seeds, &[&[bump]]].concat()],
     )?;
-    Ok(())
+
+    Ok(bump)
 }
 
 pub fn transfer_tokens_with_seeds<'a, 'b>(
@@ -183,7 +216,7 @@ pub fn transfer_tokens<'a, 'b>(
     base_address: &Pubkey,
     seeds: &[&[u8]],
     amount: u64,
-) -> ProgramResult {
+) -> Result<u8, ProgramError> {
     let (_, bump) = Pubkey::find_program_address(seeds, base_address);
 
     transfer_tokens_with_seeds(
@@ -192,7 +225,9 @@ pub fn transfer_tokens<'a, 'b>(
         authority_account,
         &[&[seeds, &[&[bump]]].concat()],
         amount,
-    )
+    )?;
+
+    Ok(bump)
 }
 
 pub fn init_system_account<'a, 'b>(
@@ -202,9 +237,15 @@ pub fn init_system_account<'a, 'b>(
     base_address: &Pubkey,
     seeds: &[&[u8]],
     data_size: usize,
-) -> ProgramResult {
-    if !target_account.data_is_empty() || target_account.try_lamports()? != 0 {
-        return Ok(());
+) -> Result<u8, ProgramError> {
+    if !account::is_empty(target_account)? {
+        if target_account.owner != owner_key {
+            return Err(ProgramError::IllegalOwner);
+        }
+        if target_account.data_len() != data_size {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        return Ok(Pubkey::find_program_address(seeds, base_address).1);
     }
 
     let (key, bump) = Pubkey::find_program_address(seeds, base_address);
@@ -225,19 +266,27 @@ pub fn init_system_account<'a, 'b>(
         ),
         &[funding_account.clone(), target_account.clone()],
         &[&[seeds, &[&[bump]]].concat()],
-    )
+    )?;
+
+    Ok(bump)
 }
 
 pub fn init_mint<'a, 'b>(
     funding_account: &'a AccountInfo<'b>,
     mint_account: &'a AccountInfo<'b>,
-    owner_account: &'a AccountInfo<'b>,
+    authority_account: &'a AccountInfo<'b>,
     rent_program: &'a AccountInfo<'b>,
     base_address: &Pubkey,
     seeds: &[&[u8]],
     decimals: u8,
 ) -> ProgramResult {
-    if !mint_account.data_is_empty() {
+    if !account::is_empty(mint_account)? {
+        if !account::check_mint_authority(mint_account, Some(*authority_account.key))? {
+            return Err(ProgramError::IllegalOwner);
+        }
+        if mint_account.data_len() != spl_token::state::Mint::get_packed_len() {
+            return Err(ProgramError::InvalidAccountData);
+        }
         return Ok(());
     }
 
@@ -255,13 +304,13 @@ pub fn init_mint<'a, 'b>(
         &spl_token::instruction::initialize_mint(
             &spl_token::id(),
             mint_account.key,
-            owner_account.key,
-            Some(owner_account.key),
+            authority_account.key,
+            Some(authority_account.key),
             decimals,
         )?,
         &[
             mint_account.clone(),
-            owner_account.clone(),
+            authority_account.clone(),
             rent_program.clone(),
         ],
     )
@@ -289,8 +338,7 @@ pub fn mint_to_with_seeds<'a, 'b>(
             mint_authority_account.clone(),
         ],
         seeds,
-    )?;
-    Ok(())
+    )
 }
 
 pub fn mint_to<'a, 'b>(
@@ -300,7 +348,7 @@ pub fn mint_to<'a, 'b>(
     base_address: &Pubkey,
     seeds: &[&[u8]],
     amount: u64,
-) -> ProgramResult {
+) -> Result<u8, ProgramError> {
     let (_, bump) = Pubkey::find_program_address(seeds, base_address);
 
     mint_to_with_seeds(
@@ -309,7 +357,135 @@ pub fn mint_to<'a, 'b>(
         mint_authority_account,
         &[&[seeds, &[&[bump]]].concat()],
         amount,
+    )?;
+
+    Ok(bump)
+}
+
+pub fn burn_tokens_with_seeds<'a, 'b>(
+    from_token_account: &'a AccountInfo<'b>,
+    mint_account: &'a AccountInfo<'b>,
+    authority_account: &'a AccountInfo<'b>,
+    seeds: &[&[&[u8]]],
+    amount: u64,
+) -> ProgramResult {
+    solana_program::program::invoke_signed(
+        &spl_token::instruction::burn(
+            &spl_token::id(),
+            from_token_account.key,
+            mint_account.key,
+            authority_account.key,
+            &[],
+            amount,
+        )?,
+        &[
+            from_token_account.clone(),
+            mint_account.clone(),
+            authority_account.clone(),
+        ],
+        seeds,
     )
+}
+
+pub fn burn_tokens<'a, 'b>(
+    from_token_account: &'a AccountInfo<'b>,
+    mint_account: &'a AccountInfo<'b>,
+    authority_account: &'a AccountInfo<'b>,
+    base_address: &Pubkey,
+    seeds: &[&[u8]],
+    amount: u64,
+) -> Result<u8, ProgramError> {
+    let (_, bump) = Pubkey::find_program_address(seeds, base_address);
+
+    burn_tokens_with_seeds(
+        from_token_account,
+        mint_account,
+        authority_account,
+        &[&[seeds, &[&[bump]]].concat()],
+        amount,
+    )?;
+
+    Ok(bump)
+}
+
+pub fn approve_delegate_with_seeds<'a, 'b>(
+    source_account: &'a AccountInfo<'b>,
+    delegate_account: &'a AccountInfo<'b>,
+    authority_account: &'a AccountInfo<'b>,
+    seeds: &[&[&[u8]]],
+    amount: u64,
+) -> ProgramResult {
+    solana_program::program::invoke_signed(
+        &spl_token::instruction::approve(
+            &spl_token::id(),
+            source_account.key,
+            delegate_account.key,
+            authority_account.key,
+            &[],
+            amount,
+        )?,
+        &[
+            source_account.clone(),
+            delegate_account.clone(),
+            authority_account.clone(),
+        ],
+        seeds,
+    )
+}
+
+pub fn approve_delegate<'a, 'b>(
+    source_account: &'a AccountInfo<'b>,
+    delegate_account: &'a AccountInfo<'b>,
+    authority_account: &'a AccountInfo<'b>,
+    base_address: &Pubkey,
+    seeds: &[&[u8]],
+    amount: u64,
+) -> Result<u8, ProgramError> {
+    let (_, bump) = Pubkey::find_program_address(seeds, base_address);
+
+    approve_delegate_with_seeds(
+        source_account,
+        delegate_account,
+        authority_account,
+        &[&[seeds, &[&[bump]]].concat()],
+        amount,
+    )?;
+
+    Ok(bump)
+}
+
+pub fn revoke_delegate_with_seeds<'a, 'b>(
+    source_account: &'a AccountInfo<'b>,
+    authority_account: &'a AccountInfo<'b>,
+    seeds: &[&[&[u8]]],
+) -> ProgramResult {
+    solana_program::program::invoke_signed(
+        &spl_token::instruction::revoke(
+            &spl_token::id(),
+            source_account.key,
+            authority_account.key,
+            &[],
+        )?,
+        &[source_account.clone(), authority_account.clone()],
+        seeds,
+    )
+}
+
+pub fn revoke_delegate<'a, 'b>(
+    source_account: &'a AccountInfo<'b>,
+    authority_account: &'a AccountInfo<'b>,
+    base_address: &Pubkey,
+    seeds: &[&[u8]],
+) -> Result<u8, ProgramError> {
+    let (_, bump) = Pubkey::find_program_address(seeds, base_address);
+
+    revoke_delegate_with_seeds(
+        source_account,
+        authority_account,
+        &[&[seeds, &[&[bump]]].concat()],
+    )?;
+
+    Ok(bump)
 }
 
 pub fn check_pda_data_size<'a, 'b>(

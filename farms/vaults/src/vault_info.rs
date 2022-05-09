@@ -1,8 +1,9 @@
 //! Vault info account management.
 
 use {
-    crate::{clock, traits::VaultParams},
+    crate::traits::VaultParams,
     solana_farm_sdk::{
+        program::clock,
         refdb,
         refdb::{RefDB, Reference, ReferenceType},
         string::{str_to_as64, ArrayString64},
@@ -29,8 +30,8 @@ impl<'a, 'b> VaultInfo<'a, 'b> {
     pub const TOKEN_B_REMOVED_INDEX: usize = 5;
     pub const TOKEN_A_REWARDS_INDEX: usize = 6;
     pub const TOKEN_B_REWARDS_INDEX: usize = 7;
-    pub const DEPOSIT_ALLOWED_INDEX: usize = 8;
-    pub const WITHDRAWAL_ALLOWED_INDEX: usize = 9;
+    pub const DEPOSITS_ALLOWED_INDEX: usize = 8;
+    pub const WITHDRAWALS_ALLOWED_INDEX: usize = 9;
     pub const MIN_CRANK_INTERVAL_INDEX: usize = 10;
     pub const FEE_INDEX: usize = 11;
     pub const EXTERNAL_FEE_INDEX: usize = 12;
@@ -91,12 +92,12 @@ impl<'a, 'b> VaultInfo<'a, 'b> {
             Reference::U64 { data: 0 },
         )?;
         self.init_refdb_field(
-            VaultInfo::DEPOSIT_ALLOWED_INDEX,
+            VaultInfo::DEPOSITS_ALLOWED_INDEX,
             "DepositAllowed",
             Reference::U64 { data: 0 },
         )?;
         self.init_refdb_field(
-            VaultInfo::WITHDRAWAL_ALLOWED_INDEX,
+            VaultInfo::WITHDRAWALS_ALLOWED_INDEX,
             "WithdrawalAllowed",
             Reference::U64 { data: 0 },
         )?;
@@ -182,37 +183,37 @@ impl<'a, 'b> VaultInfo<'a, 'b> {
         .map(|_| ())
     }
 
-    pub fn enable_deposit(&mut self) -> ProgramResult {
+    pub fn enable_deposits(&mut self) -> ProgramResult {
         RefDB::update_at(
             &mut self.data,
-            VaultInfo::DEPOSIT_ALLOWED_INDEX,
+            VaultInfo::DEPOSITS_ALLOWED_INDEX,
             &Reference::U64 { data: 1 },
         )
         .map(|_| ())
     }
 
-    pub fn disable_deposit(&mut self) -> ProgramResult {
+    pub fn disable_deposits(&mut self) -> ProgramResult {
         RefDB::update_at(
             &mut self.data,
-            VaultInfo::DEPOSIT_ALLOWED_INDEX,
+            VaultInfo::DEPOSITS_ALLOWED_INDEX,
             &Reference::U64 { data: 0 },
         )
         .map(|_| ())
     }
 
-    pub fn enable_withdrawal(&mut self) -> ProgramResult {
+    pub fn enable_withdrawals(&mut self) -> ProgramResult {
         RefDB::update_at(
             &mut self.data,
-            VaultInfo::WITHDRAWAL_ALLOWED_INDEX,
+            VaultInfo::WITHDRAWALS_ALLOWED_INDEX,
             &Reference::U64 { data: 1 },
         )
         .map(|_| ())
     }
 
-    pub fn disable_withdrawal(&mut self) -> ProgramResult {
+    pub fn disable_withdrawals(&mut self) -> ProgramResult {
         RefDB::update_at(
             &mut self.data,
-            VaultInfo::WITHDRAWAL_ALLOWED_INDEX,
+            VaultInfo::WITHDRAWALS_ALLOWED_INDEX,
             &Reference::U64 { data: 0 },
         )
         .map(|_| ())
@@ -334,7 +335,7 @@ impl<'a, 'b> VaultInfo<'a, 'b> {
                 return Ok(data as UnixTimestamp);
             }
         }
-        Ok(0)
+        Err(ProgramError::InvalidAccountData)
     }
 
     pub fn get_crank_step(&self) -> Result<u64, ProgramError> {
@@ -343,7 +344,7 @@ impl<'a, 'b> VaultInfo<'a, 'b> {
                 return Ok(data);
             }
         }
-        Ok(0)
+        Err(ProgramError::InvalidAccountData)
     }
 
     pub fn get_min_crank_interval(&self) -> Result<i64, ProgramError> {
@@ -352,7 +353,7 @@ impl<'a, 'b> VaultInfo<'a, 'b> {
                 return Ok(data as i64);
             }
         }
-        Ok(0)
+        Err(ProgramError::InvalidAccountData)
     }
 
     pub fn get_fee(&self) -> Result<f64, ProgramError> {
@@ -361,7 +362,7 @@ impl<'a, 'b> VaultInfo<'a, 'b> {
                 return Ok(f64::from_bits(data));
             }
         }
-        Ok(0.0)
+        Err(ProgramError::InvalidAccountData)
     }
 
     pub fn get_external_fee(&self) -> Result<f64, ProgramError> {
@@ -370,25 +371,25 @@ impl<'a, 'b> VaultInfo<'a, 'b> {
                 return Ok(f64::from_bits(data));
             }
         }
-        Ok(0.0)
+        Err(ProgramError::InvalidAccountData)
     }
 
     pub fn is_deposit_allowed(&self) -> Result<bool, ProgramError> {
-        if let Some(rec) = RefDB::read_at(&self.data, VaultInfo::DEPOSIT_ALLOWED_INDEX)? {
+        if let Some(rec) = RefDB::read_at(&self.data, VaultInfo::DEPOSITS_ALLOWED_INDEX)? {
             if let Reference::U64 { data } = rec.reference {
                 return Ok(data > 0);
             }
         }
-        Ok(false)
+        Err(ProgramError::InvalidAccountData)
     }
 
     pub fn is_withdrawal_allowed(&self) -> Result<bool, ProgramError> {
-        if let Some(rec) = RefDB::read_at(&self.data, VaultInfo::WITHDRAWAL_ALLOWED_INDEX)? {
+        if let Some(rec) = RefDB::read_at(&self.data, VaultInfo::WITHDRAWALS_ALLOWED_INDEX)? {
             if let Reference::U64 { data } = rec.reference {
                 return Ok(data > 0);
             }
         }
-        Ok(false)
+        Err(ProgramError::InvalidAccountData)
     }
 
     pub fn get_token_a_added(&self) -> Result<u64, ProgramError> {
@@ -397,7 +398,7 @@ impl<'a, 'b> VaultInfo<'a, 'b> {
                 return Ok(data);
             }
         }
-        Ok(0)
+        Err(ProgramError::InvalidAccountData)
     }
 
     pub fn get_token_b_added(&self) -> Result<u64, ProgramError> {
@@ -406,7 +407,7 @@ impl<'a, 'b> VaultInfo<'a, 'b> {
                 return Ok(data);
             }
         }
-        Ok(0)
+        Err(ProgramError::InvalidAccountData)
     }
 
     pub fn get_token_a_removed(&self) -> Result<u64, ProgramError> {
@@ -415,7 +416,7 @@ impl<'a, 'b> VaultInfo<'a, 'b> {
                 return Ok(data);
             }
         }
-        Ok(0)
+        Err(ProgramError::InvalidAccountData)
     }
 
     pub fn get_token_b_removed(&self) -> Result<u64, ProgramError> {
@@ -424,7 +425,7 @@ impl<'a, 'b> VaultInfo<'a, 'b> {
                 return Ok(data);
             }
         }
-        Ok(0)
+        Err(ProgramError::InvalidAccountData)
     }
 
     pub fn get_token_a_rewards(&self) -> Result<u64, ProgramError> {
@@ -433,7 +434,7 @@ impl<'a, 'b> VaultInfo<'a, 'b> {
                 return Ok(data);
             }
         }
-        Ok(0)
+        Err(ProgramError::InvalidAccountData)
     }
 
     pub fn get_token_b_rewards(&self) -> Result<u64, ProgramError> {
@@ -442,7 +443,7 @@ impl<'a, 'b> VaultInfo<'a, 'b> {
                 return Ok(data);
             }
         }
-        Ok(0)
+        Err(ProgramError::InvalidAccountData)
     }
 
     // private helpers

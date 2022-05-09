@@ -20,11 +20,7 @@ impl Config {
         let cli_config = if let Some(config_file) = matches.value_of("config_file") {
             match solana_cli_config::Config::load(config_file) {
                 Err(e) => {
-                    panic!(
-                        "Failed to load config file \"{}\":{}",
-                        config_file,
-                        e.to_string()
-                    );
+                    panic!("Failed to load config file \"{}\":{}", config_file, e);
                 }
                 Ok(config) => config,
             }
@@ -104,16 +100,16 @@ pub fn get_vec_str_val_raw<'a>(matches: &ArgMatches<'a>, argname: &str) -> Vec<S
         .collect()
 }
 
-pub fn get_amount_val<'a>(matches: &ArgMatches<'a>, argname: &str) -> f64 {
-    matches.value_of(argname).unwrap().parse::<f64>().unwrap()
-}
-
 pub fn get_pubkey_val<'a>(matches: &ArgMatches<'a>, argname: &str) -> Pubkey {
     Pubkey::from_str(matches.value_of(argname).unwrap()).unwrap()
 }
 
 pub fn get_integer_val<'a>(matches: &ArgMatches<'a>, argname: &str) -> u64 {
     matches.value_of(argname).unwrap().parse::<u64>().unwrap()
+}
+
+pub fn get_floating_val<'a>(matches: &ArgMatches<'a>, argname: &str) -> f64 {
+    matches.value_of(argname).unwrap().parse::<f64>().unwrap()
 }
 
 fn get_arg(name: &str) -> Arg {
@@ -130,11 +126,21 @@ fn get_integer_arg(name: &str) -> Arg {
         })
 }
 
+fn get_floating_arg(name: &str) -> Arg {
+    Arg::with_name(name)
+        .takes_value(true)
+        .required(true)
+        .validator(|p| match p.parse::<f64>() {
+            Err(_) => Err(String::from("Must be floating number")),
+            Ok(_) => Ok(()),
+        })
+}
+
 pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
     let target = Arg::with_name("target")
         .required(true)
         .takes_value(true)
-        .possible_values(&["program", "vault", "farm", "pool", "token"])
+        .possible_values(&["program", "vault", "farm", "pool", "token", "fund"])
         .hide_possible_values(true)
         .help("Target object type (program, vault, etc.)");
 
@@ -203,21 +209,16 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .takes_value(true)
                 .default_value("info")
                 .global(true)
-                .help("Log verbosity level (debug, info, warning, error)")
-                .validator(|p| {
-                    let allowed = ["debug", "info", "warning", "error"];
-                    if allowed.contains(&p.as_str()) {
-                        Ok(())
-                    } else {
-                        Err(String::from("Must be one of: debug, info, warning, error"))
-                    }
-                }),
+                .help("Log verbosity level")
+                .possible_values(&[
+                   "debug", "info", "warning", "error"
+                ])
+                .hide_possible_values(false)
         )
         .arg({
             let arg = Arg::with_name("config_file")
                 .short("C")
                 .long("config")
-                .value_name("PATH")
                 .takes_value(true)
                 .global(true)
                 .help("Configuration file to use");
@@ -231,7 +232,6 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
             Arg::with_name("farm_client_url")
                 .short("f")
                 .long("farm-client-url")
-                .value_name("STR")
                 .takes_value(true)
                 .global(true)
                 .validator(is_url)
@@ -241,7 +241,6 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
             Arg::with_name("keypair")
                 .short("k")
                 .long("keypair")
-                .value_name("KEYPAIR")
                 .global(true)
                 .takes_value(true)
                 .help("Filepath or URL to a keypair"),
@@ -256,10 +255,9 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                     "confirmed",
                     "finalized",
                 ])
-                .value_name("COMMITMENT_LEVEL")
-                .hide_possible_values(true)
+                .hide_possible_values(false)
                 .global(true)
-                .help("Return information at the selected commitment level [possible values: processed, confirmed, finalized]"),
+                .help("Return information at the selected commitment level"),
         )
         .arg(
             Arg::with_name("no_pretty_print")
@@ -292,9 +290,20 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .arg(target.clone()),
         )
         .subcommand(
+            SubCommand::with_name("protocols")
+                .about("Print description and stats of all supported protocols")
+        )
+        .subcommand(
             SubCommand::with_name("pool-price")
                 .about("Print pool price")
                 .arg(get_arg("pool_name")),
+        )
+        .subcommand(
+            SubCommand::with_name("oracle-price")
+                .about("Print oracle price")
+                .arg(get_arg("symbol"))
+                .arg(get_integer_arg("max_price_age_sec"))
+                .arg(get_floating_arg("max_price_error")),
         )
         .subcommand(
             SubCommand::with_name("transfer")
@@ -310,8 +319,42 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .arg(amount.clone()),
         )
         .subcommand(
+            SubCommand::with_name("wrap-sol")
+                .about("Transfer SOL to the associated WSOL account")
+                .arg(amount.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("unwrap-sol")
+                .about("Transfer WSOL back to SOL by closing ATA")
+        )
+        .subcommand(
+            SubCommand::with_name("sync-token-balance")
+                .about("Updates token balance of the account")
+                .arg(tokenname.clone())
+        )
+        .subcommand(
             SubCommand::with_name("token-address")
                 .about("Print associated token account address")
+                .arg(tokenname.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("token-data")
+                .about("Print token account metadata")
+                .arg(tokenname.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("token-create")
+                .about("Create associated token account")
+                .arg(tokenname.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("token-close")
+                .about("Close associated token account")
+                .arg(tokenname.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("token-supply")
+                .about("Print token supply")
                 .arg(tokenname.clone()),
         )
         .subcommand(SubCommand::with_name("balance").about("Print SOL balance"))
@@ -330,11 +373,6 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .about("Print all token balances for the wallet")
         )
         .subcommand(
-            SubCommand::with_name("token-create")
-                .about("Create associated token account")
-                .arg(tokenname.clone()),
-        )
-        .subcommand(
             SubCommand::with_name("vault-info")
                 .about("Print vault stats")
                 .arg(get_arg("vault_name")),
@@ -343,6 +381,53 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
             SubCommand::with_name("vault-user-info")
                 .about("Print user stats for the vault")
                 .arg(get_arg("vault_name")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-info")
+                .about("Print fund stats")
+                .arg(get_arg("fund_name")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-user-info")
+                .about("Print user stats for the fund")
+                .arg(get_arg("fund_name"))
+                .arg(tokenname.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-assets")
+                .about("Print fund assets info")
+                .arg(get_arg("fund_name"))
+                .arg(get_arg("asset_type"))
+        )
+        .subcommand(
+            SubCommand::with_name("fund-custody")
+                .about("Print fund custody info")
+                .arg(get_arg("fund_name"))
+                .arg(tokenname.clone())
+                .arg(get_arg("custody_type"))
+        )
+        .subcommand(
+            SubCommand::with_name("fund-custodies")
+                .about("Print all fund custodies")
+                .arg(get_arg("fund_name"))
+        )
+        .subcommand(
+            SubCommand::with_name("fund-vault")
+                .about("Print fund vault info")
+                .arg(get_arg("fund_name"))
+                .arg(get_arg("vault_name"))
+                .arg(get_arg("vault_type"))
+        )
+        .subcommand(
+            SubCommand::with_name("fund-vaults")
+                .about("Print all fund vaults")
+                .arg(get_arg("fund_name"))
+        )
+        .subcommand(
+            SubCommand::with_name("fund-funds")
+                .about("Find all Funds with given name pattern")
+                .arg(get_arg("fund_name"))
+                .arg(get_arg("vault_name_pattern"))
         )
         .subcommand(
             SubCommand::with_name("find-pools")
@@ -366,6 +451,11 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .about("Find all Vaults with tokens A and B")
                 .arg(tokenname.clone())
                 .arg(tokenname2.clone())
+        )
+        .subcommand(
+            SubCommand::with_name("find-vaults-with-vt")
+                .about("Find all Vaults for the given VT token")
+                .arg(tokenname.clone())
         )
         .subcommand(
             SubCommand::with_name("swap")
@@ -430,6 +520,70 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .about("Remove unlocked liquidity from the vault")
                 .arg(get_arg("vault_name"))
                 .arg(amount.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("crank-vault")
+                .about("Crank single vault")
+                .arg(get_arg("vault_name"))
+                .arg(get_integer_arg("step"))
+        )
+        .subcommand(
+            SubCommand::with_name("crank-vaults")
+                .about("Crank all vaults")
+                .arg(get_integer_arg("step"))
+        )
+        .subcommand(
+            SubCommand::with_name("request-deposit-fund")
+                .about("Request a new deposit to the fund")
+                .arg(get_arg("fund_name"))
+                .arg(tokenname.clone())
+                .arg(amount.clone())
+        )
+        .subcommand(
+            SubCommand::with_name("cancel-deposit-fund")
+                .about("Request a new deposit to the fund")
+                .arg(get_arg("fund_name"))
+                .arg(tokenname.clone())
+        )
+        .subcommand(
+            SubCommand::with_name("request-withdrawal-fund")
+                .about("Request a new deposit to the fund")
+                .arg(get_arg("fund_name"))
+                .arg(tokenname.clone())
+                .arg(amount.clone())
+        )
+        .subcommand(
+            SubCommand::with_name("cancel-withdrawal-fund")
+                .about("Request a new deposit to the fund")
+                .arg(get_arg("fund_name"))
+                .arg(tokenname.clone())
+        )
+        .subcommand(
+            SubCommand::with_name("start-liquidation-fund")
+                .about("Request a new deposit to the fund")
+                .arg(get_arg("fund_name"))
+        )
+        .subcommand(
+            SubCommand::with_name("update-fund-assets-with-custody")
+                .about("Update fund assets info based on custody holdings")
+                .arg(get_arg("fund_name"))
+                .arg(get_integer_arg("custody_id"))
+        )
+        .subcommand(
+            SubCommand::with_name("update-fund-assets-with-custodies")
+                .about("Update fund assets info based on all custodies")
+                .arg(get_arg("fund_name"))
+        )
+        .subcommand(
+            SubCommand::with_name("update-fund-assets-with-vault")
+                .about("Update fund assets info based on vault holdings")
+                .arg(get_arg("fund_name"))
+                .arg(get_integer_arg("vault_id"))
+        )
+        .subcommand(
+            SubCommand::with_name("update-fund-assets-with-vaults")
+                .about("Update fund assets info based on all vaults")
+                .arg(get_arg("fund_name"))
         )
         .subcommand(
             SubCommand::with_name("governance")

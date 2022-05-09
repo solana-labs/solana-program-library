@@ -7,6 +7,7 @@ use {
     solana_farm_sdk::{
         id::zero,
         instruction::vault::VaultInstruction,
+        math,
         program::{account, protocol::raydium},
         vault::Vault,
     },
@@ -37,8 +38,8 @@ impl UnlockLiquidity for VaultInstruction {
             farm_id,
             farm_authority,
             farm_lp_token_account,
-            farm_reward_token_a_account,
-            farm_reward_token_b_account,
+            farm_first_reward_token_account,
+            farm_second_reward_token_account,
             clock_program
             ] = accounts
         {
@@ -50,7 +51,7 @@ impl UnlockLiquidity for VaultInstruction {
             if !user_account.is_signer {
                 return Err(ProgramError::MissingRequiredSignature);
             }
-            if &account::get_token_account_owner(user_vt_token_account)? != user_account.key {
+            if !account::check_token_account_owner(user_vt_token_account, user_account.key)? {
                 msg!("Error: Invalid VT token account owner");
                 return Err(ProgramError::IllegalOwner);
             }
@@ -62,6 +63,8 @@ impl UnlockLiquidity for VaultInstruction {
                 token_a_reward_custody,
                 token_b_reward_custody,
                 vault_stake_info,
+                 None,
+                 Some(farm_id.key),
                 false,
             )?;
             if !UserInfo::validate_account(vault, user_info_account, user_account.key) {
@@ -94,10 +97,10 @@ impl UnlockLiquidity for VaultInstruction {
                 msg!("Error: Zero balance");
                 return Err(ProgramError::InsufficientFunds);
             }
-            let lp_remove_amount = account::to_token_amount(
-                stake_balance as f64 * (vt_remove_amount as f64 / vt_supply_amount as f64),
-                0,
-            )?;
+            let lp_remove_amount =  math::checked_as_u64(math::checked_div(
+            math::checked_mul(stake_balance as u128, vt_remove_amount as u128)?,
+            vt_supply_amount as u128,
+            )?)?;
 
             // unstake
             let seeds: &[&[&[u8]]] = &[&[
@@ -106,7 +109,7 @@ impl UnlockLiquidity for VaultInstruction {
                 &[vault.authority_bump],
             ]];
 
-            let dual_rewards = *farm_reward_token_b_account.key != zero::id();
+            let dual_rewards = *farm_second_reward_token_account.key != zero::id();
             let initial_token_a_reward_balance =
                 account::get_token_balance(token_a_reward_custody)?;
             let initial_token_b_reward_balance = if dual_rewards {
@@ -130,8 +133,8 @@ impl UnlockLiquidity for VaultInstruction {
                     token_b_reward_custody.clone(),
                     farm_program.clone(),
                     farm_lp_token_account.clone(),
-                    farm_reward_token_a_account.clone(),
-                    farm_reward_token_b_account.clone(),
+                    farm_first_reward_token_account.clone(),
+                    farm_second_reward_token_account.clone(),
                     clock_program.clone(),
                     spl_token_program.clone(),
                     farm_id.clone(),
@@ -171,7 +174,7 @@ impl UnlockLiquidity for VaultInstruction {
             );
             vault_info.add_rewards(token_a_rewards, token_b_rewards)?;
 
-            // brun vault tokens
+            // burn vault tokens
             msg!(
                 "Burn Vault tokens from the user. vt_remove_amount: {}",
                 vt_remove_amount

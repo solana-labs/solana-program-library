@@ -2,9 +2,10 @@
 
 use {
     crate::{
-        add_farm::add_farm, add_pool::add_pool, add_token::add_token, add_vault::add_vault,
-        refdb_instruction::process_refdb_instruction, remove_farm::remove_farm,
-        remove_pool::remove_pool, remove_token::remove_token, remove_vault::remove_vault,
+        add_farm::add_farm, add_fund::add_fund, add_pool::add_pool, add_token::add_token,
+        add_vault::add_vault, refdb_instruction::process_refdb_instruction,
+        remove_farm::remove_farm, remove_fund::remove_fund, remove_pool::remove_pool,
+        remove_token::remove_token, remove_vault::remove_vault,
     },
     solana_farm_sdk::{
         id::{main_router, main_router_admin},
@@ -59,13 +60,25 @@ pub fn process_instruction(
 
     match instruction {
         MainInstruction::AddVault { vault } => add_vault(program_id, accounts, &vault)?,
-        MainInstruction::RemoveVault { name } => remove_vault(program_id, accounts, &name)?,
+        MainInstruction::RemoveVault { name, refdb_index } => {
+            remove_vault(program_id, accounts, &name, refdb_index)?
+        }
         MainInstruction::AddPool { pool } => add_pool(program_id, accounts, &pool)?,
-        MainInstruction::RemovePool { name } => remove_pool(program_id, accounts, &name)?,
+        MainInstruction::RemovePool { name, refdb_index } => {
+            remove_pool(program_id, accounts, &name, refdb_index)?
+        }
         MainInstruction::AddFarm { farm } => add_farm(program_id, accounts, &farm)?,
-        MainInstruction::RemoveFarm { name } => remove_farm(program_id, accounts, &name)?,
+        MainInstruction::RemoveFarm { name, refdb_index } => {
+            remove_farm(program_id, accounts, &name, refdb_index)?
+        }
+        MainInstruction::AddFund { fund } => add_fund(program_id, accounts, &fund)?,
+        MainInstruction::RemoveFund { name, refdb_index } => {
+            remove_fund(program_id, accounts, &name, refdb_index)?
+        }
         MainInstruction::AddToken { token } => add_token(program_id, accounts, &token)?,
-        MainInstruction::RemoveToken { name } => remove_token(program_id, accounts, &name)?,
+        MainInstruction::RemoveToken { name, refdb_index } => {
+            remove_token(program_id, accounts, &name, refdb_index)?
+        }
         MainInstruction::RefDbInstruction { instruction } => {
             process_refdb_instruction(program_id, accounts, instruction)?
         }

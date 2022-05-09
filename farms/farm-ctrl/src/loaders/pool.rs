@@ -7,11 +7,11 @@ use {
     serde_json::{json, Value},
     solana_farm_client::client::FarmClient,
     solana_farm_sdk::{
-        git_token::GitToken,
         pack::{optional_pubkey_deserialize, pubkey_deserialize},
         pool::{Pool, PoolRoute, PoolType},
         refdb::StorageType,
         string::str_to_as64,
+        token::GitToken,
     },
     solana_sdk::pubkey::Pubkey,
     std::collections::HashMap,
@@ -88,16 +88,19 @@ struct JsonRaydiumPool {
     official: bool,
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 struct JsonSaberPool {
     name: String,
     tokens: Vec<GitToken>,
     #[serde(rename = "lpToken")]
     lp_token: GitToken,
+
     #[serde(deserialize_with = "pubkey_deserialize")]
     quarry: Pubkey,
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 pub struct JsonOrcaToken {
     tag: String,
@@ -158,7 +161,7 @@ fn load_raydium_pool(
 ) {
     let mut last_index = last_index;
     let pools = parsed["pools"].as_array().unwrap();
-    let router_id = client.get_program_id(&"RaydiumRouter".to_string()).unwrap();
+    let router_id = client.get_program_id("RaydiumRouter").unwrap();
     for val in pools {
         let json_pool: JsonRaydiumPool = serde_json::from_value(val.clone()).unwrap();
         let name = format!(
@@ -236,10 +239,8 @@ fn load_saber_pool(
 ) {
     let mut last_index = last_index;
     let pools = parsed["pools"].as_array().unwrap();
-    let router_id = client.get_program_id(&"SaberRouter".to_string()).unwrap();
-    let decimal_wrapper_program = client
-        .get_program_id(&"SaberDecimalWrapper".to_string())
-        .unwrap();
+    let router_id = client.get_program_id("SaberRouter").unwrap();
+    let decimal_wrapper_program = client.get_program_id("SaberDecimalWrapper").unwrap();
     for val in pools {
         let json_pool: JsonSaberPool = serde_json::from_value(val.clone()).unwrap();
         let name = get_saber_pool_name(&json_pool.tokens[0], &json_pool.tokens[1]);
@@ -298,8 +299,8 @@ fn load_saber_pool(
                     .unwrap()
             {
                 panic!(
-                    "Unwrapped token address mismatch for token {}",
-                    json_pool.tokens[1].symbol
+                    "Unwrapped token address mismatch for token {} {}",
+                    json_pool.tokens[1].symbol, symbol
                 );
             }
             symbol
@@ -383,11 +384,11 @@ fn load_orca_pool(
 ) {
     let mut last_index = last_index;
     let pools = parsed["pools"].as_array().unwrap();
-    let router_id = client.get_program_id(&"OrcaRouter".to_string()).unwrap();
-    let pool_program_id = client.get_program_id(&"OrcaSwap".to_string()).unwrap();
+    let router_id = client.get_program_id("OrcaRouter").unwrap();
+    let pool_program_id = client.get_program_id("OrcaSwap").unwrap();
     for val in pools {
         let json_pool: JsonOrcaPool = serde_json::from_value(val.clone()).unwrap();
-        let name = format!("ORC.{}-V1", json_pool.name.to_uppercase().replace("_", "-"));
+        let name = format!("ORC.{}-V1", json_pool.name.to_uppercase().replace('_', "-"));
         if !remove_mode {
             if config.skip_existing && client.get_pool(&name).is_ok() {
                 info!("Skipping existing Pool \"{}\"...", name);
@@ -452,9 +453,7 @@ fn get_saber_wrappers(
         .unwrap()
         .parse::<u8>()
         .unwrap();
-    let decimal_wrapper_program = client
-        .get_program_id(&"SaberDecimalWrapper".to_string())
-        .unwrap();
+    let decimal_wrapper_program = client.get_program_id("SaberDecimalWrapper").unwrap();
 
     let wrapper = Pubkey::find_program_address(
         &[b"anchor", &token.mint.to_bytes(), &[decimals]],
@@ -489,6 +488,7 @@ fn get_saber_wrappers(
         "sBTC-9" => "B22gDMgN2tNWmvyzhb5tamJKanWcUUUw2zN3h3qjgQg8",
         "sETH-8" => "4JWyJ4ZYsQ8uiYue2tTEqcHcFXrDuaQ1rsyjNFfrZm65",
         "sFTT-9" => "H5tnZcfHCzHueNnfd6foeBBUUW4g7qXKt6rKzT7wg6oP",
+        "ssoFTT-8" => "7dVPR6jx3hKyNfuHPo3WtWdUpH4eh4Up4rfFhLHZqwy3",
         _ => {
             panic!("Unknown Saber wrapped token {}", saber_symbol);
         }

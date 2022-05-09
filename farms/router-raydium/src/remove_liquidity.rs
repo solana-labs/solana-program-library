@@ -39,6 +39,9 @@ pub fn remove_liquidity(accounts: &[AccountInfo], amount: u64) -> ProgramResult 
         amm_target,
         serum_market,
         serum_program_id,
+        serum_bids,
+        serum_asks,
+        serum_event_queue,
         serum_coin_vault_account,
         serum_pc_vault_account,
         serum_vault_signer
@@ -47,6 +50,12 @@ pub fn remove_liquidity(accounts: &[AccountInfo], amount: u64) -> ProgramResult 
         if !raydium::check_pool_program_id(pool_program_id.key) {
             return Err(ProgramError::IncorrectProgramId);
         }
+        if !account::check_token_account_owner(user_token_a_account, user_account.key)?
+            || !account::check_token_account_owner(user_token_b_account, user_account.key)?
+        {
+            return Err(ProgramError::IllegalOwner);
+        }
+
         let initial_token_a_user_balance = account::get_token_balance(user_token_a_account)?;
         let initial_token_b_user_balance = account::get_token_balance(user_token_b_account)?;
         let initial_lp_token_user_balance = account::get_token_balance(user_lp_token_account)?;
@@ -85,7 +94,10 @@ pub fn remove_liquidity(accounts: &[AccountInfo], amount: u64) -> ProgramResult 
             AccountMeta::new(*user_lp_token_account.key, false),
             AccountMeta::new(*user_token_a_account.key, false),
             AccountMeta::new(*user_token_b_account.key, false),
-            AccountMeta::new_readonly(*user_account.key, true)
+            AccountMeta::new_readonly(*user_account.key, true),
+            AccountMeta::new(*serum_event_queue.key, false),
+            AccountMeta::new(*serum_bids.key, false),
+            AccountMeta::new(*serum_asks.key, false)
         ];
 
         let instruction = Instruction {

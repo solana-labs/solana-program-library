@@ -80,8 +80,12 @@ pub fn unpack_option_u32(input: &[u8; 5]) -> Result<Option<u32>, ProgramError> {
 }
 
 pub fn pack_array_string64(input: &ArrayString64, output: &mut [u8; 64]) {
-    for (dst, src) in output.iter_mut().zip(input.as_bytes()) {
-        *dst = *src
+    if !input.is_empty() {
+        for (dst, src) in output.iter_mut().zip(input.as_bytes()) {
+            *dst = *src
+        }
+    } else {
+        output[0] = 0;
     }
 }
 

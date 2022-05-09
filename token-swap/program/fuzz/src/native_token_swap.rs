@@ -51,10 +51,8 @@ impl NativeTokenSwap {
         user_account.is_signer = true;
         let mut swap_account =
             NativeAccountData::new(SwapVersion::LATEST_LEN, spl_token_swap::id());
-        let (authority_key, bump_seed) = Pubkey::find_program_address(
-            &[&swap_account.key.to_bytes()[..]],
-            &spl_token_swap::id(),
-        );
+        let (authority_key, bump_seed) =
+            Pubkey::find_program_address(&[swap_account.key.as_ref()], &spl_token_swap::id());
         let mut authority_account = create_program_account(authority_key);
         let mut token_program_account = create_program_account(spl_token::id());
 

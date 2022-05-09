@@ -10,6 +10,7 @@ use {
             protocol::raydium::{RaydiumUserStakeInfo, RaydiumUserStakeInfoV4},
         },
         token::Token,
+        traits::Packed,
         vault::Vault,
     },
     solana_program::{

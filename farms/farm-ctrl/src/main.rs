@@ -1,6 +1,7 @@
 //! Solana Farms control interface.
 
 mod config;
+mod fund;
 mod generate;
 mod get;
 mod governance;
@@ -12,8 +13,8 @@ mod remove;
 mod vault;
 
 use {
-    log::error, num_enum::TryFromPrimitive, solana_farm_client::client::FarmClient,
-    solana_farm_sdk::token::TokenSelector, solana_sdk::pubkey::Pubkey, std::str::FromStr,
+    log::error, solana_farm_client::client::FarmClient, solana_sdk::pubkey::Pubkey,
+    std::str::FromStr,
 };
 
 fn main() {
@@ -46,7 +47,7 @@ fn main() {
                 &client,
                 &config,
                 config::get_target(subcommand_matches),
-                &config::get_filename(subcommand_matches),
+                &config::get_str_val_raw(subcommand_matches, "file_name"),
                 false,
             );
         }
@@ -55,7 +56,7 @@ fn main() {
                 &client,
                 &config,
                 config::get_target(subcommand_matches),
-                &config::get_filename(subcommand_matches),
+                &config::get_str_val_raw(subcommand_matches, "file_name"),
                 false,
             );
         }
@@ -64,7 +65,7 @@ fn main() {
                 &client,
                 &config,
                 config::get_target(subcommand_matches),
-                &config::get_objectname(subcommand_matches),
+                &config::get_str_val_raw(subcommand_matches, "object_name"),
             );
         }
         ("remove-ref", Some(subcommand_matches)) => {
@@ -72,7 +73,7 @@ fn main() {
                 &client,
                 &config,
                 config::get_target(subcommand_matches),
-                &config::get_objectname(subcommand_matches),
+                &config::get_str_val_raw(subcommand_matches, "object_name"),
             );
         }
         ("remove-all", Some(subcommand_matches)) => {
@@ -83,7 +84,7 @@ fn main() {
                 &client,
                 &config,
                 config::get_target(subcommand_matches),
-                &config::get_filename(subcommand_matches),
+                &config::get_str_val_raw(subcommand_matches, "file_name"),
                 true,
             );
         }
@@ -92,7 +93,7 @@ fn main() {
                 &client,
                 &config,
                 config::get_target(subcommand_matches),
-                &config::get_objectname(subcommand_matches),
+                &config::get_str_val_raw(subcommand_matches, "object_name"),
             );
         }
         ("get-ref", Some(subcommand_matches)) => {
@@ -100,7 +101,7 @@ fn main() {
                 &client,
                 &config,
                 config::get_target(subcommand_matches),
-                &config::get_objectname(subcommand_matches),
+                &config::get_str_val_raw(subcommand_matches, "object_name"),
             );
         }
         ("get-all", Some(subcommand_matches)) => {
@@ -113,87 +114,433 @@ fn main() {
             vault::init(
                 &client,
                 &config,
-                &config::get_vaultname(subcommand_matches),
-                config::get_step(subcommand_matches),
+                &config::get_str_val(subcommand_matches, "vault_name"),
+                config::get_integer_val(subcommand_matches, "step"),
+            );
+        }
+        ("vault-set-admin", Some(subcommand_matches)) => {
+            vault::set_admin(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "vault_name"),
+                &config::get_pubkey_val(subcommand_matches, "admin"),
             );
         }
         ("vault-shutdown", Some(subcommand_matches)) => {
-            vault::shutdown(&client, &config, &config::get_vaultname(subcommand_matches));
+            vault::shutdown(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "vault_name"),
+            );
         }
         ("vault-withdraw-fees", Some(subcommand_matches)) => {
             vault::withdraw_fees(
                 &client,
                 &config,
-                &config::get_vaultname(subcommand_matches),
-                TokenSelector::try_from_primitive(
-                    subcommand_matches
-                        .value_of("fee_token")
-                        .unwrap()
-                        .parse::<u8>()
-                        .unwrap(),
-                )
-                .unwrap(),
-                subcommand_matches
-                    .value_of("amount")
-                    .unwrap()
-                    .parse::<f64>()
+                &config::get_str_val(subcommand_matches, "vault_name"),
+                config::get_str_val_raw(subcommand_matches, "fee_token")
+                    .parse()
                     .unwrap(),
-                &subcommand_matches
-                    .value_of("receiver")
-                    .unwrap()
-                    .parse::<String>()
-                    .unwrap(),
+                config::get_floating_val(subcommand_matches, "amount"),
+                &config::get_pubkey_val(subcommand_matches, "receiver"),
             );
         }
         ("vault-crank", Some(subcommand_matches)) => {
             vault::crank(
                 &client,
                 &config,
-                &config::get_vaultname(subcommand_matches),
-                config::get_step(subcommand_matches),
+                &config::get_str_val(subcommand_matches, "vault_name"),
+                config::get_integer_val(subcommand_matches, "step"),
             );
-        }
-        ("vault-crank-all", Some(subcommand_matches)) => {
-            vault::crank_all(&client, &config, config::get_step(subcommand_matches));
         }
         ("vault-set-fee", Some(subcommand_matches)) => {
             vault::set_fee(
                 &client,
                 &config,
-                &config::get_vaultname(subcommand_matches),
-                config::get_vaultparam(subcommand_matches) as f32,
+                &config::get_str_val(subcommand_matches, "vault_name"),
+                config::get_floating_val(subcommand_matches, "fee_percent") as f32,
             );
         }
         ("vault-set-external-fee", Some(subcommand_matches)) => {
             vault::set_external_fee(
                 &client,
                 &config,
-                &config::get_vaultname(subcommand_matches),
-                config::get_vaultparam(subcommand_matches) as f32,
+                &config::get_str_val(subcommand_matches, "vault_name"),
+                config::get_floating_val(subcommand_matches, "external_fee_percent") as f32,
             );
         }
         ("vault-set-min-crank-interval", Some(subcommand_matches)) => {
             vault::set_min_crank_interval(
                 &client,
                 &config,
-                &config::get_vaultname(subcommand_matches),
-                config::get_vaultparam(subcommand_matches) as u32,
+                &config::get_str_val(subcommand_matches, "vault_name"),
+                config::get_integer_val(subcommand_matches, "min_crank_interval") as u32,
             );
         }
-        ("vault-disable-deposit", Some(subcommand_matches)) => {
-            vault::disable_deposit(&client, &config, &config::get_vaultname(subcommand_matches));
+        ("vault-disable-deposits", Some(subcommand_matches)) => {
+            vault::disable_deposits(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "vault_name"),
+            );
         }
-        ("vault-enable-deposit", Some(subcommand_matches)) => {
-            vault::enable_deposit(&client, &config, &config::get_vaultname(subcommand_matches));
+        ("vault-enable-deposits", Some(subcommand_matches)) => {
+            vault::enable_deposits(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "vault_name"),
+            );
         }
-        ("vault-disable-withdrawal", Some(subcommand_matches)) => {
-            vault::disable_withdrawal(&client, &config, &config::get_vaultname(subcommand_matches));
+        ("vault-disable-withdrawals", Some(subcommand_matches)) => {
+            vault::disable_withdrawals(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "vault_name"),
+            );
         }
-        ("vault-enable-withdrawal", Some(subcommand_matches)) => {
-            vault::enable_withdrawal(&client, &config, &config::get_vaultname(subcommand_matches));
+        ("vault-enable-withdrawals", Some(subcommand_matches)) => {
+            vault::enable_withdrawals(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "vault_name"),
+            );
         }
         ("vault-get-info", Some(subcommand_matches)) => {
-            vault::get_info(&client, &config, &config::get_vaultname(subcommand_matches));
+            vault::get_info(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "vault_name"),
+            );
+        }
+        ("fund-init", Some(subcommand_matches)) => {
+            fund::init(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                config::get_integer_val(subcommand_matches, "step"),
+            );
+        }
+        ("fund-set-admin", Some(subcommand_matches)) => {
+            fund::set_admin(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_pubkey_val(subcommand_matches, "admin"),
+            );
+        }
+        ("fund-set-manager", Some(subcommand_matches)) => {
+            fund::set_fund_manager(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_pubkey_val(subcommand_matches, "manager"),
+            );
+        }
+        ("fund-add-custody", Some(subcommand_matches)) => {
+            fund::add_custody(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_str_val(subcommand_matches, "token_name"),
+                config::get_str_val_raw(subcommand_matches, "custody_type")
+                    .parse()
+                    .unwrap(),
+            );
+        }
+        ("fund-remove-custody", Some(subcommand_matches)) => {
+            fund::remove_custody(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_str_val(subcommand_matches, "token_name"),
+                config::get_str_val_raw(subcommand_matches, "custody_type")
+                    .parse()
+                    .unwrap(),
+            );
+        }
+        ("fund-add-vault", Some(subcommand_matches)) => {
+            fund::add_vault(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_str_val(subcommand_matches, "vault_name"),
+                config::get_str_val_raw(subcommand_matches, "vault_type")
+                    .parse()
+                    .unwrap(),
+            );
+        }
+        ("fund-remove-vault", Some(subcommand_matches)) => {
+            fund::remove_vault(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_str_val(subcommand_matches, "vault_name"),
+                config::get_str_val_raw(subcommand_matches, "vault_type")
+                    .parse()
+                    .unwrap(),
+            );
+        }
+        ("fund-set-assets-tracking-config", Some(subcommand_matches)) => {
+            fund::set_assets_tracking_config(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                config::get_floating_val(subcommand_matches, "assets_limit_usd"),
+                config::get_integer_val(subcommand_matches, "max_update_age_sec"),
+                config::get_floating_val(subcommand_matches, "max_price_error"),
+                config::get_integer_val(subcommand_matches, "max_price_age_sec"),
+            );
+        }
+        ("fund-set-deposit-schedule", Some(subcommand_matches)) => {
+            fund::set_deposit_schedule(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                config::get_integer_val(subcommand_matches, "start_time") as i64,
+                config::get_integer_val(subcommand_matches, "end_time") as i64,
+                config::get_str_val_raw(subcommand_matches, "approval_required")
+                    .parse()
+                    .unwrap(),
+                config::get_floating_val(subcommand_matches, "limit_usd"),
+                config::get_floating_val(subcommand_matches, "fee"),
+            );
+        }
+        ("fund-disable-deposits", Some(subcommand_matches)) => {
+            fund::disable_deposits(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+            );
+        }
+        ("fund-approve-deposit", Some(subcommand_matches)) => {
+            fund::approve_deposit(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_pubkey_val(subcommand_matches, "user_address"),
+                &config::get_str_val(subcommand_matches, "token_name"),
+                config::get_floating_val(subcommand_matches, "amount"),
+            );
+        }
+        ("fund-deny-deposit", Some(subcommand_matches)) => {
+            fund::deny_deposit(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_pubkey_val(subcommand_matches, "user_address"),
+                &config::get_str_val(subcommand_matches, "token_name"),
+                &config::get_str_val_raw(subcommand_matches, "deny_reason"),
+            );
+        }
+        ("fund-set-withdrawal-schedule", Some(subcommand_matches)) => {
+            fund::set_withdrawal_schedule(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                config::get_integer_val(subcommand_matches, "start_time") as i64,
+                config::get_integer_val(subcommand_matches, "end_time") as i64,
+                config::get_str_val_raw(subcommand_matches, "approval_required")
+                    .parse()
+                    .unwrap(),
+                config::get_floating_val(subcommand_matches, "limit_usd"),
+                config::get_floating_val(subcommand_matches, "fee"),
+            );
+        }
+        ("fund-disable-withdrawals", Some(subcommand_matches)) => {
+            fund::disable_withdrawals(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+            );
+        }
+        ("fund-approve-withdrawal", Some(subcommand_matches)) => {
+            fund::approve_withdrawal(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_pubkey_val(subcommand_matches, "user_address"),
+                &config::get_str_val(subcommand_matches, "token_name"),
+                config::get_floating_val(subcommand_matches, "amount"),
+            );
+        }
+        ("fund-deny-withdrawal", Some(subcommand_matches)) => {
+            fund::deny_withdrawal(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_pubkey_val(subcommand_matches, "user_address"),
+                &config::get_str_val(subcommand_matches, "token_name"),
+                &config::get_str_val_raw(subcommand_matches, "deny_reason"),
+            );
+        }
+        ("fund-lock-assets", Some(subcommand_matches)) => {
+            fund::lock_assets(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_str_val(subcommand_matches, "token_name"),
+                config::get_floating_val(subcommand_matches, "amount"),
+            );
+        }
+        ("fund-unlock-assets", Some(subcommand_matches)) => {
+            fund::unlock_assets(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_str_val(subcommand_matches, "token_name"),
+                config::get_floating_val(subcommand_matches, "amount"),
+            );
+        }
+        ("fund-withdraw-fees", Some(subcommand_matches)) => {
+            fund::withdraw_fees(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_str_val(subcommand_matches, "token_name"),
+                config::get_str_val_raw(subcommand_matches, "custody_type")
+                    .parse()
+                    .unwrap(),
+                config::get_floating_val(subcommand_matches, "amount"),
+                &config::get_pubkey_val(subcommand_matches, "receiver"),
+            );
+        }
+        ("fund-update-assets-with-custody", Some(subcommand_matches)) => {
+            fund::update_assets_with_custody(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                config::get_integer_val(subcommand_matches, "custody_id") as u32,
+            );
+        }
+        ("fund-update-assets-with-custodies", Some(subcommand_matches)) => {
+            fund::update_assets_with_custodies(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+            );
+        }
+        ("fund-update-assets-with-vault", Some(subcommand_matches)) => {
+            fund::update_assets_with_vault(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                config::get_integer_val(subcommand_matches, "vault_id") as u32,
+            );
+        }
+        ("fund-update-assets-with-vaults", Some(subcommand_matches)) => {
+            fund::update_assets_with_vaults(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+            );
+        }
+        ("fund-stop-liquidation", Some(subcommand_matches)) => {
+            fund::stop_liquidation(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+            );
+        }
+        ("fund-get-info", Some(subcommand_matches)) => {
+            fund::get_info(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+            );
+        }
+        ("fund-deposit-pool", Some(subcommand_matches)) => {
+            fund::add_liquidity_pool(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_str_val(subcommand_matches, "pool_name"),
+                config::get_floating_val(subcommand_matches, "max_token_a_ui_amount"),
+                config::get_floating_val(subcommand_matches, "max_token_b_ui_amount"),
+            );
+        }
+        ("fund-withdraw-pool", Some(subcommand_matches)) => {
+            fund::remove_liquidity_pool(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_str_val(subcommand_matches, "pool_name"),
+                config::get_floating_val(subcommand_matches, "amount"),
+            );
+        }
+        ("fund-swap", Some(subcommand_matches)) => {
+            fund::swap(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_str_val(subcommand_matches, "protocol"),
+                &config::get_str_val(subcommand_matches, "from_token"),
+                &config::get_str_val(subcommand_matches, "to_token"),
+                config::get_floating_val(subcommand_matches, "amount_in"),
+                config::get_floating_val(subcommand_matches, "min_amount_out"),
+            );
+        }
+        ("fund-stake", Some(subcommand_matches)) => {
+            fund::stake(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_str_val(subcommand_matches, "farm_name"),
+                config::get_floating_val(subcommand_matches, "amount"),
+            );
+        }
+        ("fund-unstake", Some(subcommand_matches)) => {
+            fund::unstake(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_str_val(subcommand_matches, "farm_name"),
+                config::get_floating_val(subcommand_matches, "amount"),
+            );
+        }
+        ("fund-harvest", Some(subcommand_matches)) => {
+            fund::harvest(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_str_val(subcommand_matches, "farm_name"),
+            );
+        }
+        ("fund-deposit-vault", Some(subcommand_matches)) => {
+            fund::add_liquidity_vault(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_str_val(subcommand_matches, "vault_name"),
+                config::get_floating_val(subcommand_matches, "max_token_a_amount"),
+                config::get_floating_val(subcommand_matches, "max_token_b_amount"),
+            );
+        }
+        ("fund-deposit-vault-locked", Some(subcommand_matches)) => {
+            fund::add_locked_liquidity_vault(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_str_val(subcommand_matches, "vault_name"),
+                config::get_floating_val(subcommand_matches, "amount"),
+            );
+        }
+        ("fund-withdraw-vault", Some(subcommand_matches)) => {
+            fund::remove_liquidity_vault(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_str_val(subcommand_matches, "vault_name"),
+                config::get_floating_val(subcommand_matches, "amount"),
+            );
+        }
+        ("fund-withdraw-vault-unlocked", Some(subcommand_matches)) => {
+            fund::remove_unlocked_liquidity_vault(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
+                &config::get_str_val(subcommand_matches, "vault_name"),
+                config::get_floating_val(subcommand_matches, "amount"),
+            );
         }
         ("print-pda", Some(subcommand_matches)) => {
             print::print_pda(&client, &config, config::get_target(subcommand_matches));
@@ -212,17 +559,9 @@ fn main() {
                 &client,
                 &config,
                 config::get_target(subcommand_matches),
-                &config::get_objectname(subcommand_matches),
-                &subcommand_matches
-                    .value_of("param1")
-                    .unwrap()
-                    .parse::<String>()
-                    .unwrap(),
-                &subcommand_matches
-                    .value_of("param2")
-                    .unwrap()
-                    .parse::<String>()
-                    .unwrap(),
+                &config::get_str_val_raw(subcommand_matches, "object_name"),
+                &config::get_str_val_raw(subcommand_matches, "param1"),
+                &config::get_str_val_raw(subcommand_matches, "param2"),
             );
         }
         ("governance", Some(subcommand_matches)) => match subcommand_matches.subcommand() {
@@ -235,11 +574,7 @@ fn main() {
                     &client,
                     &config,
                     &dao_address,
-                    subcommand_matches
-                        .value_of("mint-ui-amount")
-                        .unwrap()
-                        .parse()
-                        .unwrap(),
+                    config::get_floating_val(subcommand_matches, "mint-ui-amount"),
                 );
             }
             _ => unreachable!(),

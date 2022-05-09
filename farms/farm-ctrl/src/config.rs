@@ -4,7 +4,7 @@ use {
     clap::{crate_description, crate_name, App, AppSettings, Arg, ArgMatches, SubCommand},
     solana_clap_utils::{input_validators::is_url, keypair::signer_from_path},
     solana_farm_sdk::refdb,
-    solana_sdk::{commitment_config::CommitmentConfig, signature::Signer},
+    solana_sdk::{commitment_config::CommitmentConfig, pubkey::Pubkey, signature::Signer},
     std::str::FromStr,
 };
 
@@ -23,11 +23,7 @@ impl Config {
         let cli_config = if let Some(config_file) = matches.value_of("config_file") {
             match solana_cli_config::Config::load(config_file) {
                 Err(e) => {
-                    panic!(
-                        "Failed to load config file \"{}\":{}",
-                        config_file,
-                        e.to_string()
-                    );
+                    panic!("Failed to load config file \"{}\":{}", config_file, e);
                 }
                 Ok(config) => config,
             }
@@ -72,71 +68,104 @@ pub fn get_target(matches: &ArgMatches) -> refdb::StorageType {
     res
 }
 
-pub fn get_objectname(matches: &ArgMatches) -> String {
-    matches.value_of("objectname").unwrap().parse().unwrap()
-}
-
-pub fn get_vaultname(matches: &ArgMatches) -> String {
+pub fn get_str_val<'a>(matches: &ArgMatches<'a>, argname: &str) -> String {
     matches
-        .value_of("vaultname")
+        .value_of(argname)
         .unwrap()
         .parse::<String>()
         .unwrap()
         .to_uppercase()
 }
 
-pub fn get_vaultparam(matches: &ArgMatches) -> f64 {
-    matches.value_of("vaultparam").unwrap().parse().unwrap()
+pub fn get_str_val_raw<'a>(matches: &ArgMatches<'a>, argname: &str) -> String {
+    matches
+        .value_of(argname)
+        .unwrap()
+        .parse::<String>()
+        .unwrap()
 }
 
-pub fn get_step(matches: &ArgMatches) -> u64 {
-    matches.value_of("step").unwrap().parse().unwrap()
+pub fn get_pubkey_val<'a>(matches: &ArgMatches<'a>, argname: &str) -> Pubkey {
+    Pubkey::from_str(matches.value_of(argname).unwrap()).unwrap()
 }
 
-pub fn get_filename(matches: &ArgMatches) -> String {
-    matches.value_of("filename").unwrap().parse().unwrap()
+pub fn get_integer_val<'a>(matches: &ArgMatches<'a>, argname: &str) -> u64 {
+    matches.value_of(argname).unwrap().parse::<u64>().unwrap()
 }
 
-pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
-    let target = Arg::with_name("target")
-        .value_name("TARGET_TYPE")
-        .required(true)
-        .takes_value(true)
-        .help("Target object type (program, vault, etc.)");
+pub fn get_floating_val<'a>(matches: &ArgMatches<'a>, argname: &str) -> f64 {
+    matches.value_of(argname).unwrap().parse::<f64>().unwrap()
+}
 
-    let filename = Arg::with_name("filename")
-        .value_name("FILE_NAME")
-        .required(true)
-        .takes_value(true)
-        .help("Input file name");
+fn get_arg(name: &str) -> Arg {
+    Arg::with_name(name).required(true).takes_value(true)
+}
 
-    let objectname = Arg::with_name("objectname")
-        .value_name("OBJECT_NAME")
-        .required(true)
+fn get_integer_arg(name: &str) -> Arg {
+    Arg::with_name(name)
         .takes_value(true)
-        .help("Target object name");
-
-    let vaultname = Arg::with_name("vaultname")
-        .value_name("VAULT_NAME")
         .required(true)
-        .takes_value(true)
-        .help("Vault name");
-
-    let vaultparam = Arg::with_name("vaultparam")
-        .value_name("VAULT_PARAM")
-        .required(true)
-        .takes_value(true)
-        .help("Vault param");
-
-    let step = Arg::with_name("step")
-        .value_name("STEP")
-        .required(true)
-        .takes_value(true)
         .validator(|p| match p.parse::<u64>() {
             Err(_) => Err(String::from("Must be unsigned integer")),
             Ok(_) => Ok(()),
         })
-        .help("Instruction step");
+}
+
+fn get_floating_arg(name: &str) -> Arg {
+    Arg::with_name(name)
+        .takes_value(true)
+        .required(true)
+        .validator(|p| match p.parse::<f64>() {
+            Err(_) => Err(String::from("Must be floating number")),
+            Ok(_) => Ok(()),
+        })
+}
+
+pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
+    let target = Arg::with_name("target")
+        .required(true)
+        .takes_value(true)
+        .help("Target object type (program, vault, etc.)");
+
+    let filename = Arg::with_name("file_name")
+        .required(true)
+        .takes_value(true)
+        .help("Input file name");
+
+    let objectname = Arg::with_name("object_name")
+        .required(true)
+        .takes_value(true)
+        .help("Target object name");
+
+    let tokenname = Arg::with_name("token_name")
+        .required(true)
+        .takes_value(true)
+        .help("Token name");
+
+    let vaultname = Arg::with_name("vault_name")
+        .required(true)
+        .takes_value(true)
+        .help("Vault name");
+
+    let fundname = Arg::with_name("fund_name")
+        .required(true)
+        .takes_value(true)
+        .help("Fund name");
+
+    let amount = Arg::with_name("amount")
+        .required(true)
+        .takes_value(true)
+        .validator(|p| match p.parse::<f64>() {
+            Err(_) => Err(String::from("Must be unsigned decimal")),
+            Ok(val) => {
+                if val >= 0.0 {
+                    Ok(())
+                } else {
+                    Err(String::from("Must be unsigned decimal"))
+                }
+            }
+        })
+        .help("Token amount");
 
     App::new(crate_name!())
         .about(crate_description!())
@@ -148,21 +177,14 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .takes_value(true)
                 .default_value("info")
                 .global(true)
-                .help("Log verbosity level (debug, info, warning, error)")
-                .validator(|p| {
-                    let allowed = ["debug", "info", "warning", "error"];
-                    if allowed.contains(&p.as_str()) {
-                        Ok(())
-                    } else {
-                        Err(String::from("Must be one of: debug, info, warning, error"))
-                    }
-                }),
+                .help("Log verbosity level")
+                .possible_values(&["debug", "info", "warning", "error"])
+                .hide_possible_values(false),
         )
         .arg({
             let arg = Arg::with_name("config_file")
                 .short("C")
                 .long("config")
-                .value_name("PATH")
                 .takes_value(true)
                 .global(true)
                 .help("Configuration file to use");
@@ -176,7 +198,6 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
             Arg::with_name("farm_client_url")
                 .short("f")
                 .long("farm-client-url")
-                .value_name("STR")
                 .takes_value(true)
                 .global(true)
                 .validator(is_url)
@@ -186,7 +207,6 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
             Arg::with_name("keypair")
                 .short("k")
                 .long("keypair")
-                .value_name("KEYPAIR")
                 .global(true)
                 .takes_value(true)
                 .help("Filepath or URL to a keypair"),
@@ -195,7 +215,6 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
             Arg::with_name("max_instructions")
                 .short("m")
                 .long("max-instructions")
-                .value_name("NUM")
                 .global(true)
                 .takes_value(true)
                 .default_value("1")
@@ -210,15 +229,10 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .long("commitment")
                 .short("c")
                 .takes_value(true)
-                .possible_values(&[
-                    "processed",
-                    "confirmed",
-                    "finalized",
-                ])
-                .value_name("COMMITMENT_LEVEL")
-                .hide_possible_values(true)
+                .possible_values(&["processed", "confirmed", "finalized"])
+                .hide_possible_values(false)
                 .global(true)
-                .help("Return information at the selected commitment level [possible values: processed, confirmed, finalized]"),
+                .help("Return information at the selected commitment level"),
         )
         .arg(
             Arg::with_name("no_pretty_print")
@@ -315,7 +329,13 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
             SubCommand::with_name("vault-init")
                 .about("Initialize the Vault")
                 .arg(vaultname.clone())
-                .arg(step.clone())
+                .arg(get_integer_arg("step")),
+        )
+        .subcommand(
+            SubCommand::with_name("vault-set-admin")
+                .about("Set a new admin for the Vault")
+                .arg(vaultname.clone())
+                .arg(get_arg("admin")),
         )
         .subcommand(
             SubCommand::with_name("vault-shutdown")
@@ -328,82 +348,59 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .arg(vaultname.clone())
                 .arg(
                     Arg::with_name("fee_token")
-                    .value_name("FEE_TOKEN")
-                    .required(true)
-                    .takes_value(true)
-                    .help("Fees token account to withdraw from - 0 or 1"),
-                )
-                .arg(
-                    Arg::with_name("amount")
-                    .value_name("AMOUNT")
-                    .required(true)
-                    .takes_value(true)
-                    .validator(|p| match p.parse::<f64>() {
-                        Err(_) => Err(String::from("Must be unsigned decimal")),
-                        Ok(val) => {
-                            if val >= 0.0 {
-                                Ok(())
-                            } else {
-                                Err(String::from("Must be unsigned decimal"))
-                            }
-                        }
-                    })
-                    .help("Fees amount or zero for all"),
-                )
-                .arg(
-                    Arg::with_name("receiver")
-                        .value_name("PUBKEY")
                         .required(true)
                         .takes_value(true)
-                        .help("Fees receiver"),
+                        .help("Fees token account to withdraw from - 0 or 1"),
                 )
+                .arg(amount.clone())
+                .arg(
+                    Arg::with_name("receiver")
+                        .required(true)
+                        .takes_value(true)
+                        .help("Fees receiver address"),
+                ),
         )
         .subcommand(
             SubCommand::with_name("vault-crank")
                 .about("Crank the Vault")
                 .arg(vaultname.clone())
-                .arg(step.clone())
-        )
-        .subcommand(
-            SubCommand::with_name("vault-crank-all")
-                .about("Crank all Vaults")
-                .arg(step.clone())
+                .arg(get_integer_arg("step")),
         )
         .subcommand(
             SubCommand::with_name("vault-set-fee")
                 .about("Set new fee percent for the Vault")
                 .arg(vaultname.clone())
-                .arg(vaultparam.clone()),
+                .arg(get_floating_arg("fee_percent")),
         )
         .subcommand(
             SubCommand::with_name("vault-set-external-fee")
                 .about("Set new external fee percent for the Vault")
                 .arg(vaultname.clone())
-                .arg(vaultparam.clone()),
+                .arg(get_floating_arg("external_fee_percent")),
         )
         .subcommand(
             SubCommand::with_name("vault-set-min-crank-interval")
                 .about("Set new min crank interval in seconds for the Vault")
                 .arg(vaultname.clone())
-                .arg(vaultparam.clone()),
+                .arg(get_integer_arg("min_crank_interval")),
         )
         .subcommand(
-            SubCommand::with_name("vault-disable-deposit")
+            SubCommand::with_name("vault-disable-deposits")
                 .about("Disable deposits for the specified object")
                 .arg(vaultname.clone()),
         )
         .subcommand(
-            SubCommand::with_name("vault-enable-deposit")
+            SubCommand::with_name("vault-enable-deposits")
                 .about("Enable deposits for the specified object")
                 .arg(vaultname.clone()),
         )
         .subcommand(
-            SubCommand::with_name("vault-disable-withdrawal")
+            SubCommand::with_name("vault-disable-withdrawals")
                 .about("Disable withdrawals for the specified object")
                 .arg(vaultname.clone()),
         )
         .subcommand(
-            SubCommand::with_name("vault-enable-withdrawal")
+            SubCommand::with_name("vault-enable-withdrawals")
                 .about("Enable withdrawals for the specified object")
                 .arg(vaultname.clone()),
         )
@@ -411,6 +408,252 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
             SubCommand::with_name("vault-get-info")
                 .about("Print current stats for the Vault")
                 .arg(vaultname.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-init")
+                .about("Initialize the Fund")
+                .arg(fundname.clone())
+                .arg(get_integer_arg("step")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-set-admin")
+                .about("Set a new admin for the Fund")
+                .arg(fundname.clone())
+                .arg(get_arg("admin")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-set-manager")
+                .about("Set a new manager for the Fund")
+                .arg(fundname.clone())
+                .arg(get_arg("manager")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-add-custody")
+                .about("Add a new custody to the Fund")
+                .arg(fundname.clone())
+                .arg(tokenname.clone())
+                .arg(get_arg("custody_type")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-remove-custody")
+                .about("Remove the custody from the Fund")
+                .arg(fundname.clone())
+                .arg(tokenname.clone())
+                .arg(get_arg("custody_type")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-add-vault")
+                .about("Add a new Vault to the Fund")
+                .arg(fundname.clone())
+                .arg(vaultname.clone())
+                .arg(get_arg("vault_type")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-remove-vault")
+                .about("Remove the Vault from the Fund")
+                .arg(fundname.clone())
+                .arg(vaultname.clone())
+                .arg(get_arg("vault_type")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-set-assets-tracking-config")
+                .about("Set a new assets tracking config for the Fund")
+                .arg(fundname.clone())
+                .arg(get_floating_arg("assets_limit_usd"))
+                .arg(get_integer_arg("max_update_age_sec"))
+                .arg(get_floating_arg("max_price_error"))
+                .arg(get_integer_arg("max_price_age_sec")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-set-deposit-schedule")
+                .about("Set a new deposit schedule for the Fund")
+                .arg(fundname.clone())
+                .arg(get_integer_arg("start_time"))
+                .arg(get_integer_arg("end_time"))
+                .arg(get_arg("approval_required"))
+                .arg(get_floating_arg("limit_usd"))
+                .arg(get_floating_arg("fee")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-disable-deposits")
+                .about("Disables deposits to the Fund")
+                .arg(fundname.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-approve-deposit")
+                .about("Approve pending deposit to the Fund")
+                .arg(fundname.clone())
+                .arg(get_arg("user_address"))
+                .arg(tokenname.clone())
+                .arg(amount.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-deny-deposit")
+                .about("Deny pending deposit to the Fund")
+                .arg(fundname.clone())
+                .arg(get_arg("user_address"))
+                .arg(tokenname.clone())
+                .arg(get_arg("deny_reason")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-set-withdrawal-schedule")
+                .about("Set a new withdrawal schedule for the Fund")
+                .arg(fundname.clone())
+                .arg(get_integer_arg("start_time"))
+                .arg(get_integer_arg("end_time"))
+                .arg(get_arg("approval_required"))
+                .arg(get_floating_arg("limit_usd"))
+                .arg(get_floating_arg("fee")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-disable-withdrawals")
+                .about("Disables withdrawals from the Fund")
+                .arg(fundname.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-approve-withdrawal")
+                .about("Approve pending withdrawal from the Fund")
+                .arg(fundname.clone())
+                .arg(get_arg("user_address"))
+                .arg(tokenname.clone())
+                .arg(amount.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-deny-withdrawal")
+                .about("Deny pending withdrawal from the Fund")
+                .arg(fundname.clone())
+                .arg(get_arg("user_address"))
+                .arg(tokenname.clone())
+                .arg(get_arg("deny_reason")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-lock-assets")
+                .about("Moves assets from Deposit/Withdraw custody to the Fund")
+                .arg(fundname.clone())
+                .arg(tokenname.clone())
+                .arg(amount.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-unlock-assets")
+                .about("Releases assets from the Fund to Deposit/Withdraw custody")
+                .arg(fundname.clone())
+                .arg(tokenname.clone())
+                .arg(amount.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-withdraw-fees")
+                .about("Withdraw collected fees from the Fund")
+                .arg(fundname.clone())
+                .arg(tokenname.clone())
+                .arg(get_arg("custody_type"))
+                .arg(amount.clone())
+                .arg(get_arg("receiver")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-update-assets-with-custody")
+                .about("Update Fund assets info based on custody holdings")
+                .arg(fundname.clone())
+                .arg(get_integer_arg("custody_id")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-update-assets-with-custodies")
+                .about("Update Fund assets info based on all custodies")
+                .arg(fundname.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-update-assets-with-vault")
+                .about("Update Fund assets info based on Vault holdings")
+                .arg(fundname.clone())
+                .arg(get_integer_arg("vault_id")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-update-assets-with-vaults")
+                .about("Update Fund assets info based on all Vaults")
+                .arg(fundname.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-stop-liquidation")
+                .about("Stop the Fund liquidation")
+                .arg(fundname.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-get-info")
+                .about("Print current stats for the Fund")
+                .arg(fundname.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-deposit-pool")
+                .about("Add liquidity to the Pool in the Fund")
+                .arg(fundname.clone())
+                .arg(get_arg("pool_name"))
+                .arg(get_floating_arg("max_token_a_ui_amount"))
+                .arg(get_floating_arg("max_token_b_ui_amount")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-withdraw-pool")
+                .about("Remove liquidity from the Pool in the Fund")
+                .arg(fundname.clone())
+                .arg(get_arg("pool_name"))
+                .arg(amount.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-swap")
+                .about("Swap tokens in the Fund")
+                .arg(fundname.clone())
+                .arg(get_arg("protocol"))
+                .arg(get_arg("from_token"))
+                .arg(get_arg("to_token"))
+                .arg(get_floating_arg("amount_in"))
+                .arg(get_floating_arg("min_amount_out")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-stake")
+                .about("Stake LP tokens to the Farm in the Fund")
+                .arg(fundname.clone())
+                .arg(get_arg("farm_name"))
+                .arg(amount.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-unstake")
+                .about("Unstake LP tokens from the Farm in the Fund")
+                .arg(fundname.clone())
+                .arg(get_arg("farm_name"))
+                .arg(amount.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-harvest")
+                .about("Harvest rewards from the Farm in the Fund")
+                .arg(fundname.clone())
+                .arg(get_arg("farm_name")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-deposit-vault")
+                .about("Add liquidity to the Vault in the Fund")
+                .arg(fundname.clone())
+                .arg(vaultname.clone())
+                .arg(get_floating_arg("max_token_a_amount"))
+                .arg(get_floating_arg("max_token_b_amount")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-deposit-vault-locked")
+                .about("Add locked liquidity to the Vault in the Fund")
+                .arg(fundname.clone())
+                .arg(vaultname.clone())
+                .arg(get_floating_arg("amount")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-withdraw-vault")
+                .about("Remove liquidity from the Vault in the Fund")
+                .arg(fundname.clone())
+                .arg(vaultname.clone())
+                .arg(get_floating_arg("amount")),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-withdraw-vault-unlocked")
+                .about("Remove unlocked liquidity from the Vault in the Fund")
+                .arg(fundname.clone())
+                .arg(vaultname.clone())
+                .arg(get_floating_arg("amount")),
         )
         .subcommand(
             SubCommand::with_name("print-pda-all")
@@ -433,7 +676,6 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .arg(
                     Arg::with_name("param1")
                         .index(3)
-                        .value_name("PARAM1")
                         .required(true)
                         .takes_value(true)
                         .help("Object specific parameter 1"),
@@ -441,7 +683,6 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .arg(
                     Arg::with_name("param2")
                         .index(4)
-                        .value_name("PARAM2")
                         .required(true)
                         .takes_value(true)
                         .help("Object specific parameter 2"),
@@ -453,25 +694,23 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .setting(AppSettings::SubcommandRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name("init")
-                    .about("Initialize a new DAO")
-                    .arg(
-                        Arg::with_name("governance-program-address")
-                            .value_name("DAO-PROGRAM")
-                            .required(true)
-                            .takes_value(true)
-                            .help("Address of the governance program"),
-                    )
-                    .arg(
-                        Arg::with_name("mint-ui-amount")
-                        .value_name("MINT_UI_AMOUNT")
-                        .required(true)
-                        .takes_value(true)
-                        .validator(|p| match p.parse::<f64>() {
-                            Err(_) => Err(String::from("Must be unsigned integer")),
-                            Ok(_) => Ok(()),
-                        })
-                        .help("Amount of governance tokens to mint")
-                    )
-                )
+                        .about("Initialize a new DAO")
+                        .arg(
+                            Arg::with_name("governance-program-address")
+                                .required(true)
+                                .takes_value(true)
+                                .help("Address of the governance program"),
+                        )
+                        .arg(
+                            Arg::with_name("mint-ui-amount")
+                                .required(true)
+                                .takes_value(true)
+                                .validator(|p| match p.parse::<f64>() {
+                                    Err(_) => Err(String::from("Must be unsigned integer")),
+                                    Ok(_) => Ok(()),
+                                })
+                                .help("Amount of governance tokens to mint"),
+                        ),
+                ),
         )
 }

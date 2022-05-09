@@ -28,9 +28,10 @@ impl FarmClient {
         // fill in accounts and instruction data
         let data = VaultInstruction::UserInit.to_vec()?;
         let accounts = vec![
-            AccountMeta::new_readonly(*wallet_address, true),
+            AccountMeta::new(*wallet_address, true),
             AccountMeta::new_readonly(vault_ref, false),
             AccountMeta::new(vault.info_account, false),
+            AccountMeta::new_readonly(*wallet_address, false),
             AccountMeta::new(
                 self.get_vault_user_info_account(wallet_address, vault_name)?,
                 false,
@@ -51,37 +52,29 @@ impl FarmClient {
         // get vault info
         let vault = self.get_vault(vault_name)?;
         let vault_ref = self.get_vault_ref(vault_name)?;
-        let vault_token = self.get_token_by_ref_from_cache(&Some(vault.vault_token_ref))?;
 
         // fill in accounts and instruction data
-        let data;
         let mut accounts = vec![AccountMeta::new_readonly(*wallet_address, true)];
 
         // general accounts
         accounts.push(AccountMeta::new_readonly(vault_ref, false));
         accounts.push(AccountMeta::new(vault.info_account, false));
-        accounts.push(AccountMeta::new_readonly(vault.vault_authority, false));
         accounts.push(AccountMeta::new_readonly(spl_token::id(), false));
-        accounts.push(AccountMeta::new(vault_token.unwrap().mint, false));
         accounts.push(AccountMeta::new(
             self.get_vault_user_info_account(wallet_address, vault_name)?,
             false,
         ));
 
         // strategy related accounts
-        match vault.strategy {
+        let data = match vault.strategy {
             VaultStrategy::StakeLpCompoundRewards {
-                pool_id_ref,
-                farm_id_ref,
+                pool_ref,
+                farm_ref,
                 lp_token_custody,
-                token_a_custody: _,
-                token_b_custody: _,
-                token_a_reward_custody,
-                token_b_reward_custody,
-                vault_stake_info,
+                ..
             } => {
-                let pool = self.get_pool_by_ref(&pool_id_ref)?;
-                let farm = self.get_farm_by_ref(&farm_id_ref)?;
+                let pool = self.get_pool_by_ref(&pool_ref)?;
+                let farm = self.get_farm_by_ref(&farm_ref)?;
 
                 // get tokens info
                 let token_a = self.get_token_by_ref_from_cache(&pool.token_a_ref)?;
@@ -94,7 +87,6 @@ impl FarmClient {
                 let user_token_a_account = self.get_token_account(wallet_address, &token_a);
                 let user_token_b_account = self.get_token_account(wallet_address, &token_b);
                 let user_lp_token_account = self.get_token_account(wallet_address, &lp_token);
-                let user_vt_token_account = self.get_token_account(wallet_address, &vault_token);
 
                 // fill in pool related accounts
                 match pool.route {
@@ -119,15 +111,6 @@ impl FarmClient {
                         ));
                         accounts.push(AccountMeta::new(
                             user_lp_token_account.ok_or(ProgramError::UninitializedAccount)?,
-                            false,
-                        ));
-                        accounts.push(AccountMeta::new(
-                            user_vt_token_account.ok_or(ProgramError::UninitializedAccount)?,
-                            false,
-                        ));
-                        accounts.push(AccountMeta::new(token_a_reward_custody, false));
-                        accounts.push(AccountMeta::new(
-                            token_b_reward_custody.or_else(|| Some(zero::id())).unwrap(),
                             false,
                         ));
                         accounts.push(AccountMeta::new(lp_token_custody, false));
@@ -157,14 +140,90 @@ impl FarmClient {
                     }
                 }
 
+                VaultInstruction::AddLiquidity {
+                    max_token_a_amount: self
+                        .to_token_amount_option(max_token_a_ui_amount, &token_a)?,
+                    max_token_b_amount: self
+                        .to_token_amount_option(max_token_b_ui_amount, &token_b)?,
+                }
+                .to_vec()?
+            }
+            VaultStrategy::DynamicHedge { .. } => {
+                unreachable!();
+            }
+        };
+        Ok((accounts, data))
+    }
+
+    /// Returns accounts and data for locking liquidity in the Vault
+    pub fn get_stc_lock_liquidity_accounts_raydium(
+        &self,
+        wallet_address: &Pubkey,
+        vault_name: &str,
+        ui_amount: f64,
+    ) -> Result<(Vec<AccountMeta>, Vec<u8>), FarmClientError> {
+        // get vault info
+        let vault = self.get_vault(vault_name)?;
+        let vault_ref = self.get_vault_ref(vault_name)?;
+        let vault_token = self.get_token_by_ref_from_cache(&Some(vault.vault_token_ref))?;
+
+        // fill in accounts and instruction data
+        let mut accounts = vec![AccountMeta::new_readonly(*wallet_address, true)];
+
+        // general accounts
+        accounts.push(AccountMeta::new_readonly(vault_ref, false));
+        accounts.push(AccountMeta::new(vault.info_account, false));
+        accounts.push(AccountMeta::new_readonly(vault.vault_authority, false));
+        accounts.push(AccountMeta::new_readonly(spl_token::id(), false));
+        accounts.push(AccountMeta::new(vault_token.unwrap().mint, false));
+        accounts.push(AccountMeta::new(
+            self.get_vault_user_info_account(wallet_address, vault_name)?,
+            false,
+        ));
+
+        // strategy related accounts
+        let data = match vault.strategy {
+            VaultStrategy::StakeLpCompoundRewards {
+                pool_ref,
+                farm_ref,
+                lp_token_custody,
+                token_a_custody: _,
+                token_b_custody: _,
+                token_a_reward_custody,
+                token_b_reward_custody,
+                vault_stake_info,
+                ..
+            } => {
+                let pool = self.get_pool_by_ref(&pool_ref)?;
+                let farm = self.get_farm_by_ref(&farm_ref)?;
+
+                // get tokens info
+                let lp_token = self.get_token_by_ref_from_cache(&pool.lp_token_ref)?;
+                let farm_token = self.get_token_by_ref_from_cache(&farm.lp_token_ref)?;
+                assert_eq!(farm_token, lp_token);
+
+                // get user accounts info
+                let user_vt_token_account = self.get_token_account(wallet_address, &vault_token);
+
+                accounts.push(AccountMeta::new(
+                    user_vt_token_account.ok_or(ProgramError::UninitializedAccount)?,
+                    false,
+                ));
+                accounts.push(AccountMeta::new(token_a_reward_custody, false));
+                accounts.push(AccountMeta::new(
+                    token_b_reward_custody.or_else(|| Some(zero::id())).unwrap(),
+                    false,
+                ));
+                accounts.push(AccountMeta::new(lp_token_custody, false));
+
                 // fill in farm related accounts
                 match farm.route {
                     FarmRoute::Raydium {
                         farm_id,
                         farm_authority,
                         farm_lp_token_account,
-                        farm_reward_token_a_account,
-                        farm_reward_token_b_account,
+                        farm_first_reward_token_account,
+                        farm_second_reward_token_account,
                     } => {
                         accounts.push(AccountMeta::new_readonly(farm.farm_program_id, false));
                         accounts.push(AccountMeta::new(vault_stake_info, false));
@@ -172,9 +231,9 @@ impl FarmClient {
                         accounts.push(AccountMeta::new_readonly(farm_authority, false));
 
                         accounts.push(AccountMeta::new(farm_lp_token_account, false));
-                        accounts.push(AccountMeta::new(farm_reward_token_a_account, false));
+                        accounts.push(AccountMeta::new(farm_first_reward_token_account, false));
                         accounts.push(AccountMeta::new(
-                            farm_reward_token_b_account
+                            farm_second_reward_token_account
                                 .or_else(|| Some(zero::id()))
                                 .unwrap(),
                             false,
@@ -186,18 +245,15 @@ impl FarmClient {
                     }
                 }
 
-                data = VaultInstruction::AddLiquidity {
-                    max_token_a_amount: self
-                        .to_token_amount_option(max_token_a_ui_amount, &token_a)?,
-                    max_token_b_amount: self
-                        .to_token_amount_option(max_token_b_ui_amount, &token_b)?,
+                VaultInstruction::LockLiquidity {
+                    amount: self.to_token_amount_option(ui_amount, &lp_token)?,
                 }
-                .to_vec()?;
+                .to_vec()?
             }
             VaultStrategy::DynamicHedge { .. } => {
                 unreachable!();
             }
-        }
+        };
         Ok((accounts, data))
     }
 
@@ -234,17 +290,18 @@ impl FarmClient {
         // strategy related accounts
         match vault.strategy {
             VaultStrategy::StakeLpCompoundRewards {
-                pool_id_ref,
-                farm_id_ref,
+                pool_ref,
+                farm_ref,
                 lp_token_custody,
                 token_a_custody: _,
                 token_b_custody: _,
                 token_a_reward_custody,
                 token_b_reward_custody,
                 vault_stake_info,
+                ..
             } => {
-                let pool = self.get_pool_by_ref(&pool_id_ref)?;
-                let farm = self.get_farm_by_ref(&farm_id_ref)?;
+                let pool = self.get_pool_by_ref(&pool_ref)?;
+                let farm = self.get_farm_by_ref(&farm_ref)?;
 
                 // get tokens info
                 let lp_token = self.get_token_by_ref_from_cache(&pool.lp_token_ref)?;
@@ -271,17 +328,17 @@ impl FarmClient {
                         farm_id,
                         farm_authority,
                         farm_lp_token_account,
-                        farm_reward_token_a_account,
-                        farm_reward_token_b_account,
+                        farm_first_reward_token_account,
+                        farm_second_reward_token_account,
                     } => {
                         accounts.push(AccountMeta::new_readonly(farm.farm_program_id, false));
                         accounts.push(AccountMeta::new(vault_stake_info, false));
                         accounts.push(AccountMeta::new(farm_id, false));
                         accounts.push(AccountMeta::new_readonly(farm_authority, false));
                         accounts.push(AccountMeta::new(farm_lp_token_account, false));
-                        accounts.push(AccountMeta::new(farm_reward_token_a_account, false));
+                        accounts.push(AccountMeta::new(farm_first_reward_token_account, false));
                         accounts.push(AccountMeta::new(
-                            farm_reward_token_b_account
+                            farm_second_reward_token_account
                                 .or_else(|| Some(zero::id()))
                                 .unwrap(),
                             false,
@@ -311,7 +368,6 @@ impl FarmClient {
         let vault = self.get_vault(vault_name)?;
         let vault_ref = self.get_vault_ref(vault_name)?;
         // fill in accounts and instruction data
-        let data;
         let mut accounts = vec![AccountMeta::new_readonly(*wallet_address, true)];
 
         // general accounts
@@ -325,17 +381,15 @@ impl FarmClient {
         ));
 
         // strategy related accounts
-        match vault.strategy {
+        let data = match vault.strategy {
             VaultStrategy::StakeLpCompoundRewards {
-                pool_id_ref,
-                farm_id_ref,
+                pool_ref,
+                farm_ref,
                 lp_token_custody,
-                token_a_custody,
-                token_b_custody,
                 ..
             } => {
-                let pool = self.get_pool_by_ref(&pool_id_ref)?;
-                let farm = self.get_farm_by_ref(&farm_id_ref)?;
+                let pool = self.get_pool_by_ref(&pool_ref)?;
+                let farm = self.get_farm_by_ref(&farm_ref)?;
 
                 // get tokens info
                 let token_a = self.get_token_by_ref_from_cache(&pool.token_a_ref)?;
@@ -362,7 +416,9 @@ impl FarmClient {
                         serum_coin_vault_account,
                         serum_pc_vault_account,
                         serum_vault_signer,
-                        ..
+                        serum_event_queue,
+                        serum_bids,
+                        serum_asks,
                     } => {
                         accounts.push(AccountMeta::new(
                             user_token_a_account.ok_or(ProgramError::UninitializedAccount)?,
@@ -370,11 +426,6 @@ impl FarmClient {
                         ));
                         accounts.push(AccountMeta::new(
                             user_token_b_account.ok_or(ProgramError::UninitializedAccount)?,
-                            false,
-                        ));
-                        accounts.push(AccountMeta::new(token_a_custody, false));
-                        accounts.push(AccountMeta::new(
-                            token_b_custody.or_else(|| Some(zero::id())).unwrap(),
                             false,
                         ));
                         accounts.push(AccountMeta::new(lp_token_custody, false));
@@ -401,6 +452,18 @@ impl FarmClient {
                         accounts.push(AccountMeta::new(amm_target, false));
                         accounts.push(AccountMeta::new(serum_market, false));
                         accounts.push(AccountMeta::new_readonly(serum_program_id, false));
+                        accounts.push(AccountMeta::new(
+                            serum_bids.ok_or(ProgramError::UninitializedAccount)?,
+                            false,
+                        ));
+                        accounts.push(AccountMeta::new(
+                            serum_asks.ok_or(ProgramError::UninitializedAccount)?,
+                            false,
+                        ));
+                        accounts.push(AccountMeta::new(
+                            serum_event_queue.ok_or(ProgramError::UninitializedAccount)?,
+                            false,
+                        ));
                         accounts.push(AccountMeta::new(serum_coin_vault_account, false));
                         accounts.push(AccountMeta::new(serum_pc_vault_account, false));
                         accounts.push(AccountMeta::new_readonly(serum_vault_signer, false));
@@ -410,15 +473,15 @@ impl FarmClient {
                     }
                 }
 
-                data = VaultInstruction::RemoveLiquidity {
+                VaultInstruction::RemoveLiquidity {
                     amount: self.to_token_amount_option(ui_amount, &lp_token)?,
                 }
-                .to_vec()?;
+                .to_vec()?
             }
             VaultStrategy::DynamicHedge { .. } => {
                 unreachable!();
             }
-        }
+        };
         Ok((accounts, data))
     }
 
@@ -451,18 +514,19 @@ impl FarmClient {
 
         match vault.strategy {
             VaultStrategy::StakeLpCompoundRewards {
-                pool_id_ref,
-                farm_id_ref,
+                pool_ref,
+                farm_ref,
                 lp_token_custody,
                 token_a_custody,
                 token_b_custody,
                 token_a_reward_custody,
                 token_b_reward_custody,
                 vault_stake_info,
+                ..
             } => {
                 // get pools
-                let pool = self.get_pool_by_ref(&pool_id_ref)?;
-                let farm = self.get_farm_by_ref(&farm_id_ref)?;
+                let pool = self.get_pool_by_ref(&pool_ref)?;
+                let farm = self.get_farm_by_ref(&farm_ref)?;
                 // get tokens info
                 let token_a = self
                     .get_token_by_ref_from_cache(&pool.token_a_ref)?
@@ -474,9 +538,10 @@ impl FarmClient {
                     .get_token_by_ref_from_cache(&pool.lp_token_ref)?
                     .unwrap();
                 let token_a_reward = self
-                    .get_token_by_ref_from_cache(&farm.reward_token_a_ref)?
+                    .get_token_by_ref_from_cache(&farm.first_reward_token_ref)?
                     .unwrap();
-                let token_b_reward = self.get_token_by_ref_from_cache(&farm.reward_token_b_ref)?;
+                let token_b_reward =
+                    self.get_token_by_ref_from_cache(&farm.second_reward_token_ref)?;
 
                 accounts.push(AccountMeta::new_readonly(farm.farm_program_id, false));
                 accounts.push(AccountMeta::new(vault_token.mint, false));
@@ -571,17 +636,18 @@ impl FarmClient {
         // strategy related accounts
         match vault.strategy {
             VaultStrategy::StakeLpCompoundRewards {
-                pool_id_ref,
-                farm_id_ref,
+                pool_ref,
+                farm_ref,
                 lp_token_custody,
                 token_a_custody,
                 token_b_custody,
                 token_a_reward_custody,
                 token_b_reward_custody,
                 vault_stake_info,
+                ..
             } => {
-                let pool = self.get_pool_by_ref(&pool_id_ref)?;
-                let farm = self.get_farm_by_ref(&farm_id_ref)?;
+                let pool = self.get_pool_by_ref(&pool_ref)?;
+                let farm = self.get_farm_by_ref(&farm_ref)?;
 
                 // get tokens info
                 let lp_token = self.get_token_by_ref_from_cache(&pool.lp_token_ref)?;
@@ -687,8 +753,8 @@ impl FarmClient {
                             farm_id,
                             farm_authority,
                             farm_lp_token_account,
-                            farm_reward_token_a_account,
-                            farm_reward_token_b_account,
+                            farm_first_reward_token_account,
+                            farm_second_reward_token_account,
                         } => {
                             accounts.push(AccountMeta::new_readonly(farm.farm_program_id, false));
                             accounts.push(AccountMeta::new(vault_stake_info, false));
@@ -696,9 +762,9 @@ impl FarmClient {
                             accounts.push(AccountMeta::new_readonly(farm_authority, false));
 
                             accounts.push(AccountMeta::new(farm_lp_token_account, false));
-                            accounts.push(AccountMeta::new(farm_reward_token_a_account, false));
+                            accounts.push(AccountMeta::new(farm_first_reward_token_account, false));
                             accounts.push(AccountMeta::new(
-                                farm_reward_token_b_account
+                                farm_second_reward_token_account
                                     .or_else(|| Some(zero::id()))
                                     .unwrap(),
                                 false,

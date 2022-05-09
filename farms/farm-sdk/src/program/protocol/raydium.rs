@@ -2,6 +2,7 @@
 
 use {
     crate::{
+        error::FarmError,
         id::zero,
         instruction::raydium::{
             RaydiumAddLiquidity, RaydiumRemoveLiquidity, RaydiumStake, RaydiumSwap, RaydiumUnstake,
@@ -31,7 +32,6 @@ pub mod raydium_v3 {
 pub mod raydium_v4 {
     solana_program::declare_id!("675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8");
 }
-
 pub mod raydium_stake {
     solana_program::declare_id!("EhhTKczWMGQt46ynNeRX1WfeagwwJd7ufHvCDjRxjo5Q");
 }
@@ -43,6 +43,8 @@ pub mod raydium_stake_v5 {
 }
 
 pub const RAYDIUM_FEE: f64 = 0.0025;
+pub const RAYDIUM_FEE_NUMERATOR: u64 = 25;
+pub const RAYDIUM_FEE_DENOMINATOR: u64 = 10000;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct RaydiumUserStakeInfo {
@@ -328,8 +330,10 @@ pub fn get_pool_token_balances<'a, 'b>(
         let base_token_total = array_ref![open_orders_data, 85, 8];
         let quote_token_total = array_ref![open_orders_data, 101, 8];
 
-        token_a_balance += u64::from_le_bytes(*base_token_total);
-        token_b_balance += u64::from_le_bytes(*quote_token_total);
+        token_a_balance =
+            math::checked_add(token_a_balance, u64::from_le_bytes(*base_token_total))?;
+        token_b_balance =
+            math::checked_add(token_b_balance, u64::from_le_bytes(*quote_token_total))?;
     }
 
     // adjust with amm take pnl
@@ -347,17 +351,16 @@ pub fn get_pool_token_balances<'a, 'b>(
         let need_take_pnl_coin = u64::from_le_bytes(*array_ref![amm_id_data, pnl_coin_offset, 8]);
         let need_take_pnl_pc = u64::from_le_bytes(*array_ref![amm_id_data, pnl_pc_offset, 8]);
 
-        // safe to use unchecked sub
-        token_a_balance -= if need_take_pnl_coin < token_a_balance {
-            need_take_pnl_coin
+        token_a_balance = if let Some(res) = token_a_balance.checked_sub(need_take_pnl_coin) {
+            res
         } else {
-            token_a_balance
+            0
         };
-        // safe to use unchecked sub
-        token_b_balance -= if need_take_pnl_pc < token_b_balance {
-            need_take_pnl_pc
+
+        token_b_balance = if let Some(res) = token_b_balance.checked_sub(need_take_pnl_pc) {
+            res
         } else {
-            token_b_balance
+            0
         };
     }
 
@@ -367,14 +370,12 @@ pub fn get_pool_token_balances<'a, 'b>(
 pub fn get_pool_deposit_amounts<'a, 'b>(
     pool_coin_token_account: &'a AccountInfo<'b>,
     pool_pc_token_account: &'a AccountInfo<'b>,
+    lp_token_mint: &'a AccountInfo<'b>,
     amm_open_orders: &'a AccountInfo<'b>,
     amm_id: &'a AccountInfo<'b>,
     max_coin_token_amount: u64,
     max_pc_token_amount: u64,
-) -> Result<(u64, u64), ProgramError> {
-    if max_coin_token_amount > 0 && max_pc_token_amount > 0 {
-        return Ok((max_coin_token_amount, max_pc_token_amount));
-    }
+) -> Result<(u64, u64, u64), ProgramError> {
     if max_coin_token_amount == 0 && max_pc_token_amount == 0 {
         msg!("Error: At least one of token amounts must be non-zero");
         return Err(ProgramError::InvalidArgument);
@@ -388,24 +389,42 @@ pub fn get_pool_deposit_amounts<'a, 'b>(
         amm_id,
     )?;
     if coin_balance == 0 || pc_balance == 0 {
-        msg!("Error: Both amounts must be specified for the initial deposit to an empty pool");
-        return Err(ProgramError::InvalidArgument);
+        if max_coin_token_amount == 0 || max_pc_token_amount == 0 {
+            msg!("Error: Both amounts must be specified for the initial deposit to an empty pool");
+            return Err(ProgramError::InvalidArgument);
+        } else {
+            return Ok((1, max_coin_token_amount, max_pc_token_amount));
+        }
     }
     if max_coin_token_amount == 0 {
-        let estimated_coin_amount = math::checked_as_u64(
-            coin_balance as f64 * max_pc_token_amount as f64 / (pc_balance as f64),
-        )?;
+        let estimated_coin_amount = math::checked_as_u64(math::checked_div(
+            math::checked_mul(coin_balance as u128, max_pc_token_amount as u128)?,
+            pc_balance as u128,
+        )?)?;
         coin_token_amount = if estimated_coin_amount > 1 {
             estimated_coin_amount - 1
         } else {
             0
         };
-    } else {
-        pc_token_amount = math::checked_as_u64(
-            pc_balance as f64 * max_coin_token_amount as f64 / (coin_balance as f64),
+    } else if max_pc_token_amount == 0 {
+        pc_token_amount = math::checked_add(
+            math::checked_as_u64(math::checked_div(
+                math::checked_mul(pc_balance as u128, max_coin_token_amount as u128)?,
+                coin_balance as u128,
+            )?)?,
+            1,
         )?;
     }
-    Ok((coin_token_amount, math::checked_add(pc_token_amount, 1)?))
+
+    let min_lp_tokens_out = estimate_lp_tokens_amount(
+        lp_token_mint,
+        coin_token_amount,
+        pc_token_amount,
+        coin_balance,
+        pc_balance,
+    )?;
+
+    Ok((min_lp_tokens_out, coin_token_amount, pc_token_amount))
 }
 
 pub fn get_pool_withdrawal_amounts<'a, 'b>(
@@ -433,11 +452,15 @@ pub fn get_pool_withdrawal_amounts<'a, 'b>(
     if lp_token_supply == 0 {
         return Ok((0, 0));
     }
-    let stake = lp_token_amount as f64 / lp_token_supply as f64;
-
     Ok((
-        math::checked_as_u64(coin_balance as f64 * stake)?,
-        math::checked_as_u64(pc_balance as f64 * stake)?,
+        math::checked_as_u64(math::checked_div(
+            math::checked_mul(coin_balance as u128, lp_token_amount as u128)?,
+            lp_token_supply as u128,
+        )?)?,
+        math::checked_as_u64(math::checked_div(
+            math::checked_mul(pc_balance as u128, lp_token_amount as u128)?,
+            lp_token_supply as u128,
+        )?)?,
     ))
 }
 
@@ -463,37 +486,31 @@ pub fn get_pool_swap_amounts<'a, 'b>(
     )?;
     if coin_balance == 0 || pc_balance == 0 {
         msg!("Error: Can't swap in an empty pool");
-        return Err(ProgramError::Custom(412));
+        return Err(FarmError::EmptyPool.into());
     }
     if coin_token_amount_in == 0 {
         // pc to coin
-        let amount_in_no_fee = (pc_token_amount_in as f64 * (1.0 - RAYDIUM_FEE)) as u64;
-        let estimated_coin_amount = math::checked_as_u64(
-            coin_balance as f64 * amount_in_no_fee as f64
-                / (pc_balance as f64 + amount_in_no_fee as f64),
-        )?;
+        let amount_in_no_fee =
+            math::get_no_fee_amount(pc_token_amount_in, 100, RAYDIUM_FEE_DENOMINATOR)? as u128;
+        let estimated_coin_amount = math::checked_as_u64(math::checked_div(
+            math::checked_mul(coin_balance as u128, amount_in_no_fee)?,
+            math::checked_add(pc_balance as u128, amount_in_no_fee)?,
+        )?)?;
         Ok((
             pc_token_amount_in,
-            if estimated_coin_amount > 1 {
-                estimated_coin_amount - 1
-            } else {
-                0
-            },
+            math::get_no_fee_amount(estimated_coin_amount, 100, RAYDIUM_FEE_DENOMINATOR)?,
         ))
     } else {
         // coin to pc
-        let amount_in_no_fee = (coin_token_amount_in as f64 * (1.0 - RAYDIUM_FEE)) as u64;
-        let estimated_pc_amount = math::checked_as_u64(
-            pc_balance as f64 * amount_in_no_fee as f64
-                / (coin_balance as f64 + amount_in_no_fee as f64),
-        )?;
+        let amount_in_no_fee =
+            math::get_no_fee_amount(coin_token_amount_in, 100, RAYDIUM_FEE_DENOMINATOR)? as u128;
+        let estimated_pc_amount = math::checked_as_u64(math::checked_div(
+            math::checked_mul(pc_balance as u128, amount_in_no_fee)?,
+            math::checked_add(coin_balance as u128, amount_in_no_fee)?,
+        )?)?;
         Ok((
             coin_token_amount_in,
-            if estimated_pc_amount > 1 {
-                estimated_pc_amount - 1
-            } else {
-                0
-            },
+            math::get_no_fee_amount(estimated_pc_amount, 100, RAYDIUM_FEE_DENOMINATOR)?,
         ))
     }
 }
@@ -507,25 +524,37 @@ pub fn estimate_lp_tokens_amount(
 ) -> Result<u64, ProgramError> {
     if pool_coin_balance != 0 && pool_pc_balance != 0 {
         Ok(std::cmp::min(
-            math::checked_as_u64(
-                (token_a_deposit as f64 / pool_coin_balance as f64)
-                    * account::get_token_supply(lp_token_mint)? as f64,
-            )?,
-            math::checked_as_u64(
-                (token_b_deposit as f64 / pool_pc_balance as f64)
-                    * account::get_token_supply(lp_token_mint)? as f64,
-            )?,
+            math::checked_as_u64(math::checked_div(
+                math::checked_mul(
+                    token_a_deposit as u128,
+                    account::get_token_supply(lp_token_mint)? as u128,
+                )?,
+                pool_coin_balance as u128,
+            )?)?,
+            math::checked_as_u64(math::checked_div(
+                math::checked_mul(
+                    token_b_deposit as u128,
+                    account::get_token_supply(lp_token_mint)? as u128,
+                )?,
+                pool_pc_balance as u128,
+            )?)?,
         ))
     } else if pool_coin_balance != 0 {
-        math::checked_as_u64(
-            (token_a_deposit as f64 / pool_coin_balance as f64)
-                * account::get_token_supply(lp_token_mint)? as f64,
-        )
+        math::checked_as_u64(math::checked_div(
+            math::checked_mul(
+                token_a_deposit as u128,
+                account::get_token_supply(lp_token_mint)? as u128,
+            )?,
+            pool_coin_balance as u128,
+        )?)
     } else if pool_pc_balance != 0 {
-        math::checked_as_u64(
-            (token_b_deposit as f64 / pool_pc_balance as f64)
-                * account::get_token_supply(lp_token_mint)? as f64,
-        )
+        math::checked_as_u64(math::checked_div(
+            math::checked_mul(
+                token_b_deposit as u128,
+                account::get_token_supply(lp_token_mint)? as u128,
+            )?,
+            pool_pc_balance as u128,
+        )?)
     } else {
         Ok(0)
     }
@@ -542,6 +571,7 @@ pub fn add_liquidity(
         if !check_pool_program_id(pool_program_id.key) {
             return Err(ProgramError::IncorrectProgramId);
         }
+
         let raydium_accounts = vec![
             AccountMeta::new_readonly(*spl_token_id.key, false),
             AccountMeta::new(*amm_id.key, false),
@@ -587,6 +617,7 @@ pub fn add_liquidity_with_seeds(
         if !check_pool_program_id(pool_program_id.key) {
             return Err(ProgramError::IncorrectProgramId);
         }
+
         let raydium_accounts = vec![
             AccountMeta::new_readonly(*spl_token_id.key, false),
             AccountMeta::new(*amm_id.key, false),
@@ -626,12 +657,13 @@ pub fn remove_liquidity_with_seeds(
     seeds: &[&[&[u8]]],
     amount: u64,
 ) -> ProgramResult {
-    if let [authority_account, token_a_custody_account, token_b_custody_account, lp_token_custody_account, pool_program_id, pool_withdraw_queue, pool_temp_lp_token_account, pool_coin_token_account, pool_pc_token_account, lp_token_mint, spl_token_id, amm_id, amm_authority, amm_open_orders, amm_target, serum_market, serum_program_id, serum_coin_vault_account, serum_pc_vault_account, serum_vault_signer] =
+    if let [authority_account, token_a_custody_account, token_b_custody_account, lp_token_custody_account, pool_program_id, pool_withdraw_queue, pool_temp_lp_token_account, pool_coin_token_account, pool_pc_token_account, lp_token_mint, spl_token_id, amm_id, amm_authority, amm_open_orders, amm_target, serum_market, serum_program_id, serum_bids, serum_asks, serum_event_queue, serum_coin_vault_account, serum_pc_vault_account, serum_vault_signer] =
         accounts
     {
         if !check_pool_program_id(pool_program_id.key) {
             return Err(ProgramError::IncorrectProgramId);
         }
+
         let raydium_accounts = vec![
             AccountMeta::new_readonly(*spl_token_id.key, false),
             AccountMeta::new(*amm_id.key, false),
@@ -652,6 +684,9 @@ pub fn remove_liquidity_with_seeds(
             AccountMeta::new(*token_a_custody_account.key, false),
             AccountMeta::new(*token_b_custody_account.key, false),
             AccountMeta::new_readonly(*authority_account.key, true),
+            AccountMeta::new(*serum_event_queue.key, false),
+            AccountMeta::new(*serum_bids.key, false),
+            AccountMeta::new(*serum_asks.key, false),
         ];
 
         let instruction = Instruction {
@@ -679,12 +714,13 @@ pub fn stake_with_seeds(
     seeds: &[&[&[u8]]],
     amount: u64,
 ) -> ProgramResult {
-    if let [authority_account, stake_info_account, lp_token_custody_account, token_a_custody_account, token_b_custody_account, pool_program_id, farm_lp_token_account, farm_reward_token_a_account, farm_reward_token_b_account, clock_id, spl_token_id, farm_id, farm_authority] =
+    if let [authority_account, stake_info_account, lp_token_custody_account, token_a_custody_account, token_b_custody_account, pool_program_id, farm_lp_token_account, farm_first_reward_token_account, farm_second_reward_token_account, clock_id, spl_token_id, farm_id, farm_authority] =
         accounts
     {
         if !check_stake_program_id(pool_program_id.key) {
             return Err(ProgramError::IncorrectProgramId);
         }
+
         let mut raydium_accounts = vec![
             AccountMeta::new(*farm_id.key, false),
             AccountMeta::new_readonly(*farm_authority.key, false),
@@ -693,13 +729,16 @@ pub fn stake_with_seeds(
             AccountMeta::new(*lp_token_custody_account.key, false),
             AccountMeta::new(*farm_lp_token_account.key, false),
             AccountMeta::new(*token_a_custody_account.key, false),
-            AccountMeta::new(*farm_reward_token_a_account.key, false),
+            AccountMeta::new(*farm_first_reward_token_account.key, false),
             AccountMeta::new_readonly(*clock_id.key, false),
             AccountMeta::new_readonly(*spl_token_id.key, false),
         ];
-        if *farm_reward_token_b_account.key != zero::id() {
+        if *farm_second_reward_token_account.key != zero::id() {
             raydium_accounts.push(AccountMeta::new(*token_b_custody_account.key, false));
-            raydium_accounts.push(AccountMeta::new(*farm_reward_token_b_account.key, false));
+            raydium_accounts.push(AccountMeta::new(
+                *farm_second_reward_token_account.key,
+                false,
+            ));
         }
 
         let instruction = Instruction {
@@ -730,6 +769,7 @@ pub fn swap_with_seeds(
         if !check_pool_program_id(pool_program_id.key) {
             return Err(ProgramError::IncorrectProgramId);
         }
+
         let raydium_accounts = vec![
             AccountMeta::new_readonly(*spl_token_id.key, false),
             AccountMeta::new(*amm_id.key, false),
@@ -773,12 +813,13 @@ pub fn unstake_with_seeds(
     seeds: &[&[&[u8]]],
     amount: u64,
 ) -> ProgramResult {
-    if let [authority_account, stake_info_account, lp_token_custody_account, token_a_custody_account, token_b_custody_account, pool_program_id, farm_lp_token_account, farm_reward_token_a_account, farm_reward_token_b_account, clock_id, spl_token_id, farm_id, farm_authority] =
+    if let [authority_account, stake_info_account, lp_token_custody_account, token_a_custody_account, token_b_custody_account, pool_program_id, farm_lp_token_account, farm_first_reward_token_account, farm_second_reward_token_account, clock_id, spl_token_id, farm_id, farm_authority] =
         accounts
     {
         if !check_stake_program_id(pool_program_id.key) {
             return Err(ProgramError::IncorrectProgramId);
         }
+
         let mut raydium_accounts = vec![
             AccountMeta::new(*farm_id.key, false),
             AccountMeta::new_readonly(*farm_authority.key, false),
@@ -787,13 +828,16 @@ pub fn unstake_with_seeds(
             AccountMeta::new(*lp_token_custody_account.key, false),
             AccountMeta::new(*farm_lp_token_account.key, false),
             AccountMeta::new(*token_a_custody_account.key, false),
-            AccountMeta::new(*farm_reward_token_a_account.key, false),
+            AccountMeta::new(*farm_first_reward_token_account.key, false),
             AccountMeta::new_readonly(*clock_id.key, false),
             AccountMeta::new_readonly(*spl_token_id.key, false),
         ];
-        if *farm_reward_token_b_account.key != zero::id() {
+        if *farm_second_reward_token_account.key != zero::id() {
             raydium_accounts.push(AccountMeta::new(*token_b_custody_account.key, false));
-            raydium_accounts.push(AccountMeta::new(*farm_reward_token_b_account.key, false));
+            raydium_accounts.push(AccountMeta::new(
+                *farm_second_reward_token_account.key,
+                false,
+            ));
         }
 
         let instruction = Instruction {

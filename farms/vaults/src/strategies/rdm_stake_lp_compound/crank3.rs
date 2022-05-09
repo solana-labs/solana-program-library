@@ -1,7 +1,7 @@
 //! Crank step 3 instruction handler
 
 use {
-    crate::{clock::check_min_crank_interval, strategies::common, vault_info::VaultInfo},
+    crate::{strategies::common, vault_info::VaultInfo},
     solana_farm_sdk::{
         id::zero,
         program::{account, protocol::raydium},
@@ -40,8 +40,8 @@ pub fn crank3(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
         farm_id,
         farm_authority,
         farm_lp_token_account,
-        farm_reward_token_a_account,
-        farm_reward_token_b_account,
+        farm_first_reward_token_account,
+        farm_second_reward_token_account,
         clock_program
         ] = accounts
     {
@@ -57,11 +57,13 @@ pub fn crank3(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
             token_a_reward_custody,
             token_b_reward_custody,
             vault_stake_info,
+            Some(amm_id.key),
+            Some(farm_id.key),
             true,
         )?;
 
         let mut vault_info = VaultInfo::new(vault_info_account);
-        check_min_crank_interval(&vault_info)?;
+        common::check_min_crank_interval(&vault_info)?;
         vault_info.update_crank_time()?;
         vault_info.set_crank_step(3)?;
 
@@ -114,11 +116,12 @@ pub fn crank3(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
         ]];
 
         // calculate deposit amounts
-        let (max_token_a_deposit_amount, max_token_b_deposit_amount) =
+        let (_, max_token_a_deposit_amount, max_token_b_deposit_amount) =
             if custody_ratio >= pool_ratio {
                 raydium::get_pool_deposit_amounts(
                     pool_coin_token_account,
                     pool_pc_token_account,
+                    lp_token_mint,
                     amm_open_orders,
                     amm_id,
                     token_a_balance,
@@ -128,6 +131,7 @@ pub fn crank3(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
                 raydium::get_pool_deposit_amounts(
                     pool_coin_token_account,
                     pool_pc_token_account,
+                    lp_token_mint,
                     amm_open_orders,
                     amm_id,
                     0,
@@ -137,11 +141,12 @@ pub fn crank3(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
         // one of the amounts can come out over the balance because ratios didn't reflect
         // deposited volume, while get_pool_deposit_amounts does include it.
         // in this case we just flip the side.
-        let (max_token_a_deposit_amount, max_token_b_deposit_amount) =
+        let (lp_token_amount, max_token_a_deposit_amount, max_token_b_deposit_amount) =
             if max_token_b_deposit_amount > token_b_balance {
                 raydium::get_pool_deposit_amounts(
                     pool_coin_token_account,
                     pool_pc_token_account,
+                    lp_token_mint,
                     amm_open_orders,
                     amm_id,
                     0,
@@ -151,27 +156,28 @@ pub fn crank3(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
                 raydium::get_pool_deposit_amounts(
                     pool_coin_token_account,
                     pool_pc_token_account,
+                    lp_token_mint,
                     amm_open_orders,
                     amm_id,
                     token_a_balance,
                     0,
                 )?
             } else {
-                (max_token_a_deposit_amount, max_token_b_deposit_amount)
-            };
-
-        msg!("Deposit tokens into the pool. max_token_a_deposit_amount: {}, max_token_b_deposit_amount: {}",
-                        max_token_a_deposit_amount,
-                        max_token_b_deposit_amount);
-        if max_token_a_deposit_amount == 0
-            || max_token_b_deposit_amount == 0
-            || raydium::estimate_lp_tokens_amount(
+                (raydium::estimate_lp_tokens_amount(
                 lp_token_mint,
                 max_token_a_deposit_amount,
                 max_token_b_deposit_amount,
                 pool_coin_balance,
-                pool_pc_balance,
-            )? < 2
+                pool_pc_balance)?, max_token_a_deposit_amount, max_token_b_deposit_amount)
+            };
+
+        msg!("Deposit tokens into the pool. lp_token_amount: {}, max_token_a_deposit_amount: {}, max_token_b_deposit_amount: {}",
+                        lp_token_amount,
+                        max_token_a_deposit_amount,
+                        max_token_b_deposit_amount);
+        if max_token_a_deposit_amount == 0
+            || max_token_b_deposit_amount == 0
+            || lp_token_amount < 2
         {
             msg!("Nothing to do: Tokens balance is not large enough");
             return Ok(());
@@ -212,9 +218,9 @@ pub fn crank3(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
         )?;
 
         // Stake LP tokens
-        let dual_rewards = *farm_reward_token_b_account.key != zero::id();
+        let dual_rewards = *farm_second_reward_token_account.key != zero::id();
         let lp_tokens_received =
-            account::check_tokens_received(lp_token_custody, lp_token_balance, 1)?;
+            account::check_tokens_received(lp_token_custody, lp_token_balance, lp_token_amount)?;
         msg!(
             "Stake LP tokens. tokens_a_spent: {}, tokens_b_spent: {}, lp_tokens_received: {}",
             tokens_a_spent,
@@ -237,8 +243,8 @@ pub fn crank3(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
                 token_b_reward_custody.clone(),
                 farm_program.clone(),
                 farm_lp_token_account.clone(),
-                farm_reward_token_a_account.clone(),
-                farm_reward_token_b_account.clone(),
+                farm_first_reward_token_account.clone(),
+                farm_second_reward_token_account.clone(),
                 clock_program.clone(),
                 spl_token_program.clone(),
                 farm_id.clone(),

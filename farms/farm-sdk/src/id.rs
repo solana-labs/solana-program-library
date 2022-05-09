@@ -39,4 +39,6 @@ pub enum ProgramIDType {
     Raydium,
     Saber,
     Orca,
+    FundsRef,
+    Fund,
 }
