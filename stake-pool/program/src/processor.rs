@@ -1240,6 +1240,7 @@ impl Processor {
         let validator_list_info = next_account_info(account_info_iter)?;
         let reserve_stake_account_info = next_account_info(account_info_iter)?;
         let transient_stake_account_info = next_account_info(account_info_iter)?;
+        let validator_stake_account_info = next_account_info(account_info_iter)?;
         let validator_vote_account_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
@@ -1298,6 +1299,32 @@ impl Processor {
         let mut validator_stake_info = maybe_validator_stake_info.unwrap();
         if validator_stake_info.transient_stake_lamports > 0 {
             return Err(StakePoolError::TransientAccountInUse.into());
+        }
+
+        // Check that the validator stake account is actually delegated to the right
+        // validator. This can happen if a validator was force destaked during a
+        // cluster restart.
+        {
+            check_account_owner(validator_stake_account_info, stake_program_info.key)?;
+            check_validator_stake_address(
+                program_id,
+                stake_pool_info.key,
+                validator_stake_account_info.key,
+                vote_account_address,
+            )?;
+            let (meta, stake) = get_stake_state(validator_stake_account_info)?;
+            if !stake_is_usable_by_pool(&meta, withdraw_authority_info.key, &stake_pool.lockup) {
+                msg!("Validator stake for {} not usable by pool, must be owned by withdraw authority", vote_account_address);
+                return Err(StakePoolError::WrongStakeState.into());
+            }
+            if stake.delegation.voter_pubkey != *vote_account_address {
+                msg!(
+                    "Validator stake {} not delegated to {}",
+                    validator_stake_account_info.key,
+                    vote_account_address
+                );
+                return Err(StakePoolError::WrongStakeState.into());
+            }
         }
 
         let transient_stake_bump_seed = check_transient_stake_address(
@@ -1682,6 +1709,30 @@ impl Processor {
                     } else {
                         msg!("Validator stake account no longer part of the pool, ignoring");
                     }
+                }
+                Some(stake::state::StakeState::Initialized(meta))
+                    if stake_is_usable_by_pool(
+                        &meta,
+                        withdraw_authority_info.key,
+                        &stake_pool.lockup,
+                    ) =>
+                {
+                    // If a validator stake is `Initialized`, the validator could
+                    // have been destaked during a cluster restart. Either way,
+                    // absorb those lamports into the reserve.  The transient
+                    // stake was likely absorbed into the reserve earlier.
+                    Self::stake_merge(
+                        stake_pool_info.key,
+                        validator_stake_info.clone(),
+                        withdraw_authority_info.clone(),
+                        AUTHORITY_WITHDRAW,
+                        stake_pool.stake_withdraw_bump_seed,
+                        reserve_stake_info.clone(),
+                        clock_info.clone(),
+                        stake_history_info.clone(),
+                        stake_program_info.clone(),
+                    )?;
+                    validator_stake_record.status = StakeStatus::ReadyForRemoval;
                 }
                 Some(stake::state::StakeState::Initialized(_))
                 | Some(stake::state::StakeState::Uninitialized)

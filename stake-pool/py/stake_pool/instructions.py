@@ -191,6 +191,8 @@ class IncreaseValidatorStakeParams(NamedTuple):
     """`[w]` Stake pool's reserve."""
     transient_stake: PublicKey
     """`[w]` Transient stake account to receive split."""
+    validator_stake: PublicKey
+    """`[]` Canonical stake account to check."""
     validator_vote: PublicKey
     """`[]` Validator vote account to delegate to."""
     clock_sysvar: PublicKey
@@ -866,6 +868,7 @@ def increase_validator_stake(params: IncreaseValidatorStakeParams) -> Transactio
             AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.reserve_stake, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.transient_stake, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.validator_stake, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.validator_vote, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.clock_sysvar, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.rent_sysvar, is_signer=False, is_writable=False),
