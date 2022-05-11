@@ -26,6 +26,8 @@ use crate::{
     PROGRAM_AUTHORITY_SEED,
 };
 
+use super::{enums::VetoOptions, governance::GovernanceV2, vote_record::Vote};
+
 /// Realm Config instruction args
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfigArgs {
@@ -169,6 +171,47 @@ impl RealmV2 {
 
         if self.config.council_mint == Some(*governing_token_mint) {
             return Ok(());
+        }
+
+        Err(GovernanceError::InvalidGoverningTokenMint.into())
+    }
+
+    /// Returns the governing token mint which is used to vote on a proposal given the provided Vote and voting_token_mint
+    ///
+    /// The Veto vote is cast on a proposal configured for the opposite voting population defined using governing_token_mint
+    /// Council for Community and Community for Council assuming the veto for the voting population is enabled
+    ///
+    /// For all votes other than Veto the voting_token_mint is the same as Proposal governing_token_mint
+    pub fn resolve_proposal_governing_token_mint_for_vote(
+        &self,
+        vote: &Vote,
+        governance_data: &GovernanceV2,
+        voting_token_mint: &Pubkey,
+    ) -> Result<Pubkey, ProgramError> {
+        if *vote != Vote::Veto {
+            return Ok(*voting_token_mint);
+        }
+
+        // When Community veto Council proposal then return council_token_mint as the governing_token_mint
+        if self.community_mint == *voting_token_mint {
+            // Assert Community is allowed to veto Council vote
+            if governance_data.config.veto_options == VetoOptions::CommunityOnly
+                || governance_data.config.veto_options == VetoOptions::Any
+            {
+                return Ok(self.config.council_mint.unwrap());
+            }
+            return Err(GovernanceError::VetoVoteDisabledForGoverningToken.into());
+        }
+
+        // When Council veto Community proposal then return community_token_mint as the governing_token_mint
+        if self.config.council_mint == Some(*voting_token_mint) {
+            // Assert Council is allowed to veto Community vote
+            if governance_data.config.veto_options == VetoOptions::CouncilOnly
+                || governance_data.config.veto_options == VetoOptions::Any
+            {
+                return Ok(self.community_mint);
+            }
+            return Err(GovernanceError::VetoVoteDisabledForGoverningToken.into());
         }
 
         Err(GovernanceError::InvalidGoverningTokenMint.into())

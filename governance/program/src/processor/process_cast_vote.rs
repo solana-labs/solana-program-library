@@ -44,7 +44,7 @@ pub fn process_cast_vote(
     let governance_authority_info = next_account_info(account_info_iter)?; // 5
 
     let vote_record_info = next_account_info(account_info_iter)?; // 6
-    let governing_token_mint_info = next_account_info(account_info_iter)?; // 7
+    let voting_token_mint_info = next_account_info(account_info_iter)?; // 7
 
     let payer_info = next_account_info(account_info_iter)?; // 8
     let system_info = next_account_info(account_info_iter)?; // 9
@@ -59,16 +59,25 @@ pub fn process_cast_vote(
     let mut realm_data = get_realm_data_for_governing_token_mint(
         program_id,
         realm_info,
-        governing_token_mint_info.key,
+        voting_token_mint_info.key,
     )?;
+
     let mut governance_data =
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
+
+    // Resolve governing_token_mint which the Proposal should be configured with as the voting population for the given vote
+    // TODO: Split resolve and assertion the that Veto is enabled
+    let proposal_governing_token_mint = realm_data.resolve_proposal_governing_token_mint_for_vote(
+        &vote,
+        &governance_data,
+        voting_token_mint_info.key,
+    )?;
 
     let mut proposal_data = get_proposal_data_for_governance_and_governing_mint(
         program_id,
         proposal_info,
         governance_info.key,
-        governing_token_mint_info.key,
+        &proposal_governing_token_mint,
     )?;
     proposal_data.assert_can_cast_vote(&governance_data.config, clock.unix_timestamp)?;
 
@@ -77,7 +86,7 @@ pub fn process_cast_vote(
             program_id,
             voter_token_owner_record_info,
             &governance_data.realm,
-            governing_token_mint_info.key,
+            voting_token_mint_info.key,
         )?;
     voter_token_owner_record_data
         .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
@@ -108,6 +117,7 @@ pub fn process_cast_vote(
         proposal_info.key,
     )?;
 
+    // TODO: Move check for Veto here
     proposal_data.assert_valid_vote(&vote)?;
 
     // Calculate Proposal voting weights
@@ -137,14 +147,14 @@ pub fn process_cast_vote(
     let max_voter_weight = proposal_data.resolve_max_voter_weight(
         program_id,
         realm_config_info,
-        governing_token_mint_info,
+        voting_token_mint_info,
         account_info_iter, // max_voter_weight_record  11
         realm_info.key,
         &realm_data,
     )?;
 
     let vote_threshold =
-        governance_data.resolve_vote_threshold(&realm_data, governing_token_mint_info.key)?;
+        governance_data.resolve_vote_threshold(&realm_data, voting_token_mint_info.key)?;
 
     if proposal_data.try_tip_vote(
         max_voter_weight,

@@ -401,6 +401,10 @@ pub enum GovernanceError {
     /// Reserved buffer must be empty
     #[error("Reserved buffer must be empty")]
     ReservedBufferMustBeEmpty,
+
+    /// Veto vote disabled for governing token
+    #[error("Veto vote disabled for governing token")]
+    VetoVoteDisabledForGoverningToken,
 }
 
 impl PrintProgramError for GovernanceError {

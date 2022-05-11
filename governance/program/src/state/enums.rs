@@ -167,6 +167,22 @@ pub enum VoteThreshold {
     // Any
 }
 
+/// Options for Veto vote
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum VetoOptions {
+    /// Only Council members can veto Community proposals
+    CouncilOnly,
+
+    /// Veto is not allowed by either voting population
+    Disabled,
+
+    /// Only Community can veto Council proposals
+    CommunityOnly,
+
+    /// Both Community and Council members can veto proposals
+    Any,
+}
+
 /// The type of vote tipping to use on a Proposal.
 ///
 /// Vote tipping means that under some conditions voting will complete early.

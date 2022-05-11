@@ -1004,7 +1004,7 @@ mod test {
     use solana_program::clock::Epoch;
 
     use crate::state::{
-        enums::{MintMaxVoteWeightSource, VoteThreshold},
+        enums::{MintMaxVoteWeightSource, VetoOptions, VoteThreshold},
         legacy::ProposalV1,
         realm::RealmConfig,
         vote_record::VoteChoice,
@@ -1122,7 +1122,8 @@ mod test {
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(60),
-            reserved: [0; 2],
+            veto_options: VetoOptions::CouncilOnly,
+            reserved: [0; 1],
         }
     }
 

@@ -19,6 +19,8 @@ use spl_governance_tools::{
     error::GovernanceToolsError,
 };
 
+use super::enums::VetoOptions;
+
 /// Governance config
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GovernanceConfig {
@@ -42,8 +44,11 @@ pub struct GovernanceConfig {
     /// Note: In the current version only YesVotePercentage and Disabled thresholds are supported
     pub council_vote_threshold: VoteThreshold,
 
+    /// Options for Proposal veto vote
+    pub veto_options: VetoOptions,
+
     /// Reserved space for future versions
-    pub reserved: [u8; 2],
+    pub reserved: [u8; 1],
 
     /// Minimum council weight a governance token owner must possess to be able to create a proposal
     pub min_council_weight_to_create_proposal: u64,
@@ -437,7 +442,7 @@ pub fn assert_is_valid_governance_config(
         return Err(GovernanceError::AtLeastOneVoteThresholdRequired.into());
     }
 
-    if governance_config.reserved != [0, 0] {
+    if governance_config.reserved != [0] {
         return Err(GovernanceError::ReservedBufferMustBeEmpty.into());
     }
 
@@ -524,7 +529,8 @@ mod test {
             max_voting_time: 1,
             vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(0),
-            reserved: [0; 2],
+            veto_options: VetoOptions::CouncilOnly,
+            reserved: [0; 1],
             min_council_weight_to_create_proposal: 1,
         };
 
@@ -547,7 +553,8 @@ mod test {
             max_voting_time: 1,
             vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            reserved: [0; 2],
+            veto_options: VetoOptions::CouncilOnly,
+            reserved: [0; 1],
             min_council_weight_to_create_proposal: 1,
         };
 
@@ -570,7 +577,8 @@ mod test {
             max_voting_time: 1,
             vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::Disabled,
-            reserved: [0; 2],
+            veto_options: VetoOptions::CouncilOnly,
+            reserved: [0; 1],
             min_council_weight_to_create_proposal: 1,
         };
 
@@ -593,7 +601,8 @@ mod test {
             max_voting_time: 1,
             vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::Disabled,
-            reserved: [0, 1],
+            veto_options: VetoOptions::CouncilOnly,
+            reserved: [1],
             min_council_weight_to_create_proposal: 1,
         };
 

@@ -57,7 +57,6 @@ pub enum Vote {
     Abstain,
 
     /// Veto proposal
-    /// Note: Not supported in the current version
     Veto,
 }
 
