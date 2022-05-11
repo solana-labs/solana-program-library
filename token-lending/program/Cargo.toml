@@ -1,6 +1,6 @@
 [package]
 name = "spl-token-lending"
-version = "0.1.0"
+version = "0.2.0"
 description = "Solana Program Library Token Lending"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
