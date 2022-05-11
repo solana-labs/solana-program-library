@@ -5724,7 +5724,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-lending"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "arrayref",
  "assert_matches",
@@ -5746,7 +5746,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-lending-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "solana-clap-utils",

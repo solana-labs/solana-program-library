@@ -6,18 +6,18 @@ homepage = "https://spl.solana.com/token-lending"
 license = "Apache-2.0"
 name = "spl-token-lending-cli"
 repository = "https://github.com/solana-labs/solana-program-library"
-version = "0.1.0"
+version = "0.2.0"
 
 [dependencies]
 clap = "2.33.3"
-solana-clap-utils = "1.10.10"
-solana-cli-config = "1.10.10"
-solana-client = "1.10.10"
-solana-logger = "1.10.10"
-solana-sdk = "1.10.10"
-solana-program = "1.10.10"
-spl-token-lending = { path="../program", features = [ "no-entrypoint" ] }
-spl-token = { path="../../token/program", features = [ "no-entrypoint" ]  }
+solana-clap-utils = "=1.10.10"
+solana-cli-config = "=1.10.10"
+solana-client = "=1.10.10"
+solana-logger = "=1.10.10"
+solana-sdk = "=1.10.10"
+solana-program = "=1.10.10"
+spl-token-lending = { version = "0.2", path="../program", features = [ "no-entrypoint" ] }
+spl-token = { version = "3.3", path="../../token/program", features = [ "no-entrypoint" ]  }
 
 [[bin]]
 name = "spl-token-lending"
