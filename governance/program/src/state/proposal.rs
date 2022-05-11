@@ -140,8 +140,7 @@ pub struct ProposalV2 {
     pub deny_vote_weight: Option<u64>,
 
     /// The total weight of Veto votes
-    /// Note: Veto is not supported in the current version
-    pub veto_vote_weight: Option<u64>,
+    pub veto_vote_weight: u64,
 
     /// The total weight of  votes
     /// Note: Abstain is not supported in the current version
@@ -205,7 +204,7 @@ pub struct ProposalV2 {
 impl AccountMaxSize for ProposalV2 {
     fn get_max_size(&self) -> Option<usize> {
         let options_size: usize = self.options.iter().map(|o| o.label.len() + 19).sum();
-        Some(self.name.len() + self.description_link.len() + options_size + 295)
+        Some(self.name.len() + self.description_link.len() + options_size + 294)
     }
 }
 
@@ -764,7 +763,7 @@ impl ProposalV2 {
                 panic!("ProposalV1 doesn't support Abstain vote")
             }
 
-            if self.veto_vote_weight.is_some() {
+            if self.veto_vote_weight > 0 {
                 panic!("ProposalV1 doesn't support Veto vote")
             }
 
@@ -884,7 +883,7 @@ pub fn get_proposal_data(
                 transactions_next_index: proposal_data_v1.instructions_next_index,
             }],
             deny_vote_weight: Some(proposal_data_v1.no_votes_count),
-            veto_vote_weight: None,
+            veto_vote_weight: 0,
             abstain_vote_weight: None,
             start_voting_at: None,
             draft_at: proposal_data_v1.draft_at,
@@ -1047,7 +1046,7 @@ mod test {
             }],
             deny_vote_weight: Some(0),
             abstain_vote_weight: Some(0),
-            veto_vote_weight: Some(0),
+            veto_vote_weight: 0,
 
             execution_flags: InstructionExecutionFlags::Ordered,
 
