@@ -20,7 +20,6 @@ use spl_governance_tools::{
 };
 
 /// Governance config
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GovernanceConfig {
     /// The type of the vote threshold used for community vote
@@ -51,7 +50,6 @@ pub struct GovernanceConfig {
 }
 
 /// Governance Account
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GovernanceV2 {
     /// Account type. It can be Uninitialized, Governance, ProgramGovernance, TokenGovernance or MintGovernance

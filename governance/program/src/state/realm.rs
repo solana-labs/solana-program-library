@@ -27,7 +27,6 @@ use crate::{
 };
 
 /// Realm Config instruction args
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfigArgs {
     /// Indicates whether council_mint should be used
@@ -66,7 +65,6 @@ pub enum SetRealmAuthorityAction {
 }
 
 /// Realm Config defining Realm parameters.
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfig {
     /// Indicates whether an external addin program should be used to provide voters weights for the community mint
@@ -90,7 +88,6 @@ pub struct RealmConfig {
 
 /// Governance Realm Account
 /// Account PDA seeds" ['governance', name]
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmV2 {
     /// Governance account type
