@@ -19,7 +19,7 @@ use spl_governance_tools::{
     error::GovernanceToolsError,
 };
 
-use super::enums::VetoOptions;
+use super::{enums::VetoOptions, vote_record::Vote};
 
 /// Governance config
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -208,7 +208,7 @@ impl GovernanceV2 {
         governing_token_mint: &Pubkey,
     ) -> Result<(), ProgramError> {
         // resolve_vote_threshold() asserts the vote threshold exists for the given governing_token_mint and is not disabled
-        let _ = self.resolve_vote_threshold(realm_data, governing_token_mint)?;
+        let _ = self.resolve_vote_threshold(realm_data, governing_token_mint, None)?;
 
         Ok(())
     }
@@ -218,7 +218,10 @@ impl GovernanceV2 {
         &self,
         realm_data: &RealmV2,
         governing_token_mint: &Pubkey,
+        _vote: Option<&Vote>,
     ) -> Result<VoteThreshold, ProgramError> {
+        //TODO: resolve vote threshold for Veto
+
         let vote_threshold = if realm_data.community_mint == *governing_token_mint {
             &self.config.community_vote_threshold
         } else if realm_data.config.council_mint == Some(*governing_token_mint) {

@@ -55,7 +55,7 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     )?;
 
     let vote_threshold =
-        governance_data.resolve_vote_threshold(&realm_data, governing_token_mint_info.key)?;
+        governance_data.resolve_vote_threshold(&realm_data, governing_token_mint_info.key, None)?;
 
     proposal_data.finalize_vote(
         max_voter_weight,

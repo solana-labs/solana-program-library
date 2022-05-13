@@ -231,7 +231,8 @@ impl ProposalV2 {
             | ProposalState::Cancelled
             | ProposalState::Voting
             | ProposalState::Succeeded
-            | ProposalState::Defeated => Err(GovernanceError::InvalidStateCannotSignOff.into()),
+            | ProposalState::Defeated
+            | ProposalState::Vetoed => Err(GovernanceError::InvalidStateCannotSignOff.into()),
         }
     }
 
@@ -510,14 +511,16 @@ impl ProposalV2 {
         config: &GovernanceConfig,
         current_unix_timestamp: UnixTimestamp,
         vote_threshold: &VoteThreshold,
+        vote: &Vote,
     ) -> Result<bool, ProgramError> {
         if let Some(tipped_state) =
-            self.try_get_tipped_vote_state(max_voter_weight, config, vote_threshold)
+            self.try_get_tipped_vote_state(max_voter_weight, config, vote_threshold, &vote)
         {
             self.state = tipped_state;
             self.voting_completed_at = Some(current_unix_timestamp);
 
             // Capture vote params to correctly display historical results
+            // Note: For Veto vote the captured params are for the Veto config
             self.max_vote_weight = Some(max_voter_weight);
             self.vote_threshold = Some(vote_threshold.clone());
 
@@ -532,10 +535,25 @@ impl ProposalV2 {
     #[allow(clippy::float_cmp)]
     pub fn try_get_tipped_vote_state(
         &mut self,
-        max_vote_weight: u64,
+        max_voter_weight: u64,
         config: &GovernanceConfig,
         vote_threshold: &VoteThreshold,
+        vote: &Vote,
     ) -> Option<ProposalState> {
+        let min_vote_threshold_weight =
+            get_min_vote_threshold_weight(vote_threshold, max_voter_weight).unwrap();
+
+        // Veto vote tips as soon as the required threshold is reached
+        // It's irrespectively of vote_tipping config because the outcome of the Proposal can't change any longer after being vetoed
+        if *vote == Vote::Veto {
+            if self.veto_vote_weight >= min_vote_threshold_weight {
+                // Note: Since we don't tip multi option votes all options vote_result would remain as None
+                return Some(ProposalState::Vetoed);
+            } else {
+                return None;
+            }
+        }
+
         // Vote tipping is currently supported for SingleChoice votes with single Yes and No (rejection) options only
         // Note: Tipping for multiple options (single choice and multiple choices) should be possible but it requires a great deal of considerations
         //       and I decided to fight it another day
@@ -552,24 +570,21 @@ impl ProposalV2 {
         let yes_vote_weight = yes_option.vote_weight;
         let deny_vote_weight = self.deny_vote_weight.unwrap();
 
-        if yes_vote_weight == max_vote_weight {
+        if yes_vote_weight == max_voter_weight {
             yes_option.vote_result = OptionVoteResult::Succeeded;
             return Some(ProposalState::Succeeded);
         }
 
-        if deny_vote_weight == max_vote_weight {
+        if deny_vote_weight == max_voter_weight {
             yes_option.vote_result = OptionVoteResult::Defeated;
             return Some(ProposalState::Defeated);
         }
-
-        let min_vote_threshold_weight =
-            get_min_vote_threshold_weight(vote_threshold, max_vote_weight).unwrap();
 
         match config.vote_tipping {
             VoteTipping::Disabled => {}
             VoteTipping::Strict => {
                 if yes_vote_weight >= min_vote_threshold_weight
-                    && yes_vote_weight > (max_vote_weight.saturating_sub(yes_vote_weight))
+                    && yes_vote_weight > (max_voter_weight.saturating_sub(yes_vote_weight))
                 {
                     yes_option.vote_result = OptionVoteResult::Succeeded;
                     return Some(ProposalState::Succeeded);
@@ -590,8 +605,8 @@ impl ProposalV2 {
         // min_vote_threshold_weight for another option. This tipping is always
         // strict, there's no equivalent to "early" tipping for deny votes.
         if config.vote_tipping != VoteTipping::Disabled
-            && (deny_vote_weight > (max_vote_weight.saturating_sub(min_vote_threshold_weight))
-                || deny_vote_weight >= (max_vote_weight.saturating_sub(deny_vote_weight)))
+            && (deny_vote_weight > (max_voter_weight.saturating_sub(min_vote_threshold_weight))
+                || deny_vote_weight >= (max_voter_weight.saturating_sub(deny_vote_weight)))
         {
             yes_option.vote_result = OptionVoteResult::Defeated;
             return Some(ProposalState::Defeated);
@@ -621,7 +636,8 @@ impl ProposalV2 {
             | ProposalState::Completed
             | ProposalState::Cancelled
             | ProposalState::Succeeded
-            | ProposalState::Defeated => {
+            | ProposalState::Defeated
+            | ProposalState::Vetoed => {
                 Err(GovernanceError::InvalidStateCannotCancelProposal.into())
             }
         }
@@ -657,7 +673,8 @@ impl ProposalV2 {
             | ProposalState::Completed
             | ProposalState::Voting
             | ProposalState::Cancelled
-            | ProposalState::Defeated => {
+            | ProposalState::Defeated
+            | ProposalState::Vetoed => {
                 return Err(GovernanceError::InvalidStateCannotExecuteTransaction.into())
             }
         }
@@ -817,7 +834,7 @@ impl ProposalV2 {
 /// and returns the min weight required for a proposal option to pass
 fn get_min_vote_threshold_weight(
     vote_threshold: &VoteThreshold,
-    max_vote_weight: u64,
+    max_voter_weight: u64,
 ) -> Result<u64, ProgramError> {
     let yes_vote_threshold_percentage = match vote_threshold {
         VoteThreshold::YesVotePercentage(yes_vote_threshold_percentage) => {
@@ -829,7 +846,7 @@ fn get_min_vote_threshold_weight(
     };
 
     let numerator = (yes_vote_threshold_percentage as u128)
-        .checked_mul(max_vote_weight as u128)
+        .checked_mul(max_voter_weight as u128)
         .unwrap();
 
     let mut yes_vote_threshold = numerator.checked_div(100).unwrap();
@@ -862,7 +879,7 @@ pub fn get_proposal_data(
             | ProposalState::Executing
             | ProposalState::ExecutingWithErrors
             | ProposalState::Completed => OptionVoteResult::Succeeded,
-            ProposalState::Defeated => OptionVoteResult::None,
+            ProposalState::Vetoed | ProposalState::Defeated => OptionVoteResult::None,
         };
 
         return Ok(ProposalV2 {
@@ -1186,6 +1203,7 @@ mod test {
             Just(ProposalState::Completed),
             Just(ProposalState::Cancelled),
             Just(ProposalState::Defeated),
+            Just(ProposalState::Vetoed),
             Just(ProposalState::SigningOff),
         ]
     }
@@ -1227,6 +1245,7 @@ mod test {
             Just(ProposalState::Completed),
             Just(ProposalState::Cancelled),
             Just(ProposalState::Defeated),
+            Just(ProposalState::Vetoed),
         ]
     }
 
@@ -1279,6 +1298,7 @@ mod test {
             Just(ProposalState::Completed),
             Just(ProposalState::Cancelled),
             Just(ProposalState::Defeated),
+            Just(ProposalState::Vetoed),
         ]
     }
 
@@ -1538,8 +1558,10 @@ mod test {
             let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,test_case.governing_token_supply).unwrap();
             let vote_threshold = VoteThreshold::YesVotePercentage(test_case.yes_vote_threshold_percentage);
 
+           let vote = Vote::Approve(vec![]);
+
             // Act
-            proposal.try_tip_vote(max_voter_weight, &governance_config,current_timestamp,&vote_threshold).unwrap();
+            proposal.try_tip_vote(max_voter_weight, &governance_config,current_timestamp,&vote_threshold,&vote).unwrap();
 
             // Assert
             assert_eq!(proposal.state,test_case.expected_tipped_state,"CASE: {:?}",test_case);
@@ -1642,8 +1664,10 @@ mod test {
             let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,governing_token_supply).unwrap();
             let vote_threshold = yes_vote_threshold_percentage.clone();
 
+            let vote = Vote::Approve(vec![]);
+
             // Act
-            proposal.try_tip_vote(max_voter_weight, &governance_config, current_timestamp,&vote_threshold).unwrap();
+            proposal.try_tip_vote(max_voter_weight, &governance_config, current_timestamp,&vote_threshold,&vote).unwrap();
 
             // Assert
             let yes_vote_threshold_count = get_min_vote_threshold_weight(&yes_vote_threshold_percentage,governing_token_supply).unwrap();
@@ -1732,6 +1756,7 @@ mod test {
             .unwrap();
 
         let vote_threshold = &VoteThreshold::YesVotePercentage(60);
+        let vote = Vote::Approve(vec![]);
 
         // Act
         proposal
@@ -1740,6 +1765,7 @@ mod test {
                 &governance_config,
                 current_timestamp,
                 vote_threshold,
+                &vote,
             )
             .unwrap();
 
@@ -1781,6 +1807,7 @@ mod test {
             .unwrap();
 
         let vote_threshold = VoteThreshold::YesVotePercentage(60);
+        let vote = Vote::Approve(vec![]);
 
         // Act
         proposal
@@ -1789,6 +1816,7 @@ mod test {
                 &governance_config,
                 current_timestamp,
                 &vote_threshold,
+                &vote,
             )
             .unwrap();
 
@@ -1825,6 +1853,7 @@ mod test {
             .unwrap();
 
         let vote_threshold = VoteThreshold::YesVotePercentage(60);
+        let vote = Vote::Approve(vec![]);
 
         // Act
         proposal
@@ -1833,6 +1862,7 @@ mod test {
                 &governance_config,
                 current_timestamp,
                 &vote_threshold,
+                &vote,
             )
             .unwrap();
 

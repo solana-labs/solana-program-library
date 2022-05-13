@@ -127,6 +127,9 @@ pub enum ProposalState {
     /// Same as Executing but indicates some instructions failed to execute
     /// Proposal can't be transitioned from ExecutingWithErrors to Completed state
     ExecutingWithErrors,
+
+    /// The Proposal was vetoed
+    Vetoed,
 }
 
 impl Default for ProposalState {
