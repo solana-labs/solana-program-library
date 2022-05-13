@@ -4,9 +4,10 @@ use borsh::maybestd::io::Write;
 use crate::{
     error::GovernanceError,
     state::{
-        enums::{GovernanceAccountType, VoteThreshold, VoteTipping},
+        enums::{GovernanceAccountType, VetoOptions, VoteThreshold, VoteTipping},
         legacy::{is_governance_v1_account_type, GovernanceV1},
         realm::{assert_is_valid_realm, RealmV2},
+        vote_record::Vote,
     },
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
@@ -18,8 +19,6 @@ use spl_governance_tools::{
     account::{assert_is_valid_account_of_types, get_account_data, AccountMaxSize},
     error::GovernanceToolsError,
 };
-
-use super::{enums::VetoOptions, vote_record::Vote};
 
 /// Governance config
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
