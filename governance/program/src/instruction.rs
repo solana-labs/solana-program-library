@@ -291,7 +291,7 @@ pub enum GovernanceInstruction {
     ///   7. `[]` Voting Token Mint
     ///           The voting token mint is the governing_token_mint of the Proposal for Approve, Deny and Abstain votes
     ///           For Veto vote the voting token mint is the mint of the opposite voting population
-    ///           Council can veto Community proposals and Community can veto Council proposals
+    ///           Council mint to veto Community proposals and Community mint to veto Council proposals
     ///           Note: In the current version only Council veto is supported
     ///   8. `[signer]` Payer
     ///   9. `[]` System program

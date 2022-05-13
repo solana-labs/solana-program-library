@@ -181,7 +181,7 @@ impl RealmV2 {
     /// Council for Community and Community for Council assuming the veto for the voting population is enabled
     ///
     /// For all votes other than Veto the voting_token_mint is the same as Proposal governing_token_mint
-    pub fn resolve_proposal_governing_token_mint_for_vote(
+    pub fn get_proposal_governing_token_mint_for_vote(
         &self,
         vote: &Vote,
         voting_token_mint: &Pubkey,
