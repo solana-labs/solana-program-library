@@ -517,7 +517,7 @@ impl ProposalV2 {
         vote: &Vote,
     ) -> Result<bool, ProgramError> {
         if let Some(tipped_state) =
-            self.try_get_tipped_vote_state(max_voter_weight, config, vote_threshold, &vote)
+            self.try_get_tipped_vote_state(max_voter_weight, config, vote_threshold, vote)
         {
             self.state = tipped_state;
             self.voting_completed_at = Some(current_unix_timestamp);
