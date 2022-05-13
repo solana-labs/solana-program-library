@@ -66,12 +66,10 @@ pub fn process_cast_vote(
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
     // Resolve governing_token_mint which the Proposal should be configured with as the voting population for the given vote
-    // TODO: Split resolve and assertion the that Veto is enabled
-    let proposal_governing_token_mint = realm_data.resolve_proposal_governing_token_mint_for_vote(
-        &vote,
-        &governance_data,
-        voting_token_mint_info.key,
-    )?;
+    // For Approve, Deny and Abstain votes it's the same as voting_token_mint
+    // For Veto it's the governing token mint of the opposite voting population
+    let proposal_governing_token_mint = realm_data
+        .resolve_proposal_governing_token_mint_for_vote(&vote, voting_token_mint_info.key)?;
 
     let mut proposal_data = get_proposal_data_for_governance_and_governing_token_mint(
         program_id,
@@ -117,7 +115,6 @@ pub fn process_cast_vote(
         proposal_info.key,
     )?;
 
-    // TODO: Move check for Veto here
     proposal_data.assert_valid_vote(&vote)?;
 
     // Calculate Proposal voting weights

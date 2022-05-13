@@ -764,9 +764,10 @@ impl ProposalV2 {
                     return Err(GovernanceError::InvalidVote.into());
                 }
             }
-            Vote::Abstain | Vote::Veto => {
+            Vote::Abstain => {
                 return Err(GovernanceError::NotSupportedVoteType.into());
             }
+            Vote::Veto => {}
         }
 
         Ok(())
@@ -1024,7 +1025,7 @@ mod test {
     use solana_program::clock::Epoch;
 
     use crate::state::{
-        enums::{MintMaxVoteWeightSource, VetoOptions, VoteThreshold},
+        enums::{MintMaxVoteWeightSource, VoteThreshold},
         legacy::ProposalV1,
         realm::RealmConfig,
         vote_record::VoteChoice,
@@ -1143,8 +1144,7 @@ mod test {
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(60),
-            veto_options: VetoOptions::CouncilOnly,
-            reserved: [0; 1],
+            council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
         }
     }
 

@@ -22,11 +22,10 @@ use crate::{
         enums::{GovernanceAccountType, MintMaxVoteWeightSource},
         legacy::RealmV1,
         token_owner_record::get_token_owner_record_data_for_realm,
+        vote_record::Vote,
     },
     PROGRAM_AUTHORITY_SEED,
 };
-
-use super::{enums::VetoOptions, governance::GovernanceV2, vote_record::Vote};
 
 /// Realm Config instruction args
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -185,33 +184,20 @@ impl RealmV2 {
     pub fn resolve_proposal_governing_token_mint_for_vote(
         &self,
         vote: &Vote,
-        governance_data: &GovernanceV2,
         voting_token_mint: &Pubkey,
     ) -> Result<Pubkey, ProgramError> {
         if *vote != Vote::Veto {
             return Ok(*voting_token_mint);
         }
 
-        // When Community veto Council proposal then return council_token_mint as the governing_token_mint
+        // When Community veto Council proposal then return council_token_mint as the Proposal governing_token_mint
         if self.community_mint == *voting_token_mint {
-            // Assert Community is allowed to veto Council vote
-            if governance_data.config.veto_options == VetoOptions::CommunityOnly
-                || governance_data.config.veto_options == VetoOptions::Any
-            {
-                return Ok(self.config.council_mint.unwrap());
-            }
-            return Err(GovernanceError::VetoVoteDisabledForGoverningToken.into());
+            return Ok(self.config.council_mint.unwrap());
         }
 
-        // When Council veto Community proposal then return community_token_mint as the governing_token_mint
+        // When Council veto Community proposal then return community_token_mint as the Proposal governing_token_mint
         if self.config.council_mint == Some(*voting_token_mint) {
-            // Assert Council is allowed to veto Community vote
-            if governance_data.config.veto_options == VetoOptions::CouncilOnly
-                || governance_data.config.veto_options == VetoOptions::Any
-            {
-                return Ok(self.community_mint);
-            }
-            return Err(GovernanceError::VetoVoteDisabledForGoverningToken.into());
+            return Ok(self.community_mint);
         }
 
         Err(GovernanceError::InvalidGoverningTokenMint.into())

@@ -28,7 +28,7 @@ use spl_governance::{
     state::{
         enums::{
             GovernanceAccountType, InstructionExecutionFlags, MintMaxVoteWeightSource,
-            ProposalState, TransactionExecutionStatus, VetoOptions, VoteThreshold,
+            ProposalState, TransactionExecutionStatus, VoteThreshold,
         },
         governance::{
             get_governance_address, get_mint_governance_address, get_program_governance_address,
@@ -1194,8 +1194,7 @@ impl GovernanceProgramTest {
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(80),
-            veto_options: VetoOptions::CouncilOnly,
-            reserved: [0; 1],
+            council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
         }
     }
 
