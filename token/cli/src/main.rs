@@ -2539,7 +2539,10 @@ fn main() -> Result<(), Error> {
 
     let config = {
         let cli_config = if let Some(config_file) = matches.value_of("config_file") {
-            solana_cli_config::Config::load(config_file).unwrap_or_default()
+            solana_cli_config::Config::load(config_file).unwrap_or_else(|_| {
+                eprintln!("error: Could not find config file `{}`", config_file);
+                exit(1);
+            })
         } else {
             solana_cli_config::Config::default()
         };
