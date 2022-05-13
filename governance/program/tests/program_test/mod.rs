@@ -1843,6 +1843,7 @@ impl GovernanceProgramTest {
             vote_threshold: None,
 
             reserved: [0; 64],
+            reserved1: 0,
         };
 
         let proposal_address = get_proposal_address(

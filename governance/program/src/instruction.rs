@@ -288,7 +288,11 @@ pub enum GovernanceInstruction {
     ///   4. `[writable]` TokenOwnerRecord of the voter. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
     ///   5. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     ///   6. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal,governing_token_owner_record]
-    ///   7. `[]` Governing Token Mint
+    ///   7. `[]` Voting Token Mint
+    ///           The voting token mint is the governing_token_mint of the Proposal for Approve, Deny and Abstain votes
+    ///           For Veto vote the voting token mint is the mint of the opposite voting population
+    ///           Council can veto Community proposals and Community can veto Council proposals
+    ///           Note: In the current version only Council veto is supported
     ///   8. `[signer]` Payer
     ///   9. `[]` System program
     ///   10. `[]` Realm Config
@@ -1019,7 +1023,7 @@ pub fn cast_vote(
     proposal_owner_record: &Pubkey,
     voter_token_owner_record: &Pubkey,
     governance_authority: &Pubkey,
-    governing_token_mint: &Pubkey,
+    voting_token_mint: &Pubkey,
     payer: &Pubkey,
     voter_weight_record: Option<Pubkey>,
     max_voter_weight_record: Option<Pubkey>,
@@ -1037,7 +1041,7 @@ pub fn cast_vote(
         AccountMeta::new(*voter_token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(vote_record_address, false),
-        AccountMeta::new_readonly(*governing_token_mint, false),
+        AccountMeta::new_readonly(*voting_token_mint, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
     ];

@@ -14,7 +14,7 @@ use crate::{
     state::{
         enums::ProposalState,
         governance::get_governance_data,
-        proposal::get_proposal_data_for_governance_and_governing_mint,
+        proposal::get_proposal_data_for_governance_and_governing_token_mint,
         token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint,
         vote_record::{get_vote_record_data_for_proposal_and_token_owner, Vote},
     },
@@ -33,7 +33,7 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
 
     let governance_data = get_governance_data(program_id, governance_info)?;
 
-    let mut proposal_data = get_proposal_data_for_governance_and_governing_mint(
+    let mut proposal_data = get_proposal_data_for_governance_and_governing_token_mint(
         program_id,
         proposal_info,
         governance_info.key,

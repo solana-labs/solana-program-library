@@ -139,8 +139,8 @@ pub struct ProposalV2 {
     /// Without the deny option a proposal is only non executable survey
     pub deny_vote_weight: Option<u64>,
 
-    /// The total weight of Veto votes
-    pub veto_vote_weight: u64,
+    /// Reserved space for future versions
+    pub reserved1: u8,
 
     /// The total weight of  votes
     /// Note: Abstain is not supported in the current version
@@ -199,12 +199,15 @@ pub struct ProposalV2 {
 
     /// Link to proposal's description
     pub description_link: String,
+
+    /// The total weight of Veto votes
+    pub veto_vote_weight: u64,
 }
 
 impl AccountMaxSize for ProposalV2 {
     fn get_max_size(&self) -> Option<usize> {
         let options_size: usize = self.options.iter().map(|o| o.label.len() + 19).sum();
-        Some(self.name.len() + self.description_link.len() + options_size + 294)
+        Some(self.name.len() + self.description_link.len() + options_size + 295)
     }
 }
 
@@ -917,14 +920,15 @@ pub fn get_proposal_data(
             name: proposal_data_v1.name,
             description_link: proposal_data_v1.description_link,
             reserved: [0; 64],
+            reserved1: 0,
         });
     }
 
     get_account_data::<ProposalV2>(program_id, proposal_info)
 }
 
-/// Deserializes Proposal and validates it belongs to the given Governance and Governing Mint
-pub fn get_proposal_data_for_governance_and_governing_mint(
+/// Deserializes Proposal and validates it belongs to the given Governance and governing_token_mint
+pub fn get_proposal_data_for_governance_and_governing_token_mint(
     program_id: &Pubkey,
     proposal_info: &AccountInfo,
     governance: &Pubkey,
@@ -1071,6 +1075,7 @@ mod test {
             vote_threshold: Some(VoteThreshold::YesVotePercentage(100)),
 
             reserved: [0; 64],
+            reserved1: 0,
         }
     }
 

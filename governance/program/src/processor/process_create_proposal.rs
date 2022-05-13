@@ -154,6 +154,7 @@ pub fn process_create_proposal(
         vote_threshold: None,
 
         reserved: [0; 64],
+        reserved1: 0,
     };
 
     create_and_serialize_account_signed::<ProposalV2>(

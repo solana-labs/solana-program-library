@@ -45,6 +45,7 @@ pub struct GovernanceConfig {
     pub council_vote_threshold: VoteThreshold,
 
     /// Options for Proposal veto vote
+    /// TODO: Replace with council_veto_vote_threshold
     pub veto_options: VetoOptions,
 
     /// Reserved space for future versions
