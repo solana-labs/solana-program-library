@@ -10,7 +10,7 @@ use solana_program::{
 
 use crate::state::{
     governance::get_governance_data_for_realm,
-    proposal::get_proposal_data_for_governance_and_governing_token_mint,
+    proposal::get_proposal_data_for_governance_and_governing_mint,
     realm::get_realm_data_for_governing_token_mint,
     token_owner_record::get_token_owner_record_data_for_proposal_owner,
 };
@@ -36,7 +36,7 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     let mut governance_data =
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
-    let mut proposal_data = get_proposal_data_for_governance_and_governing_token_mint(
+    let mut proposal_data = get_proposal_data_for_governance_and_governing_mint(
         program_id,
         proposal_info,
         governance_info.key,

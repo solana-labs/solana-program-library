@@ -928,7 +928,7 @@ pub fn get_proposal_data(
 }
 
 /// Deserializes Proposal and validates it belongs to the given Governance and governing_token_mint
-pub fn get_proposal_data_for_governance_and_governing_token_mint(
+pub fn get_proposal_data_for_governance_and_governing_mint(
     program_id: &Pubkey,
     proposal_info: &AccountInfo,
     governance: &Pubkey,
