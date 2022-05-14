@@ -52,6 +52,7 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         account_info_iter, // *6
         realm_info.key,
         &realm_data,
+        None,
     )?;
 
     let vote_threshold =

@@ -154,6 +154,7 @@ pub fn process_cast_vote(
         account_info_iter, // max_voter_weight_record  11
         realm_info.key,
         &realm_data,
+        Some(&vote),
     )?;
 
     let vote_threshold = governance_data.resolve_vote_threshold(
