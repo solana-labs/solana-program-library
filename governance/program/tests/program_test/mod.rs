@@ -1194,7 +1194,7 @@ impl GovernanceProgramTest {
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(80),
-            council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
+            council_veto_vote_threshold: VoteThreshold::YesVotePercentage(55),
         }
     }
 

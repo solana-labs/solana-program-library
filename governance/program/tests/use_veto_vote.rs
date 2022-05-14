@@ -5,7 +5,13 @@ mod program_test;
 use solana_program_test::tokio;
 
 use program_test::*;
-use spl_governance::state::{enums::ProposalState, vote_record::Vote};
+use spl_governance::{
+    error::GovernanceError,
+    state::{
+        enums::{ProposalState, VoteThreshold},
+        vote_record::Vote,
+    },
+};
 
 #[tokio::test]
 async fn test_cast_veto_vote() {
@@ -19,6 +25,9 @@ async fn test_cast_veto_vote() {
         .with_council_token_deposit(&realm_cookie)
         .await
         .unwrap();
+
+    // Mint extra council tokens for total supply of 120
+    governance_test.mint_council_tokens(&realm_cookie, 20).await;
 
     let mut governance_cookie = governance_test
         .with_governance(
@@ -71,7 +80,7 @@ async fn test_cast_veto_vote() {
         Some(clock.unix_timestamp)
     );
 
-    assert_eq!(Some(100), proposal_account.max_vote_weight);
+    assert_eq!(Some(120), proposal_account.max_vote_weight);
     assert_eq!(
         Some(governance_cookie.account.config.council_veto_vote_threshold),
         proposal_account.vote_threshold
@@ -95,4 +104,100 @@ async fn test_cast_veto_vote() {
         .await;
 
     assert_eq!(0, governance_account.voting_proposal_count);
+}
+
+#[tokio::test]
+async fn test_cast_veto_vote_with_community_not_allowed_to_vote_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_cookie = governance_test
+        .with_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let proposal_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&proposal_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    let err = governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Veto)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        err,
+        GovernanceError::GoverningTokenMintNotAllowedToVote.into()
+    );
+}
+
+#[tokio::test]
+async fn test_cast_veto_vote_with_council_vote_vote_disabled_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.council_veto_vote_threshold = VoteThreshold::Disabled;
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    let proposal_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&proposal_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    let err = governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Veto)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        err,
+        GovernanceError::GoverningTokenMintNotAllowedToVote.into()
+    );
 }
