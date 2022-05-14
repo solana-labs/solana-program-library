@@ -2130,12 +2130,12 @@ impl GovernanceProgramTest {
             YesNoVote::No => Vote::Deny,
         };
 
-        self.with_cast_multi_option_vote(proposal_cookie, token_owner_record_cookie, vote)
+        self.with_cast_vote(proposal_cookie, token_owner_record_cookie, vote)
             .await
     }
 
     #[allow(dead_code)]
-    pub async fn with_cast_multi_option_vote(
+    pub async fn with_cast_vote(
         &mut self,
         proposal_cookie: &ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
