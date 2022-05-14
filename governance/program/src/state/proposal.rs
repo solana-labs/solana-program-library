@@ -532,7 +532,7 @@ impl ProposalV2 {
             self.voting_completed_at = Some(current_unix_timestamp);
 
             // Capture vote params to correctly display historical results
-            // Note: For Veto vote the captured params are for the Veto config
+            // Note: For Veto vote the captured params are from the Veto config
             self.max_vote_weight = Some(max_voter_weight);
             self.vote_threshold = Some(vote_threshold.clone());
 
