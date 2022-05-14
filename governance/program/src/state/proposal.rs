@@ -466,6 +466,7 @@ impl ProposalV2 {
     }
 
     /// Resolves max voter weight
+    #[allow(clippy::too_many_arguments)]
     pub fn resolve_max_voter_weight(
         &mut self,
         program_id: &Pubkey,
