@@ -157,6 +157,51 @@ async fn test_cast_veto_vote_with_community_not_allowed_to_vote_error() {
 }
 
 #[tokio::test]
+async fn test_cast_veto_vote_with_invalid_voting_mint_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_cookie = governance_test
+        .with_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let proposal_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&proposal_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    // Act
+
+    // Try to use Council Veto on Council vote Proposal
+    let err = governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Veto)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(err, GovernanceError::InvalidGoverningMintForProposal.into());
+}
+
+#[tokio::test]
 async fn test_cast_veto_vote_with_council_vote_vote_disabled_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
