@@ -489,7 +489,7 @@ mod test {
 
         // Legacy GovernanceV2 with
         // 1) config.community_vote_threshold = YesVotePercentage(10)
-        // 2) config.proposal_cool_off_tim = 0
+        // 2) config.proposal_cool_off_time = 0
         let mut account_data = [
             18, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -605,7 +605,7 @@ mod test {
     }
 
     #[test]
-    fn test_assert_config_invalid_with_council_zero_yes_vet_vote_threshold() {
+    fn test_assert_config_invalid_with_council_zero_yes_veto_vote_threshold() {
         // Arrange
         let governance_config = GovernanceConfig {
             community_vote_threshold: VoteThreshold::YesVotePercentage(1),
