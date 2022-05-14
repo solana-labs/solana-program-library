@@ -14,8 +14,9 @@ async fn test_cast_vote_with_all_addin() {
 
     let realm_cookie = governance_test.with_realm().await;
 
-    let mut token_owner_record_cookie =
-        governance_test.with_token_owner_record(&realm_cookie).await;
+    let mut token_owner_record_cookie = governance_test
+        .with_community_token_owner_record(&realm_cookie)
+        .await;
 
     // voter weight 120
     governance_test
@@ -73,8 +74,9 @@ async fn test_tip_vote_with_all_addin() {
 
     let realm_cookie = governance_test.with_realm().await;
 
-    let mut token_owner_record_cookie =
-        governance_test.with_token_owner_record(&realm_cookie).await;
+    let mut token_owner_record_cookie = governance_test
+        .with_community_token_owner_record(&realm_cookie)
+        .await;
 
     // voter weight 120
     governance_test
@@ -132,8 +134,9 @@ async fn test_finalize_vote_with_all_addin() {
 
     let realm_cookie = governance_test.with_realm().await;
 
-    let mut token_owner_record_cookie =
-        governance_test.with_token_owner_record(&realm_cookie).await;
+    let mut token_owner_record_cookie = governance_test
+        .with_community_token_owner_record(&realm_cookie)
+        .await;
 
     // voter weight 120
     governance_test

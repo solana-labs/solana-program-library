@@ -21,7 +21,7 @@ async fn test_create_governance_with_voter_weight_addin() {
     let realm_cookie = governance_test.with_realm().await;
 
     let mut token_owner_record_cookie =
-        governance_test.with_token_owner_record(&realm_cookie).await;
+        governance_test.with_community_token_owner_record(&realm_cookie).await;
 
     governance_test
         .with_voter_weight_addin_record(&mut token_owner_record_cookie)
@@ -55,7 +55,7 @@ async fn test_create_proposal_with_voter_weight_addin() {
     let realm_cookie = governance_test.with_realm().await;
 
     let mut token_owner_record_cookie =
-        governance_test.with_token_owner_record(&realm_cookie).await;
+        governance_test.with_community_token_owner_record(&realm_cookie).await;
 
     governance_test
         .with_voter_weight_addin_record(&mut token_owner_record_cookie)
@@ -94,7 +94,7 @@ async fn test_cast_vote_with_voter_weight_addin() {
     let realm_cookie = governance_test.with_realm().await;
 
     let mut token_owner_record_cookie =
-        governance_test.with_token_owner_record(&realm_cookie).await;
+        governance_test.with_community_token_owner_record(&realm_cookie).await;
 
     governance_test
         .with_voter_weight_addin_record(&mut token_owner_record_cookie)
@@ -152,7 +152,7 @@ async fn test_create_token_governance_with_voter_weight_addin() {
     let realm_cookie = governance_test.with_realm().await;
 
     let mut token_owner_record_cookie =
-        governance_test.with_token_owner_record(&realm_cookie).await;
+        governance_test.with_community_token_owner_record(&realm_cookie).await;
 
     governance_test
         .with_voter_weight_addin_record(&mut token_owner_record_cookie)
@@ -186,7 +186,7 @@ async fn test_create_mint_governance_with_voter_weight_addin() {
     let realm_cookie = governance_test.with_realm().await;
 
     let mut token_owner_record_cookie =
-        governance_test.with_token_owner_record(&realm_cookie).await;
+        governance_test.with_community_token_owner_record(&realm_cookie).await;
 
     governance_test
         .with_voter_weight_addin_record(&mut token_owner_record_cookie)
@@ -220,7 +220,7 @@ async fn test_create_program_governance_with_voter_weight_addin() {
     let realm_cookie = governance_test.with_realm().await;
 
     let mut token_owner_record_cookie =
-        governance_test.with_token_owner_record(&realm_cookie).await;
+        governance_test.with_community_token_owner_record(&realm_cookie).await;
 
     governance_test
         .with_voter_weight_addin_record(&mut token_owner_record_cookie)
@@ -278,7 +278,7 @@ async fn test_create_governance_with_voter_weight_action_error() {
     let realm_cookie = governance_test.with_realm().await;
 
     let mut token_owner_record_cookie =
-        governance_test.with_token_owner_record(&realm_cookie).await;
+        governance_test.with_community_token_owner_record(&realm_cookie).await;
 
     governance_test
         .with_voter_weight_addin_record_impl(
@@ -315,7 +315,7 @@ async fn test_create_governance_with_voter_weight_expiry_error() {
     let realm_cookie = governance_test.with_realm().await;
 
     let mut token_owner_record_cookie =
-        governance_test.with_token_owner_record(&realm_cookie).await;
+        governance_test.with_community_token_owner_record(&realm_cookie).await;
 
     governance_test
         .with_voter_weight_addin_record_impl(
@@ -354,7 +354,7 @@ async fn test_cast_vote_with_voter_weight_action_error() {
     let realm_cookie = governance_test.with_realm().await;
 
     let mut token_owner_record_cookie =
-        governance_test.with_token_owner_record(&realm_cookie).await;
+        governance_test.with_community_token_owner_record(&realm_cookie).await;
 
     governance_test
         .with_voter_weight_addin_record_impl(&mut token_owner_record_cookie, 100, None, None, None)
@@ -409,7 +409,7 @@ async fn test_create_governance_with_voter_weight_action_target_error() {
     let realm_cookie = governance_test.with_realm().await;
 
     let mut token_owner_record_cookie =
-        governance_test.with_token_owner_record(&realm_cookie).await;
+        governance_test.with_community_token_owner_record(&realm_cookie).await;
 
     governance_test
         .with_voter_weight_addin_record_impl(
@@ -451,7 +451,7 @@ async fn test_create_proposal_with_voter_weight_action_error() {
     let realm_cookie = governance_test.with_realm().await;
 
     let mut token_owner_record_cookie =
-        governance_test.with_token_owner_record(&realm_cookie).await;
+        governance_test.with_community_token_owner_record(&realm_cookie).await;
 
     governance_test
         .with_voter_weight_addin_record_impl(
@@ -494,7 +494,7 @@ async fn test_create_governance_with_voter_weight_record() {
     let realm_cookie = governance_test.with_realm().await;
 
     let mut token_owner_record_cookie =
-        governance_test.with_token_owner_record(&realm_cookie).await;
+        governance_test.with_community_token_owner_record(&realm_cookie).await;
 
     governance_test.advance_clock().await;
     let clock = governance_test.bench.get_clock().await;

@@ -453,7 +453,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_token_owner_record(
+    pub async fn with_community_token_owner_record(
         &mut self,
         realm_cookie: &RealmCookie,
     ) -> TokenOwnerRecordCookie {
