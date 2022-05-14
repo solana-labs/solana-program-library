@@ -13,6 +13,8 @@ use spl_governance::{
     },
 };
 
+use self::args::SetRealmConfigArgs;
+
 #[tokio::test]
 async fn test_cast_veto_vote() {
     // Arrange
@@ -343,4 +345,60 @@ async fn test_cast_multiple_veto_votes_for_partially_approved_proposal() {
     assert_eq!(200, proposal_account.veto_vote_weight);
 
     assert_eq!(proposal_account.state, ProposalState::Vetoed);
+}
+
+#[tokio::test]
+async fn test_cast_veto_vote_with_no_council_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.council_veto_vote_threshold = VoteThreshold::Disabled;
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    let proposal_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&proposal_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    // Remove Council
+    let mut set_realm_config_args = SetRealmConfigArgs::default();
+    set_realm_config_args.realm_config_args.use_council_mint = false;
+
+    governance_test
+        .set_realm_config(&mut realm_cookie, &set_realm_config_args)
+        .await
+        .unwrap();
+
+    // Act
+    let err = governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Veto)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(err, GovernanceError::InvalidGoverningTokenMint.into());
 }
