@@ -2073,7 +2073,7 @@ impl GovernanceProgramTest {
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
             &token_owner_record_cookie.address,
-            &proposal_cookie.account.governing_token_mint,
+            &token_owner_record_cookie.account.governing_token_mint,
             Some(token_owner_record_cookie.token_owner.pubkey()),
             Some(self.bench.payer.pubkey()),
         );

@@ -214,7 +214,7 @@ async fn test_relinquish_vote_with_invalid_mint_error() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let token_owner_record_cookie = governance_test
+    let mut token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
         .await
         .unwrap();
@@ -228,7 +228,7 @@ async fn test_relinquish_vote_with_invalid_mint_error() {
         .await
         .unwrap();
 
-    let mut proposal_cookie = governance_test
+    let proposal_cookie = governance_test
         .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
@@ -238,7 +238,7 @@ async fn test_relinquish_vote_with_invalid_mint_error() {
         .await
         .unwrap();
 
-    proposal_cookie.account.governing_token_mint = Pubkey::new_unique();
+    token_owner_record_cookie.account.governing_token_mint = Pubkey::new_unique();
 
     // Act
 
