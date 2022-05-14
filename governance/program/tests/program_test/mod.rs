@@ -2164,7 +2164,7 @@ impl GovernanceProgramTest {
             &proposal_cookie.account.token_owner_record,
             &token_owner_record_cookie.address,
             &token_owner_record_cookie.token_owner.pubkey(),
-            &proposal_cookie.account.governing_token_mint,
+            &token_owner_record_cookie.account.governing_token_mint,
             &self.bench.payer.pubkey(),
             voter_weight_record,
             max_voter_weight_record,
