@@ -201,3 +201,146 @@ async fn test_cast_veto_vote_with_council_vote_vote_disabled_error() {
         GovernanceError::GoverningTokenMintNotAllowedToVote.into()
     );
 }
+
+#[tokio::test]
+async fn test_cast_veto_vote_without_tipping() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Mint extra council tokens for total supply of 201 to prevent tipping
+    governance_test
+        .mint_council_tokens(&realm_cookie, 101)
+        .await;
+
+    let mut governance_cookie = governance_test
+        .with_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let proposal_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&proposal_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    let vote_record_cookie = governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Veto)
+        .await
+        .unwrap();
+
+    // Assert
+    let vote_record_account = governance_test
+        .get_vote_record_account(&vote_record_cookie.address)
+        .await;
+
+    assert_eq!(vote_record_cookie.account, vote_record_account);
+
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    assert_eq!(
+        token_owner_record_cookie
+            .account
+            .governing_token_deposit_amount,
+        proposal_account.veto_vote_weight
+    );
+
+    assert_eq!(proposal_account.state, ProposalState::Voting);
+}
+
+#[tokio::test]
+async fn test_cast_multiple_veto_votes_for_partially_approved_proposal() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let token_owner_record_cookie2 = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Mint extra council tokens for total supply of 210 to prevent single vote tipping
+    governance_test.mint_council_tokens(&realm_cookie, 10).await;
+
+    let mut governance_cookie = governance_test
+        .with_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let proposal_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Mint extra council tokens for total supply of 200 to prevent single vote tipping
+    governance_test
+        .mint_community_tokens(&realm_cookie, 100)
+        .await;
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&proposal_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    // Partially approve Proposal
+    governance_test
+        .with_cast_yes_no_vote(
+            &proposal_cookie,
+            &proposal_owner_record_cookie,
+            YesNoVote::Yes,
+        )
+        .await
+        .unwrap();
+
+    // Partially Veto Proposal
+    governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Veto)
+        .await
+        .unwrap();
+
+    // Act
+
+    governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie2, Vote::Veto)
+        .await
+        .unwrap();
+
+    // Assert
+
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    assert_eq!(200, proposal_account.veto_vote_weight);
+
+    assert_eq!(proposal_account.state, ProposalState::Vetoed);
+}
