@@ -250,7 +250,7 @@ async fn test_relinquish_vote_with_invalid_mint_error() {
 
     // Assert
 
-    assert_eq!(err, GovernanceError::InvalidGoverningMintForProposal.into());
+    assert_eq!(err, GovernanceError::InvalidGoverningTokenMint.into());
 }
 
 #[tokio::test]
@@ -369,7 +369,7 @@ async fn test_relinquish_vote_with_invalid_vote_record_error() {
 
     let err = governance_test
         .relinquish_vote_using_instruction(&proposal_cookie, &token_owner_record_cookie, |i| {
-            i.accounts[3] = AccountMeta::new(vote_record_cookie2.address, false)
+            i.accounts[4] = AccountMeta::new(vote_record_cookie2.address, false)
             // Try to use a vote_record for other token owner
         })
         .await

@@ -25,7 +25,7 @@ pub enum GovernanceError {
 
     /// Invalid Governing Token Mint
     #[error("Invalid Governing Token Mint")]
-    InvalidGoverningTokenMint,
+    InvalidGoverningTokenMint, // 503
 
     /// Governing Token Owner must sign transaction
     #[error("Governing Token Owner must sign transaction")]
@@ -45,11 +45,11 @@ pub enum GovernanceError {
 
     /// Invalid GoverningMint for TokenOwnerRecord
     #[error("Invalid GoverningMint for TokenOwnerRecord")]
-    InvalidGoverningMintForTokenOwnerRecord,
+    InvalidGoverningMintForTokenOwnerRecord, // 508
 
     /// Invalid Realm for TokenOwnerRecord
     #[error("Invalid Realm for TokenOwnerRecord")]
-    InvalidRealmForTokenOwnerRecord,
+    InvalidRealmForTokenOwnerRecord, // 509
 
     /// Invalid Proposal for ProposalTransaction,
     #[error("Invalid Proposal for ProposalTransaction,")]
@@ -168,7 +168,7 @@ pub enum GovernanceError {
 
     /// Proposal does not belong to given Governing Mint"
     #[error("Proposal does not belong to given Governing Mint")]
-    InvalidGoverningMintForProposal,
+    InvalidGoverningMintForProposal, // 539
 
     /// Current mint authority must sign transaction
     #[error("Current mint authority must sign transaction")]

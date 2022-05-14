@@ -17,6 +17,9 @@ use crate::PROGRAM_AUTHORITY_SEED;
 use crate::state::{
     enums::GovernanceAccountType,
     legacy::{VoteRecordV1, VoteWeightV1},
+    proposal::ProposalV2,
+    realm::RealmV2,
+    token_owner_record::TokenOwnerRecordV2,
 };
 
 /// Voter choice for a proposal option
@@ -176,12 +179,14 @@ pub fn get_vote_record_data(
     get_account_data::<VoteRecordV2>(program_id, vote_record_info)
 }
 
-/// Deserializes VoteRecord and checks it belongs to the provided Proposal and Governing Token Owner
-pub fn get_vote_record_data_for_proposal_and_token_owner(
+/// Deserializes VoteRecord and checks it belongs to the provided Proposal and TokenOwnerRecord
+pub fn get_vote_record_data_for_proposal_and_token_owner_record(
     program_id: &Pubkey,
     vote_record_info: &AccountInfo,
+    realm_data: &RealmV2,
     proposal: &Pubkey,
-    governing_token_owner: &Pubkey,
+    proposal_data: &ProposalV2,
+    token_owner_record_data: &TokenOwnerRecordV2,
 ) -> Result<VoteRecordV2, ProgramError> {
     let vote_record_data = get_vote_record_data(program_id, vote_record_info)?;
 
@@ -189,8 +194,20 @@ pub fn get_vote_record_data_for_proposal_and_token_owner(
         return Err(GovernanceError::InvalidProposalForVoterRecord.into());
     }
 
-    if vote_record_data.governing_token_owner != *governing_token_owner {
+    if vote_record_data.governing_token_owner != token_owner_record_data.governing_token_owner {
         return Err(GovernanceError::InvalidGoverningTokenOwnerForVoteRecord.into());
+    }
+
+    // Assert governing_token_mint between Proposal and TokenOwnerRecord match for the deserialized VoteRecord
+    // For Approve, Deny and Abstain votes Proposal.governing_token_mint must equal TokenOwnerRecord.governing_token_mint
+    // For Veto vote it must be the governing_token_mint of the opposite voting population
+    let proposal_governing_token_mint = realm_data.get_proposal_governing_token_mint_for_vote(
+        &vote_record_data.vote,
+        &token_owner_record_data.governing_token_mint,
+    )?;
+
+    if proposal_data.governing_token_mint != proposal_governing_token_mint {
+        return Err(GovernanceError::InvalidGoverningMintForProposal.into());
     }
 
     Ok(vote_record_data)

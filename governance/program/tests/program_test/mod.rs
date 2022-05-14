@@ -2069,6 +2069,7 @@ impl GovernanceProgramTest {
     ) -> Result<(), ProgramError> {
         let mut relinquish_vote_ix = relinquish_vote(
             &self.program_id,
+            &token_owner_record_cookie.account.realm,
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
             &token_owner_record_cookie.address,
