@@ -2,6 +2,7 @@
 
 mod program_test;
 
+use solana_program::instruction::AccountMeta;
 use solana_program_test::tokio;
 
 use program_test::*;
@@ -12,6 +13,7 @@ use spl_governance::{
         vote_record::Vote,
     },
 };
+use spl_governance_test_sdk::tools::clone_keypair;
 
 use self::args::SetRealmConfigArgs;
 
@@ -469,7 +471,7 @@ async fn test_relinquish_veto_vote_with_vote_record_for_different_voting_mint_er
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let token_owner_record_cookie = governance_test
+    let council_token_owner_record_cookie = governance_test
         .with_council_token_deposit(&realm_cookie)
         .await
         .unwrap();
@@ -483,7 +485,7 @@ async fn test_relinquish_veto_vote_with_vote_record_for_different_voting_mint_er
         .with_governance(
             &realm_cookie,
             &governed_account_cookie,
-            &token_owner_record_cookie,
+            &council_token_owner_record_cookie,
         )
         .await
         .unwrap();
@@ -498,11 +500,55 @@ async fn test_relinquish_veto_vote_with_vote_record_for_different_voting_mint_er
         .await
         .unwrap();
 
-    // Act
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Veto)
+        .with_cast_vote(
+            &proposal_cookie,
+            &council_token_owner_record_cookie,
+            Vote::Veto,
+        )
         .await
         .unwrap();
 
+    // Create Community TokenOwnerRecord for council_token_owner and Cast Community vote
+    let community_token_owner_record_cookie = governance_test
+        .with_community_token_deposit_by_owner(
+            &realm_cookie,
+            100,
+            clone_keypair(&council_token_owner_record_cookie.token_owner),
+        )
+        .await
+        .unwrap();
+
+    // Mint extra council tokens for total supply of 250
+    governance_test
+        .mint_community_tokens(&realm_cookie, 150)
+        .await;
+
+    let community_vote_record_cookie = governance_test
+        .with_cast_yes_no_vote(
+            &proposal_cookie,
+            &community_token_owner_record_cookie,
+            YesNoVote::Yes,
+        )
+        .await
+        .unwrap();
+
+    // Act
+
+    let err = governance_test
+        .relinquish_vote_using_instruction(
+            &proposal_cookie,
+            &council_token_owner_record_cookie,
+            |i| {
+                // Try to use a vote_record from community Yes vote to relinquish council Veto vote
+                i.accounts[4] = AccountMeta::new(community_vote_record_cookie.address, false)
+            },
+        )
+        .await
+        .err()
+        .unwrap();
+
     // Assert
+
+    assert_eq!(err, GovernanceError::InvalidGoverningMintForProposal.into());
 }

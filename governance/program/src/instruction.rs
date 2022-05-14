@@ -1101,6 +1101,7 @@ pub fn finalize_vote(
 }
 
 /// Creates RelinquishVote instruction
+#[allow(clippy::too_many_arguments)]
 pub fn relinquish_vote(
     program_id: &Pubkey,
     // Accounts

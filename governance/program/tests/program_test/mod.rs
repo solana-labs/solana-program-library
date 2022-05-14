@@ -448,6 +448,7 @@ impl GovernanceProgramTest {
             &realm_cookie.account.community_mint,
             &realm_cookie.community_mint_authority,
             100,
+            None,
         )
         .await
     }
@@ -576,6 +577,7 @@ impl GovernanceProgramTest {
             &realm_cookie.account.community_mint,
             &realm_cookie.community_mint_authority,
             amount,
+            None,
         )
         .await
     }
@@ -625,6 +627,7 @@ impl GovernanceProgramTest {
             &realm_cookie.account.config.council_mint.unwrap(),
             &realm_cookie.council_mint_authority.as_ref().unwrap(),
             amount,
+            None,
         )
         .await
     }
@@ -639,6 +642,24 @@ impl GovernanceProgramTest {
             &realm_cookie.account.config.council_mint.unwrap(),
             realm_cookie.council_mint_authority.as_ref().unwrap(),
             100,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_community_token_deposit_by_owner(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        amount: u64,
+        token_owner: Keypair,
+    ) -> Result<TokenOwnerRecordCookie, ProgramError> {
+        self.with_initial_governing_token_deposit(
+            &realm_cookie.address,
+            &realm_cookie.account.community_mint,
+            &realm_cookie.community_mint_authority,
+            amount,
+            Some(token_owner),
         )
         .await
     }
@@ -650,8 +671,9 @@ impl GovernanceProgramTest {
         governing_mint: &Pubkey,
         governing_mint_authority: &Keypair,
         amount: u64,
+        token_owner: Option<Keypair>,
     ) -> Result<TokenOwnerRecordCookie, ProgramError> {
-        let token_owner = Keypair::new();
+        let token_owner = token_owner.unwrap_or(Keypair::new());
         let token_source = Keypair::new();
 
         let transfer_authority = Keypair::new();
