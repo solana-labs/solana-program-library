@@ -486,7 +486,7 @@ impl ProposalV2 {
 
             let max_voter_weight_record_info = next_account_info(account_info_iter)?;
 
-            let max_voter_weight_data =
+            let max_voter_weight_record_data =
                 get_max_voter_weight_record_data_for_realm_and_governing_token_mint(
                     &realm_config_data.max_community_voter_weight_addin.unwrap(),
                     max_voter_weight_record_info,
@@ -494,11 +494,13 @@ impl ProposalV2 {
                     governing_token_mint_info.key,
                 )?;
 
-            assert_is_valid_max_voter_weight(&max_voter_weight_data)?;
+            assert_is_valid_max_voter_weight(&max_voter_weight_record_data)?;
 
             // When the max voter weight addin is used it's possible it can be inaccurate and we can have more votes then the max provided by the addin
             // and we have to adjust it to whatever result is higher
-            return Ok(self.coerce_max_voter_weight(max_voter_weight_data.max_voter_weight, vote));
+            return Ok(
+                self.coerce_max_voter_weight(max_voter_weight_record_data.max_voter_weight, vote)
+            );
         }
 
         let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
@@ -1566,7 +1568,7 @@ mod test {
             let current_timestamp = 15_i64;
 
             let realm = create_test_realm();
-            let governing_token_mint = proposal.governing_token_mint.clone();
+            let governing_token_mint = proposal.governing_token_mint;
             let vote = Vote::Approve(vec![]);
 
             let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,&governing_token_mint, test_case.governing_token_supply,Some(&vote)).unwrap();
@@ -1614,7 +1616,7 @@ mod test {
             let current_timestamp = 16_i64;
 
             let realm = create_test_realm();
-            let governing_token_mint = proposal.governing_token_mint.clone();
+            let governing_token_mint = proposal.governing_token_mint;
             let vote = Vote::Approve(vec![]);
 
             let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,&governing_token_mint,test_case.governing_token_supply,Some(&vote)).unwrap();
@@ -1678,7 +1680,7 @@ mod test {
             let current_timestamp = 15_i64;
 
             let realm = create_test_realm();
-            let governing_token_mint = proposal.governing_token_mint.clone();
+            let governing_token_mint = proposal.governing_token_mint;
             let vote = Vote::Approve(vec![]);
 
             let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,&governing_token_mint,governing_token_supply,Some(&vote)).unwrap();
@@ -1727,7 +1729,7 @@ mod test {
             let current_timestamp = 16_i64;
 
             let realm = create_test_realm();
-            let governing_token_mint = proposal.governing_token_mint.clone();
+            let governing_token_mint = proposal.governing_token_mint;
             let vote = Vote::Approve(vec![]);
 
             let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,&governing_token_mint,governing_token_supply,Some(&vote)).unwrap();
@@ -1766,7 +1768,7 @@ mod test {
         let community_token_supply = 200;
 
         let mut realm = create_test_realm();
-        let governing_token_mint = proposal.governing_token_mint.clone();
+        let governing_token_mint = proposal.governing_token_mint;
         let vote = Vote::Approve(vec![]);
 
         // reduce max vote weight to 100
@@ -1820,7 +1822,7 @@ mod test {
         let community_token_supply = 200;
 
         let mut realm = create_test_realm();
-        let governing_token_mint = proposal.governing_token_mint.clone();
+        let governing_token_mint = proposal.governing_token_mint;
         let vote = Vote::Approve(vec![]);
 
         // reduce max vote weight to 100
@@ -1877,7 +1879,7 @@ mod test {
         let community_token_supply = 200;
 
         let mut realm = create_test_realm();
-        let governing_token_mint = proposal.governing_token_mint.clone();
+        let governing_token_mint = proposal.governing_token_mint;
         let vote = Vote::Approve(vec![]);
 
         realm.config.community_mint_max_vote_weight_source =
@@ -1928,7 +1930,7 @@ mod test {
         let community_token_supply = 200;
 
         let mut realm = create_test_realm();
-        let governing_token_mint = proposal.governing_token_mint.clone();
+        let governing_token_mint = proposal.governing_token_mint;
         let vote = Vote::Approve(vec![]);
 
         // reduce max vote weight to 100
@@ -1979,7 +1981,7 @@ mod test {
         let community_token_supply = 200;
 
         let mut realm = create_test_realm();
-        let governing_token_mint = proposal.governing_token_mint.clone();
+        let governing_token_mint = proposal.governing_token_mint;
         let vote = Vote::Approve(vec![]);
 
         // reduce max vote weight to 100
@@ -2028,7 +2030,7 @@ mod test {
             proposal.voting_at.unwrap() + governance_config.max_voting_time as i64;
 
         let realm = create_test_realm();
-        let governing_token_mint = proposal.governing_token_mint.clone();
+        let governing_token_mint = proposal.governing_token_mint;
         let vote = Vote::Approve(vec![]);
 
         let max_voter_weight = proposal
@@ -2063,7 +2065,7 @@ mod test {
             proposal.voting_at.unwrap() + governance_config.max_voting_time as i64 + 1;
 
         let realm = create_test_realm();
-        let governing_token_mint = proposal.governing_token_mint.clone();
+        let governing_token_mint = proposal.governing_token_mint;
         let vote = Vote::Approve(vec![]);
 
         let max_voter_weight = proposal

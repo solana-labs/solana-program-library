@@ -178,7 +178,7 @@ impl RealmV2 {
     /// Returns the governing token mint which is used to vote on a proposal given the provided Vote and voting_token_mint
     ///
     /// The Veto vote is cast on a proposal configured for the opposite voting population defined using governing_token_mint
-    /// Council for Community and Community for Council assuming the veto for the voting population is enabled
+    /// Council can veto Community vote and Community can veto Council assuming the veto for the voting population is enabled
     ///
     /// For all votes other than Veto the voting_token_mint is the same as Proposal governing_token_mint
     pub fn get_proposal_governing_token_mint_for_vote(
