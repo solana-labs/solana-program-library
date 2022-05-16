@@ -5,7 +5,7 @@ use {
     solana_farm_sdk::{
         farm::Farm,
         fund::Fund,
-        id::{main_router, ProgramIDType},
+        id::main_router,
         instruction::{main_router::MainInstruction, refdb::RefDbInstruction},
         pool::Pool,
         program::pda::{find_refdb_pda, find_target_pda},
@@ -13,6 +13,7 @@ use {
         string::str_to_as64,
         token::Token,
         vault::Vault,
+        ProgramIDType,
     },
     solana_sdk::{
         instruction::{AccountMeta, Instruction},

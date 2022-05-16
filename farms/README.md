@@ -116,7 +116,7 @@ There could be any number of Funds, each implementing its assets management stra
 
 ## Build
 
-Before starting the build check main_router and main_router_admin pubkeys in farm-sdk/src/id.rs. They should point to existing main router program and admin account or generate a new set of keys if you plan to maintain your own version of the reference database:
+Before starting the build set `MAIN_ROUTER_ID` and `MAIN_ROUTER_ADMIN` environment variables. They should point to existing main router program and admin account or generate a new set of keys if you plan to maintain your own version of the reference database:
 
 ```
 solana-keygen new -o main_admin.json

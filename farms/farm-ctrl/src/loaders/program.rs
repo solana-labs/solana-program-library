@@ -5,7 +5,7 @@ use {
     log::info,
     serde::Deserialize,
     solana_farm_client::client::FarmClient,
-    solana_farm_sdk::{id::ProgramIDType, pack::pubkey_deserialize},
+    solana_farm_sdk::{pack::pubkey_deserialize, ProgramIDType},
     solana_sdk::pubkey::Pubkey,
 };
 
