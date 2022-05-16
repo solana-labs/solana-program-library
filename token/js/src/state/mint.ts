@@ -135,7 +135,7 @@ export async function getMinimumBalanceForRentExemptMintWithExtensions(
 /**
  * Async version of getAssociatedTokenAddressSync
  * For backwards compatibility
- * 
+ *
  * @param mint                     Token mint account
  * @param owner                    Owner of the new account
  * @param allowOwnerOffCurve       Allow the owner account to be a PDA (Program Derived Address)
@@ -172,7 +172,7 @@ export async function getAssociatedTokenAddress(
  *
  * @return Address of the associated token account
  */
- export function getAssociatedTokenAddressSync(
+export function getAssociatedTokenAddressSync(
     mint: PublicKey,
     owner: PublicKey,
     allowOwnerOffCurve = false,
