@@ -25,6 +25,7 @@ pub struct Config {
     pub max_threads: u32,
     pub token_list_url: String,
     pub farm_client_url: String,
+    pub sqlite_db_path: String,
 }
 
 impl Default for Config {
@@ -33,6 +34,7 @@ impl Default for Config {
         let websocket_url = "wss://127.0.0.1:9001".to_string();
         let token_list_url = "https://raw.githubusercontent.com/solana-labs/token-list/main/src/tokens/solana.tokenlist.json".to_string();
         let farm_client_url = "http://127.0.0.1:8899".to_string();
+        let sqlite_db_path = "fund_stats.db".to_string();
         let max_threads = 4;
 
         Self {
@@ -41,6 +43,7 @@ impl Default for Config {
             max_threads,
             token_list_url,
             farm_client_url,
+            sqlite_db_path,
         }
     }
 }
@@ -76,6 +79,7 @@ mod test {
         assert_eq!(config.json_rpc_url, "http://127.0.0.1:9000");
         assert_eq!(config.websocket_url, "wss://127.0.0.1:9001");
         assert_eq!(config.farm_client_url, "http://127.0.0.1:8899");
+        assert_eq!(config.sqlite_db_path, "fund_stats.db");
         assert_eq!(config.max_threads, 4);
     }
 
@@ -87,6 +91,7 @@ mod test {
             max_threads: 99,
             token_list_url: "none".to_string(),
             farm_client_url: "http://test_farm:8899".to_string(),
+            sqlite_db_path: "test.db".to_string(),
         };
         let _ = config.save("_test_config.yml");
 
@@ -97,5 +102,6 @@ mod test {
         assert_eq!(config.websocket_url, config2.websocket_url);
         assert_eq!(config.max_threads, config2.max_threads);
         assert_eq!(config.farm_client_url, config2.farm_client_url);
+        assert_eq!(config.sqlite_db_path, config2.sqlite_db_path);
     }
 }

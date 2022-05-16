@@ -1,9 +1,9 @@
 [package]
-name = "solana-farm-fund"
-version = "0.0.1"
+name = "solana-fund"
+version = "1.0.0"
 description = "Solana Yield Farming Fund"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
-repository = "https://github.com/solana-labs/solana-program-library"
+repository = "https://github.com/solana-labs/solana-program-library/farms"
 license = "Apache-2.0"
 homepage = "https://solana.com/"
 edition = "2021"
@@ -13,14 +13,14 @@ no-entrypoint = []
 debug = []
 
 [dependencies]
-solana-farm-sdk = { path = "../farm-sdk" }
+solana-farm-sdk = {path="../farm-sdk"}
 solana-program = "1.9.18"
 spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
 num_enum = "0.5.7"
 
 [dev-dependencies]
 solana-program-test = "1.9.18"
-solana-farm-client = { path = "../farm-client" }
+solana-farm-client = {path="../farm-client"}
 solana-sdk = "1.9.18"
 solana-cli-config = "1.9.18"
 solana-logger = "1.9.18"

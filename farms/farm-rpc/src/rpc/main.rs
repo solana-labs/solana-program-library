@@ -6,8 +6,10 @@ extern crate lazy_static;
 extern crate rocket;
 
 mod config;
-mod git_token;
 mod json_rpc;
+
+#[path = "../stats/fund_stats.rs"]
+mod fund_stats;
 
 use {
     clap::{crate_description, crate_name, App, Arg},
@@ -100,6 +102,14 @@ async fn main() {
                 .validator(is_url)
                 .help("RPC URL to use with Farm Client"),
         )
+        .arg(
+            Arg::with_name("sqlite_db_path")
+                .short("s")
+                .long("sqlite-db-path")
+                .value_name("STR")
+                .takes_value(true)
+                .help("RPC URL to use with Farm Client"),
+        )
         .get_matches();
 
     // set log verbosity level
@@ -137,6 +147,9 @@ async fn main() {
     if let Some(farm_client_url) = matches.value_of("farm_client_url") {
         config.farm_client_url = farm_client_url.to_string();
     }
+    if let Some(sqlite_db_path) = matches.value_of("sqlite_db_path") {
+        config.sqlite_db_path = sqlite_db_path.to_string();
+    }
     // save config to a file
     if let Some(config_file) = matches.value_of("save_config") {
         config.save(config_file).unwrap();
@@ -146,6 +159,7 @@ async fn main() {
     debug!("json_rpc_url: {}", config.json_rpc_url);
     debug!("websocket_url: {}", config.websocket_url);
     debug!("farm_client_url: {}", config.farm_client_url);
+    debug!("sqlite_db_path: {}", config.sqlite_db_path);
     debug!("max_threads: {}", config.max_threads);
 
     info!("Starting JSON RPC on {}", config.json_rpc_url);
@@ -159,7 +173,7 @@ async fn main() {
     let json_rpc = rocket::custom(figment)
         .attach(json_rpc::stage(&config).await)
         .launch();
-    json_rpc.await.unwrap();
+    let _ = json_rpc.await.unwrap();
 
     info!("Shutting down...");
 }

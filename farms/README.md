@@ -116,7 +116,7 @@ There could be any number of Funds, each implementing its assets management stra
 
 ## Build
 
-Before starting the build check `main_router` and `main_router_admin` pubkeys in `farm-sdk/src/id.rs`. They should point to existing main router program and admin account or generate a new set of keys if you plan to maintain your own version of the reference database:
+Before starting the build check main_router and main_router_admin pubkeys in farm-sdk/src/id.rs. They should point to existing main router program and admin account or generate a new set of keys if you plan to maintain your own version of the reference database:
 
 ```
 solana-keygen new -o main_admin.json
@@ -128,6 +128,8 @@ These keys must be used for main router deployment.
 To build the off-chain library or program, run the `cargo build` command from each project directory, for example:
 
 ```sh
+export MAIN_ROUTER_ID="RepLaceThisWithVaLidMainRouterProgramPubkey"
+export MAIN_ROUTER_ADMIN="RepLaceThisWithCorrectMainRouterAdminPubkey"
 cd farms/farm-client
 cargo build --release
 ```
@@ -167,12 +169,12 @@ Bear in mind that integration tests execute transactions, and it will cost you s
 To deploy on-chain programs, use the standard `solana program deploy`:
 
 ```sh
-solana program deploy target/deploy/solana_farm_fund.so
-solana program deploy target/deploy/solana_farm_vaults.so
-solana program deploy target/deploy/solana_farm_router_raydium.so
-solana program deploy target/deploy/solana_farm_router_saber.so
-solana program deploy target/deploy/solana_farm_router_orca.so
-solana program deploy --upgrade-authority main_admin.json --program-id main_router.json target/deploy/solana_farm_router_main.so
+solana program deploy target/deploy/solana_fund.so
+solana program deploy target/deploy/solana_vaults.so
+solana program deploy target/deploy/solana_router_raydium.so
+solana program deploy target/deploy/solana_router_saber.so
+solana program deploy target/deploy/solana_router_orca.so
+solana program deploy --upgrade-authority main_admin.json --program-id main_router.json target/deploy/solana_router_main.so
 ```
 
 To start JSON RPC service:

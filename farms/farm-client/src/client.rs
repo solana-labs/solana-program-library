@@ -412,26 +412,23 @@ impl FarmClient {
         )))
     }
 
-    /// Returns all Vaults with name matching the pattern and belong to the specified Fund sorted by version
-    pub fn find_funds(
-        &self,
-        fund_name: &str,
-        vault_name_pattern: &str,
-    ) -> Result<Vec<Fund>, FarmClientError> {
-        let vaults = self.get_fund_vaults(fund_name)?;
+    /// Returns all Funds that have Vaults with the name matching the pattern sorted by version
+    pub fn find_funds(&self, vault_name_pattern: &str) -> Result<Vec<Fund>, FarmClientError> {
         let mut res = vec![];
-        for vault in &vaults {
-            if self
-                .get_vault_by_ref(&vault.vault_ref)?
-                .name
-                .contains(&vault_name_pattern)
-            {
-                res.push(self.get_fund_by_ref(&vault.fund_ref)?);
+        let funds = self.get_funds()?;
+        for (fund_name, fund) in &funds {
+            let vaults = self.get_fund_vaults(&fund_name)?;
+            for vault in &vaults {
+                if let Ok(vault) = self.get_vault_by_ref(&vault.vault_ref) {
+                    if vault.name.contains(&vault_name_pattern) {
+                        res.push(*fund);
+                    }
+                }
             }
         }
         if res.is_empty() {
             Err(FarmClientError::RecordNotFound(format!(
-                "Fund with Vault name pattern {}",
+                "Funds with Vault name pattern {}",
                 vault_name_pattern
             )))
         } else {

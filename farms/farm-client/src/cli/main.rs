@@ -289,12 +289,11 @@ fn main() {
             printer::print_objects(&config, &vaults);
         }
         ("find-funds", Some(subcommand_matches)) => {
-            let object = config::get_str_val(subcommand_matches, "fund_name");
             let vault_name_pattern = config::get_str_val(subcommand_matches, "vault_name_pattern");
-            match client.find_funds(&object, &vault_name_pattern) {
-                Ok(pools) => {
-                    for pool in pools {
-                        println!("{}", pool.name);
+            match client.find_funds(&vault_name_pattern) {
+                Ok(funds) => {
+                    for fund in funds {
+                        println!("{}", fund.name);
                     }
                 }
                 Err(e) => {

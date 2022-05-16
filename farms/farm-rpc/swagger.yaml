@@ -88,12 +88,8 @@ paths:
           description: Json object or error string
   /api/v1/find_funds:
     get:
-      description: "Returns all Funds that hold assets in specified Vault sorted by version"
+      description: "Returns all Funds that have Vaults with the name matching the pattern sorted by version"
       parameters:
-        - name: fund_name
-          in: query
-          schema:
-            type: string
         - name: vault_name_pattern
           in: query
           schema:
@@ -898,6 +894,29 @@ paths:
       description: "Returns all Vaults belonging to the Fund sorted by vault_id"
       parameters:
         - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/fund_stats:
+    get:
+      description: "Returns Fund's historical performance"
+      parameters:
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: timeframe
+          in: query
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          schema:
+            type: string
+        - name: limit
           in: query
           schema:
             type: string

@@ -3,11 +3,11 @@
 use serde::{Deserialize, Serialize};
 
 pub mod main_router {
-    solana_program::declare_id!("RepLaceThisWithVaLidMainRouterProgramPubkey");
+    solana_program::declare_id!("9wVbyM97JHneRbh5ocFdV3abNoH3zJ6CqwcBeTRgQGhF");
 }
 
 pub mod main_router_admin {
-    solana_program::declare_id!("RepLaceThisWithCorrectMainRouterAdminPubkey");
+    solana_program::declare_id!("5NWzMYzT5EpKMEvkeKY9sYkyvG4ahtdRDXGqaQTYoNaC");
 }
 
 pub mod zero {

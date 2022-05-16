@@ -64,9 +64,9 @@
       <a class="link" href="/api/v1/fund_by_ref?fund_ref=[fund_ref]">/api/v1/fund_by_ref?fund_ref=[fund_ref]</a>
       <p class="description"> Returns the Fund name for the given metadata address</p>
       <a class="link" href="/api/v1/fund_name?fund_ref=[fund_ref]">/api/v1/fund_name?fund_ref=[fund_ref]</a>
-      <p class="description"> Returns all Funds that hold assets in specified Vault sorted by version</p>
+      <p class="description"> Returns all Funds that have Vaults with the name matching the pattern sorted by version</p>
       <a class="link"
-        href="/api/v1/find_funds?fund_name=[fund_name]&amp;vault_name_pattern=[vault_name_pattern]">/api/v1/find_funds?fund_name=[fund_name]&amp;vault_name_pattern=[vault_name_pattern]</a>
+        href="/api/v1/find_funds?vault_name_pattern=[vault_name_pattern]">/api/v1/find_funds?vault_name_pattern=[vault_name_pattern]</a>
       <p class="description"> Returns the Vault struct for the given name</p>
       <a class="link" href="/api/v1/vault?name=[name]">/api/v1/vault?name=[name]</a>
       <p class="description"> Returns all Vaults available</p>
@@ -190,6 +190,9 @@
         href="/api/v1/fund_vault?fund_name=[fund_name]&amp;vault_name=[vault_name]&amp;vault_type=[vault_type]">/api/v1/fund_vault?fund_name=[fund_name]&amp;vault_name=[vault_name]&amp;vault_type=[vault_type]</a>
       <p class="description"> Returns all Vaults belonging to the Fund sorted by vault_id</p>
       <a class="link" href="/api/v1/fund_vaults?fund_name=[fund_name]">/api/v1/fund_vaults?fund_name=[fund_name]</a>
+      <p class="description"> Returns Fund's historical performance</p>
+      <a class="link"
+        href="/api/v1/fund_stats?fund_name=[fund_name]&amp;timeframe=[timeframe]&amp;start_time=[start_time]&amp;limit=[limit]">/api/v1/fund_stats?fund_name=[fund_name]&amp;timeframe=[timeframe]&amp;start_time=[start_time]&amp;limit=[limit]</a>
       <p class="description"> Returns User's stacked balance</p>
       <a class="link"
         href="/api/v1/user_stake_balance?wallet_address=[wallet_address]&amp;farm_name=[farm_name]">/api/v1/user_stake_balance?wallet_address=[wallet_address]&amp;farm_name=[farm_name]</a>

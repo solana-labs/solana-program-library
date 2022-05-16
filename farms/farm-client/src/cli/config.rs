@@ -424,9 +424,8 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .arg(get_arg("fund_name"))
         )
         .subcommand(
-            SubCommand::with_name("fund-funds")
-                .about("Find all Funds with given name pattern")
-                .arg(get_arg("fund_name"))
+            SubCommand::with_name("find-funds")
+                .about("Find all Funds with Vault names matching given pattern")
                 .arg(get_arg("vault_name_pattern"))
         )
         .subcommand(
