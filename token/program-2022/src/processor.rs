@@ -10,6 +10,7 @@ use {
             immutable_owner::ImmutableOwner,
             memo_transfer::{self, check_previous_sibling_instruction_is_memo, memo_required},
             mint_close_authority::MintCloseAuthority,
+            non_transferable::NonTransferable,
             reallocate,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             ExtensionType, StateWithExtensions, StateWithExtensionsMut,
@@ -290,6 +291,11 @@ impl Processor {
 
             let mint_data = mint_info.try_borrow_data()?;
             let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+
+            if mint.get_extension::<NonTransferable>().is_ok() {
+                return Err(TokenError::NonTransferable.into());
+            }
+
             if expected_decimals != mint.base.decimals {
                 return Err(TokenError::MintDecimalsMismatch.into());
             }
@@ -694,6 +700,17 @@ impl Processor {
 
         let mut mint_data = mint_info.data.borrow_mut();
         let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
+
+        // If the mint if non-transferable, only allow minting to accounts
+        // with immutable ownership.
+        if mint.get_extension::<NonTransferable>().is_ok()
+            && destination_account
+                .get_extension::<ImmutableOwner>()
+                .is_err()
+        {
+            return Err(TokenError::NonTransferableNeedsImmutableOwnership.into());
+        }
+
         if let Some(expected_decimals) = expected_decimals {
             if expected_decimals != mint.base.decimals {
                 return Err(TokenError::MintDecimalsMismatch.into());
@@ -1111,6 +1128,18 @@ impl Processor {
         )
     }
 
+    /// Processes an [InitializeNonTransferableMint](enum.TokenInstruction.html) instruction
+    pub fn process_initialize_non_transferable_mint(accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let mint_account_info = next_account_info(account_info_iter)?;
+
+        let mut mint_data = mint_account_info.data.borrow_mut();
+        let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
+        mint.init_extension::<NonTransferable>()?;
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -1259,6 +1288,10 @@ impl Processor {
             TokenInstruction::CreateNativeMint => {
                 msg!("Instruction: CreateNativeMint");
                 Self::process_create_native_mint(accounts)
+            }
+            TokenInstruction::InitializeNonTransferableMint => {
+                msg!("Instruction: InitializeNonTransferableMint");
+                Self::process_initialize_non_transferable_mint(accounts)
             }
         }
     }
@@ -1413,6 +1446,12 @@ impl PrintProgramError for TokenError {
             }
             TokenError::NoMemo => {
                 msg!("Error: No memo in previous instruction; required for recipient to receive a transfer");
+            }
+            TokenError::NonTransferable => {
+                msg!("Transfer is disabled for this mint");
+            }
+            TokenError::NonTransferableNeedsImmutableOwnership => {
+                msg!("Non-transferable tokens can't be minted to an account without immutable ownership");
             }
         }
     }
