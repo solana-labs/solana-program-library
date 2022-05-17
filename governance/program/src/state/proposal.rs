@@ -475,7 +475,7 @@ impl ProposalV2 {
         &mut self,
         program_id: &Pubkey,
         realm_config_info: &AccountInfo,
-        governing_token_mint_info: &AccountInfo,
+        vote_governing_token_mint_info: &AccountInfo,
         account_info_iter: &mut Iter<AccountInfo>,
         realm: &Pubkey,
         realm_data: &RealmV2,
@@ -483,7 +483,7 @@ impl ProposalV2 {
     ) -> Result<u64, ProgramError> {
         // if the realm uses addin for max community voter weight then use the externally provided max weight
         if realm_data.config.use_max_community_voter_weight_addin
-            && realm_data.community_mint == *governing_token_mint_info.key
+            && realm_data.community_mint == *vote_governing_token_mint_info.key
         {
             let realm_config_data =
                 get_realm_config_data_for_realm(program_id, realm_config_info, realm)?;
@@ -495,7 +495,7 @@ impl ProposalV2 {
                     &realm_config_data.max_community_voter_weight_addin.unwrap(),
                     max_voter_weight_record_info,
                     realm,
-                    governing_token_mint_info.key,
+                    vote_governing_token_mint_info.key,
                 )?;
 
             assert_is_valid_max_voter_weight(&max_voter_weight_record_data)?;
@@ -508,11 +508,12 @@ impl ProposalV2 {
             ));
         }
 
-        let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
+        let governing_token_mint_supply =
+            get_spl_token_mint_supply(vote_governing_token_mint_info)?;
 
         let max_voter_weight = self.get_max_voter_weight_from_mint_supply(
             realm_data,
-            governing_token_mint_info.key,
+            vote_governing_token_mint_info.key,
             governing_token_mint_supply,
             vote_kind,
         )?;

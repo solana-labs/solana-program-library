@@ -206,11 +206,11 @@ impl GovernanceV2 {
     pub fn assert_governing_token_mint_can_vote(
         &self,
         realm_data: &RealmV2,
-        governing_token_mint: &Pubkey,
+        vote_governing_token_mint: &Pubkey,
         vote_kind: &VoteKind,
     ) -> Result<(), ProgramError> {
         // resolve_vote_threshold() asserts the vote threshold exists for the given governing_token_mint and is not disabled
-        let _ = self.resolve_vote_threshold(realm_data, governing_token_mint, vote_kind)?;
+        let _ = self.resolve_vote_threshold(realm_data, vote_governing_token_mint, vote_kind)?;
 
         Ok(())
     }
@@ -219,10 +219,10 @@ impl GovernanceV2 {
     pub fn resolve_vote_threshold(
         &self,
         realm_data: &RealmV2,
-        governing_token_mint: &Pubkey,
+        vote_governing_token_mint: &Pubkey,
         vote_kind: &VoteKind,
     ) -> Result<VoteThreshold, ProgramError> {
-        let vote_threshold = if realm_data.community_mint == *governing_token_mint {
+        let vote_threshold = if realm_data.community_mint == *vote_governing_token_mint {
             match vote_kind {
                 VoteKind::Electorate => &self.config.community_vote_threshold,
                 VoteKind::Veto => {
@@ -230,7 +230,7 @@ impl GovernanceV2 {
                     return Err(GovernanceError::GoverningTokenMintNotAllowedToVote.into());
                 }
             }
-        } else if realm_data.config.council_mint == Some(*governing_token_mint) {
+        } else if realm_data.config.council_mint == Some(*vote_governing_token_mint) {
             match vote_kind {
                 VoteKind::Electorate => &self.config.council_vote_threshold,
                 VoteKind::Veto => &self.config.council_veto_vote_threshold,
