@@ -1,4 +1,4 @@
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 use solana_zk_token_sdk::encryption::auth_encryption::AeCiphertext;
 pub use solana_zk_token_sdk::zk_token_proof_instruction::*;
 use {
@@ -511,7 +511,7 @@ pub fn update_mint(
 }
 
 /// Create a `ConfigureAccount` instruction
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 pub fn configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -699,7 +699,7 @@ pub fn inner_withdraw(
 
 /// Create a `Withdraw` instruction
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 pub fn withdraw(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
@@ -770,7 +770,7 @@ pub fn inner_transfer(
 
 /// Create a `Transfer` instruction
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 pub fn transfer(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
@@ -837,7 +837,7 @@ pub fn inner_transfer_with_fee(
 
 /// Create a `Transfer` instruction
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 pub fn transfer_with_fee(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
@@ -897,7 +897,7 @@ pub fn inner_apply_pending_balance(
 }
 
 /// Create a `ApplyPendingBalance` instruction
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 pub fn apply_pending_balance(
     token_program_id: &Pubkey,
     token_account: &Pubkey,

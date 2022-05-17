@@ -1,5 +1,5 @@
 //! Program entrypoint
-#![cfg(all(target_arch = "bpf", not(feature = "no-entrypoint")))]
+#![cfg(all(target_os = "solana", not(feature = "no-entrypoint")))]
 
 use crate::{error::GovernanceChatError, processor};
 use solana_program::{
