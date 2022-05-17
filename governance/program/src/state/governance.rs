@@ -7,7 +7,7 @@ use crate::{
         enums::{GovernanceAccountType, VoteThreshold, VoteTipping},
         legacy::{is_governance_v1_account_type, GovernanceV1},
         realm::{assert_is_valid_realm, RealmV2},
-        vote_record::Vote,
+        vote_record::VoteKind,
     },
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
@@ -202,36 +202,38 @@ impl GovernanceV2 {
     }
 
     /// Asserts the provided voting population represented by the given governing_token_mint
-    /// can vote on proposals for the Governance
+    /// can cast the given vote type on proposals for the Governance
     pub fn assert_governing_token_mint_can_vote(
         &self,
         realm_data: &RealmV2,
         governing_token_mint: &Pubkey,
+        vote_kind: &VoteKind,
     ) -> Result<(), ProgramError> {
         // resolve_vote_threshold() asserts the vote threshold exists for the given governing_token_mint and is not disabled
-        let _ = self.resolve_vote_threshold(realm_data, governing_token_mint, None)?;
+        let _ = self.resolve_vote_threshold(realm_data, governing_token_mint, vote_kind)?;
 
         Ok(())
     }
 
-    /// Resolves VoteThreshold for the given realm, governing token and optional Vote
+    /// Resolves VoteThreshold for the given realm, governing token and Vote kind
     pub fn resolve_vote_threshold(
         &self,
         realm_data: &RealmV2,
         governing_token_mint: &Pubkey,
-        vote: Option<&Vote>,
+        vote_kind: &VoteKind,
     ) -> Result<VoteThreshold, ProgramError> {
         let vote_threshold = if realm_data.community_mint == *governing_token_mint {
-            // Community Veto vote is not supported in current version
-            if vote == Some(&Vote::Veto) {
-                return Err(GovernanceError::GoverningTokenMintNotAllowedToVote.into());
+            match vote_kind {
+                VoteKind::Electorate => &self.config.community_vote_threshold,
+                VoteKind::Veto => {
+                    // Community Veto vote is not supported in current version
+                    return Err(GovernanceError::GoverningTokenMintNotAllowedToVote.into());
+                }
             }
-            &self.config.community_vote_threshold
         } else if realm_data.config.council_mint == Some(*governing_token_mint) {
-            if vote == Some(&Vote::Veto) {
-                &self.config.council_veto_vote_threshold
-            } else {
-                &self.config.council_vote_threshold
+            match vote_kind {
+                VoteKind::Electorate => &self.config.council_vote_threshold,
+                VoteKind::Veto => &self.config.council_veto_vote_threshold,
             }
         } else {
             return Err(GovernanceError::InvalidGoverningTokenMint.into());

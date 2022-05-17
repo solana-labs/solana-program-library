@@ -63,6 +63,25 @@ pub enum Vote {
     Veto,
 }
 
+/// VoteKind defines the type of the vote being cast
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum VoteKind {
+    /// Electorate vote is cast by the voting population identified by governing_token_mint
+    /// Approve, Deny and Abstain votes are Electorate votes
+    Electorate,
+
+    /// Vote cast by the opposite voting population to the Electorate identified by governing_token_mint
+    Veto,
+}
+
+/// Returns the VoteKind for the given Vote
+pub fn get_vote_kind(vote: &Vote) -> VoteKind {
+    match vote {
+        Vote::Approve(_) | Vote::Deny | Vote::Abstain => VoteKind::Electorate,
+        Vote::Veto => VoteKind::Veto,
+    }
+}
+
 /// Proposal VoteRecord
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct VoteRecordV2 {

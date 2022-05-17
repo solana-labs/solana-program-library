@@ -22,7 +22,7 @@ use crate::{
             get_token_owner_record_data_for_proposal_owner,
             get_token_owner_record_data_for_realm_and_governing_mint,
         },
-        vote_record::{get_vote_record_address_seeds, Vote, VoteRecordV2},
+        vote_record::{get_vote_kind, get_vote_record_address_seeds, Vote, VoteRecordV2},
     },
 };
 
@@ -147,6 +147,8 @@ pub fn process_cast_vote(
         }
     }
 
+    let vote_kind = get_vote_kind(&vote);
+
     let max_voter_weight = proposal_data.resolve_max_voter_weight(
         program_id,
         realm_config_info,
@@ -154,13 +156,13 @@ pub fn process_cast_vote(
         account_info_iter, // max_voter_weight_record  11
         realm_info.key,
         &realm_data,
-        Some(&vote),
+        &vote_kind,
     )?;
 
     let vote_threshold = governance_data.resolve_vote_threshold(
         &realm_data,
         voting_token_mint_info.key,
-        Some(&vote),
+        &vote_kind,
     )?;
 
     if proposal_data.try_tip_vote(
@@ -168,7 +170,7 @@ pub fn process_cast_vote(
         &governance_data.config,
         clock.unix_timestamp,
         &vote_threshold,
-        &vote,
+        &vote_kind,
     )? {
         // Deserialize proposal owner and validate it's the actual owner of the proposal
         let mut proposal_owner_record_data = get_token_owner_record_data_for_proposal_owner(

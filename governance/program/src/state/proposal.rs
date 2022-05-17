@@ -32,6 +32,7 @@ use crate::{
         realm::RealmV2,
         realm_config::get_realm_config_data_for_realm,
         vote_record::Vote,
+        vote_record::VoteKind,
     },
     PROGRAM_AUTHORITY_SEED,
 };
@@ -419,7 +420,7 @@ impl ProposalV2 {
         realm_data: &RealmV2,
         governing_token_mint: &Pubkey,
         governing_token_mint_supply: u64,
-        vote: Option<&Vote>,
+        vote_kind: &VoteKind,
     ) -> Result<u64, ProgramError> {
         // max vote weight fraction is only used for community mint
         if Some(*governing_token_mint) == realm_data.config.council_mint {
@@ -440,7 +441,7 @@ impl ProposalV2 {
 
                 // When the fraction is used it's possible we can go over the calculated max_vote_weight
                 // and we have to adjust it in case more votes have been cast
-                Ok(self.coerce_max_voter_weight(max_voter_weight, vote))
+                Ok(self.coerce_max_voter_weight(max_voter_weight, vote_kind))
             }
             MintMaxVoteWeightSource::Absolute(_) => {
                 Err(GovernanceError::VoteWeightSourceNotSupported.into())
@@ -449,17 +450,19 @@ impl ProposalV2 {
     }
 
     /// Adjusts max voter weight to ensure it's not lower than total cast votes
-    fn coerce_max_voter_weight(&self, max_voter_weight: u64, vote: Option<&Vote>) -> u64 {
-        let total_vote_weight = if vote == Some(&Vote::Veto) {
-            self.veto_vote_weight
-        } else {
-            let deny_vote_weight = self.deny_vote_weight.unwrap_or(0);
+    fn coerce_max_voter_weight(&self, max_voter_weight: u64, vote_kind: &VoteKind) -> u64 {
+        let total_vote_weight = match vote_kind {
+            VoteKind::Electorate => {
+                let deny_vote_weight = self.deny_vote_weight.unwrap_or(0);
 
-            let max_option_vote_weight = self.options.iter().map(|o| o.vote_weight).max().unwrap();
+                let max_option_vote_weight =
+                    self.options.iter().map(|o| o.vote_weight).max().unwrap();
 
-            max_option_vote_weight
-                .checked_add(deny_vote_weight)
-                .unwrap()
+                max_option_vote_weight
+                    .checked_add(deny_vote_weight)
+                    .unwrap()
+            }
+            VoteKind::Veto => self.veto_vote_weight,
         };
 
         max_voter_weight.max(total_vote_weight)
@@ -475,7 +478,7 @@ impl ProposalV2 {
         account_info_iter: &mut Iter<AccountInfo>,
         realm: &Pubkey,
         realm_data: &RealmV2,
-        vote: Option<&Vote>,
+        vote_kind: &VoteKind,
     ) -> Result<u64, ProgramError> {
         // if the realm uses addin for max community voter weight then use the externally provided max weight
         if realm_data.config.use_max_community_voter_weight_addin
@@ -498,9 +501,10 @@ impl ProposalV2 {
 
             // When the max voter weight addin is used it's possible it can be inaccurate and we can have more votes then the max provided by the addin
             // and we have to adjust it to whatever result is higher
-            return Ok(
-                self.coerce_max_voter_weight(max_voter_weight_record_data.max_voter_weight, vote)
-            );
+            return Ok(self.coerce_max_voter_weight(
+                max_voter_weight_record_data.max_voter_weight,
+                vote_kind,
+            ));
         }
 
         let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
@@ -509,7 +513,7 @@ impl ProposalV2 {
             realm_data,
             governing_token_mint_info.key,
             governing_token_mint_supply,
-            vote,
+            vote_kind,
         )?;
 
         Ok(max_voter_weight)
@@ -523,10 +527,10 @@ impl ProposalV2 {
         config: &GovernanceConfig,
         current_unix_timestamp: UnixTimestamp,
         vote_threshold: &VoteThreshold,
-        vote: &Vote,
+        vote_kind: &VoteKind,
     ) -> Result<bool, ProgramError> {
         if let Some(tipped_state) =
-            self.try_get_tipped_vote_state(max_voter_weight, config, vote_threshold, vote)
+            self.try_get_tipped_vote_state(max_voter_weight, config, vote_threshold, vote_kind)
         {
             self.state = tipped_state;
             self.voting_completed_at = Some(current_unix_timestamp);
@@ -550,81 +554,85 @@ impl ProposalV2 {
         max_voter_weight: u64,
         config: &GovernanceConfig,
         vote_threshold: &VoteThreshold,
-        vote: &Vote,
+        vote_kind: &VoteKind,
     ) -> Option<ProposalState> {
         let min_vote_threshold_weight =
             get_min_vote_threshold_weight(vote_threshold, max_voter_weight).unwrap();
 
-        // Veto vote tips as soon as the required threshold is reached
-        // It's irrespectively of vote_tipping config because the outcome of the Proposal can't change any longer after being vetoed
-        if *vote == Vote::Veto {
-            if self.veto_vote_weight >= min_vote_threshold_weight {
-                // Note: Since we don't tip multi option votes all options vote_result would remain as None
-                return Some(ProposalState::Vetoed);
-            } else {
-                return None;
-            }
-        }
-
-        // Vote tipping is currently supported for SingleChoice votes with single Yes and No (rejection) options only
-        // Note: Tipping for multiple options (single choice and multiple choices) should be possible but it requires a great deal of considerations
-        //       and I decided to fight it another day
-        if self.vote_type != VoteType::SingleChoice
-        // Tipping should not be allowed for opinion only proposals (surveys without rejection) to allow everybody's voice to be heard
-        || self.deny_vote_weight.is_none()
-        || self.options.len() != 1
-        {
-            return None;
-        };
-
-        let mut yes_option = &mut self.options[0];
-
-        let yes_vote_weight = yes_option.vote_weight;
-        let deny_vote_weight = self.deny_vote_weight.unwrap();
-
-        if yes_vote_weight == max_voter_weight {
-            yes_option.vote_result = OptionVoteResult::Succeeded;
-            return Some(ProposalState::Succeeded);
-        }
-
-        if deny_vote_weight == max_voter_weight {
-            yes_option.vote_result = OptionVoteResult::Defeated;
-            return Some(ProposalState::Defeated);
-        }
-
-        match config.vote_tipping {
-            VoteTipping::Disabled => {}
-            VoteTipping::Strict => {
-                if yes_vote_weight >= min_vote_threshold_weight
-                    && yes_vote_weight > (max_voter_weight.saturating_sub(yes_vote_weight))
+        match vote_kind {
+            VoteKind::Electorate => {
+                // Vote tipping is currently supported for SingleChoice votes with single Yes and No (rejection) options only
+                // Note: Tipping for multiple options (single choice and multiple choices) should be possible but it requires a great deal of considerations
+                //       and I decided to fight it another day
+                if self.vote_type != VoteType::SingleChoice
+                    // Tipping should not be allowed for opinion only proposals (surveys without rejection) to allow everybody's voice to be heard
+                    || self.deny_vote_weight.is_none()
+                    || self.options.len() != 1
                 {
+                    return None;
+                };
+
+                let mut yes_option = &mut self.options[0];
+
+                let yes_vote_weight = yes_option.vote_weight;
+                let deny_vote_weight = self.deny_vote_weight.unwrap();
+
+                if yes_vote_weight == max_voter_weight {
                     yes_option.vote_result = OptionVoteResult::Succeeded;
                     return Some(ProposalState::Succeeded);
                 }
-            }
-            VoteTipping::Early => {
-                if yes_vote_weight >= min_vote_threshold_weight
-                    && yes_vote_weight > deny_vote_weight
+
+                if deny_vote_weight == max_voter_weight {
+                    yes_option.vote_result = OptionVoteResult::Defeated;
+                    return Some(ProposalState::Defeated);
+                }
+
+                match config.vote_tipping {
+                    VoteTipping::Disabled => {}
+                    VoteTipping::Strict => {
+                        if yes_vote_weight >= min_vote_threshold_weight
+                            && yes_vote_weight > (max_voter_weight.saturating_sub(yes_vote_weight))
+                        {
+                            yes_option.vote_result = OptionVoteResult::Succeeded;
+                            return Some(ProposalState::Succeeded);
+                        }
+                    }
+                    VoteTipping::Early => {
+                        if yes_vote_weight >= min_vote_threshold_weight
+                            && yes_vote_weight > deny_vote_weight
+                        {
+                            yes_option.vote_result = OptionVoteResult::Succeeded;
+                            return Some(ProposalState::Succeeded);
+                        }
+                    }
+                }
+
+                // If vote tipping isn't disabled entirely, allow a vote to complete as
+                // "defeated" if there is no possible way of reaching majority or the
+                // min_vote_threshold_weight for another option. This tipping is always
+                // strict, there's no equivalent to "early" tipping for deny votes.
+                if config.vote_tipping != VoteTipping::Disabled
+                    && (deny_vote_weight
+                        > (max_voter_weight.saturating_sub(min_vote_threshold_weight))
+                        || deny_vote_weight >= (max_voter_weight.saturating_sub(deny_vote_weight)))
                 {
-                    yes_option.vote_result = OptionVoteResult::Succeeded;
-                    return Some(ProposalState::Succeeded);
+                    yes_option.vote_result = OptionVoteResult::Defeated;
+                    return Some(ProposalState::Defeated);
+                }
+
+                None
+            }
+            VoteKind::Veto => {
+                // Veto vote tips as soon as the required threshold is reached
+                // It's irrespectively of vote_tipping config because the outcome of the Proposal can't change any longer after being vetoed
+                if self.veto_vote_weight >= min_vote_threshold_weight {
+                    // Note: Since we don't tip multi option votes all options vote_result would remain as None
+                    return Some(ProposalState::Vetoed);
+                } else {
+                    return None;
                 }
             }
         }
-
-        // If vote tipping isn't disabled entirely, allow a vote to complete as
-        // "defeated" if there is no possible way of reaching majority or the
-        // min_vote_threshold_weight for another option. This tipping is always
-        // strict, there's no equivalent to "early" tipping for deny votes.
-        if config.vote_tipping != VoteTipping::Disabled
-            && (deny_vote_weight > (max_voter_weight.saturating_sub(min_vote_threshold_weight))
-                || deny_vote_weight >= (max_voter_weight.saturating_sub(deny_vote_weight)))
-        {
-            yes_option.vote_result = OptionVoteResult::Defeated;
-            return Some(ProposalState::Defeated);
-        }
-
-        None
     }
 
     /// Checks if Proposal can be canceled in the given state
@@ -1569,15 +1577,15 @@ mod test {
 
             let realm = create_test_realm();
             let governing_token_mint = proposal.governing_token_mint;
-            let vote = Vote::Approve(vec![]);
+            let vote_kind = VoteKind::Electorate;
 
-            let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,&governing_token_mint, test_case.governing_token_supply,Some(&vote)).unwrap();
+            let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,&governing_token_mint, test_case.governing_token_supply,&vote_kind).unwrap();
             let vote_threshold = VoteThreshold::YesVotePercentage(test_case.yes_vote_threshold_percentage);
 
 
 
             // Act
-            proposal.try_tip_vote(max_voter_weight, &governance_config,current_timestamp,&vote_threshold,&vote).unwrap();
+            proposal.try_tip_vote(max_voter_weight, &governance_config,current_timestamp,&vote_threshold,&vote_kind).unwrap();
 
             // Assert
             assert_eq!(proposal.state,test_case.expected_tipped_state,"CASE: {:?}",test_case);
@@ -1617,9 +1625,9 @@ mod test {
 
             let realm = create_test_realm();
             let governing_token_mint = proposal.governing_token_mint;
-            let vote = Vote::Approve(vec![]);
+            let vote_kind = VoteKind::Electorate;
 
-            let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,&governing_token_mint,test_case.governing_token_supply,Some(&vote)).unwrap();
+            let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,&governing_token_mint,test_case.governing_token_supply,&vote_kind).unwrap();
             let vote_threshold = VoteThreshold::YesVotePercentage(test_case.yes_vote_threshold_percentage);
 
             // Act
@@ -1681,14 +1689,14 @@ mod test {
 
             let realm = create_test_realm();
             let governing_token_mint = proposal.governing_token_mint;
-            let vote = Vote::Approve(vec![]);
+            let vote_kind = VoteKind::Electorate;
 
-            let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,&governing_token_mint,governing_token_supply,Some(&vote)).unwrap();
+            let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,&governing_token_mint,governing_token_supply,&vote_kind).unwrap();
             let vote_threshold = yes_vote_threshold_percentage.clone();
 
 
             // Act
-            proposal.try_tip_vote(max_voter_weight, &governance_config, current_timestamp,&vote_threshold,&vote).unwrap();
+            proposal.try_tip_vote(max_voter_weight, &governance_config, current_timestamp,&vote_threshold,&vote_kind).unwrap();
 
             // Assert
             let yes_vote_threshold_count = get_min_vote_threshold_weight(&yes_vote_threshold_percentage,governing_token_supply).unwrap();
@@ -1730,9 +1738,9 @@ mod test {
 
             let realm = create_test_realm();
             let governing_token_mint = proposal.governing_token_mint;
-            let vote = Vote::Approve(vec![]);
+            let vote_kind = VoteKind::Electorate;
 
-            let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,&governing_token_mint,governing_token_supply,Some(&vote)).unwrap();
+            let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,&governing_token_mint,governing_token_supply,&vote_kind).unwrap();
             let vote_threshold = yes_vote_threshold_percentage.clone();
 
             // Act
@@ -1769,7 +1777,7 @@ mod test {
 
         let mut realm = create_test_realm();
         let governing_token_mint = proposal.governing_token_mint;
-        let vote = Vote::Approve(vec![]);
+        let vote_kind = VoteKind::Electorate;
 
         // reduce max vote weight to 100
         realm.config.community_mint_max_vote_weight_source =
@@ -1782,12 +1790,12 @@ mod test {
                 &realm,
                 &governing_token_mint,
                 community_token_supply,
-                Some(&vote),
+                &vote_kind,
             )
             .unwrap();
 
         let vote_threshold = &VoteThreshold::YesVotePercentage(60);
-        let vote = Vote::Approve(vec![]);
+        let vote_kind = VoteKind::Electorate;
 
         // Act
         proposal
@@ -1796,7 +1804,7 @@ mod test {
                 &governance_config,
                 current_timestamp,
                 vote_threshold,
-                &vote,
+                &vote_kind,
             )
             .unwrap();
 
@@ -1823,7 +1831,7 @@ mod test {
 
         let mut realm = create_test_realm();
         let governing_token_mint = proposal.governing_token_mint;
-        let vote = Vote::Approve(vec![]);
+        let vote_kind = VoteKind::Electorate;
 
         // reduce max vote weight to 100
         realm.config.community_mint_max_vote_weight_source =
@@ -1840,7 +1848,7 @@ mod test {
                 &realm,
                 &governing_token_mint,
                 community_token_supply,
-                Some(&vote),
+                &vote_kind,
             )
             .unwrap();
 
@@ -1853,7 +1861,7 @@ mod test {
                 &governance_config,
                 current_timestamp,
                 &vote_threshold,
-                &vote,
+                &vote_kind,
             )
             .unwrap();
 
@@ -1880,7 +1888,7 @@ mod test {
 
         let mut realm = create_test_realm();
         let governing_token_mint = proposal.governing_token_mint;
-        let vote = Vote::Approve(vec![]);
+        let vote_kind = VoteKind::Electorate;
 
         realm.config.community_mint_max_vote_weight_source =
             MintMaxVoteWeightSource::SupplyFraction(
@@ -1893,7 +1901,7 @@ mod test {
                 &realm,
                 &governing_token_mint,
                 community_token_supply,
-                Some(&vote),
+                &vote_kind,
             )
             .unwrap();
 
@@ -1906,7 +1914,7 @@ mod test {
                 &governance_config,
                 current_timestamp,
                 &vote_threshold,
-                &vote,
+                &vote_kind,
             )
             .unwrap();
 
@@ -1931,7 +1939,7 @@ mod test {
 
         let mut realm = create_test_realm();
         let governing_token_mint = proposal.governing_token_mint;
-        let vote = Vote::Approve(vec![]);
+        let vote_kind = VoteKind::Electorate;
 
         // reduce max vote weight to 100
         realm.config.community_mint_max_vote_weight_source =
@@ -1944,7 +1952,7 @@ mod test {
                 &realm,
                 &governing_token_mint,
                 community_token_supply,
-                Some(&vote),
+                &vote_kind,
             )
             .unwrap();
 
@@ -1982,7 +1990,7 @@ mod test {
 
         let mut realm = create_test_realm();
         let governing_token_mint = proposal.governing_token_mint;
-        let vote = Vote::Approve(vec![]);
+        let vote_kind = VoteKind::Electorate;
 
         // reduce max vote weight to 100
         realm.config.community_mint_max_vote_weight_source =
@@ -1998,7 +2006,7 @@ mod test {
                 &realm,
                 &governing_token_mint,
                 community_token_supply,
-                Some(&vote),
+                &vote_kind,
             )
             .unwrap();
 
@@ -2031,10 +2039,10 @@ mod test {
 
         let realm = create_test_realm();
         let governing_token_mint = proposal.governing_token_mint;
-        let vote = Vote::Approve(vec![]);
+        let vote_kind = VoteKind::Electorate;
 
         let max_voter_weight = proposal
-            .get_max_voter_weight_from_mint_supply(&realm, &governing_token_mint, 100, Some(&vote))
+            .get_max_voter_weight_from_mint_supply(&realm, &governing_token_mint, 100, &vote_kind)
             .unwrap();
 
         let vote_threshold = &governance_config.community_vote_threshold;
@@ -2066,10 +2074,10 @@ mod test {
 
         let realm = create_test_realm();
         let governing_token_mint = proposal.governing_token_mint;
-        let vote = Vote::Approve(vec![]);
+        let vote_kind = VoteKind::Electorate;
 
         let max_voter_weight = proposal
-            .get_max_voter_weight_from_mint_supply(&realm, &governing_token_mint, 100, Some(&vote))
+            .get_max_voter_weight_from_mint_supply(&realm, &governing_token_mint, 100, &vote_kind)
             .unwrap();
 
         let vote_threshold = &governance_config.community_vote_threshold;
