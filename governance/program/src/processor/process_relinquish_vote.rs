@@ -31,12 +31,12 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
     let token_owner_record_info = next_account_info(account_info_iter)?; // 3
 
     let vote_record_info = next_account_info(account_info_iter)?; // 4
-    let voting_token_mint_info = next_account_info(account_info_iter)?; // 5
+    let vote_governing_token_mint_info = next_account_info(account_info_iter)?; // 5
 
     let realm_data = get_realm_data_for_governing_token_mint(
         program_id,
         realm_info,
-        voting_token_mint_info.key,
+        vote_governing_token_mint_info.key,
     )?;
 
     let governance_data =
@@ -49,7 +49,7 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
         program_id,
         token_owner_record_info,
         &governance_data.realm,
-        voting_token_mint_info.key,
+        vote_governing_token_mint_info.key,
     )?;
 
     let mut vote_record_data = get_vote_record_data_for_proposal_and_token_owner_record(

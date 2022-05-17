@@ -175,28 +175,28 @@ impl RealmV2 {
         Err(GovernanceError::InvalidGoverningTokenMint.into())
     }
 
-    /// Returns the governing token mint which is used to vote on a proposal given the provided Vote and voting_token_mint
+    /// Returns the governing token mint which is used to vote on a proposal given the provided Vote and vote_governing_token_mint
     ///
     /// The Veto vote is cast on a proposal configured for the opposite voting population defined using governing_token_mint
     /// Council can veto Community vote and Community can veto Council assuming the veto for the voting population is enabled
     ///
-    /// For all votes other than Veto the voting_token_mint is the same as Proposal governing_token_mint
+    /// For all votes other than Veto the vote_governing_token_mint is the same as Proposal governing_token_mint
     pub fn get_proposal_governing_token_mint_for_vote(
         &self,
         vote: &Vote,
-        voting_token_mint: &Pubkey,
+        vote_governing_token_mint: &Pubkey,
     ) -> Result<Pubkey, ProgramError> {
         if *vote != Vote::Veto {
-            return Ok(*voting_token_mint);
+            return Ok(*vote_governing_token_mint);
         }
 
         // When Community veto Council proposal then return council_token_mint as the Proposal governing_token_mint
-        if self.community_mint == *voting_token_mint {
+        if self.community_mint == *vote_governing_token_mint {
             return Ok(self.config.council_mint.unwrap());
         }
 
         // When Council veto Community proposal then return community_token_mint as the Proposal governing_token_mint
-        if self.config.council_mint == Some(*voting_token_mint) {
+        if self.config.council_mint == Some(*vote_governing_token_mint) {
             return Ok(self.community_mint);
         }
 

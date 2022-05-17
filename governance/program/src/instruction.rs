@@ -285,10 +285,10 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]` TokenOwnerRecord of the Proposal owner
-    ///   4. `[writable]` TokenOwnerRecord of the voter. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///   4. `[writable]` TokenOwnerRecord of the voter. PDA seeds: ['governance',realm, vote_governing_token_mint, governing_token_owner]
     ///   5. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     ///   6. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal,governing_token_owner_record]
-    ///   7. `[]` Voting Token Mint
+    ///   7. `[]` The Governing Token Mint which is used to cast the vote (vote_governing_token_mint)
     ///           The voting token mint is the governing_token_mint of the Proposal for Approve, Deny and Abstain votes
     ///           For Veto vote the voting token mint is the mint of the opposite voting population
     ///           Council mint to veto Community proposals and Community mint to veto Council proposals
@@ -323,9 +323,9 @@ pub enum GovernanceInstruction {
     ///   0. `[]` Realm account
     ///   1. `[]` Governance account
     ///   2. `[writable]` Proposal account
-    ///   3. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, voting_token_mint, governing_token_owner]
+    ///   3. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, vote_governing_token_mint, governing_token_owner]
     ///   4. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal, governing_token_owner_record]
-    ///   5. `[]` Voting Token Mint. The Governing Token Mint which was used to cast the vote
+    ///   5. `[]` The Governing Token Mint which was used to cast the vote (vote_governing_token_mint)
     ///   6. `[signer]` Optional Governance Authority (Token Owner or Governance Delegate)
     ///       It's required only when Proposal is still being voted on
     ///   7. `[writable]` Optional Beneficiary account which would receive lamports when VoteRecord Account is disposed
@@ -1024,7 +1024,7 @@ pub fn cast_vote(
     proposal_owner_record: &Pubkey,
     voter_token_owner_record: &Pubkey,
     governance_authority: &Pubkey,
-    voting_token_mint: &Pubkey,
+    vote_governing_token_mint: &Pubkey,
     payer: &Pubkey,
     voter_weight_record: Option<Pubkey>,
     max_voter_weight_record: Option<Pubkey>,
@@ -1042,7 +1042,7 @@ pub fn cast_vote(
         AccountMeta::new(*voter_token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(vote_record_address, false),
-        AccountMeta::new_readonly(*voting_token_mint, false),
+        AccountMeta::new_readonly(*vote_governing_token_mint, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
@@ -1109,7 +1109,7 @@ pub fn relinquish_vote(
     governance: &Pubkey,
     proposal: &Pubkey,
     token_owner_record: &Pubkey,
-    voting_token_mint: &Pubkey,
+    vote_governing_token_mint: &Pubkey,
     governance_authority: Option<Pubkey>,
     beneficiary: Option<Pubkey>,
 ) -> Instruction {
@@ -1121,7 +1121,7 @@ pub fn relinquish_vote(
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*token_owner_record, false),
         AccountMeta::new(vote_record_address, false),
-        AccountMeta::new_readonly(*voting_token_mint, false),
+        AccountMeta::new_readonly(*vote_governing_token_mint, false),
     ];
 
     if let Some(governance_authority) = governance_authority {

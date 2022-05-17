@@ -44,7 +44,7 @@ pub fn process_cast_vote(
     let governance_authority_info = next_account_info(account_info_iter)?; // 5
 
     let vote_record_info = next_account_info(account_info_iter)?; // 6
-    let voting_token_mint_info = next_account_info(account_info_iter)?; // 7
+    let vote_governing_token_mint_info = next_account_info(account_info_iter)?; // 7
 
     let payer_info = next_account_info(account_info_iter)?; // 8
     let system_info = next_account_info(account_info_iter)?; // 9
@@ -59,17 +59,17 @@ pub fn process_cast_vote(
     let mut realm_data = get_realm_data_for_governing_token_mint(
         program_id,
         realm_info,
-        voting_token_mint_info.key,
+        vote_governing_token_mint_info.key,
     )?;
 
     let mut governance_data =
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
     // Get the governing_token_mint which the Proposal should be configured with as the voting population for the given vote
-    // For Approve, Deny and Abstain votes it's the same as voting_token_mint
+    // For Approve, Deny and Abstain votes it's the same as vote_governing_token_mint
     // For Veto it's the governing token mint of the opposite voting population
-    let proposal_governing_token_mint =
-        realm_data.get_proposal_governing_token_mint_for_vote(&vote, voting_token_mint_info.key)?;
+    let proposal_governing_token_mint = realm_data
+        .get_proposal_governing_token_mint_for_vote(&vote, vote_governing_token_mint_info.key)?;
 
     let mut proposal_data = get_proposal_data_for_governance_and_governing_mint(
         program_id,
@@ -84,7 +84,7 @@ pub fn process_cast_vote(
             program_id,
             voter_token_owner_record_info,
             &governance_data.realm,
-            voting_token_mint_info.key,
+            vote_governing_token_mint_info.key,
         )?;
     voter_token_owner_record_data
         .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
@@ -152,7 +152,7 @@ pub fn process_cast_vote(
     let max_voter_weight = proposal_data.resolve_max_voter_weight(
         program_id,
         realm_config_info,
-        voting_token_mint_info,
+        vote_governing_token_mint_info,
         account_info_iter, // max_voter_weight_record  11
         realm_info.key,
         &realm_data,
@@ -161,7 +161,7 @@ pub fn process_cast_vote(
 
     let vote_threshold = governance_data.resolve_vote_threshold(
         &realm_data,
-        voting_token_mint_info.key,
+        vote_governing_token_mint_info.key,
         &vote_kind,
     )?;
 
