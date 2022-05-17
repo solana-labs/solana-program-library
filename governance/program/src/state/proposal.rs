@@ -553,7 +553,6 @@ impl ProposalV2 {
 
     /// Checks if vote can be tipped and automatically transitioned to Succeeded, Defeated or Vetoed state
     /// If yes then Some(ProposalState) is returned and None otherwise
-    #[allow(clippy::float_cmp)]
     pub fn try_get_tipped_vote_state(
         &mut self,
         max_voter_weight: u64,
@@ -576,7 +575,6 @@ impl ProposalV2 {
 
     /// Checks if Electorate vote can be tipped and automatically transitioned to Succeeded or Defeated state
     /// If yes then Some(ProposalState) is returned and None otherwise
-    #[allow(clippy::float_cmp)]
     fn try_get_tipped_electorate_vote_state(
         &mut self,
         max_voter_weight: u64,
@@ -646,7 +644,6 @@ impl ProposalV2 {
 
     /// Checks if vote can be tipped and transitioned to Vetoed state
     /// If yes then Some(ProposalState::Vetoed) is returned and None otherwise
-    #[allow(clippy::float_cmp)]
     fn try_get_tipped_veto_vote_state(
         &mut self,
         min_vote_threshold_weight: u64,
