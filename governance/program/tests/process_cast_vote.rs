@@ -42,7 +42,7 @@ async fn test_cast_vote() {
 
     // Act
     let vote_record_cookie = governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 
@@ -139,7 +139,7 @@ async fn test_cast_vote_with_invalid_governance_error() {
 
     // Act
     let err = governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .err()
         .unwrap();
@@ -155,7 +155,7 @@ async fn test_cast_vote_with_invalid_mint_error() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let token_owner_record_cookie = governance_test
+    let mut token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
         .await
         .unwrap();
@@ -169,18 +169,18 @@ async fn test_cast_vote_with_invalid_mint_error() {
         .await
         .unwrap();
 
-    let mut proposal_cookie = governance_test
+    let proposal_cookie = governance_test
         .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
     // Try to use Council Mint with Community Proposal
-    proposal_cookie.account.governing_token_mint =
+    token_owner_record_cookie.account.governing_token_mint =
         realm_cookie.account.config.council_mint.unwrap();
 
     // Act
     let err = governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .err()
         .unwrap();
@@ -225,7 +225,7 @@ async fn test_cast_vote_with_invalid_token_owner_record_mint_error() {
 
     // Act
     let err = governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .err()
         .unwrap();
@@ -275,7 +275,7 @@ async fn test_cast_vote_with_invalid_token_owner_record_from_different_realm_err
 
     // Act
     let err = governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .err()
         .unwrap();
@@ -320,7 +320,7 @@ async fn test_cast_vote_with_governance_authority_must_sign_error() {
 
     // Act
     let err = governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .err()
         .unwrap();
@@ -374,7 +374,7 @@ async fn test_cast_vote_with_strict_vote_tipped_to_succeeded() {
 
     // Act
     governance_test
-        .with_cast_vote(
+        .with_cast_yes_no_vote(
             &proposal_cookie,
             &token_owner_record_cookie1,
             YesNoVote::Yes,
@@ -392,7 +392,7 @@ async fn test_cast_vote_with_strict_vote_tipped_to_succeeded() {
 
     // Act
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie2, YesNoVote::No)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie2, YesNoVote::No)
         .await
         .unwrap();
 
@@ -406,7 +406,7 @@ async fn test_cast_vote_with_strict_vote_tipped_to_succeeded() {
 
     // Act
     governance_test
-        .with_cast_vote(
+        .with_cast_yes_no_vote(
             &proposal_cookie,
             &token_owner_record_cookie3,
             YesNoVote::Yes,
@@ -488,7 +488,7 @@ async fn test_cast_vote_with_strict_vote_tipped_to_defeated() {
 
     // Act
     governance_test
-        .with_cast_vote(
+        .with_cast_yes_no_vote(
             &proposal_cookie,
             &token_owner_record_cookie1,
             YesNoVote::Yes,
@@ -506,7 +506,7 @@ async fn test_cast_vote_with_strict_vote_tipped_to_defeated() {
 
     // Act
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie2, YesNoVote::No)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie2, YesNoVote::No)
         .await
         .unwrap();
 
@@ -520,7 +520,7 @@ async fn test_cast_vote_with_strict_vote_tipped_to_defeated() {
 
     // Act
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie3, YesNoVote::No)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie3, YesNoVote::No)
         .await
         .unwrap();
 
@@ -597,7 +597,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_succeeded() {
         .await
         .unwrap();
     governance_test
-        .with_cast_vote(
+        .with_cast_yes_no_vote(
             &proposal_cookie,
             &token_owner_record_cookie1,
             YesNoVote::Yes,
@@ -610,7 +610,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_succeeded() {
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie2, YesNoVote::No)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie2, YesNoVote::No)
         .await
         .unwrap();
     let proposal_account = governance_test
@@ -619,7 +619,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_succeeded() {
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
     governance_test
-        .with_cast_vote(
+        .with_cast_yes_no_vote(
             &proposal_cookie,
             &token_owner_record_cookie3,
             YesNoVote::Yes,
@@ -641,7 +641,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_succeeded() {
         .await
         .unwrap();
     governance_test
-        .with_cast_vote(
+        .with_cast_yes_no_vote(
             &proposal_cookie,
             &token_owner_record_cookie1,
             YesNoVote::Yes,
@@ -654,7 +654,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_succeeded() {
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie2, YesNoVote::No)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie2, YesNoVote::No)
         .await
         .unwrap();
     let proposal_account = governance_test
@@ -663,7 +663,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_succeeded() {
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie3, YesNoVote::No)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie3, YesNoVote::No)
         .await
         .unwrap();
     let proposal_account = governance_test
@@ -672,7 +672,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_succeeded() {
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
     governance_test
-        .with_cast_vote(
+        .with_cast_yes_no_vote(
             &proposal_cookie,
             &token_owner_record_cookie4,
             YesNoVote::Yes,
@@ -686,7 +686,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_succeeded() {
 
     // Act: 300 vs 200 makes it tip
     governance_test
-        .with_cast_vote(
+        .with_cast_yes_no_vote(
             &proposal_cookie,
             &token_owner_record_cookie5,
             YesNoVote::Yes,
@@ -756,7 +756,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_defeated() {
 
     // Act
     governance_test
-        .with_cast_vote(
+        .with_cast_yes_no_vote(
             &proposal_cookie,
             &token_owner_record_cookie1,
             YesNoVote::Yes,
@@ -774,7 +774,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_defeated() {
 
     // Act
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie2, YesNoVote::No)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie2, YesNoVote::No)
         .await
         .unwrap();
 
@@ -788,7 +788,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_defeated() {
 
     // Act
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie3, YesNoVote::No)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie3, YesNoVote::No)
         .await
         .unwrap();
 
@@ -846,7 +846,7 @@ async fn test_cast_vote_with_threshold_below_50_and_vote_not_tipped() {
 
     // Act
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 
@@ -915,7 +915,7 @@ async fn test_cast_vote_with_disabled_tipping_yes_votes() {
 
     // Act
     governance_test
-        .with_cast_vote(
+        .with_cast_yes_no_vote(
             &proposal_cookie,
             &token_owner_record_cookie1,
             YesNoVote::Yes,
@@ -936,7 +936,7 @@ async fn test_cast_vote_with_disabled_tipping_yes_votes() {
         .await
         .unwrap();
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie1, YesNoVote::No)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie1, YesNoVote::No)
         .await
         .unwrap();
 
@@ -986,7 +986,7 @@ async fn test_cast_vote_with_disabled_tipping_no_votes() {
 
     // Act
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie1, YesNoVote::No)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie1, YesNoVote::No)
         .await
         .unwrap();
 
@@ -1039,7 +1039,7 @@ async fn test_cast_vote_with_voting_time_expired_error() {
     // Act
 
     let err = governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::No)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::No)
         .await
         .err()
         .unwrap();
@@ -1081,7 +1081,7 @@ async fn test_cast_vote_with_cast_twice_error() {
         .unwrap();
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 
@@ -1089,7 +1089,7 @@ async fn test_cast_vote_with_cast_twice_error() {
 
     // Act
     let err = governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .err()
         .unwrap();
@@ -1130,7 +1130,7 @@ async fn test_cast_vote_with_invalid_proposal_owner_error() {
 
     // Act
     let err = governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .err()
         .unwrap();
@@ -1172,7 +1172,7 @@ async fn test_cast_tipping_vote_with_invalid_proposal_owner_error() {
         .unwrap();
 
     governance_test
-        .with_cast_vote(
+        .with_cast_yes_no_vote(
             &proposal_cookie,
             &token_owner_record_cookie2,
             YesNoVote::Yes,
@@ -1185,7 +1185,7 @@ async fn test_cast_tipping_vote_with_invalid_proposal_owner_error() {
 
     // Act
     let err = governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .err()
         .unwrap();
@@ -1226,7 +1226,7 @@ async fn test_cast_council_vote() {
 
     // Act
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 

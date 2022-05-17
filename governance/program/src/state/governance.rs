@@ -7,6 +7,7 @@ use crate::{
         enums::{GovernanceAccountType, VoteThreshold, VoteTipping},
         legacy::{is_governance_v1_account_type, GovernanceV1},
         realm::{assert_is_valid_realm, RealmV2},
+        vote_record::VoteKind,
     },
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
@@ -20,7 +21,6 @@ use spl_governance_tools::{
 };
 
 /// Governance config
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GovernanceConfig {
     /// The type of the vote threshold used for community vote
@@ -43,15 +43,19 @@ pub struct GovernanceConfig {
     /// Note: In the current version only YesVotePercentage and Disabled thresholds are supported
     pub council_vote_threshold: VoteThreshold,
 
-    /// Reserved space for future versions
-    pub reserved: [u8; 2],
+    /// The threshold for Council Veto votes
+    pub council_veto_vote_threshold: VoteThreshold,
 
     /// Minimum council weight a governance token owner must possess to be able to create a proposal
     pub min_council_weight_to_create_proposal: u64,
+    //
+    // The threshold for Community Veto votes
+    // Note: Community Veto vote is not supported in the current version
+    // In order to use this threshold the space from GovernanceV2.reserved must be taken to expand GovernanceConfig size
+    // pub community_veto_vote_threshold: VoteThreshold,
 }
 
 /// Governance Account
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GovernanceV2 {
     /// Account type. It can be Uninitialized, Governance, ProgramGovernance, TokenGovernance or MintGovernance
@@ -198,28 +202,39 @@ impl GovernanceV2 {
     }
 
     /// Asserts the provided voting population represented by the given governing_token_mint
-    /// can vote on proposals for the Governance
+    /// can cast the given vote type on proposals for the Governance
     pub fn assert_governing_token_mint_can_vote(
         &self,
         realm_data: &RealmV2,
-        governing_token_mint: &Pubkey,
+        vote_governing_token_mint: &Pubkey,
+        vote_kind: &VoteKind,
     ) -> Result<(), ProgramError> {
         // resolve_vote_threshold() asserts the vote threshold exists for the given governing_token_mint and is not disabled
-        let _ = self.resolve_vote_threshold(realm_data, governing_token_mint)?;
+        let _ = self.resolve_vote_threshold(realm_data, vote_governing_token_mint, vote_kind)?;
 
         Ok(())
     }
 
-    /// Resolves VoteThreshold for the given realm and governing token
+    /// Resolves VoteThreshold for the given realm, governing token and Vote kind
     pub fn resolve_vote_threshold(
         &self,
         realm_data: &RealmV2,
-        governing_token_mint: &Pubkey,
+        vote_governing_token_mint: &Pubkey,
+        vote_kind: &VoteKind,
     ) -> Result<VoteThreshold, ProgramError> {
-        let vote_threshold = if realm_data.community_mint == *governing_token_mint {
-            &self.config.community_vote_threshold
-        } else if realm_data.config.council_mint == Some(*governing_token_mint) {
-            &self.config.council_vote_threshold
+        let vote_threshold = if realm_data.community_mint == *vote_governing_token_mint {
+            match vote_kind {
+                VoteKind::Electorate => &self.config.community_vote_threshold,
+                VoteKind::Veto => {
+                    // Community Veto vote is not supported in current version
+                    return Err(GovernanceError::GoverningTokenMintNotAllowedToVote.into());
+                }
+            }
+        } else if realm_data.config.council_mint == Some(*vote_governing_token_mint) {
+            match vote_kind {
+                VoteKind::Electorate => &self.config.council_vote_threshold,
+                VoteKind::Veto => &self.config.council_veto_vote_threshold,
+            }
         } else {
             return Err(GovernanceError::InvalidGoverningTokenMint.into());
         };
@@ -265,7 +280,7 @@ pub fn get_governance_data(
     };
 
     // In previous versions of spl-gov (< 3) we had config.proposal_cool_off_time:u32 which was unused and always 0
-    // In version 3.0.0 proposal_cool_off_time was replaced with council_vote_threshold:VoteThreshold
+    // In version 3.0.0 proposal_cool_off_time was replaced with council_vote_threshold:VoteThreshold and council_veto_vote_threshold:VoteThreshold
     //
     // If we read a legacy account then council_vote_threshold == VoteThreshold::YesVotePercentage(0)
     // and we coerce it to be equal to community_vote_threshold which was used for both council and community thresholds before
@@ -275,6 +290,10 @@ pub fn get_governance_data(
     if governance_data.config.council_vote_threshold == VoteThreshold::YesVotePercentage(0) {
         governance_data.config.council_vote_threshold =
             governance_data.config.community_vote_threshold.clone();
+
+        // The assumption here is that council should have Veto vote enabled by default and equal to council_vote_threshold
+        governance_data.config.council_veto_vote_threshold =
+            governance_data.config.council_vote_threshold.clone();
     }
 
     Ok(governance_data)
@@ -430,17 +449,14 @@ pub fn assert_is_valid_governance_config(
 ) -> Result<(), ProgramError> {
     assert_is_valid_vote_threshold(&governance_config.community_vote_threshold)?;
     assert_is_valid_vote_threshold(&governance_config.council_vote_threshold)?;
+    assert_is_valid_vote_threshold(&governance_config.council_veto_vote_threshold)?;
 
-    // Setting both thresholds to Disabled for now, however we might reconsider it as
+    // Setting both thresholds to Disabled is not allowed, however we might reconsider it as
     // a way to disable Governance permanently
     if governance_config.community_vote_threshold == VoteThreshold::Disabled
         && governance_config.council_vote_threshold == VoteThreshold::Disabled
     {
         return Err(GovernanceError::AtLeastOneVoteThresholdRequired.into());
-    }
-
-    if governance_config.reserved != [0, 0] {
-        return Err(GovernanceError::ReservedBufferMustBeEmpty.into());
     }
 
     Ok(())
@@ -470,12 +486,12 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_deserialize_legacy_governance_account_without_council_threshold() {
+    fn test_deserialize_legacy_governance_account_without_council_vote_thresholds() {
         // Arrange
 
         // Legacy GovernanceV2 with
         // 1) config.community_vote_threshold = YesVotePercentage(10)
-        // 2) config.proposal_cool_off_tim = 0
+        // 2) config.proposal_cool_off_time = 0
         let mut account_data = [
             18, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -514,6 +530,11 @@ mod test {
             governance.config.community_vote_threshold,
             governance.config.council_vote_threshold
         );
+
+        assert_eq!(
+            governance.config.council_vote_threshold,
+            governance.config.council_veto_vote_threshold
+        );
     }
 
     #[test]
@@ -526,7 +547,7 @@ mod test {
             max_voting_time: 1,
             vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(0),
-            reserved: [0; 2],
+            council_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
             min_council_weight_to_create_proposal: 1,
         };
 
@@ -549,7 +570,7 @@ mod test {
             max_voting_time: 1,
             vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            reserved: [0; 2],
+            council_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
             min_council_weight_to_create_proposal: 1,
         };
 
@@ -572,7 +593,7 @@ mod test {
             max_voting_time: 1,
             vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::Disabled,
-            reserved: [0; 2],
+            council_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
             min_council_weight_to_create_proposal: 1,
         };
 
@@ -586,16 +607,16 @@ mod test {
     }
 
     #[test]
-    fn test_assert_config_invalid_with_reserved_buffer_set() {
+    fn test_assert_config_invalid_with_council_zero_yes_veto_vote_threshold() {
         // Arrange
         let governance_config = GovernanceConfig {
-            community_vote_threshold: VoteThreshold::YesVotePercentage(10),
+            community_vote_threshold: VoteThreshold::YesVotePercentage(1),
             min_community_weight_to_create_proposal: 1,
             min_transaction_hold_up_time: 1,
             max_voting_time: 1,
             vote_tipping: VoteTipping::Strict,
-            council_vote_threshold: VoteThreshold::Disabled,
-            reserved: [0, 1],
+            council_vote_threshold: VoteThreshold::YesVotePercentage(1),
+            council_veto_vote_threshold: VoteThreshold::YesVotePercentage(0),
             min_council_weight_to_create_proposal: 1,
         };
 
@@ -605,6 +626,6 @@ mod test {
             .unwrap();
 
         // Assert
-        assert_eq!(err, GovernanceError::ReservedBufferMustBeEmpty.into());
+        assert_eq!(err, GovernanceError::InvalidVoteThresholdPercentage.into());
     }
 }

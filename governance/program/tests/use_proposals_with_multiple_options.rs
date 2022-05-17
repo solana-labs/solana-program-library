@@ -291,7 +291,7 @@ async fn test_vote_on_none_executable_single_choice_proposal_with_multiple_optio
 
     // Act
     governance_test
-        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie, vote)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, vote)
         .await
         .unwrap();
 
@@ -396,7 +396,7 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
 
     // Act
     governance_test
-        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie, vote)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, vote)
         .await
         .unwrap();
 
@@ -531,7 +531,7 @@ async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_succ
     ]);
 
     governance_test
-        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie1, vote1)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie1, vote1)
         .await
         .unwrap();
 
@@ -551,12 +551,12 @@ async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_succ
     ]);
 
     governance_test
-        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie2, vote2)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie2, vote2)
         .await
         .unwrap();
 
     governance_test
-        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie3, Vote::Deny)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie3, Vote::Deny)
         .await
         .unwrap();
 
@@ -706,7 +706,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
     // yes threshold: 100
 
     governance_test
-        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie3, Vote::Deny)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie3, Vote::Deny)
         .await
         .unwrap();
 
@@ -726,7 +726,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
     ]);
 
     governance_test
-        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie1, vote1)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie1, vote1)
         .await
         .unwrap();
 
@@ -746,7 +746,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
     ]);
 
     governance_test
-        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie2, vote2)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie2, vote2)
         .await
         .unwrap();
 
@@ -904,12 +904,12 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
         .unwrap();
 
     governance_test
-        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie1, Vote::Deny)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie1, Vote::Deny)
         .await
         .unwrap();
 
     governance_test
-        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie2, Vote::Deny)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie2, Vote::Deny)
         .await
         .unwrap();
 
@@ -1039,7 +1039,7 @@ async fn test_create_proposal_with_10_options_and_cast_vote() {
 
     // Act
     governance_test
-        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie, vote)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, vote)
         .await
         .unwrap();
 

@@ -13,7 +13,9 @@ async fn test_create_token_owner_record() {
     let realm_cookie = governance_test.with_realm().await;
 
     // Act
-    let token_owner_record_cookie = governance_test.with_token_owner_record(&realm_cookie).await;
+    let token_owner_record_cookie = governance_test
+        .with_community_token_owner_record(&realm_cookie)
+        .await;
 
     // Assert
     let token_owner_record_account = governance_test
