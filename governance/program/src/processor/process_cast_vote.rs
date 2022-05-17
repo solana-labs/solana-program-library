@@ -169,7 +169,7 @@ pub fn process_cast_vote(
 
     if proposal_data.try_tip_vote(
         max_voter_weight,
-        &governance_data.config,
+        &governance_data.config.vote_tipping,
         clock.unix_timestamp,
         &vote_threshold,
         &vote_kind,

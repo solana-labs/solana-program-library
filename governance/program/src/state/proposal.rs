@@ -526,14 +526,17 @@ impl ProposalV2 {
     pub fn try_tip_vote(
         &mut self,
         max_voter_weight: u64,
-        config: &GovernanceConfig,
+        vote_tipping: &VoteTipping,
         current_unix_timestamp: UnixTimestamp,
         vote_threshold: &VoteThreshold,
         vote_kind: &VoteKind,
     ) -> Result<bool, ProgramError> {
-        if let Some(tipped_state) =
-            self.try_get_tipped_vote_state(max_voter_weight, config, vote_threshold, vote_kind)
-        {
+        if let Some(tipped_state) = self.try_get_tipped_vote_state(
+            max_voter_weight,
+            vote_tipping,
+            vote_threshold,
+            vote_kind,
+        ) {
             self.state = tipped_state;
             self.voting_completed_at = Some(current_unix_timestamp);
 
@@ -548,13 +551,13 @@ impl ProposalV2 {
         }
     }
 
-    /// Checks if vote can be tipped and automatically transitioned to Succeeded or Defeated state
+    /// Checks if vote can be tipped and automatically transitioned to Succeeded, Defeated or Vetoed state
     /// If yes then Some(ProposalState) is returned and None otherwise
     #[allow(clippy::float_cmp)]
     pub fn try_get_tipped_vote_state(
         &mut self,
         max_voter_weight: u64,
-        config: &GovernanceConfig,
+        vote_tipping: &VoteTipping,
         vote_threshold: &VoteThreshold,
         vote_kind: &VoteKind,
     ) -> Option<ProposalState> {
@@ -562,78 +565,99 @@ impl ProposalV2 {
             get_min_vote_threshold_weight(vote_threshold, max_voter_weight).unwrap();
 
         match vote_kind {
-            VoteKind::Electorate => {
-                // Vote tipping is currently supported for SingleChoice votes with single Yes and No (rejection) options only
-                // Note: Tipping for multiple options (single choice and multiple choices) should be possible but it requires a great deal of considerations
-                //       and I decided to fight it another day
-                if self.vote_type != VoteType::SingleChoice
+            VoteKind::Electorate => self.try_get_tipped_electorate_vote_state(
+                max_voter_weight,
+                vote_tipping,
+                min_vote_threshold_weight,
+            ),
+            VoteKind::Veto => self.try_get_tipped_veto_vote_state(min_vote_threshold_weight),
+        }
+    }
+
+    /// Checks if Electorate vote can be tipped and automatically transitioned to Succeeded or Defeated state
+    /// If yes then Some(ProposalState) is returned and None otherwise
+    #[allow(clippy::float_cmp)]
+    fn try_get_tipped_electorate_vote_state(
+        &mut self,
+        max_voter_weight: u64,
+        vote_tipping: &VoteTipping,
+        min_vote_threshold_weight: u64,
+    ) -> Option<ProposalState> {
+        // Vote tipping is currently supported for SingleChoice votes with single Yes and No (rejection) options only
+        // Note: Tipping for multiple options (single choice and multiple choices) should be possible but it requires a great deal of considerations
+        //       and I decided to fight it another day
+        if self.vote_type != VoteType::SingleChoice
                     // Tipping should not be allowed for opinion only proposals (surveys without rejection) to allow everybody's voice to be heard
                     || self.deny_vote_weight.is_none()
                     || self.options.len() != 1
+        {
+            return None;
+        };
+
+        let mut yes_option = &mut self.options[0];
+
+        let yes_vote_weight = yes_option.vote_weight;
+        let deny_vote_weight = self.deny_vote_weight.unwrap();
+
+        if yes_vote_weight == max_voter_weight {
+            yes_option.vote_result = OptionVoteResult::Succeeded;
+            return Some(ProposalState::Succeeded);
+        }
+
+        if deny_vote_weight == max_voter_weight {
+            yes_option.vote_result = OptionVoteResult::Defeated;
+            return Some(ProposalState::Defeated);
+        }
+
+        match vote_tipping {
+            VoteTipping::Disabled => {}
+            VoteTipping::Strict => {
+                if yes_vote_weight >= min_vote_threshold_weight
+                    && yes_vote_weight > (max_voter_weight.saturating_sub(yes_vote_weight))
                 {
-                    return None;
-                };
-
-                let mut yes_option = &mut self.options[0];
-
-                let yes_vote_weight = yes_option.vote_weight;
-                let deny_vote_weight = self.deny_vote_weight.unwrap();
-
-                if yes_vote_weight == max_voter_weight {
                     yes_option.vote_result = OptionVoteResult::Succeeded;
                     return Some(ProposalState::Succeeded);
                 }
-
-                if deny_vote_weight == max_voter_weight {
-                    yes_option.vote_result = OptionVoteResult::Defeated;
-                    return Some(ProposalState::Defeated);
-                }
-
-                match config.vote_tipping {
-                    VoteTipping::Disabled => {}
-                    VoteTipping::Strict => {
-                        if yes_vote_weight >= min_vote_threshold_weight
-                            && yes_vote_weight > (max_voter_weight.saturating_sub(yes_vote_weight))
-                        {
-                            yes_option.vote_result = OptionVoteResult::Succeeded;
-                            return Some(ProposalState::Succeeded);
-                        }
-                    }
-                    VoteTipping::Early => {
-                        if yes_vote_weight >= min_vote_threshold_weight
-                            && yes_vote_weight > deny_vote_weight
-                        {
-                            yes_option.vote_result = OptionVoteResult::Succeeded;
-                            return Some(ProposalState::Succeeded);
-                        }
-                    }
-                }
-
-                // If vote tipping isn't disabled entirely, allow a vote to complete as
-                // "defeated" if there is no possible way of reaching majority or the
-                // min_vote_threshold_weight for another option. This tipping is always
-                // strict, there's no equivalent to "early" tipping for deny votes.
-                if config.vote_tipping != VoteTipping::Disabled
-                    && (deny_vote_weight
-                        > (max_voter_weight.saturating_sub(min_vote_threshold_weight))
-                        || deny_vote_weight >= (max_voter_weight.saturating_sub(deny_vote_weight)))
+            }
+            VoteTipping::Early => {
+                if yes_vote_weight >= min_vote_threshold_weight
+                    && yes_vote_weight > deny_vote_weight
                 {
-                    yes_option.vote_result = OptionVoteResult::Defeated;
-                    return Some(ProposalState::Defeated);
+                    yes_option.vote_result = OptionVoteResult::Succeeded;
+                    return Some(ProposalState::Succeeded);
                 }
+            }
+        }
 
-                None
-            }
-            VoteKind::Veto => {
-                // Veto vote tips as soon as the required threshold is reached
-                // It's irrespectively of vote_tipping config because the outcome of the Proposal can't change any longer after being vetoed
-                if self.veto_vote_weight >= min_vote_threshold_weight {
-                    // Note: Since we don't tip multi option votes all options vote_result would remain as None
-                    Some(ProposalState::Vetoed)
-                } else {
-                    None
-                }
-            }
+        // If vote tipping isn't disabled entirely, allow a vote to complete as
+        // "defeated" if there is no possible way of reaching majority or the
+        // min_vote_threshold_weight for another option. This tipping is always
+        // strict, there's no equivalent to "early" tipping for deny votes.
+        if *vote_tipping != VoteTipping::Disabled
+            && (deny_vote_weight > (max_voter_weight.saturating_sub(min_vote_threshold_weight))
+                || deny_vote_weight >= (max_voter_weight.saturating_sub(deny_vote_weight)))
+        {
+            yes_option.vote_result = OptionVoteResult::Defeated;
+            return Some(ProposalState::Defeated);
+        }
+
+        None
+    }
+
+    /// Checks if vote can be tipped and transitioned to Vetoed state
+    /// If yes then Some(ProposalState::Vetoed) is returned and None otherwise
+    #[allow(clippy::float_cmp)]
+    fn try_get_tipped_veto_vote_state(
+        &mut self,
+        min_vote_threshold_weight: u64,
+    ) -> Option<ProposalState> {
+        // Veto vote tips as soon as the required threshold is reached
+        // It's irrespectively of vote_tipping config because the outcome of the Proposal can't change any longer after being vetoed
+        if self.veto_vote_weight >= min_vote_threshold_weight {
+            // Note: Since we don't tip multi option votes all options vote_result would remain as None
+            Some(ProposalState::Vetoed)
+        } else {
+            None
         }
     }
 
@@ -1573,13 +1597,13 @@ mod test {
 
             proposal.state = ProposalState::Voting;
 
-            let governance_config = create_test_governance_config();
 
             let current_timestamp = 15_i64;
 
             let realm = create_test_realm();
             let governing_token_mint = proposal.governing_token_mint;
             let vote_kind = VoteKind::Electorate;
+            let vote_tipping = VoteTipping::Strict;
 
             let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,&governing_token_mint, test_case.governing_token_supply,&vote_kind).unwrap();
             let vote_threshold = VoteThreshold::YesVotePercentage(test_case.yes_vote_threshold_percentage);
@@ -1587,7 +1611,7 @@ mod test {
 
 
             // Act
-            proposal.try_tip_vote(max_voter_weight, &governance_config,current_timestamp,&vote_threshold,&vote_kind).unwrap();
+            proposal.try_tip_vote(max_voter_weight, &vote_tipping,current_timestamp,&vote_threshold,&vote_kind).unwrap();
 
             // Assert
             assert_eq!(proposal.state,test_case.expected_tipped_state,"CASE: {:?}",test_case);
@@ -1684,7 +1708,7 @@ mod test {
             proposal.state = ProposalState::Voting;
 
 
-            let governance_config = create_test_governance_config();
+
             let  yes_vote_threshold_percentage = VoteThreshold::YesVotePercentage(yes_vote_threshold_percentage);
 
             let current_timestamp = 15_i64;
@@ -1692,13 +1716,14 @@ mod test {
             let realm = create_test_realm();
             let governing_token_mint = proposal.governing_token_mint;
             let vote_kind = VoteKind::Electorate;
+            let vote_tipping = VoteTipping::Strict;
 
             let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,&governing_token_mint,governing_token_supply,&vote_kind).unwrap();
             let vote_threshold = yes_vote_threshold_percentage.clone();
 
 
             // Act
-            proposal.try_tip_vote(max_voter_weight, &governance_config, current_timestamp,&vote_threshold,&vote_kind).unwrap();
+            proposal.try_tip_vote(max_voter_weight, &vote_tipping, current_timestamp,&vote_threshold,&vote_kind).unwrap();
 
             // Assert
             let yes_vote_threshold_count = get_min_vote_threshold_weight(&yes_vote_threshold_percentage,governing_token_supply).unwrap();
@@ -1772,7 +1797,6 @@ mod test {
 
         proposal.state = ProposalState::Voting;
 
-        let governance_config = create_test_governance_config();
         let current_timestamp = 15_i64;
 
         let community_token_supply = 200;
@@ -1780,6 +1804,7 @@ mod test {
         let mut realm = create_test_realm();
         let governing_token_mint = proposal.governing_token_mint;
         let vote_kind = VoteKind::Electorate;
+        let vote_tipping = VoteTipping::Strict;
 
         // reduce max vote weight to 100
         realm.config.community_mint_max_vote_weight_source =
@@ -1803,7 +1828,7 @@ mod test {
         proposal
             .try_tip_vote(
                 max_voter_weight,
-                &governance_config,
+                &vote_tipping,
                 current_timestamp,
                 vote_threshold,
                 &vote_kind,
@@ -1825,8 +1850,6 @@ mod test {
 
         proposal.state = ProposalState::Voting;
 
-        let governance_config = create_test_governance_config();
-
         let current_timestamp = 15_i64;
 
         let community_token_supply = 200;
@@ -1834,6 +1857,7 @@ mod test {
         let mut realm = create_test_realm();
         let governing_token_mint = proposal.governing_token_mint;
         let vote_kind = VoteKind::Electorate;
+        let vote_tipping = VoteTipping::Strict;
 
         // reduce max vote weight to 100
         realm.config.community_mint_max_vote_weight_source =
@@ -1860,7 +1884,7 @@ mod test {
         proposal
             .try_tip_vote(
                 max_voter_weight,
-                &governance_config,
+                &vote_tipping,
                 current_timestamp,
                 &vote_threshold,
                 &vote_kind,
@@ -1882,8 +1906,6 @@ mod test {
 
         proposal.state = ProposalState::Voting;
 
-        let governance_config = create_test_governance_config();
-
         let current_timestamp = 15_i64;
 
         let community_token_supply = 200;
@@ -1891,6 +1913,7 @@ mod test {
         let mut realm = create_test_realm();
         let governing_token_mint = proposal.governing_token_mint;
         let vote_kind = VoteKind::Electorate;
+        let vote_tipping = VoteTipping::Strict;
 
         realm.config.community_mint_max_vote_weight_source =
             MintMaxVoteWeightSource::SupplyFraction(
@@ -1913,7 +1936,7 @@ mod test {
         proposal
             .try_tip_vote(
                 max_voter_weight,
-                &governance_config,
+                &vote_tipping,
                 current_timestamp,
                 &vote_threshold,
                 &vote_kind,
