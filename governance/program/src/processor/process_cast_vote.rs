@@ -65,11 +65,15 @@ pub fn process_cast_vote(
     let mut governance_data =
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
+    let vote_kind = get_vote_kind(&vote);
+
     // Get the governing_token_mint which the Proposal should be configured with as the voting population for the given vote
     // For Approve, Deny and Abstain votes it's the same as vote_governing_token_mint
     // For Veto it's the governing token mint of the opposite voting population
-    let proposal_governing_token_mint = realm_data
-        .get_proposal_governing_token_mint_for_vote(&vote, vote_governing_token_mint_info.key)?;
+    let proposal_governing_token_mint = realm_data.get_proposal_governing_token_mint_for_vote(
+        vote_governing_token_mint_info.key,
+        &vote_kind,
+    )?;
 
     let mut proposal_data = get_proposal_data_for_governance_and_governing_mint(
         program_id,
@@ -146,8 +150,6 @@ pub fn process_cast_vote(
             return Err(GovernanceError::NotSupportedVoteType.into());
         }
     }
-
-    let vote_kind = get_vote_kind(&vote);
 
     let max_voter_weight = proposal_data.resolve_max_voter_weight(
         program_id,

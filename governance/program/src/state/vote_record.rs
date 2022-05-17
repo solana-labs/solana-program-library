@@ -221,8 +221,8 @@ pub fn get_vote_record_data_for_proposal_and_token_owner_record(
     // For Approve, Deny and Abstain votes Proposal.governing_token_mint must equal TokenOwnerRecord.governing_token_mint
     // For Veto vote it must be the governing_token_mint of the opposite voting population
     let proposal_governing_token_mint = realm_data.get_proposal_governing_token_mint_for_vote(
-        &vote_record_data.vote,
         &token_owner_record_data.governing_token_mint,
+        &get_vote_kind(&vote_record_data.vote),
     )?;
 
     if proposal_data.governing_token_mint != proposal_governing_token_mint {

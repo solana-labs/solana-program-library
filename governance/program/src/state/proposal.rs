@@ -141,6 +141,7 @@ pub struct ProposalV2 {
     pub deny_vote_weight: Option<u64>,
 
     /// Reserved space for future versions
+    /// This field is a leftover from unused veto_vote_weight: Option<u64>
     pub reserved1: u8,
 
     /// The total weight of  votes

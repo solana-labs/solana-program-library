@@ -22,7 +22,7 @@ use crate::{
         enums::{GovernanceAccountType, MintMaxVoteWeightSource},
         legacy::RealmV1,
         token_owner_record::get_token_owner_record_data_for_realm,
-        vote_record::Vote,
+        vote_record::VoteKind,
     },
     PROGRAM_AUTHORITY_SEED,
 };
@@ -175,32 +175,35 @@ impl RealmV2 {
         Err(GovernanceError::InvalidGoverningTokenMint.into())
     }
 
-    /// Returns the governing token mint which is used to vote on a proposal given the provided Vote and vote_governing_token_mint
+    /// Returns the governing token mint which is used to vote on a proposal given the provided Vote kind and vote_governing_token_mint
     ///
-    /// The Veto vote is cast on a proposal configured for the opposite voting population defined using governing_token_mint
+    /// Veto vote is cast on a proposal configured for the opposite voting population defined using governing_token_mint
     /// Council can veto Community vote and Community can veto Council assuming the veto for the voting population is enabled
     ///
-    /// For all votes other than Veto the vote_governing_token_mint is the same as Proposal governing_token_mint
+    /// For all votes other than Veto (Electorate votes) the vote_governing_token_mint is the same as Proposal governing_token_mint
     pub fn get_proposal_governing_token_mint_for_vote(
         &self,
-        vote: &Vote,
         vote_governing_token_mint: &Pubkey,
+        vote_kind: &VoteKind,
     ) -> Result<Pubkey, ProgramError> {
-        if *vote != Vote::Veto {
-            return Ok(*vote_governing_token_mint);
-        }
+        match vote_kind {
+            VoteKind::Electorate => Ok(*vote_governing_token_mint),
+            VoteKind::Veto => {
+                // When Community veto Council proposal then return council_token_mint as the Proposal governing_token_mint
+                if self.community_mint == *vote_governing_token_mint {
+                    // Community Veto is not supported in the current version
+                    return Err(GovernanceError::GoverningTokenMintNotAllowedToVote.into());
+                    //return Ok(self.config.council_mint.unwrap());
+                }
 
-        // When Community veto Council proposal then return council_token_mint as the Proposal governing_token_mint
-        if self.community_mint == *vote_governing_token_mint {
-            return Ok(self.config.council_mint.unwrap());
-        }
+                // When Council veto Community proposal then return community_token_mint as the Proposal governing_token_mint
+                if self.config.council_mint == Some(*vote_governing_token_mint) {
+                    return Ok(self.community_mint);
+                }
 
-        // When Council veto Community proposal then return community_token_mint as the Proposal governing_token_mint
-        if self.config.council_mint == Some(*vote_governing_token_mint) {
-            return Ok(self.community_mint);
+                Err(GovernanceError::InvalidGoverningTokenMint.into())
+            }
         }
-
-        Err(GovernanceError::InvalidGoverningTokenMint.into())
     }
 
     /// Asserts the given governing token mint and holding accounts are valid for the realm
