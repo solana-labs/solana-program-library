@@ -287,7 +287,7 @@ pub enum GovernanceInstruction {
     ///   3. `[writable]` TokenOwnerRecord of the Proposal owner
     ///   4. `[writable]` TokenOwnerRecord of the voter. PDA seeds: ['governance',realm, vote_governing_token_mint, governing_token_owner]
     ///   5. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   6. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal,governing_token_owner_record]
+    ///   6. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal,token_owner_record]
     ///   7. `[]` The Governing Token Mint which is used to cast the vote (vote_governing_token_mint)
     ///           The voting token mint is the governing_token_mint of the Proposal for Approve, Deny and Abstain votes
     ///           For Veto vote the voting token mint is the mint of the opposite voting population
@@ -324,7 +324,7 @@ pub enum GovernanceInstruction {
     ///   1. `[]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, vote_governing_token_mint, governing_token_owner]
-    ///   4. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal, governing_token_owner_record]
+    ///   4. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal, token_owner_record]
     ///   5. `[]` The Governing Token Mint which was used to cast the vote (vote_governing_token_mint)
     ///   6. `[signer]` Optional Governance Authority (Token Owner or Governance Delegate)
     ///       It's required only when Proposal is still being voted on
