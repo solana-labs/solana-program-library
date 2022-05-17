@@ -508,13 +508,13 @@ impl ProposalV2 {
             ));
         }
 
-        let governing_token_mint_supply =
+        let vote_governing_token_mint_supply =
             get_spl_token_mint_supply(vote_governing_token_mint_info)?;
 
         let max_voter_weight = self.get_max_voter_weight_from_mint_supply(
             realm_data,
             vote_governing_token_mint_info.key,
-            governing_token_mint_supply,
+            vote_governing_token_mint_supply,
             vote_kind,
         )?;
 
@@ -587,9 +587,9 @@ impl ProposalV2 {
         // Note: Tipping for multiple options (single choice and multiple choices) should be possible but it requires a great deal of considerations
         //       and I decided to fight it another day
         if self.vote_type != VoteType::SingleChoice
-                    // Tipping should not be allowed for opinion only proposals (surveys without rejection) to allow everybody's voice to be heard
-                    || self.deny_vote_weight.is_none()
-                    || self.options.len() != 1
+            // Tipping should not be allowed for opinion only proposals (surveys without rejection) to allow everybody's voice to be heard
+            || self.deny_vote_weight.is_none()
+            || self.options.len() != 1
         {
             return None;
         };
