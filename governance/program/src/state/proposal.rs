@@ -627,9 +627,9 @@ impl ProposalV2 {
                 // It's irrespectively of vote_tipping config because the outcome of the Proposal can't change any longer after being vetoed
                 if self.veto_vote_weight >= min_vote_threshold_weight {
                     // Note: Since we don't tip multi option votes all options vote_result would remain as None
-                    return Some(ProposalState::Vetoed);
+                    Some(ProposalState::Vetoed)
                 } else {
-                    return None;
+                    None
                 }
             }
         }
