@@ -31,4 +31,4 @@
 
 ## v1.0.8 - 1 Aug 2021
 
-- Fist release
+- First release
