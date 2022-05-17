@@ -649,5 +649,71 @@ async fn test_cast_veto_vote_with_council_only_allowed_to_veto() {
     assert_eq!(proposal_account.state, ProposalState::Vetoed);
 }
 
+#[tokio::test]
+async fn test_cast_yes_and_veto_votes_with_yes_as_winning_vote() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Mint extra council tokens for total supply of 210 to prevent single vote tipping
+    governance_test
+        .mint_council_tokens(&realm_cookie, 110)
+        .await;
+
+    let mut governance_cookie = governance_test
+        .with_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let proposal_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&proposal_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    // Partially Veto Proposal
+    governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Veto)
+        .await
+        .unwrap();
+
+    // Act
+
+    // Approve Proposal
+    governance_test
+        .with_cast_yes_no_vote(
+            &proposal_cookie,
+            &proposal_owner_record_cookie,
+            YesNoVote::Yes,
+        )
+        .await
+        .unwrap();
+
+    // Assert
+
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    assert_eq!(100, proposal_account.veto_vote_weight);
+
+    assert_eq!(proposal_account.state, ProposalState::Succeeded);
+}
+
 // TODO: Once Veto for Community or plugin support for Council is implemented write Veto tests with plugin
 // The tests should cover scenarios where Veto voter_weight and/or max_voter_weight is resolved using the plugins
