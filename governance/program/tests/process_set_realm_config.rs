@@ -27,6 +27,9 @@ async fn test_set_realm_config() {
         min_community_weight_to_create_governance: 10,
         use_community_voter_weight_addin: false,
         use_max_community_voter_weight_addin: false,
+
+        use_council_voter_weight_addin: false,
+        use_max_council_voter_weight_addin: false,
     };
 
     let set_realm_config_args = SetRealmConfigArgs {
@@ -64,6 +67,9 @@ async fn test_set_realm_config_with_authority_must_sign_error() {
         min_community_weight_to_create_governance: 10,
         use_community_voter_weight_addin: false,
         use_max_community_voter_weight_addin: false,
+
+        use_council_voter_weight_addin: false,
+        use_max_council_voter_weight_addin: false,
     };
 
     let set_realm_config_args = SetRealmConfigArgs {
@@ -103,6 +109,9 @@ async fn test_set_realm_config_with_no_authority_error() {
         min_community_weight_to_create_governance: 10,
         use_community_voter_weight_addin: false,
         use_max_community_voter_weight_addin: false,
+
+        use_council_voter_weight_addin: false,
+        use_max_council_voter_weight_addin: false,
     };
 
     let set_realm_config_args = SetRealmConfigArgs {
@@ -147,6 +156,9 @@ async fn test_set_realm_config_with_invalid_authority_error() {
         min_community_weight_to_create_governance: 10,
         use_community_voter_weight_addin: false,
         use_max_community_voter_weight_addin: false,
+
+        use_council_voter_weight_addin: false,
+        use_max_council_voter_weight_addin: false,
     };
 
     let set_realm_config_args = SetRealmConfigArgs {
@@ -186,6 +198,9 @@ async fn test_set_realm_config_with_remove_council() {
         min_community_weight_to_create_governance: 10,
         use_community_voter_weight_addin: false,
         use_max_community_voter_weight_addin: false,
+
+        use_council_voter_weight_addin: false,
+        use_max_council_voter_weight_addin: false,
     };
 
     let set_realm_config_args = SetRealmConfigArgs {
@@ -223,6 +238,9 @@ async fn test_set_realm_config_with_council_change_error() {
         min_community_weight_to_create_governance: 10,
         use_community_voter_weight_addin: false,
         use_max_community_voter_weight_addin: false,
+
+        use_council_voter_weight_addin: false,
+        use_max_council_voter_weight_addin: false,
     };
 
     let set_realm_config_args = SetRealmConfigArgs {
@@ -262,6 +280,9 @@ async fn test_set_realm_config_with_council_restore_error() {
         min_community_weight_to_create_governance: 10,
         use_community_voter_weight_addin: false,
         use_max_community_voter_weight_addin: false,
+
+        use_council_voter_weight_addin: false,
+        use_max_council_voter_weight_addin: false,
     };
 
     let mut set_realm_config_args = SetRealmConfigArgs {

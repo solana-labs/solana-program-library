@@ -40,13 +40,21 @@ pub struct RealmConfigArgs {
     /// The source used for community mint max vote weight source
     pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
 
-    /// Indicates whether an external addin program should be used to provide community voters weights
+    /// Indicates whether an external addin program should be used to provide Community voters weights
     /// If yes then the voters weight program account must be passed to the instruction
     pub use_community_voter_weight_addin: bool,
 
-    /// Indicates whether an external addin program should be used to provide max voters weight for the community mint
+    /// Indicates whether an external addin program should be used to provide max voters weight for the Community mint
     /// If yes then the max voter weight program account must be passed to the instruction
     pub use_max_community_voter_weight_addin: bool,
+
+    /// Indicates whether an external addin program should be used to provide Council voters weights
+    /// If yes then the voters weight program account must be passed to the instruction
+    pub use_council_voter_weight_addin: bool,
+
+    /// Indicates whether an external addin program should be used to provide max voters weight for the Council mint
+    /// If yes then the max voter weight program account must be passed to the instruction
+    pub use_max_council_voter_weight_addin: bool,
 }
 
 /// SetRealmAuthority instruction action
@@ -512,6 +520,8 @@ mod test {
                     MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
                 use_community_voter_weight_addin: false,
                 use_max_community_voter_weight_addin: false,
+                use_council_voter_weight_addin: false,
+                use_max_council_voter_weight_addin: false,
             },
         };
 

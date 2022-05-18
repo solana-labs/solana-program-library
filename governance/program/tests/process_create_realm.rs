@@ -39,6 +39,9 @@ async fn test_create_realm_with_non_default_config() {
         min_community_weight_to_create_governance: 10,
         use_community_voter_weight_addin: false,
         use_max_community_voter_weight_addin: false,
+
+        use_council_voter_weight_addin: false,
+        use_max_council_voter_weight_addin: false,
     };
 
     let set_realm_config_args = SetRealmConfigArgs {

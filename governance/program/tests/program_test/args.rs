@@ -17,6 +17,9 @@ impl Default for SetRealmConfigArgs {
             min_community_weight_to_create_governance: 10,
             use_community_voter_weight_addin: false,
             use_max_community_voter_weight_addin: false,
+
+            use_council_voter_weight_addin: false,
+            use_max_council_voter_weight_addin: false,
         };
 
         Self {

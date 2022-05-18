@@ -541,6 +541,10 @@ pub fn create_realm(
             false
         };
 
+    // TODO: Set from input args
+    let use_council_voter_weight_addin = true;
+    let use_max_council_voter_weight_addin = true;
+
     if use_community_voter_weight_addin || use_max_community_voter_weight_addin {
         let realm_config_address = get_realm_config_address(program_id, &realm_address);
         accounts.push(AccountMeta::new(realm_config_address, false));
@@ -553,6 +557,8 @@ pub fn create_realm(
             community_mint_max_vote_weight_source,
             use_community_voter_weight_addin,
             use_max_community_voter_weight_addin,
+            use_council_voter_weight_addin,
+            use_max_council_voter_weight_addin,
         },
         name,
     };
@@ -1406,6 +1412,10 @@ pub fn set_realm_config(
             false
         };
 
+    // TODO: Set from input args
+    let use_council_voter_weight_addin = true;
+    let use_max_council_voter_weight_addin = true;
+
     if use_community_voter_weight_addin || use_max_community_voter_weight_addin {
         accounts.push(AccountMeta::new(*payer, true));
     }
@@ -1417,6 +1427,8 @@ pub fn set_realm_config(
             community_mint_max_vote_weight_source,
             use_community_voter_weight_addin,
             use_max_community_voter_weight_addin,
+            use_council_voter_weight_addin,
+            use_max_council_voter_weight_addin,
         },
     };
 

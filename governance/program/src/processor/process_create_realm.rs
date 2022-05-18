@@ -110,7 +110,7 @@ pub fn process_create_realm(
             community_voter_weight_addin,
             max_community_voter_weight_addin,
             council_voter_weight_addin: None,
-            council_max_vote_weight_addin: None,
+            max_council_voter_weight_addin: None,
             reserved: [0; 128],
         };
 

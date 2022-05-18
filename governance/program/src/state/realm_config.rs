@@ -20,20 +20,17 @@ pub struct RealmConfigAccount {
     /// The realm the config belong to
     pub realm: Pubkey,
 
-    /// Addin providing voter weights for community token
+    /// Addin providing voter weights for Community token
     pub community_voter_weight_addin: Option<Pubkey>,
 
-    /// Addin providing max vote weight for community token
-    /// Note: This field is not implemented in the current version
+    /// Addin providing max voter weight for Community token
     pub max_community_voter_weight_addin: Option<Pubkey>,
 
-    /// Addin providing voter weights for council token
-    /// Note: This field is not implemented in the current version
+    /// Addin providing voter weights for Council token
     pub council_voter_weight_addin: Option<Pubkey>,
 
-    /// Addin providing max vote weight for council token
-    /// Note: This field is not implemented in the current version
-    pub council_max_vote_weight_addin: Option<Pubkey>,
+    /// Addin providing max voter weight for Council token
+    pub max_council_voter_weight_addin: Option<Pubkey>,
 
     /// Reserved
     pub reserved: [u8; 128],
@@ -97,7 +94,7 @@ mod test {
             community_voter_weight_addin: Some(Pubkey::new_unique()),
             max_community_voter_weight_addin: Some(Pubkey::new_unique()),
             council_voter_weight_addin: Some(Pubkey::new_unique()),
-            council_max_vote_weight_addin: Some(Pubkey::new_unique()),
+            max_council_voter_weight_addin: Some(Pubkey::new_unique()),
             reserved: [0; 128],
         };
 
