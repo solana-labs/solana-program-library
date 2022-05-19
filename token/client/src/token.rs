@@ -1375,7 +1375,7 @@ where
     }
 
     /// Harvest withheld confidential tokens to mint
-    pub async fn confidential_transfer_harvest_withheld_tokens_to_mint<S2: Signer>(
+    pub async fn confidential_transfer_harvest_withheld_tokens_to_mint(
         &self,
         sources: &[&Pubkey],
     ) -> TokenResult<T::Output> {
