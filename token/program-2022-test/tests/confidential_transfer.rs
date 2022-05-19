@@ -47,30 +47,30 @@ struct ConfidentialTransferMintWithKeypairs {
     ct_mint: ConfidentialTransferMint,
     ct_mint_authority: Keypair,
     #[allow(dead_code)]
-    ct_mint_transfer_auditor: ElGamalKeypair,
-    #[allow(dead_code)]
-    ct_mint_withdraw_withheld_authority: ElGamalKeypair,
+    ct_mint_transfer_auditor_encryption_keypair: ElGamalKeypair,
+    ct_mint_withdraw_withheld_authority_encryption_keypair: ElGamalKeypair,
 }
 
 impl ConfidentialTransferMintWithKeypairs {
     fn new() -> Self {
         let ct_mint_authority = Keypair::new();
-        let ct_mint_transfer_auditor = ElGamalKeypair::new_rand();
-        let ct_mint_withdraw_withheld_authority = ElGamalKeypair::new_rand();
+        let ct_mint_transfer_auditor_encryption_keypair = ElGamalKeypair::new_rand();
+        let ct_mint_withdraw_withheld_authority_encryption_keypair = ElGamalKeypair::new_rand();
         let ct_mint = ConfidentialTransferMint {
             authority: ct_mint_authority.pubkey().into(),
             auto_approve_new_accounts: true.into(),
-            auditor_encryption_pubkey: ct_mint_transfer_auditor.public.into(),
-            withdraw_withheld_authority_encryption_pubkey: ct_mint_withdraw_withheld_authority
-                .public
-                .into(),
+            auditor_encryption_pubkey: ct_mint_transfer_auditor_encryption_keypair.public.into(),
+            withdraw_withheld_authority_encryption_pubkey:
+                ct_mint_withdraw_withheld_authority_encryption_keypair
+                    .public
+                    .into(),
             withheld_amount: EncryptedWithheldAmount::zeroed(),
         };
         Self {
             ct_mint,
             ct_mint_authority,
-            ct_mint_transfer_auditor,
-            ct_mint_withdraw_withheld_authority,
+            ct_mint_transfer_auditor_encryption_keypair,
+            ct_mint_withdraw_withheld_authority_encryption_keypair,
         }
     }
 
@@ -192,6 +192,22 @@ struct ConfidentialTokenAccountBalances {
     pending_balance: u64,
     available_balance: u64,
     decryptable_available_balance: u64,
+}
+
+async fn check_withheld_amount_in_mint<T>(
+    token: &Token<T, Keypair>,
+    withdraw_withheld_authority_encryption_keypair: &ElGamalKeypair,
+    expected: u64,
+) where
+    T: SendTransaction,
+{
+    let state = token.get_mint_info().await.unwrap();
+    let extension = state.get_extension::<ConfidentialTransferMint>().unwrap();
+    let decrypted_amount = extension
+        .withheld_amount
+        .decrypt(&withdraw_withheld_authority_encryption_keypair.secret)
+        .unwrap();
+    assert_eq!(decrypted_amount, expected);
 }
 
 #[tokio::test]
@@ -1016,4 +1032,136 @@ async fn ct_transfer_with_fee() {
             .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
         Some(94),
     );
+}
+
+#[tokio::test]
+async fn ct_withdraw_withheld_tokens_from_mint() {
+    let ConfidentialTransferMintWithKeypairs {
+        ct_mint,
+        ct_mint_withdraw_withheld_authority_encryption_keypair,
+        ..
+    } = ConfidentialTransferMintWithKeypairs::new();
+
+    let ct_mint_withdraw_withheld_authority = Keypair::new();
+
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(Pubkey::new_unique()),
+                withdraw_withheld_authority: Some(ct_mint_withdraw_withheld_authority.pubkey()),
+                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+                maximum_fee: TEST_MAXIMUM_FEE,
+            },
+            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+        ])
+        .await
+        .unwrap();
+
+    let TokenContext {
+        token,
+        alice,
+        bob,
+        mint_authority,
+        decimals,
+        ..
+    } = context.token_context.unwrap();
+
+    let epoch_info = test_epoch_info();
+
+    let alice_meta =
+        ConfidentialTokenAccountMeta::with_tokens(&token, &alice, &mint_authority, 100, decimals)
+            .await;
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob).await;
+
+    token
+        .confidential_transfer_withdraw_withheld_tokens_from_mint(
+            &ct_mint_withdraw_withheld_authority,
+            &ct_mint_withdraw_withheld_authority_encryption_keypair,
+            &alice_meta.token_account,
+            0_u64,
+        )
+        .await
+        .unwrap();
+
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance: 0,
+                available_balance: 100,
+                decryptable_available_balance: 100,
+            },
+        )
+        .await;
+
+    check_withheld_amount_in_mint(
+        &token,
+        &ct_mint_withdraw_withheld_authority_encryption_keypair,
+        0,
+    )
+    .await;
+
+    // Test fee is 2.5% so the withheld fees should be 3
+    token
+        .confidential_transfer_transfer_with_fee(
+            &alice_meta.token_account,
+            &bob_meta.token_account,
+            &alice,
+            100,
+            100,
+            &alice_meta.elgamal_keypair,
+            alice_meta.ae_key.encrypt(0_u64),
+            &epoch_info,
+        )
+        .await
+        .unwrap();
+
+    let state = token
+        .get_account_info(&bob_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+
+    assert_eq!(
+        extension
+            .withheld_amount
+            .decrypt(&ct_mint_withdraw_withheld_authority_encryption_keypair.secret),
+        Some(3),
+    );
+
+    token
+        .confidential_transfer_harvest_withheld_tokens_to_mint(&[&bob_meta.token_account])
+        .await
+        .unwrap();
+
+    check_withheld_amount_in_mint(
+        &token,
+        &ct_mint_withdraw_withheld_authority_encryption_keypair,
+        3,
+    )
+    .await;
+
+    token
+        .confidential_transfer_withdraw_withheld_tokens_from_mint(
+            &ct_mint_withdraw_withheld_authority,
+            &ct_mint_withdraw_withheld_authority_encryption_keypair,
+            &alice_meta.token_account,
+            3_u64,
+        )
+        .await
+        .unwrap();
+
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance: 3,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
 }
