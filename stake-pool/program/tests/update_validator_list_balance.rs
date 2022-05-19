@@ -351,6 +351,7 @@ async fn merge_into_validator_stake() {
                 &context.payer,
                 &context.last_blockhash,
                 &stake_account.transient_stake_account,
+                &stake_account.stake_account,
                 &stake_account.vote.pubkey(),
                 reserve_lamports / stake_accounts.len() as u64,
                 stake_account.transient_stake_seed,
@@ -768,8 +769,8 @@ async fn check_ignored_hijacked_transient_stake(
             ),
             stake::instruction::initialize(
                 &transient_stake_address,
-                &hijack_authorized.unwrap_or(&Authorized::auto(&withdraw_authority)),
-                &hijack_lockup.unwrap_or(&Lockup::default()),
+                hijack_authorized.unwrap_or(&Authorized::auto(&withdraw_authority)),
+                hijack_lockup.unwrap_or(&Lockup::default()),
             ),
             instruction::update_stake_pool_balance(
                 &id(),
@@ -834,4 +835,4 @@ async fn check_ignored_hijacked_transient_stake(
 async fn fail_with_uninitialized_validator_list() {} // TODO
 
 #[tokio::test]
-async fn fail_with_wrong_stake_state() {} // TODO
+async fn success_with_force_destaked_validator() {}
