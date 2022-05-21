@@ -76,10 +76,10 @@ pub enum SetRealmAuthorityAction {
 /// Realm Config defining Realm parameters.
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfig {
-    /// Indicates whether an external addin program should be used to provide voters weights for the community mint
+    /// Indicates whether an external addin program should be used to provide voters weights for the Community mint
     pub use_community_voter_weight_addin: bool,
 
-    /// Indicates whether an external addin program should be used to provide max voter weight for the community mint
+    /// Indicates whether an external addin program should be used to provide max voter weight for the Community mint
     pub use_max_community_voter_weight_addin: bool,
 
     /// Reserved space for future versions
