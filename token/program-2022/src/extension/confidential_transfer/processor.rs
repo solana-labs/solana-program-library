@@ -546,13 +546,20 @@ fn process_transfer(
             &ciphertext_hi,
             new_source_decryptable_available_balance,
         )?;
+
+        let fee_ciphertext = if token_account_info.key == destination_token_account_info.key {
+            None
+        } else {
+            Some(proof_data.fee_ciphertext)
+        };
+
         process_destination_for_transfer(
             destination_token_account_info,
             mint_info,
             &proof_data.transfer_with_fee_pubkeys.destination_pubkey,
             &ciphertext_lo,
             &ciphertext_hi,
-            Some(proof_data.fee_ciphertext),
+            fee_ciphertext,
         )?;
     } else {
         // mint is not extended for fees

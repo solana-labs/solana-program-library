@@ -10,7 +10,6 @@ use {
         signer::keypair::Keypair, transaction::TransactionError, transport::TransportError,
     },
     spl_token_2022::{
-        error::TokenError,
         extension::{
             confidential_transfer::{
                 ConfidentialTransferAccount, ConfidentialTransferMint, EncryptedWithheldAmount,
@@ -869,9 +868,7 @@ async fn ct_transfer_with_fee() {
         )
         .await;
 
-    // Fee is 2.5%, so what is left is 97 in Alice account
-    //
-    // TODO: make self transfers not not take fees
+    // Self-transfers does not incur a fee
     token
         .confidential_transfer_transfer_with_fee(
             &alice_meta.token_account,
@@ -890,7 +887,7 @@ async fn ct_transfer_with_fee() {
         .check_balances(
             &token,
             ConfidentialTokenAccountBalances {
-                pending_balance: 97,
+                pending_balance: 100,
                 available_balance: 0,
                 decryptable_available_balance: 0,
             },
@@ -902,7 +899,7 @@ async fn ct_transfer_with_fee() {
             &alice_meta.token_account,
             &alice,
             2,
-            alice_meta.ae_key.encrypt(97_u64),
+            alice_meta.ae_key.encrypt(100_u64),
         )
         .await
         .unwrap();
@@ -912,8 +909,8 @@ async fn ct_transfer_with_fee() {
             &token,
             ConfidentialTokenAccountBalances {
                 pending_balance: 0,
-                available_balance: 97,
-                decryptable_available_balance: 97,
+                available_balance: 100,
+                decryptable_available_balance: 100,
             },
         )
         .await;
@@ -923,8 +920,8 @@ async fn ct_transfer_with_fee() {
             &alice_meta.token_account,
             &bob_meta.token_account,
             &alice,
-            97, // amount
-            97, // available balance
+            100, // amount
+            100, // available balance
             &alice_meta.elgamal_keypair,
             alice_meta.ae_key.encrypt(0_u64),
             &epoch_info,
@@ -958,23 +955,14 @@ async fn ct_transfer_with_fee() {
     );
 
     // Alice account cannot be closed since there are withheld fees from self-transfer
-    let error = token
+    token
         .confidential_transfer_empty_account(
             &alice_meta.token_account,
             &alice,
             &alice_meta.elgamal_keypair,
         )
         .await
-        .unwrap_err();
-    assert_eq!(
-        error,
-        TokenClientError::Client(Box::new(TransportError::TransactionError(
-            TransactionError::InstructionError(
-                1,
-                InstructionError::Custom(TokenError::ConfidentialTransferAccountHasBalance as u32)
-            )
-        )))
-    );
+        .unwrap();
 
     let err = token
         .confidential_transfer_empty_account(
