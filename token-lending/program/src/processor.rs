@@ -2579,10 +2579,10 @@ fn validate_reserve_config(config: ReserveConfig) -> ProgramResult {
         msg!("Liquidation bonus must be in range [0, 100]");
         return Err(LendingError::InvalidConfig.into());
     }
-    if config.liquidation_threshold <= config.loan_to_value_ratio
+    if config.liquidation_threshold < config.loan_to_value_ratio
         || config.liquidation_threshold > 100
     {
-        msg!("Liquidation threshold must be in range (LTV, 100]");
+        msg!("Liquidation threshold must be in range [LTV, 100]");
         return Err(LendingError::InvalidConfig.into());
     }
     if config.optimal_borrow_rate < config.min_borrow_rate {
