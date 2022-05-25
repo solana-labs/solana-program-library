@@ -40,6 +40,8 @@ pub struct Append<'info> {
     pub append_authority: Signer<'info>,
 }
 
+/// This macro applies functions on a merkle roll and emits leaf information
+/// needed to sync the merkle tree state with off-chain indexers.
 macro_rules! merkle_roll_depth_size_apply_fn {
     ($max_depth:literal, $max_size:literal, $emit_msg:ident, $id:ident, $bytes:ident, $func:ident, $($arg:tt)*) => {
         if size_of::<MerkleRoll::<$max_depth, $max_size>>() != $bytes.len() {
@@ -74,6 +76,9 @@ macro_rules! merkle_roll_depth_size_apply_fn {
     }
 }
 
+/// This applies a given function on a merkle roll by
+/// allowing the compiler to infer the size of the tree based
+/// upon the header information stored on-chain
 macro_rules! merkle_roll_apply_fn {
     ($header:ident, $emit_msg:ident, $id:ident, $bytes:ident, $func:ident, $($arg:tt)*) => {
         // Note: max_buffer_size MUST be a power of 2
@@ -111,6 +116,16 @@ macro_rules! merkle_roll_apply_fn {
 pub mod gummyroll {
     use super::*;
 
+    /// Creates a new merkle tree with maximum leaf capacity of power(2, max_depth)
+    /// and a minimum concurrency limit of max_buffer_size.
+    ///
+    /// Concurrency limit represents the # of replace instructions that can be successfully
+    /// executed with proofs dated for the same root. For example, a maximum buffer size of 1024
+    /// means that a minimum of 1024 replaces can be executed before a new proof must be
+    /// generated for the next replace instruction.
+    ///
+    /// Concurrency limit should be determined by empirically testing the demand for
+    /// state built on top of gummyroll.
     pub fn init_empty_gummyroll(
         ctx: Context<Initialize>,
         max_depth: u32,
@@ -133,6 +148,12 @@ pub mod gummyroll {
         merkle_roll_apply_fn!(header, true, id, roll_bytes, initialize,)
     }
 
+    /// Note:
+    /// Supporting this instruction open a security vulnerability for indexers.
+    /// This instruction has been deemed unusable for publicly indexed compressed NFTs.
+    /// Indexing batched data in this way requires indexers to read in the `uri`s onto physical storage
+    /// and then into their database. This opens up a DOS attack vector, whereby this instruction is
+    /// repeatedly invoked, causing indexers to fail.
     pub fn init_gummyroll_with_root(
         ctx: Context<Initialize>,
         max_depth: u32,
@@ -179,6 +200,9 @@ pub mod gummyroll {
         )
     }
 
+    /// Executes an instruction that overwrites a leaf node.
+    /// Composing programs should check that the data hashed into previous_leaf
+    /// matches the authority information necessary to execute this instruction.
     pub fn replace_leaf(
         ctx: Context<Modify>,
         root: [u8; 32],
@@ -227,6 +251,10 @@ pub mod gummyroll {
         merkle_roll_apply_fn!(header, true, id, roll_bytes, append, leaf)
     }
 
+    /// This instruction takes a proof, and will attempt to write the given leaf
+    /// to the specified index in the tree. If the insert operation fails, the leaf will be `append`-ed
+    /// to the tree.
+    /// It is up to the indexer to parse the final location of the leaf from the emitted changelog.
     pub fn insert_or_append(
         ctx: Context<Modify>,
         root: [u8; 32],
