@@ -27,6 +27,8 @@ pub fn add_custody(
         admin_account,
         fund_metadata,
         fund_info_account,
+        _active_multisig_account,
+        fund_multisig_account,
         fund_authority,
         _system_program,
         _spl_token_program,
@@ -56,7 +58,8 @@ pub fn add_custody(
             return Err(ProgramError::IllegalOwner);
         }
 
-        if !account::is_empty(custody_metadata)? || !account::is_empty(custody_account)? {
+        if account::exists(custody_metadata)? || account::exists(custody_account)? ||
+            account::exists(custody_fees_account)? {
             msg!("Error: Custody already initialized");
             return Err(ProgramError::AccountAlreadyInitialized);
         }
@@ -151,7 +154,7 @@ pub fn add_custody(
                 admin_account,
                 custody_fees_account,
                 custody_token_mint,
-                admin_account,
+                fund_multisig_account,
                 rent_program,
                 &fund.fund_program_id,
                 &[

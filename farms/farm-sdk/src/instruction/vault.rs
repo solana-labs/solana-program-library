@@ -37,6 +37,16 @@ pub enum VaultInstruction {
     ///   see particular Vault instructions handlers for more info
     RemoveLiquidity { amount: u64 },
 
+    /// Initialize multisig with a new set of admin signatures
+    /// # Account references are strategy specific,
+    ///   see particular Vault instructions handlers for more info
+    SetAdminSigners { min_signatures: u8 },
+
+    /// Remove Fund specific multisig, Main Router's default auth will be used
+    /// # Account references are strategy specific,
+    ///   see particular Vault instructions handlers for more info
+    RemoveMultisig,
+
     /// Set minimum crank interval for the Vault
     /// # Account references are strategy specific,
     ///   see particular Vault instructions handlers for more info
@@ -101,6 +111,8 @@ pub enum VaultInstructionType {
     LockLiquidity,
     UnlockLiquidity,
     RemoveLiquidity,
+    SetAdminSigners,
+    RemoveMultisig,
     SetMinCrankInterval,
     SetFee,
     SetExternalFee,
@@ -121,6 +133,8 @@ impl VaultInstruction {
     pub const LOCK_LIQUIDITY_LEN: usize = 9;
     pub const UNLOCK_LIQUIDITY_LEN: usize = 9;
     pub const REMOVE_LIQUIDITY_LEN: usize = 9;
+    pub const SET_ADMIN_SIGNERS_LEN: usize = 2;
+    pub const REMOVE_MULTISIG_LEN: usize = 1;
     pub const SET_MIN_CRANK_INTERVAL_LEN: usize = 5;
     pub const SET_FEE_LEN: usize = 5;
     pub const SET_EXTERNAL_FEE_LEN: usize = 5;
@@ -140,6 +154,8 @@ impl VaultInstruction {
             Self::RemoveLiquidity { .. } => self.pack_remove_liquidity(output),
             Self::LockLiquidity { .. } => self.pack_lock_liquidity(output),
             Self::UnlockLiquidity { .. } => self.pack_unlock_liquidity(output),
+            Self::SetAdminSigners { .. } => self.pack_set_admin_signers(output),
+            Self::RemoveMultisig { .. } => self.pack_remove_multisig(output),
             Self::SetMinCrankInterval { .. } => self.pack_set_min_crank_interval(output),
             Self::SetFee { .. } => self.pack_set_fee(output),
             Self::SetExternalFee { .. } => self.pack_set_external_fee(output),
@@ -177,6 +193,10 @@ impl VaultInstruction {
             VaultInstructionType::RemoveLiquidity => {
                 VaultInstruction::unpack_remove_liquidity(input)
             }
+            VaultInstructionType::SetAdminSigners => {
+                VaultInstruction::unpack_set_admin_signers(input)
+            }
+            VaultInstructionType::RemoveMultisig => VaultInstruction::unpack_remove_multisig(input),
             VaultInstructionType::SetMinCrankInterval => {
                 VaultInstruction::unpack_set_min_crank_interval(input)
             }
@@ -284,6 +304,36 @@ impl VaultInstruction {
             *amount_out = amount.to_le_bytes();
 
             Ok(VaultInstruction::REMOVE_LIQUIDITY_LEN)
+        } else {
+            Err(ProgramError::InvalidInstructionData)
+        }
+    }
+
+    fn pack_set_admin_signers(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        check_data_len(output, VaultInstruction::SET_ADMIN_SIGNERS_LEN)?;
+
+        if let VaultInstruction::SetAdminSigners { min_signatures } = self {
+            let output = array_mut_ref![output, 0, VaultInstruction::SET_ADMIN_SIGNERS_LEN];
+            let (instruction_type_out, min_signatures_out) = mut_array_refs![output, 1, 1];
+
+            instruction_type_out[0] = VaultInstructionType::SetAdminSigners as u8;
+            min_signatures_out[0] = *min_signatures;
+
+            Ok(VaultInstruction::SET_ADMIN_SIGNERS_LEN)
+        } else {
+            Err(ProgramError::InvalidInstructionData)
+        }
+    }
+
+    fn pack_remove_multisig(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        check_data_len(output, VaultInstruction::REMOVE_MULTISIG_LEN)?;
+
+        if let VaultInstruction::RemoveMultisig = self {
+            let instruction_type_out = array_mut_ref![output, 0, 1];
+
+            instruction_type_out[0] = VaultInstructionType::RemoveMultisig as u8;
+
+            Ok(VaultInstruction::REMOVE_MULTISIG_LEN)
         } else {
             Err(ProgramError::InvalidInstructionData)
         }
@@ -500,6 +550,21 @@ impl VaultInstruction {
         })
     }
 
+    fn unpack_set_admin_signers(input: &[u8]) -> Result<VaultInstruction, ProgramError> {
+        check_data_len(input, VaultInstruction::SET_ADMIN_SIGNERS_LEN)?;
+
+        let input = array_ref![input, 1, VaultInstruction::SET_ADMIN_SIGNERS_LEN - 1];
+
+        Ok(Self::SetAdminSigners {
+            min_signatures: input[0],
+        })
+    }
+
+    fn unpack_remove_multisig(input: &[u8]) -> Result<VaultInstruction, ProgramError> {
+        check_data_len(input, VaultInstruction::REMOVE_MULTISIG_LEN)?;
+        Ok(Self::RemoveMultisig)
+    }
+
     fn unpack_set_min_crank_interval(input: &[u8]) -> Result<VaultInstruction, ProgramError> {
         check_data_len(input, VaultInstruction::SET_MIN_CRANK_INTERVAL_LEN)?;
         Ok(Self::SetMinCrankInterval {
@@ -576,6 +641,8 @@ impl std::fmt::Display for VaultInstructionType {
             VaultInstructionType::LockLiquidity => write!(f, "LockLiquidity"),
             VaultInstructionType::UnlockLiquidity => write!(f, "UnlockLiquidity"),
             VaultInstructionType::RemoveLiquidity => write!(f, "RemoveLiquidity"),
+            VaultInstructionType::SetAdminSigners => write!(f, "SetAdminSigners"),
+            VaultInstructionType::RemoveMultisig => write!(f, "RemoveMultisig"),
             VaultInstructionType::SetMinCrankInterval => write!(f, "SetMinCrankInterval"),
             VaultInstructionType::SetFee => write!(f, "SetFee"),
             VaultInstructionType::SetExternalFee => write!(f, "SetExternalFee"),

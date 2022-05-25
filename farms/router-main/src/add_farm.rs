@@ -18,6 +18,7 @@ pub fn add_farm(program_id: &Pubkey, accounts: &[AccountInfo], farm: &Farm) -> P
     let accounts_iter = &mut accounts.iter();
 
     let signer_account = next_account_info(accounts_iter)?;
+    let _multisig_account = next_account_info(accounts_iter)?;
     let refdb_account = next_account_info(accounts_iter)?;
     let target_account = next_account_info(accounts_iter)?;
 

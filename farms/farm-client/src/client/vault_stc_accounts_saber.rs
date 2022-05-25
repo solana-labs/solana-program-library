@@ -418,6 +418,10 @@ impl FarmClient {
         // general accounts
         accounts.push(AccountMeta::new_readonly(vault_ref, false));
         accounts.push(AccountMeta::new(vault.info_account, false));
+        accounts.push(AccountMeta::new(
+            self.get_vault_active_multisig_account(vault_name)?,
+            false,
+        ));
         accounts.push(AccountMeta::new(vault.vault_authority, false));
         accounts.push(AccountMeta::new_readonly(vault.vault_program_id, false));
         accounts.push(AccountMeta::new_readonly(system_program::id(), false));
@@ -574,6 +578,7 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(vault_ref, false),
             AccountMeta::new(vault.info_account, false),
+            AccountMeta::new(self.get_vault_active_multisig_account(vault_name)?, false),
         ];
 
         Ok((accounts, data))
@@ -814,6 +819,10 @@ impl FarmClient {
                                     accounts.push(AccountMeta::new(
                                         serum_event_queue
                                             .ok_or(ProgramError::UninitializedAccount)?,
+                                        false,
+                                    ));
+                                    accounts.push(AccountMeta::new_readonly(
+                                        sysvar::instructions::id(),
                                         false,
                                     ));
                                 }

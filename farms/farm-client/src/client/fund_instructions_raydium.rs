@@ -9,6 +9,7 @@ use {
     solana_sdk::{
         instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,
+        sysvar,
     },
 };
 
@@ -676,6 +677,9 @@ impl FarmClient {
             },
         ];
         accounts.extend_from_slice(&pool_instruction.accounts[1..]);
+        if matches!(unpacked_instruction, AmmInstruction::Swap { .. }) {
+            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+        }
 
         Ok(Instruction {
             program_id: fund.fund_program_id,

@@ -36,7 +36,7 @@ pub fn user_init(accounts: &[AccountInfo]) -> ProgramResult {
         if &quarry_mine::id() != farm_program_id.key {
             return Err(ProgramError::IncorrectProgramId);
         }
-        if !account::is_empty(miner)? {
+        if account::exists(miner)? {
             return Err(ProgramError::AccountAlreadyInitialized);
         }
 

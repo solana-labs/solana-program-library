@@ -4,11 +4,11 @@ use {
     crate::{common, fund_info::FundInfo},
     solana_farm_sdk::{
         fund::Fund,
+        program,
         program::{account, clock},
     },
     solana_program::{
         account_info::AccountInfo, entrypoint::ProgramResult, msg, program_error::ProgramError,
-        sysvar::instructions,
     },
 };
 
@@ -40,12 +40,7 @@ pub fn start_liquidation(fund: &Fund, accounts: &[AccountInfo]) -> ProgramResult
         }
         common::check_fund_token_mint(fund, fund_token_mint)?;
 
-        if &instructions::id() != sysvar_account.key {
-            return Err(ProgramError::UnsupportedSysvar);
-        }
-        if instructions::load_current_index_checked(sysvar_account)? != 0
-            || instructions::load_instruction_at_checked(1, sysvar_account).is_ok()
-        {
+        if !program::is_single_instruction(sysvar_account)? {
             msg!("Error: StartLiquidation must be single instruction in the transaction");
             return Err(ProgramError::InvalidArgument);
         }
@@ -56,12 +51,8 @@ pub fn start_liquidation(fund: &Fund, accounts: &[AccountInfo]) -> ProgramResult
         let curtime = clock::get_time()?;
         #[allow(clippy::if_same_then_else)]
         let allowed =
-            // check if user is an admin or fund manager
-            if user_account.key == &fund.admin_account {
-                true
-            }
             // check if user is roughly >= 60% stake holder
-            else if ft_supply_amount > 0
+            if ft_supply_amount > 0
                 && account::get_token_balance(user_fund_token_account)? as f64 / ft_supply_amount as f64 >= 0.6
             {
                 true

@@ -11,6 +11,7 @@ use {
         instruction::fund::FundInstruction,
         math,
         pool::PoolRoute,
+        program::multisig::Multisig,
         string::str_to_as64,
         token::OracleType,
         vault::VaultStrategy,
@@ -44,6 +45,7 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
             AccountMeta::new(fund.fund_authority, false),
             AccountMeta::new_readonly(fund.fund_program_id, false),
             AccountMeta::new_readonly(system_program::id(), false),
@@ -94,6 +96,77 @@ impl FarmClient {
         })
     }
 
+    /// Creates a new instruction for initializing Fund's multisig with a new set of signers
+    pub fn new_instruction_set_fund_admins(
+        &self,
+        admin_address: &Pubkey,
+        fund_name: &str,
+        admin_signers: &[Pubkey],
+        min_signatures: u8,
+    ) -> Result<Instruction, FarmClientError> {
+        if admin_signers.is_empty() || min_signatures == 0 {
+            return Err(FarmClientError::ValueError(
+                "At least one signer is required".to_string(),
+            ));
+        } else if min_signatures as usize > admin_signers.len()
+            || admin_signers.len() > Multisig::MAX_SIGNERS
+        {
+            return Err(FarmClientError::ValueError(
+                "Invalid number of signatures".to_string(),
+            ));
+        }
+
+        // get fund info
+        let fund = self.get_fund(fund_name)?;
+        let fund_ref = self.get_fund_ref(fund_name)?;
+
+        // fill in accounts and instruction data
+        let mut inst = Instruction {
+            program_id: fund.fund_program_id,
+            data: FundInstruction::SetAdminSigners { min_signatures }.to_vec()?,
+            accounts: vec![
+                AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new_readonly(fund_ref, false),
+                AccountMeta::new(fund.info_account, false),
+                AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
+                AccountMeta::new(self.get_fund_multisig_account(fund_name)?, false),
+                AccountMeta::new_readonly(system_program::id(), false),
+            ],
+        };
+
+        for key in admin_signers {
+            inst.accounts.push(AccountMeta::new_readonly(*key, false));
+        }
+
+        Ok(inst)
+    }
+
+    /// Creates a new instruction for removing Fund's multisig
+    pub fn new_instruction_remove_fund_multisig(
+        &self,
+        admin_address: &Pubkey,
+        fund_name: &str,
+    ) -> Result<Instruction, FarmClientError> {
+        // get fund info
+        let fund = self.get_fund(fund_name)?;
+        let fund_ref = self.get_fund_ref(fund_name)?;
+
+        // fill in accounts and instruction data
+        let inst = Instruction {
+            program_id: fund.fund_program_id,
+            data: FundInstruction::RemoveMultisig.to_vec()?,
+            accounts: vec![
+                AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new_readonly(fund_ref, false),
+                AccountMeta::new(fund.info_account, false),
+                AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
+                AccountMeta::new(self.get_fund_multisig_account(fund_name)?, false),
+            ],
+        };
+
+        Ok(inst)
+    }
+
     /// Creates a new set fund assets tracking config Instruction
     pub fn new_instruction_set_fund_assets_tracking_config(
         &self,
@@ -111,6 +184,7 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
         ];
 
         Ok(Instruction {
@@ -177,6 +251,8 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
+            AccountMeta::new(self.get_fund_multisig_account(fund_name)?, false),
             AccountMeta::new_readonly(fund.fund_authority, false),
             AccountMeta::new_readonly(system_program::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
@@ -244,6 +320,8 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
+            AccountMeta::new(self.get_fund_multisig_account(fund_name)?, false),
             AccountMeta::new_readonly(fund.fund_authority, false),
             AccountMeta::new_readonly(system_program::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
@@ -392,6 +470,7 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
             AccountMeta::new_readonly(fund.fund_authority, false),
             AccountMeta::new_readonly(system_program::id(), false),
             AccountMeta::new(fund_assets_account, false),
@@ -455,6 +534,7 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
             AccountMeta::new_readonly(fund.fund_authority, false),
             AccountMeta::new_readonly(system_program::id(), false),
             AccountMeta::new(fund_assets_account, false),
@@ -488,6 +568,7 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
         ];
 
         Ok(Instruction {
@@ -513,6 +594,7 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
         ];
 
         Ok(Instruction {
@@ -677,6 +759,7 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
             AccountMeta::new_readonly(fund.fund_authority, false),
             AccountMeta::new_readonly(spl_token::id(), false),
             AccountMeta::new(fund_token.mint, false),
@@ -723,6 +806,7 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
             AccountMeta::new_readonly(*user_address, false),
             AccountMeta::new(user_info_account, false),
             AccountMeta::new_readonly(token_ref, false),
@@ -755,6 +839,7 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
         ];
 
         Ok(Instruction {
@@ -780,6 +865,7 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
         ];
 
         Ok(Instruction {
@@ -944,6 +1030,7 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
             AccountMeta::new_readonly(fund.fund_authority, false),
             AccountMeta::new_readonly(spl_token::id(), false),
             AccountMeta::new(fund_token.mint, false),
@@ -990,6 +1077,7 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
             AccountMeta::new_readonly(*user_address, false),
             AccountMeta::new(user_info_account, false),
             AccountMeta::new_readonly(token_ref, false),
@@ -1042,6 +1130,7 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
             AccountMeta::new_readonly(fund.fund_authority, false),
             AccountMeta::new_readonly(spl_token::id(), false),
             AccountMeta::new(wd_custody_token_account, false),
@@ -1098,6 +1187,7 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
             AccountMeta::new_readonly(fund.fund_authority, false),
             AccountMeta::new_readonly(spl_token::id(), false),
             AccountMeta::new(wd_custody_token_account, false),
@@ -1161,6 +1251,7 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
         ];
 
         Ok(Instruction {
@@ -1198,6 +1289,8 @@ impl FarmClient {
             AccountMeta::new_readonly(*wallet_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
+            AccountMeta::new(self.get_fund_multisig_account(fund_name)?, false),
             AccountMeta::new_readonly(spl_token::id(), false),
             AccountMeta::new(custody_fees_token_account, false),
             AccountMeta::new(*receiver, false),
@@ -1384,6 +1477,7 @@ impl FarmClient {
             AccountMeta::new_readonly(amm_open_orders, false),
             AccountMeta::new_readonly(oracle_account_token_a, false),
             AccountMeta::new_readonly(oracle_account_token_b, false),
+            AccountMeta::new_readonly(sysvar::instructions::id(), false),
         ];
 
         Ok(Instruction {

@@ -25,6 +25,8 @@ pub fn remove_custody(
         admin_account,
         fund_metadata,
         fund_info_account,
+        _active_multisig_account,
+        fund_multisig_account,
         fund_authority,
         _system_program,
         _spl_token_program,
@@ -61,19 +63,27 @@ pub fn remove_custody(
             Some(custody_fees_account.key),
         )?;
 
-        if account::get_token_balance(custody_account)? > 0 {
-            msg!("Custody token account must be empty");
+        if account::get_token_balance(custody_account)? > 0 ||
+            account::get_token_balance(custody_fees_account)? > 0{
+            msg!("Custody token accounts must be empty");
             return Err(ProgramError::Custom(539));
         }
 
         // close accounts
-        msg!("Close custody token account");
+        msg!("Close custody token accounts");
         let seeds: &[&[&[u8]]] = &[&[
             b"fund_authority",
             fund.name.as_bytes(),
             &[fund.authority_bump],
         ]];
         pda::close_token_account_with_seeds(admin_account, custody_account, fund_authority, seeds)?;
+
+        let seeds: &[&[&[u8]]] = &[&[
+            b"multisig",
+            fund.name.as_bytes(),
+            &[fund.multisig_bump],
+        ]];
+        pda::close_token_account_with_seeds(admin_account, custody_fees_account, fund_multisig_account, seeds)?;
 
         msg!("Close custody metadata account");
         account::close_system_account(admin_account, custody_metadata, &fund.fund_program_id)?;

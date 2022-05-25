@@ -6,6 +6,7 @@ use {
         fund::{Fund, FundAssetType, FundVault, FundVaultType, DISCRIMINATOR_FUND_VAULT},
         math,
         pool::{Pool, PoolRoute},
+        program,
         program::{account, clock, protocol::raydium},
         token::Token,
         traits::Packed,
@@ -35,7 +36,8 @@ pub fn update_assets_with_vault(fund: &Fund, accounts: &[AccountInfo]) -> Progra
         amm_id,
         amm_open_orders,
         oracle_account_token_a,
-        oracle_account_token_b
+        oracle_account_token_b,
+        sysvar_account
         ] = accounts
     {
         // validate params and accounts
@@ -80,6 +82,11 @@ pub fn update_assets_with_vault(fund: &Fund, accounts: &[AccountInfo]) -> Progra
                 msg!("Nothing to do: Farms are not processed to avoid double counting");
                 return Ok(());
             }
+        }
+
+        if !program::is_single_instruction(sysvar_account)? {
+            msg!("Error: UpdateAssetsWithVault must be single instruction in the transaction");
+            return Err(ProgramError::InvalidArgument);
         }
 
         // unpack and validate underlying pool

@@ -19,6 +19,7 @@ pub fn lock_assets(fund: &Fund, accounts: &[AccountInfo], amount: u64) -> Progra
         _admin_account,
         fund_metadata,
         fund_info_account,
+        _multisig_account,
         fund_authority,
         _spl_token_program,
         wd_custody_account,

@@ -38,6 +38,16 @@ pub enum FarmError {
     OracleStalePrice,
     #[error("Invalid Oracle price")]
     OracleInvalidPrice,
+    #[error("Incorrect account address")]
+    IncorrectAccountAddress,
+    #[error("Account not authorized")]
+    AccountNotAuthorized,
+    #[error("Already signed")]
+    AlreadySigned,
+    #[error("Already executed")]
+    AlreadyExecuted,
+    #[error("Too early")]
+    TooEarly,
 }
 
 impl From<FarmError> for ProgramError {

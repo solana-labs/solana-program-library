@@ -25,19 +25,21 @@ pub enum MainInstruction {
     /// Record Fund's metadata on-chain
     ///
     /// # Account references
-    ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Fund's RefDB refdb_index PDA
-    ///   2. [WRITE] Fund's RefDB data PDA
-    ///   3. [] Sytem program
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or main router admin if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be main_router_multisig::id()
+    ///   2. [WRITE] Fund's RefDB refdb_index PDA
+    ///   3. [WRITE] Fund's RefDB data PDA
+    ///   4. [] Sytem program
     AddFund { fund: Fund },
 
     /// Delete Fund's metadata
     ///
     /// # Account references
-    ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Fund's RefDB refdb_index PDA
-    ///   2. [WRITE] Fund's RefDB data PDA
-    ///   3. [] Sytem program
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or main router admin if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be main_router_multisig::id()
+    ///   2. [WRITE] Fund's RefDB refdb_index PDA
+    ///   3. [WRITE] Fund's RefDB data PDA
+    ///   4. [] Sytem program
     RemoveFund {
         name: ArrayString64,
         refdb_index: Option<u32>,
@@ -46,19 +48,21 @@ pub enum MainInstruction {
     /// Record Vault's metadata on-chain
     ///
     /// # Account references
-    ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Vault's RefDB refdb_index PDA
-    ///   2. [WRITE] Vault's RefDB data PDA
-    ///   3. [] Sytem program
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or main router admin if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be main_router_multisig::id()
+    ///   2. [WRITE] Vault's RefDB refdb_index PDA
+    ///   3. [WRITE] Vault's RefDB data PDA
+    ///   4. [] Sytem program
     AddVault { vault: Vault },
 
     /// Delete Vault's metadata
     ///
     /// # Account references
-    ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Vault's RefDB refdb_index PDA
-    ///   2. [WRITE] Vault's RefDB data PDA
-    ///   3. [] Sytem program
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or main router admin if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be main_router_multisig::id()
+    ///   2. [WRITE] Vault's RefDB refdb_index PDA
+    ///   3. [WRITE] Vault's RefDB data PDA
+    ///   4. [] Sytem program
     RemoveVault {
         name: ArrayString64,
         refdb_index: Option<u32>,
@@ -67,19 +71,21 @@ pub enum MainInstruction {
     /// Record Pool's metadata on-chain
     ///
     /// # Account references
-    ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Pool's RefDB refdb_index PDA
-    ///   2. [WRITE] Pool's RefDB data PDA
-    ///   3. [] Sytem program
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or main router admin if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be main_router_multisig::id()
+    ///   2. [WRITE] Pool's RefDB refdb_index PDA
+    ///   3. [WRITE] Pool's RefDB data PDA
+    ///   4. [] Sytem program
     AddPool { pool: Pool },
 
     /// Delete Pool's metadata
     ///
     /// # Account references
-    ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Pool's RefDB refdb_index PDA
-    ///   2. [WRITE] Pool's RefDB data PDA
-    ///   3. [] Sytem program
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or main router admin if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be main_router_multisig::id()
+    ///   2. [WRITE] Pool's RefDB refdb_index PDA
+    ///   3. [WRITE] Pool's RefDB data PDA
+    ///   4. [] Sytem program
     RemovePool {
         name: ArrayString64,
         refdb_index: Option<u32>,
@@ -88,19 +94,21 @@ pub enum MainInstruction {
     /// Record Farm's metadata on-chain
     ///
     /// # Account references
-    ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Farm's RefDB refdb_index PDA
-    ///   2. [WRITE] Farm's RefDB data PDA
-    ///   3. [] Sytem program
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or main router admin if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be main_router_multisig::id()
+    ///   2. [WRITE] Farm's RefDB refdb_index PDA
+    ///   3. [WRITE] Farm's RefDB data PDA
+    ///   4. [] Sytem program
     AddFarm { farm: Farm },
 
     /// Delete Farm's metadata
     ///
     /// # Account references
-    ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Farm's RefDB refdb_index PDA
-    ///   2. [WRITE] Farm's RefDB data PDA
-    ///   3. [] Sytem program
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or main router admin if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be main_router_multisig::id()
+    ///   2. [WRITE] Farm's RefDB refdb_index PDA
+    ///   3. [WRITE] Farm's RefDB data PDA
+    ///   4. [] Sytem program
     RemoveFarm {
         name: ArrayString64,
         refdb_index: Option<u32>,
@@ -109,19 +117,21 @@ pub enum MainInstruction {
     /// Record Token's metadata on-chain
     ///
     /// # Account references
-    ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Token's RefDB refdb_index PDA
-    ///   2. [WRITE] Token's RefDB data PDA
-    ///   3. [] Sytem program
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or main router admin if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be main_router_multisig::id()
+    ///   2. [WRITE] Token's RefDB refdb_index PDA
+    ///   3. [WRITE] Token's RefDB data PDA
+    ///   4. [] Sytem program
     AddToken { token: Token },
 
     /// Delete Token's metadata
     ///
     /// # Account references
-    ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] Token's RefDB refdb_index PDA
-    ///   2. [WRITE] Token's RefDB data PDA
-    ///   3. [] Sytem program
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or main router admin if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be main_router_multisig::id()
+    ///   2. [WRITE] Token's RefDB refdb_index PDA
+    ///   3. [WRITE] Token's RefDB data PDA
+    ///   4. [] Sytem program
     RemoveToken {
         name: ArrayString64,
         refdb_index: Option<u32>,
@@ -132,6 +142,53 @@ pub enum MainInstruction {
     /// # Account references are instruction specific,
     ///   see RefDbInstruction definition for more info
     RefDbInstruction { instruction: RefDbInstruction },
+
+    /// Initialize Main Router multisig with a new set of admin signatures
+    ///
+    /// # Account references
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or main router admin if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be main_router_multisig::id()
+    ///   2. [] Sytem program
+    ///   3. [] First signer
+    ///  ... [] Extra signers, up to Multisig::MAX_SIGNERS
+    SetAdminSigners { min_signatures: u8 },
+
+    /// Initialize program upgrade authority multisig with a new set of admin signatures
+    ///
+    /// # Account references
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or upgrade authority if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be get_program_multisig_account()
+    ///   2. [] Program address
+    ///   3. [WRITE] Program data buffer address
+    ///   4. [] Sytem program
+    ///   5. [] BPF Loader program
+    ///   6. [] First signer
+    ///  ... [] Extra signers, up to Multisig::MAX_SIGNERS
+    SetProgramAdminSigners { min_signatures: u8 },
+
+    /// Set single upgrade authority for the program removing multisig if present
+    ///
+    /// # Account references
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or upgrade authority if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be get_program_multisig_account()
+    ///   2. [] Program address
+    ///   3. [WRITE] Program data buffer address
+    ///   4. [] New upgrade authority
+    ///   5. [] BPF Loader program
+    SetProgramSingleAuthority,
+
+    /// Upgrade the program from the buffer
+    ///
+    /// # Account references
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or upgrade authority if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be get_program_multisig_account()
+    ///   2. [WRITE] Program address
+    ///   3. [WRITE] Program data buffer address
+    ///   4. [WRITE] Source data buffer address
+    ///   5. [] Rent sysvar
+    ///   6. [] Clock sysvar
+    ///   7. [] BPF Loader program
+    UpgradeProgram,
 }
 
 #[repr(u8)]
@@ -148,6 +205,10 @@ pub enum MainInstructionType {
     AddToken,
     RemoveToken,
     RefDbInstruction,
+    SetAdminSigners,
+    SetProgramAdminSigners,
+    SetProgramSingleAuthority,
+    UpgradeProgram,
 }
 
 impl MainInstruction {
@@ -157,6 +218,10 @@ impl MainInstruction {
     pub const REMOVE_POOL_LEN: usize = 70;
     pub const REMOVE_FARM_LEN: usize = 70;
     pub const REMOVE_TOKEN_LEN: usize = 70;
+    pub const SET_ADMIN_SIGNERS_LEN: usize = 2;
+    pub const SET_PROGRAM_ADMIN_SIGNERS_LEN: usize = 2;
+    pub const SET_PROGRAM_SINGLE_AUTHORITY_LEN: usize = 1;
+    pub const UPGRADE_PROGRAM_LEN: usize = 1;
 
     const fn max(a: usize, b: usize) -> usize {
         [a, b][(a < b) as usize]
@@ -188,6 +253,14 @@ impl MainInstruction {
             Self::RefDbInstruction { instruction } => {
                 self.pack_refdb_instruction(output, instruction)
             }
+            Self::SetAdminSigners { min_signatures } => {
+                self.pack_set_admin_signers(output, *min_signatures)
+            }
+            Self::SetProgramAdminSigners { min_signatures } => {
+                self.pack_set_program_admin_signers(output, *min_signatures)
+            }
+            Self::SetProgramSingleAuthority => self.pack_set_program_single_authority(output),
+            Self::UpgradeProgram => self.pack_upgrade_program(output),
         }
     }
 
@@ -218,6 +291,16 @@ impl MainInstruction {
             MainInstructionType::RefDbInstruction => {
                 MainInstruction::unpack_refdb_instruction(input)
             }
+            MainInstructionType::SetAdminSigners => {
+                MainInstruction::unpack_set_admin_signers(input)
+            }
+            MainInstructionType::SetProgramAdminSigners => {
+                MainInstruction::unpack_set_program_admin_signers(input)
+            }
+            MainInstructionType::SetProgramSingleAuthority => {
+                MainInstruction::unpack_set_program_single_authority(input)
+            }
+            MainInstructionType::UpgradeProgram => MainInstruction::unpack_upgrade_program(input),
         }
     }
 
@@ -363,6 +446,52 @@ impl MainInstruction {
         Ok(packed + 1)
     }
 
+    fn pack_set_admin_signers(
+        &self,
+        output: &mut [u8],
+        min_signatures: u8,
+    ) -> Result<usize, ProgramError> {
+        check_data_len(output, MainInstruction::SET_ADMIN_SIGNERS_LEN)?;
+
+        let output = array_mut_ref![output, 0, MainInstruction::SET_ADMIN_SIGNERS_LEN];
+        let (instruction_type_out, min_signatures_out) = mut_array_refs![output, 1, 1];
+
+        instruction_type_out[0] = MainInstructionType::SetAdminSigners as u8;
+        min_signatures_out[0] = min_signatures;
+
+        Ok(MainInstruction::SET_ADMIN_SIGNERS_LEN)
+    }
+
+    fn pack_set_program_admin_signers(
+        &self,
+        output: &mut [u8],
+        min_signatures: u8,
+    ) -> Result<usize, ProgramError> {
+        check_data_len(output, MainInstruction::SET_PROGRAM_ADMIN_SIGNERS_LEN)?;
+
+        let output = array_mut_ref![output, 0, MainInstruction::SET_PROGRAM_ADMIN_SIGNERS_LEN];
+        let (instruction_type_out, min_signatures_out) = mut_array_refs![output, 1, 1];
+
+        instruction_type_out[0] = MainInstructionType::SetProgramAdminSigners as u8;
+        min_signatures_out[0] = min_signatures;
+
+        Ok(MainInstruction::SET_PROGRAM_ADMIN_SIGNERS_LEN)
+    }
+
+    fn pack_set_program_single_authority(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        check_data_len(output, MainInstruction::SET_PROGRAM_SINGLE_AUTHORITY_LEN)?;
+        output[0] = MainInstructionType::SetProgramSingleAuthority as u8;
+
+        Ok(MainInstruction::SET_PROGRAM_SINGLE_AUTHORITY_LEN)
+    }
+
+    fn pack_upgrade_program(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        check_data_len(output, MainInstruction::UPGRADE_PROGRAM_LEN)?;
+        output[0] = MainInstructionType::UpgradeProgram as u8;
+
+        Ok(MainInstruction::UPGRADE_PROGRAM_LEN)
+    }
+
     fn unpack_add_fund(input: &[u8]) -> Result<MainInstruction, ProgramError> {
         let fund = Fund::unpack(&input[1..])?;
         Ok(Self::AddFund { fund })
@@ -457,6 +586,34 @@ impl MainInstruction {
         let instruction = RefDbInstruction::unpack(&input[1..])?;
         Ok(Self::RefDbInstruction { instruction })
     }
+
+    fn unpack_set_admin_signers(input: &[u8]) -> Result<MainInstruction, ProgramError> {
+        check_data_len(input, MainInstruction::SET_ADMIN_SIGNERS_LEN)?;
+
+        let input = array_ref![input, 1, MainInstruction::SET_ADMIN_SIGNERS_LEN - 1];
+
+        Ok(Self::SetAdminSigners {
+            min_signatures: input[0],
+        })
+    }
+
+    fn unpack_set_program_admin_signers(input: &[u8]) -> Result<MainInstruction, ProgramError> {
+        check_data_len(input, MainInstruction::SET_PROGRAM_ADMIN_SIGNERS_LEN)?;
+
+        let input = array_ref![input, 1, MainInstruction::SET_PROGRAM_ADMIN_SIGNERS_LEN - 1];
+
+        Ok(Self::SetProgramAdminSigners {
+            min_signatures: input[0],
+        })
+    }
+
+    fn unpack_set_program_single_authority(_input: &[u8]) -> Result<MainInstruction, ProgramError> {
+        Ok(Self::SetProgramSingleAuthority)
+    }
+
+    fn unpack_upgrade_program(_input: &[u8]) -> Result<MainInstruction, ProgramError> {
+        Ok(Self::UpgradeProgram)
+    }
 }
 
 impl std::fmt::Display for MainInstructionType {
@@ -473,6 +630,12 @@ impl std::fmt::Display for MainInstructionType {
             MainInstructionType::AddToken => write!(f, "AddToken"),
             MainInstructionType::RemoveToken => write!(f, "RemoveToken"),
             MainInstructionType::RefDbInstruction => write!(f, "RefDbInstruction"),
+            MainInstructionType::SetAdminSigners => write!(f, "SetAdminSigners"),
+            MainInstructionType::SetProgramAdminSigners => write!(f, "SetProgramAdminSigners"),
+            MainInstructionType::SetProgramSingleAuthority => {
+                write!(f, "SetProgramSingleAuthority")
+            }
+            MainInstructionType::UpgradeProgram => write!(f, "UpgradeProgram"),
         }
     }
 }

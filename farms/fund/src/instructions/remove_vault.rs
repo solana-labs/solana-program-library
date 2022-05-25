@@ -24,6 +24,7 @@ pub fn remove_vault(
         admin_account,
         fund_metadata,
         fund_info_account,
+        _multisig_account,
         fund_authority,
         _system_program,
         vaults_assets_info,

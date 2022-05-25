@@ -54,6 +54,7 @@ pub fn request_deposit(fund: &Fund, accounts: &[AccountInfo], amount: u64) -> Pr
             msg!("Error: Invalid Fund token account owner");
             return Err(ProgramError::IllegalOwner);
         }
+        common::check_fund_token_mint(fund, fund_token_mint)?;
 
         let custody_token = account::unpack::<Token>(custody_token_metadata, "custody token")?;
         common::check_wd_custody_accounts(
@@ -183,7 +184,7 @@ pub fn request_deposit(fund: &Fund, accounts: &[AccountInfo], amount: u64) -> Pr
                 msg!("Error: Deposit instruction didn't result in Fund tokens mint");
                 return Err(ProgramError::Custom(170));
             }
-            common::check_fund_token_mint(fund, fund_token_mint)?;
+            
             let seeds: &[&[&[u8]]] = &[&[
                 b"fund_authority",
                 fund.name.as_bytes(),

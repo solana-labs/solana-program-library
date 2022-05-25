@@ -14,3 +14,7 @@ pub mod remove_fund;
 pub mod remove_pool;
 pub mod remove_token;
 pub mod remove_vault;
+pub mod set_admin_signers;
+pub mod set_program_admin_signers;
+pub mod set_program_single_authority;
+pub mod upgrade_program;

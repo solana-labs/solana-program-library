@@ -28,9 +28,7 @@ pub fn stop_liquidation(_fund: &Fund, accounts: &[AccountInfo]) -> ProgramResult
         // stop liquidation
         msg!("Stop liquidation");
         fund_info.set_liquidation_start_time(0)?;
-        fund_info.update_admin_action_time()?;
-
-        Ok(())
+        fund_info.update_admin_action_time()
     } else {
         Err(ProgramError::NotEnoughAccountKeys)
     }

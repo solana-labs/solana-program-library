@@ -57,7 +57,7 @@ pub fn load(client: &FarmClient, config: &Config, data: &str, remove_mode: bool)
             vault_authority: json_vault.vault_authority,
             vault_token_ref: json_vault.vault_token_ref,
             info_account: json_vault.info_account,
-            admin_account: json_vault.admin_account,
+            multisig_account: json_vault.multisig_account,
             fees_account_a: json_vault.fees_account_a,
             fees_account_b: json_vault.fees_account_b,
             strategy: json_vault.strategy,

@@ -30,6 +30,7 @@ pub fn add_vault(
         admin_account,
         fund_metadata,
         fund_info_account,
+        _multisig_account,
         fund_authority,
         _system_program,
         vaults_assets_info,
@@ -127,7 +128,7 @@ pub fn add_vault(
             return Err(ProgramError::Custom(524));
         }
 
-        if !account::is_empty(fund_vault_metadata)? {
+        if account::exists(fund_vault_metadata)? {
             msg!("Error: Vault already initialized");
             return Err(ProgramError::AccountAlreadyInitialized);
         }

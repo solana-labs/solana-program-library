@@ -20,8 +20,9 @@ pub enum RefDbInstruction {
     /// Initialize on-chain RefDB storage
     ///
     /// # Account references
-    ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] RefDB storage PDA
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or main router admin if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be main_router_multisig::id()
+    ///   2. [WRITE] RefDB storage PDA
     ///   3. [] Sytem program
     Init {
         #[serde(
@@ -37,24 +38,27 @@ pub enum RefDbInstruction {
     /// Delete on-chain RefDB storage
     ///
     /// # Account references
-    ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] RefDB storage PDA
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or main router admin if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be main_router_multisig::id()
+    ///   2. [WRITE] RefDB storage PDA
     ///   3. [] Sytem program
     Drop { close_account: bool },
 
     /// Write the record into on-chain RefDB storage
     ///
     /// # Account references
-    ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] RefDB storage PDA
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or main router admin if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be main_router_multisig::id()
+    ///   2. [WRITE] RefDB storage PDA
     ///   3. [] Sytem program
     Write { record: Record },
 
     /// Delete the record from on-chain RefDB storage
     ///
     /// # Account references
-    ///   0. [SIGNER] Funding account, must be main router admin
-    ///   1. [WRITE] RefDB storage PDA
+    ///   0. [SIGNER] Funding account, must be one of the multisig signers or main router admin if no multisig
+    ///   1. [WRITE] Multisig PDA address, must be main_router_multisig::id()
+    ///   2. [WRITE] RefDB storage PDA
     ///   3. [] Sytem program
     Delete { record: Record },
 }

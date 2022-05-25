@@ -26,7 +26,7 @@ pub fn user_init(fund: &Fund, accounts: &[AccountInfo]) -> ProgramResult {
         ] = accounts
     {
         // validate params and accounts
-        if !account::is_empty(user_info_account)? {
+        if account::exists(user_info_account)? {
             msg!("Error: User already initialized");
             return Err(ProgramError::AccountAlreadyInitialized);
         }

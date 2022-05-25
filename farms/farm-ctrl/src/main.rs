@@ -36,6 +36,17 @@ fn main() {
         ("init-all", Some(_subcommand_matches)) => {
             refdb::init_all(&client, &config);
         }
+        ("set-admins", Some(subcommand_matches)) => {
+            refdb::set_admins(
+                &client,
+                &config,
+                config::get_pubkey_multi_val(subcommand_matches, "admin_signers").as_slice(),
+                config::get_integer_val(subcommand_matches, "min_signatures") as u8,
+            );
+        }
+        ("get-admins", Some(_subcommand_matches)) => {
+            refdb::get_admins(&client, &config);
+        }
         ("drop", Some(subcommand_matches)) => {
             refdb::drop(&client, &config, config::get_target(subcommand_matches));
         }
@@ -110,6 +121,38 @@ fn main() {
         ("list-all", Some(subcommand_matches)) => {
             get::list_all(&client, &config, config::get_target(subcommand_matches));
         }
+        ("program-get-admins", Some(subcommand_matches)) => {
+            refdb::get_program_admins(
+                &client,
+                &config,
+                &config::get_pubkey_val(subcommand_matches, "program_id"),
+            );
+        }
+        ("program-set-admins", Some(subcommand_matches)) => {
+            refdb::set_program_admins(
+                &client,
+                &config,
+                &config::get_pubkey_val(subcommand_matches, "program_id"),
+                config::get_pubkey_multi_val(subcommand_matches, "admin_signers").as_slice(),
+                config::get_integer_val(subcommand_matches, "min_signatures") as u8,
+            );
+        }
+        ("program-set-single-authority", Some(subcommand_matches)) => {
+            refdb::set_program_single_authority(
+                &client,
+                &config,
+                &config::get_pubkey_val(subcommand_matches, "program_id"),
+                &config::get_pubkey_val(subcommand_matches, "upgrade_authority"),
+            );
+        }
+        ("program-upgrade", Some(subcommand_matches)) => {
+            refdb::upgrade_program(
+                &client,
+                &config,
+                &config::get_pubkey_val(subcommand_matches, "program_id"),
+                &config::get_pubkey_val(subcommand_matches, "buffer_address"),
+            );
+        }
         ("vault-init", Some(subcommand_matches)) => {
             vault::init(
                 &client,
@@ -118,12 +161,20 @@ fn main() {
                 config::get_integer_val(subcommand_matches, "step"),
             );
         }
-        ("vault-set-admin", Some(subcommand_matches)) => {
-            vault::set_admin(
+        ("vault-set-admins", Some(subcommand_matches)) => {
+            vault::set_admins(
                 &client,
                 &config,
                 &config::get_str_val(subcommand_matches, "vault_name"),
-                &config::get_pubkey_val(subcommand_matches, "admin"),
+                config::get_pubkey_multi_val(subcommand_matches, "admin_signers").as_slice(),
+                config::get_integer_val(subcommand_matches, "min_signatures") as u8,
+            );
+        }
+        ("vault-get-admins", Some(subcommand_matches)) => {
+            vault::get_admins(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "vault_name"),
             );
         }
         ("vault-shutdown", Some(subcommand_matches)) => {
@@ -220,12 +271,20 @@ fn main() {
                 config::get_integer_val(subcommand_matches, "step"),
             );
         }
-        ("fund-set-admin", Some(subcommand_matches)) => {
-            fund::set_admin(
+        ("fund-set-admins", Some(subcommand_matches)) => {
+            fund::set_admins(
                 &client,
                 &config,
                 &config::get_str_val(subcommand_matches, "fund_name"),
-                &config::get_pubkey_val(subcommand_matches, "admin"),
+                config::get_pubkey_multi_val(subcommand_matches, "admin_signers").as_slice(),
+                config::get_integer_val(subcommand_matches, "min_signatures") as u8,
+            );
+        }
+        ("fund-get-admins", Some(subcommand_matches)) => {
+            fund::get_admins(
+                &client,
+                &config,
+                &config::get_str_val(subcommand_matches, "fund_name"),
             );
         }
         ("fund-set-manager", Some(subcommand_matches)) => {

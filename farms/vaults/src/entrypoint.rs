@@ -2,17 +2,26 @@
 
 #![cfg(not(feature = "no-entrypoint"))]
 
+solana_security_txt::security_txt! {
+    name: "Solana Farms",
+    project_url: "https://github.com/solana-labs/solana-program-library/tree/master/farms",
+    contacts: "email:solana.farms@protonmail.com",
+    policy: "",
+    preferred_languages: "en"
+}
+
 use {
-    crate::{
-        traits::{
-            AddLiquidity, Crank, Features, Init, LockLiquidity, RemoveLiquidity, Shutdown,
-            UnlockLiquidity, UserInit, WithdrawFees,
-        },
-        vault_info::VaultInfo,
-    },
+    crate::{traits::*, vault_info::VaultInfo},
     solana_farm_sdk::{
-        id::main_router, instruction::vault::VaultInstruction, log::sol_log_params_short,
-        program::pda, refdb, string::ArrayString64, traits::Packed, vault::Vault,
+        error::FarmError,
+        id::{main_router, main_router_admin, main_router_multisig},
+        instruction::vault::VaultInstruction,
+        log::sol_log_params_short,
+        program::{multisig, pda},
+        refdb,
+        string::ArrayString64,
+        traits::Packed,
+        vault::Vault,
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -39,18 +48,40 @@ fn log_end(vault_name: &ArrayString64) {
     msg!("Vault {} end of instruction", vault_name.as_str());
 }
 
-fn check_authority(user_account: &AccountInfo, vault: &Vault) -> ProgramResult {
-    if user_account.key != &vault.admin_account {
-        msg!(
-            "Error: Instruction must be performed by the admin {}",
-            vault.admin_account
-        );
-        Err(ProgramError::IllegalOwner)
-    } else if !user_account.is_signer {
-        Err(ProgramError::MissingRequiredSignature)
-    } else {
-        Ok(())
+fn check_authority(
+    accounts: &[AccountInfo],
+    instruction_data: &[u8],
+    vault: &Vault,
+) -> Result<bool, ProgramError> {
+    let account_info_iter = &mut accounts.iter();
+    let admin_account = next_account_info(account_info_iter)?;
+    let _vault_metadata = next_account_info(account_info_iter)?;
+    let _vault_info_account = next_account_info(account_info_iter)?;
+    let multisig_account = next_account_info(account_info_iter)?;
+
+    if multisig_account.key != &vault.multisig_account
+        && multisig_account.key != &main_router_multisig::id()
+    {
+        msg!("Error: Invalid multisig account");
+        return Err(FarmError::IncorrectAccountAddress.into());
     }
+
+    let signatures_left = multisig::sign_multisig(
+        multisig_account,
+        admin_account,
+        &main_router_admin::id(),
+        &accounts[1..],
+        instruction_data,
+    )?;
+    if signatures_left > 0 {
+        msg!(
+            "Instruction has been signed but more signatures are required: {}",
+            signatures_left
+        );
+        return Ok(false);
+    }
+
+    Ok(true)
 }
 
 entrypoint!(process_instruction);
@@ -71,7 +102,7 @@ pub fn process_instruction(
     }
 
     let account_info_iter = &mut accounts.iter();
-    let user_account = next_account_info(account_info_iter)?;
+    let _user_account = next_account_info(account_info_iter)?;
     let vault_metadata = next_account_info(account_info_iter)?;
     let vault_info_account = next_account_info(account_info_iter)?;
 
@@ -100,7 +131,7 @@ pub fn process_instruction(
     match instruction {
         VaultInstruction::UserInit => {
             log_start("UserInit", &vault.name);
-            VaultInstruction::user_init(&vault, accounts)?
+            VaultInstruction::user_init(&vault, accounts)?;
         }
         VaultInstruction::AddLiquidity {
             max_token_a_amount,
@@ -112,104 +143,126 @@ pub fn process_instruction(
                 accounts,
                 max_token_a_amount,
                 max_token_b_amount,
-            )?
+            )?;
         }
         VaultInstruction::LockLiquidity { amount } => {
             log_start("LockLiquidity", &vault.name);
-            VaultInstruction::lock_liquidity(&vault, accounts, amount)?
+            VaultInstruction::lock_liquidity(&vault, accounts, amount)?;
         }
         VaultInstruction::UnlockLiquidity { amount } => {
             log_start("UnlockLiquidity", &vault.name);
-            VaultInstruction::unlock_liquidity(&vault, accounts, amount)?
+            VaultInstruction::unlock_liquidity(&vault, accounts, amount)?;
         }
         VaultInstruction::RemoveLiquidity { amount } => {
             log_start("RemoveLiquidity", &vault.name);
-            VaultInstruction::remove_liquidity(&vault, accounts, amount)?
+            VaultInstruction::remove_liquidity(&vault, accounts, amount)?;
         }
         VaultInstruction::SetMinCrankInterval { min_crank_interval } => {
             log_start("SetMinCrankInterval", &vault.name);
-            check_authority(user_account, &vault)?;
-            VaultInstruction::set_min_crank_interval(
-                &vault,
-                &mut VaultInfo::new(vault_info_account),
-                accounts,
-                min_crank_interval as u64,
-            )?
+            if check_authority(accounts, instruction_data, &vault)? {
+                VaultInstruction::set_min_crank_interval(
+                    &vault,
+                    &mut VaultInfo::new(vault_info_account),
+                    accounts,
+                    min_crank_interval as u64,
+                )?;
+            }
         }
         VaultInstruction::SetFee { fee } => {
             log_start("SetFee", &vault.name);
-            check_authority(user_account, &vault)?;
-            VaultInstruction::set_fee(
-                &vault,
-                &mut VaultInfo::new(vault_info_account),
-                accounts,
-                fee as f64,
-            )?
+            if check_authority(accounts, instruction_data, &vault)? {
+                VaultInstruction::set_fee(
+                    &vault,
+                    &mut VaultInfo::new(vault_info_account),
+                    accounts,
+                    fee as f64,
+                )?;
+            }
         }
         VaultInstruction::SetExternalFee { external_fee } => {
             log_start("SetExternalFee", &vault.name);
-            check_authority(user_account, &vault)?;
-            VaultInstruction::set_external_fee(
-                &vault,
-                &mut VaultInfo::new(vault_info_account),
-                accounts,
-                external_fee as f64,
-            )?
+            if check_authority(accounts, instruction_data, &vault)? {
+                VaultInstruction::set_external_fee(
+                    &vault,
+                    &mut VaultInfo::new(vault_info_account),
+                    accounts,
+                    external_fee as f64,
+                )?;
+            }
         }
         VaultInstruction::EnableDeposits => {
             log_start("EnableDeposits", &vault.name);
-            check_authority(user_account, &vault)?;
-            VaultInstruction::enable_deposits(
-                &vault,
-                &mut VaultInfo::new(vault_info_account),
-                accounts,
-            )?
+            if check_authority(accounts, instruction_data, &vault)? {
+                VaultInstruction::enable_deposits(
+                    &vault,
+                    &mut VaultInfo::new(vault_info_account),
+                    accounts,
+                )?;
+            }
         }
         VaultInstruction::DisableDeposits => {
             log_start("DisableDeposits", &vault.name);
-            check_authority(user_account, &vault)?;
-            VaultInstruction::disable_deposits(
-                &vault,
-                &mut VaultInfo::new(vault_info_account),
-                accounts,
-            )?
+            if check_authority(accounts, instruction_data, &vault)? {
+                VaultInstruction::disable_deposits(
+                    &vault,
+                    &mut VaultInfo::new(vault_info_account),
+                    accounts,
+                )?;
+            }
         }
         VaultInstruction::EnableWithdrawals => {
             log_start("EnableWithdrawals", &vault.name);
-            check_authority(user_account, &vault)?;
-            VaultInstruction::enable_withdrawals(
-                &vault,
-                &mut VaultInfo::new(vault_info_account),
-                accounts,
-            )?
+            if check_authority(accounts, instruction_data, &vault)? {
+                VaultInstruction::enable_withdrawals(
+                    &vault,
+                    &mut VaultInfo::new(vault_info_account),
+                    accounts,
+                )?;
+            }
         }
         VaultInstruction::DisableWithdrawals => {
             log_start("DisableWithdrawals", &vault.name);
-            check_authority(user_account, &vault)?;
-            VaultInstruction::disable_withdrawals(
-                &vault,
-                &mut VaultInfo::new(vault_info_account),
-                accounts,
-            )?
+            if check_authority(accounts, instruction_data, &vault)? {
+                VaultInstruction::disable_withdrawals(
+                    &vault,
+                    &mut VaultInfo::new(vault_info_account),
+                    accounts,
+                )?;
+            }
         }
         VaultInstruction::Crank { step } => {
             log_start("Crank", &vault.name);
-            VaultInstruction::crank(&vault, accounts, step)?
+            VaultInstruction::crank(&vault, accounts, step)?;
         }
         VaultInstruction::Init { step } => {
             log_start("Init", &vault.name);
-            check_authority(user_account, &vault)?;
-            VaultInstruction::init(&vault, accounts, step)?
+            if check_authority(accounts, instruction_data, &vault)? {
+                VaultInstruction::init(&vault, accounts, step)?;
+            }
         }
         VaultInstruction::Shutdown => {
             log_start("Shutdown", &vault.name);
-            check_authority(user_account, &vault)?;
-            VaultInstruction::shutdown(&vault, accounts)?
+            if check_authority(accounts, instruction_data, &vault)? {
+                VaultInstruction::shutdown(&vault, accounts)?;
+            }
         }
         VaultInstruction::WithdrawFees { amount } => {
             log_start("WithdrawFees", &vault.name);
-            check_authority(user_account, &vault)?;
-            VaultInstruction::withdraw_fees(&vault, accounts, amount)?
+            if check_authority(accounts, instruction_data, &vault)? {
+                VaultInstruction::withdraw_fees(&vault, accounts, amount)?;
+            }
+        }
+        VaultInstruction::SetAdminSigners { min_signatures } => {
+            log_start("SetAdminSigners", &vault.name);
+            if check_authority(accounts, instruction_data, &vault)? {
+                VaultInstruction::set_admin_signers(&vault, accounts, min_signatures)?;
+            }
+        }
+        VaultInstruction::RemoveMultisig => {
+            log_start("RemoveMultisig", &vault.name);
+            if check_authority(accounts, instruction_data, &vault)? {
+                VaultInstruction::remove_multisig(&vault, accounts)?;
+            }
         }
     }
 

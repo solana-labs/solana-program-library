@@ -51,6 +51,7 @@ pub struct Fund {
     pub metadata_bump: u8,
     pub authority_bump: u8,
     pub fund_token_bump: u8,
+    pub multisig_bump: u8,
     #[serde(
         deserialize_with = "pubkey_deserialize",
         serialize_with = "pubkey_serialize"
@@ -80,7 +81,7 @@ pub struct Fund {
         deserialize_with = "pubkey_deserialize",
         serialize_with = "pubkey_serialize"
     )]
-    pub admin_account: Pubkey,
+    pub multisig_account: Pubkey,
     #[serde(
         deserialize_with = "pubkey_deserialize",
         serialize_with = "pubkey_serialize"
@@ -294,6 +295,7 @@ pub struct FundInfo {
     pub current_assets_usd: f64,
     pub assets_update_time: UnixTimestamp,
     pub admin_action_time: UnixTimestamp,
+    pub last_trade_time: UnixTimestamp,
     pub liquidation_start_time: UnixTimestamp,
     pub liquidation_amount_usd: f64,
     pub liquidation_amount_tokens: u64,
@@ -684,7 +686,7 @@ impl Packed for FundVault {
 }
 
 impl Fund {
-    pub const LEN: usize = 398;
+    pub const LEN: usize = 399;
 }
 
 impl Packed for Fund {
@@ -708,15 +710,18 @@ impl Packed for Fund {
             metadata_bump_out,
             authority_bump_out,
             fund_token_bump_out,
+            multisig_bump_out,
             fund_program_id_out,
             fund_authority_out,
             fund_manager_out,
             fund_token_ref_out,
             info_account_out,
-            admin_account_out,
+            multisig_account_out,
             vaults_assets_info_out,
             custodies_assets_info_out,
-        ) = mut_array_refs![output, 64, 64, 2, 1, 1, 5, 2, 1, 1, 1, 32, 32, 32, 32, 32, 32, 32, 32];
+        ) = mut_array_refs![
+            output, 64, 64, 2, 1, 1, 5, 2, 1, 1, 1, 1, 32, 32, 32, 32, 32, 32, 32, 32
+        ];
 
         pack_array_string64(&self.name, name_out);
         pack_array_string64(&self.description, description_out);
@@ -728,12 +733,13 @@ impl Packed for Fund {
         metadata_bump_out[0] = self.metadata_bump as u8;
         authority_bump_out[0] = self.authority_bump as u8;
         fund_token_bump_out[0] = self.fund_token_bump as u8;
+        multisig_bump_out[0] = self.multisig_bump as u8;
         fund_program_id_out.copy_from_slice(self.fund_program_id.as_ref());
         fund_authority_out.copy_from_slice(self.fund_authority.as_ref());
         fund_manager_out.copy_from_slice(self.fund_manager.as_ref());
         fund_token_ref_out.copy_from_slice(self.fund_token_ref.as_ref());
         info_account_out.copy_from_slice(self.info_account.as_ref());
-        admin_account_out.copy_from_slice(self.admin_account.as_ref());
+        multisig_account_out.copy_from_slice(self.multisig_account.as_ref());
         vaults_assets_info_out.copy_from_slice(self.vaults_assets_info.as_ref());
         custodies_assets_info_out.copy_from_slice(self.custodies_assets_info.as_ref());
 
@@ -765,15 +771,16 @@ impl Packed for Fund {
             metadata_bump,
             authority_bump,
             fund_token_bump,
+            multisig_bump,
             fund_program_id,
             fund_authority,
             fund_manager,
             fund_token_ref,
             info_account,
-            admin_account,
+            multisig_account,
             vaults_assets_info,
             custodies_assets_info,
-        ) = array_refs![input, 64, 64, 2, 1, 1, 5, 2, 1, 1, 1, 32, 32, 32, 32, 32, 32, 32, 32];
+        ) = array_refs![input, 64, 64, 2, 1, 1, 5, 2, 1, 1, 1, 1, 32, 32, 32, 32, 32, 32, 32, 32];
 
         Ok(Self {
             name: unpack_array_string64(name)?,
@@ -787,12 +794,13 @@ impl Packed for Fund {
             metadata_bump: metadata_bump[0],
             authority_bump: authority_bump[0],
             fund_token_bump: fund_token_bump[0],
+            multisig_bump: multisig_bump[0],
             fund_program_id: Pubkey::new_from_array(*fund_program_id),
             fund_authority: Pubkey::new_from_array(*fund_authority),
             fund_manager: Pubkey::new_from_array(*fund_manager),
             fund_token_ref: Pubkey::new_from_array(*fund_token_ref),
             info_account: Pubkey::new_from_array(*info_account),
-            admin_account: Pubkey::new_from_array(*admin_account),
+            multisig_account: Pubkey::new_from_array(*multisig_account),
             vaults_assets_info: Pubkey::new_from_array(*vaults_assets_info),
             custodies_assets_info: Pubkey::new_from_array(*custodies_assets_info),
         })

@@ -2,7 +2,13 @@
 
 use {
     crate::{common, fund_info::FundInfo},
-    solana_farm_sdk::{fund::Fund, instruction::amm::AmmInstruction, program::account},
+    solana_farm_sdk::{
+        error::FarmError,
+        fund::Fund,
+        instruction::amm::AmmInstruction,
+        program,
+        program::{account, clock},
+    },
     solana_program::{
         account_info::AccountInfo,
         entrypoint::ProgramResult,
@@ -46,16 +52,29 @@ pub fn swap(
         serum_event_queue,
         serum_coin_vault_account,
         serum_pc_vault_account,
-        serum_vault_signer
+        serum_vault_signer,
+        sysvar_account
         ] = accounts
     {
         // validate params and accounts
         msg!("Validate state and accounts");
-        let fund_info = FundInfo::new(fund_info_account);
+        let mut fund_info = FundInfo::new(fund_info_account);
         if fund_info.get_liquidation_start_time()? > 0 {
-            msg!("Error: Fund is in liquidation state");
-            return Err(ProgramError::Custom(516));
+            let curtime = clock::get_time()?;
+            let last_trade_time = fund_info.get_last_trade_time()?;
+            if last_trade_time > 0 && curtime - last_trade_time < 300 {
+                msg!(
+                    "Error: Too early for another swap, please retry in {} seconds",
+                    300 - curtime - last_trade_time
+                );
+                return Err(FarmError::TooEarly.into());
+            }
         }
+        if !program::is_last_instruction(sysvar_account)? {
+            msg!("Error: Swap must be last instruction in the transaction");
+            return Err(ProgramError::InvalidArgument);
+        }
+
         if fund_authority.key != &fund.fund_authority {
             msg!("Error: Invalid Fund authority account");
             return Err(ProgramError::Custom(517));
@@ -117,7 +136,9 @@ pub fn swap(
             account::get_token_balance(fund_token_b_account)?
         );
 
-        Ok(())
+        // update fund stats
+        msg!("Update Fund stats");
+        fund_info.update_last_trade_time()
     } else {
         Err(ProgramError::NotEnoughAccountKeys)
     }

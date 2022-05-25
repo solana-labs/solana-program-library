@@ -13,7 +13,7 @@ use {
     arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs},
     num_enum::TryFromPrimitive,
     serde::{Deserialize, Serialize},
-    solana_program::{program_error::ProgramError, pubkey::Pubkey},
+    solana_program::{entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey},
     std::mem::size_of,
 };
 
@@ -539,7 +539,7 @@ impl RefDB {
         data: &mut [u8],
         name: &ArrayString64,
         reference_type: ReferenceType,
-    ) -> Result<(), ProgramError> {
+    ) -> ProgramResult {
         if RefDB::is_initialized(data) {
             return Err(ProgramError::AccountAlreadyInitialized);
         }

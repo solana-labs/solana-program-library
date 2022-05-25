@@ -28,7 +28,8 @@ pub fn check_or_init_refdb<'a, 'b>(
     let (derived_address, bump_seed) = pda::find_refdb_pda(&type_name);
 
     if derived_address != *refdb_account.key {
-        return Err(ProgramError::IncorrectProgramId);
+        msg!("Error: Invalid RefDB account");
+        return Err(ProgramError::InvalidArgument);
     }
     let seeds = &[type_name.as_bytes(), &[bump_seed]];
 
@@ -89,7 +90,8 @@ pub fn check_or_init_refdb_target<'a, 'b>(
     let (derived_address, bump_seed) = pda::find_target_pda(storage_type, data_name);
 
     if derived_address != *target_account.key {
-        return Err(ProgramError::IncorrectProgramId);
+        msg!("Error: Invalid target RefDB account");
+        return Err(ProgramError::InvalidArgument);
     }
     let seeds = &[type_name.as_bytes(), data_name.as_bytes(), &[bump_seed]];
 

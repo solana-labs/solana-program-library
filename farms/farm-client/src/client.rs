@@ -173,6 +173,7 @@ use {
     arrayref::array_ref,
     pyth_client::{PriceStatus, PriceType},
     solana_account_decoder::{
+        parse_bpf_loader::{parse_bpf_upgradeable_loader, BpfUpgradeableLoaderAccountType},
         parse_token::{parse_token, TokenAccountType, UiAccountState, UiTokenAccount},
         UiAccountEncoding,
     },
@@ -192,12 +193,13 @@ use {
             DISCRIMINATOR_FUND_USER_INFO, DISCRIMINATOR_FUND_VAULT,
         },
         id::{
-            main_router, main_router_admin, zero, DAO_CUSTODY_NAME, DAO_MINT_NAME,
-            DAO_PROGRAM_NAME, DAO_TOKEN_NAME,
+            main_router, main_router_admin, main_router_multisig, zero, DAO_CUSTODY_NAME,
+            DAO_MINT_NAME, DAO_PROGRAM_NAME, DAO_TOKEN_NAME,
         },
         math,
         pool::{Pool, PoolRoute},
         program::{
+            multisig::Multisig,
             pda::{find_refdb_pda, find_target_pda},
             protocol::{
                 raydium::{RaydiumUserStakeInfo, RaydiumUserStakeInfoV4},
@@ -215,6 +217,7 @@ use {
     solana_sdk::{
         account::Account,
         borsh::try_from_slice_unchecked,
+        bpf_loader_upgradeable,
         clock::UnixTimestamp,
         commitment_config::{CommitmentConfig, CommitmentLevel},
         instruction::Instruction,
@@ -1019,6 +1022,144 @@ impl FarmClient {
         Ok(*prog_id == main_router::id() || self.get_program_name(prog_id).is_ok())
     }
 
+    /// Returns program upgrade authority
+    pub fn get_program_upgrade_authority(
+        &self,
+        prog_id: &Pubkey,
+    ) -> Result<Pubkey, FarmClientError> {
+        let program_account_data = self.rpc_client.get_account_data(&prog_id)?;
+        let program_account = parse_bpf_upgradeable_loader(&program_account_data)?;
+
+        match program_account {
+            BpfUpgradeableLoaderAccountType::Program(ui_program) => {
+                let program_data_account_key =
+                    FarmClient::pubkey_from_str(&ui_program.program_data)?;
+                let program_data_account_data = self
+                    .rpc_client
+                    .get_account_data(&program_data_account_key)?;
+                let program_data_account =
+                    parse_bpf_upgradeable_loader(&program_data_account_data)?;
+
+                match program_data_account {
+                    BpfUpgradeableLoaderAccountType::ProgramData(ui_program_data) => {
+                        if let Some(authority) = ui_program_data.authority {
+                            return Ok(FarmClient::pubkey_from_str(&authority)?);
+                        } else {
+                            return Ok(zero::id());
+                        }
+                    }
+                    _ => {
+                        return Err(FarmClientError::ValueError(format!(
+                            "Invalid program data account {}",
+                            program_data_account_key
+                        )))
+                    }
+                }
+            }
+            _ => {
+                return Err(FarmClientError::ValueError(format!(
+                    "Invalid program account {}",
+                    prog_id
+                )))
+            }
+        };
+    }
+
+    /// Returns multisig account address for the program
+    pub fn get_program_multisig_account(
+        &self,
+        prog_id: &Pubkey,
+    ) -> Result<Pubkey, FarmClientError> {
+        Ok(Pubkey::find_program_address(&[b"multisig", prog_id.as_ref()], &main_router::id()).0)
+    }
+
+    /// Returns data buffer account address for the program
+    pub fn get_program_buffer_account(&self, prog_id: &Pubkey) -> Result<Pubkey, FarmClientError> {
+        Ok(Pubkey::find_program_address(&[prog_id.as_ref()], &bpf_loader_upgradeable::id()).0)
+    }
+
+    /// Returns program upgrade signers
+    pub fn get_program_admins(&self, prog_id: &Pubkey) -> Result<Multisig, FarmClientError> {
+        let upgrade_authority = self.get_program_upgrade_authority(prog_id)?;
+        let multisig = self.get_program_multisig_account(prog_id)?;
+
+        if upgrade_authority == multisig {
+            if let Ok(data) = self.rpc_client.get_account_data(&multisig) {
+                Multisig::unpack(&data).map_err(|e| e.into())
+            } else {
+                Err(FarmClientError::ValueError(format!(
+                    "Invalid multisig account {}",
+                    multisig
+                )))
+            }
+        } else {
+            Ok(Multisig {
+                num_signers: 1,
+                num_signed: 0,
+                min_signatures: 1,
+                instruction_accounts_len: 0,
+                instruction_data_len: 0,
+                instruction_hash: 0,
+                signers: [
+                    upgrade_authority,
+                    zero::id(),
+                    zero::id(),
+                    zero::id(),
+                    zero::id(),
+                    zero::id(),
+                ],
+                signed: [false, false, false, false, false, false],
+            })
+        }
+    }
+
+    /// Sets new program upgrade signers
+    pub fn set_program_admins(
+        &self,
+        admin_signer: &dyn Signer,
+        prog_id: &Pubkey,
+        admin_signers: &[Pubkey],
+        min_signatures: u8,
+    ) -> Result<Signature, FarmClientError> {
+        let inst = self.new_instruction_set_program_admins(
+            &admin_signer.pubkey(),
+            prog_id,
+            admin_signers,
+            min_signatures,
+        )?;
+        self.sign_and_send_instructions(&[admin_signer], &[inst])
+    }
+
+    /// Sets single upgrade authority for the program removing multisig if present
+    pub fn set_program_single_authority(
+        &self,
+        admin_signer: &dyn Signer,
+        prog_id: &Pubkey,
+        upgrade_authority: &Pubkey,
+    ) -> Result<Signature, FarmClientError> {
+        let inst = self.new_instruction_set_program_single_authority(
+            &admin_signer.pubkey(),
+            prog_id,
+            upgrade_authority,
+        )?;
+        self.sign_and_send_instructions(&[admin_signer], &[inst])
+    }
+
+    /// Upgrades the program from the data buffer
+    pub fn upgrade_program(
+        &self,
+        admin_signer: &dyn Signer,
+        prog_id: &Pubkey,
+        source_buffer_address: &Pubkey,
+    ) -> Result<Signature, FarmClientError> {
+        let inst = self.new_instruction_upgrade_program(
+            &admin_signer.pubkey(),
+            prog_id,
+            source_buffer_address,
+        )?;
+        self.sign_and_send_instructions(&[admin_signer], &[inst])
+    }
+
     /// Reads the Keypair from stdin
     pub fn read_keypair_from_stdin() -> Result<Keypair, FarmClientError> {
         let mut stdin = std::io::stdin();
@@ -1355,22 +1496,12 @@ impl FarmClient {
         )?;
         let mut res = Vec::<String>::new();
         for acc in accounts.iter() {
-            let token_address = Pubkey::from_str(&acc.pubkey).map_err(|_| {
-                FarmClientError::ValueError(format!(
-                    "Failed to convert the String to a Pubkey {}",
-                    acc.pubkey
-                ))
-            })?;
+            let token_address = FarmClient::pubkey_from_str(&acc.pubkey)?;
 
             let data = self.rpc_client.get_account_data(&token_address)?;
             let token_info = parse_token(data.as_slice(), Some(0))?;
             if let TokenAccountType::Account(ui_account) = token_info {
-                let token_mint = Pubkey::from_str(&ui_account.mint).map_err(|_| {
-                    FarmClientError::ValueError(format!(
-                        "Failed to convert the String to a Pubkey {}",
-                        ui_account.mint
-                    ))
-                })?;
+                let token_mint = FarmClient::pubkey_from_str(&ui_account.mint)?;
                 if let Ok(token) = self.get_token_with_mint(&token_mint) {
                     res.push(token.name.as_str().to_string());
                 } else {
@@ -1420,7 +1551,11 @@ impl FarmClient {
         } else {
             token_name
         };
-        let token_address = self.get_associated_token_address(wallet_address, token_name)?;
+        let token_address = if token_name.len() > 4 && token_name.starts_with("B58.") {
+            FarmClient::pubkey_from_str(&token_name[4..])?
+        } else {
+            self.get_associated_token_address(wallet_address, token_name)?
+        };
         self.get_token_account_balance_with_address(&token_address)
     }
 
@@ -1497,6 +1632,70 @@ impl FarmClient {
             res.push(token.decimals);
         }
         Ok(res)
+    }
+
+    /// Returns multisig account address for the Vault
+    pub fn get_vault_multisig_account(&self, vault_name: &str) -> Result<Pubkey, FarmClientError> {
+        let vault = self.get_vault(vault_name)?;
+        Ok(Pubkey::find_program_address(
+            &[b"multisig", vault.name.as_bytes()],
+            &vault.vault_program_id,
+        )
+        .0)
+    }
+
+    /// Returns multisig address for the Vault or Main Router's multisig if former it not initialized
+    pub fn get_vault_active_multisig_account(
+        &self,
+        vault_name: &str,
+    ) -> Result<Pubkey, FarmClientError> {
+        let vault_multisig_account = self.get_vault_multisig_account(vault_name)?;
+        if let Ok(data) = self.rpc_client.get_account_data(&vault_multisig_account) {
+            let _ = Multisig::unpack(&data)?;
+            Ok(vault_multisig_account)
+        } else {
+            Ok(main_router_multisig::id())
+        }
+    }
+
+    /// Returns current admin signers for the Vault
+    pub fn get_vault_admins(&self, vault_name: &str) -> Result<Multisig, FarmClientError> {
+        if let Ok(data) = self
+            .rpc_client
+            .get_account_data(&self.get_vault_active_multisig_account(vault_name)?)
+        {
+            Multisig::unpack(&data).map_err(|e| e.into())
+        } else {
+            Ok(Multisig::default())
+        }
+    }
+
+    /// Initializes Vault multisig with a new set of signers
+    pub fn set_vault_admins(
+        &self,
+        admin_signer: &dyn Signer,
+        vault_name: &str,
+        admin_signers: &[Pubkey],
+        min_signatures: u8,
+    ) -> Result<Signature, FarmClientError> {
+        let inst = self.new_instruction_set_vault_admins(
+            &admin_signer.pubkey(),
+            vault_name,
+            admin_signers,
+            min_signatures,
+        )?;
+        self.sign_and_send_instructions(&[admin_signer], &[inst])
+    }
+
+    /// Removes Vault specific multisig, Main Router's will be used instead
+    pub fn remove_vault_multisig(
+        &self,
+        admin_signer: &dyn Signer,
+        vault_name: &str,
+    ) -> Result<Signature, FarmClientError> {
+        let inst =
+            self.new_instruction_remove_vault_multisig(&admin_signer.pubkey(), vault_name)?;
+        self.sign_and_send_instructions(&[admin_signer], &[inst])
     }
 
     /// Returns user stats for specific Vault
@@ -1923,19 +2122,30 @@ impl FarmClient {
         init_account: bool,
     ) -> Result<Signature, FarmClientError> {
         if init_account && !refdb::REFDB_ONCHAIN_INIT {
-            if admin_signer.pubkey() != main_router_admin::id() {
-                return Err(FarmClientError::ValueError(
-                    "Admin keypair must match main_router_admin::id()".to_string(),
-                ));
+            let refdb_address = find_refdb_pda(refdb_name).0;
+            if let Ok(refdb_account) = self.rpc_client.get_account(&refdb_address) {
+                if refdb_account.owner != main_router::id() {
+                    return Err(FarmClientError::ValueError(format!(
+                        "RefDB account owner mismatch {}",
+                        refdb_address
+                    )));
+                }
+            } else {
+                if admin_signer.pubkey() != main_router_admin::id() {
+                    return Err(FarmClientError::ValueError(
+                        "RefDB init must be initially called with main_router_admin::id() if on-chain init is disabled"
+                            .to_string(),
+                    ));
+                }
+                self.create_system_account_with_seed(
+                    admin_signer,
+                    &admin_signer.pubkey(),
+                    refdb_name,
+                    0,
+                    refdb::StorageType::get_storage_size_for_records(reference_type, max_records),
+                    &main_router::id(),
+                )?;
             }
-            self.create_system_account_with_seed(
-                admin_signer,
-                &admin_signer.pubkey(),
-                refdb_name,
-                0,
-                refdb::StorageType::get_storage_size_for_records(reference_type, max_records),
-                &main_router::id(),
-            )?;
         }
 
         let inst = self.new_instruction_refdb_init(
@@ -1946,6 +2156,30 @@ impl FarmClient {
             init_account,
         )?;
         self.sign_and_send_instructions(&[admin_signer], &[inst])
+    }
+
+    /// Initializes Main Router multisig with a new set of signers
+    pub fn set_admins(
+        &self,
+        admin_signer: &dyn Signer,
+        admin_signers: &[Pubkey],
+        min_signatures: u8,
+    ) -> Result<Signature, FarmClientError> {
+        let inst =
+            self.new_instruction_set_admins(&admin_signer.pubkey(), admin_signers, min_signatures)?;
+        self.sign_and_send_instructions(&[admin_signer], &[inst])
+    }
+
+    /// Returns current admin signers for the Main Router
+    pub fn get_admins(&self) -> Result<Multisig, FarmClientError> {
+        if let Ok(data) = self
+            .rpc_client
+            .get_account_data(&main_router_multisig::id())
+        {
+            Multisig::unpack(&data).map_err(|e| e.into())
+        } else {
+            Ok(Multisig::default())
+        }
     }
 
     /// Removes the RefDB storage
@@ -1984,10 +2218,6 @@ impl FarmClient {
         program_id_type: ProgramIDType,
         refdb_index: Option<usize>,
     ) -> Result<Signature, FarmClientError> {
-        self.official_ids
-            .borrow_mut()
-            .data
-            .insert(name.to_string(), *program_id);
         let inst = self.new_instruction_add_program_id(
             &admin_signer.pubkey(),
             name,
@@ -1995,7 +2225,14 @@ impl FarmClient {
             program_id_type,
             refdb_index,
         )?;
-        self.sign_and_send_instructions(&[admin_signer], &[inst])
+        let res = self.sign_and_send_instructions(&[admin_signer], &[inst]);
+        if res.is_ok() {
+            self.official_ids
+                .borrow_mut()
+                .data
+                .insert(name.to_string(), *program_id);
+        }
+        res
     }
 
     /// Removes the Program ID metadata from chain
@@ -2005,8 +2242,11 @@ impl FarmClient {
         name: &str,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_remove_program_id(&admin_signer.pubkey(), name)?;
-        self.official_ids.borrow_mut().data.remove(name);
-        self.sign_and_send_instructions(&[admin_signer], &[inst])
+        let res = self.sign_and_send_instructions(&[admin_signer], &[inst]);
+        if res.is_ok() {
+            self.official_ids.borrow_mut().data.remove(name);
+        }
+        res
     }
 
     /// Records the Fund metadata
@@ -2015,16 +2255,19 @@ impl FarmClient {
         admin_signer: &dyn Signer,
         fund: Fund,
     ) -> Result<Signature, FarmClientError> {
-        self.funds
-            .borrow_mut()
-            .data
-            .insert(fund.name.to_string(), fund);
-        self.fund_refs.borrow_mut().data.insert(
-            fund.name.to_string(),
-            find_target_pda(refdb::StorageType::Fund, &fund.name).0,
-        );
         let inst = self.new_instruction_add_fund(&admin_signer.pubkey(), fund)?;
-        self.sign_and_send_instructions(&[admin_signer], &[inst])
+        let res = self.sign_and_send_instructions(&[admin_signer], &[inst]);
+        if res.is_ok() {
+            self.funds
+                .borrow_mut()
+                .data
+                .insert(fund.name.to_string(), fund);
+            self.fund_refs.borrow_mut().data.insert(
+                fund.name.to_string(),
+                find_target_pda(refdb::StorageType::Fund, &fund.name).0,
+            );
+        }
+        res
     }
 
     /// Removes the Fund's on-chain metadata
@@ -2034,9 +2277,12 @@ impl FarmClient {
         fund_name: &str,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_remove_fund(&admin_signer.pubkey(), fund_name)?;
-        self.funds.borrow_mut().data.remove(fund_name);
-        self.fund_refs.borrow_mut().data.remove(fund_name);
-        self.sign_and_send_instructions(&[admin_signer], &[inst])
+        let res = self.sign_and_send_instructions(&[admin_signer], &[inst]);
+        if res.is_ok() {
+            self.funds.borrow_mut().data.remove(fund_name);
+            self.fund_refs.borrow_mut().data.remove(fund_name);
+        }
+        res
     }
 
     /// Records the Vault metadata on-chain
@@ -2045,20 +2291,23 @@ impl FarmClient {
         admin_signer: &dyn Signer,
         vault: Vault,
     ) -> Result<Signature, FarmClientError> {
-        self.vaults
-            .borrow_mut()
-            .data
-            .insert(vault.name.to_string(), vault);
-        self.vault_refs.borrow_mut().data.insert(
-            vault.name.to_string(),
-            find_target_pda(refdb::StorageType::Vault, &vault.name).0,
-        );
-        FarmClient::reinsert_latest_versions(
-            &self.vault_refs.borrow().data,
-            &mut self.latest_vaults.borrow_mut(),
-        );
         let inst = self.new_instruction_add_vault(&admin_signer.pubkey(), vault)?;
-        self.sign_and_send_instructions(&[admin_signer], &[inst])
+        let res = self.sign_and_send_instructions(&[admin_signer], &[inst]);
+        if res.is_ok() {
+            self.vaults
+                .borrow_mut()
+                .data
+                .insert(vault.name.to_string(), vault);
+            self.vault_refs.borrow_mut().data.insert(
+                vault.name.to_string(),
+                find_target_pda(refdb::StorageType::Vault, &vault.name).0,
+            );
+            FarmClient::reinsert_latest_versions(
+                &self.vault_refs.borrow().data,
+                &mut self.latest_vaults.borrow_mut(),
+            );
+        }
+        res
     }
 
     /// Removes the Vault's on-chain metadata
@@ -2068,13 +2317,16 @@ impl FarmClient {
         vault_name: &str,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_remove_vault(&admin_signer.pubkey(), vault_name)?;
-        self.vaults.borrow_mut().data.remove(vault_name);
-        self.vault_refs.borrow_mut().data.remove(vault_name);
-        FarmClient::reinsert_latest_versions(
-            &self.vault_refs.borrow().data,
-            &mut self.latest_vaults.borrow_mut(),
-        );
-        self.sign_and_send_instructions(&[admin_signer], &[inst])
+        let res = self.sign_and_send_instructions(&[admin_signer], &[inst]);
+        if res.is_ok() {
+            self.vaults.borrow_mut().data.remove(vault_name);
+            self.vault_refs.borrow_mut().data.remove(vault_name);
+            FarmClient::reinsert_latest_versions(
+                &self.vault_refs.borrow().data,
+                &mut self.latest_vaults.borrow_mut(),
+            );
+        }
+        res
     }
 
     /// Records the Pool metadata on-chain
@@ -2083,20 +2335,23 @@ impl FarmClient {
         admin_signer: &dyn Signer,
         pool: Pool,
     ) -> Result<Signature, FarmClientError> {
-        self.pools
-            .borrow_mut()
-            .data
-            .insert(pool.name.to_string(), pool);
-        self.pool_refs.borrow_mut().data.insert(
-            pool.name.to_string(),
-            find_target_pda(refdb::StorageType::Pool, &pool.name).0,
-        );
-        FarmClient::reinsert_latest_versions(
-            &self.pool_refs.borrow().data,
-            &mut self.latest_pools.borrow_mut(),
-        );
         let inst = self.new_instruction_add_pool(&admin_signer.pubkey(), pool)?;
-        self.sign_and_send_instructions(&[admin_signer], &[inst])
+        let res = self.sign_and_send_instructions(&[admin_signer], &[inst]);
+        if res.is_ok() {
+            self.pools
+                .borrow_mut()
+                .data
+                .insert(pool.name.to_string(), pool);
+            self.pool_refs.borrow_mut().data.insert(
+                pool.name.to_string(),
+                find_target_pda(refdb::StorageType::Pool, &pool.name).0,
+            );
+            FarmClient::reinsert_latest_versions(
+                &self.pool_refs.borrow().data,
+                &mut self.latest_pools.borrow_mut(),
+            );
+        }
+        res
     }
 
     /// Removes the Pool's on-chain metadata
@@ -2106,13 +2361,16 @@ impl FarmClient {
         pool_name: &str,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_remove_pool(&admin_signer.pubkey(), pool_name)?;
-        self.pools.borrow_mut().data.remove(pool_name);
-        self.pool_refs.borrow_mut().data.remove(pool_name);
-        FarmClient::reinsert_latest_versions(
-            &self.pool_refs.borrow().data,
-            &mut self.latest_pools.borrow_mut(),
-        );
-        self.sign_and_send_instructions(&[admin_signer], &[inst])
+        let res = self.sign_and_send_instructions(&[admin_signer], &[inst]);
+        if res.is_ok() {
+            self.pools.borrow_mut().data.remove(pool_name);
+            self.pool_refs.borrow_mut().data.remove(pool_name);
+            FarmClient::reinsert_latest_versions(
+                &self.pool_refs.borrow().data,
+                &mut self.latest_pools.borrow_mut(),
+            );
+        }
+        res
     }
 
     /// Records the Farm metadata on-chain
@@ -2121,20 +2379,23 @@ impl FarmClient {
         admin_signer: &dyn Signer,
         farm: Farm,
     ) -> Result<Signature, FarmClientError> {
-        self.farms
-            .borrow_mut()
-            .data
-            .insert(farm.name.to_string(), farm);
-        self.farm_refs.borrow_mut().data.insert(
-            farm.name.to_string(),
-            find_target_pda(refdb::StorageType::Farm, &farm.name).0,
-        );
-        FarmClient::reinsert_latest_versions(
-            &self.farm_refs.borrow().data,
-            &mut self.latest_farms.borrow_mut(),
-        );
         let inst = self.new_instruction_add_farm(&admin_signer.pubkey(), farm)?;
-        self.sign_and_send_instructions(&[admin_signer], &[inst])
+        let res = self.sign_and_send_instructions(&[admin_signer], &[inst]);
+        if res.is_ok() {
+            self.farms
+                .borrow_mut()
+                .data
+                .insert(farm.name.to_string(), farm);
+            self.farm_refs.borrow_mut().data.insert(
+                farm.name.to_string(),
+                find_target_pda(refdb::StorageType::Farm, &farm.name).0,
+            );
+            FarmClient::reinsert_latest_versions(
+                &self.farm_refs.borrow().data,
+                &mut self.latest_farms.borrow_mut(),
+            );
+        }
+        res
     }
 
     /// Removes the Farm's on-chain metadata
@@ -2144,13 +2405,16 @@ impl FarmClient {
         farm_name: &str,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_remove_farm(&admin_signer.pubkey(), farm_name)?;
-        self.farms.borrow_mut().data.remove(farm_name);
-        self.farm_refs.borrow_mut().data.remove(farm_name);
-        FarmClient::reinsert_latest_versions(
-            &self.farm_refs.borrow().data,
-            &mut self.latest_farms.borrow_mut(),
-        );
-        self.sign_and_send_instructions(&[admin_signer], &[inst])
+        let res = self.sign_and_send_instructions(&[admin_signer], &[inst]);
+        if res.is_ok() {
+            self.farms.borrow_mut().data.remove(farm_name);
+            self.farm_refs.borrow_mut().data.remove(farm_name);
+            FarmClient::reinsert_latest_versions(
+                &self.farm_refs.borrow().data,
+                &mut self.latest_farms.borrow_mut(),
+            );
+        }
+        res
     }
 
     /// Records the Token metadata on-chain
@@ -2159,16 +2423,19 @@ impl FarmClient {
         admin_signer: &dyn Signer,
         token: Token,
     ) -> Result<Signature, FarmClientError> {
-        self.tokens
-            .borrow_mut()
-            .data
-            .insert(token.name.to_string(), token);
-        self.token_refs.borrow_mut().data.insert(
-            token.name.to_string(),
-            find_target_pda(refdb::StorageType::Token, &token.name).0,
-        );
         let inst = self.new_instruction_add_token(&admin_signer.pubkey(), token)?;
-        self.sign_and_send_instructions(&[admin_signer], &[inst])
+        let res = self.sign_and_send_instructions(&[admin_signer], &[inst]);
+        if res.is_ok() {
+            self.tokens
+                .borrow_mut()
+                .data
+                .insert(token.name.to_string(), token);
+            self.token_refs.borrow_mut().data.insert(
+                token.name.to_string(),
+                find_target_pda(refdb::StorageType::Token, &token.name).0,
+            );
+        }
+        res
     }
 
     /// Removes the Token's on-chain metadata
@@ -2178,9 +2445,12 @@ impl FarmClient {
         token_name: &str,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_remove_token(&admin_signer.pubkey(), token_name)?;
-        self.tokens.borrow_mut().data.remove(token_name);
-        self.token_refs.borrow_mut().data.remove(token_name);
-        self.sign_and_send_instructions(&[admin_signer], &[inst])
+        let res = self.sign_and_send_instructions(&[admin_signer], &[inst]);
+        if res.is_ok() {
+            self.tokens.borrow_mut().data.remove(token_name);
+            self.token_refs.borrow_mut().data.remove(token_name);
+        }
+        res
     }
 
     /// Initializes a Vault
@@ -2657,6 +2927,69 @@ impl FarmClient {
         Ok(proposal_state)
     }
 
+    /// Returns multisig account address for the Fund
+    pub fn get_fund_multisig_account(&self, fund_name: &str) -> Result<Pubkey, FarmClientError> {
+        let fund = self.get_fund(fund_name)?;
+        Ok(Pubkey::find_program_address(
+            &[b"multisig", fund.name.as_bytes()],
+            &fund.fund_program_id,
+        )
+        .0)
+    }
+
+    /// Returns multisig address for the Fund or Main Router's multisig if former it not initialized
+    pub fn get_fund_active_multisig_account(
+        &self,
+        fund_name: &str,
+    ) -> Result<Pubkey, FarmClientError> {
+        let fund_multisig_account = self.get_fund_multisig_account(fund_name)?;
+        if let Ok(data) = self.rpc_client.get_account_data(&fund_multisig_account) {
+            let _ = Multisig::unpack(&data)?;
+            Ok(fund_multisig_account)
+        } else {
+            Ok(main_router_multisig::id())
+        }
+    }
+
+    /// Returns current admin signers for the Fund
+    pub fn get_fund_admins(&self, fund_name: &str) -> Result<Multisig, FarmClientError> {
+        if let Ok(data) = self
+            .rpc_client
+            .get_account_data(&self.get_fund_active_multisig_account(fund_name)?)
+        {
+            Multisig::unpack(&data).map_err(|e| e.into())
+        } else {
+            Ok(Multisig::default())
+        }
+    }
+
+    /// Initializes Fund multisig with a new set of signers
+    pub fn set_fund_admins(
+        &self,
+        admin_signer: &dyn Signer,
+        fund_name: &str,
+        admin_signers: &[Pubkey],
+        min_signatures: u8,
+    ) -> Result<Signature, FarmClientError> {
+        let inst = self.new_instruction_set_fund_admins(
+            &admin_signer.pubkey(),
+            fund_name,
+            admin_signers,
+            min_signatures,
+        )?;
+        self.sign_and_send_instructions(&[admin_signer], &[inst])
+    }
+
+    /// Removes Fund specific multisig, Main Router's will be used instead
+    pub fn remove_fund_multisig(
+        &self,
+        admin_signer: &dyn Signer,
+        fund_name: &str,
+    ) -> Result<Signature, FarmClientError> {
+        let inst = self.new_instruction_remove_fund_multisig(&admin_signer.pubkey(), fund_name)?;
+        self.sign_and_send_instructions(&[admin_signer], &[inst])
+    }
+
     /// Returns the account address where Fund stats are stored for the user
     pub fn get_fund_user_info_account(
         &self,
@@ -2764,6 +3097,7 @@ impl FarmClient {
                     "CurrentAssetsUsd" => fund_info.current_assets_usd = f64::from_bits(data),
                     "AssetsUpdateTime" => fund_info.assets_update_time = data as UnixTimestamp,
                     "AdminActionTime" => fund_info.admin_action_time = data as UnixTimestamp,
+                    "LastTradeTime" => fund_info.last_trade_time = data as UnixTimestamp,
                     "LiquidationStartTime" => {
                         fund_info.liquidation_start_time = data as UnixTimestamp
                     }
@@ -4075,13 +4409,7 @@ impl FarmClient {
         }
         let token_data = self.get_token_account_data(base_wallet, token_name)?;
         let base_account = self.rpc_client.get_account(base_wallet)?;
-        Ok(base_account.owner
-            == Pubkey::from_str(token_data.owner.as_str()).map_err(|_| {
-                FarmClientError::ValueError(format!(
-                    "Failed to convert the String to a Pubkey {}",
-                    token_data.owner
-                ))
-            })?)
+        Ok(base_account.owner == FarmClient::pubkey_from_str(token_data.owner.as_str())?)
     }
 
     pub fn get_stake_account(
@@ -4115,6 +4443,15 @@ impl FarmClient {
     }
 
     ////////////// private helpers
+    fn pubkey_from_str(input: &str) -> Result<Pubkey, FarmClientError> {
+        Ok(Pubkey::from_str(input).map_err(|_| {
+            FarmClientError::ValueError(format!(
+                "Failed to convert the String to a Pubkey {}",
+                input
+            ))
+        })?)
+    }
+
     fn to_token_amount(&self, ui_amount: f64, token: &Token) -> Result<u64, FarmClientError> {
         self.ui_amount_to_tokens_with_decimals(ui_amount, token.decimals)
     }
@@ -5104,6 +5441,15 @@ impl FarmClient {
         Ok(())
     }
 
+    fn is_wallet_single_fund_admin(
+        &self,
+        wallet_address: &Pubkey,
+        fund_name: &str,
+    ) -> Result<bool, FarmClientError> {
+        let multisig = self.get_fund_admins(fund_name)?;
+        Ok(multisig.num_signers == 1 && &multisig.signers[0] == wallet_address)
+    }
+
     fn check_fund_custody(
         &self,
         wallet_address: &Pubkey,
@@ -5119,8 +5465,7 @@ impl FarmClient {
             if ui_amount > 0.0 {
                 return Err(FarmClientError::InsufficientBalance(token_name.to_string()));
             }
-            let fund = self.get_fund(fund_name)?;
-            if &fund.admin_account == wallet_address {
+            if self.is_wallet_single_fund_admin(wallet_address, fund_name)? {
                 instruction_vec.push(self.new_instruction_add_fund_custody(
                     wallet_address,
                     fund_name,
@@ -5331,7 +5676,9 @@ impl FarmClient {
             .rpc_client
             .get_account_data(&self.get_stake_account(&fund.fund_authority, farm_name)?);
         if data.is_err() || data.unwrap().is_empty() {
-            if &fund.fund_authority == wallet_address || &fund.admin_account == wallet_address {
+            if &fund.fund_manager == wallet_address
+                || self.is_wallet_single_fund_admin(wallet_address, fund_name)?
+            {
                 instruction_vec.push(self.new_instruction_fund_user_init_farm(
                     wallet_address,
                     fund_name,
@@ -5359,7 +5706,9 @@ impl FarmClient {
             self.get_vault_user_info_account(&fund.fund_authority, vault_name)?;
         let data = self.rpc_client.get_account_data(&user_info_account);
         if data.is_err() || !RefDB::is_initialized(data.unwrap().as_slice()) {
-            if &fund.fund_authority == wallet_address || &fund.admin_account == wallet_address {
+            if &fund.fund_manager == wallet_address
+                || self.is_wallet_single_fund_admin(wallet_address, fund_name)?
+            {
                 instruction_vec.push(self.new_instruction_fund_user_init_vault(
                     wallet_address,
                     fund_name,
@@ -5448,11 +5797,11 @@ mod farm_instructions;
 mod fund_instructions;
 mod fund_instructions_raydium;
 mod governance_instructions;
+mod main_router_instructions;
 mod pool_accounts_orca;
 mod pool_accounts_raydium;
 mod pool_accounts_saber;
 mod pool_instructions;
-mod refdb_instructions;
 mod system_instructions;
 mod vault_instructions;
 mod vault_stc_accounts_raydium;

@@ -4,7 +4,7 @@ use {
     crate::config::Config,
     log::info,
     solana_farm_client::client::FarmClient,
-    solana_farm_sdk::{string::to_pretty_json, token::TokenSelector, vault::Vault},
+    solana_farm_sdk::{string::to_pretty_json, token::TokenSelector},
     solana_sdk::pubkey::Pubkey,
 };
 
@@ -22,22 +22,45 @@ pub fn init(client: &FarmClient, config: &Config, vault_names: &str, step: u64) 
     info!("Done.")
 }
 
-pub fn set_admin(client: &FarmClient, config: &Config, vault_names: &str, admin: &Pubkey) {
+pub fn set_admins(
+    client: &FarmClient,
+    config: &Config,
+    vault_names: &str,
+    admin_signers: &[Pubkey],
+    min_signatures: u8,
+) {
     let vaults = get_vaults_list(client, vault_names);
     for vault in vaults {
-        info!("Setting admin for the Vault {}...", vault);
-        let vault_meta = Vault {
-            admin_account: *admin,
-            ..client.get_vault(&vault).unwrap()
-        };
+        info!("Initializing Vault {} multisig with new signers...", vault);
+
         info!(
             "Signature: {}",
             client
-                .add_vault(config.keypair.as_ref(), vault_meta)
+                .set_vault_admins(
+                    config.keypair.as_ref(),
+                    &vault,
+                    admin_signers,
+                    min_signatures
+                )
                 .unwrap()
         );
     }
     info!("Done.")
+}
+
+pub fn get_admins(client: &FarmClient, config: &Config, vault_names: &str) {
+    let vaults = get_vaults_list(client, vault_names);
+    for vault in vaults {
+        if config.no_pretty_print {
+            println!("{}: {}", vault, client.get_vault_admins(&vault).unwrap());
+        } else {
+            println!(
+                "{}: {}",
+                vault,
+                to_pretty_json(&client.get_vault_admins(&vault).unwrap()).unwrap()
+            );
+        }
+    }
 }
 
 pub fn shutdown(client: &FarmClient, config: &Config, vault_names: &str) {

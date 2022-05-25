@@ -4,6 +4,7 @@ use {
     crate::{strategies::common, vault_info::VaultInfo},
     solana_farm_sdk::{
         id::zero,
+        program,
         program::{account, pda, protocol::raydium},
         vault::{Vault, VaultStrategy},
     },
@@ -39,7 +40,8 @@ pub fn crank2(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
         serum_vault_signer,
         serum_bids,
         serum_asks,
-        serum_event_queue
+        serum_event_queue,
+        sysvar_account
         ] = accounts
     {
         // validate accounts
@@ -71,6 +73,11 @@ pub fn crank2(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
             }
         } else {
             msg!("Error: Vault strategy mismatch");
+            return Err(ProgramError::InvalidArgument);
+        }
+
+        if !program::is_last_instruction(sysvar_account)? {
+            msg!("Error: Crank2 must be last instruction in the transaction");
             return Err(ProgramError::InvalidArgument);
         }
 

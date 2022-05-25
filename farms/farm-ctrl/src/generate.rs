@@ -8,7 +8,7 @@ use {
     solana_farm_sdk::{
         farm::{FarmRoute, FarmType},
         fund::{Fund, FundType},
-        id::{main_router_admin, zero},
+        id::zero,
         pool::PoolRoute,
         program::pda::find_target_pda,
         refdb::StorageType,
@@ -47,6 +47,11 @@ pub fn generate_fund(
             fund_address,
         )
         .1,
+        multisig_bump: Pubkey::find_program_address(
+            &[b"multisig", fund_name.as_bytes()],
+            fund_address,
+        )
+        .1,
         fund_program_id: *fund_address,
         fund_authority: Pubkey::find_program_address(
             &[b"fund_authority", fund_name.as_bytes()],
@@ -60,7 +65,11 @@ pub fn generate_fund(
             fund_address,
         )
         .0,
-        admin_account: main_router_admin::id(),
+        multisig_account: Pubkey::find_program_address(
+            &[b"multisig", fund_name.as_bytes()],
+            fund_address,
+        )
+        .0,
         vaults_assets_info: Pubkey::find_program_address(
             &[b"vaults_assets_info", fund_name.as_bytes()],
             fund_address,
@@ -144,7 +153,11 @@ pub fn generate_rdm_stc_vault(
             vault_address,
         )
         .0,
-        admin_account: main_router_admin::id(),
+        multisig_account: Pubkey::find_program_address(
+            &[b"multisig", vault_name.as_bytes()],
+            vault_address,
+        )
+        .0,
         fees_account_a: Some(
             Pubkey::find_program_address(
                 &[b"fees_account_a", vault_name.as_bytes()],
@@ -302,7 +315,11 @@ pub fn generate_sbr_stc_vault(
             vault_address,
         )
         .0,
-        admin_account: main_router_admin::id(),
+        multisig_account: Pubkey::find_program_address(
+            &[b"multisig", vault_name.as_bytes()],
+            vault_address,
+        )
+        .0,
         fees_account_a: Some(
             Pubkey::find_program_address(
                 &[b"fees_account_a", vault_name.as_bytes()],

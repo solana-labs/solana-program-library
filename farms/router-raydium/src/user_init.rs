@@ -25,7 +25,7 @@ pub fn user_init(accounts: &[AccountInfo]) -> ProgramResult {
         _system_program
         ] = accounts
     {
-        if !account::is_empty(user_info_account)? {
+        if account::exists(user_info_account)? {
             return Err(ProgramError::AccountAlreadyInitialized);
         }
         if farm_metadata.owner != &main_router::id() {

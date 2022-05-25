@@ -25,20 +25,45 @@ pub fn init(client: &FarmClient, config: &Config, fund_names: &str, step: u64) {
     info!("Done.")
 }
 
-pub fn set_admin(client: &FarmClient, config: &Config, fund_names: &str, admin: &Pubkey) {
+pub fn set_admins(
+    client: &FarmClient,
+    config: &Config,
+    fund_names: &str,
+    admin_signers: &[Pubkey],
+    min_signatures: u8,
+) {
     let funds = fund_names.split(',').collect::<Vec<_>>();
     for fund in funds {
-        info!("Setting admin for the Fund {}...", fund);
-        let fund_meta = Fund {
-            admin_account: *admin,
-            ..client.get_fund(fund).unwrap()
-        };
+        info!("Initializing Fund {} multisig with new signers...", fund);
+
         info!(
             "Signature: {}",
-            client.add_fund(config.keypair.as_ref(), fund_meta).unwrap()
+            client
+                .set_fund_admins(
+                    config.keypair.as_ref(),
+                    &fund,
+                    admin_signers,
+                    min_signatures
+                )
+                .unwrap()
         );
     }
     info!("Done.")
+}
+
+pub fn get_admins(client: &FarmClient, config: &Config, fund_names: &str) {
+    let funds = fund_names.split(',').collect::<Vec<_>>();
+    for fund in funds {
+        if config.no_pretty_print {
+            println!("{}: {}", fund, client.get_fund_admins(&fund).unwrap());
+        } else {
+            println!(
+                "{}: {}",
+                fund,
+                to_pretty_json(&client.get_fund_admins(&fund).unwrap()).unwrap()
+            );
+        }
+    }
 }
 
 pub fn set_fund_manager(client: &FarmClient, config: &Config, fund_names: &str, manager: &Pubkey) {

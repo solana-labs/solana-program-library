@@ -31,6 +31,7 @@ use {
         string::{instruction_to_string, pubkey_map_to_string},
         token::{GitToken, Token},
         vault::{Vault, VaultInfo, VaultUserInfo},
+        program::multisig::Multisig
     },
     solana_sdk::{
         commitment_config::CommitmentConfig, instruction::Instruction, pubkey::Pubkey,
@@ -240,6 +241,40 @@ async fn get_protocols(
         .map_err(|e| NotFound(e.to_string()))?;
 
     Ok(Json(protocols))
+}
+
+/// Returns current admin signers for the Main Router
+#[get("/admins")]
+async fn get_admins(
+    farm_client: &State<FarmClientArc>,
+) -> Result<Json<Multisig>, NotFound<String>> {
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let admins = farm_client
+        .get_admins()
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(Json(admins))
+}
+
+/// Returns program upgrade signers
+#[get("/program_admins?<program_id>")]
+async fn get_program_admins(
+    program_id: Option<PubkeyParam>,
+    farm_client: &State<FarmClientArc>,
+) -> Result<Json<Multisig>, NotFound<String>> {
+    let program_id = check_unwrap_pubkey(program_id, "program_id")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let admins = farm_client
+        .get_program_admins(&program_id)
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(Json(admins))
 }
 
 /// Returns Token metadata from Github
@@ -1412,6 +1447,23 @@ async fn has_active_token_account(
     Ok(Json(has_active_account))
 }
 
+/// Returns current admin signers for the Fund
+#[get("/fund_admins?<name>")]
+async fn get_fund_admins(
+    name: &str,
+    farm_client: &State<FarmClientArc>,
+) -> Result<Json<Multisig>, NotFound<String>> {
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let admins = farm_client
+        .get_fund_admins(name)
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(Json(admins))
+}
+
 /// Returns user stats for specific Fund
 #[get("/fund_user_info?<wallet_address>&<fund_name>&<token_name>")]
 async fn get_fund_user_info(
@@ -1605,6 +1657,23 @@ async fn get_vault_stake_balance(
         .map_err(|e| NotFound(e.to_string()))?;
 
     Ok(balance.to_string())
+}
+
+/// Returns current admin signers for the Vault
+#[get("/vault_admins?<name>")]
+async fn get_vault_admins(
+    name: &str,
+    farm_client: &State<FarmClientArc>,
+) -> Result<Json<Multisig>, NotFound<String>> {
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let admins = farm_client
+        .get_vault_admins(name)
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(Json(admins))
 }
 
 /// Returns user stats for specific Vault
@@ -4124,6 +4193,8 @@ pub async fn stage(config: &Config) -> AdHoc {
             .mount(
                 "/api/v1",
                 routes![
+                    get_admins,
+                    get_program_admins,
                     get_git_token,
                     get_git_tokens,
                     get_fund,
@@ -4166,8 +4237,10 @@ pub async fn stage(config: &Config) -> AdHoc {
                     get_pool_ref,
                     get_farm_ref,
                     get_token_ref,
+                    get_vault_admins,
                     get_vault_user_info,
                     get_vault_info,
+                    get_fund_admins,
                     get_fund_user_info,
                     get_fund_info,
                     get_fund_assets,

@@ -2,6 +2,14 @@
 
 #![cfg(not(feature = "no-entrypoint"))]
 
+solana_security_txt::security_txt! {
+    name: "Solana Farms",
+    project_url: "https://github.com/solana-labs/solana-program-library/tree/master/farms",
+    contacts: "email:solana.farms@protonmail.com",
+    policy: "",
+    preferred_languages: "en"
+}
+
 use {
     crate::{
         fund_info::FundInfo,
@@ -11,8 +19,9 @@ use {
             cancel_withdrawal::cancel_withdrawal, deny_deposit::deny_deposit,
             deny_withdrawal::deny_withdrawal, disable_deposits::disable_deposits,
             disable_withdrawals::disable_withdrawals, init::init, lock_assets::lock_assets,
-            raydium, remove_custody::remove_custody, remove_vault::remove_vault,
-            request_deposit::request_deposit, request_withdrawal::request_withdrawal,
+            raydium, remove_custody::remove_custody, remove_multisig::remove_multisig,
+            remove_vault::remove_vault, request_deposit::request_deposit,
+            request_withdrawal::request_withdrawal, set_admin_signers::set_admin_signers,
             set_assets_tracking_config::set_assets_tracking_config,
             set_deposit_schedule::set_deposit_schedule,
             set_withdrawal_schedule::set_withdrawal_schedule, start_liquidation::start_liquidation,
@@ -23,11 +32,12 @@ use {
         },
     },
     solana_farm_sdk::{
+        error::FarmError,
         fund::Fund,
-        id::main_router,
+        id::{main_router, main_router_admin, main_router_multisig},
         instruction::{amm::AmmInstruction, fund::FundInstruction, vault::VaultInstruction},
         log::sol_log_params_short,
-        program::{account, pda},
+        program::{account, multisig, pda},
         refdb,
         string::ArrayString64,
     },
@@ -56,11 +66,47 @@ fn log_end(fund_name: &ArrayString64) {
     msg!("Fund {} end of instruction", fund_name.as_str());
 }
 
-fn check_admin_authority(user_account: &AccountInfo, fund: &Fund) -> ProgramResult {
-    if user_account.key != &fund.admin_account {
+fn check_admin_authority(
+    accounts: &[AccountInfo],
+    instruction_data: &[u8],
+    fund: &Fund,
+) -> Result<bool, ProgramError> {
+    let account_info_iter = &mut accounts.iter();
+    let admin_account = next_account_info(account_info_iter)?;
+    let _fund_metadata = next_account_info(account_info_iter)?;
+    let _fund_info_account = next_account_info(account_info_iter)?;
+    let multisig_account = next_account_info(account_info_iter)?;
+
+    if multisig_account.key != &fund.multisig_account
+        && multisig_account.key != &main_router_multisig::id()
+    {
+        msg!("Error: Invalid multisig account");
+        return Err(FarmError::IncorrectAccountAddress.into());
+    }
+
+    let signatures_left = multisig::sign_multisig(
+        multisig_account,
+        admin_account,
+        &main_router_admin::id(),
+        &accounts[1..],
+        instruction_data,
+    )?;
+    if signatures_left > 0 {
         msg!(
-            "Error: Instruction must be performed by the admin {}",
-            fund.admin_account
+            "Instruction has been signed but more signatures are required: {}",
+            signatures_left
+        );
+        return Ok(false);
+    }
+
+    Ok(true)
+}
+
+fn check_manager_authority(user_account: &AccountInfo, fund: &Fund) -> ProgramResult {
+    if user_account.key != &fund.fund_manager {
+        msg!(
+            "Error: Instruction must be performed by the fund manager {}",
+            fund.fund_manager
         );
         Err(ProgramError::IllegalOwner)
     } else if !user_account.is_signer {
@@ -70,11 +116,15 @@ fn check_admin_authority(user_account: &AccountInfo, fund: &Fund) -> ProgramResu
     }
 }
 
-fn check_manager_authority(user_account: &AccountInfo, fund: &Fund) -> ProgramResult {
-    if user_account.key != &fund.fund_manager && user_account.key != &fund.admin_account {
-        msg!("Error: Instruction must be performed by the fund manager or admin");
-        msg!("Fund manager: {}", fund.fund_manager);
-        msg!("Fund admin: {}", fund.admin_account);
+fn check_manager_authority_or_admin(
+    user_account: &AccountInfo,
+    multisig_account: &AccountInfo,
+    fund: &Fund,
+) -> ProgramResult {
+    if user_account.key != &fund.fund_manager
+        && !multisig::is_signer(multisig_account, &main_router_admin::id(), user_account.key)?
+    {
+        msg!("Error: Instruction must be performed by the fund manager or one of admin signers",);
         Err(ProgramError::IllegalOwner)
     } else if !user_account.is_signer {
         Err(ProgramError::MissingRequiredSignature)
@@ -89,9 +139,29 @@ fn check_manager_authority_or_liquidation(
     fund: &Fund,
 ) -> ProgramResult {
     if FundInfo::new(fund_info_account).get_liquidation_start_time()? > 0 {
-        return Ok(());
+        if !user_account.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        } else {
+            return Ok(());
+        }
     }
     check_manager_authority(user_account, fund)
+}
+
+fn check_manager_authority_or_admin_or_liquidation(
+    user_account: &AccountInfo,
+    fund_info_account: &AccountInfo,
+    multisig_account: &AccountInfo,
+    fund: &Fund,
+) -> ProgramResult {
+    if FundInfo::new(fund_info_account).get_liquidation_start_time()? > 0 {
+        if !user_account.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        } else {
+            return Ok(());
+        }
+    }
+    check_manager_authority_or_admin(user_account, multisig_account, fund)
 }
 
 entrypoint!(process_instruction);
@@ -138,106 +208,149 @@ pub fn process_instruction(
     match instruction {
         FundInstruction::UserInit => {
             log_start("UserInit", &fund.name);
-            user_init(&fund, accounts)?
+            user_init(&fund, accounts)?;
         }
         FundInstruction::RequestDeposit { amount } => {
             log_start("RequestDeposit", &fund.name);
-            request_deposit(&fund, accounts, amount)?
+            request_deposit(&fund, accounts, amount)?;
         }
         FundInstruction::CancelDeposit => {
             log_start("CancelDeposit", &fund.name);
-            cancel_deposit(&fund, accounts)?
+            cancel_deposit(&fund, accounts)?;
         }
         FundInstruction::RequestWithdrawal { amount } => {
             log_start("RequestWithdrawal", &fund.name);
-            request_withdrawal(&fund, accounts, amount)?
+            request_withdrawal(&fund, accounts, amount)?;
         }
         FundInstruction::CancelWithdrawal => {
             log_start("CancelWithdrawal", &fund.name);
-            cancel_withdrawal(&fund, accounts)?
+            cancel_withdrawal(&fund, accounts)?;
         }
         FundInstruction::Init { step } => {
             log_start("Init", &fund.name);
-            check_admin_authority(user_account, &fund)?;
-            init(&fund, accounts, step)?
+            if check_admin_authority(accounts, instruction_data, &fund)? {
+                init(&fund, accounts, step)?;
+            }
         }
         FundInstruction::SetDepositSchedule { schedule } => {
             log_start("SetDepositSchedule", &fund.name);
-            check_manager_authority(user_account, &fund)?;
+            check_manager_authority_or_admin(
+                user_account,
+                next_account_info(account_info_iter)?,
+                &fund,
+            )?;
             set_deposit_schedule(
                 &fund,
                 &mut FundInfo::new(fund_info_account),
                 accounts,
                 &schedule,
-            )?
+            )?;
         }
         FundInstruction::DisableDeposits => {
             log_start("DisableDeposits", &fund.name);
-            check_manager_authority(user_account, &fund)?;
-            disable_deposits(&fund, &mut FundInfo::new(fund_info_account), accounts)?
+            check_manager_authority_or_admin(
+                user_account,
+                next_account_info(account_info_iter)?,
+                &fund,
+            )?;
+            disable_deposits(&fund, &mut FundInfo::new(fund_info_account), accounts)?;
         }
         FundInstruction::ApproveDeposit { amount } => {
             log_start("ApproveDeposit", &fund.name);
-            check_manager_authority(user_account, &fund)?;
-            approve_deposit(&fund, accounts, amount)?
+            check_manager_authority_or_admin(
+                user_account,
+                next_account_info(account_info_iter)?,
+                &fund,
+            )?;
+            approve_deposit(&fund, accounts, amount)?;
         }
         FundInstruction::DenyDeposit { deny_reason } => {
             log_start("DenyDeposit", &fund.name);
-            check_manager_authority(user_account, &fund)?;
-            deny_deposit(&fund, accounts, &deny_reason)?
+            check_manager_authority_or_admin(
+                user_account,
+                next_account_info(account_info_iter)?,
+                &fund,
+            )?;
+            deny_deposit(&fund, accounts, &deny_reason)?;
         }
         FundInstruction::SetWithdrawalSchedule { schedule } => {
             log_start("SetWithdrawalSchedule", &fund.name);
-            check_manager_authority(user_account, &fund)?;
+            check_manager_authority_or_admin(
+                user_account,
+                next_account_info(account_info_iter)?,
+                &fund,
+            )?;
             set_withdrawal_schedule(
                 &fund,
                 &mut FundInfo::new(fund_info_account),
                 accounts,
                 &schedule,
-            )?
+            )?;
         }
         FundInstruction::DisableWithdrawals => {
             log_start("DisableWithdrawals", &fund.name);
-            check_manager_authority(user_account, &fund)?;
-            disable_withdrawals(&fund, &mut FundInfo::new(fund_info_account), accounts)?
+            check_manager_authority_or_admin(
+                user_account,
+                next_account_info(account_info_iter)?,
+                &fund,
+            )?;
+            disable_withdrawals(&fund, &mut FundInfo::new(fund_info_account), accounts)?;
         }
         FundInstruction::ApproveWithdrawal { amount } => {
             log_start("ApproveWithdrawal", &fund.name);
-            check_manager_authority(user_account, &fund)?;
-            approve_withdrawal(&fund, accounts, amount)?
+            check_manager_authority_or_admin(
+                user_account,
+                next_account_info(account_info_iter)?,
+                &fund,
+            )?;
+            approve_withdrawal(&fund, accounts, amount)?;
         }
         FundInstruction::DenyWithdrawal { deny_reason } => {
             log_start("DenyWithdrawal", &fund.name);
-            check_manager_authority(user_account, &fund)?;
-            deny_withdrawal(&fund, accounts, &deny_reason)?
+            check_manager_authority_or_admin(
+                user_account,
+                next_account_info(account_info_iter)?,
+                &fund,
+            )?;
+            deny_withdrawal(&fund, accounts, &deny_reason)?;
         }
         FundInstruction::LockAssets { amount } => {
             log_start("LockAssets", &fund.name);
-            check_manager_authority(user_account, &fund)?;
-            lock_assets(&fund, accounts, amount)?
+            check_manager_authority_or_admin(
+                user_account,
+                next_account_info(account_info_iter)?,
+                &fund,
+            )?;
+            lock_assets(&fund, accounts, amount)?;
         }
         FundInstruction::UnlockAssets { amount } => {
             log_start("UnlockAssets", &fund.name);
-            check_manager_authority_or_liquidation(user_account, fund_info_account, &fund)?;
-            unlock_assets(&fund, accounts, amount)?
+            check_manager_authority_or_admin_or_liquidation(
+                user_account,
+                fund_info_account,
+                next_account_info(account_info_iter)?,
+                &fund,
+            )?;
+            unlock_assets(&fund, accounts, amount)?;
         }
         FundInstruction::SetAssetsTrackingConfig { config } => {
             log_start("SetAssetsTrackingConfig", &fund.name);
-            check_admin_authority(user_account, &fund)?;
-            set_assets_tracking_config(
-                &fund,
-                &mut FundInfo::new(fund_info_account),
-                accounts,
-                &config,
-            )?
+            if check_admin_authority(accounts, instruction_data, &fund)? {
+                set_assets_tracking_config(
+                    &fund,
+                    &mut FundInfo::new(fund_info_account),
+                    accounts,
+                    &config,
+                )?;
+            }
         }
         FundInstruction::UpdateAssetsWithVault => {
             log_start("UpdateAssetsWithVault", &fund.name);
-            update_assets_with_vault(&fund, accounts)?
+            update_assets_with_vault(&fund, accounts)?;
         }
         FundInstruction::UpdateAssetsWithCustody => {
             log_start("UpdateAssetsWithCustody", &fund.name);
-            update_assets_with_custody(&fund, accounts)?
+            update_assets_with_custody(&fund, accounts)?;
         }
         FundInstruction::AddVault {
             target_hash,
@@ -245,16 +358,18 @@ pub fn process_instruction(
             vault_type,
         } => {
             log_start("AddVault", &fund.name);
-            check_admin_authority(user_account, &fund)?;
-            add_vault(&fund, accounts, target_hash, vault_id, vault_type)?
+            if check_admin_authority(accounts, instruction_data, &fund)? {
+                add_vault(&fund, accounts, target_hash, vault_id, vault_type)?;
+            }
         }
         FundInstruction::RemoveVault {
             target_hash,
             vault_type,
         } => {
             log_start("RemoveVault", &fund.name);
-            check_admin_authority(user_account, &fund)?;
-            remove_vault(&fund, accounts, target_hash, vault_type)?
+            if check_admin_authority(accounts, instruction_data, &fund)? {
+                remove_vault(&fund, accounts, target_hash, vault_type)?;
+            }
         }
         FundInstruction::AddCustody {
             target_hash,
@@ -262,35 +377,52 @@ pub fn process_instruction(
             custody_type,
         } => {
             log_start("AddCustody", &fund.name);
-            check_admin_authority(user_account, &fund)?;
-            add_custody(&fund, accounts, target_hash, custody_id, custody_type)?
+            if check_admin_authority(accounts, instruction_data, &fund)? {
+                add_custody(&fund, accounts, target_hash, custody_id, custody_type)?;
+            }
         }
         FundInstruction::RemoveCustody {
             target_hash,
             custody_type,
         } => {
             log_start("RemoveCustody", &fund.name);
-            check_admin_authority(user_account, &fund)?;
-            remove_custody(&fund, accounts, target_hash, custody_type)?
+            if check_admin_authority(accounts, instruction_data, &fund)? {
+                remove_custody(&fund, accounts, target_hash, custody_type)?;
+            }
         }
         FundInstruction::StartLiquidation => {
             log_start("StartLiquidation", &fund.name);
-            start_liquidation(&fund, accounts)?
+            start_liquidation(&fund, accounts)?;
         }
         FundInstruction::StopLiquidation => {
             log_start("StopLiquidation", &fund.name);
-            check_admin_authority(user_account, &fund)?;
-            stop_liquidation(&fund, accounts)?
+            if check_admin_authority(accounts, instruction_data, &fund)? {
+                stop_liquidation(&fund, accounts)?;
+            }
         }
         FundInstruction::WithdrawFees { amount } => {
             log_start("WithdrawFees", &fund.name);
-            withdraw_fees(&fund, accounts, amount)?
+            if check_admin_authority(accounts, instruction_data, &fund)? {
+                withdraw_fees(&fund, accounts, amount)?;
+            }
+        }
+        FundInstruction::SetAdminSigners { min_signatures } => {
+            log_start("SetAdminSigners", &fund.name);
+            if check_admin_authority(accounts, instruction_data, &fund)? {
+                set_admin_signers(&fund, accounts, min_signatures)?;
+            }
+        }
+        FundInstruction::RemoveMultisig => {
+            log_start("RemoveMultisig", &fund.name);
+            if check_admin_authority(accounts, instruction_data, &fund)? {
+                remove_multisig(&fund, accounts)?;
+            }
         }
         FundInstruction::AmmInstructionRaydium { instruction } => match instruction {
             AmmInstruction::UserInit => {
                 log_start("UserInitRaydium", &fund.name);
                 check_manager_authority(user_account, &fund)?;
-                raydium::user_init::user_init(&fund, accounts)?
+                raydium::user_init::user_init(&fund, accounts)?;
             }
             AmmInstruction::AddLiquidity {
                 max_token_a_amount,
@@ -303,12 +435,12 @@ pub fn process_instruction(
                     accounts,
                     max_token_a_amount,
                     max_token_b_amount,
-                )?
+                )?;
             }
             AmmInstruction::RemoveLiquidity { amount } => {
                 log_start("RemoveLiquidityRaydium", &fund.name);
                 check_manager_authority_or_liquidation(user_account, fund_info_account, &fund)?;
-                raydium::remove_liquidity::remove_liquidity(&fund, accounts, amount)?
+                raydium::remove_liquidity::remove_liquidity(&fund, accounts, amount)?;
             }
             AmmInstruction::Swap {
                 token_a_amount_in,
@@ -316,29 +448,29 @@ pub fn process_instruction(
                 min_token_amount_out,
             } => {
                 log_start("SwapRaydium", &fund.name);
-                check_manager_authority(user_account, &fund)?;
+                check_manager_authority_or_liquidation(user_account, fund_info_account, &fund)?;
                 raydium::swap::swap(
                     &fund,
                     accounts,
                     token_a_amount_in,
                     token_b_amount_in,
                     min_token_amount_out,
-                )?
+                )?;
             }
             AmmInstruction::Stake { amount } => {
                 log_start("StakeRaydium", &fund.name);
                 check_manager_authority(user_account, &fund)?;
-                raydium::stake::stake(&fund, accounts, amount, false)?
+                raydium::stake::stake(&fund, accounts, amount, false)?;
             }
             AmmInstruction::Unstake { amount } => {
                 log_start("UnstakeRaydium", &fund.name);
                 check_manager_authority_or_liquidation(user_account, fund_info_account, &fund)?;
-                raydium::unstake::unstake(&fund, accounts, amount)?
+                raydium::unstake::unstake(&fund, accounts, amount)?;
             }
             AmmInstruction::Harvest => {
                 log_start("HarvestRaydium", &fund.name);
                 check_manager_authority_or_liquidation(user_account, fund_info_account, &fund)?;
-                raydium::stake::stake(&fund, accounts, 0, true)?
+                raydium::stake::stake(&fund, accounts, 0, true)?;
             }
             _ => {
                 msg!("Error: Unimplemented");
@@ -357,27 +489,27 @@ pub fn process_instruction(
                     accounts,
                     max_token_a_amount,
                     max_token_b_amount,
-                )?
+                )?;
             }
             VaultInstruction::LockLiquidity { amount } => {
                 log_start("VaultLockLiquidity", &fund.name);
                 check_manager_authority(user_account, &fund)?;
-                raydium::vault_lock_liquidity::lock_liquidity(&fund, accounts, amount)?
+                raydium::vault_lock_liquidity::lock_liquidity(&fund, accounts, amount)?;
             }
             VaultInstruction::UnlockLiquidity { amount } => {
                 log_start("VaultUnlockLiquidity", &fund.name);
                 check_manager_authority_or_liquidation(user_account, fund_info_account, &fund)?;
-                raydium::vault_unlock_liquidity::unlock_liquidity(&fund, accounts, amount)?
+                raydium::vault_unlock_liquidity::unlock_liquidity(&fund, accounts, amount)?;
             }
             VaultInstruction::RemoveLiquidity { amount } => {
                 log_start("VaultRemoveLiquidity", &fund.name);
                 check_manager_authority_or_liquidation(user_account, fund_info_account, &fund)?;
-                raydium::vault_remove_liquidity::remove_liquidity(&fund, accounts, amount)?
+                raydium::vault_remove_liquidity::remove_liquidity(&fund, accounts, amount)?;
             }
             VaultInstruction::UserInit {} => {
                 log_start("VaultUserInit", &fund.name);
                 check_manager_authority(user_account, &fund)?;
-                raydium::vault_user_init::user_init(&fund, accounts)?
+                raydium::vault_user_init::user_init(&fund, accounts)?;
             }
             _ => {
                 msg!("Error: Unimplemented");

@@ -26,6 +26,7 @@ pub fn deny_deposit(
         _admin_account,
         _fund_metadata,
         _fund_info_account,
+        _multisig_account,
         user_account,
         user_info_account,
         custody_token_metadata

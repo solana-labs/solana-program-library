@@ -18,6 +18,7 @@ impl WithdrawFees for VaultInstruction {
             _admin_account,
             _vault_metadata,
             _vault_info_account,
+            _multisig_account,
             vault_authority,
             _spl_token_program,
             fees_account,

@@ -3,7 +3,7 @@
 use {
     clap::{crate_description, crate_name, App, AppSettings, Arg, ArgMatches, SubCommand},
     solana_clap_utils::{input_validators::is_url, keypair::signer_from_path},
-    solana_farm_sdk::refdb,
+    solana_farm_sdk::{program::multisig::Multisig, refdb},
     solana_sdk::{commitment_config::CommitmentConfig, pubkey::Pubkey, signature::Signer},
     std::str::FromStr,
 };
@@ -89,6 +89,15 @@ pub fn get_pubkey_val<'a>(matches: &ArgMatches<'a>, argname: &str) -> Pubkey {
     Pubkey::from_str(matches.value_of(argname).unwrap()).unwrap()
 }
 
+pub fn get_pubkey_multi_val<'a>(matches: &ArgMatches<'a>, argname: &str) -> Vec<Pubkey> {
+    let args: Vec<_> = matches.values_of(argname).unwrap().collect();
+    let mut keys = vec![];
+    for arg in &args {
+        keys.push(Pubkey::from_str(arg).unwrap());
+    }
+    keys
+}
+
 pub fn get_integer_val<'a>(matches: &ArgMatches<'a>, argname: &str) -> u64 {
     matches.value_of(argname).unwrap().parse::<u64>().unwrap()
 }
@@ -99,6 +108,15 @@ pub fn get_floating_val<'a>(matches: &ArgMatches<'a>, argname: &str) -> f64 {
 
 fn get_arg(name: &str) -> Arg {
     Arg::with_name(name).required(true).takes_value(true)
+}
+
+fn get_multi_arg(name: &str, min_values: u64, max_values: u64) -> Arg {
+    Arg::with_name(name)
+        .required(true)
+        .takes_value(true)
+        .multiple(true)
+        .min_values(min_values)
+        .max_values(max_values)
 }
 
 fn get_integer_arg(name: &str) -> Arg {
@@ -260,6 +278,20 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .about("Initialize Reference DB of all storage types on-chain"),
         )
         .subcommand(
+            SubCommand::with_name("get-admins")
+                .about("Print current admin signers for the Main Router"),
+        )
+        .subcommand(
+            SubCommand::with_name("set-admins")
+                .about("Set new admins for the Main Router")
+                .arg(get_integer_arg("min_signatures"))
+                .arg(get_multi_arg(
+                    "admin_signers",
+                    1,
+                    Multisig::MAX_SIGNERS as u64,
+                )),
+        )
+        .subcommand(
             SubCommand::with_name("drop")
                 .about("Drop on-chain Reference DB")
                 .arg(target.clone()),
@@ -326,16 +358,54 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .arg(target.clone()),
         )
         .subcommand(
+            SubCommand::with_name("program-get-admins")
+                .about("Print current admin signers for the program")
+                .arg(get_arg("program_id")),
+        )
+        .subcommand(
+            SubCommand::with_name("program-set-admins")
+                .about("Set new admin signers for the program")
+                .arg(get_arg("program_id"))
+                .arg(get_integer_arg("min_signatures"))
+                .arg(get_multi_arg(
+                    "admin_signers",
+                    1,
+                    Multisig::MAX_SIGNERS as u64,
+                )),
+        )
+        .subcommand(
+            SubCommand::with_name("program-set-single-authority")
+                .about("Set single upgrade authority for the program")
+                .arg(get_arg("program_id"))
+                .arg(get_arg("upgrade_authority")),
+        )
+        .subcommand(
+            SubCommand::with_name("program-upgrade")
+                .about("Upgrade the program from the data buffer")
+                .arg(get_arg("program_id"))
+                .arg(get_arg("buffer_address")),
+        )
+        .subcommand(
             SubCommand::with_name("vault-init")
                 .about("Initialize the Vault")
                 .arg(vaultname.clone())
                 .arg(get_integer_arg("step")),
         )
         .subcommand(
-            SubCommand::with_name("vault-set-admin")
-                .about("Set a new admin for the Vault")
+            SubCommand::with_name("vault-set-admins")
+                .about("Set new admins for the Vault")
                 .arg(vaultname.clone())
-                .arg(get_arg("admin")),
+                .arg(get_integer_arg("min_signatures"))
+                .arg(get_multi_arg(
+                    "admin_signers",
+                    1,
+                    Multisig::MAX_SIGNERS as u64,
+                )),
+        )
+        .subcommand(
+            SubCommand::with_name("vault-get-admins")
+                .about("Print current admin signers for the Vault")
+                .arg(vaultname.clone()),
         )
         .subcommand(
             SubCommand::with_name("vault-shutdown")
@@ -416,10 +486,20 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .arg(get_integer_arg("step")),
         )
         .subcommand(
-            SubCommand::with_name("fund-set-admin")
-                .about("Set a new admin for the Fund")
+            SubCommand::with_name("fund-set-admins")
+                .about("Set new admins for the Fund")
                 .arg(fundname.clone())
-                .arg(get_arg("admin")),
+                .arg(get_integer_arg("min_signatures"))
+                .arg(get_multi_arg(
+                    "admin_signers",
+                    1,
+                    Multisig::MAX_SIGNERS as u64,
+                )),
+        )
+        .subcommand(
+            SubCommand::with_name("fund-get-admins")
+                .about("Print current admin signers for the Fund")
+                .arg(fundname.clone()),
         )
         .subcommand(
             SubCommand::with_name("fund-set-manager")

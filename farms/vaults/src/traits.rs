@@ -99,3 +99,15 @@ pub trait Shutdown {
 pub trait WithdrawFees {
     fn withdraw_fees(vault: &Vault, accounts: &[AccountInfo], amount: u64) -> ProgramResult;
 }
+
+pub trait SetAdminSigners {
+    fn set_admin_signers(
+        vault: &Vault,
+        accounts: &[AccountInfo],
+        min_signatures: u8,
+    ) -> ProgramResult;
+}
+
+pub trait RemoveMultisig {
+    fn remove_multisig(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult;
+}

@@ -63,7 +63,7 @@ pub fn init_token_account<'a, 'b>(
     base_address: &Pubkey,
     seeds: &[&[u8]],
 ) -> ProgramResult {
-    if !account::is_empty(target_account)? {
+    if account::exists(target_account)? {
         if !account::check_token_account_owner(target_account, owner_account.key)? {
             return Err(ProgramError::IllegalOwner);
         }
@@ -107,7 +107,7 @@ pub fn init_associated_token_account<'a, 'b>(
     mint_account: &'a AccountInfo<'b>,
     rent_program: &'a AccountInfo<'b>,
 ) -> ProgramResult {
-    if !account::is_empty(target_account)? {
+    if account::exists(target_account)? {
         if !account::check_token_account_owner(target_account, wallet_account.key)? {
             return Err(ProgramError::IllegalOwner);
         }
@@ -141,7 +141,7 @@ pub fn close_token_account_with_seeds<'a, 'b>(
     authority_account: &'a AccountInfo<'b>,
     seeds: &[&[&[u8]]],
 ) -> ProgramResult {
-    if account::is_empty(target_account)? {
+    if !account::exists(target_account)? {
         return Ok(());
     }
 
@@ -238,7 +238,7 @@ pub fn init_system_account<'a, 'b>(
     seeds: &[&[u8]],
     data_size: usize,
 ) -> Result<u8, ProgramError> {
-    if !account::is_empty(target_account)? {
+    if account::exists(target_account)? {
         if target_account.owner != owner_key {
             return Err(ProgramError::IllegalOwner);
         }
@@ -280,7 +280,7 @@ pub fn init_mint<'a, 'b>(
     seeds: &[&[u8]],
     decimals: u8,
 ) -> ProgramResult {
-    if !account::is_empty(mint_account)? {
+    if account::exists(mint_account)? {
         if !account::check_mint_authority(mint_account, Some(*authority_account.key))? {
             return Err(ProgramError::IllegalOwner);
         }

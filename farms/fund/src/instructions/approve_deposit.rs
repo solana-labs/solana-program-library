@@ -22,6 +22,7 @@ pub fn approve_deposit(fund: &Fund, accounts: &[AccountInfo], amount: u64) -> Pr
         _admin_account,
         fund_metadata,
         fund_info_account,
+        _multisig_account,
         fund_authority,
         _spl_token_program,
         fund_token_mint,
@@ -51,6 +52,8 @@ pub fn approve_deposit(fund: &Fund, accounts: &[AccountInfo], amount: u64) -> Pr
             msg!("Error: Invalid Fund token account owner");
             return Err(ProgramError::IllegalOwner);
         }
+        common::check_fund_token_mint(fund, fund_token_mint)?;
+        
         let custody_token = account::unpack::<Token>(custody_token_metadata, "custody token")?;
         common::check_wd_custody_accounts(
             &fund.fund_program_id,
@@ -170,7 +173,6 @@ pub fn approve_deposit(fund: &Fund, accounts: &[AccountInfo], amount: u64) -> Pr
             msg!("Error: Deposit instruction didn't result in Fund tokens mint");
             return Err(ProgramError::Custom(170));
         }
-        common::check_fund_token_mint(fund, fund_token_mint)?;
         pda::mint_to_with_seeds(
             user_fund_token_account,
             fund_token_mint,

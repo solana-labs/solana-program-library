@@ -5,10 +5,13 @@ use {
     solana_farm_sdk::{
         farm::Farm,
         fund::Fund,
-        id::main_router,
+        id::{main_router, main_router_multisig},
         instruction::{main_router::MainInstruction, refdb::RefDbInstruction},
         pool::Pool,
-        program::pda::{find_refdb_pda, find_target_pda},
+        program::{
+            multisig::Multisig,
+            pda::{find_refdb_pda, find_target_pda},
+        },
         refdb,
         string::str_to_as64,
         token::Token,
@@ -16,9 +19,10 @@ use {
         ProgramIDType,
     },
     solana_sdk::{
+        bpf_loader_upgradeable,
         instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,
-        system_program,
+        system_program, sysvar,
     },
     std::vec::Vec,
 };
@@ -39,6 +43,7 @@ impl FarmClient {
             data: Vec::<u8>::new(),
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(find_refdb_pda(refdb_name).0, false),
                 AccountMeta::new_readonly(system_program::id(), false),
             ],
@@ -65,6 +70,7 @@ impl FarmClient {
             data: Vec::<u8>::new(),
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(find_refdb_pda(refdb_name).0, false),
                 AccountMeta::new_readonly(system_program::id(), false),
             ],
@@ -93,6 +99,7 @@ impl FarmClient {
             data: Vec::<u8>::new(),
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(find_refdb_pda(refdb_name).0, false),
                 AccountMeta::new_readonly(system_program::id(), false),
             ],
@@ -124,6 +131,7 @@ impl FarmClient {
             data: Vec::<u8>::new(),
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(find_refdb_pda(refdb_name).0, false),
                 AccountMeta::new_readonly(system_program::id(), false),
             ],
@@ -158,6 +166,134 @@ impl FarmClient {
                 reference: refdb::Reference::Empty,
             },
         )
+    }
+
+    /// Creates a new instruction for initializing Main Router multisig with a new set of signers
+    pub fn new_instruction_set_admins(
+        &self,
+        admin_address: &Pubkey,
+        admin_signers: &[Pubkey],
+        min_signatures: u8,
+    ) -> Result<Instruction, FarmClientError> {
+        if admin_signers.is_empty() || min_signatures == 0 {
+            return Err(FarmClientError::ValueError(
+                "At least one signer is required".to_string(),
+            ));
+        } else if min_signatures as usize > admin_signers.len()
+            || admin_signers.len() > Multisig::MAX_SIGNERS
+        {
+            return Err(FarmClientError::ValueError(
+                "Invalid number of signatures".to_string(),
+            ));
+        }
+
+        // fill in accounts and instruction data
+        let mut inst = Instruction {
+            program_id: main_router::id(),
+            data: Vec::<u8>::new(),
+            accounts: vec![
+                AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(main_router_multisig::id(), false),
+                AccountMeta::new_readonly(system_program::id(), false),
+            ],
+        };
+
+        for key in admin_signers {
+            inst.accounts.push(AccountMeta::new_readonly(*key, false));
+        }
+
+        inst.data = MainInstruction::SetAdminSigners { min_signatures }.to_vec()?;
+
+        Ok(inst)
+    }
+
+    /// Creates a new instruction for setting new program upgrade signers
+    pub fn new_instruction_set_program_admins(
+        &self,
+        admin_address: &Pubkey,
+        prog_id: &Pubkey,
+        admin_signers: &[Pubkey],
+        min_signatures: u8,
+    ) -> Result<Instruction, FarmClientError> {
+        if admin_signers.is_empty() || min_signatures == 0 {
+            return Err(FarmClientError::ValueError(
+                "At least one signer is required".to_string(),
+            ));
+        } else if min_signatures as usize > admin_signers.len()
+            || admin_signers.len() > Multisig::MAX_SIGNERS
+        {
+            return Err(FarmClientError::ValueError(
+                "Invalid number of signatures".to_string(),
+            ));
+        }
+
+        // fill in accounts and instruction data
+        let mut inst = Instruction {
+            program_id: main_router::id(),
+            data: Vec::<u8>::new(),
+            accounts: vec![
+                AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(self.get_program_multisig_account(prog_id)?, false),
+                AccountMeta::new_readonly(*prog_id, false),
+                AccountMeta::new(self.get_program_buffer_account(prog_id)?, false),
+                AccountMeta::new_readonly(system_program::id(), false),
+                AccountMeta::new_readonly(bpf_loader_upgradeable::id(), false),
+            ],
+        };
+
+        for key in admin_signers {
+            inst.accounts.push(AccountMeta::new_readonly(*key, false));
+        }
+
+        inst.data = MainInstruction::SetProgramAdminSigners { min_signatures }.to_vec()?;
+
+        Ok(inst)
+    }
+
+    /// Creates a new instruction for setting single upgrade authority for the program
+    pub fn new_instruction_set_program_single_authority(
+        &self,
+        admin_address: &Pubkey,
+        prog_id: &Pubkey,
+        upgrade_authority: &Pubkey,
+    ) -> Result<Instruction, FarmClientError> {
+        // fill in accounts and instruction data
+        Ok(Instruction {
+            program_id: main_router::id(),
+            data: MainInstruction::SetProgramSingleAuthority.to_vec()?,
+            accounts: vec![
+                AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(self.get_program_multisig_account(prog_id)?, false),
+                AccountMeta::new_readonly(*prog_id, false),
+                AccountMeta::new(self.get_program_buffer_account(prog_id)?, false),
+                AccountMeta::new_readonly(*upgrade_authority, false),
+                AccountMeta::new_readonly(bpf_loader_upgradeable::id(), false),
+            ],
+        })
+    }
+
+    /// Creates a new instruction for upgrading the program from the buffer
+    pub fn new_instruction_upgrade_program(
+        &self,
+        admin_address: &Pubkey,
+        prog_id: &Pubkey,
+        source_buffer_address: &Pubkey,
+    ) -> Result<Instruction, FarmClientError> {
+        // fill in accounts and instruction data
+        Ok(Instruction {
+            program_id: main_router::id(),
+            data: MainInstruction::UpgradeProgram.to_vec()?,
+            accounts: vec![
+                AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(self.get_program_multisig_account(prog_id)?, false),
+                AccountMeta::new(*prog_id, false),
+                AccountMeta::new(self.get_program_buffer_account(prog_id)?, false),
+                AccountMeta::new(*source_buffer_address, false),
+                AccountMeta::new_readonly(sysvar::rent::id(), false),
+                AccountMeta::new_readonly(sysvar::clock::id(), false),
+                AccountMeta::new_readonly(bpf_loader_upgradeable::id(), false),
+            ],
+        })
     }
 
     /// Creates a new Instruction for recording the Program ID metadata on-chain
@@ -219,6 +355,7 @@ impl FarmClient {
             data: Vec::<u8>::new(),
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
                     find_refdb_pda(&refdb::StorageType::Fund.to_string()).0,
                     false,
@@ -253,6 +390,7 @@ impl FarmClient {
             data: Vec::<u8>::new(),
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
                     find_refdb_pda(&refdb::StorageType::Fund.to_string()).0,
                     false,
@@ -279,6 +417,7 @@ impl FarmClient {
             data: Vec::<u8>::new(),
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
                     find_refdb_pda(&refdb::StorageType::Vault.to_string()).0,
                     false,
@@ -313,6 +452,7 @@ impl FarmClient {
             data: Vec::<u8>::new(),
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
                     find_refdb_pda(&refdb::StorageType::Vault.to_string()).0,
                     false,
@@ -339,6 +479,7 @@ impl FarmClient {
             data: Vec::<u8>::new(),
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
                     find_refdb_pda(&refdb::StorageType::Pool.to_string()).0,
                     false,
@@ -374,6 +515,7 @@ impl FarmClient {
             data: Vec::<u8>::new(),
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
                     find_refdb_pda(&refdb::StorageType::Pool.to_string()).0,
                     false,
@@ -400,6 +542,7 @@ impl FarmClient {
             data: Vec::<u8>::new(),
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
                     find_refdb_pda(&refdb::StorageType::Farm.to_string()).0,
                     false,
@@ -435,6 +578,7 @@ impl FarmClient {
             data: Vec::<u8>::new(),
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
                     find_refdb_pda(&refdb::StorageType::Farm.to_string()).0,
                     false,
@@ -461,6 +605,7 @@ impl FarmClient {
             data: Vec::<u8>::new(),
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
                     find_refdb_pda(&refdb::StorageType::Token.to_string()).0,
                     false,
@@ -496,6 +641,7 @@ impl FarmClient {
             data: Vec::<u8>::new(),
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
                     find_refdb_pda(&refdb::StorageType::Token.to_string()).0,
                     false,

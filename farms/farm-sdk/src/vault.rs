@@ -133,7 +133,7 @@ pub struct Vault {
         deserialize_with = "pubkey_deserialize",
         serialize_with = "pubkey_serialize"
     )]
-    pub admin_account: Pubkey,
+    pub multisig_account: Pubkey,
     #[serde(
         deserialize_with = "optional_pubkey_deserialize",
         serialize_with = "optional_pubkey_serialize"
@@ -230,7 +230,7 @@ impl Vault {
                 vault_authority_out,
                 vault_token_ref_out,
                 vault_info_account_out,
-                admin_account_out,
+                multisig_account_out,
                 fees_account_a_out,
                 fees_account_b_out,
                 pool_router_id_out,
@@ -267,7 +267,7 @@ impl Vault {
             vault_authority_out.copy_from_slice(self.vault_authority.as_ref());
             vault_token_ref_out.copy_from_slice(self.vault_token_ref.as_ref());
             vault_info_account_out.copy_from_slice(self.info_account.as_ref());
-            admin_account_out.copy_from_slice(self.admin_account.as_ref());
+            multisig_account_out.copy_from_slice(self.multisig_account.as_ref());
             pack_option_key(&self.fees_account_a, fees_account_a_out);
             pack_option_key(&self.fees_account_b, fees_account_b_out);
             pool_router_id_out.copy_from_slice(pool_router_id.as_ref());
@@ -310,7 +310,7 @@ impl Vault {
             vault_authority,
             vault_token_ref,
             info_account,
-            admin_account,
+            multisig_account,
             fees_account_a,
             fees_account_b,
             pool_router_id,
@@ -347,7 +347,7 @@ impl Vault {
             vault_authority: Pubkey::new_from_array(*vault_authority),
             vault_token_ref: Pubkey::new_from_array(*vault_token_ref),
             info_account: Pubkey::new_from_array(*info_account),
-            admin_account: Pubkey::new_from_array(*admin_account),
+            multisig_account: Pubkey::new_from_array(*multisig_account),
             fees_account_a: unpack_option_key(fees_account_a)?,
             fees_account_b: unpack_option_key(fees_account_b)?,
             strategy: VaultStrategy::StakeLpCompoundRewards {

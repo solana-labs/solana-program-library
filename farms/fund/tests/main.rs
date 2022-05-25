@@ -9,6 +9,7 @@ use {
             FundAssetType, FundAssetsTrackingConfig, FundCustodyType, FundSchedule, FundVaultType,
             DISCRIMINATOR_FUND_CUSTODY, DISCRIMINATOR_FUND_USER_INFO, DISCRIMINATOR_FUND_VAULT,
         },
+        id::zero,
         string::str_to_as64,
     },
     solana_sdk::{
@@ -26,10 +27,17 @@ fn run_tests() -> Result<(), FarmClientError> {
 
     let (endpoint, admin_keypair) = utils::get_endpoint_and_keypair();
     let user_keypair = Keypair::new();
+    let manager_keypair = Keypair::new();
     let client = FarmClient::new_with_commitment(&endpoint, CommitmentConfig::confirmed());
     let wallet = user_keypair.pubkey();
 
-    let fund_name = fixture::init_fund(&client, &admin_keypair, None, None)?;
+    let fund_name = fixture::init_fund(
+        &client,
+        &admin_keypair,
+        &manager_keypair.pubkey(),
+        None,
+        None,
+    )?;
     //let fund_name = "FUND_2196727256".to_string();
     let vault_name = "RDM.COIN-PC-V4";
     let vault_type = FundVaultType::Pool;
@@ -50,6 +58,13 @@ fn run_tests() -> Result<(), FarmClientError> {
     assert!(client
         .get_fund_user_info(&wallet, &fund_name, token_name)
         .is_err());
+    client.confirm_async_transaction(
+        &client.rpc_client.request_airdrop(
+            &manager_keypair.pubkey(),
+            client.ui_amount_to_tokens(2.0, "SOL")?,
+        )?,
+        CommitmentLevel::Confirmed,
+    )?;
     for _ in 0..2 {
         client.confirm_async_transaction(
             &client
@@ -68,6 +83,14 @@ fn run_tests() -> Result<(), FarmClientError> {
     info!("Init Deposit/Withdraw custody for SOL");
     assert!(client
         .get_fund_custody(&fund_name, token_name, FundCustodyType::DepositWithdraw)
+        .is_err());
+    assert!(client
+        .add_fund_custody(
+            &manager_keypair,
+            &fund_name,
+            token_name,
+            FundCustodyType::DepositWithdraw,
+        )
         .is_err());
 
     client.add_fund_custody(
@@ -184,7 +207,7 @@ fn run_tests() -> Result<(), FarmClientError> {
     info!("Request a new deposit and deny");
     client.request_deposit_fund(&user_keypair, &fund_name, token_name, 1.123)?;
     let user_balance_before = client.get_token_account_balance(&wallet, "SOL")?;
-    client.deny_deposit_fund(&admin_keypair, &fund_name, &wallet, token_name, "test")?;
+    client.deny_deposit_fund(&manager_keypair, &fund_name, &wallet, token_name, "test")?;
     let user_info = client.get_fund_user_info(&wallet, &fund_name, token_name)?;
     assert_eq!(user_info.deposit_request.amount, 0);
     assert_eq!(user_info.deposit_request.time, 0);
@@ -277,6 +300,84 @@ fn run_tests() -> Result<(), FarmClientError> {
         CommitmentLevel::Confirmed,
     )?;
 
+    // enable fund multisig
+    info!("Enable Fund multisig");
+    let multisig = client.get_fund_admins(&fund_name)?;
+    assert_eq!(multisig.num_signers, 1);
+    assert_eq!(multisig.signers[0], admin_keypair.pubkey());
+    assert_eq!(multisig.signers[1], zero::id());
+
+    client.set_fund_admins(&admin_keypair, &fund_name, &[wallet, wallet2], 2)?;
+
+    let multisig = client.get_fund_admins(&fund_name)?;
+    assert_eq!(multisig.num_signers, 2);
+    assert_eq!(multisig.num_signed, 0);
+    assert_eq!(multisig.signed[0], false);
+    assert_eq!(multisig.signed[1], false);
+    assert_eq!(multisig.min_signatures, 2);
+    assert_eq!(multisig.signers[0], wallet);
+    assert_eq!(multisig.signers[1], wallet2);
+    assert_eq!(multisig.signers[2], zero::id());
+
+    // operations under admin should fail
+    assert!(client
+        .set_fund_deposit_schedule(&admin_keypair, &fund_name, &schedule)
+        .is_err());
+    assert!(client
+        .add_fund_custody(
+            &admin_keypair,
+            &fund_name,
+            token_name,
+            FundCustodyType::Trading,
+        )
+        .is_err());
+
+    // multisign should go thru
+    info!("Test Fund multisig");
+    client.add_fund_custody(
+        &user_keypair,
+        &fund_name,
+        token_name,
+        FundCustodyType::Trading,
+    )?;
+    let multisig = client.get_fund_admins(&fund_name)?;
+    assert_eq!(multisig.num_signed, 1);
+    assert_eq!(multisig.signed[0], true);
+    assert_eq!(multisig.signed[1], false);
+    assert!(client
+        .get_fund_custody(&fund_name, token_name, FundCustodyType::Trading)
+        .is_err());
+    client.add_fund_custody(
+        &user_keypair2,
+        &fund_name,
+        token_name,
+        FundCustodyType::Trading,
+    )?;
+    assert!(client
+        .get_fund_custody(&fund_name, token_name, FundCustodyType::Trading)
+        .is_ok());
+    let multisig = client.get_fund_admins(&fund_name)?;
+    assert_eq!(multisig.num_signed, 2);
+    assert_eq!(multisig.signed[0], true);
+    assert_eq!(multisig.signed[1], true);
+
+    // disable multisig
+    info!("Disable Fund multisig");
+    client.set_fund_admins(&user_keypair, &fund_name, &[admin_keypair.pubkey()], 1)?;
+    client.set_fund_admins(&user_keypair2, &fund_name, &[admin_keypair.pubkey()], 1)?;
+    let multisig = client.get_fund_admins(&fund_name)?;
+    assert_eq!(multisig.num_signers, 1);
+    assert_eq!(multisig.signers[0], admin_keypair.pubkey());
+    assert_eq!(multisig.signers[1], zero::id());
+
+    client.remove_fund_custody(
+        &admin_keypair,
+        &fund_name,
+        token_name,
+        FundCustodyType::Trading,
+    )?;
+    client.remove_fund_multisig(&admin_keypair, &fund_name)?;
+
     // turn off approval requirement
     let schedule = FundSchedule {
         start_time: 0,
@@ -285,7 +386,7 @@ fn run_tests() -> Result<(), FarmClientError> {
         limit_usd: client.get_oracle_price("SOL", 0, 0.0)? * 1.5,
         fee: 0.01,
     };
-    client.set_fund_deposit_schedule(&admin_keypair, &fund_name, &schedule)?;
+    client.set_fund_deposit_schedule(&manager_keypair, &fund_name, &schedule)?;
 
     // request instant deposit
     info!("Request instant deposit");
@@ -346,7 +447,7 @@ fn run_tests() -> Result<(), FarmClientError> {
         limit_usd: client.get_oracle_price("SOL", 0, 0.0)? * 0.2,
         fee: 0.01,
     };
-    client.set_fund_withdrawal_schedule(&admin_keypair, &fund_name, &schedule)?;
+    client.set_fund_withdrawal_schedule(&manager_keypair, &fund_name, &schedule)?;
     info!("Request withdrawal");
     client.request_withdrawal_fund(&user_keypair, &fund_name, token_name, 100.0)?;
     let user_info = client.get_fund_user_info(&wallet, &fund_name, token_name)?;
@@ -401,7 +502,7 @@ fn run_tests() -> Result<(), FarmClientError> {
     );
     assert!(user_info.withdrawal_request.time > 0);
     assert!(user_info.deny_reason.is_empty());
-    client.approve_withdrawal_fund(&admin_keypair, &fund_name, &wallet, token_name, 100.0)?;
+    client.approve_withdrawal_fund(&manager_keypair, &fund_name, &wallet, token_name, 100.0)?;
     let user_info = client.get_fund_user_info(&wallet, &fund_name, token_name)?;
     assert_eq!(user_info.withdrawal_request.amount, 0);
     assert_eq!(user_info.withdrawal_request.time, 0);
@@ -456,7 +557,7 @@ fn run_tests() -> Result<(), FarmClientError> {
         client.get_token_account_balance(&wallet2, fund_token.name.as_str())?;
     assert!(fund_token_balance4 > 0.0 && fund_token_balance4 < fund_token_balance2);
     // some tolerence needed due to potential SOL/USD price change
-    assert!((fund_token_balance4 - fund_token_balance3).abs() / fund_token_balance3 < 0.01);
+    assert!((fund_token_balance4 - fund_token_balance3).abs() / fund_token_balance3 < 0.05);
     assert!(client.get_token_account_balance(&wallet2, "SOL")? - initial_sol_balance > 0.09);
     let new_custody_balance = utils::get_token_balance(&client, &wd_custody_token_address);
     assert!(
@@ -477,16 +578,17 @@ fn run_tests() -> Result<(), FarmClientError> {
     // init SOL trading custody
     // accept should fail while custody is missing
     info!("Init Trading custody for SOL");
-    assert!(client
+    if client
         .get_fund_custody(&fund_name, token_name, FundCustodyType::Trading)
-        .is_err());
-
-    client.add_fund_custody(
-        &admin_keypair,
-        &fund_name,
-        token_name,
-        FundCustodyType::Trading,
-    )?;
+        .is_err()
+    {
+        client.add_fund_custody(
+            &admin_keypair,
+            &fund_name,
+            token_name,
+            FundCustodyType::Trading,
+        )?;
+    }
     let custody = client.get_fund_custody(&fund_name, token_name, FundCustodyType::Trading)?;
     println!("{:#?}", custody);
     assert_eq!(custody.discriminator, DISCRIMINATOR_FUND_CUSTODY);
@@ -499,7 +601,7 @@ fn run_tests() -> Result<(), FarmClientError> {
     let wd_custody_balance = utils::get_token_balance(&client, &wd_custody_token_address);
     let trading_custody_balance = utils::get_token_balance(&client, &trading_custody_token_address);
     assert_eq!(trading_custody_balance, 0);
-    client.lock_assets_fund(&admin_keypair, &fund_name, token_name, 0.0)?;
+    client.lock_assets_fund(&manager_keypair, &fund_name, token_name, 0.0)?;
     assert_eq!(
         0,
         utils::get_token_balance(&client, &wd_custody_token_address)
@@ -525,11 +627,11 @@ fn run_tests() -> Result<(), FarmClientError> {
     info!("Update fund assets");
     info!(
         "Custodies processed: {}",
-        client.update_fund_assets_with_custodies(&admin_keypair, &fund_name)?
+        client.update_fund_assets_with_custodies(&user_keypair, &fund_name)?
     );
     info!(
         "Vaults processed: {}",
-        client.update_fund_assets_with_vaults(&admin_keypair, &fund_name)?
+        client.update_fund_assets_with_vaults(&user_keypair, &fund_name)?
     );
 
     if client
@@ -555,6 +657,19 @@ fn run_tests() -> Result<(), FarmClientError> {
             &fund_name,
             token_a,
             FundCustodyType::DepositWithdraw,
+        )?;
+    }
+
+    if client
+        .get_fund_custody(&fund_name, token_b, FundCustodyType::Trading)
+        .is_err()
+    {
+        info!("Init trading custody for {}", token_b);
+        client.add_fund_custody(
+            &admin_keypair,
+            &fund_name,
+            token_b,
+            FundCustodyType::Trading,
         )?;
     }
 
@@ -599,7 +714,7 @@ fn run_tests() -> Result<(), FarmClientError> {
     info!(
         "{}",
         client.fund_swap(
-            &admin_keypair,
+            &manager_keypair,
             &fund_name,
             "RDM",
             token_a,
@@ -644,7 +759,7 @@ fn run_tests() -> Result<(), FarmClientError> {
     info!(
         "{}",
         client.fund_add_liquidity_pool(
-            &admin_keypair,
+            &manager_keypair,
             &fund_name,
             vault_name,
             amount * 0.4,
@@ -668,7 +783,7 @@ fn run_tests() -> Result<(), FarmClientError> {
     info!(
         "{}",
         client.fund_add_liquidity_pool(
-            &admin_keypair,
+            &manager_keypair,
             &fund_name,
             vault_name,
             0.0,
@@ -697,6 +812,14 @@ fn run_tests() -> Result<(), FarmClientError> {
         .is_err()
     {
         info!("Add a Farm");
+        assert!(client
+            .add_fund_vault(
+                &manager_keypair,
+                &fund_name,
+                &farm.name,
+                FundVaultType::Farm
+            )
+            .is_err());
         client.add_fund_vault(&admin_keypair, &fund_name, &farm.name, FundVaultType::Farm)?;
         let vault = client.get_fund_vault(&fund_name, &farm.name, FundVaultType::Farm)?;
         println!("{:#?}", vault);
@@ -715,7 +838,7 @@ fn run_tests() -> Result<(), FarmClientError> {
     info!(
         "{}",
         client.fund_stake(
-            &admin_keypair,
+            &manager_keypair,
             &fund_name,
             &farm.name,
             trading_custody_lp_token_balance * 0.5,
@@ -743,7 +866,7 @@ fn run_tests() -> Result<(), FarmClientError> {
         };
     info!(
         "{}",
-        client.fund_stake(&admin_keypair, &fund_name, &farm.name, 0.0,)?
+        client.fund_stake(&manager_keypair, &fund_name, &farm.name, 0.0,)?
     );
     let trading_custody_lp_token_balance2 =
         utils::get_token_ui_balance(&client, &trading_custody_lp_token_address);
@@ -755,7 +878,7 @@ fn run_tests() -> Result<(), FarmClientError> {
     info!("Harvest from {}", farm.name);
     info!(
         "{}",
-        client.fund_harvest(&admin_keypair, &fund_name, &farm.name)?
+        client.fund_harvest(&manager_keypair, &fund_name, &farm.name)?
     );
 
     // unstake
@@ -765,7 +888,12 @@ fn run_tests() -> Result<(), FarmClientError> {
     let stake_balance = client.get_user_stake_balance(&fund.fund_authority, &farm.name)?;
     info!(
         "{}",
-        client.fund_unstake(&admin_keypair, &fund_name, &farm.name, stake_balance * 0.5)?
+        client.fund_unstake(
+            &manager_keypair,
+            &fund_name,
+            &farm.name,
+            stake_balance * 0.5
+        )?
     );
     let stake_balance2 = client.get_user_stake_balance(&fund.fund_authority, &farm.name)?;
     let trading_custody_lp_token_balance2 =
@@ -785,7 +913,7 @@ fn run_tests() -> Result<(), FarmClientError> {
     let stake_balance = client.get_user_stake_balance(&fund.fund_authority, &farm.name)?;
     info!(
         "{}",
-        client.fund_unstake(&admin_keypair, &fund_name, &farm.name, 0.0)?
+        client.fund_unstake(&manager_keypair, &fund_name, &farm.name, 0.0)?
     );
     let stake_balance2 = client.get_user_stake_balance(&fund.fund_authority, &farm.name)?;
     let trading_custody_lp_token_balance2 =
@@ -809,7 +937,7 @@ fn run_tests() -> Result<(), FarmClientError> {
     info!(
         "{}",
         client.fund_remove_liquidity_pool(
-            &admin_keypair,
+            &manager_keypair,
             &fund_name,
             vault_name,
             trading_custody_lp_token_balance * 0.5,
@@ -830,7 +958,7 @@ fn run_tests() -> Result<(), FarmClientError> {
     info!("Remove liquidity from {}", vault_name);
     info!(
         "{}",
-        client.fund_remove_liquidity_pool(&admin_keypair, &fund_name, vault_name, 0.0,)?
+        client.fund_remove_liquidity_pool(&manager_keypair, &fund_name, vault_name, 0.0,)?
     );
     let trading_custody_token_a_balance3 =
         utils::get_token_ui_balance(&client, &trading_custody_token_a_address);
@@ -849,6 +977,14 @@ fn run_tests() -> Result<(), FarmClientError> {
         .is_err()
     {
         info!("Add a Vault");
+        assert!(client
+            .add_fund_vault(
+                &manager_keypair,
+                &fund_name,
+                vault_name2,
+                FundVaultType::Vault,
+            )
+            .is_err());
         client.add_fund_vault(
             &admin_keypair,
             &fund_name,
@@ -860,6 +996,63 @@ fn run_tests() -> Result<(), FarmClientError> {
         assert_eq!(vault.discriminator, DISCRIMINATOR_FUND_VAULT);
         assert_eq!(vault.vault_type, FundVaultType::Vault);
     }
+
+    // enable vault multisig
+    info!("Enable Vault multisig");
+    let multisig = client.get_vault_admins(&vault_name2)?;
+    assert_eq!(multisig.num_signers, 1);
+    assert_eq!(multisig.signers[0], admin_keypair.pubkey());
+    assert_eq!(multisig.signers[1], zero::id());
+
+    client.set_vault_admins(&admin_keypair, &vault_name2, &[wallet, wallet2], 2)?;
+
+    let multisig = client.get_vault_admins(&vault_name2)?;
+    assert_eq!(multisig.num_signers, 2);
+    assert_eq!(multisig.num_signed, 0);
+    assert_eq!(multisig.signed[0], false);
+    assert_eq!(multisig.signed[1], false);
+    assert_eq!(multisig.min_signatures, 2);
+    assert_eq!(multisig.signers[0], wallet);
+    assert_eq!(multisig.signers[1], wallet2);
+    assert_eq!(multisig.signers[2], zero::id());
+
+    // operations under admin should fail
+    assert!(client
+        .disable_withdrawals_vault(&admin_keypair, &vault_name2)
+        .is_err());
+
+    // multisign should go thru
+    info!("Test Vault multisig");
+    client.disable_withdrawals_vault(&user_keypair, &vault_name2)?;
+    let multisig = client.get_vault_admins(&vault_name2)?;
+    assert_eq!(multisig.num_signed, 1);
+    assert_eq!(multisig.signed[0], true);
+    assert_eq!(multisig.signed[1], false);
+    assert_eq!(
+        client.get_vault_info(&vault_name2)?.withdrawal_allowed,
+        true
+    );
+    client.disable_withdrawals_vault(&user_keypair2, &vault_name2)?;
+    assert_eq!(
+        client.get_vault_info(&vault_name2)?.withdrawal_allowed,
+        false
+    );
+    let multisig = client.get_vault_admins(&vault_name2)?;
+    assert_eq!(multisig.num_signed, 2);
+    assert_eq!(multisig.signed[0], true);
+    assert_eq!(multisig.signed[1], true);
+
+    // disable multisig
+    info!("Disable Vault multisig");
+    client.set_vault_admins(&user_keypair, &vault_name2, &[admin_keypair.pubkey()], 1)?;
+    client.set_vault_admins(&user_keypair2, &vault_name2, &[admin_keypair.pubkey()], 1)?;
+    let multisig = client.get_vault_admins(&vault_name2)?;
+    assert_eq!(multisig.num_signers, 1);
+    assert_eq!(multisig.signers[0], admin_keypair.pubkey());
+    assert_eq!(multisig.signers[1], zero::id());
+    client.enable_withdrawals_vault(&admin_keypair, &vault_name2)?;
+    client.remove_vault_multisig(&admin_keypair, vault_name2)?;
+    client.enable_withdrawals_vault(&admin_keypair, &vault_name2)?;
 
     // add liquidity vault
     if client
@@ -888,7 +1081,7 @@ fn run_tests() -> Result<(), FarmClientError> {
     info!(
         "{}",
         client.fund_add_liquidity_vault(
-            &admin_keypair,
+            &manager_keypair,
             &fund_name,
             vault_name2,
             amount * 0.4,
@@ -912,7 +1105,7 @@ fn run_tests() -> Result<(), FarmClientError> {
     info!(
         "{}",
         client.fund_add_liquidity_vault(
-            &admin_keypair,
+            &manager_keypair,
             &fund_name,
             vault_name2,
             0.0,
@@ -944,7 +1137,7 @@ fn run_tests() -> Result<(), FarmClientError> {
     info!(
         "{}",
         client.fund_remove_liquidity_vault(
-            &admin_keypair,
+            &manager_keypair,
             &fund_name,
             vault_name2,
             trading_custody_vt_token_balance * 0.5,
@@ -965,7 +1158,7 @@ fn run_tests() -> Result<(), FarmClientError> {
     info!("Remove liquidity from {}", vault_name2);
     info!(
         "{}",
-        client.fund_remove_liquidity_vault(&admin_keypair, &fund_name, vault_name2, 0.0)?
+        client.fund_remove_liquidity_vault(&manager_keypair, &fund_name, vault_name2, 0.0)?
     );
     let trading_custody_token_a_balance3 =
         utils::get_token_ui_balance(&client, &trading_custody_token_a_address);
@@ -979,6 +1172,14 @@ fn run_tests() -> Result<(), FarmClientError> {
 
     // withdraw fees
     info!("Withdraw collected fees");
+    assert!(test_custody_withdrawal(
+        &client,
+        &manager_keypair,
+        &fund_name,
+        token_name,
+        FundCustodyType::DepositWithdraw,
+    )
+    .is_err());
     test_custody_withdrawal(
         &client,
         &admin_keypair,
@@ -1012,13 +1213,13 @@ fn run_tests() -> Result<(), FarmClientError> {
     info!("Update fund assets");
     info!(
         "Custodies processed: {}",
-        client.update_fund_assets_with_custodies(&admin_keypair, &fund_name)?
+        client.update_fund_assets_with_custodies(&manager_keypair, &fund_name)?
     );
     let fund_assets = client.get_fund_assets(&fund_name, FundAssetType::Custody)?;
     assert!(fund_assets.cycle_end_time > 0);
     info!(
         "Vaults processed: {}",
-        client.update_fund_assets_with_vaults(&admin_keypair, &fund_name)?
+        client.update_fund_assets_with_vaults(&manager_keypair, &fund_name)?
     );
     let fund_assets = client.get_fund_assets(&fund_name, FundAssetType::Vault)?;
     assert!(fund_assets.cycle_end_time > 0);
@@ -1032,9 +1233,15 @@ fn run_tests() -> Result<(), FarmClientError> {
         limit_usd: client.get_oracle_price("SOL", 0, 0.0)? * 3.0,
         fee: 0.01,
     };
-    client.set_fund_deposit_schedule(&admin_keypair, &fund_name, &schedule)?;
+    client.set_fund_deposit_schedule(&manager_keypair, &fund_name, &schedule)?;
     client.request_deposit_fund(&user_keypair, &fund_name, token_name, 2.222)?;
-    client.fund_add_liquidity_vault(&admin_keypair, &fund_name, vault_name2, amount * 0.2, 0.0)?;
+    client.fund_add_liquidity_vault(
+        &manager_keypair,
+        &fund_name,
+        vault_name2,
+        amount * 0.2,
+        0.0,
+    )?;
 
     // lock funds and make withdrawals not possible
     info!("Lock funds and disable withdrawals");
@@ -1045,8 +1252,8 @@ fn run_tests() -> Result<(), FarmClientError> {
         limit_usd: 0.0001,
         fee: 1.0,
     };
-    client.lock_assets_fund(&admin_keypair, &fund_name, token_name, 0.0)?;
-    client.set_fund_withdrawal_schedule(&admin_keypair, &fund_name, &schedule)?;
+    client.lock_assets_fund(&manager_keypair, &fund_name, token_name, 0.0)?;
+    client.set_fund_withdrawal_schedule(&manager_keypair, &fund_name, &schedule)?;
 
     // unlock should fail
     assert!(client
@@ -1065,7 +1272,7 @@ fn run_tests() -> Result<(), FarmClientError> {
         .request_deposit_fund(&user_keypair, &fund_name, token_name, 0.1)
         .is_err());
     assert!(client
-        .fund_add_liquidity_vault(&admin_keypair, &fund_name, vault_name2, amount * 0.2, 0.0)
+        .fund_add_liquidity_vault(&manager_keypair, &fund_name, vault_name2, amount * 0.2, 0.0)
         .is_err());
 
     // remove liquidity from the vault

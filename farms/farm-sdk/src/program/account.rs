@@ -118,6 +118,10 @@ pub fn is_empty(account: &AccountInfo) -> Result<bool, ProgramError> {
     Ok(account.data_is_empty() || account.try_lamports()? == 0)
 }
 
+pub fn exists(account: &AccountInfo) -> Result<bool, ProgramError> {
+    Ok(account.try_lamports()? > 0)
+}
+
 pub fn get_balance_increase(
     account: &AccountInfo,
     previous_balance: u64,
@@ -285,7 +289,7 @@ pub fn init_token_account<'a, 'b>(
     rent_program: &'a AccountInfo<'b>,
     seed: &str,
 ) -> ProgramResult {
-    if !is_empty(target_account)? {
+    if exists(target_account)? {
         if !check_token_account_owner(target_account, owner_account.key)? {
             return Err(ProgramError::IllegalOwner);
         }
@@ -326,7 +330,7 @@ pub fn close_token_account<'a, 'b>(
     target_account: &'a AccountInfo<'b>,
     authority_account: &'a AccountInfo<'b>,
 ) -> ProgramResult {
-    if is_empty(target_account)? {
+    if !exists(target_account)? {
         return Ok(());
     }
 
@@ -481,7 +485,7 @@ pub fn init_system_account<'a, 'b>(
     seed: &str,
     data_size: usize,
 ) -> ProgramResult {
-    if !is_empty(target_account)? {
+    if exists(target_account)? {
         if target_account.owner != owner_key {
             return Err(ProgramError::IllegalOwner);
         }

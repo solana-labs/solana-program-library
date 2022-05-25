@@ -2,7 +2,10 @@
 //! These constants represent official accounts, program ids, and names.
 //! Normally lazy_static! would work, but it is not supported with build-bpf.
 
-use std::{env, fs::File, io::Write, path::Path};
+use {
+    solana_program::pubkey::Pubkey,
+    std::{env, fs::File, io::Write, path::Path, str::FromStr},
+};
 
 fn main() {
     // create output file
@@ -15,14 +18,20 @@ fn main() {
     ));
 
     // read variables
-    let main_router_id = env!(
-        "MAIN_ROUTER_ID",
-        "Please set MAIN_ROUTER_ID environment variable to the router-main program address"
-    );
-    let main_router_admin = env!(
-        "MAIN_ROUTER_ADMIN",
-        "Please set MAIN_ROUTER_ADMIN environment variable to the router-main program admin"
-    );
+    let main_router_id =
+        option_env!("MAIN_ROUTER_ID").unwrap_or("RepLaceThisWithVaLidMainRouterProgramPubkey");
+    if main_router_id == "RepLaceThisWithVaLidMainRouterProgramPubkey" {
+        println!("cargo:warning=Please set MAIN_ROUTER_ID environment variable to the router-main program address");
+    }
+
+    let main_router_admin =
+        option_env!("MAIN_ROUTER_ADMIN").unwrap_or("RepLaceThisWithCorrectMainRouterAdminPubkey");
+    if main_router_admin == "RepLaceThisWithCorrectMainRouterAdminPubkey" {
+        println!("cargo:warning=Please set MAIN_ROUTER_ADMIN environment variable to the router-main program admin");
+    }
+
+    let main_router_multisig =
+        Pubkey::find_program_address(&[b"multisig"], &Pubkey::from_str(main_router_id).unwrap()).0;
 
     // ID that represents the unset Pubkey. This is to avoid passing Pubkey::default() which
     // is equal to system_program::id().
@@ -51,6 +60,13 @@ fn main() {
         &mut f,
         "pub mod main_router_admin {{solana_program::declare_id!(\"{}\"); }}\n",
         main_router_admin
+    )
+    .expect(&write_error);
+
+    write!(
+        &mut f,
+        "pub mod main_router_multisig {{solana_program::declare_id!(\"{}\"); }}\n",
+        main_router_multisig
     )
     .expect(&write_error);
 

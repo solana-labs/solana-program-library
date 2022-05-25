@@ -2,19 +2,24 @@
 
 use {
     crate::fund_info::FundInfo,
-    solana_farm_sdk::{fund::Fund, program::account},
+    solana_farm_sdk::{
+        fund::Fund,
+        program::{account, pda},
+    },
     solana_program::{
         account_info::AccountInfo, entrypoint::ProgramResult, msg, program_error::ProgramError,
     },
 };
 
-pub fn withdraw_fees(_fund: &Fund, accounts: &[AccountInfo], amount: u64) -> ProgramResult {
+pub fn withdraw_fees(fund: &Fund, accounts: &[AccountInfo], amount: u64) -> ProgramResult {
     #[allow(clippy::deprecated_cfg_attr)]
     #[cfg_attr(rustfmt, rustfmt_skip)]
     if let [
-        admin_account,
+        _admin_account,
         _fund_metadata,
         fund_info_account,
+        _active_multisig_account,
+        fund_multisig_account,
         _spl_token_program,
         custody_fees_account,
         receiver
@@ -22,7 +27,7 @@ pub fn withdraw_fees(_fund: &Fund, accounts: &[AccountInfo], amount: u64) -> Pro
     {
         // validate accounts
         msg!("Validate state and accounts");
-        if !account::check_token_account_owner(custody_fees_account, admin_account.key)? {
+        if !account::check_token_account_owner(custody_fees_account, fund_multisig_account.key)? {
             msg!("Error: Invalid custody fees token account owner");
             return Err(ProgramError::IllegalOwner);
         }
@@ -35,10 +40,16 @@ pub fn withdraw_fees(_fund: &Fund, accounts: &[AccountInfo], amount: u64) -> Pro
             account::get_token_balance(custody_fees_account)?
         };
 
-        account::transfer_tokens(
+        let seeds: &[&[&[u8]]] = &[&[
+            b"multisig",
+            fund.name.as_bytes(),
+            &[fund.multisig_bump],
+        ]];
+        pda::transfer_tokens_with_seeds(
             custody_fees_account,
             receiver,
-            admin_account,
+            fund_multisig_account,
+            seeds,
             withdraw_amount,
         )?;
 

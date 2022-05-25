@@ -20,6 +20,7 @@ pub fn init(fund: &Fund, accounts: &[AccountInfo], _step: u64) -> ProgramResult 
         admin_account,
         _fund_metadata,
         fund_info_account,
+        _multisig_account,
         fund_authority,
         fund_program,
         _system_program,

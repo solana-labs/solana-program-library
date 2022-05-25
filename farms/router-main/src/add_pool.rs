@@ -18,6 +18,7 @@ pub fn add_pool(program_id: &Pubkey, accounts: &[AccountInfo], pool: &Pool) -> P
     let accounts_iter = &mut accounts.iter();
 
     let signer_account = next_account_info(accounts_iter)?;
+    let _multisig_account = next_account_info(accounts_iter)?;
     let refdb_account = next_account_info(accounts_iter)?;
     let target_account = next_account_info(accounts_iter)?;
 

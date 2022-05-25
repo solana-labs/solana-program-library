@@ -5,6 +5,7 @@ use {
     arrayref::{array_refs, mut_array_refs},
     serde::{
         de::{Error, Visitor},
+        ser::SerializeSeq,
         Deserialize, Deserializer, Serializer,
     },
     solana_program::{program_error::ProgramError, pubkey::Pubkey},
@@ -112,6 +113,18 @@ where
     S: Serializer,
 {
     s.serialize_str(x.to_string().as_str())
+}
+
+/// Custom Pubkey slice serializer to use with Serde
+pub fn pubkey_slice_serialize<S>(x: &[Pubkey], s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let mut seq = s.serialize_seq(Some(x.len()))?;
+    for e in x {
+        seq.serialize_element(e.to_string().as_str())?;
+    }
+    seq.end()
 }
 
 /// Custom Option<Pubkey> deserializer to use with Serde

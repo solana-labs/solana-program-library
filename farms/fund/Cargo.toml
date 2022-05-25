@@ -1,6 +1,6 @@
 [package]
 name = "solana-fund"
-version = "1.0.0"
+version = "1.1.0"
 description = "Solana Yield Farming Fund"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library/farms"
@@ -15,6 +15,7 @@ debug = []
 [dependencies]
 solana-farm-sdk = {path="../farm-sdk"}
 solana-program = "1.9.18"
+solana-security-txt = "1.0.1"
 spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
 num_enum = "0.5.7"
 

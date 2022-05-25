@@ -55,6 +55,8 @@ pub fn request_withdrawal(fund: &Fund, accounts: &[AccountInfo], amount: u64) ->
             msg!("Error: Invalid withdrawal destination account owner");
             return Err(ProgramError::IllegalOwner);
         }
+        common::check_fund_token_mint(fund, fund_token_mint)?;
+        
         let custody_token = account::unpack::<Token>(custody_token_metadata, "custody token")?;
         common::check_wd_custody_accounts(
             &fund.fund_program_id,
@@ -199,7 +201,6 @@ pub fn request_withdrawal(fund: &Fund, accounts: &[AccountInfo], amount: u64) ->
 
             // burn Fund tokens from user
             msg!("Burn Fund tokens from the user");
-            common::check_fund_token_mint(fund, fund_token_mint)?;
             account::burn_tokens(
                 user_fund_token_account,
                 fund_token_mint,

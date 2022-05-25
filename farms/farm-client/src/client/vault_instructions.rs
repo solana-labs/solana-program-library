@@ -3,13 +3,14 @@
 use {
     crate::error::FarmClientError,
     solana_farm_sdk::{
-        instruction::vault::VaultInstruction, pool::PoolRoute, token::TokenSelector,
-        vault::VaultStrategy,
+        instruction::vault::VaultInstruction, pool::PoolRoute, program::multisig::Multisig,
+        token::TokenSelector, vault::VaultStrategy,
     },
     solana_sdk::{
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
         pubkey::Pubkey,
+        system_program,
     },
 };
 
@@ -305,6 +306,7 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new_readonly(vault_ref, false),
                 AccountMeta::new(vault.info_account, false),
+                AccountMeta::new(self.get_vault_active_multisig_account(vault_name)?, false),
                 AccountMeta::new(vault.vault_authority, false),
                 AccountMeta::new_readonly(spl_token::id(), false),
                 if fee_token == TokenSelector::TokenA {
@@ -388,6 +390,77 @@ impl FarmClient {
         })
     }
 
+    /// Creates a new instruction for initializing Vault's multisig with a new set of signers
+    pub fn new_instruction_set_vault_admins(
+        &self,
+        admin_address: &Pubkey,
+        vault_name: &str,
+        admin_signers: &[Pubkey],
+        min_signatures: u8,
+    ) -> Result<Instruction, FarmClientError> {
+        if admin_signers.is_empty() || min_signatures == 0 {
+            return Err(FarmClientError::ValueError(
+                "At least one signer is required".to_string(),
+            ));
+        } else if min_signatures as usize > admin_signers.len()
+            || admin_signers.len() > Multisig::MAX_SIGNERS
+        {
+            return Err(FarmClientError::ValueError(
+                "Invalid number of signatures".to_string(),
+            ));
+        }
+
+        // get vault info
+        let vault = self.get_vault(vault_name)?;
+        let vault_ref = self.get_vault_ref(vault_name)?;
+
+        // fill in accounts and instruction data
+        let mut inst = Instruction {
+            program_id: vault.vault_program_id,
+            data: VaultInstruction::SetAdminSigners { min_signatures }.to_vec()?,
+            accounts: vec![
+                AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new_readonly(vault_ref, false),
+                AccountMeta::new(vault.info_account, false),
+                AccountMeta::new(self.get_vault_active_multisig_account(vault_name)?, false),
+                AccountMeta::new(self.get_vault_multisig_account(vault_name)?, false),
+                AccountMeta::new_readonly(system_program::id(), false),
+            ],
+        };
+
+        for key in admin_signers {
+            inst.accounts.push(AccountMeta::new_readonly(*key, false));
+        }
+
+        Ok(inst)
+    }
+
+    /// Creates a new instruction for removing Vault's multisig
+    pub fn new_instruction_remove_vault_multisig(
+        &self,
+        admin_address: &Pubkey,
+        vault_name: &str,
+    ) -> Result<Instruction, FarmClientError> {
+        // get vault info
+        let vault = self.get_vault(vault_name)?;
+        let vault_ref = self.get_vault_ref(vault_name)?;
+
+        // fill in accounts and instruction data
+        let inst = Instruction {
+            program_id: vault.vault_program_id,
+            data: VaultInstruction::RemoveMultisig.to_vec()?,
+            accounts: vec![
+                AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new_readonly(vault_ref, false),
+                AccountMeta::new(vault.info_account, false),
+                AccountMeta::new(self.get_vault_active_multisig_account(vault_name)?, false),
+                AccountMeta::new(self.get_vault_multisig_account(vault_name)?, false),
+            ],
+        };
+
+        Ok(inst)
+    }
+
     /// Creates a new Instruction for updating the Vault's min crank interval
     pub fn new_instruction_set_min_crank_interval_vault(
         &self,
@@ -407,6 +480,7 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new_readonly(vault_ref, false),
                 AccountMeta::new(vault.info_account, false),
+                AccountMeta::new(self.get_vault_active_multisig_account(vault_name)?, false),
             ],
         };
 
@@ -434,6 +508,7 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new_readonly(vault_ref, false),
                 AccountMeta::new(vault.info_account, false),
+                AccountMeta::new(self.get_vault_active_multisig_account(vault_name)?, false),
             ],
         };
 
@@ -464,6 +539,7 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new_readonly(vault_ref, false),
                 AccountMeta::new(vault.info_account, false),
+                AccountMeta::new(self.get_vault_active_multisig_account(vault_name)?, false),
             ],
         };
 
@@ -493,6 +569,7 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new_readonly(vault_ref, false),
                 AccountMeta::new(vault.info_account, false),
+                AccountMeta::new(self.get_vault_active_multisig_account(vault_name)?, false),
             ],
         };
 
@@ -519,6 +596,7 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new_readonly(vault_ref, false),
                 AccountMeta::new(vault.info_account, false),
+                AccountMeta::new(self.get_vault_active_multisig_account(vault_name)?, false),
             ],
         };
 
@@ -545,6 +623,7 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new_readonly(vault_ref, false),
                 AccountMeta::new(vault.info_account, false),
+                AccountMeta::new(self.get_vault_active_multisig_account(vault_name)?, false),
             ],
         };
 
@@ -571,6 +650,7 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new_readonly(vault_ref, false),
                 AccountMeta::new(vault.info_account, false),
+                AccountMeta::new(self.get_vault_active_multisig_account(vault_name)?, false),
             ],
         };
 

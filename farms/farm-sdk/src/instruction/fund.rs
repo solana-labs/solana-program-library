@@ -64,6 +64,12 @@ pub enum FundInstruction {
     /// Move funds from trading custody to deposit/withdrawal custody
     UnlockAssets { amount: u64 },
 
+    /// Initialize multisig with a new set of admin signatures
+    SetAdminSigners { min_signatures: u8 },
+
+    /// Remove Fund specific multisig, Main Router's default auth will be used
+    RemoveMultisig,
+
     /// Set parameters for assets tracking
     SetAssetsTrackingConfig { config: FundAssetsTrackingConfig },
 
@@ -134,6 +140,8 @@ pub enum FundInstructionType {
     DenyWithdrawal,
     LockAssets,
     UnlockAssets,
+    SetAdminSigners,
+    RemoveMultisig,
     SetAssetsTrackingConfig,
     UpdateAssetsWithVault,
     UpdateAssetsWithCustody,
@@ -166,6 +174,8 @@ impl FundInstruction {
     pub const DENY_WITHDRAWAL_LEN: usize = 65;
     pub const LOCK_ASSETS_LEN: usize = 9;
     pub const UNLOCK_ASSETS_LEN: usize = 9;
+    pub const SET_ADMIN_SIGNERS_LEN: usize = 2;
+    pub const REMOVE_MULTISIG_LEN: usize = 1;
     pub const SET_ASSETS_TRACKING_CONFIG_LEN: usize = 33;
     pub const UPDATE_ASSETS_WITH_VAULT_LEN: usize = 1;
     pub const UPDATE_ASSETS_WITH_CUSTODY_LEN: usize = 1;
@@ -195,6 +205,8 @@ impl FundInstruction {
             Self::DenyWithdrawal { .. } => self.pack_deny_withdrawal(output),
             Self::LockAssets { .. } => self.pack_accept_funds(output),
             Self::UnlockAssets { .. } => self.pack_release_funds(output),
+            Self::SetAdminSigners { .. } => self.pack_set_admin_signers(output),
+            Self::RemoveMultisig { .. } => self.pack_remove_multisig(output),
             Self::SetAssetsTrackingConfig { .. } => self.pack_set_assets_tracking_config(output),
             Self::UpdateAssetsWithVault { .. } => self.pack_update_assets_with_vault(output),
             Self::UpdateAssetsWithCustody { .. } => self.pack_update_assets_with_custody(output),
@@ -252,6 +264,10 @@ impl FundInstruction {
             FundInstructionType::DenyWithdrawal => FundInstruction::unpack_deny_withdrawal(input),
             FundInstructionType::LockAssets => FundInstruction::unpack_accept_funds(input),
             FundInstructionType::UnlockAssets => FundInstruction::unpack_release_funds(input),
+            FundInstructionType::SetAdminSigners => {
+                FundInstruction::unpack_set_admin_signers(input)
+            }
+            FundInstructionType::RemoveMultisig => FundInstruction::unpack_remove_multisig(input),
             FundInstructionType::SetAssetsTrackingConfig => {
                 FundInstruction::unpack_set_assets_tracking_config(input)
             }
@@ -553,6 +569,36 @@ impl FundInstruction {
             *amount_out = amount.to_le_bytes();
 
             Ok(FundInstruction::UNLOCK_ASSETS_LEN)
+        } else {
+            Err(ProgramError::InvalidInstructionData)
+        }
+    }
+
+    fn pack_set_admin_signers(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        check_data_len(output, FundInstruction::SET_ADMIN_SIGNERS_LEN)?;
+
+        if let FundInstruction::SetAdminSigners { min_signatures } = self {
+            let output = array_mut_ref![output, 0, FundInstruction::SET_ADMIN_SIGNERS_LEN];
+            let (instruction_type_out, min_signatures_out) = mut_array_refs![output, 1, 1];
+
+            instruction_type_out[0] = FundInstructionType::SetAdminSigners as u8;
+            min_signatures_out[0] = *min_signatures;
+
+            Ok(FundInstruction::SET_ADMIN_SIGNERS_LEN)
+        } else {
+            Err(ProgramError::InvalidInstructionData)
+        }
+    }
+
+    fn pack_remove_multisig(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        check_data_len(output, FundInstruction::REMOVE_MULTISIG_LEN)?;
+
+        if let FundInstruction::RemoveMultisig = self {
+            let instruction_type_out = array_mut_ref![output, 0, 1];
+
+            instruction_type_out[0] = FundInstructionType::RemoveMultisig as u8;
+
+            Ok(FundInstruction::REMOVE_MULTISIG_LEN)
         } else {
             Err(ProgramError::InvalidInstructionData)
         }
@@ -905,6 +951,21 @@ impl FundInstruction {
         })
     }
 
+    fn unpack_set_admin_signers(input: &[u8]) -> Result<FundInstruction, ProgramError> {
+        check_data_len(input, FundInstruction::SET_ADMIN_SIGNERS_LEN)?;
+
+        let input = array_ref![input, 1, FundInstruction::SET_ADMIN_SIGNERS_LEN - 1];
+
+        Ok(Self::SetAdminSigners {
+            min_signatures: input[0],
+        })
+    }
+
+    fn unpack_remove_multisig(input: &[u8]) -> Result<FundInstruction, ProgramError> {
+        check_data_len(input, FundInstruction::REMOVE_MULTISIG_LEN)?;
+        Ok(Self::RemoveMultisig)
+    }
+
     fn unpack_set_assets_tracking_config(input: &[u8]) -> Result<FundInstruction, ProgramError> {
         check_data_len(input, FundInstruction::SET_ASSETS_TRACKING_CONFIG_LEN)?;
 
@@ -1044,6 +1105,8 @@ impl std::fmt::Display for FundInstructionType {
             FundInstructionType::DenyWithdrawal => write!(f, "DenyWithdrawal"),
             FundInstructionType::LockAssets => write!(f, "LockAssets"),
             FundInstructionType::UnlockAssets => write!(f, "UnlockAssets"),
+            FundInstructionType::SetAdminSigners => write!(f, "SetAdminSigners"),
+            FundInstructionType::RemoveMultisig => write!(f, "RemoveMultisig"),
             FundInstructionType::SetAssetsTrackingConfig => write!(f, "SetAssetsTrackingConfig"),
             FundInstructionType::UpdateAssetsWithVault => write!(f, "UpdateAssetsWithVault"),
             FundInstructionType::UpdateAssetsWithCustody => write!(f, "UpdateAssetsWithCustody"),

@@ -4,7 +4,7 @@ use {
     solana_farm_sdk::{
         farm::{FarmRoute, FarmType},
         fund::{Fund, FundType},
-        id::{main_router_admin, zero},
+        id::zero,
         pool::PoolRoute,
         program::pda::find_target_pda,
         refdb::StorageType,
@@ -18,7 +18,8 @@ use {
 #[allow(dead_code)]
 pub fn init_fund(
     client: &FarmClient,
-    keypair: &Keypair,
+    admin_keypair: &Keypair,
+    manager_address: &Pubkey,
     fund_name: Option<&str>,
     fund_token_name: Option<&str>,
 ) -> Result<String, FarmClientError> {
@@ -57,7 +58,7 @@ pub fn init_fund(
         };
 
         info!("Recording token {}", fund_token_name);
-        client.add_token(keypair, token)?;
+        client.add_token(admin_keypair, token)?;
     }
 
     if client.get_fund(fund_name).is_err() {
@@ -81,13 +82,18 @@ pub fn init_fund(
                 &fund_address,
             )
             .1,
+            multisig_bump: Pubkey::find_program_address(
+                &[b"multisig", fund_name.as_bytes()],
+                &fund_address,
+            )
+            .1,
             fund_program_id: fund_address,
             fund_authority: Pubkey::find_program_address(
                 &[b"fund_authority", fund_name.as_bytes()],
                 &fund_address,
             )
             .0,
-            fund_manager: Pubkey::default(),
+            fund_manager: *manager_address,
             fund_token_ref: find_target_pda(
                 StorageType::Token,
                 &str_to_as64(fund_token_name).unwrap(),
@@ -98,7 +104,11 @@ pub fn init_fund(
                 &fund_address,
             )
             .0,
-            admin_account: main_router_admin::id(),
+            multisig_account: Pubkey::find_program_address(
+                &[b"multisig", fund_name.as_bytes()],
+                &fund_address,
+            )
+            .0,
             vaults_assets_info: Pubkey::find_program_address(
                 &[b"vaults_assets_info", fund_name.as_bytes()],
                 &fund_address,
@@ -112,10 +122,10 @@ pub fn init_fund(
         };
 
         info!("Recording Fund {}", fund_name);
-        client.add_fund(keypair, fund)?;
+        client.add_fund(admin_keypair, fund)?;
 
         info!("Initializing Fund {}", fund_name);
-        client.init_fund(keypair, fund_name, 0)?;
+        client.init_fund(admin_keypair, fund_name, 0)?;
     }
 
     Ok(fund_name.to_string())
@@ -124,7 +134,7 @@ pub fn init_fund(
 #[allow(dead_code)]
 pub fn init_vault(
     client: &FarmClient,
-    keypair: &Keypair,
+    admin_keypair: &Keypair,
     vault_name: &str,
     vault_token_name: &str,
 ) -> Result<(), FarmClientError> {
@@ -150,7 +160,7 @@ pub fn init_vault(
         };
 
         info!("Recording token {}", vault_token_name);
-        client.add_token(keypair, token)?;
+        client.add_token(admin_keypair, token)?;
     }
 
     if client.get_vault(vault_name).is_err() {
@@ -204,7 +214,11 @@ pub fn init_vault(
                 &vault_address,
             )
             .0,
-            admin_account: main_router_admin::id(),
+            multisig_account: Pubkey::find_program_address(
+                &[b"multisig", vault_name.as_bytes()],
+                &vault_address,
+            )
+            .0,
             fees_account_a: Some(
                 Pubkey::find_program_address(
                     &[b"fees_account_a", vault_name.as_bytes()],
@@ -292,13 +306,13 @@ pub fn init_vault(
         };
 
         info!("Recording Vault {}", vault_name);
-        client.add_vault(keypair, vault)?;
+        client.add_vault(admin_keypair, vault)?;
 
         info!("Initializing Vault {}", vault_name);
-        client.init_vault(keypair, vault_name, 1)?;
-        client.init_vault(keypair, vault_name, 2)?;
-        client.enable_deposits_vault(keypair, vault_name)?;
-        client.enable_withdrawals_vault(keypair, vault_name)?;
+        client.init_vault(admin_keypair, vault_name, 1)?;
+        client.init_vault(admin_keypair, vault_name, 2)?;
+        client.enable_deposits_vault(admin_keypair, vault_name)?;
+        client.enable_withdrawals_vault(admin_keypair, vault_name)?;
     }
 
     Ok(())
