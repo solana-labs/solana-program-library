@@ -288,7 +288,12 @@ pub mod gummyroll {
     }
 
     /// If proof is invalid, error is thrown
-    pub fn verify_leaf(ctx: Context<VerifyLeaf>, root: Node, leaf: Node, index: u32) -> Result<()> {
+    pub fn verify_leaf(
+        ctx: Context<VerifyLeaf>,
+        root: [u8; 32],
+        leaf: [u8; 32],
+        index: u32,
+    ) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
         let (header_bytes, roll_bytes) =
             merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
