@@ -20,6 +20,7 @@ import {
   createTransferAuthorityIx,
   decodeMerkleRoll,
   getMerkleRollAccountSize,
+  createVerifyLeafIx,
 } from '../sdk/gummyroll';
 import { execute } from "./utils";
 
@@ -178,6 +179,98 @@ describe("gummyroll", () => {
 
       updateTree(offChainTree, newLeaf, 1);
 
+      const merkleRollAccount = await Gummyroll.provider.connection.getAccountInfo(
+        merkleRollKeypair.publicKey
+      );
+      const merkleRoll = decodeMerkleRoll(merkleRollAccount.data);
+      const onChainRoot =
+        merkleRoll.roll.changeLogs[merkleRoll.roll.activeIndex].root.toBuffer();
+
+      assert(
+        Buffer.from(onChainRoot).equals(offChainTree.root),
+        "Updated on chain root matches root of updated off chain tree"
+      );
+    });
+    it("Verify proof works for that leaf", async () => {
+      const previousLeaf = offChainTree.leaves[0].node;
+      const newLeaf = crypto.randomBytes(32);
+      const index = 0;
+      const proof = getProofOfLeaf(offChainTree, index).map((treeNode) => { return treeNode.node });
+
+      const verifyLeafIx = createVerifyLeafIx(
+        Gummyroll,
+        merkleRollKeypair.publicKey,
+        offChainTree.root,
+        previousLeaf,
+        index,
+        proof
+      );
+      const replaceLeafIx = createReplaceIx(
+        Gummyroll,
+        payer,
+        merkleRollKeypair.publicKey,
+        offChainTree.root,
+        previousLeaf,
+        newLeaf,
+        index,
+        proof
+      );
+      await execute(Gummyroll.provider, [verifyLeafIx, replaceLeafIx], [payer]);
+
+      updateTree(offChainTree, newLeaf, index);
+
+      const merkleRollAccount = await Gummyroll.provider.connection.getAccountInfo(
+        merkleRollKeypair.publicKey
+      );
+      const merkleRoll = decodeMerkleRoll(merkleRollAccount.data);
+      const onChainRoot =
+        merkleRoll.roll.changeLogs[merkleRoll.roll.activeIndex].root.toBuffer();
+
+      assert(
+        Buffer.from(onChainRoot).equals(offChainTree.root),
+        "Updated on chain root matches root of updated off chain tree"
+      );
+    });
+    it("Verify leaf fails when proof fails", async () => {
+      const previousLeaf = offChainTree.leaves[0].node;
+      const newLeaf = crypto.randomBytes(32);
+      const index = 0;
+      // Proof has random bytes: definitely wrong
+      const proof = getProofOfLeaf(offChainTree, index).map(
+        (treeNode) => { return crypto.randomBytes(32) }
+      );
+
+      // Verify proof is invalid
+      const verifyLeafIx = createVerifyLeafIx(
+        Gummyroll,
+        merkleRollKeypair.publicKey,
+        offChainTree.root,
+        previousLeaf,
+        index,
+        proof
+      );
+      try {
+        await execute(Gummyroll.provider, [verifyLeafIx], [payer]);
+        assert(false, "Proof should have failed to verify");
+      } catch {
+      }
+
+      // Replace instruction with same proof fails
+      const replaceLeafIx = createReplaceIx(
+        Gummyroll,
+        payer,
+        merkleRollKeypair.publicKey,
+        offChainTree.root,
+        previousLeaf,
+        newLeaf,
+        index,
+        proof
+      );
+      try {
+        await execute(Gummyroll.provider, [replaceLeafIx], [payer]);
+        assert(false, "Replace should have failed to verify");
+      } catch {
+      }
       const merkleRollAccount = await Gummyroll.provider.connection.getAccountInfo(
         merkleRollKeypair.publicKey
       );
