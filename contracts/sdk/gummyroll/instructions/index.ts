@@ -74,3 +74,32 @@ export function createTransferAuthorityIx(
         }
     );
 }
+
+export function createVerifyLeafIx(
+    gummyroll: Program<Gummyroll>,
+    merkleRoll: PublicKey,
+    root: Buffer,
+    leaf: Buffer,
+    index: number,
+    proof: Buffer[],
+): TransactionInstruction {
+    const nodeProof = proof.map((node) => {
+        return {
+            pubkey: new PublicKey(node),
+            isSigner: false,
+            isWritable: false,
+        };
+    });
+    return gummyroll.instruction.verifyLeaf(
+        { inner: Array.from(root) },
+        { inner: Array.from(leaf) },
+        index,
+        {
+            accounts: {
+                merkleRoll
+            },
+            signers: [],
+            remainingAccounts: nodeProof,
+        }
+    );
+}
