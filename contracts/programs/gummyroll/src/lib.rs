@@ -47,7 +47,7 @@ pub struct VerifyLeaf<'info> {
 }
 
 #[derive(Accounts)]
-pub struct TransferAppendAuthority<'info> {
+pub struct TransferAuthority<'info> {
     #[account(mut)]
     /// CHECK: This account is validated in the instruction
     pub merkle_roll: UncheckedAccount<'info>,
@@ -254,8 +254,8 @@ pub mod gummyroll {
 
     /// Transfers authority or append authority
     /// requires `authority` to sign
-    pub fn transfer_append_authority(
-        ctx: Context<TransferAppendAuthority>,
+    pub fn transfer_authority(
+        ctx: Context<TransferAuthority>,
         new_authority: Option<Pubkey>,
         new_append_authority: Option<Pubkey>,
     ) -> Result<()> {
