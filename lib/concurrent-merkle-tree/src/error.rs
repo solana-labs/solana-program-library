@@ -16,4 +16,6 @@ pub enum CMTError {
     LeafAlreadyUpdated,
     #[error("Invalid number of bytes passed for node (expected 32 bytes)")]
     InvalidNodeByteLength,
+    #[error("Root not found in changelog buffer")]
+    RootNotFound,
 }

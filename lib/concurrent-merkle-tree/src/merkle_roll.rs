@@ -12,6 +12,11 @@ use solana_program::keccak::hashv;
 #[cfg(feature = "sol-log")]
 use solana_program::{log::sol_log_compute_units, msg};
 
+pub enum FastForwardResult {
+    LeafUpdated { leaf: Node },
+    Ok,
+}
+
 /// Tracks updates to off-chain Merkle tree
 ///
 /// Allows for concurrent writes to same merkle tree so long as proof
@@ -103,9 +108,65 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     ) -> Result<Node, CMTError> {
         let old_root = recompute(EMPTY, &proof, 0);
         if old_root == empty_node(MAX_DEPTH as u32) {
-            self.update_and_apply_proof(EMPTY, leaf, &mut proof, 0, 0, false, false)
+            self.update_and_apply_proof(old_root, EMPTY, leaf, &mut proof, 0, false, false)
         } else {
             return Err(CMTError::TreeAlreadyInitialized);
+        }
+    }
+
+    pub fn prove_leaf(
+        &mut self,
+        current_root: Node,
+        leaf: Node,
+        proof_vec: Vec<Node>,
+        leaf_index: u32,
+    ) -> Result<Node, CMTError> {
+        if leaf_index > self.rightmost_proof.index {
+            solana_logging!(
+                "Received an index larger than the rightmost index {} > {}",
+                leaf_index,
+                self.rightmost_proof.index
+            );
+            return Err(CMTError::LeafIndexOutOfBounds);
+        } else {
+            let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
+            fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
+
+            // It's important to identify the root index
+            // to remove possibility of incorrectly failing
+            // due to a leaf collision that happened before the
+            // root of the given proof
+            match self.find_root_in_changelog(current_root) {
+                Some(matching_changelog_index) => {
+                    if !self.fast_forward_proof(
+                        leaf,
+                        &mut proof,
+                        leaf_index,
+                        matching_changelog_index,
+                        false,
+                    ) {
+                        solana_logging!(
+                            "Leaf was updated since proof was issued. Failing to verify"
+                        );
+                        return Err(CMTError::LeafAlreadyUpdated);
+                    }
+                }
+                None => {
+                    if !self.fast_forward_proof(leaf, &mut proof, leaf_index, 0, true) {
+                        solana_logging!(
+                            "Leaf was updated since proof was issued. Failing to verify"
+                        );
+                        return Err(CMTError::LeafAlreadyUpdated);
+                    }
+                }
+            }
+
+            if recompute(leaf, &proof, leaf_index) != self.get_change_log().root {
+                solana_logging!("Proof failed to verify");
+                return Err(CMTError::InvalidProof);
+            }
+
+            Ok(Node::default())
         }
     }
 
@@ -223,6 +284,17 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         }
     }
 
+    fn find_root_in_changelog(&self, current_root: Node) -> Option<u64> {
+        let mask: usize = MAX_BUFFER_SIZE - 1;
+        for i in 0..self.buffer_size {
+            let j = self.active_index.wrapping_sub(i) & mask as u64;
+            if self.change_logs[j as usize].root == current_root {
+                return Some(j);
+            }
+        }
+        None
+    }
+
     /// Internal function used to set leaf value & record changelog
     fn find_and_update_leaf(
         &mut self,
@@ -237,34 +309,65 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         solana_logging!("Rightmost Index: {}", self.rightmost_proof.index);
         solana_logging!("Buffer Size: {}", self.buffer_size);
         solana_logging!("Leaf Index: {}", index);
-        let mask: usize = MAX_BUFFER_SIZE - 1;
 
-        for i in 0..self.buffer_size {
-            let j = self.active_index.wrapping_sub(i) & mask as u64;
-            if self.change_logs[j as usize].root != current_root {
-                continue;
-            }
-            return self.update_and_apply_proof(
-                leaf,
-                new_leaf,
-                proof,
-                index,
-                j,
-                append_on_conflict,
-                false,
-            );
-        }
-        solana_logging!("Failed to find root, attempting to replay change log");
-        // Optimistic search
-        self.update_and_apply_proof(
+        return self.update_and_apply_proof(
+            current_root,
             leaf,
             new_leaf,
             proof,
             index,
-            self.active_index.wrapping_sub(self.buffer_size) & mask as u64,
             append_on_conflict,
-            true,
-        )
+            false,
+        );
+    }
+
+    /// Modifies the `proof` for leaf at `leaf_index`
+    /// in place by fast-forwarding the given `proof` through the
+    /// `changelog`s, starting at index `changelog_buffer_index`
+    /// Returns false if the leaf was updated in the change log
+    fn fast_forward_proof(
+        &mut self,
+        leaf: Node,
+        proof: &mut [Node; MAX_DEPTH],
+        leaf_index: u32,
+        mut changelog_buffer_index: u64,
+        use_full_buffer: bool,
+    ) -> bool {
+        solana_logging!(
+            "Fast-forwarding proof, starting index {}",
+            changelog_buffer_index
+        );
+        let mask: usize = MAX_BUFFER_SIZE - 1;
+        let padding: usize = 32 - MAX_DEPTH;
+
+        let mut updated_leaf = leaf;
+        log_compute!();
+        // Modifies proof by iterating through the change log
+        loop {
+            // If use_full_buffer is false, this loop will terminate if the initial value of changelog_buffer_index is the active index
+            if !use_full_buffer && changelog_buffer_index == self.active_index {
+                break;
+            }
+            changelog_buffer_index += 1;
+            changelog_buffer_index &= mask as u64;
+            if leaf_index != self.change_logs[changelog_buffer_index as usize].index {
+                let common_path_len = ((leaf_index
+                    ^ self.change_logs[changelog_buffer_index as usize].index)
+                    << padding)
+                    .leading_zeros() as usize;
+                let critbit_index = (MAX_DEPTH - 1) - common_path_len;
+                proof[critbit_index] =
+                    self.change_logs[changelog_buffer_index as usize].path[critbit_index];
+            } else {
+                updated_leaf = self.change_logs[changelog_buffer_index as usize].get_leaf();
+            }
+            // If use_full_buffer is true, this loop will do 1 full pass of the change logs
+            if use_full_buffer && changelog_buffer_index == self.active_index {
+                break;
+            }
+        }
+        log_compute!();
+        updated_leaf == leaf
     }
 
     /// Fast-forwards submitted proof to be valid for the root at `self.current_index`
@@ -274,45 +377,50 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     /// Takes in `j`, which is the root index that this proof was last valid for
     fn update_and_apply_proof(
         &mut self,
+        current_root: Node,
         leaf: Node,
         new_leaf: Node,
         proof: &mut [Node; MAX_DEPTH],
-        index: u32,
-        mut j: u64,
+        leaf_index: u32,
         append_on_conflict: bool,
         use_full_buffer: bool,
     ) -> Result<Node, CMTError> {
-        let mut updated_leaf = leaf;
-        solana_logging!("Fast-forwarding proof, starting index {}", j);
         let mask: usize = MAX_BUFFER_SIZE - 1;
-        let padding: usize = 32 - MAX_DEPTH;
-        log_compute!();
-        // Modifies proof by iterating through the change log
-        loop {
-            // If use_full_buffer is false, this loop will terminate if the initial value of j is the active index
-            if !use_full_buffer && j == self.active_index {
-                break;
-            }
-            j += 1;
-            j &= mask as u64;
-            if index != self.change_logs[j as usize].index {
-                let common_path_len = ((index ^ self.change_logs[j as usize].index) << padding)
-                    .leading_zeros() as usize;
-                let critbit_index = (MAX_DEPTH - 1) - common_path_len;
-                proof[critbit_index] = self.change_logs[j as usize].path[critbit_index];
-            } else {
-                updated_leaf = self.change_logs[j as usize].get_leaf();
-            }
-            // If use_full_buffer is true, this loop will do 1 full pass of the change logs
-            if use_full_buffer && j == self.active_index {
-                break;
+        let changelog_buffer_index: u64;
+        if use_full_buffer {
+            changelog_buffer_index = self.active_index.wrapping_sub(self.buffer_size) & mask as u64;
+        } else {
+            match self.find_root_in_changelog(current_root) {
+                Some(matching_changelog_index) => {
+                    changelog_buffer_index = matching_changelog_index;
+                }
+                None => {
+                    return Err(CMTError::RootNotFound);
+                }
             }
         }
-        log_compute!();
-        let valid_root = recompute(updated_leaf, proof, index) == self.get_change_log().root;
-        if updated_leaf != leaf || index > self.rightmost_proof.index {
+
+        solana_logging!(
+            "Fast-forwarding proof, starting index {}",
+            changelog_buffer_index
+        );
+
+        let valid_fast_forward = self.fast_forward_proof(
+            new_leaf,
+            proof,
+            leaf_index,
+            changelog_buffer_index,
+            use_full_buffer,
+        );
+
+        let valid_root = recompute(leaf, proof, leaf_index) == self.get_change_log().root;
+        if !valid_fast_forward || leaf_index > self.rightmost_proof.index {
             // If the supplied root was not found in the queue, the instruction should fail if the leaf index changes
-            if !use_full_buffer && valid_root && leaf == EMPTY && append_on_conflict {
+            // NOTE: previously we checked if the FF'd proof with the value of the overwritten leaf
+            //      could be hashed to match the current root
+            //      However, this was removed for simplicity because it did not add to the security model
+            //      of insert_or_append functionality.
+            if !use_full_buffer && leaf == EMPTY && append_on_conflict {
                 return self.append(new_leaf);
             } else {
                 return Err(CMTError::LeafAlreadyUpdated);
@@ -321,7 +429,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         if valid_root {
             self.increment_active_index();
             self.sequence_number = self.sequence_number.saturating_add(1);
-            Ok(self.apply_changes(new_leaf, proof, index))
+            Ok(self.apply_changes(new_leaf, proof, leaf_index))
         } else {
             return Err(CMTError::InvalidProof);
         }
