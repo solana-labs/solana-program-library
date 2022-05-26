@@ -19,7 +19,6 @@ import {
 } from "./merkle-roll-serde";
 import { logTx } from "./utils";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
-import { sleep } from "../deps/metaplex-program-library/metaplex/js/test/utils";
 
 // @ts-ignore
 let Gummyroll;
@@ -303,16 +302,14 @@ describe("gummyroll", () => {
     });
   });
 
-  describe("Having created a known authority", () => {
+  describe("Examples tranferring appendAuthority", () => {
     const authority = Keypair.generate();
     const randomSigner = Keypair.generate();
-    console.log("Authority:", authority.publicKey.toString());
-    console.log("Random signer:", randomSigner.publicKey.toString());
-    describe("And a known appendAuthority", () => {
-      it("Authority creates a tree with a single leaf", async () => {
+    describe("Examples transferring appendAuthority", () => {
+      it("... initializing tree ...", async () => {
         await (connection as Connection).requestAirdrop(authority.publicKey, 1e10);
         [merkleRollKeypair, offChainTree] = await createTreeOnChain(authority, 1);
-      });
+      })
       it("Attempting to append without appendAuthority fails", async () => {
         // Random leaf
         const newLeaf = crypto.randomBytes(32);
@@ -373,7 +370,6 @@ describe("gummyroll", () => {
           merkleRollInfo.appendAuthority.equals(randomSigner.publicKey),
           `Upon transferring appendAuthority, appendAuthority should be ${randomSigner.publicKey.toString()} but is ${merkleRollInfo.appendAuthority.toString()}`
         );
-        console.log("New merkle roll appendAuthority:", merkleRollInfo.appendAuthority.toString());
       });
       it("So the new appendAuthority can append", async () => {
         const newLeaf = crypto.randomBytes(32);
@@ -389,12 +385,10 @@ describe("gummyroll", () => {
           }
         );
         const tx = new Transaction().add(appendIx);
-        console.log("sending transaction...");
         const txid = await (Gummyroll.provider as Provider).send(tx, [authority, randomSigner], {
           commitment: "confirmed",
           skipPreflight: true
         });
-        console.log("Append txid:", txid);
         await logTx(Gummyroll.provider, txid, false);
 
         const merkleRoll = decodeMerkleRoll(
@@ -444,6 +438,122 @@ describe("gummyroll", () => {
           });
           await logTx(Gummyroll.provider, txid, false);
           assert(false, "Transaction should have failed since the append authority cannot act as the authority for replaces")
+        } catch {
+        }
+      });
+    });
+    describe("Examples transferring authority", () => {
+      it("... initializing tree ...", async () => {
+        await (connection as Connection).requestAirdrop(authority.publicKey, 1e10);
+        [merkleRollKeypair, offChainTree] = await createTreeOnChain(authority, 1);
+      })
+      it("Attempting to append without appendAuthority fails", async () => {
+        await (connection as Connection).requestAirdrop(randomSigner.publicKey, 1e10);
+
+        const newLeaf = crypto.randomBytes(32);
+        const replaceIndex = 0;
+        const proof = getProofOfLeaf(offChainTree, replaceIndex);
+        const nodeProof = proof.map((offChainTreeNode) => {
+          return {
+            pubkey: new PublicKey(offChainTreeNode.node),
+            isSigner: false,
+            isWritable: false,
+          };
+        });
+        const replaceIx = Gummyroll.instruction.replaceLeaf(
+          { inner: Array.from(offChainTree.root) },
+          { inner: Array.from(offChainTree.leaves[replaceIndex].node) },
+          { inner: Array.from(newLeaf) },
+          replaceIndex,
+          {
+            accounts: {
+              merkleRoll: merkleRollKeypair.publicKey,
+              authority: randomSigner.publicKey,
+            },
+            signers: [randomSigner],
+            remainingAccounts: nodeProof,
+          }
+        );
+
+        try {
+          const tx = new Transaction().add(replaceIx);
+          const txid = await Gummyroll.provider.send(tx, [randomSigner], {
+            commitment: "confirmed",
+          });
+          await logTx(Gummyroll.provider, txid, false);
+          assert(false, "Transaction should have failed since incorrect authority cannot execute replaces")
+        } catch {
+        }
+      });
+      it("Can transfer authority", async () => {
+        const transferAppendAuthorityIx = Gummyroll.instruction.transferAuthority(
+          randomSigner.publicKey,
+          null,
+          {
+            accounts: {
+              merkleRoll: merkleRollKeypair.publicKey,
+              authority: authority.publicKey,
+            },
+            signers: [authority],
+          }
+        );
+        const tx = new Transaction().add(transferAppendAuthorityIx);
+        const txid = await Gummyroll.provider.send(tx, [authority], {
+          commitment: "confirmed",
+        });
+        await logTx(Gummyroll.provider, txid, false);
+
+        const merkleRoll = decodeMerkleRoll(
+          (
+            await Gummyroll.provider.connection.getAccountInfo(
+              merkleRollKeypair.publicKey
+            )
+          ).data
+        );
+        const merkleRollInfo = merkleRoll.header;
+
+        assert(
+          merkleRollInfo.authority.equals(randomSigner.publicKey),
+          `Upon transfering appendAuthority, authority should be ${randomSigner.publicKey.toString()}, but was instead updated to ${merkleRollInfo.authority.toString()}`
+        );
+        assert(
+          merkleRollInfo.appendAuthority.equals(authority.publicKey),
+          `Upon transferring appendAuthority, appendAuthority should be ${authority.publicKey.toString()} but is ${merkleRollInfo.appendAuthority.toString()}`
+        );
+      });
+      it("Attempting to replace with new authority now works", async () => {
+        const newLeaf = crypto.randomBytes(32);
+        const replaceIndex = 0;
+        const proof = getProofOfLeaf(offChainTree, replaceIndex);
+        const nodeProof = proof.map((offChainTreeNode) => {
+          return {
+            pubkey: new PublicKey(offChainTreeNode.node),
+            isSigner: false,
+            isWritable: false,
+          };
+        });
+        const replaceIx = Gummyroll.instruction.replaceLeaf(
+          { inner: Array.from(offChainTree.root) },
+          { inner: Array.from(offChainTree.leaves[replaceIndex].node) },
+          { inner: Array.from(newLeaf) },
+          replaceIndex,
+          {
+            accounts: {
+              merkleRoll: merkleRollKeypair.publicKey,
+              authority: randomSigner.publicKey,
+            },
+            signers: [randomSigner],
+            remainingAccounts: nodeProof,
+          }
+        );
+
+        try {
+          const tx = new Transaction().add(replaceIx);
+          const txid = await Gummyroll.provider.send(tx, [randomSigner], {
+            commitment: "confirmed",
+          });
+          await logTx(Gummyroll.provider, txid, false);
+          assert(false, "Transaction should have failed since incorrect authority cannot execute replaces")
         } catch {
         }
       });
