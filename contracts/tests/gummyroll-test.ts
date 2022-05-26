@@ -1,5 +1,5 @@
 import * as anchor from "@project-serum/anchor";
-import { BN, TransactionNamespace, InstructionNamespace, Provider, Program } from "@project-serum/anchor";
+import { BN, Provider, Program } from "@project-serum/anchor";
 import { Gummyroll } from "../target/types/gummyroll";
 import {
   Connection,
@@ -7,9 +7,9 @@ import {
   Keypair,
   SystemProgram,
   Transaction,
-  TransactionInstruction, Connection as web3Connection
+  Connection as web3Connection
 } from "@solana/web3.js";
-import { assert, expect } from "chai";
+import { assert } from "chai";
 import * as crypto from 'crypto';
 
 import { buildTree, hash, getProofOfLeaf, updateTree, Tree } from "./merkle-tree";
@@ -18,7 +18,7 @@ import {
   getMerkleRollAccountSize,
 } from "./merkle-roll-serde";
 import { createReplaceIx, createAppendIx, createTransferAuthorityIx } from '../sdk/gummyroll/instructions';
-import { logTx } from "./utils";
+import { execute } from "./utils";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 
 // @ts-ignore
@@ -140,29 +140,6 @@ describe("gummyroll", () => {
     return [merkleRollKeypair, tree]
   }
 
-  function createReplaceIxWithProof(
-    previousLeaf: Buffer,
-    newLeaf: Buffer,
-    index: number,
-    offChainTree: Tree,
-    merkleTreeKey: PublicKey,
-    payer: Keypair,
-    minimizeProofLength: boolean = false,
-    treeHeight: number = -1,
-  ): TransactionInstruction {
-    const proof = getProofOfLeaf(offChainTree, index, minimizeProofLength, treeHeight);
-    return createReplaceIx(
-      Gummyroll,
-      payer,
-      merkleTreeKey,
-      offChainTree.root,
-      previousLeaf,
-      newLeaf,
-      index,
-      proof.map((treeNode) => { return treeNode.node })
-    )
-  }
-
   beforeEach(async () => {
     payer = Keypair.generate();
     connection = new web3Connection(
@@ -195,11 +172,7 @@ describe("gummyroll", () => {
         merkleRollKeypair.publicKey
       );
 
-      const tx = new Transaction().add(appendIx);
-      const txid = await Gummyroll.provider.send(tx, [payer], {
-        commitment: "confirmed",
-      });
-      await logTx(Gummyroll.provider, txid, false);
+      await execute(Gummyroll.provider, [appendIx], [payer]);
 
       updateTree(offChainTree, newLeaf, 1);
 
@@ -220,14 +193,19 @@ describe("gummyroll", () => {
       const newLeaf = crypto.randomBytes(32);
       const index = 0;
 
-      const replaceLeafIx = createReplaceIxWithProof(previousLeaf, newLeaf, index, offChainTree, merkleRollKeypair.publicKey, payer);
+      const replaceLeafIx = createReplaceIx(
+        Gummyroll,
+        payer,
+        merkleRollKeypair.publicKey,
+        offChainTree.root,
+        previousLeaf,
+        newLeaf,
+        index,
+        getProofOfLeaf(offChainTree, index, false, -1).map((treeNode) => { return treeNode.node })
+      );
       assert(replaceLeafIx.keys.length == (2 + MAX_DEPTH), `Failed to create proof for ${MAX_DEPTH}`);
 
-      const tx = new Transaction().add(replaceLeafIx);
-      const txid = await Gummyroll.provider.send(tx, [payer], {
-        commitment: "confirmed",
-      });
-      await logTx(Gummyroll.provider, txid, false);
+      await execute(Gummyroll.provider, [replaceLeafIx], [payer]);
 
       updateTree(offChainTree, newLeaf, index);
 
@@ -239,7 +217,6 @@ describe("gummyroll", () => {
         merkleRoll.roll.changeLogs[merkleRoll.roll.activeIndex].root.toBuffer();
 
       assert(
-
         Buffer.from(onChainRoot).equals(offChainTree.root),
         "Updated on chain root matches root of updated off chain tree"
       );
@@ -250,21 +227,18 @@ describe("gummyroll", () => {
       const newLeaf = crypto.randomBytes(32);
       const index = 0;
 
-      const replaceLeafIx = createReplaceIxWithProof(previousLeaf,
+      const replaceLeafIx = createReplaceIx(
+        Gummyroll,
+        payer,
+        merkleRollKeypair.publicKey,
+        offChainTree.root,
+        previousLeaf,
         newLeaf,
         index,
-        offChainTree,
-        merkleRollKeypair.publicKey,
-        payer,
-        true,
-        1
+        getProofOfLeaf(offChainTree, index, true, 1).map((treeNode) => { return treeNode.node })
       );
       assert(replaceLeafIx.keys.length == (2 + 1), "Failed to minimize proof to expected size of 1");
-      const tx = new Transaction().add(replaceLeafIx);
-      const txid = await Gummyroll.provider.send(tx, [payer], {
-        commitment: "confirmed",
-      });
-      await logTx(Gummyroll.provider, txid, false);
+      await execute(Gummyroll.provider, [replaceLeafIx], [payer]);
 
       updateTree(offChainTree, newLeaf, index);
 
@@ -296,11 +270,7 @@ describe("gummyroll", () => {
         const appendIx = createAppendIx(Gummyroll, newLeaf, authority, randomSigner, merkleRollKeypair.publicKey);
 
         try {
-          const tx = new Transaction().add(appendIx)
-          const txid = await Gummyroll.provider.send(tx, [payer, randomSigner], {
-            commitment: "confirmed",
-          });
-          await logTx(Gummyroll.provider, txid, false);
+          await execute(Gummyroll.provider, [appendIx], [payer, randomSigner]);
           assert(false, "Transaction should have failed, since `randomSigner` is not append authority")
         } catch {
         }
@@ -313,11 +283,7 @@ describe("gummyroll", () => {
           null,
           randomSigner.publicKey,
         );
-        const tx = new Transaction().add(transferAppendAuthorityIx);
-        const txid = await Gummyroll.provider.send(tx, [authority], {
-          commitment: "confirmed",
-        });
-        await logTx(Gummyroll.provider, txid, false);
+        await execute(Gummyroll.provider, [transferAppendAuthorityIx], [authority]);
 
         const merkleRoll = decodeMerkleRoll(
           (
@@ -340,12 +306,7 @@ describe("gummyroll", () => {
       it("So the new appendAuthority can append", async () => {
         const newLeaf = crypto.randomBytes(32);
         const appendIx = createAppendIx(Gummyroll, newLeaf, authority, randomSigner, merkleRollKeypair.publicKey);
-        const tx = new Transaction().add(appendIx);
-        const txid = await (Gummyroll.provider as Provider).send(tx, [authority, randomSigner], {
-          commitment: "confirmed",
-          skipPreflight: true
-        });
-        await logTx(Gummyroll.provider, txid, false);
+        await execute(Gummyroll.provider, [appendIx], [authority, randomSigner]);
 
         const merkleRoll = decodeMerkleRoll(
           (
@@ -364,7 +325,6 @@ describe("gummyroll", () => {
       });
       it("but not replace", async () => {
         const newLeaf = crypto.randomBytes(32);
-        const proof = getProofOfLeaf(offChainTree, 1);
         const replaceIx = createReplaceIx(
           Gummyroll,
           randomSigner,
@@ -373,14 +333,10 @@ describe("gummyroll", () => {
           offChainTree.leaves[1].node,
           newLeaf,
           1,
-          proof.map((treeNode) => { return treeNode.node })
+          getProofOfLeaf(offChainTree, 1).map((treeNode) => { return treeNode.node })
         );
         try {
-          const tx = new Transaction().add(replaceIx);
-          const txid = await Gummyroll.provider.send(tx, [randomSigner], {
-            commitment: "confirmed",
-          });
-          await logTx(Gummyroll.provider, txid, false);
+          await execute(Gummyroll.provider, [replaceIx], [randomSigner])
           assert(false, "Transaction should have failed since the append authority cannot act as the authority for replaces")
         } catch {
         }
@@ -409,11 +365,7 @@ describe("gummyroll", () => {
         );
 
         try {
-          const tx = new Transaction().add(replaceIx);
-          const txid = await Gummyroll.provider.send(tx, [randomSigner], {
-            commitment: "confirmed",
-          });
-          await logTx(Gummyroll.provider, txid, false);
+          await execute(Gummyroll.provider, [replaceIx], [randomSigner])
           assert(false, "Transaction should have failed since incorrect authority cannot execute replaces")
         } catch {
         }
@@ -426,11 +378,7 @@ describe("gummyroll", () => {
           randomSigner.publicKey,
           null,
         );
-        const tx = new Transaction().add(transferAppendAuthorityIx);
-        const txid = await Gummyroll.provider.send(tx, [authority], {
-          commitment: "confirmed",
-        });
-        await logTx(Gummyroll.provider, txid, false);
+        await execute(Gummyroll.provider, [transferAppendAuthorityIx], [authority]);
 
         const merkleRoll = decodeMerkleRoll(
           (
@@ -466,11 +414,7 @@ describe("gummyroll", () => {
         );
 
         try {
-          const tx = new Transaction().add(replaceIx);
-          const txid = await Gummyroll.provider.send(tx, [randomSigner], {
-            commitment: "confirmed",
-          });
-          await logTx(Gummyroll.provider, txid, false);
+          await execute(Gummyroll.provider, [replaceIx], [randomSigner])
           assert(false, "Transaction should have failed since incorrect authority cannot execute replaces")
         } catch {
         }
@@ -553,10 +497,7 @@ describe("gummyroll", () => {
       for (let i = 0; i < 2 ** DEPTH; i++) {
         const newLeaf = Array.from(Buffer.alloc(32, i + 1));
         const appendIx = createAppendIx(Gummyroll, newLeaf, payer, payer, merkleRollKeypair.publicKey)
-        const tx = new Transaction().add(appendIx);
-        await Gummyroll.provider.send(tx, [payer], {
-          commitment: "confirmed",
-        });
+        await execute(Gummyroll.provider, [appendIx], [payer]);
       }
 
       // Compare on-chain & off-chain roots
@@ -598,9 +539,8 @@ describe("gummyroll", () => {
         nodeProof,
       );
 
-      const tx = new Transaction().add(replaceIx);
       try {
-        await Gummyroll.provider.send(tx, [payer], { commitment: "confirmed" });
+        await execute(Gummyroll.provider, [replaceIx], [payer])
         assert(false, "Attacker was able to succesfully write fake existence of a leaf");
       } catch (e) {
 
