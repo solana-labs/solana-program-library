@@ -1,6 +1,6 @@
 import * as anchor from "@project-serum/anchor";
 import { BN, Provider, Program } from "@project-serum/anchor";
-import { Gummyroll } from "../target/types/gummyroll";
+import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import {
   Connection,
   PublicKey,
@@ -14,12 +14,14 @@ import * as crypto from 'crypto';
 
 import { buildTree, hash, getProofOfLeaf, updateTree, Tree } from "./merkle-tree";
 import {
+  Gummyroll,
+  createReplaceIx,
+  createAppendIx,
+  createTransferAuthorityIx,
   decodeMerkleRoll,
   getMerkleRollAccountSize,
-} from "./merkle-roll-serde";
-import { createReplaceIx, createAppendIx, createTransferAuthorityIx } from '../sdk/gummyroll/instructions';
+} from '../sdk/gummyroll';
 import { execute } from "./utils";
-import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 
 // @ts-ignore
 let Gummyroll;
