@@ -99,6 +99,17 @@ impl Reserve {
 
             Ok(normalized_rate.try_mul(rate_range)?.try_add(min_rate)?)
         } else {
+            if self.config.optimal_borrow_rate == self.config.max_borrow_rate {
+                let rate = Rate::from_percent(50u8);
+                return Ok(match self.config.max_borrow_rate {
+                    251u8 => rate.try_mul(6)?,  //300%
+                    252u8 => rate.try_mul(7)?,  //350%
+                    253u8 => rate.try_mul(8)?,  //400%
+                    254u8 => rate.try_mul(10)?, //500%
+                    255u8 => rate.try_mul(12)?, //600%
+                    _ => Rate::from_percent(self.config.max_borrow_rate),
+                });
+            }
             let normalized_rate = utilization_rate
                 .try_sub(optimal_utilization_rate)?
                 .try_div(Rate::from_percent(
@@ -1059,26 +1070,28 @@ mod test {
                 ..Reserve::default()
             };
 
-            let current_borrow_rate = reserve.current_borrow_rate()?;
-            assert!(current_borrow_rate >= Rate::from_percent(min_borrow_rate));
-            assert!(current_borrow_rate <= Rate::from_percent(max_borrow_rate));
+            if !(optimal_borrow_rate >250 && optimal_borrow_rate == max_borrow_rate) {
+                let current_borrow_rate = reserve.current_borrow_rate()?;
+                assert!(current_borrow_rate >= Rate::from_percent(min_borrow_rate));
+                assert!(current_borrow_rate <= Rate::from_percent(max_borrow_rate));
 
-            let optimal_borrow_rate = Rate::from_percent(optimal_borrow_rate);
-            let current_rate = reserve.liquidity.utilization_rate()?;
-            match current_rate.cmp(&Rate::from_percent(optimal_utilization_rate)) {
-                Ordering::Less => {
-                    if min_borrow_rate == reserve.config.optimal_borrow_rate {
-                        assert_eq!(current_borrow_rate, optimal_borrow_rate);
-                    } else {
-                        assert!(current_borrow_rate < optimal_borrow_rate);
+                let optimal_borrow_rate = Rate::from_percent(optimal_borrow_rate);
+                let current_rate = reserve.liquidity.utilization_rate()?;
+                match current_rate.cmp(&Rate::from_percent(optimal_utilization_rate)) {
+                    Ordering::Less => {
+                        if min_borrow_rate == reserve.config.optimal_borrow_rate {
+                            assert_eq!(current_borrow_rate, optimal_borrow_rate);
+                        } else {
+                            assert!(current_borrow_rate < optimal_borrow_rate);
+                        }
                     }
-                }
-                Ordering::Equal => assert!(current_borrow_rate == optimal_borrow_rate),
-                Ordering::Greater => {
-                    if max_borrow_rate == reserve.config.optimal_borrow_rate {
-                        assert_eq!(current_borrow_rate, optimal_borrow_rate);
-                    } else {
-                        assert!(current_borrow_rate > optimal_borrow_rate);
+                    Ordering::Equal => assert!(current_borrow_rate == optimal_borrow_rate),
+                    Ordering::Greater => {
+                        if max_borrow_rate == reserve.config.optimal_borrow_rate {
+                            assert_eq!(current_borrow_rate, optimal_borrow_rate);
+                        } else {
+                            assert!(current_borrow_rate > optimal_borrow_rate);
+                        }
                     }
                 }
             }
