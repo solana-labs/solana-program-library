@@ -17,7 +17,7 @@ import {
   decodeMerkleRoll,
   getMerkleRollAccountSize,
 } from "./merkle-roll-serde";
-import { createReplaceIx, createAppendIx } from '../../sdk/gummyroll/instructions';
+import { createReplaceIx, createAppendIx, createTransferAuthorityIx } from '../sdk/gummyroll/instructions';
 import { logTx } from "./utils";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 
@@ -306,16 +306,12 @@ describe("gummyroll", () => {
         }
       });
       it("But authority can transfer appendAuthority", async () => {
-        const transferAppendAuthorityIx = Gummyroll.instruction.transferAuthority(
+        const transferAppendAuthorityIx = createTransferAuthorityIx(
+          Gummyroll,
+          authority,
+          merkleRollKeypair.publicKey,
           null,
           randomSigner.publicKey,
-          {
-            accounts: {
-              merkleRoll: merkleRollKeypair.publicKey,
-              authority: authority.publicKey,
-            },
-            signers: [authority],
-          }
         );
         const tx = new Transaction().add(transferAppendAuthorityIx);
         const txid = await Gummyroll.provider.send(tx, [authority], {
@@ -423,16 +419,12 @@ describe("gummyroll", () => {
         }
       });
       it("Can transfer authority", async () => {
-        const transferAppendAuthorityIx = Gummyroll.instruction.transferAuthority(
+        const transferAppendAuthorityIx = createTransferAuthorityIx(
+          Gummyroll,
+          authority,
+          merkleRollKeypair.publicKey,
           randomSigner.publicKey,
           null,
-          {
-            accounts: {
-              merkleRoll: merkleRollKeypair.publicKey,
-              authority: authority.publicKey,
-            },
-            signers: [authority],
-          }
         );
         const tx = new Transaction().add(transferAppendAuthorityIx);
         const txid = await Gummyroll.provider.send(tx, [authority], {
