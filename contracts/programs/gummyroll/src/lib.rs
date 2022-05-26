@@ -40,6 +40,20 @@ pub struct Append<'info> {
     pub append_authority: Signer<'info>,
 }
 
+#[derive(Accounts)]
+pub struct VerifyLeaf<'info> {
+    /// CHECK: This account is validated in the instruction
+    pub merkle_roll: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TransferAppendAuthority<'info> {
+    #[account(mut)]
+    /// CHECK: This account is validated in the instruction
+    pub merkle_roll: UncheckedAccount<'info>,
+    pub authority: Signer<'info>,
+}
+
 /// This macro applies functions on a merkle roll and emits leaf information
 /// needed to sync the merkle tree state with off-chain indexers.
 macro_rules! merkle_roll_depth_size_apply_fn {
@@ -238,6 +252,64 @@ pub mod gummyroll {
         )
     }
 
+    /// Transfers authority or append authority
+    /// requires `authority` to sign
+    pub fn transfer_append_authority(
+        ctx: Context<TransferAppendAuthority>,
+        new_authority: Option<Pubkey>,
+        new_append_authority: Option<Pubkey>,
+    ) -> Result<()> {
+        let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
+        let (mut header_bytes, _) = merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
+
+        let mut header = Box::new(MerkleRollHeader::try_from_slice(header_bytes)?);
+        assert_eq!(header.authority, ctx.accounts.authority.key());
+
+        match new_authority {
+            Some(new_auth) => {
+                header.authority = new_auth;
+                msg!("Authority transferred to: {:?}", header.authority);
+            }
+            _ => {}
+        }
+        match new_append_authority {
+            Some(new_append_auth) => {
+                header.append_authority = new_append_auth;
+                msg!(
+                    "Append authority transferred to: {:?}",
+                    header.append_authority
+                );
+            }
+            _ => {}
+        }
+        header.serialize(&mut header_bytes)?;
+
+        Ok(())
+    }
+
+    /// If proof is invalid, error is thrown
+    pub fn verify_leaf(ctx: Context<VerifyLeaf>, root: Node, leaf: Node, index: u32) -> Result<()> {
+        let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
+        let (header_bytes, roll_bytes) =
+            merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
+
+        let header = Box::new(MerkleRollHeader::try_from_slice(header_bytes)?);
+
+        let mut proof = vec![];
+        for node in ctx.remaining_accounts.iter() {
+            proof.push(node.key().to_bytes());
+        }
+
+        let id = ctx.accounts.merkle_roll.key();
+
+        merkle_roll_apply_fn!(header, false, id, roll_bytes, prove_leaf, root, leaf, proof, index)
+    }
+
+    /// This instruction allows the tree's mint_authority to append a new leaf to the tree
+    /// without having to supply a valid proof.
+    ///
+    /// This is accomplished by using the rightmost_proof of the merkle roll to construct a
+    /// valid proof, and then updating the rightmost_proof for the next leaf if possible.
     pub fn append(ctx: Context<Append>, leaf: [u8; 32]) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
         let (header_bytes, roll_bytes) =
