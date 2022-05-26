@@ -1,5 +1,5 @@
 import { Program } from '@project-serum/anchor';
-import { Gummyroll } from "../../../target/types/gummyroll";
+import { Gummyroll } from "../types";
 import { Keypair, PublicKey, TransactionInstruction } from '@solana/web3.js';
 
 export function createReplaceIx(
