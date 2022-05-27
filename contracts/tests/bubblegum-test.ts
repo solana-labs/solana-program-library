@@ -240,12 +240,14 @@ describe("bubblegum", () => {
         merkleRoll.roll.changeLogs[merkleRoll.roll.activeIndex].root.toBuffer();
 
       console.log(" - Transferring Ownership");
+      const nonceInfo = await (Bubblegum.provider.connection as web3Connection).getAccountInfo(nonceAccount);
+      const nonce = new BN(nonceInfo.data.slice(0, 16));
       let transferTx = await Bubblegum.rpc.transfer(
         version,
         onChainRoot,
         leafHash,
         creatorHash,
-        new BN(0),
+        nonce,
         0,
         {
           accounts: {
