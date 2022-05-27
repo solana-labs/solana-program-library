@@ -129,6 +129,9 @@ describe("bubblegum", () => {
       const nonceAccount = await Bubblegum.provider.connection.getAccountInfo(
         nonce
       );
+      if (nonceAccount.data.length === 0 || nonceAccount.lamports === 0) {
+        throw new Error("Nonce account not yet initialized");
+      }
     } catch {
       // Only initialize the nonce if it does not exist
       const initNonceIx = Bubblegum.instruction.initializeNonce({
