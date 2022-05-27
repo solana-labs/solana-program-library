@@ -117,24 +117,31 @@ describe("bubblegum", () => {
       }
     );
 
+    let tx = new Transaction()
+      .add(allocAccountIx)
+      .add(initGummyrollIx);
+
     let [nonce] = await PublicKey.findProgramAddress(
       [Buffer.from("bubblegum")],
       Bubblegum.programId
     );
+    try {
+      const nonceAccount = await Bubblegum.provider.connection.getAccountInfo(
+        nonce
+      );
+    } catch {
+      // Only initialize the nonce if it does not exist
+      const initNonceIx = Bubblegum.instruction.initializeNonce({
+        accounts: {
+          nonce: nonce,
+          payer: payer.publicKey,
+          systemProgram: SystemProgram.programId,
+        },
+        signers: [payer],
+      });
+      tx = tx.add(initNonceIx);
+    }
 
-    const initNonceIx = Bubblegum.instruction.initializeNonce({
-      accounts: {
-        nonce: nonce,
-        payer: payer.publicKey,
-        systemProgram: SystemProgram.programId,
-      },
-      signers: [payer],
-    });
-
-    const tx = new Transaction()
-      .add(allocAccountIx)
-      .add(initGummyrollIx)
-      .add(initNonceIx);
     await Bubblegum.provider.send(tx, [payer, merkleRollKeypair], {
       commitment: "confirmed",
     });
