@@ -334,7 +334,7 @@ describe("bubblegum", () => {
         merkleRoll.roll.changeLogs[merkleRoll.roll.activeIndex].root.toBuffer();
 
       let [voucher] = await PublicKey.findProgramAddress(
-        [merkleRollKeypair.publicKey.toBuffer(), new BN(0).toBuffer("le", 16)],
+        [merkleRollKeypair.publicKey.toBuffer(), leafNonce.toBuffer("le", 16)],
         Bubblegum.programId
       );
 
