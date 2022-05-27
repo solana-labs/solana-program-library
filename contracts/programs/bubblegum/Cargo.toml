@@ -15,8 +15,8 @@ no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = []
 [dependencies]
-anchor-lang = { version = "0.24.2" }
-anchor-spl = { version = "0.24.2" }
+anchor-lang = { path="../../../deps/anchor/lang" }
+anchor-spl = { path="../../../deps/anchor/spl" }
 
 spl-token = { version = "3.3.0", features = [ "no-entrypoint" ] }
 spl-associated-token-account = { version = "1.0.5", features = [ "no-entrypoint" ] }
