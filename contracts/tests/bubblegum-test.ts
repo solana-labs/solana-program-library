@@ -242,13 +242,13 @@ describe("bubblegum", () => {
       console.log(" - Transferring Ownership");
       const nonceInfo = await (Bubblegum.provider.connection as web3Connection).getAccountInfo(nonceAccount);
       const nonce = new BN(nonceInfo.data.slice(8, 24), "le");
-          console.log("Nonce:", nonce.toString());
+      console.log("Nonce:", nonce.toString());
       let transferTx = await Bubblegum.rpc.transfer(
         version,
         onChainRoot,
         leafHash,
         creatorHash,
-        nonce,
+        nonce.sub(new BN(1)),
         0,
         {
           accounts: {
