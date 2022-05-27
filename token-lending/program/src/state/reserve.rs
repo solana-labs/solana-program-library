@@ -107,6 +107,10 @@ impl Reserve {
                     253u8 => rate.try_mul(8)?,  //400%
                     254u8 => rate.try_mul(10)?, //500%
                     255u8 => rate.try_mul(12)?, //600%
+                    250u8 => rate.try_mul(20)?, //1000%
+                    249u8 => rate.try_mul(30)?, //1500%
+                    248u8 => rate.try_mul(40)?, //2000%
+                    247u8 => rate.try_mul(50)?, //2500%
                     _ => Rate::from_percent(self.config.max_borrow_rate),
                 });
             }
@@ -1070,7 +1074,7 @@ mod test {
                 ..Reserve::default()
             };
 
-            if !(optimal_borrow_rate >250 && optimal_borrow_rate == max_borrow_rate) {
+            if !(optimal_borrow_rate > 246 && optimal_borrow_rate == max_borrow_rate) {
                 let current_borrow_rate = reserve.current_borrow_rate()?;
                 assert!(current_borrow_rate >= Rate::from_percent(min_borrow_rate));
                 assert!(current_borrow_rate <= Rate::from_percent(max_borrow_rate));
