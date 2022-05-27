@@ -14,7 +14,7 @@
     "@types/mocha": "^9.0.0",
     "chai": "^4.3.4",
     "mocha": "^9.0.3",
-    "ts-mocha": "^8.0.0",
+    "ts-mocha": "^10.0.0",
     "typescript": "^4.3.5"
   },
   "scripts": {
