@@ -256,7 +256,7 @@ impl Packed for Multisig {
         check_data_len(output, Self::LEN)?;
 
         let output = array_mut_ref![output, 0, Multisig::LEN];
-
+        #[allow(clippy::ptr_offset_with_cast)]
         let (
             num_signers_out,
             num_signed_out,
@@ -274,7 +274,7 @@ impl Packed for Multisig {
             1,
             2,
             8,
-            32 * Multisig::MAX_SIGNERS,
+            32usize * Multisig::MAX_SIGNERS,
             Multisig::MAX_SIGNERS
         ];
 

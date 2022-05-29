@@ -1,9 +1,9 @@
 //! Approve withdrawal from the Fund instruction handler
 
 use {
-    crate::{common, fund_info::FundInfo},
+    crate::{common, fund_info::FundInfo, user_info::UserInfo},
     solana_farm_sdk::{
-        fund::{Fund, FundUserInfo},
+        fund::{Fund, FundUserRequests},
         math,
         program::{account, pda},
         string::ArrayString64,
@@ -28,6 +28,7 @@ pub fn approve_withdrawal(fund: &Fund, accounts: &[AccountInfo], amount: u64) ->
         fund_token_mint,
         user_account,
         user_info_account,
+        user_requests_account,
         user_withdrawal_token_account,
         user_fund_token_account,
         custody_account,
@@ -48,12 +49,16 @@ pub fn approve_withdrawal(fund: &Fund, accounts: &[AccountInfo], amount: u64) ->
             msg!("Error: Invalid Fund authority account");
             return Err(ProgramError::Custom(517));
         }
+        if !UserInfo::validate_account(fund, user_info_account, user_account.key) {
+            msg!("Error: Invalid user info account");
+            return Err(ProgramError::Custom(140));
+        }
         if !account::check_token_account_owner(user_withdrawal_token_account, user_account.key)? {
             msg!("Error: Invalid withdrawal destination account owner");
             return Err(ProgramError::IllegalOwner);
         }
         common::check_fund_token_mint(fund, fund_token_mint)?;
-        
+
         let custody_token = account::unpack::<Token>(custody_token_metadata, "custody token")?;
         common::check_wd_custody_accounts(
             &fund.fund_program_id,
@@ -67,17 +72,18 @@ pub fn approve_withdrawal(fund: &Fund, accounts: &[AccountInfo], amount: u64) ->
             oracle_account,
         )?;
 
-        let mut user_info = account::unpack::<FundUserInfo>(user_info_account, "user info")?;
-        common::check_user_info_account(
+        let mut user_requests =
+            account::unpack::<FundUserRequests>(user_requests_account, "user requests")?;
+        common::check_user_requests_account(
             fund,
             &custody_token,
-            &user_info,
+            &user_requests,
             user_account,
-            user_info_account,
+            user_requests_account,
         )?;
 
         // check if there are any pending requests
-        if user_info.withdrawal_request.amount == 0 {
+        if user_requests.withdrawal_request.amount == 0 {
             msg!("Error: No pending withdrawals found");
             return Err(ProgramError::Custom(526));
         }
@@ -85,11 +91,14 @@ pub fn approve_withdrawal(fund: &Fund, accounts: &[AccountInfo], amount: u64) ->
         // compute withdrawal amount
         msg!("Compute withdrawal amount");
         let amount_with_fee = if amount == 0 {
-            user_info.withdrawal_request.amount
+            user_requests.withdrawal_request.amount
         } else {
-            std::cmp::min(amount, user_info.withdrawal_request.amount)
+            std::cmp::min(amount, user_requests.withdrawal_request.amount)
         };
-        if amount_with_fee == 0 {
+        let mut user_info = UserInfo::new(user_info_account);
+        let user_fund_token_balance =
+            common::get_fund_token_balance(user_fund_token_account, &user_info)?;
+        if amount_with_fee == 0 || amount_with_fee > user_fund_token_balance {
             msg!("Error: Insufficient user funds");
             return Err(ProgramError::InsufficientFunds);
         }
@@ -103,7 +112,7 @@ pub fn approve_withdrawal(fund: &Fund, accounts: &[AccountInfo], amount: u64) ->
 
         // compute nominal value of withdrawn tokens and check against the limit
         msg!("Compute assets value. amount_with_fee: {}", amount_with_fee);
-        let ft_supply_amount = account::get_token_supply(fund_token_mint)?;
+        let ft_supply_amount = common::get_fund_token_supply(fund_token_mint, &fund_info)?;
         if amount_with_fee > ft_supply_amount {
             msg!("Error: Insufficient Fund supply amount");
             return Err(ProgramError::InsufficientFunds);
@@ -179,13 +188,32 @@ pub fn approve_withdrawal(fund: &Fund, accounts: &[AccountInfo], amount: u64) ->
             "Burn Fund tokens from the user. amount_with_fee {}",
             amount_with_fee
         );
+        let (amount_to_burn, amount_to_reduce) = if fund_info.get_issue_virtual_tokens()? {
+            let token_balance = account::get_token_balance(user_fund_token_account)?;
+            let amount_to_burn = std::cmp::min(amount_with_fee, token_balance);
+            let amount_to_reduce = math::checked_sub(amount_with_fee, amount_to_burn)?;
+            (amount_to_burn, amount_to_reduce)
+        } else {
+            let amount_to_reduce =
+                std::cmp::min(amount_with_fee, user_info.get_virtual_tokens_balance()?);
+            let amount_to_burn = math::checked_sub(amount_with_fee, amount_to_reduce)?;
+            (amount_to_burn, amount_to_reduce)
+        };
         pda::burn_tokens_with_seeds(
             user_fund_token_account,
             fund_token_mint,
             fund_authority,
             seeds,
-            amount_with_fee,
+            amount_to_burn,
         )?;
+        user_info.set_virtual_tokens_balance(math::checked_sub(
+            user_info.get_virtual_tokens_balance()?,
+            amount_to_reduce,
+        )?)?;
+        fund_info.set_virtual_tokens_supply(math::checked_sub(
+            fund_info.get_virtual_tokens_supply()?,
+            amount_to_reduce,
+        )?)?;
 
         // update stats
         msg!("Update Fund stats");
@@ -201,12 +229,12 @@ pub fn approve_withdrawal(fund: &Fund, accounts: &[AccountInfo], amount: u64) ->
 
         // update user stats
         msg!("Update user stats");
-        user_info.last_withdrawal.time = user_info.withdrawal_request.time;
-        user_info.last_withdrawal.amount = amount_with_fee;
-        user_info.withdrawal_request.time = 0;
-        user_info.withdrawal_request.amount = 0;
-        user_info.deny_reason = ArrayString64::default();
-        user_info.pack(*user_info_account.try_borrow_mut_data()?)?;
+        user_requests.last_withdrawal.time = user_requests.withdrawal_request.time;
+        user_requests.last_withdrawal.amount = amount_with_fee;
+        user_requests.withdrawal_request.time = 0;
+        user_requests.withdrawal_request.amount = 0;
+        user_requests.deny_reason = ArrayString64::default();
+        user_requests.pack(*user_requests_account.try_borrow_mut_data()?)?;
 
         Ok(())
     } else {

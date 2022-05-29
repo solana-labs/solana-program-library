@@ -1,7 +1,7 @@
 //! Fund StartLiquidation instruction handler
 
 use {
-    crate::{common, fund_info::FundInfo},
+    crate::{common, fund_info::FundInfo, user_info::UserInfo},
     solana_farm_sdk::{
         fund::Fund,
         program,
@@ -20,6 +20,7 @@ pub fn start_liquidation(fund: &Fund, accounts: &[AccountInfo]) -> ProgramResult
         _fund_metadata,
         fund_info_account,
         fund_token_mint,
+        user_info_account,
         user_fund_token_account,
         sysvar_account
         ] = accounts
@@ -34,6 +35,10 @@ pub fn start_liquidation(fund: &Fund, accounts: &[AccountInfo]) -> ProgramResult
         if !user_account.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
+        if !UserInfo::validate_account(fund, user_info_account, user_account.key) {
+            msg!("Error: Invalid user info account");
+            return Err(ProgramError::Custom(140));
+        }
         if !account::check_token_account_owner(user_fund_token_account, user_account.key)? {
             msg!("Error: Invalid Fund token account owner");
             return Err(ProgramError::IllegalOwner);
@@ -46,14 +51,15 @@ pub fn start_liquidation(fund: &Fund, accounts: &[AccountInfo]) -> ProgramResult
         }
 
         // check if liquidation can be started at this time
-        let ft_supply_amount = account::get_token_supply(fund_token_mint)?;
+        let ft_supply_amount = common::get_fund_token_supply(fund_token_mint, &fund_info)?;
         let last_admin_action_time = fund_info.get_admin_action_time()?;
+        let user_info = UserInfo::new(user_info_account);
         let curtime = clock::get_time()?;
         #[allow(clippy::if_same_then_else)]
         let allowed =
             // check if user is roughly >= 60% stake holder
             if ft_supply_amount > 0
-                && account::get_token_balance(user_fund_token_account)? as f64 / ft_supply_amount as f64 >= 0.6
+                && common::get_fund_token_balance(user_fund_token_account, &user_info)? as f64 / ft_supply_amount as f64 >= 0.6
             {
                 true
             }

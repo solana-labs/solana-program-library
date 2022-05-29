@@ -391,6 +391,11 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
             SubCommand::with_name("fund-user-info")
                 .about("Print user stats for the fund")
                 .arg(get_arg("fund_name"))
+        )
+        .subcommand(
+            SubCommand::with_name("fund-user-requests")
+                .about("Print user requests for the fund")
+                .arg(get_arg("fund_name"))
                 .arg(tokenname.clone()),
         )
         .subcommand(

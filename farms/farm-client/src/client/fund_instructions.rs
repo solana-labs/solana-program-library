@@ -75,16 +75,19 @@ impl FarmClient {
         let fund = self.get_fund(fund_name)?;
         let fund_ref = self.get_fund_ref(fund_name)?;
         let token_ref = self.get_token_ref(token_name)?;
-        let user_info_account =
-            self.get_fund_user_info_account(wallet_address, fund_name, token_name)?;
+        let user_info_account = self.get_fund_user_info_account(wallet_address, fund_name)?;
+        let user_requests_account =
+            self.get_fund_user_requests_account(wallet_address, fund_name, token_name)?;
 
         // fill in accounts and instruction data
         let data = FundInstruction::UserInit.to_vec()?;
         let accounts = vec![
-            AccountMeta::new_readonly(*wallet_address, true),
+            AccountMeta::new(*wallet_address, true),
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
+            AccountMeta::new_readonly(*wallet_address, false),
             AccountMeta::new(user_info_account, false),
+            AccountMeta::new(user_requests_account, false),
             AccountMeta::new_readonly(token_ref, false),
             AccountMeta::new_readonly(system_program::id(), false),
         ];
@@ -624,8 +627,9 @@ impl FarmClient {
         let fund_token = self.get_token_by_ref(&fund.fund_token_ref)?;
         let token = self.get_token(token_name)?;
         let token_ref = self.get_token_ref(token_name)?;
-        let user_info_account =
-            self.get_fund_user_info_account(wallet_address, fund_name, token_name)?;
+        let user_info_account = self.get_fund_user_info_account(wallet_address, fund_name)?;
+        let user_requests_account =
+            self.get_fund_user_requests_account(wallet_address, fund_name, token_name)?;
         let user_deposit_token_account =
             self.get_associated_token_address(wallet_address, token.name.as_str())?;
         let user_fund_token_account =
@@ -657,6 +661,7 @@ impl FarmClient {
             AccountMeta::new_readonly(spl_token::id(), false),
             AccountMeta::new(fund_token.mint, false),
             AccountMeta::new(user_info_account, false),
+            AccountMeta::new(user_requests_account, false),
             AccountMeta::new(user_deposit_token_account, false),
             AccountMeta::new(user_fund_token_account, false),
             AccountMeta::new(custody_token_account, false),
@@ -685,8 +690,8 @@ impl FarmClient {
         let fund_ref = self.get_fund_ref(fund_name)?;
         let token = self.get_token(token_name)?;
         let token_ref = self.get_token_ref(token_name)?;
-        let user_info_account =
-            self.get_fund_user_info_account(wallet_address, fund_name, token_name)?;
+        let user_requests_account =
+            self.get_fund_user_requests_account(wallet_address, fund_name, token_name)?;
         let user_deposit_token_account =
             self.get_associated_token_address(wallet_address, token.name.as_str())?;
 
@@ -697,7 +702,7 @@ impl FarmClient {
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
             AccountMeta::new_readonly(spl_token::id(), false),
-            AccountMeta::new(user_info_account, false),
+            AccountMeta::new(user_requests_account, false),
             AccountMeta::new(user_deposit_token_account, false),
             AccountMeta::new_readonly(token_ref, false),
         ];
@@ -730,8 +735,9 @@ impl FarmClient {
         let fund_token = self.get_token_by_ref(&fund.fund_token_ref)?;
         let token = self.get_token(token_name)?;
         let token_ref = self.get_token_ref(token_name)?;
-        let user_info_account =
-            self.get_fund_user_info_account(user_address, fund_name, token_name)?;
+        let user_info_account = self.get_fund_user_info_account(user_address, fund_name)?;
+        let user_requests_account =
+            self.get_fund_user_requests_account(user_address, fund_name, token_name)?;
         let user_deposit_token_account =
             self.get_associated_token_address(user_address, token.name.as_str())?;
         let user_fund_token_account =
@@ -765,6 +771,7 @@ impl FarmClient {
             AccountMeta::new(fund_token.mint, false),
             AccountMeta::new_readonly(*user_address, false),
             AccountMeta::new(user_info_account, false),
+            AccountMeta::new(user_requests_account, false),
             AccountMeta::new(user_deposit_token_account, false),
             AccountMeta::new(user_fund_token_account, false),
             AccountMeta::new(custody_token_account, false),
@@ -794,8 +801,8 @@ impl FarmClient {
         let fund = self.get_fund(fund_name)?;
         let fund_ref = self.get_fund_ref(fund_name)?;
         let token_ref = self.get_token_ref(token_name)?;
-        let user_info_account =
-            self.get_fund_user_info_account(user_address, fund_name, token_name)?;
+        let user_requests_account =
+            self.get_fund_user_requests_account(user_address, fund_name, token_name)?;
 
         // fill in accounts and instruction data
         let data = FundInstruction::DenyDeposit {
@@ -808,7 +815,7 @@ impl FarmClient {
             AccountMeta::new(fund.info_account, false),
             AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
             AccountMeta::new_readonly(*user_address, false),
-            AccountMeta::new(user_info_account, false),
+            AccountMeta::new(user_requests_account, false),
             AccountMeta::new_readonly(token_ref, false),
         ];
 
@@ -895,8 +902,9 @@ impl FarmClient {
         let fund_token = self.get_token_by_ref(&fund.fund_token_ref)?;
         let token = self.get_token(token_name)?;
         let token_ref = self.get_token_ref(token_name)?;
-        let user_info_account =
-            self.get_fund_user_info_account(wallet_address, fund_name, token_name)?;
+        let user_info_account = self.get_fund_user_info_account(wallet_address, fund_name)?;
+        let user_requests_account =
+            self.get_fund_user_requests_account(wallet_address, fund_name, token_name)?;
         let user_withdrawal_token_account =
             self.get_associated_token_address(wallet_address, token.name.as_str())?;
         let user_fund_token_account =
@@ -928,6 +936,7 @@ impl FarmClient {
             AccountMeta::new_readonly(spl_token::id(), false),
             AccountMeta::new(fund_token.mint, false),
             AccountMeta::new(user_info_account, false),
+            AccountMeta::new(user_requests_account, false),
             AccountMeta::new(user_withdrawal_token_account, false),
             AccountMeta::new(user_fund_token_account, false),
             AccountMeta::new(custody_token_account, false),
@@ -956,8 +965,8 @@ impl FarmClient {
         let fund_ref = self.get_fund_ref(fund_name)?;
         let token = self.get_token(token_name)?;
         let token_ref = self.get_token_ref(token_name)?;
-        let user_info_account =
-            self.get_fund_user_info_account(wallet_address, fund_name, token_name)?;
+        let user_requests_account =
+            self.get_fund_user_requests_account(wallet_address, fund_name, token_name)?;
         let user_withdrawal_token_account =
             self.get_associated_token_address(wallet_address, token.name.as_str())?;
 
@@ -968,7 +977,7 @@ impl FarmClient {
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
             AccountMeta::new_readonly(spl_token::id(), false),
-            AccountMeta::new(user_info_account, false),
+            AccountMeta::new(user_requests_account, false),
             AccountMeta::new(user_withdrawal_token_account, false),
             AccountMeta::new_readonly(token_ref, false),
         ];
@@ -1001,8 +1010,9 @@ impl FarmClient {
         let fund_token = self.get_token_by_ref(&fund.fund_token_ref)?;
         let token = self.get_token(token_name)?;
         let token_ref = self.get_token_ref(token_name)?;
-        let user_info_account =
-            self.get_fund_user_info_account(user_address, fund_name, token_name)?;
+        let user_info_account = self.get_fund_user_info_account(user_address, fund_name)?;
+        let user_requests_account =
+            self.get_fund_user_requests_account(user_address, fund_name, token_name)?;
         let user_withdrawal_token_account =
             self.get_associated_token_address(user_address, token.name.as_str())?;
         let user_fund_token_account =
@@ -1036,6 +1046,7 @@ impl FarmClient {
             AccountMeta::new(fund_token.mint, false),
             AccountMeta::new_readonly(*user_address, false),
             AccountMeta::new(user_info_account, false),
+            AccountMeta::new(user_requests_account, false),
             AccountMeta::new(user_withdrawal_token_account, false),
             AccountMeta::new(user_fund_token_account, false),
             AccountMeta::new(custody_token_account, false),
@@ -1065,8 +1076,8 @@ impl FarmClient {
         let fund = self.get_fund(fund_name)?;
         let fund_ref = self.get_fund_ref(fund_name)?;
         let token_ref = self.get_token_ref(token_name)?;
-        let user_info_account =
-            self.get_fund_user_info_account(user_address, fund_name, token_name)?;
+        let user_requests_account =
+            self.get_fund_user_requests_account(user_address, fund_name, token_name)?;
 
         // fill in accounts and instruction data
         let data = FundInstruction::DenyWithdrawal {
@@ -1079,7 +1090,7 @@ impl FarmClient {
             AccountMeta::new(fund.info_account, false),
             AccountMeta::new(self.get_fund_active_multisig_account(fund_name)?, false),
             AccountMeta::new_readonly(*user_address, false),
-            AccountMeta::new(user_info_account, false),
+            AccountMeta::new(user_requests_account, false),
             AccountMeta::new_readonly(token_ref, false),
         ];
 
@@ -1214,6 +1225,7 @@ impl FarmClient {
         let fund = self.get_fund(fund_name)?;
         let fund_ref = self.get_fund_ref(fund_name)?;
         let fund_token = self.get_token_by_ref(&fund.fund_token_ref)?;
+        let user_info_account = self.get_fund_user_info_account(wallet_address, fund_name)?;
         let user_fund_token_account =
             self.get_associated_token_address(wallet_address, fund_token.name.as_str())?;
 
@@ -1224,6 +1236,7 @@ impl FarmClient {
             AccountMeta::new_readonly(fund_ref, false),
             AccountMeta::new(fund.info_account, false),
             AccountMeta::new(fund_token.mint, false),
+            AccountMeta::new_readonly(user_info_account, false),
             AccountMeta::new_readonly(user_fund_token_account, false),
             AccountMeta::new_readonly(sysvar::instructions::id(), false),
         ];
@@ -1526,7 +1539,7 @@ impl FarmClient {
         let _ = self.check_token_account(wallet_address, &asset_token, 0.0, &mut inst)?;
 
         if self
-            .get_fund_user_info(wallet_address, fund_name, token_name)
+            .get_fund_user_requests(wallet_address, fund_name, token_name)
             .is_err()
         {
             inst.push(self.new_instruction_user_init_fund(

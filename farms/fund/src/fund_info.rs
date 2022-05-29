@@ -21,7 +21,7 @@ pub struct FundInfo<'a, 'b> {
 }
 
 impl<'a, 'b> FundInfo<'a, 'b> {
-    pub const LEN: usize = StorageType::get_storage_size_for_records(ReferenceType::U64, 23);
+    pub const LEN: usize = StorageType::get_storage_size_for_records(ReferenceType::U64, 25);
     pub const DEPOSIT_START_TIME_INDEX: usize = 0;
     pub const DEPOSIT_END_TIME_INDEX: usize = 1;
     pub const DEPOSIT_APPROVAL_REQUIRED_INDEX: usize = 2;
@@ -36,15 +36,17 @@ impl<'a, 'b> FundInfo<'a, 'b> {
     pub const ASSETS_MAX_UPDATE_AGE_SEC_INDEX: usize = 11;
     pub const ASSETS_MAX_PRICE_ERROR_INDEX: usize = 12;
     pub const ASSETS_MAX_PRICE_AGE_SEC_INDEX: usize = 13;
-    pub const AMOUNT_INVESTED_USD_INDEX: usize = 14;
-    pub const AMOUNT_REMOVED_USD_INDEX: usize = 15;
-    pub const CURRENT_ASSETS_USD_INDEX: usize = 16;
-    pub const ASSETS_UPDATE_TIME_INDEX: usize = 17;
-    pub const ADMIN_ACTION_TIME_INDEX: usize = 18;
-    pub const LAST_TRADE_TIME_INDEX: usize = 19;
-    pub const LIQUIDATION_START_TIME_INDEX: usize = 20;
-    pub const LIQUIDATION_AMOUNT_USD_INDEX: usize = 21;
-    pub const LIQUIDATION_AMOUNT_TOKENS_INDEX: usize = 22;
+    pub const ISSUE_VIRTUAL_TOKENS_INDEX: usize = 14;
+    pub const VIRTUAL_TOKENS_SUPPLY_INDEX: usize = 15;
+    pub const AMOUNT_INVESTED_USD_INDEX: usize = 16;
+    pub const AMOUNT_REMOVED_USD_INDEX: usize = 17;
+    pub const CURRENT_ASSETS_USD_INDEX: usize = 18;
+    pub const ASSETS_UPDATE_TIME_INDEX: usize = 19;
+    pub const ADMIN_ACTION_TIME_INDEX: usize = 20;
+    pub const LAST_TRADE_TIME_INDEX: usize = 21;
+    pub const LIQUIDATION_START_TIME_INDEX: usize = 22;
+    pub const LIQUIDATION_AMOUNT_USD_INDEX: usize = 23;
+    pub const LIQUIDATION_AMOUNT_TOKENS_INDEX: usize = 24;
 
     pub fn new(account: &'a AccountInfo<'b>) -> Self {
         Self {
@@ -127,6 +129,16 @@ impl<'a, 'b> FundInfo<'a, 'b> {
         self.init_refdb_field(
             FundInfo::ASSETS_MAX_PRICE_AGE_SEC_INDEX,
             "AssetsMaxPriceAgeSec",
+            Reference::U64 { data: 0 },
+        )?;
+        self.init_refdb_field(
+            FundInfo::ISSUE_VIRTUAL_TOKENS_INDEX,
+            "IssueVirtualTokens",
+            Reference::U64 { data: 0 },
+        )?;
+        self.init_refdb_field(
+            FundInfo::VIRTUAL_TOKENS_SUPPLY_INDEX,
+            "VirtualTokensSupply",
             Reference::U64 { data: 0 },
         )?;
         self.init_refdb_field(
@@ -373,6 +385,28 @@ impl<'a, 'b> FundInfo<'a, 'b> {
             FundInfo::ASSETS_MAX_PRICE_AGE_SEC_INDEX,
             &Reference::U64 {
                 data: assets_max_price_age_sec,
+            },
+        )
+        .map(|_| ())
+    }
+
+    pub fn set_issue_virtual_tokens(&mut self, issue_virtual_tokens: bool) -> ProgramResult {
+        RefDB::update_at(
+            &mut self.data,
+            FundInfo::ISSUE_VIRTUAL_TOKENS_INDEX,
+            &Reference::U64 {
+                data: if issue_virtual_tokens { 1 } else { 0 },
+            },
+        )
+        .map(|_| ())
+    }
+
+    pub fn set_virtual_tokens_supply(&mut self, virtual_tokens_supply: u64) -> ProgramResult {
+        RefDB::update_at(
+            &mut self.data,
+            FundInfo::VIRTUAL_TOKENS_SUPPLY_INDEX,
+            &Reference::U64 {
+                data: virtual_tokens_supply,
             },
         )
         .map(|_| ())
@@ -659,6 +693,24 @@ impl<'a, 'b> FundInfo<'a, 'b> {
 
     pub fn get_assets_max_price_age_sec(&self) -> Result<u64, ProgramError> {
         if let Some(rec) = RefDB::read_at(&self.data, FundInfo::ASSETS_MAX_PRICE_AGE_SEC_INDEX)? {
+            if let Reference::U64 { data } = rec.reference {
+                return Ok(data);
+            }
+        }
+        Err(FarmError::InvalidRefdbRecord.into())
+    }
+
+    pub fn get_issue_virtual_tokens(&self) -> Result<bool, ProgramError> {
+        if let Some(rec) = RefDB::read_at(&self.data, FundInfo::ISSUE_VIRTUAL_TOKENS_INDEX)? {
+            if let Reference::U64 { data } = rec.reference {
+                return Ok(data > 0);
+            }
+        }
+        Err(FarmError::InvalidRefdbRecord.into())
+    }
+
+    pub fn get_virtual_tokens_supply(&self) -> Result<u64, ProgramError> {
+        if let Some(rec) = RefDB::read_at(&self.data, FundInfo::VIRTUAL_TOKENS_SUPPLY_INDEX)? {
             if let Reference::U64 { data } = rec.reference {
                 return Ok(data);
             }

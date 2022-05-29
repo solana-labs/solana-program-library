@@ -1,11 +1,11 @@
 //! Common functions
 
 use {
-    crate::fund_info::FundInfo,
+    crate::{fund_info::FundInfo, user_info::UserInfo},
     solana_farm_sdk::{
         fund::{
-            Fund, FundAssetType, FundAssets, FundCustody, FundCustodyType, FundUserInfo, FundVault,
-            FundVaultType, DISCRIMINATOR_FUND_CUSTODY, DISCRIMINATOR_FUND_VAULT,
+            Fund, FundAssetType, FundAssets, FundCustody, FundCustodyType, FundUserRequests,
+            FundVault, FundVaultType, DISCRIMINATOR_FUND_CUSTODY, DISCRIMINATOR_FUND_VAULT,
         },
         id::main_router,
         math,
@@ -242,26 +242,26 @@ pub fn decrease_vault_balance(
     Ok(())
 }
 
-pub fn check_user_info_account<'a, 'b>(
+pub fn check_user_requests_account<'a, 'b>(
     fund: &Fund,
     custody_token: &Token,
-    user_info: &FundUserInfo,
+    user_requests: &FundUserRequests,
     user_account: &'a AccountInfo<'b>,
-    user_info_account: &'a AccountInfo<'b>,
+    user_requests_account: &'a AccountInfo<'b>,
 ) -> ProgramResult {
-    let user_info_derived = Pubkey::create_program_address(
+    let user_requests_derived = Pubkey::create_program_address(
         &[
-            b"user_info_account",
+            b"user_requests_account",
             custody_token.name.as_bytes(),
             user_account.key.as_ref(),
             fund.name.as_bytes(),
-            &[user_info.bump],
+            &[user_requests.bump],
         ],
         &fund.fund_program_id,
     )?;
 
-    if user_info_account.key != &user_info_derived {
-        msg!("Error: Invalid user info address");
+    if user_requests_account.key != &user_requests_derived {
+        msg!("Error: Invalid user requests address");
         Err(ProgramError::Custom(509))
     } else {
         Ok(())
@@ -344,4 +344,24 @@ pub fn get_fund_token_to_mint_amount(
     };
 
     Ok(ft_to_mint)
+}
+
+pub fn get_fund_token_balance(
+    fund_token_account: &AccountInfo,
+    user_info: &UserInfo,
+) -> Result<u64, ProgramError> {
+    math::checked_add(
+        account::get_token_balance(fund_token_account)?,
+        user_info.get_virtual_tokens_balance()?,
+    )
+}
+
+pub fn get_fund_token_supply(
+    fund_token_mint: &AccountInfo,
+    fund_info: &FundInfo,
+) -> Result<u64, ProgramError> {
+    math::checked_add(
+        account::get_token_supply(fund_token_mint)?,
+        fund_info.get_virtual_tokens_supply()?,
+    )
 }

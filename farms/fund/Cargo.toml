@@ -13,7 +13,7 @@ no-entrypoint = []
 debug = []
 
 [dependencies]
-solana-farm-sdk = {path="../farm-sdk"}
+solana-farm-sdk = "1.1.0"
 solana-program = "1.9.18"
 solana-security-txt = "1.0.1"
 spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
@@ -21,7 +21,7 @@ num_enum = "0.5.7"
 
 [dev-dependencies]
 solana-program-test = "1.9.18"
-solana-farm-client = {path="../farm-client"}
+solana-farm-client = "1.1.0"
 solana-sdk = "1.9.18"
 solana-cli-config = "1.9.18"
 solana-logger = "1.9.18"

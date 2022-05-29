@@ -106,6 +106,10 @@ pub fn get_floating_val<'a>(matches: &ArgMatches<'a>, argname: &str) -> f64 {
     matches.value_of(argname).unwrap().parse::<f64>().unwrap()
 }
 
+pub fn get_boolean_val<'a>(matches: &ArgMatches<'a>, argname: &str) -> bool {
+    matches.value_of(argname).unwrap().parse::<bool>().unwrap()
+}
+
 fn get_arg(name: &str) -> Arg {
     Arg::with_name(name).required(true).takes_value(true)
 }
@@ -135,6 +139,16 @@ fn get_floating_arg(name: &str) -> Arg {
         .required(true)
         .validator(|p| match p.parse::<f64>() {
             Err(_) => Err(String::from("Must be floating number")),
+            Ok(_) => Ok(()),
+        })
+}
+
+fn get_boolean_arg(name: &str) -> Arg {
+    Arg::with_name(name)
+        .takes_value(true)
+        .required(true)
+        .validator(|p| match p.parse::<bool>() {
+            Err(_) => Err(String::from("Must be boolean")),
             Ok(_) => Ok(()),
         })
 }
@@ -542,7 +556,8 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .arg(get_floating_arg("assets_limit_usd"))
                 .arg(get_integer_arg("max_update_age_sec"))
                 .arg(get_floating_arg("max_price_error"))
-                .arg(get_integer_arg("max_price_age_sec")),
+                .arg(get_integer_arg("max_price_age_sec"))
+                .arg(get_boolean_arg("issue_virtual_tokens")),
         )
         .subcommand(
             SubCommand::with_name("fund-set-deposit-schedule")

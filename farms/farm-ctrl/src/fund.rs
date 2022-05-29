@@ -39,12 +39,7 @@ pub fn set_admins(
         info!(
             "Signature: {}",
             client
-                .set_fund_admins(
-                    config.keypair.as_ref(),
-                    &fund,
-                    admin_signers,
-                    min_signatures
-                )
+                .set_fund_admins(config.keypair.as_ref(), fund, admin_signers, min_signatures)
                 .unwrap()
         );
     }
@@ -55,12 +50,12 @@ pub fn get_admins(client: &FarmClient, config: &Config, fund_names: &str) {
     let funds = fund_names.split(',').collect::<Vec<_>>();
     for fund in funds {
         if config.no_pretty_print {
-            println!("{}: {}", fund, client.get_fund_admins(&fund).unwrap());
+            println!("{}: {}", fund, client.get_fund_admins(fund).unwrap());
         } else {
             println!(
                 "{}: {}",
                 fund,
-                to_pretty_json(&client.get_fund_admins(&fund).unwrap()).unwrap()
+                to_pretty_json(&client.get_fund_admins(fund).unwrap()).unwrap()
             );
         }
     }
@@ -165,6 +160,7 @@ pub fn remove_vault(
     info!("Done.")
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn set_assets_tracking_config(
     client: &FarmClient,
     config: &Config,
@@ -173,6 +169,7 @@ pub fn set_assets_tracking_config(
     max_update_age_sec: u64,
     max_price_error: f64,
     max_price_age_sec: u64,
+    issue_virtual_tokens: bool,
 ) {
     let funds = fund_names.split(',').collect::<Vec<_>>();
     for fund in funds {
@@ -187,7 +184,8 @@ pub fn set_assets_tracking_config(
                         assets_limit_usd,
                         max_update_age_sec,
                         max_price_error,
-                        max_price_age_sec
+                        max_price_age_sec,
+                        issue_virtual_tokens
                     }
                 )
                 .unwrap()

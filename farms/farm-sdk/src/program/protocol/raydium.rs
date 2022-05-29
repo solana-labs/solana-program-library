@@ -30,8 +30,7 @@ pub mod raydium_v3 {
     solana_program::declare_id!("27haf8L6oxUeXrHrgEgsexjSY5hbVUWEmvv9Nyxg8vQv");
 }
 pub mod raydium_v4 {
-    //solana_program::declare_id!("675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8");
-    solana_program::declare_id!("9rpQHSyFVM1dkkHFQ2TtTzPEW7DVmEyPmN8wVniqJtuC");
+    solana_program::declare_id!("675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8");
 }
 pub mod raydium_stake {
     solana_program::declare_id!("EhhTKczWMGQt46ynNeRX1WfeagwwJd7ufHvCDjRxjo5Q");
@@ -40,8 +39,7 @@ pub mod raydium_stake_v4 {
     solana_program::declare_id!("CBuCnLe26faBpcBP2fktp4rp8abpcAnTWft6ZrP5Q4T");
 }
 pub mod raydium_stake_v5 {
-    //solana_program::declare_id!("9KEPoZmtHUrBbhWN1v1KWLMkkvwY6WLtAVUCPRtRjP4z");
-    solana_program::declare_id!("EcLzTrNg9V7qhcdyXDe2qjtPkiGzDM2UbdRaeaadU5r2");
+    solana_program::declare_id!("9KEPoZmtHUrBbhWN1v1KWLMkkvwY6WLtAVUCPRtRjP4z");
 }
 
 pub const RAYDIUM_FEE: f64 = 0.0025;

@@ -5,7 +5,7 @@ use {
     solana_farm_sdk::{
         program::clock,
         refdb,
-        refdb::{RefDB, Reference, ReferenceType},
+        refdb::{RefDB, Reference, ReferenceType, StorageType},
         string::{str_to_as64, ArrayString64},
     },
     solana_program::{
@@ -21,7 +21,7 @@ pub struct VaultInfo<'a, 'b> {
 }
 
 impl<'a, 'b> VaultInfo<'a, 'b> {
-    pub const LEN: usize = 1061; //StorageType::get_storage_size_for_records(ReferenceType::U64, 13);
+    pub const LEN: usize = StorageType::get_storage_size_for_records(ReferenceType::U64, 13);
     pub const CRANK_TIME_INDEX: usize = 0;
     pub const CRANK_STEP_INDEX: usize = 1;
     pub const TOKEN_A_ADDED_INDEX: usize = 2;

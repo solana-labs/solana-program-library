@@ -26,12 +26,15 @@ use {
     },
     solana_farm_sdk::{
         farm::Farm,
-        fund::{Fund, FundAssets, FundCustody, FundInfo, FundUserInfo, FundVault, Protocol},
+        fund::{
+            Fund, FundAssets, FundCustody, FundInfo, FundSchedule, FundUserInfo, FundUserRequests,
+            FundVault, Protocol,
+        },
         pool::Pool,
+        program::multisig::Multisig,
         string::{instruction_to_string, pubkey_map_to_string},
         token::{GitToken, Token},
         vault::{Vault, VaultInfo, VaultUserInfo},
-        program::multisig::Multisig
     },
     solana_sdk::{
         commitment_config::CommitmentConfig, instruction::Instruction, pubkey::Pubkey,
@@ -1465,11 +1468,10 @@ async fn get_fund_admins(
 }
 
 /// Returns user stats for specific Fund
-#[get("/fund_user_info?<wallet_address>&<fund_name>&<token_name>")]
+#[get("/fund_user_info?<wallet_address>&<fund_name>")]
 async fn get_fund_user_info(
     wallet_address: Option<PubkeyParam>,
     fund_name: &str,
-    token_name: &str,
     farm_client: &State<FarmClientArc>,
 ) -> Result<Json<FundUserInfo>, NotFound<String>> {
     let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
@@ -1478,10 +1480,47 @@ async fn get_fund_user_info(
         .lock()
         .map_err(|e| NotFound(e.to_string()))?;
     let user_info = farm_client
-        .get_fund_user_info(&wallet_address, fund_name, token_name)
+        .get_fund_user_info(&wallet_address, fund_name)
         .map_err(|e| NotFound(e.to_string()))?;
 
     Ok(Json(user_info))
+}
+
+/// Returns user requests for specific Fund
+#[get("/fund_user_requests?<wallet_address>&<fund_name>&<token_name>")]
+async fn get_fund_user_requests(
+    wallet_address: Option<PubkeyParam>,
+    fund_name: &str,
+    token_name: &str,
+    farm_client: &State<FarmClientArc>,
+) -> Result<Json<FundUserRequests>, NotFound<String>> {
+    let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let user_requests = farm_client
+        .get_fund_user_requests(&wallet_address, fund_name, token_name)
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(Json(user_requests))
+}
+
+/// Returns user requests accounts for all tokens in the Fund
+#[get("/get_all_fund_user_requests?<fund_name>")]
+async fn get_all_fund_user_requests(
+    fund_name: &str,
+    farm_client: &State<FarmClientArc>,
+) -> Result<Json<Vec<FundUserRequests>>, NotFound<String>> {
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let user_requests = farm_client
+        .get_all_fund_user_requests(fund_name)
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(Json(user_requests))
 }
 
 /// Returns Fund stats and config
@@ -2179,6 +2218,278 @@ async fn start_liquidation_fund(
     Ok(signature.to_string())
 }
 
+/// Sets a new deposit schedule for the Fund
+#[post("/set_fund_deposit_schedule?<wallet_keypair>&<fund_name>&<start_time>&<end_time>&<approval_required>&<limit_usd>&<fee>")]
+#[allow(clippy::too_many_arguments)]
+async fn set_fund_deposit_schedule(
+    wallet_keypair: Option<KeypairParam>,
+    fund_name: &str,
+    start_time: i64,
+    end_time: i64,
+    approval_required: bool,
+    limit_usd: f64,
+    fee: f64,
+    farm_client: &State<FarmClientArc>,
+) -> Result<String, NotFound<String>> {
+    let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let signature = farm_client
+        .set_fund_deposit_schedule(
+            &wallet_keypair,
+            fund_name,
+            &FundSchedule {
+                start_time,
+                end_time,
+                approval_required,
+                limit_usd,
+                fee,
+            },
+        )
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(signature.to_string())
+}
+
+/// Disables deposits to the Fund
+#[post("/disable_deposits_fund?<wallet_keypair>&<fund_name>")]
+async fn disable_deposits_fund(
+    wallet_keypair: Option<KeypairParam>,
+    fund_name: &str,
+    farm_client: &State<FarmClientArc>,
+) -> Result<String, NotFound<String>> {
+    let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let signature = farm_client
+        .disable_deposits_fund(&wallet_keypair, fund_name)
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(signature.to_string())
+}
+
+/// Approves pending deposit to the Fund
+#[post(
+    "/approve_deposit_fund?<wallet_keypair>&<fund_name>&<user_address>&<token_name>&<ui_amount>"
+)]
+async fn approve_deposit_fund(
+    wallet_keypair: Option<KeypairParam>,
+    fund_name: &str,
+    user_address: Option<PubkeyParam>,
+    token_name: &str,
+    ui_amount: f64,
+    farm_client: &State<FarmClientArc>,
+) -> Result<String, NotFound<String>> {
+    let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
+    let user_address = check_unwrap_pubkey(user_address, "user_address")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let signature = farm_client
+        .approve_deposit_fund(
+            &wallet_keypair,
+            fund_name,
+            &user_address,
+            token_name,
+            ui_amount,
+        )
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(signature.to_string())
+}
+
+/// Denies pending deposit to the Fund
+#[post("/deny_deposit_fund?<wallet_keypair>&<fund_name>&<user_address>&<token_name>&<deny_reason>")]
+async fn deny_deposit_fund(
+    wallet_keypair: Option<KeypairParam>,
+    fund_name: &str,
+    user_address: Option<PubkeyParam>,
+    token_name: &str,
+    deny_reason: &str,
+    farm_client: &State<FarmClientArc>,
+) -> Result<String, NotFound<String>> {
+    let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
+    let user_address = check_unwrap_pubkey(user_address, "user_address")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let signature = farm_client
+        .deny_deposit_fund(
+            &wallet_keypair,
+            fund_name,
+            &user_address,
+            token_name,
+            deny_reason,
+        )
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(signature.to_string())
+}
+
+/// Sets a new withdrawal schedule for the Fund
+#[post("/set_fund_withdrawal_schedule?<wallet_keypair>&<fund_name>&<start_time>&<end_time>&<approval_required>&<limit_usd>&<fee>")]
+#[allow(clippy::too_many_arguments)]
+async fn set_fund_withdrawal_schedule(
+    wallet_keypair: Option<KeypairParam>,
+    fund_name: &str,
+    start_time: i64,
+    end_time: i64,
+    approval_required: bool,
+    limit_usd: f64,
+    fee: f64,
+    farm_client: &State<FarmClientArc>,
+) -> Result<String, NotFound<String>> {
+    let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let signature = farm_client
+        .set_fund_withdrawal_schedule(
+            &wallet_keypair,
+            fund_name,
+            &FundSchedule {
+                start_time,
+                end_time,
+                approval_required,
+                limit_usd,
+                fee,
+            },
+        )
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(signature.to_string())
+}
+
+/// Disables withdrawals from the Fund
+#[post("/disable_withdrawals_fund?<wallet_keypair>&<fund_name>")]
+async fn disable_withdrawals_fund(
+    wallet_keypair: Option<KeypairParam>,
+    fund_name: &str,
+    farm_client: &State<FarmClientArc>,
+) -> Result<String, NotFound<String>> {
+    let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let signature = farm_client
+        .disable_withdrawals_fund(&wallet_keypair, fund_name)
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(signature.to_string())
+}
+
+/// Approves pending withdrawal from the Fund
+#[post(
+    "/approve_withdrawal_fund?<wallet_keypair>&<fund_name>&<user_address>&<token_name>&<ui_amount>"
+)]
+async fn approve_withdrawal_fund(
+    wallet_keypair: Option<KeypairParam>,
+    fund_name: &str,
+    user_address: Option<PubkeyParam>,
+    token_name: &str,
+    ui_amount: f64,
+    farm_client: &State<FarmClientArc>,
+) -> Result<String, NotFound<String>> {
+    let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
+    let user_address = check_unwrap_pubkey(user_address, "user_address")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let signature = farm_client
+        .approve_withdrawal_fund(
+            &wallet_keypair,
+            fund_name,
+            &user_address,
+            token_name,
+            ui_amount,
+        )
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(signature.to_string())
+}
+
+/// Denies pending withdrawal from the Fund
+#[post(
+    "/deny_withdrawal_fund?<wallet_keypair>&<fund_name>&<user_address>&<token_name>&<deny_reason>"
+)]
+async fn deny_withdrawal_fund(
+    wallet_keypair: Option<KeypairParam>,
+    fund_name: &str,
+    user_address: Option<PubkeyParam>,
+    token_name: &str,
+    deny_reason: &str,
+    farm_client: &State<FarmClientArc>,
+) -> Result<String, NotFound<String>> {
+    let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
+    let user_address = check_unwrap_pubkey(user_address, "user_address")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let signature = farm_client
+        .deny_withdrawal_fund(
+            &wallet_keypair,
+            fund_name,
+            &user_address,
+            token_name,
+            deny_reason,
+        )
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(signature.to_string())
+}
+
+/// Moves deposited assets from Deposit/Withdraw custody to the Fund
+#[post("/lock_assets_fund?<wallet_keypair>&<fund_name>&<token_name>&<ui_amount>")]
+async fn lock_assets_fund(
+    wallet_keypair: Option<KeypairParam>,
+    fund_name: &str,
+    token_name: &str,
+    ui_amount: f64,
+    farm_client: &State<FarmClientArc>,
+) -> Result<String, NotFound<String>> {
+    let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let signature = farm_client
+        .lock_assets_fund(&wallet_keypair, fund_name, token_name, ui_amount)
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(signature.to_string())
+}
+
+/// Releases assets from the Fund to Deposit/Withdraw custody
+#[post("/unlock_assets_fund?<wallet_keypair>&<fund_name>&<token_name>&<ui_amount>")]
+async fn unlock_assets_fund(
+    wallet_keypair: Option<KeypairParam>,
+    fund_name: &str,
+    token_name: &str,
+    ui_amount: f64,
+    farm_client: &State<FarmClientArc>,
+) -> Result<String, NotFound<String>> {
+    let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let signature = farm_client
+        .unlock_assets_fund(&wallet_keypair, fund_name, token_name, ui_amount)
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(signature.to_string())
+}
+
 /// Update Fund assets info based on custody holdings
 #[post("/update_fund_assets_with_custody?<wallet_keypair>&<fund_name>&<custody_id>")]
 async fn update_fund_assets_with_custody(
@@ -2258,10 +2569,10 @@ async fn update_fund_assets_with_vaults(
 }
 
 /// Swaps tokens in the Fund
-#[allow(clippy::too_many_arguments)]
 #[post(
     "/fund_swap?<wallet_keypair>&<fund_name>&<protocol>&<from_token>&<to_token>&<ui_amount_in>&<min_ui_amount_out>"
 )]
+#[allow(clippy::too_many_arguments)]
 async fn fund_swap(
     wallet_keypair: Option<KeypairParam>,
     fund_name: &str,
@@ -3168,6 +3479,272 @@ async fn new_instruction_start_liquidation_fund(
     Ok(JsonWithInstruction::new(&instruction))
 }
 
+/// Returns a new set deposit schedule Instruction
+#[get("/new_instruction_set_fund_deposit_schedule?<wallet_address>&<fund_name>&<start_time>&<end_time>&<approval_required>&<limit_usd>&<fee>")]
+#[allow(clippy::too_many_arguments)]
+async fn new_instruction_set_fund_deposit_schedule(
+    wallet_address: Option<PubkeyParam>,
+    fund_name: &str,
+    start_time: i64,
+    end_time: i64,
+    approval_required: bool,
+    limit_usd: f64,
+    fee: f64,
+    farm_client: &State<FarmClientArc>,
+) -> Result<JsonWithInstruction, NotFound<String>> {
+    let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let instruction = farm_client
+        .new_instruction_set_fund_deposit_schedule(
+            &wallet_address,
+            fund_name,
+            &FundSchedule {
+                start_time,
+                end_time,
+                approval_required,
+                limit_usd,
+                fee,
+            },
+        )
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(JsonWithInstruction::new(&instruction))
+}
+
+/// Returns a new Instruction for disabling deposits to the Fund
+#[get("/new_instruction_disable_deposits_fund?<wallet_address>&<fund_name>")]
+async fn new_instruction_disable_deposits_fund(
+    wallet_address: Option<PubkeyParam>,
+    fund_name: &str,
+    farm_client: &State<FarmClientArc>,
+) -> Result<JsonWithInstruction, NotFound<String>> {
+    let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let instruction = farm_client
+        .new_instruction_disable_deposits_fund(&wallet_address, fund_name)
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(JsonWithInstruction::new(&instruction))
+}
+
+/// Returns a new Instruction for approving deposit to the Fund
+#[get("/new_instruction_approve_deposit_fund?<wallet_address>&<user_address>&<fund_name>&<token_name>&<ui_amount>")]
+async fn new_instruction_approve_deposit_fund(
+    wallet_address: Option<PubkeyParam>,
+    user_address: Option<PubkeyParam>,
+    fund_name: &str,
+    token_name: &str,
+    ui_amount: f64,
+    farm_client: &State<FarmClientArc>,
+) -> Result<JsonWithInstruction, NotFound<String>> {
+    let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
+    let user_address = check_unwrap_pubkey(user_address, "user_address")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let instruction = farm_client
+        .new_instruction_approve_deposit_fund(
+            &wallet_address,
+            &user_address,
+            fund_name,
+            token_name,
+            ui_amount,
+        )
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(JsonWithInstruction::new(&instruction))
+}
+
+/// Returns a new Instruction for denying deposit to the Fund
+#[get("/new_instruction_deny_deposit_fund?<wallet_address>&<user_address>&<fund_name>&<token_name>&<deny_reason>")]
+async fn new_instruction_deny_deposit_fund(
+    wallet_address: Option<PubkeyParam>,
+    user_address: Option<PubkeyParam>,
+    fund_name: &str,
+    token_name: &str,
+    deny_reason: &str,
+    farm_client: &State<FarmClientArc>,
+) -> Result<JsonWithInstruction, NotFound<String>> {
+    let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
+    let user_address = check_unwrap_pubkey(user_address, "user_address")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let instruction = farm_client
+        .new_instruction_deny_deposit_fund(
+            &wallet_address,
+            &user_address,
+            fund_name,
+            token_name,
+            deny_reason,
+        )
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(JsonWithInstruction::new(&instruction))
+}
+
+/// Returns a new set withdrawal schedule Instruction
+#[get("/new_instruction_set_fund_withdrawal_schedule?<wallet_address>&<fund_name>&<start_time>&<end_time>&<approval_required>&<limit_usd>&<fee>")]
+#[allow(clippy::too_many_arguments)]
+async fn new_instruction_set_fund_withdrawal_schedule(
+    wallet_address: Option<PubkeyParam>,
+    fund_name: &str,
+    start_time: i64,
+    end_time: i64,
+    approval_required: bool,
+    limit_usd: f64,
+    fee: f64,
+    farm_client: &State<FarmClientArc>,
+) -> Result<JsonWithInstruction, NotFound<String>> {
+    let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let instruction = farm_client
+        .new_instruction_set_fund_withdrawal_schedule(
+            &wallet_address,
+            fund_name,
+            &FundSchedule {
+                start_time,
+                end_time,
+                approval_required,
+                limit_usd,
+                fee,
+            },
+        )
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(JsonWithInstruction::new(&instruction))
+}
+
+/// Returns a new Instruction for disabling withdrawals from the Fund
+#[get("/new_instruction_disable_withdrawals_fund?<wallet_address>&<fund_name>")]
+async fn new_instruction_disable_withdrawals_fund(
+    wallet_address: Option<PubkeyParam>,
+    fund_name: &str,
+    farm_client: &State<FarmClientArc>,
+) -> Result<JsonWithInstruction, NotFound<String>> {
+    let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let instruction = farm_client
+        .new_instruction_disable_withdrawals_fund(&wallet_address, fund_name)
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(JsonWithInstruction::new(&instruction))
+}
+
+/// Returns a new Instruction for approving withdrawal from the Fund
+#[get("/new_instruction_approve_withdrawal_fund?<wallet_address>&<user_address>&<fund_name>&<token_name>&<ui_amount>")]
+async fn new_instruction_approve_withdrawal_fund(
+    wallet_address: Option<PubkeyParam>,
+    user_address: Option<PubkeyParam>,
+    fund_name: &str,
+    token_name: &str,
+    ui_amount: f64,
+    farm_client: &State<FarmClientArc>,
+) -> Result<JsonWithInstruction, NotFound<String>> {
+    let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
+    let user_address = check_unwrap_pubkey(user_address, "user_address")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let instruction = farm_client
+        .new_instruction_approve_withdrawal_fund(
+            &wallet_address,
+            &user_address,
+            fund_name,
+            token_name,
+            ui_amount,
+        )
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(JsonWithInstruction::new(&instruction))
+}
+
+/// Returns a new Instruction for denying withdrawal from the Fund
+#[get("/new_instruction_deny_withdrawal_fund?<wallet_address>&<user_address>&<fund_name>&<token_name>&<deny_reason>")]
+async fn new_instruction_deny_withdrawal_fund(
+    wallet_address: Option<PubkeyParam>,
+    user_address: Option<PubkeyParam>,
+    fund_name: &str,
+    token_name: &str,
+    deny_reason: &str,
+    farm_client: &State<FarmClientArc>,
+) -> Result<JsonWithInstruction, NotFound<String>> {
+    let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
+    let user_address = check_unwrap_pubkey(user_address, "user_address")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let instruction = farm_client
+        .new_instruction_deny_withdrawal_fund(
+            &wallet_address,
+            &user_address,
+            fund_name,
+            token_name,
+            deny_reason,
+        )
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(JsonWithInstruction::new(&instruction))
+}
+
+/// Returns a new Instruction for moving deposited assets to the Fund
+#[get("/new_instruction_lock_assets_fund?<wallet_address>&<fund_name>&<token_name>&<ui_amount>")]
+async fn new_instruction_lock_assets_fund(
+    wallet_address: Option<PubkeyParam>,
+    fund_name: &str,
+    token_name: &str,
+    ui_amount: f64,
+    farm_client: &State<FarmClientArc>,
+) -> Result<JsonWithInstruction, NotFound<String>> {
+    let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let instruction = farm_client
+        .new_instruction_lock_assets_fund(&wallet_address, fund_name, token_name, ui_amount)
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(JsonWithInstruction::new(&instruction))
+}
+
+/// Returns a new Instruction for releasing assets from the Fund to Deposit/Withdraw custody
+#[get("/new_instruction_unlock_assets_fund?<wallet_address>&<fund_name>&<token_name>&<ui_amount>")]
+async fn new_instruction_unlock_assets_fund(
+    wallet_address: Option<PubkeyParam>,
+    fund_name: &str,
+    token_name: &str,
+    ui_amount: f64,
+    farm_client: &State<FarmClientArc>,
+) -> Result<JsonWithInstruction, NotFound<String>> {
+    let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let instruction = farm_client
+        .new_instruction_unlock_assets_fund(&wallet_address, fund_name, token_name, ui_amount)
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(JsonWithInstruction::new(&instruction))
+}
+
 /// Returns a new Instruction for updating Fund assets based on custody holdings
 #[get("/new_instruction_update_fund_assets_with_custody?<wallet_address>&<fund_name>&<custody_id>")]
 async fn new_instruction_update_fund_assets_with_custody(
@@ -3209,8 +3786,8 @@ async fn new_instruction_update_fund_assets_with_vault(
 }
 
 /// Returns a new Instruction for tokens swap in the Fund
-#[allow(clippy::too_many_arguments)]
 #[get("/new_instruction_fund_swap?<wallet_address>&<fund_name>&<protocol>&<from_token>&<to_token>&<ui_amount_in>&<min_ui_amount_out>")]
+#[allow(clippy::too_many_arguments)]
 async fn new_instruction_fund_swap(
     wallet_address: Option<PubkeyParam>,
     fund_name: &str,
@@ -3839,8 +4416,8 @@ async fn all_instructions_request_withdrawal_fund(
 }
 
 /// Returns a new complete set of Instructions for swapping tokens in the Fund
-#[allow(clippy::too_many_arguments)]
 #[get("/all_instructions_fund_swap?<wallet_address>&<fund_name>&<protocol>&<from_token>&<to_token>&<ui_amount_in>&<min_ui_amount_out>")]
+#[allow(clippy::too_many_arguments)]
 async fn all_instructions_fund_swap(
     wallet_address: Option<PubkeyParam>,
     fund_name: &str,
@@ -4242,6 +4819,8 @@ pub async fn stage(config: &Config) -> AdHoc {
                     get_vault_info,
                     get_fund_admins,
                     get_fund_user_info,
+                    get_fund_user_requests,
+                    get_all_fund_user_requests,
                     get_fund_info,
                     get_fund_assets,
                     get_fund_custody,
@@ -4299,6 +4878,16 @@ pub async fn stage(config: &Config) -> AdHoc {
                     request_withdrawal_fund,
                     cancel_withdrawal_fund,
                     start_liquidation_fund,
+                    set_fund_deposit_schedule,
+                    disable_deposits_fund,
+                    approve_deposit_fund,
+                    deny_deposit_fund,
+                    set_fund_withdrawal_schedule,
+                    disable_withdrawals_fund,
+                    approve_withdrawal_fund,
+                    deny_withdrawal_fund,
+                    lock_assets_fund,
+                    unlock_assets_fund,
                     update_fund_assets_with_custody,
                     update_fund_assets_with_custodies,
                     update_fund_assets_with_vault,
@@ -4344,6 +4933,16 @@ pub async fn stage(config: &Config) -> AdHoc {
                     new_instruction_request_withdrawal_fund,
                     new_instruction_cancel_withdrawal_fund,
                     new_instruction_start_liquidation_fund,
+                    new_instruction_set_fund_deposit_schedule,
+                    new_instruction_disable_deposits_fund,
+                    new_instruction_approve_deposit_fund,
+                    new_instruction_deny_deposit_fund,
+                    new_instruction_set_fund_withdrawal_schedule,
+                    new_instruction_disable_withdrawals_fund,
+                    new_instruction_approve_withdrawal_fund,
+                    new_instruction_deny_withdrawal_fund,
+                    new_instruction_lock_assets_fund,
+                    new_instruction_unlock_assets_fund,
                     new_instruction_update_fund_assets_with_custody,
                     new_instruction_update_fund_assets_with_vault,
                     new_instruction_fund_swap,

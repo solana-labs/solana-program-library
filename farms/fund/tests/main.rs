@@ -7,7 +7,7 @@ use {
     solana_farm_sdk::{
         fund::{
             FundAssetType, FundAssetsTrackingConfig, FundCustodyType, FundSchedule, FundVaultType,
-            DISCRIMINATOR_FUND_CUSTODY, DISCRIMINATOR_FUND_USER_INFO, DISCRIMINATOR_FUND_VAULT,
+            DISCRIMINATOR_FUND_CUSTODY, DISCRIMINATOR_FUND_USER_REQUESTS, DISCRIMINATOR_FUND_VAULT,
         },
         id::zero,
         string::str_to_as64,
@@ -56,7 +56,7 @@ fn run_tests() -> Result<(), FarmClientError> {
     info!("Init user");
     let token_name = "SOL";
     assert!(client
-        .get_fund_user_info(&wallet, &fund_name, token_name)
+        .get_fund_user_requests(&wallet, &fund_name, token_name)
         .is_err());
     client.confirm_async_transaction(
         &client.rpc_client.request_airdrop(
@@ -74,9 +74,12 @@ fn run_tests() -> Result<(), FarmClientError> {
         )?;
     }
     client.user_init_fund(&user_keypair, &fund_name, token_name)?;
-    let user_info = client.get_fund_user_info(&wallet, &fund_name, token_name)?;
-    println!("{:#?}", user_info);
-    assert_eq!(user_info.discriminator, DISCRIMINATOR_FUND_USER_INFO);
+    let user_requests = client.get_fund_user_requests(&wallet, &fund_name, token_name)?;
+    println!("{:#?}", user_requests);
+    assert_eq!(
+        user_requests.discriminator,
+        DISCRIMINATOR_FUND_USER_REQUESTS
+    );
 
     // init SOL custody
     // deposit should fail while custody is missing
@@ -155,6 +158,7 @@ fn run_tests() -> Result<(), FarmClientError> {
         max_update_age_sec: 600,
         max_price_error: 0.1,
         max_price_age_sec: 600,
+        issue_virtual_tokens: false,
     };
     client.set_fund_assets_tracking_config(&admin_keypair, &fund_name, &config)?;
     let fund_info = client.get_fund_info(&fund_name)?;
@@ -183,13 +187,13 @@ fn run_tests() -> Result<(), FarmClientError> {
         .is_err());
     info!("Request deposit");
     client.request_deposit_fund(&user_keypair, &fund_name, token_name, 1.123)?;
-    let user_info = client.get_fund_user_info(&wallet, &fund_name, token_name)?;
+    let user_requests = client.get_fund_user_requests(&wallet, &fund_name, token_name)?;
     assert_eq!(
-        user_info.deposit_request.amount,
+        user_requests.deposit_request.amount,
         client.ui_amount_to_tokens(1.123, "SOL")?
     );
-    assert!(user_info.deposit_request.time > 0);
-    assert!(user_info.deny_reason.is_empty());
+    assert!(user_requests.deposit_request.time > 0);
+    assert!(user_requests.deny_reason.is_empty());
     assert_eq!(
         client.get_token_account_balance(&wallet, fund_token.name.as_str())?,
         0.0
@@ -198,25 +202,25 @@ fn run_tests() -> Result<(), FarmClientError> {
     // cancel deposit
     info!("Cancel deposit");
     client.cancel_deposit_fund(&user_keypair, &fund_name, token_name)?;
-    let user_info = client.get_fund_user_info(&wallet, &fund_name, token_name)?;
-    assert_eq!(user_info.deposit_request.amount, 0);
-    assert_eq!(user_info.deposit_request.time, 0);
-    assert!(user_info.deny_reason.is_empty());
+    let user_requests = client.get_fund_user_requests(&wallet, &fund_name, token_name)?;
+    assert_eq!(user_requests.deposit_request.amount, 0);
+    assert_eq!(user_requests.deposit_request.time, 0);
+    assert!(user_requests.deny_reason.is_empty());
 
     // request and deny
     info!("Request a new deposit and deny");
     client.request_deposit_fund(&user_keypair, &fund_name, token_name, 1.123)?;
     let user_balance_before = client.get_token_account_balance(&wallet, "SOL")?;
     client.deny_deposit_fund(&manager_keypair, &fund_name, &wallet, token_name, "test")?;
-    let user_info = client.get_fund_user_info(&wallet, &fund_name, token_name)?;
-    assert_eq!(user_info.deposit_request.amount, 0);
-    assert_eq!(user_info.deposit_request.time, 0);
-    assert_eq!(user_info.deny_reason, str_to_as64("test")?);
+    let user_requests = client.get_fund_user_requests(&wallet, &fund_name, token_name)?;
+    assert_eq!(user_requests.deposit_request.amount, 0);
+    assert_eq!(user_requests.deposit_request.time, 0);
+    assert_eq!(user_requests.deny_reason, str_to_as64("test")?);
     assert_eq!(
-        user_info.last_deposit.amount,
+        user_requests.last_deposit.amount,
         client.ui_amount_to_tokens(1.123, "SOL")?
     );
-    assert!(user_info.last_deposit.time > 0);
+    assert!(user_requests.last_deposit.time > 0);
     assert_eq!(
         user_balance_before,
         client.get_token_account_balance(&wallet, "SOL")?
@@ -229,15 +233,15 @@ fn run_tests() -> Result<(), FarmClientError> {
     let fund_token_supply_before = client.get_token_supply(fund_token.name.as_str())?;
     client.request_deposit_fund(&user_keypair, &fund_name, token_name, 1.123)?;
     client.approve_deposit_fund(&admin_keypair, &fund_name, &wallet, token_name, 0.123)?;
-    let user_info = client.get_fund_user_info(&wallet, &fund_name, token_name)?;
-    assert_eq!(user_info.deposit_request.amount, 0);
-    assert_eq!(user_info.deposit_request.time, 0);
-    assert!(user_info.deny_reason.is_empty());
+    let user_requests = client.get_fund_user_requests(&wallet, &fund_name, token_name)?;
+    assert_eq!(user_requests.deposit_request.amount, 0);
+    assert_eq!(user_requests.deposit_request.time, 0);
+    assert!(user_requests.deny_reason.is_empty());
     assert_eq!(
-        user_info.last_deposit.amount,
+        user_requests.last_deposit.amount,
         client.ui_amount_to_tokens(0.123, "SOL")?
     );
-    assert!(user_info.last_deposit.time > 0);
+    assert!(user_requests.last_deposit.time > 0);
     let fund_token_balance = client.get_token_account_balance(&wallet, fund_token.name.as_str())?;
     assert_eq!(
         client.get_token_supply(fund_token.name.as_str())? - fund_token_supply_before,
@@ -312,8 +316,8 @@ fn run_tests() -> Result<(), FarmClientError> {
     let multisig = client.get_fund_admins(&fund_name)?;
     assert_eq!(multisig.num_signers, 2);
     assert_eq!(multisig.num_signed, 0);
-    assert_eq!(multisig.signed[0], false);
-    assert_eq!(multisig.signed[1], false);
+    assert!(!multisig.signed[0]);
+    assert!(!multisig.signed[1]);
     assert_eq!(multisig.min_signatures, 2);
     assert_eq!(multisig.signers[0], wallet);
     assert_eq!(multisig.signers[1], wallet2);
@@ -342,8 +346,8 @@ fn run_tests() -> Result<(), FarmClientError> {
     )?;
     let multisig = client.get_fund_admins(&fund_name)?;
     assert_eq!(multisig.num_signed, 1);
-    assert_eq!(multisig.signed[0], true);
-    assert_eq!(multisig.signed[1], false);
+    assert!(multisig.signed[0]);
+    assert!(!multisig.signed[1]);
     assert!(client
         .get_fund_custody(&fund_name, token_name, FundCustodyType::Trading)
         .is_err());
@@ -358,8 +362,8 @@ fn run_tests() -> Result<(), FarmClientError> {
         .is_ok());
     let multisig = client.get_fund_admins(&fund_name)?;
     assert_eq!(multisig.num_signed, 2);
-    assert_eq!(multisig.signed[0], true);
-    assert_eq!(multisig.signed[1], true);
+    assert!(multisig.signed[0]);
+    assert!(multisig.signed[1]);
 
     // disable multisig
     info!("Disable Fund multisig");
@@ -391,12 +395,12 @@ fn run_tests() -> Result<(), FarmClientError> {
     // request instant deposit
     info!("Request instant deposit");
     client.request_deposit_fund(&user_keypair2, &fund_name, token_name, 0.123)?;
-    let user_info = client.get_fund_user_info(&wallet2, &fund_name, token_name)?;
-    assert_eq!(user_info.deposit_request.amount, 0);
-    assert_eq!(user_info.deposit_request.time, 0);
-    assert!(user_info.deny_reason.is_empty());
-    assert!(user_info.last_deposit.amount > 0);
-    assert!(user_info.last_deposit.time > 0);
+    let user_requests = client.get_fund_user_requests(&wallet2, &fund_name, token_name)?;
+    assert_eq!(user_requests.deposit_request.amount, 0);
+    assert_eq!(user_requests.deposit_request.time, 0);
+    assert!(user_requests.deny_reason.is_empty());
+    assert!(user_requests.last_deposit.amount > 0);
+    assert!(user_requests.last_deposit.time > 0);
     let fund_token_balance2 =
         client.get_token_account_balance(&wallet2, fund_token.name.as_str())?;
     assert!(fund_token_balance2 > 0.0);
@@ -450,13 +454,13 @@ fn run_tests() -> Result<(), FarmClientError> {
     client.set_fund_withdrawal_schedule(&manager_keypair, &fund_name, &schedule)?;
     info!("Request withdrawal");
     client.request_withdrawal_fund(&user_keypair, &fund_name, token_name, 100.0)?;
-    let user_info = client.get_fund_user_info(&wallet, &fund_name, token_name)?;
+    let user_requests = client.get_fund_user_requests(&wallet, &fund_name, token_name)?;
     assert_eq!(
-        user_info.withdrawal_request.amount,
+        user_requests.withdrawal_request.amount,
         client.ui_amount_to_tokens_with_decimals(100.0, 6)?
     );
-    assert!(user_info.withdrawal_request.time > 0);
-    assert!(user_info.deny_reason.is_empty());
+    assert!(user_requests.withdrawal_request.time > 0);
+    assert!(user_requests.deny_reason.is_empty());
     assert_eq!(
         client.get_token_account_balance(&wallet, fund_token.name.as_str())?,
         fund_token_balance_after_deposit
@@ -465,10 +469,10 @@ fn run_tests() -> Result<(), FarmClientError> {
     // cancel withdrawal
     info!("Cancel withdrawal");
     client.cancel_withdrawal_fund(&user_keypair, &fund_name, token_name)?;
-    let user_info = client.get_fund_user_info(&wallet, &fund_name, token_name)?;
-    assert_eq!(user_info.withdrawal_request.amount, 0);
-    assert_eq!(user_info.withdrawal_request.time, 0);
-    assert!(user_info.deny_reason.is_empty());
+    let user_requests = client.get_fund_user_requests(&wallet, &fund_name, token_name)?;
+    assert_eq!(user_requests.withdrawal_request.amount, 0);
+    assert_eq!(user_requests.withdrawal_request.time, 0);
+    assert!(user_requests.deny_reason.is_empty());
 
     // request and deny
     info!("Request a new withdrawal and deny");
@@ -480,38 +484,38 @@ fn run_tests() -> Result<(), FarmClientError> {
         token_name,
         "not allowed",
     )?;
-    let user_info = client.get_fund_user_info(&wallet, &fund_name, token_name)?;
-    assert_eq!(user_info.withdrawal_request.amount, 0);
-    assert_eq!(user_info.withdrawal_request.time, 0);
-    assert_eq!(user_info.deny_reason, str_to_as64("not allowed")?);
+    let user_requests = client.get_fund_user_requests(&wallet, &fund_name, token_name)?;
+    assert_eq!(user_requests.withdrawal_request.amount, 0);
+    assert_eq!(user_requests.withdrawal_request.time, 0);
+    assert_eq!(user_requests.deny_reason, str_to_as64("not allowed")?);
     assert_eq!(
-        user_info.last_withdrawal.amount,
+        user_requests.last_withdrawal.amount,
         client.ui_amount_to_tokens_with_decimals(111.0, 6)?
     );
-    assert!(user_info.last_withdrawal.time > 0);
+    assert!(user_requests.last_withdrawal.time > 0);
 
     // request and approve
     info!("Request a new withdrawal and approve");
     let initial_sol_balance = client.get_token_account_balance(&wallet, "SOL")?;
     let initial_custody_balance = utils::get_token_balance(&client, &wd_custody_token_address);
     client.request_withdrawal_fund(&user_keypair, &fund_name, token_name, 121.77)?;
-    let user_info = client.get_fund_user_info(&wallet, &fund_name, token_name)?;
+    let user_requests = client.get_fund_user_requests(&wallet, &fund_name, token_name)?;
     assert_eq!(
-        user_info.withdrawal_request.amount,
+        user_requests.withdrawal_request.amount,
         client.ui_amount_to_tokens_with_decimals(121.77, 6)?
     );
-    assert!(user_info.withdrawal_request.time > 0);
-    assert!(user_info.deny_reason.is_empty());
+    assert!(user_requests.withdrawal_request.time > 0);
+    assert!(user_requests.deny_reason.is_empty());
     client.approve_withdrawal_fund(&manager_keypair, &fund_name, &wallet, token_name, 100.0)?;
-    let user_info = client.get_fund_user_info(&wallet, &fund_name, token_name)?;
-    assert_eq!(user_info.withdrawal_request.amount, 0);
-    assert_eq!(user_info.withdrawal_request.time, 0);
-    assert!(user_info.deny_reason.is_empty());
+    let user_requests = client.get_fund_user_requests(&wallet, &fund_name, token_name)?;
+    assert_eq!(user_requests.withdrawal_request.amount, 0);
+    assert_eq!(user_requests.withdrawal_request.time, 0);
+    assert!(user_requests.deny_reason.is_empty());
     assert_eq!(
-        user_info.last_withdrawal.amount,
+        user_requests.last_withdrawal.amount,
         client.ui_amount_to_tokens_with_decimals(100.0, 6)?
     );
-    assert!(user_info.last_withdrawal.time > 0);
+    assert!(user_requests.last_withdrawal.time > 0);
     let fund_token_balance3 =
         client.get_token_account_balance(&wallet, fund_token.name.as_str())?;
     assert!(fund_token_balance3 > 0.0 && fund_token_balance3 < fund_token_balance_after_deposit);
@@ -547,12 +551,12 @@ fn run_tests() -> Result<(), FarmClientError> {
     let initial_sol_balance = client.get_token_account_balance(&wallet2, "SOL")?;
     let initial_custody_balance = utils::get_token_balance(&client, &wd_custody_token_address);
     client.request_withdrawal_fund(&user_keypair2, &fund_name, token_name, 100.0)?;
-    let user_info = client.get_fund_user_info(&wallet2, &fund_name, token_name)?;
-    assert_eq!(user_info.withdrawal_request.amount, 0);
-    assert_eq!(user_info.withdrawal_request.time, 0);
-    assert!(user_info.deny_reason.is_empty());
-    assert!(user_info.last_withdrawal.amount > 0);
-    assert!(user_info.last_withdrawal.time > 0);
+    let user_requests = client.get_fund_user_requests(&wallet2, &fund_name, token_name)?;
+    assert_eq!(user_requests.withdrawal_request.amount, 0);
+    assert_eq!(user_requests.withdrawal_request.time, 0);
+    assert!(user_requests.deny_reason.is_empty());
+    assert!(user_requests.last_withdrawal.amount > 0);
+    assert!(user_requests.last_withdrawal.time > 0);
     let fund_token_balance4 =
         client.get_token_account_balance(&wallet2, fund_token.name.as_str())?;
     assert!(fund_token_balance4 > 0.0 && fund_token_balance4 < fund_token_balance2);
@@ -999,18 +1003,18 @@ fn run_tests() -> Result<(), FarmClientError> {
 
     // enable vault multisig
     info!("Enable Vault multisig");
-    let multisig = client.get_vault_admins(&vault_name2)?;
+    let multisig = client.get_vault_admins(vault_name2)?;
     assert_eq!(multisig.num_signers, 1);
     assert_eq!(multisig.signers[0], admin_keypair.pubkey());
     assert_eq!(multisig.signers[1], zero::id());
 
-    client.set_vault_admins(&admin_keypair, &vault_name2, &[wallet, wallet2], 2)?;
+    client.set_vault_admins(&admin_keypair, vault_name2, &[wallet, wallet2], 2)?;
 
-    let multisig = client.get_vault_admins(&vault_name2)?;
+    let multisig = client.get_vault_admins(vault_name2)?;
     assert_eq!(multisig.num_signers, 2);
     assert_eq!(multisig.num_signed, 0);
-    assert_eq!(multisig.signed[0], false);
-    assert_eq!(multisig.signed[1], false);
+    assert!(!multisig.signed[0]);
+    assert!(!multisig.signed[1]);
     assert_eq!(multisig.min_signatures, 2);
     assert_eq!(multisig.signers[0], wallet);
     assert_eq!(multisig.signers[1], wallet2);
@@ -1018,41 +1022,35 @@ fn run_tests() -> Result<(), FarmClientError> {
 
     // operations under admin should fail
     assert!(client
-        .disable_withdrawals_vault(&admin_keypair, &vault_name2)
+        .disable_withdrawals_vault(&admin_keypair, vault_name2)
         .is_err());
 
     // multisign should go thru
     info!("Test Vault multisig");
-    client.disable_withdrawals_vault(&user_keypair, &vault_name2)?;
-    let multisig = client.get_vault_admins(&vault_name2)?;
+    client.disable_withdrawals_vault(&user_keypair, vault_name2)?;
+    let multisig = client.get_vault_admins(vault_name2)?;
     assert_eq!(multisig.num_signed, 1);
-    assert_eq!(multisig.signed[0], true);
-    assert_eq!(multisig.signed[1], false);
-    assert_eq!(
-        client.get_vault_info(&vault_name2)?.withdrawal_allowed,
-        true
-    );
-    client.disable_withdrawals_vault(&user_keypair2, &vault_name2)?;
-    assert_eq!(
-        client.get_vault_info(&vault_name2)?.withdrawal_allowed,
-        false
-    );
-    let multisig = client.get_vault_admins(&vault_name2)?;
+    assert!(multisig.signed[0]);
+    assert!(!multisig.signed[1]);
+    assert!(client.get_vault_info(vault_name2)?.withdrawal_allowed);
+    client.disable_withdrawals_vault(&user_keypair2, vault_name2)?;
+    assert!(!client.get_vault_info(vault_name2)?.withdrawal_allowed);
+    let multisig = client.get_vault_admins(vault_name2)?;
     assert_eq!(multisig.num_signed, 2);
-    assert_eq!(multisig.signed[0], true);
-    assert_eq!(multisig.signed[1], true);
+    assert!(multisig.signed[0]);
+    assert!(multisig.signed[1]);
 
     // disable multisig
     info!("Disable Vault multisig");
-    client.set_vault_admins(&user_keypair, &vault_name2, &[admin_keypair.pubkey()], 1)?;
-    client.set_vault_admins(&user_keypair2, &vault_name2, &[admin_keypair.pubkey()], 1)?;
-    let multisig = client.get_vault_admins(&vault_name2)?;
+    client.set_vault_admins(&user_keypair, vault_name2, &[admin_keypair.pubkey()], 1)?;
+    client.set_vault_admins(&user_keypair2, vault_name2, &[admin_keypair.pubkey()], 1)?;
+    let multisig = client.get_vault_admins(vault_name2)?;
     assert_eq!(multisig.num_signers, 1);
     assert_eq!(multisig.signers[0], admin_keypair.pubkey());
     assert_eq!(multisig.signers[1], zero::id());
-    client.enable_withdrawals_vault(&admin_keypair, &vault_name2)?;
+    client.enable_withdrawals_vault(&admin_keypair, vault_name2)?;
     client.remove_vault_multisig(&admin_keypair, vault_name2)?;
-    client.enable_withdrawals_vault(&admin_keypair, &vault_name2)?;
+    client.enable_withdrawals_vault(&admin_keypair, vault_name2)?;
 
     // add liquidity vault
     if client
@@ -1313,10 +1311,10 @@ fn run_tests() -> Result<(), FarmClientError> {
         fund_info.current_assets_usd
     );
     client.request_withdrawal_fund(&user_keypair, &fund_name, token_a, tokens_to_withdraw)?;
-    let user_info = client.get_fund_user_info(&wallet, &fund_name, token_a)?;
-    assert_eq!(user_info.withdrawal_request.amount, 0);
-    assert_eq!(user_info.withdrawal_request.time, 0);
-    assert!(user_info.deny_reason.is_empty());
+    let user_requests = client.get_fund_user_requests(&wallet, &fund_name, token_a)?;
+    assert_eq!(user_requests.withdrawal_request.amount, 0);
+    assert_eq!(user_requests.withdrawal_request.time, 0);
+    assert!(user_requests.deny_reason.is_empty());
     println!(
         "new_balance {}",
         client.get_token_account_balance(&wallet, token_a)?
@@ -1344,14 +1342,102 @@ fn run_tests() -> Result<(), FarmClientError> {
     let initial_balance = client.get_token_account_balance(&wallet, token_name)?;
     let initial_custody_balance = utils::get_token_ui_balance(&client, &wd_custody_token_address);
     client.request_withdrawal_fund(&user_keypair, &fund_name, token_name, 0.0)?;
-    let user_info = client.get_fund_user_info(&wallet, &fund_name, token_name)?;
-    assert_eq!(user_info.withdrawal_request.amount, 0);
-    assert_eq!(user_info.withdrawal_request.time, 0);
-    assert!(user_info.deny_reason.is_empty());
+    let user_requests = client.get_fund_user_requests(&wallet, &fund_name, token_name)?;
+    assert_eq!(user_requests.withdrawal_request.amount, 0);
+    assert_eq!(user_requests.withdrawal_request.time, 0);
+    assert!(user_requests.deny_reason.is_empty());
     assert!(client.get_token_account_balance(&wallet, token_name)? > initial_balance);
     assert!(
         utils::get_token_ui_balance(&client, &wd_custody_token_address) < initial_custody_balance
     );
+
+    client.stop_liquidation_fund(&admin_keypair, &fund_name)?;
+
+    // test virtual tokens
+    info!("Disable W/D approval requirement and enable virtual tokens");
+    let fund_token_balance =
+        client.get_token_account_balance(&wallet2, fund_token.name.as_str())?;
+    assert!(fund_token_balance > 0.0);
+    let user_info = client.get_fund_user_info(&wallet2, &fund_name)?;
+    assert_eq!(user_info.virtual_tokens_balance, 0);
+
+    let config = FundAssetsTrackingConfig {
+        assets_limit_usd: 1000.0,
+        max_update_age_sec: 600,
+        max_price_error: 0.1,
+        max_price_age_sec: 600,
+        issue_virtual_tokens: true,
+    };
+    client.set_fund_assets_tracking_config(&admin_keypair, &fund_name, &config)?;
+    let fund_info = client.get_fund_info(&fund_name)?;
+    assert!(fund_info.assets_config.issue_virtual_tokens);
+
+    let schedule = FundSchedule {
+        start_time: 0,
+        end_time: utils::get_time() + 600,
+        approval_required: false,
+        limit_usd: 1000.0,
+        fee: 0.01,
+    };
+    client.set_fund_withdrawal_schedule(&manager_keypair, &fund_name, &schedule)?;
+    client.set_fund_deposit_schedule(&manager_keypair, &fund_name, &schedule)?;
+
+    // request new deposit
+    info!("Request a new deposit");
+    client.request_deposit_fund(&user_keypair2, &fund_name, token_name, 0.123)?;
+    let user_requests = client.get_fund_user_requests(&wallet2, &fund_name, token_name)?;
+    assert_eq!(user_requests.deposit_request.amount, 0);
+    assert_eq!(user_requests.deposit_request.time, 0);
+    assert!(user_requests.deny_reason.is_empty());
+    let fund_token_balance2 =
+        client.get_token_account_balance(&wallet2, fund_token.name.as_str())?;
+    assert_eq!(fund_token_balance2, fund_token_balance);
+    let user_info = client.get_fund_user_info(&wallet2, &fund_name)?;
+    assert!(user_info.virtual_tokens_balance > 0);
+    let fund_info = client.get_fund_info(&fund_name)?;
+    assert_eq!(
+        fund_info.virtual_tokens_supply,
+        user_info.virtual_tokens_balance
+    );
+
+    // request partial withdrawal
+    info!("Request partial withdrawal");
+    client.request_withdrawal_fund(
+        &user_keypair2,
+        &fund_name,
+        token_name,
+        fund_token_balance / 2.0,
+    )?;
+    let user_requests = client.get_fund_user_requests(&wallet2, &fund_name, token_name)?;
+    assert_eq!(user_requests.withdrawal_request.amount, 0);
+    assert_eq!(user_requests.withdrawal_request.time, 0);
+    assert!(user_requests.deny_reason.is_empty());
+    let fund_token_balance3 =
+        client.get_token_account_balance(&wallet2, fund_token.name.as_str())?;
+    assert!(
+        fund_token_balance3 > 0.0
+            && fund_token_balance - fund_token_balance3 - fund_token_balance / 2.0 < 0.01
+    );
+    let user_info2 = client.get_fund_user_info(&wallet2, &fund_name)?;
+    assert_eq!(
+        user_info2.virtual_tokens_balance,
+        user_info.virtual_tokens_balance
+    );
+
+    // request full withdrawal
+    info!("Request full withdrawal");
+    client.request_withdrawal_fund(&user_keypair2, &fund_name, token_name, 0.0)?;
+    let user_requests = client.get_fund_user_requests(&wallet2, &fund_name, token_name)?;
+    assert_eq!(user_requests.withdrawal_request.amount, 0);
+    assert_eq!(user_requests.withdrawal_request.time, 0);
+    assert!(user_requests.deny_reason.is_empty());
+    let fund_token_balance =
+        client.get_token_account_balance(&wallet2, fund_token.name.as_str())?;
+    assert_eq!(fund_token_balance, 0.0);
+    let user_info = client.get_fund_user_info(&wallet2, &fund_name)?;
+    assert_eq!(user_info.virtual_tokens_balance, 0);
+    let fund_info = client.get_fund_info(&fund_name)?;
+    assert_eq!(fund_info.virtual_tokens_supply, 0);
 
     Ok(())
 }

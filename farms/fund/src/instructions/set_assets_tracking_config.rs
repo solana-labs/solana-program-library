@@ -17,6 +17,7 @@ pub fn set_assets_tracking_config(
     fund_info.set_assets_max_update_age_sec(config.max_update_age_sec)?;
     fund_info.set_assets_max_price_error(config.max_price_error)?;
     fund_info.set_assets_max_price_age_sec(config.max_price_age_sec)?;
+    fund_info.set_issue_virtual_tokens(config.issue_virtual_tokens)?;
 
     msg!("Update Fund stats");
     fund_info.update_admin_action_time()

@@ -348,6 +348,7 @@ fn main() {
                 config::get_integer_val(subcommand_matches, "max_update_age_sec"),
                 config::get_floating_val(subcommand_matches, "max_price_error"),
                 config::get_integer_val(subcommand_matches, "max_price_age_sec"),
+                config::get_boolean_val(subcommand_matches, "issue_virtual_tokens"),
             );
         }
         ("fund-set-deposit-schedule", Some(subcommand_matches)) => {

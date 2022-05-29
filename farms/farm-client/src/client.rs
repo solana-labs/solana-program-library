@@ -189,8 +189,8 @@ use {
         fund::{
             Fund, FundAssetType, FundAssets, FundAssetsTrackingConfig, FundCustody,
             FundCustodyType, FundCustodyWithBalance, FundInfo, FundSchedule, FundUserInfo,
-            FundVault, FundVaultType, Protocol, DISCRIMINATOR_FUND_CUSTODY,
-            DISCRIMINATOR_FUND_USER_INFO, DISCRIMINATOR_FUND_VAULT,
+            FundUserRequests, FundVault, FundVaultType, Protocol, DISCRIMINATOR_FUND_CUSTODY,
+            DISCRIMINATOR_FUND_USER_REQUESTS, DISCRIMINATOR_FUND_VAULT,
         },
         id::{
             main_router, main_router_admin, main_router_multisig, zero, DAO_CUSTODY_NAME,
@@ -207,7 +207,7 @@ use {
             },
         },
         refdb,
-        refdb::RefDB,
+        refdb::{Header, RefDB},
         string::str_to_as64,
         token::{OracleType, Token, TokenSelector, TokenType},
         traits::Packed,
@@ -349,17 +349,12 @@ impl FarmClient {
 
     /// Returns the Fund struct for the given name
     pub fn get_fund(&self, name: &str) -> Result<Fund, FarmClientError> {
-        // reload Funds if stale
-        if self.funds.borrow().is_stale() {
-            self.funds.borrow_mut().reset();
-        } else {
-            // if Fund is in cache return it
-            if let Some(fund) = self.funds.borrow().data.get(name) {
-                return Ok(*fund);
-            }
-        }
         // reload Fund refs if stale
         self.reload_fund_refs_if_stale()?;
+        // if Fund is in cache return it
+        if let Some(fund) = self.funds.borrow().data.get(name) {
+            return Ok(*fund);
+        }
         // load Fund data from blockchain
         if let Some(key) = self.fund_refs.borrow().data.get(name) {
             let fund = self.load_fund_by_ref(key)?;
@@ -371,11 +366,8 @@ impl FarmClient {
 
     /// Returns all Funds available
     pub fn get_funds(&self) -> Result<FundMap, FarmClientError> {
-        if !self.funds.borrow().is_stale() {
-            return Ok(self.funds.borrow().data.clone());
-        }
         self.reload_fund_refs_if_stale()?;
-        self.reload_funds_if_stale()?;
+        self.reload_funds_if_empty()?;
         Ok(self.funds.borrow().data.clone())
     }
 
@@ -393,7 +385,9 @@ impl FarmClient {
     /// Returns Fund refs: a map of Fund name to account address with metadata
     pub fn get_fund_refs(&self) -> Result<PubkeyMap, FarmClientError> {
         self.reload_fund_refs_if_stale()?;
-        self.get_refdb_pubkey_map(&refdb::StorageType::Fund.to_string())
+        Ok(self
+            .get_refdb_pubkey_map(&refdb::StorageType::Fund.to_string())?
+            .1)
     }
 
     /// Returns the Fund metadata at the specified address
@@ -423,7 +417,7 @@ impl FarmClient {
         let mut res = vec![];
         let funds = self.get_funds()?;
         for (fund_name, fund) in &funds {
-            let vaults = self.get_fund_vaults(&fund_name)?;
+            let vaults = self.get_fund_vaults(fund_name)?;
             for vault in &vaults {
                 if let Ok(vault) = self.get_vault_by_ref(&vault.vault_ref) {
                     if vault.name.contains(&vault_name_pattern) {
@@ -445,27 +439,16 @@ impl FarmClient {
 
     /// Returns the Vault struct for the given name
     pub fn get_vault(&self, name: &str) -> Result<Vault, FarmClientError> {
-        let mut vault_name = if let Some(val) = self.latest_vaults.borrow().get(name) {
+        // reload Vault refs if stale
+        self.reload_vault_refs_if_stale()?;
+        let vault_name = if let Some(val) = self.latest_vaults.borrow().get(name) {
             val.clone()
         } else {
             name.to_string()
         };
-        // reload Vaults if stale
-        if self.vaults.borrow().is_stale() {
-            self.vaults.borrow_mut().reset();
-        } else {
-            // if Vault is in cache return it
-            if let Some(vault) = self.vaults.borrow().data.get(&vault_name) {
-                return Ok(*vault);
-            }
-        }
-        // reload Vault refs if stale
-        if self.reload_vault_refs_if_stale()? {
-            vault_name = if let Some(val) = self.latest_vaults.borrow().get(name) {
-                val.clone()
-            } else {
-                name.to_string()
-            };
+        // if Vault is in cache return it
+        if let Some(vault) = self.vaults.borrow().data.get(&vault_name) {
+            return Ok(*vault);
         }
         // load Vault data from blockchain
         if let Some(key) = self.vault_refs.borrow().data.get(&vault_name) {
@@ -478,11 +461,8 @@ impl FarmClient {
 
     /// Returns all Vaults available
     pub fn get_vaults(&self) -> Result<VaultMap, FarmClientError> {
-        if !self.vaults.borrow().is_stale() {
-            return Ok(self.vaults.borrow().data.clone());
-        }
         self.reload_vault_refs_if_stale()?;
-        self.reload_vaults_if_stale()?;
+        self.reload_vaults_if_empty()?;
         Ok(self.vaults.borrow().data.clone())
     }
 
@@ -576,27 +556,16 @@ impl FarmClient {
 
     /// Returns the Pool struct for the given name
     pub fn get_pool(&self, name: &str) -> Result<Pool, FarmClientError> {
-        let mut pool_name = if let Some(val) = self.latest_pools.borrow().get(name) {
+        // reload Pool refs if stale
+        self.reload_pool_refs_if_stale()?;
+        let pool_name = if let Some(val) = self.latest_pools.borrow().get(name) {
             val.clone()
         } else {
             name.to_string()
         };
-        // reload Pools if stale
-        if self.pools.borrow().is_stale() {
-            self.pools.borrow_mut().reset();
-        } else {
-            // if Pool is in cache return it
-            if let Some(pool) = self.pools.borrow().data.get(&pool_name) {
-                return Ok(*pool);
-            }
-        }
-        // reload Pool refs if stale
-        if self.reload_pool_refs_if_stale()? {
-            pool_name = if let Some(val) = self.latest_pools.borrow().get(name) {
-                val.clone()
-            } else {
-                name.to_string()
-            };
+        // if Pool is in cache return it
+        if let Some(pool) = self.pools.borrow().data.get(&pool_name) {
+            return Ok(*pool);
         }
         // load Pool data from blockchain
         if let Some(key) = self.pool_refs.borrow().data.get(&pool_name) {
@@ -609,11 +578,8 @@ impl FarmClient {
 
     /// Returns all Pools available
     pub fn get_pools(&self) -> Result<PoolMap, FarmClientError> {
-        if !self.pools.borrow().is_stale() {
-            return Ok(self.pools.borrow().data.clone());
-        }
         self.reload_pool_refs_if_stale()?;
-        self.reload_pools_if_stale()?;
+        self.reload_pools_if_empty()?;
         Ok(self.pools.borrow().data.clone())
     }
 
@@ -774,27 +740,16 @@ impl FarmClient {
 
     /// Returns the Farm struct for the given name
     pub fn get_farm(&self, name: &str) -> Result<Farm, FarmClientError> {
-        let mut farm_name = if let Some(val) = self.latest_farms.borrow().get(name) {
+        // reload Farm refs if stale
+        self.reload_farm_refs_if_stale()?;
+        let farm_name = if let Some(val) = self.latest_farms.borrow().get(name) {
             val.clone()
         } else {
             name.to_string()
         };
-        // reload Farms if stale
-        if self.farms.borrow().is_stale() {
-            self.farms.borrow_mut().reset();
-        } else {
-            // if Farm is in cache return it
-            if let Some(farm) = self.farms.borrow().data.get(&farm_name) {
-                return Ok(*farm);
-            }
-        }
-        // reload Farm refs if stale
-        if self.reload_farm_refs_if_stale()? {
-            farm_name = if let Some(val) = self.latest_farms.borrow().get(name) {
-                val.clone()
-            } else {
-                name.to_string()
-            };
+        // if Farm is in cache return it
+        if let Some(farm) = self.farms.borrow().data.get(&farm_name) {
+            return Ok(*farm);
         }
         // load Farm data from blockchain
         if let Some(key) = self.farm_refs.borrow().data.get(&farm_name) {
@@ -807,11 +762,8 @@ impl FarmClient {
 
     /// Returns all Farms available
     pub fn get_farms(&self) -> Result<FarmMap, FarmClientError> {
-        if !self.farms.borrow().is_stale() {
-            return Ok(self.farms.borrow().data.clone());
-        }
         self.reload_farm_refs_if_stale()?;
-        self.reload_farms_if_stale()?;
+        self.reload_farms_if_empty()?;
         Ok(self.farms.borrow().data.clone())
     }
 
@@ -890,17 +842,12 @@ impl FarmClient {
 
     /// Returns the Token struct for the given name
     pub fn get_token(&self, name: &str) -> Result<Token, FarmClientError> {
-        // reload Tokens if stale
-        if self.tokens.borrow().is_stale() {
-            self.tokens.borrow_mut().reset();
-        } else {
-            // if Token is in cache return it
-            if let Some(token) = self.tokens.borrow().data.get(name) {
-                return Ok(*token);
-            }
-        }
         // reload Token refs if stale
         self.reload_token_refs_if_stale()?;
+        // if Token is in cache return it
+        if let Some(token) = self.tokens.borrow().data.get(name) {
+            return Ok(*token);
+        }
         // load Token data from blockchain
         if let Some(key) = self.token_refs.borrow().data.get(name) {
             let token = self.load_token_by_ref(key)?;
@@ -915,11 +862,8 @@ impl FarmClient {
 
     /// Returns all Tokens available
     pub fn get_tokens(&self) -> Result<TokenMap, FarmClientError> {
-        if !self.tokens.borrow().is_stale() {
-            return Ok(self.tokens.borrow().data.clone());
-        }
         self.reload_token_refs_if_stale()?;
-        self.reload_tokens_if_stale()?;
+        self.reload_tokens_if_empty()?;
         Ok(self.tokens.borrow().data.clone())
     }
 
@@ -937,7 +881,9 @@ impl FarmClient {
     /// Returns Token refs: a map of Token name to account address with metadata
     pub fn get_token_refs(&self) -> Result<PubkeyMap, FarmClientError> {
         self.reload_token_refs_if_stale()?;
-        self.get_refdb_pubkey_map(&refdb::StorageType::Token.to_string())
+        Ok(self
+            .get_refdb_pubkey_map(&refdb::StorageType::Token.to_string())?
+            .1)
     }
 
     /// Returns the Token metadata at the specified address
@@ -999,7 +945,9 @@ impl FarmClient {
     /// Returns all official Program IDs available
     pub fn get_program_ids(&self) -> Result<PubkeyMap, FarmClientError> {
         self.reload_program_ids_if_stale()?;
-        self.get_refdb_pubkey_map(&refdb::StorageType::Program.to_string())
+        Ok(self
+            .get_refdb_pubkey_map(&refdb::StorageType::Program.to_string())?
+            .1)
     }
 
     /// Returns the official program name for the given Program ID
@@ -1027,7 +975,7 @@ impl FarmClient {
         &self,
         prog_id: &Pubkey,
     ) -> Result<Pubkey, FarmClientError> {
-        let program_account_data = self.rpc_client.get_account_data(&prog_id)?;
+        let program_account_data = self.rpc_client.get_account_data(prog_id)?;
         let program_account = parse_bpf_upgradeable_loader(&program_account_data)?;
 
         match program_account {
@@ -1043,9 +991,9 @@ impl FarmClient {
                 match program_data_account {
                     BpfUpgradeableLoaderAccountType::ProgramData(ui_program_data) => {
                         if let Some(authority) = ui_program_data.authority {
-                            return Ok(FarmClient::pubkey_from_str(&authority)?);
+                            Ok(FarmClient::pubkey_from_str(&authority)?)
                         } else {
-                            return Ok(zero::id());
+                            Ok(zero::id())
                         }
                     }
                     _ => {
@@ -1062,7 +1010,7 @@ impl FarmClient {
                     prog_id
                 )))
             }
-        };
+        }
     }
 
     /// Returns multisig account address for the program
@@ -2054,7 +2002,10 @@ impl FarmClient {
     }
 
     /// Reads records from the RefDB PDA into a Pubkey map
-    pub fn get_refdb_pubkey_map(&self, refdb_name: &str) -> Result<PubkeyMap, FarmClientError> {
+    pub fn get_refdb_pubkey_map(
+        &self,
+        refdb_name: &str,
+    ) -> Result<(Header, PubkeyMap), FarmClientError> {
         let refdb_address = find_refdb_pda(refdb_name).0;
         let data = self.rpc_client.get_account_data(&refdb_address)?;
         if !RefDB::is_initialized(data.as_slice()) {
@@ -2067,7 +2018,7 @@ impl FarmClient {
                 map.insert(rec.name.to_string(), data);
             }
         }
-        Ok(map)
+        Ok((RefDB::get_storage_header(data.as_slice())?, map))
     }
 
     /// Returns raw RefDB data, can be further used with refdb::RefDB
@@ -2995,14 +2946,11 @@ impl FarmClient {
         &self,
         wallet_address: &Pubkey,
         fund_name: &str,
-        token_name: &str,
     ) -> Result<Pubkey, FarmClientError> {
         let fund = self.get_fund(fund_name)?;
-        let token = self.get_token(token_name)?;
         Ok(Pubkey::find_program_address(
             &[
                 b"user_info_account",
-                token.name.as_bytes(),
                 wallet_address.as_ref(),
                 fund.name.as_bytes(),
             ],
@@ -3016,24 +2964,69 @@ impl FarmClient {
         &self,
         wallet_address: &Pubkey,
         fund_name: &str,
-        token_name: &str,
     ) -> Result<FundUserInfo, FarmClientError> {
-        let user_info_account =
-            self.get_fund_user_info_account(wallet_address, fund_name, token_name)?;
+        let user_info_account = self.get_fund_user_info_account(wallet_address, fund_name)?;
         let data = self.rpc_client.get_account_data(&user_info_account)?;
-        FundUserInfo::unpack(data.as_slice()).map_err(|e| e.into())
+        if !RefDB::is_initialized(data.as_slice()) {
+            return Err(ProgramError::UninitializedAccount.into());
+        }
+        let mut fund_user_info = FundUserInfo::default();
+        let rec_vec = RefDB::read_all(data.as_slice())?;
+        for rec in rec_vec.iter() {
+            if let refdb::Reference::U64 { data } = rec.reference {
+                if rec.name.as_str() == "VirtualTokensBalance" {
+                    fund_user_info.virtual_tokens_balance = data
+                }
+            }
+        }
+
+        Ok(fund_user_info)
     }
 
-    /// Returns all user info accounts belonging to the Fund
-    pub fn get_fund_user_infos(
+    /// Returns the account address where user requests are stored for the Fund
+    pub fn get_fund_user_requests_account(
+        &self,
+        wallet_address: &Pubkey,
+        fund_name: &str,
+        token_name: &str,
+    ) -> Result<Pubkey, FarmClientError> {
+        let fund = self.get_fund(fund_name)?;
+        let token = self.get_token(token_name)?;
+        Ok(Pubkey::find_program_address(
+            &[
+                b"user_requests_account",
+                token.name.as_bytes(),
+                wallet_address.as_ref(),
+                fund.name.as_bytes(),
+            ],
+            &fund.fund_program_id,
+        )
+        .0)
+    }
+
+    /// Returns user requests for the specific Fund
+    pub fn get_fund_user_requests(
+        &self,
+        wallet_address: &Pubkey,
+        fund_name: &str,
+        token_name: &str,
+    ) -> Result<FundUserRequests, FarmClientError> {
+        let user_requests_account =
+            self.get_fund_user_requests_account(wallet_address, fund_name, token_name)?;
+        let data = self.rpc_client.get_account_data(&user_requests_account)?;
+        FundUserRequests::unpack(data.as_slice()).map_err(|e| e.into())
+    }
+
+    /// Returns all user requests accounts for the specific Fund
+    pub fn get_all_fund_user_requests(
         &self,
         fund_name: &str,
-    ) -> Result<Vec<FundUserInfo>, FarmClientError> {
+    ) -> Result<Vec<FundUserRequests>, FarmClientError> {
         let fund = self.get_fund(fund_name)?;
         let fund_ref = self.get_fund_ref(fund_name)?;
-        // search for user info accounts
+        // search for user requests accounts
         let bytes = [
-            &DISCRIMINATOR_FUND_USER_INFO.to_le_bytes(),
+            &DISCRIMINATOR_FUND_USER_REQUESTS.to_le_bytes(),
             fund_ref.as_ref(),
         ]
         .concat()
@@ -3042,7 +3035,7 @@ impl FarmClient {
 
         let mut res = vec![];
         for (_, acc) in &acc_vec {
-            res.push(FundUserInfo::unpack(acc.data.as_slice())?);
+            res.push(FundUserRequests::unpack(acc.data.as_slice())?);
         }
 
         Ok(res)
@@ -3092,6 +3085,8 @@ impl FarmClient {
                         fund_info.assets_config.max_price_error = f64::from_bits(data)
                     }
                     "AssetsMaxPriceAgeSec" => fund_info.assets_config.max_price_age_sec = data,
+                    "IssueVirtualTokens" => fund_info.assets_config.issue_virtual_tokens = data > 0,
+                    "VirtualTokensSupply" => fund_info.virtual_tokens_supply = data,
                     "AmountIvestedUsd" => fund_info.amount_invested_usd = f64::from_bits(data),
                     "AmountRemovedUsd" => fund_info.amount_removed_usd = f64::from_bits(data),
                     "CurrentAssetsUsd" => fund_info.current_assets_usd = f64::from_bits(data),
@@ -4444,12 +4439,12 @@ impl FarmClient {
 
     ////////////// private helpers
     fn pubkey_from_str(input: &str) -> Result<Pubkey, FarmClientError> {
-        Ok(Pubkey::from_str(input).map_err(|_| {
+        Pubkey::from_str(input).map_err(|_| {
             FarmClientError::ValueError(format!(
                 "Failed to convert the String to a Pubkey {}",
                 input
             ))
-        })?)
+        })
     }
 
     fn to_token_amount(&self, ui_amount: f64, token: &Token) -> Result<u64, FarmClientError> {
@@ -4540,16 +4535,21 @@ impl FarmClient {
 
     fn reload_fund_refs_if_stale(&self) -> Result<bool, FarmClientError> {
         if self.fund_refs.borrow().is_stale() {
-            let fund_refs = self.get_refdb_pubkey_map(&refdb::StorageType::Fund.to_string())?;
-            self.fund_refs.borrow_mut().set(fund_refs);
-            Ok(true)
-        } else {
-            Ok(false)
+            let (header, fund_refs) =
+                self.get_refdb_pubkey_map(&refdb::StorageType::Fund.to_string())?;
+            if self.fund_refs.borrow().is_updated(header.counter) {
+                self.fund_refs.borrow_mut().set(fund_refs, header.counter);
+                self.funds.borrow_mut().reset();
+                return Ok(true);
+            } else {
+                self.fund_refs.borrow_mut().mark_not_stale();
+            }
         }
+        Ok(false)
     }
 
-    fn reload_funds_if_stale(&self) -> Result<bool, FarmClientError> {
-        if self.funds.borrow().is_stale() {
+    fn reload_funds_if_empty(&self) -> Result<bool, FarmClientError> {
+        if self.funds.borrow().is_empty() {
             let refs_map = &self.fund_refs.borrow().data;
             let refs: Vec<Pubkey> = refs_map.values().copied().collect();
             if refs.is_empty() {
@@ -4576,7 +4576,7 @@ impl FarmClient {
                 idx += 100;
             }
 
-            self.funds.borrow_mut().set(fund_map);
+            self.funds.borrow_mut().set(fund_map, 0);
             Ok(true)
         } else {
             Ok(false)
@@ -4585,17 +4585,25 @@ impl FarmClient {
 
     fn reload_vault_refs_if_stale(&self) -> Result<bool, FarmClientError> {
         if self.vault_refs.borrow().is_stale() {
-            let vault_refs = self.get_refdb_pubkey_map(&refdb::StorageType::Vault.to_string())?;
-            FarmClient::reinsert_latest_versions(&vault_refs, &mut self.latest_vaults.borrow_mut());
-            self.vault_refs.borrow_mut().set(vault_refs);
-            Ok(true)
-        } else {
-            Ok(false)
+            let (header, vault_refs) =
+                self.get_refdb_pubkey_map(&refdb::StorageType::Vault.to_string())?;
+            if self.vault_refs.borrow().is_updated(header.counter) {
+                FarmClient::reinsert_latest_versions(
+                    &vault_refs,
+                    &mut self.latest_vaults.borrow_mut(),
+                );
+                self.vault_refs.borrow_mut().set(vault_refs, header.counter);
+                self.vaults.borrow_mut().reset();
+                return Ok(true);
+            } else {
+                self.vault_refs.borrow_mut().mark_not_stale();
+            }
         }
+        Ok(false)
     }
 
-    fn reload_vaults_if_stale(&self) -> Result<bool, FarmClientError> {
-        if self.vaults.borrow().is_stale() {
+    fn reload_vaults_if_empty(&self) -> Result<bool, FarmClientError> {
+        if self.vaults.borrow().is_empty() {
             let refs_map = &self.vault_refs.borrow().data;
             let refs: Vec<Pubkey> = refs_map.values().copied().collect();
             if refs.is_empty() {
@@ -4622,7 +4630,7 @@ impl FarmClient {
                 idx += 100;
             }
 
-            self.vaults.borrow_mut().set(vault_map);
+            self.vaults.borrow_mut().set(vault_map, 0);
             Ok(true)
         } else {
             Ok(false)
@@ -4631,17 +4639,25 @@ impl FarmClient {
 
     fn reload_pool_refs_if_stale(&self) -> Result<bool, FarmClientError> {
         if self.pool_refs.borrow().is_stale() {
-            let pool_refs = self.get_refdb_pubkey_map(&refdb::StorageType::Pool.to_string())?;
-            FarmClient::reinsert_latest_versions(&pool_refs, &mut self.latest_pools.borrow_mut());
-            self.pool_refs.borrow_mut().set(pool_refs);
-            Ok(true)
-        } else {
-            Ok(false)
+            let (header, pool_refs) =
+                self.get_refdb_pubkey_map(&refdb::StorageType::Pool.to_string())?;
+            if self.pool_refs.borrow().is_updated(header.counter) {
+                FarmClient::reinsert_latest_versions(
+                    &pool_refs,
+                    &mut self.latest_pools.borrow_mut(),
+                );
+                self.pool_refs.borrow_mut().set(pool_refs, header.counter);
+                self.pools.borrow_mut().reset();
+                return Ok(true);
+            } else {
+                self.pool_refs.borrow_mut().mark_not_stale();
+            }
         }
+        Ok(false)
     }
 
-    fn reload_pools_if_stale(&self) -> Result<bool, FarmClientError> {
-        if self.pools.borrow().is_stale() {
+    fn reload_pools_if_empty(&self) -> Result<bool, FarmClientError> {
+        if self.pools.borrow().is_empty() {
             let refs_map = &self.pool_refs.borrow().data;
             let refs: Vec<Pubkey> = refs_map.values().copied().collect();
             if refs.is_empty() {
@@ -4668,7 +4684,7 @@ impl FarmClient {
                 idx += 100;
             }
 
-            self.pools.borrow_mut().set(pool_map);
+            self.pools.borrow_mut().set(pool_map, 0);
             Ok(true)
         } else {
             Ok(false)
@@ -4677,17 +4693,25 @@ impl FarmClient {
 
     fn reload_farm_refs_if_stale(&self) -> Result<bool, FarmClientError> {
         if self.farm_refs.borrow().is_stale() {
-            let farm_refs = self.get_refdb_pubkey_map(&refdb::StorageType::Farm.to_string())?;
-            FarmClient::reinsert_latest_versions(&farm_refs, &mut self.latest_farms.borrow_mut());
-            self.farm_refs.borrow_mut().set(farm_refs);
-            Ok(true)
-        } else {
-            Ok(false)
+            let (header, farm_refs) =
+                self.get_refdb_pubkey_map(&refdb::StorageType::Farm.to_string())?;
+            if self.farm_refs.borrow().is_updated(header.counter) {
+                FarmClient::reinsert_latest_versions(
+                    &farm_refs,
+                    &mut self.latest_farms.borrow_mut(),
+                );
+                self.farm_refs.borrow_mut().set(farm_refs, header.counter);
+                self.farms.borrow_mut().reset();
+                return Ok(true);
+            } else {
+                self.farm_refs.borrow_mut().mark_not_stale();
+            }
         }
+        Ok(false)
     }
 
-    fn reload_farms_if_stale(&self) -> Result<bool, FarmClientError> {
-        if self.farms.borrow().is_stale() {
+    fn reload_farms_if_empty(&self) -> Result<bool, FarmClientError> {
+        if self.farms.borrow().is_empty() {
             let refs_map = &self.farm_refs.borrow().data;
             let refs: Vec<Pubkey> = refs_map.values().copied().collect();
             if refs.is_empty() {
@@ -4714,7 +4738,7 @@ impl FarmClient {
                 idx += 100;
             }
 
-            self.farms.borrow_mut().set(farm_map);
+            self.farms.borrow_mut().set(farm_map, 0);
             Ok(true)
         } else {
             Ok(false)
@@ -4723,16 +4747,21 @@ impl FarmClient {
 
     fn reload_token_refs_if_stale(&self) -> Result<bool, FarmClientError> {
         if self.token_refs.borrow().is_stale() {
-            let token_refs = self.get_refdb_pubkey_map(&refdb::StorageType::Token.to_string())?;
-            self.token_refs.borrow_mut().set(token_refs);
-            Ok(true)
-        } else {
-            Ok(false)
+            let (header, token_refs) =
+                self.get_refdb_pubkey_map(&refdb::StorageType::Token.to_string())?;
+            if self.token_refs.borrow().is_updated(header.counter) {
+                self.token_refs.borrow_mut().set(token_refs, header.counter);
+                self.tokens.borrow_mut().reset();
+                return Ok(true);
+            } else {
+                self.token_refs.borrow_mut().mark_not_stale();
+            }
         }
+        Ok(false)
     }
 
-    fn reload_tokens_if_stale(&self) -> Result<bool, FarmClientError> {
-        if self.tokens.borrow().is_stale() {
+    fn reload_tokens_if_empty(&self) -> Result<bool, FarmClientError> {
+        if self.tokens.borrow().is_empty() {
             let refs_map = &self.token_refs.borrow().data;
             let refs: Vec<Pubkey> = refs_map.values().copied().collect();
             if refs.is_empty() {
@@ -4759,7 +4788,7 @@ impl FarmClient {
                 idx += 100;
             }
 
-            self.tokens.borrow_mut().set(token_map);
+            self.tokens.borrow_mut().set(token_map, 0);
             Ok(true)
         } else {
             Ok(false)
@@ -4768,13 +4797,18 @@ impl FarmClient {
 
     fn reload_program_ids_if_stale(&self) -> Result<bool, FarmClientError> {
         if self.official_ids.borrow().is_stale() {
-            let official_ids =
+            let (header, official_ids) =
                 self.get_refdb_pubkey_map(&refdb::StorageType::Program.to_string())?;
-            self.official_ids.borrow_mut().set(official_ids);
-            Ok(true)
-        } else {
-            Ok(false)
+            if self.official_ids.borrow().is_updated(header.counter) {
+                self.official_ids
+                    .borrow_mut()
+                    .set(official_ids, header.counter);
+                return Ok(true);
+            } else {
+                self.official_ids.borrow_mut().mark_not_stale();
+            }
         }
+        Ok(false)
     }
 
     fn get_token_by_ref_from_cache(
@@ -5428,7 +5462,7 @@ impl FarmClient {
             self.check_token_account(wallet_address, &asset_token, ui_amount, instruction_vec)?;
 
         if self
-            .get_fund_user_info(wallet_address, fund_name, token_name)
+            .get_fund_user_requests(wallet_address, fund_name, token_name)
             .is_err()
         {
             instruction_vec.push(self.new_instruction_user_init_fund(

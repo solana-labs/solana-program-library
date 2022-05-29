@@ -14,7 +14,8 @@ pub fn stop_liquidation(_fund: &Fund, accounts: &[AccountInfo]) -> ProgramResult
     if let [
         _admin_account,
         _fund_metadata,
-        fund_info_account
+        fund_info_account,
+        _active_multisig_account
         ] = accounts 
     {
         // validate accounts

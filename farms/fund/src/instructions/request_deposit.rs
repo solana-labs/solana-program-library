@@ -1,9 +1,9 @@
 //! Request deposit to the Fund instruction handler
 
 use {
-    crate::{common, fund_info::FundInfo},
+    crate::{common, fund_info::FundInfo, user_info::UserInfo},
     solana_farm_sdk::{
-        fund::{Fund, FundUserInfo},
+        fund::{Fund, FundUserRequests},
         math,
         program::{account, clock, pda},
         string::ArrayString64,
@@ -26,6 +26,7 @@ pub fn request_deposit(fund: &Fund, accounts: &[AccountInfo], amount: u64) -> Pr
         _spl_token_program,
         fund_token_mint,
         user_info_account,
+        user_requests_account,
         user_deposit_token_account,
         user_fund_token_account,
         custody_account,
@@ -50,6 +51,10 @@ pub fn request_deposit(fund: &Fund, accounts: &[AccountInfo], amount: u64) -> Pr
             msg!("Error: Invalid Fund authority account");
             return Err(ProgramError::Custom(517));
         }
+        if !UserInfo::validate_account(fund, user_info_account, user_account.key) {
+            msg!("Error: Invalid user info account");
+            return Err(ProgramError::Custom(140));
+        }
         if !account::check_token_account_owner(user_fund_token_account, user_account.key)? {
             msg!("Error: Invalid Fund token account owner");
             return Err(ProgramError::IllegalOwner);
@@ -69,21 +74,22 @@ pub fn request_deposit(fund: &Fund, accounts: &[AccountInfo], amount: u64) -> Pr
             oracle_account,
         )?;
 
-        let mut user_info = account::unpack::<FundUserInfo>(user_info_account, "user info")?;
-        common::check_user_info_account(
+        let mut user_requests =
+            account::unpack::<FundUserRequests>(user_requests_account, "user requests")?;
+        common::check_user_requests_account(
             fund,
             &custody_token,
-            &user_info,
+            &user_requests,
             user_account,
-            user_info_account,
+            user_requests_account,
         )?;
 
         // check if there are any pending requests
-        if user_info.withdrawal_request.amount != 0 {
+        if user_requests.withdrawal_request.amount != 0 {
             msg!("Error: Pending withdrawal must be canceled first");
             return Err(ProgramError::Custom(528));
         }
-        if user_info.deposit_request.amount != 0 {
+        if user_requests.deposit_request.amount != 0 {
             msg!("Error: Pending deposit must be canceled first");
             return Err(ProgramError::Custom(529));
         }
@@ -168,7 +174,7 @@ pub fn request_deposit(fund: &Fund, accounts: &[AccountInfo], amount: u64) -> Pr
 
             // mint Fund tokens to user
             let current_assets_usd = fund_info.get_current_assets_usd()?;
-            let ft_supply_amount = account::get_token_supply(fund_token_mint)?;
+            let ft_supply_amount = common::get_fund_token_supply(fund_token_mint, &fund_info)?;
             let ft_to_mint = common::get_fund_token_to_mint_amount(
                 current_assets_usd,
                 deposit_amount,
@@ -184,19 +190,31 @@ pub fn request_deposit(fund: &Fund, accounts: &[AccountInfo], amount: u64) -> Pr
                 msg!("Error: Deposit instruction didn't result in Fund tokens mint");
                 return Err(ProgramError::Custom(170));
             }
-            
-            let seeds: &[&[&[u8]]] = &[&[
-                b"fund_authority",
-                fund.name.as_bytes(),
-                &[fund.authority_bump],
-            ]];
-            pda::mint_to_with_seeds(
-                user_fund_token_account,
-                fund_token_mint,
-                fund_authority,
-                seeds,
+
+            if fund_info.get_issue_virtual_tokens()? {
+                let mut user_info = UserInfo::new(user_info_account);
+                user_info.set_virtual_tokens_balance(math::checked_add(
+                    user_info.get_virtual_tokens_balance()?,
+                    ft_to_mint,
+                )?)?;
+                fund_info.set_virtual_tokens_supply(math::checked_add(
+                fund_info.get_virtual_tokens_supply()?,
                 ft_to_mint,
-            )?;
+                )?)?;
+            } else {
+                let seeds: &[&[&[u8]]] = &[&[
+                    b"fund_authority",
+                    fund.name.as_bytes(),
+                    &[fund.authority_bump],
+                ]];
+                pda::mint_to_with_seeds(
+                    user_fund_token_account,
+                    fund_token_mint,
+                    fund_authority,
+                    seeds,
+                    ft_to_mint,
+                )?;
+            }
 
             // update stats
             msg!("Update Fund stats");
@@ -206,10 +224,10 @@ pub fn request_deposit(fund: &Fund, accounts: &[AccountInfo], amount: u64) -> Pr
             fund_info.set_current_assets_usd(current_assets_usd + deposit_value_usd)?;
 
             msg!("Update user stats");
-            user_info.last_deposit.time = clock::get_time()?;
-            user_info.last_deposit.amount = amount_with_fee;
-            user_info.deposit_request.time = 0;
-            user_info.deposit_request.amount = 0;
+            user_requests.last_deposit.time = clock::get_time()?;
+            user_requests.last_deposit.amount = amount_with_fee;
+            user_requests.deposit_request.time = 0;
+            user_requests.deposit_request.amount = 0;
         } else {
             // if approval is required then we record the Fund authority as a delegate
             // for the specified token amount to have tokens deposited later upon approval
@@ -226,13 +244,13 @@ pub fn request_deposit(fund: &Fund, accounts: &[AccountInfo], amount: u64) -> Pr
             )?;
 
             // update stats
-            user_info.deposit_request.time = clock::get_time()?;
-            user_info.deposit_request.amount = amount_with_fee;
+            user_requests.deposit_request.time = clock::get_time()?;
+            user_requests.deposit_request.amount = amount_with_fee;
         }
 
         // update stats
-        user_info.deny_reason = ArrayString64::default();
-        user_info.pack(*user_info_account.try_borrow_mut_data()?)?;
+        user_requests.deny_reason = ArrayString64::default();
+        user_requests.pack(*user_requests_account.try_borrow_mut_data()?)?;
 
         Ok(())
     } else {

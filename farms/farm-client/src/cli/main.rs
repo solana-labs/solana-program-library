@@ -236,12 +236,20 @@ fn main() {
         }
         ("fund-user-info", Some(subcommand_matches)) => {
             let object = config::get_str_val(subcommand_matches, "fund_name");
+            let account = client.get_fund_user_info_account(&wallet, &object).unwrap();
+            let user_info = client.get_fund_user_info(&wallet, &object).unwrap();
+            printer::print_object(&config, &account, &user_info);
+        }
+        ("fund-user-requests", Some(subcommand_matches)) => {
+            let object = config::get_str_val(subcommand_matches, "fund_name");
             let token = config::get_str_val(subcommand_matches, "token_name");
             let account = client
-                .get_fund_user_info_account(&wallet, &object, &token)
+                .get_fund_user_requests_account(&wallet, &object, &token)
                 .unwrap();
-            let user_info = client.get_fund_user_info(&wallet, &object, &token).unwrap();
-            printer::print_object(&config, &account, &user_info);
+            let user_requests = client
+                .get_fund_user_requests(&wallet, &object, &token)
+                .unwrap();
+            printer::print_object(&config, &account, &user_requests);
         }
         ("fund-assets", Some(subcommand_matches)) => {
             let object = config::get_str_val(subcommand_matches, "fund_name");

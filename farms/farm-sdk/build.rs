@@ -12,10 +12,12 @@ fn main() {
     let out_dir = env::var("OUT_DIR")
         .expect("Please set OUT_DIR environment variable to the build script output path");
     let dest_path = Path::new(&out_dir).join("constants.rs");
-    let mut f = File::create(&dest_path).expect(&format!(
-        "Could not create file {} for the build script output",
-        dest_path.to_string_lossy()
-    ));
+    let mut f = File::create(&dest_path).unwrap_or_else(|_| {
+        panic!(
+            "Could not create file \"{}\" for the build script output",
+            dest_path.to_string_lossy()
+        )
+    });
 
     // read variables
     let main_router_id =
@@ -49,58 +51,58 @@ fn main() {
         dest_path.to_string_lossy()
     );
 
-    write!(
+    writeln!(
         &mut f,
-        "pub mod main_router {{solana_program::declare_id!(\"{}\"); }}\n",
+        "pub mod main_router {{solana_program::declare_id!(\"{}\"); }}",
         main_router_id
     )
     .expect(&write_error);
 
-    write!(
+    writeln!(
         &mut f,
-        "pub mod main_router_admin {{solana_program::declare_id!(\"{}\"); }}\n",
+        "pub mod main_router_admin {{solana_program::declare_id!(\"{}\"); }}",
         main_router_admin
     )
     .expect(&write_error);
 
-    write!(
+    writeln!(
         &mut f,
-        "pub mod main_router_multisig {{solana_program::declare_id!(\"{}\"); }}\n",
+        "pub mod main_router_multisig {{solana_program::declare_id!(\"{}\"); }}",
         main_router_multisig
     )
     .expect(&write_error);
 
-    write!(
+    writeln!(
         &mut f,
-        "pub mod zero {{solana_program::declare_id!(\"{}\"); }}\n",
+        "pub mod zero {{solana_program::declare_id!(\"{}\"); }}",
         zero_id
     )
     .expect(&write_error);
 
-    write!(
+    writeln!(
         &mut f,
-        "pub const DAO_TOKEN_NAME: &str = \"{}\";\n",
+        "pub const DAO_TOKEN_NAME: &str = \"{}\";",
         dao_token_name
     )
     .expect(&write_error);
 
-    write!(
+    writeln!(
         &mut f,
-        "pub const DAO_PROGRAM_NAME: &str = \"{}\";\n",
+        "pub const DAO_PROGRAM_NAME: &str = \"{}\";",
         dao_program_name
     )
     .expect(&write_error);
 
-    write!(
+    writeln!(
         &mut f,
-        "pub const DAO_MINT_NAME: &str = \"{}\";\n",
+        "pub const DAO_MINT_NAME: &str = \"{}\";",
         dao_mint_name
     )
     .expect(&write_error);
 
-    write!(
+    writeln!(
         &mut f,
-        "pub const DAO_CUSTODY_NAME: &str = \"{}\";\n",
+        "pub const DAO_CUSTODY_NAME: &str = \"{}\";",
         dao_custody_name
     )
     .expect(&write_error);

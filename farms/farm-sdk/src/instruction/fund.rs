@@ -176,7 +176,7 @@ impl FundInstruction {
     pub const UNLOCK_ASSETS_LEN: usize = 9;
     pub const SET_ADMIN_SIGNERS_LEN: usize = 2;
     pub const REMOVE_MULTISIG_LEN: usize = 1;
-    pub const SET_ASSETS_TRACKING_CONFIG_LEN: usize = 33;
+    pub const SET_ASSETS_TRACKING_CONFIG_LEN: usize = 34;
     pub const UPDATE_ASSETS_WITH_VAULT_LEN: usize = 1;
     pub const UPDATE_ASSETS_WITH_CUSTODY_LEN: usize = 1;
     pub const ADD_VAULT_LEN: usize = 14;
@@ -615,7 +615,8 @@ impl FundInstruction {
                 max_update_age_sec_out,
                 max_price_error_out,
                 max_price_age_sec_out,
-            ) = mut_array_refs![output, 1, 8, 8, 8, 8];
+                issue_virtual_tokens_out,
+            ) = mut_array_refs![output, 1, 8, 8, 8, 8, 1];
 
             instruction_type_out[0] = FundInstructionType::SetAssetsTrackingConfig as u8;
 
@@ -623,6 +624,7 @@ impl FundInstruction {
             *max_update_age_sec_out = config.max_update_age_sec.to_le_bytes();
             *max_price_error_out = config.max_price_error.to_le_bytes();
             *max_price_age_sec_out = config.max_price_age_sec.to_le_bytes();
+            issue_virtual_tokens_out[0] = config.issue_virtual_tokens as u8;
 
             Ok(FundInstruction::SET_ASSETS_TRACKING_CONFIG_LEN)
         } else {
@@ -975,8 +977,13 @@ impl FundInstruction {
             FundInstruction::SET_ASSETS_TRACKING_CONFIG_LEN - 1
         ];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (assets_limit_usd, max_update_age_sec, max_price_error, max_price_age_sec) =
-            array_refs![input, 8, 8, 8, 8];
+        let (
+            assets_limit_usd,
+            max_update_age_sec,
+            max_price_error,
+            max_price_age_sec,
+            issue_virtual_tokens,
+        ) = array_refs![input, 8, 8, 8, 8, 1];
 
         Ok(Self::SetAssetsTrackingConfig {
             config: FundAssetsTrackingConfig {
@@ -984,6 +991,7 @@ impl FundInstruction {
                 max_update_age_sec: u64::from_le_bytes(*max_update_age_sec),
                 max_price_error: f64::from_le_bytes(*max_price_error),
                 max_price_age_sec: u64::from_le_bytes(*max_price_age_sec),
+                issue_virtual_tokens: unpack_bool(issue_virtual_tokens)?,
             },
         })
     }

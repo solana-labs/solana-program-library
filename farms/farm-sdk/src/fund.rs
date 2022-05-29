@@ -11,7 +11,7 @@ use {
 
 pub const DISCRIMINATOR_FUND_CUSTODY: u64 = 15979585294446943865;
 pub const DISCRIMINATOR_FUND_VAULT: u64 = 10084386823844633785;
-pub const DISCRIMINATOR_FUND_USER_INFO: u64 = 13706702285134686038;
+pub const DISCRIMINATOR_FUND_USER_REQUESTS: u64 = 13706702285134686038;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct Protocol {
@@ -102,6 +102,11 @@ pub struct FundUserAction {
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct FundUserInfo {
+    pub virtual_tokens_balance: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct FundUserRequests {
     pub discriminator: u64,
     #[serde(
         deserialize_with = "pubkey_deserialize",
@@ -283,6 +288,7 @@ pub struct FundAssetsTrackingConfig {
     pub max_update_age_sec: u64,
     pub max_price_error: f64,
     pub max_price_age_sec: u64,
+    pub issue_virtual_tokens: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq)]
@@ -290,6 +296,7 @@ pub struct FundInfo {
     pub deposit_schedule: FundSchedule,
     pub withdrawal_schedule: FundSchedule,
     pub assets_config: FundAssetsTrackingConfig,
+    pub virtual_tokens_supply: u64,
     pub amount_invested_usd: f64,
     pub amount_removed_usd: f64,
     pub current_assets_usd: f64,
@@ -358,11 +365,11 @@ impl Packed for FundUserAction {
     }
 }
 
-impl FundUserInfo {
+impl FundUserRequests {
     pub const LEN: usize = 201;
 }
 
-impl Packed for FundUserInfo {
+impl Packed for FundUserRequests {
     fn get_size(&self) -> usize {
         Self::LEN
     }
@@ -370,7 +377,7 @@ impl Packed for FundUserInfo {
     fn pack(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
         check_data_len(output, Self::LEN)?;
 
-        let output = array_mut_ref![output, 0, FundUserInfo::LEN];
+        let output = array_mut_ref![output, 0, FundUserRequests::LEN];
 
         let (
             discriminator_out,
@@ -409,7 +416,7 @@ impl Packed for FundUserInfo {
     fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         check_data_len(input, Self::LEN)?;
 
-        let input = array_ref![input, 0, FundUserInfo::LEN];
+        let input = array_ref![input, 0, FundUserRequests::LEN];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             discriminator,
@@ -828,6 +835,12 @@ impl std::fmt::Display for Fund {
 }
 
 impl std::fmt::Display for FundUserInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", to_string(&self).unwrap())
+    }
+}
+
+impl std::fmt::Display for FundUserRequests {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", to_string(&self).unwrap())
     }
