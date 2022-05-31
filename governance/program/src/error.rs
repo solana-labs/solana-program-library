@@ -393,6 +393,10 @@ pub enum GovernanceError {
     /// GovernanceConfig change not allowed
     #[error("GovernanceConfig change not allowed")]
     GovernanceConfigChangeNotAllowed,
+
+    /// Cannot Relinquish in Voting state
+    #[error("Cannot Relinquish in Voting state")]
+    CannotRelinquishInVotingState,
 }
 
 impl PrintProgramError for GovernanceError {

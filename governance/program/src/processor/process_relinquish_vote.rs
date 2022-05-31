@@ -103,6 +103,10 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
             .checked_sub(1)
             .unwrap();
     } else {
+        if proposal_data.state == ProposalState::Voting {
+            return Err(GovernanceError::CannotRelinquishInVotingState.into());
+        }
+
         vote_record_data.is_relinquished = true;
         vote_record_data.serialize(&mut *vote_record_info.data.borrow_mut())?;
     }
