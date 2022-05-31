@@ -5,6 +5,11 @@ use concurrent_merkle_tree::state::Node as TreeNode;
 pub struct Node {
     pub inner: [u8; 32],
 }
+impl Node {
+    pub fn new(inner: [u8; 32]) -> Self {
+        Self { inner }
+    }
+}
 impl From<TreeNode> for Node {
     fn from(tree_node: TreeNode) -> Self {
         Self {
