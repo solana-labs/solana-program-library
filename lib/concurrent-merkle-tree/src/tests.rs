@@ -117,8 +117,8 @@ mod test {
                 )
                 .unwrap();
             tree.add_leaf(leaf, i);
+            assert_eq!(merkle_roll.get_change_log().root.inner, tree.get_root());
         }
-        assert_eq!(merkle_roll.get_change_log().root.inner, tree.get_root());
 
         // Replaces leaves in a random order by 16x capacity
         let TEST_CAPACITY: usize = 16 * (2 >> DEPTH);
@@ -135,7 +135,7 @@ mod test {
                 )
                 .unwrap();
             tree.add_leaf(leaf, index);
+            assert_eq!(merkle_roll.get_change_log().root.inner, tree.get_root());
         }
-        assert_eq!(merkle_roll.get_change_log().root.inner, tree.get_root());
     }
 }
