@@ -7,5 +7,6 @@ edition = "2021"
 [dependencies]
 solana-program = "1.10.10"
 bytemuck = "1.8.0"
+thiserror = "1.0.30"
 # rand_distr = "0.4.3"
 # rand = "0.7"
