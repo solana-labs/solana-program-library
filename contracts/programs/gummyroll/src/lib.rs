@@ -13,7 +13,6 @@ use crate::state::{
     merkle_roll::{MerkleRoll, MerkleRollHeader},
     node::Node,
 };
-use crate::utils::ZeroCopy;
 
 declare_id!("GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD");
 
