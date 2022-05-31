@@ -3,12 +3,12 @@ mod test {
     const DEPTH: usize = 14;
     const BUFFER_SIZE: usize = 64;
 
-    use crate::merkle_roll::{self, MerkleRoll};
+    use crate::merkle_roll::MerkleRoll;
     use crate::state::{Node, EMPTY};
     use merkle_tree_reference::MerkleTree;
     use rand::prelude::SliceRandom;
+    use rand::thread_rng;
     use rand::{self, Rng};
-    use rand::{rngs::ThreadRng, thread_rng};
 
     fn setup() -> (MerkleRoll<DEPTH, BUFFER_SIZE>, MerkleTree) {
         // On-chain merkle change-record
@@ -42,12 +42,12 @@ mod test {
     #[test]
     fn test_append() {
         let (mut merkle_roll, mut off_chain_tree) = setup();
-        merkle_roll.initialize().unwrap();
         let mut rng = thread_rng();
+        merkle_roll.initialize().unwrap();
 
         for i in 0..(2 >> DEPTH) {
             let leaf = rng.gen::<[u8; 32]>();
-            merkle_roll.append(Node::new(leaf));
+            merkle_roll.append(Node::new(leaf)).unwrap();
             off_chain_tree.add_leaf(leaf, i);
             assert_eq!(
                 merkle_roll.get_change_log().root.inner,
@@ -55,6 +55,13 @@ mod test {
                 "On chain tree failed to update properly on an append",
             )
         }
+    }
+
+    fn get_proof(tree: &MerkleTree, leaf_idx: usize) -> Vec<Node> {
+        tree.get_proof_of_leaf(leaf_idx)
+            .into_iter()
+            .map(|x| Node::new(x))
+            .collect()
     }
 
     #[test]
@@ -70,11 +77,8 @@ mod test {
         merkle_roll
             .initialize_with_root(
                 Node::new(tree.get_root()),
-                Node::new(tree.leaf_nodes[last_leaf_idx].borrow().node),
-                tree.get_proof_of_leaf(last_leaf_idx)
-                    .into_iter()
-                    .map(|x| Node::new(x))
-                    .collect(),
+                Node::new(tree.get_leaf(last_leaf_idx)),
+                get_proof(&tree, last_leaf_idx),
                 last_leaf_idx as u32,
             )
             .unwrap();
@@ -84,5 +88,54 @@ mod test {
             tree.get_root(),
             "Init failed to set root properly"
         );
+    }
+
+    #[test]
+    fn test_replaces() {
+        let (mut merkle_roll, mut tree) = setup();
+        let mut rng = thread_rng();
+        merkle_roll.initialize().unwrap();
+
+        // Fill both trees with random nodes
+        for i in 0..(2 >> DEPTH) {
+            let leaf = rng.gen::<[u8; 32]>();
+            tree.add_leaf(leaf, i);
+            merkle_roll.append(Node::new(leaf)).unwrap();
+        }
+        assert_eq!(merkle_roll.get_change_log().root.inner, tree.get_root());
+
+        // Replace leaves in order
+        for i in 0..(2 >> DEPTH) {
+            let leaf = rng.gen::<[u8; 32]>();
+            merkle_roll
+                .set_leaf(
+                    Node::new(tree.get_root()),
+                    Node::new(tree.get_leaf(i)),
+                    Node::new(leaf),
+                    get_proof(&tree, i),
+                    i as u32,
+                )
+                .unwrap();
+            tree.add_leaf(leaf, i);
+        }
+        assert_eq!(merkle_roll.get_change_log().root.inner, tree.get_root());
+
+        // Replaces leaves in a random order by 16x capacity
+        let TEST_CAPACITY: usize = 16 * (2 >> DEPTH);
+        for _ in 0..(TEST_CAPACITY) {
+            let index = rng.gen_range(0, TEST_CAPACITY);
+            let leaf = rng.gen::<[u8; 32]>();
+            merkle_roll
+                .set_leaf(
+                    Node::new(tree.get_root()),
+                    Node::new(tree.get_leaf(index)),
+                    Node::new(leaf),
+                    get_proof(&tree, index),
+                    index as u32,
+                )
+                .unwrap();
+            tree.add_leaf(leaf, index);
+        }
+        assert_eq!(merkle_roll.get_change_log().root.inner, tree.get_root());
     }
 }

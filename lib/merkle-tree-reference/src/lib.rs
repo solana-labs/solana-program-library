@@ -151,6 +151,10 @@ impl MerkleTree {
         self.leaf_nodes[leaf_idx].borrow_mut().node = EMPTY;
         self.update_root_from_leaf(leaf_idx)
     }
+
+    pub fn get_leaf(&self, leaf_idx: usize) -> Node {
+        self.leaf_nodes[leaf_idx].borrow().node.clone()
+    }
 }
 
 #[derive(Clone)]
