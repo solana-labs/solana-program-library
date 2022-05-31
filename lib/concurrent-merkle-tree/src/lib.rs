@@ -3,4 +3,5 @@ pub mod error;
 pub mod log;
 pub mod merkle_roll;
 pub mod state;
+mod tests;
 pub mod utils;

@@ -16,6 +16,16 @@ pub struct ChangeLog<const MAX_DEPTH: usize> {
 }
 
 impl<const MAX_DEPTH: usize> ChangeLog<MAX_DEPTH> {
+    #[cfg(test)]
+    pub fn default() -> Self {
+        Self {
+            root: EMPTY,
+            path: [EMPTY; MAX_DEPTH],
+            index: 0,
+            _padding: 0,
+        }
+    }
+
     pub fn get_leaf(&self) -> Node {
         self.path[0]
     }

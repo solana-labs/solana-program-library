@@ -35,6 +35,17 @@ unsafe impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> Pod
 }
 
 impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH, MAX_BUFFER_SIZE> {
+    #[cfg(test)]
+    pub fn new() -> Self {
+        Self {
+            sequence_number: 0,
+            active_index: 0,
+            buffer_size: 0,
+            change_logs: [ChangeLog::<MAX_DEPTH>::default(); MAX_BUFFER_SIZE],
+            rightmost_proof: Path::<MAX_DEPTH>::default(),
+        }
+    }
+
     pub fn initialize(&mut self) -> Result<Node, CMTError> {
         let mut rightmost_proof = Path::default();
         for (i, node) in rightmost_proof.proof.iter_mut().enumerate() {
