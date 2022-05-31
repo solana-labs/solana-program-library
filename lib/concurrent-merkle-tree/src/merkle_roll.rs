@@ -4,8 +4,11 @@ use crate::{
     utils::{empty_node, fill_in_proof, recompute},
 };
 use bytemuck::{Pod, Zeroable};
-use solana_program::{keccak::hashv, log::sol_log_compute_units, msg};
+pub(crate) use log_compute;
+pub(crate) use solana_logging;
 
+/// This is the only solana-native import allowed in this crate
+use solana_program::keccak::hashv;
 /// Tracks updates to off-chain Merkle tree
 ///
 /// Allows for concurrent writes to same merkle tree so long as proof
@@ -171,9 +174,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     ) -> Result<Node, CMTError> {
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
         fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
-        // sol_log_compute_units();
+        log_compute!();
         let root = self.find_and_update_leaf(current_root, EMPTY, leaf, &mut proof, index, true);
-        // sol_log_compute_units();
+        log_compute!();
         root
     }
 
@@ -189,16 +192,11 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     ) -> Result<Node, CMTError> {
         if index > self.rightmost_proof.index {
             return Err(CMTError::LeafIndexOutOfBounds);
-            // msg!(
-            //     "Received an index larger than the rightmost index {} > {}",
-            //     index,
-            //     self.rightmost_proof.index
-            // );
         } else {
             let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
             fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
 
-            // sol_log_compute_units();
+            log_compute!();
             let root = self.find_and_update_leaf(
                 current_root,
                 previous_leaf,
@@ -207,7 +205,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
                 index,
                 false,
             );
-            // sol_log_compute_units();
+            log_compute!();
             root
         }
     }
@@ -222,10 +220,10 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         index: u32,
         append_on_conflict: bool,
     ) -> Result<Node, CMTError> {
-        // msg!("Active Index: {}", self.active_index);
-        // msg!("Rightmost Index: {}", self.rightmost_proof.index);
-        // msg!("Buffer Size: {}", self.buffer_size);
-        // msg!("Leaf Index: {}", index);
+        solana_logging!("Active Index: {}", self.active_index);
+        solana_logging!("Rightmost Index: {}", self.rightmost_proof.index);
+        solana_logging!("Buffer Size: {}", self.buffer_size);
+        solana_logging!("Leaf Index: {}", index);
         let mask: usize = MAX_BUFFER_SIZE - 1;
 
         for i in 0..self.buffer_size {
@@ -243,7 +241,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
                 false,
             );
         }
-        // msg!("Failed to find root, attempting to replay change log");
+        solana_logging!("Failed to find root, attempting to replay change log");
         // Optimistic search
         self.update_and_apply_proof(
             leaf,
@@ -272,10 +270,10 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         use_full_buffer: bool,
     ) -> Result<Node, CMTError> {
         let mut updated_leaf = leaf;
-        // msg!("Fast-forwarding proof, starting index {}", j);
+        solana_logging!("Fast-forwarding proof, starting index {}", j);
         let mask: usize = MAX_BUFFER_SIZE - 1;
         let padding: usize = 32 - MAX_DEPTH;
-        // sol_log_compute_units();
+        log_compute!();
         // Modifies proof by iterating through the change log
         loop {
             // If use_full_buffer is false, this loop will terminate if the initial value of j is the active index
@@ -297,14 +295,13 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
                 break;
             }
         }
-        // sol_log_compute_units();
+        log_compute!();
         let valid_root = recompute(updated_leaf, proof, index) == self.get_change_log().root;
         if updated_leaf != leaf || index > self.rightmost_proof.index {
             // If the supplied root was not found in the queue, the instruction should fail if the leaf index changes
             if !use_full_buffer && valid_root && leaf == EMPTY && append_on_conflict {
                 return self.append(new_leaf);
             } else {
-                // msg!("Leaf already updated");
                 return Err(CMTError::LeafAlreadyUpdated);
             }
         }
@@ -313,7 +310,6 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             self.sequence_number = self.sequence_number.saturating_add(1);
             Ok(self.apply_changes(new_leaf, proof, index))
         } else {
-            // msg!("Invalid root recomputed from proof, failing");
             return Err(CMTError::InvalidProof);
         }
     }
@@ -344,13 +340,12 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
                     let common_path_len = ((index ^ (self.rightmost_proof.index - 1) as u32)
                         << padding)
                         .leading_zeros() as usize;
-                    // msg!("Common path len {}", common_path_len);
                     let critbit_index = (MAX_DEPTH - 1) - common_path_len;
                     self.rightmost_proof.proof[critbit_index] = change_log.path[critbit_index];
                 }
             } else {
                 assert!(index == self.rightmost_proof.index);
-                // msg!("Appending rightmost leaf");
+                solana_logging!("Appending rightmost leaf");
                 self.rightmost_proof.proof.copy_from_slice(&proof);
                 self.rightmost_proof.index = index + 1;
                 self.rightmost_proof.leaf = change_log.get_leaf();
