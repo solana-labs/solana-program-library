@@ -155,7 +155,7 @@ impl MerkleTree {
 
 #[derive(Clone)]
 pub struct TreeNode {
-    node: Node,
+    pub node: Node,
     left: Option<Rc<RefCell<TreeNode>>>,
     right: Option<Rc<RefCell<TreeNode>>>,
     parent: Option<Rc<RefCell<TreeNode>>>,

@@ -56,4 +56,33 @@ mod test {
             )
         }
     }
+
+    #[test]
+    fn test_initialize_with_root() {
+        let (mut merkle_roll, mut tree) = setup();
+        let mut rng = thread_rng();
+
+        for i in 0..(2 >> DEPTH) {
+            tree.add_leaf(rng.gen::<[u8; 32]>(), i);
+        }
+
+        let last_leaf_idx = tree.leaf_nodes.len() - 1;
+        merkle_roll
+            .initialize_with_root(
+                Node::new(tree.get_root()),
+                Node::new(tree.leaf_nodes[last_leaf_idx].borrow().node),
+                tree.get_proof_of_leaf(last_leaf_idx)
+                    .into_iter()
+                    .map(|x| Node::new(x))
+                    .collect(),
+                last_leaf_idx as u32,
+            )
+            .unwrap();
+
+        assert_eq!(
+            merkle_roll.get_change_log().root.inner,
+            tree.get_root(),
+            "Init failed to set root properly"
+        );
+    }
 }
