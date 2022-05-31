@@ -1,7 +1,6 @@
-use crate::state::node::Node;
 use anchor_lang::{
     prelude::*,
-    solana_program::{keccak::hashv, msg, program_error::ProgramError},
+    solana_program::{msg, program_error::ProgramError},
 };
 use bytemuck::{Pod, PodCastError};
 use concurrent_merkle_tree::merkle_roll::MerkleRoll;

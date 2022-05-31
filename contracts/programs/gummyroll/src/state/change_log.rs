@@ -1,8 +1,7 @@
 use crate::state::node::Node;
-use anchor_lang::{prelude::*, solana_program::keccak::hashv};
+use anchor_lang::prelude::*;
 use borsh::BorshSerialize;
 use concurrent_merkle_tree::state::{ChangeLog, Node as TreeNode};
-use std::convert::AsRef;
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug)]
 pub struct PathNode {
