@@ -28,4 +28,4 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 #test = "yarn run ts-mocha -t 1000000 tests/**/*-test.ts"
-test = "yarn run ts-mocha -t 1000000 tests/**/bubblegum-test.ts"
+test = "yarn run ts-mocha -t 1000000 tests/**/gummyroll-test.ts"

@@ -55,13 +55,13 @@ macro_rules! merkle_roll_depth_size_apply_fn {
             match MerkleRoll::<$max_depth, $max_size>::load_mut_bytes($bytes) {
                 Ok(merkle_roll) => {
                     match merkle_roll.$func($($arg)*) {
-                        Some(x) => {
+                        Ok(x) => {
                             if $emit_msg {
                                 emit!(*Box::<ChangeLogEvent>::from((merkle_roll.get_change_log(), $id, merkle_roll.sequence_number)));
                             }
                             Some(x)
                         }
-                        None => None,
+                        Err(_) => None,
                     }
                 }
                 Err(e) => {
