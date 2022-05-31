@@ -19,7 +19,7 @@ use {
 #[derive(Clone, Copy, Debug, PartialEq, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum InterestBearingInstruction {
-    /// Initialize a new mint with interest-bearing accrual.
+    /// Initialize a new mint with interest accrual.
     ///
     /// Fails if the mint has already been initialized, so must be called before
     /// `InitializeMint`.

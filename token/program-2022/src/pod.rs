@@ -84,7 +84,7 @@ impl From<PodBool> for bool {
 ///
 /// The standard int types can cause alignment issues when placed in a `Pod`,
 /// so these replacements are usable in all `Pod`s.
-macro_rules! int_conversion_impl {
+macro_rules! impl_int_conversion {
     ($P:ty, $I:ty) => {
         impl From<$I> for $P {
             fn from(n: $I) -> Self {
@@ -103,25 +103,25 @@ macro_rules! int_conversion_impl {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct PodU16([u8; 2]);
-int_conversion_impl!(PodU16, u16);
+impl_int_conversion!(PodU16, u16);
 
 /// `i16` type that can be used in `Pod`s
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct PodI16([u8; 2]);
-int_conversion_impl!(PodI16, i16);
+impl_int_conversion!(PodI16, i16);
 
 /// `u64` type that can be used in `Pod`s
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct PodU64([u8; 8]);
-int_conversion_impl!(PodU64, u64);
+impl_int_conversion!(PodU64, u64);
 
 /// `i64` type that can be used in `Pod`s
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct PodI64([u8; 8]);
-int_conversion_impl!(PodI64, i64);
+impl_int_conversion!(PodI64, i64);
 
 /// On-chain size of a `Pod` type
 pub fn pod_get_packed_len<T: Pod>() -> usize {
