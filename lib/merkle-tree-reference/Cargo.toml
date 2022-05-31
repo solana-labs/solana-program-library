@@ -1,0 +1,10 @@
+[workspace]
+[package]
+name = "merkle-tree-reference"
+version = "0.1.0"
+edition = "2021"
+description = "Reference implementation of a merkle tree"
+
+[dependencies]
+solana-program = "1.10.10"
+thiserror = "1.0.30"
