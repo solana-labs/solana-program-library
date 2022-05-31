@@ -493,6 +493,11 @@ async def increase_validator_stake(
         stake_pool_address,
         transient_stake_seed,
     )
+    (validator_stake, _) = find_stake_program_address(
+        STAKE_POOL_PROGRAM_ID,
+        validator_info.vote_account_address,
+        stake_pool_address,
+    )
 
     txn = Transaction()
     txn.add(
@@ -505,6 +510,7 @@ async def increase_validator_stake(
                 validator_list=stake_pool.validator_list,
                 reserve_stake=stake_pool.reserve_stake,
                 transient_stake=transient_stake,
+                validator_stake=validator_stake,
                 validator_vote=validator_vote,
                 clock_sysvar=SYSVAR_CLOCK_PUBKEY,
                 rent_sysvar=SYSVAR_RENT_PUBKEY,

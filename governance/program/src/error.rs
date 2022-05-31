@@ -25,7 +25,7 @@ pub enum GovernanceError {
 
     /// Invalid Governing Token Mint
     #[error("Invalid Governing Token Mint")]
-    InvalidGoverningTokenMint,
+    InvalidGoverningTokenMint, // 503
 
     /// Governing Token Owner must sign transaction
     #[error("Governing Token Owner must sign transaction")]
@@ -45,11 +45,11 @@ pub enum GovernanceError {
 
     /// Invalid GoverningMint for TokenOwnerRecord
     #[error("Invalid GoverningMint for TokenOwnerRecord")]
-    InvalidGoverningMintForTokenOwnerRecord,
+    InvalidGoverningMintForTokenOwnerRecord, // 508
 
     /// Invalid Realm for TokenOwnerRecord
     #[error("Invalid Realm for TokenOwnerRecord")]
-    InvalidRealmForTokenOwnerRecord,
+    InvalidRealmForTokenOwnerRecord, // 509
 
     /// Invalid Proposal for ProposalTransaction,
     #[error("Invalid Proposal for ProposalTransaction,")]
@@ -164,95 +164,95 @@ pub enum GovernanceError {
 
     /// Proposal does not belong to the given Governance
     #[error("Proposal does not belong to the given Governance")]
-    InvalidGovernanceForProposal,
+    InvalidGovernanceForProposal, // 538
 
     /// Proposal does not belong to given Governing Mint"
     #[error("Proposal does not belong to given Governing Mint")]
-    InvalidGoverningMintForProposal,
+    InvalidGoverningMintForProposal, // 539
 
     /// Current mint authority must sign transaction
     #[error("Current mint authority must sign transaction")]
-    MintAuthorityMustSign,
+    MintAuthorityMustSign, // 540
 
     /// Invalid mint authority
     #[error("Invalid mint authority")]
-    InvalidMintAuthority,
+    InvalidMintAuthority, // 542
 
     /// Mint has no authority
     #[error("Mint has no authority")]
-    MintHasNoAuthority,
+    MintHasNoAuthority, // 542
 
     /// ---- SPL Token Tools Errors ----
 
     /// Invalid Token account owner
     #[error("Invalid Token account owner")]
-    SplTokenAccountWithInvalidOwner,
+    SplTokenAccountWithInvalidOwner, // 543
 
     /// Invalid Mint account owner
     #[error("Invalid Mint account owner")]
-    SplTokenMintWithInvalidOwner,
+    SplTokenMintWithInvalidOwner, // 544
 
     /// Token Account is not initialized
     #[error("Token Account is not initialized")]
-    SplTokenAccountNotInitialized,
+    SplTokenAccountNotInitialized, // 545
 
     /// Token Account doesn't exist
     #[error("Token Account doesn't exist")]
-    SplTokenAccountDoesNotExist,
+    SplTokenAccountDoesNotExist, // 546
 
     /// Token account data is invalid
     #[error("Token account data is invalid")]
-    SplTokenInvalidTokenAccountData,
+    SplTokenInvalidTokenAccountData, // 547
 
     /// Token mint account data is invalid
     #[error("Token mint account data is invalid")]
-    SplTokenInvalidMintAccountData,
+    SplTokenInvalidMintAccountData, // 548
 
     /// Token Mint is not initialized
     #[error("Token Mint account is not initialized")]
-    SplTokenMintNotInitialized,
+    SplTokenMintNotInitialized, // 549
 
     /// Token Mint account doesn't exist
     #[error("Token Mint account doesn't exist")]
-    SplTokenMintDoesNotExist,
+    SplTokenMintDoesNotExist, // 550
 
     /// ---- Bpf Upgradable Loader Tools Errors ----
 
     /// Invalid ProgramData account Address
     #[error("Invalid ProgramData account address")]
-    InvalidProgramDataAccountAddress,
+    InvalidProgramDataAccountAddress, // 551
 
     /// Invalid ProgramData account data
     #[error("Invalid ProgramData account Data")]
-    InvalidProgramDataAccountData,
+    InvalidProgramDataAccountData, // 552
 
     /// Provided upgrade authority doesn't match current program upgrade authority
     #[error("Provided upgrade authority doesn't match current program upgrade authority")]
-    InvalidUpgradeAuthority,
+    InvalidUpgradeAuthority, // 553
 
     /// Current program upgrade authority must sign transaction
     #[error("Current program upgrade authority must sign transaction")]
-    UpgradeAuthorityMustSign,
+    UpgradeAuthorityMustSign, // 554
 
     /// Given program is not upgradable
     #[error("Given program is not upgradable")]
-    ProgramNotUpgradable,
+    ProgramNotUpgradable, // 555
 
     /// Invalid token owner
     #[error("Invalid token owner")]
-    InvalidTokenOwner,
+    InvalidTokenOwner, // 556
 
     /// Current token owner must sign transaction
     #[error("Current token owner must sign transaction")]
-    TokenOwnerMustSign,
+    TokenOwnerMustSign, // 557
 
     /// Given VoteThresholdType is not supported
     #[error("Given VoteThresholdType is not supported")]
-    VoteThresholdTypeNotSupported,
+    VoteThresholdTypeNotSupported, // 558
 
     /// Given VoteWeightSource is not supported
     #[error("Given VoteWeightSource is not supported")]
-    VoteWeightSourceNotSupported,
+    VoteWeightSourceNotSupported, // 559
 
     /// GoverningTokenMint not allowed to vote
     #[error("GoverningTokenMint not allowed to vote")]

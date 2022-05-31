@@ -1,28 +1,32 @@
 #![allow(dead_code)]
 
 use {
+    borsh::BorshSerialize,
     solana_program::{
         borsh::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
         hash::Hash,
+        program_option::COption,
         program_pack::Pack,
         pubkey::Pubkey,
         stake, system_instruction, system_program,
     },
-    solana_program_test::*,
+    solana_program_test::{processor, BanksClient, ProgramTest},
     solana_sdk::{
-        account::Account,
+        account::{Account, WritableAccount},
+        clock::{Clock, Epoch},
         signature::{Keypair, Signer},
         transaction::Transaction,
         transport::TransportError,
     },
     solana_vote_program::{
         self, vote_instruction,
-        vote_state::{VoteInit, VoteState},
+        vote_state::{VoteInit, VoteState, VoteStateVersions},
     },
     spl_stake_pool::{
         find_deposit_authority_program_address, find_stake_program_address,
         find_transient_stake_program_address, find_withdraw_authority_program_address, id,
-        instruction, processor,
+        instruction,
+        processor::Processor,
         state::{self, FeeType, ValidatorList},
         MINIMUM_ACTIVE_STAKE, MINIMUM_RESERVE_LAMPORTS,
     },
@@ -31,13 +35,11 @@ use {
 pub const TEST_STAKE_AMOUNT: u64 = 1_500_000_000;
 pub const MAX_TEST_VALIDATORS: u32 = 10_000;
 pub const DEFAULT_TRANSIENT_STAKE_SEED: u64 = 42;
+pub const STAKE_ACCOUNT_RENT_EXEMPTION: u64 = 2_282_880;
+const ACCOUNT_RENT_EXEMPTION: u64 = 1_000_000_000; // go with something big to be safe
 
 pub fn program_test() -> ProgramTest {
-    ProgramTest::new(
-        "spl_stake_pool",
-        id(),
-        processor!(processor::Processor::process),
-    )
+    ProgramTest::new("spl_stake_pool", id(), processor!(Processor::process))
 }
 
 pub async fn get_account(banks_client: &mut BanksClient, pubkey: &Pubkey) -> Account {
@@ -1280,6 +1282,7 @@ impl StakePoolAccounts {
         payer: &Keypair,
         recent_blockhash: &Hash,
         transient_stake: &Pubkey,
+        validator_stake: &Pubkey,
         validator: &Pubkey,
         lamports: u64,
         transient_stake_seed: u64,
@@ -1293,6 +1296,7 @@ impl StakePoolAccounts {
                 &self.validator_list.pubkey(),
                 &self.reserve_stake.pubkey(),
                 transient_stake,
+                validator_stake,
                 validator,
                 lamports,
                 transient_stake_seed,
@@ -1336,6 +1340,46 @@ impl StakePoolAccounts {
             .await
             .map_err(|e| e.into())
             .err()
+    }
+
+    pub fn state(&self) -> (state::StakePool, state::ValidatorList) {
+        let (_, stake_withdraw_bump_seed) =
+            find_withdraw_authority_program_address(&id(), &self.stake_pool.pubkey());
+        let stake_pool = state::StakePool {
+            account_type: state::AccountType::StakePool,
+            manager: self.manager.pubkey(),
+            staker: self.staker.pubkey(),
+            stake_deposit_authority: self.stake_deposit_authority,
+            stake_withdraw_bump_seed,
+            validator_list: self.validator_list.pubkey(),
+            reserve_stake: self.reserve_stake.pubkey(),
+            pool_mint: self.pool_mint.pubkey(),
+            manager_fee_account: self.pool_fee_account.pubkey(),
+            token_program_id: spl_token::id(),
+            total_lamports: 0,
+            pool_token_supply: 0,
+            last_update_epoch: 0,
+            lockup: stake::state::Lockup::default(),
+            epoch_fee: self.epoch_fee,
+            next_epoch_fee: None,
+            preferred_deposit_validator_vote_address: None,
+            preferred_withdraw_validator_vote_address: None,
+            stake_deposit_fee: state::Fee::default(),
+            sol_deposit_fee: state::Fee::default(),
+            stake_withdrawal_fee: state::Fee::default(),
+            next_stake_withdrawal_fee: None,
+            stake_referral_fee: 0,
+            sol_referral_fee: 0,
+            sol_deposit_authority: None,
+            sol_withdraw_authority: None,
+            sol_withdrawal_fee: state::Fee::default(),
+            next_sol_withdrawal_fee: None,
+            last_epoch_pool_token_supply: 0,
+            last_epoch_total_lamports: 0,
+        };
+        let mut validator_list = ValidatorList::new(self.max_validators);
+        validator_list.validators = vec![];
+        (stake_pool, validator_list)
     }
 }
 
@@ -1576,4 +1620,212 @@ pub async fn get_validator_list_sum(
     let rent = banks_client.get_rent().await.unwrap();
     let rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
     validator_sum + reserve_stake.lamports - rent - MINIMUM_RESERVE_LAMPORTS
+}
+
+pub fn add_vote_account(program_test: &mut ProgramTest) -> Pubkey {
+    let authorized_voter = Pubkey::new_unique();
+    let authorized_withdrawer = Pubkey::new_unique();
+    let commission = 1;
+
+    // create vote account
+    let vote_pubkey = Pubkey::new_unique();
+    let node_pubkey = Pubkey::new_unique();
+    let vote_state = VoteStateVersions::new_current(VoteState::new(
+        &VoteInit {
+            node_pubkey,
+            authorized_voter,
+            authorized_withdrawer,
+            commission,
+        },
+        &Clock::default(),
+    ));
+    let vote_account = Account::create(
+        ACCOUNT_RENT_EXEMPTION,
+        bincode::serialize::<VoteStateVersions>(&vote_state).unwrap(),
+        solana_vote_program::id(),
+        false,
+        Epoch::default(),
+    );
+    program_test.add_account(vote_pubkey, vote_account);
+    vote_pubkey
+}
+
+pub fn add_validator_stake_account(
+    program_test: &mut ProgramTest,
+    stake_pool: &mut state::StakePool,
+    validator_list: &mut state::ValidatorList,
+    stake_pool_pubkey: &Pubkey,
+    withdraw_authority: &Pubkey,
+    voter_pubkey: &Pubkey,
+    stake_amount: u64,
+) {
+    let meta = stake::state::Meta {
+        rent_exempt_reserve: STAKE_ACCOUNT_RENT_EXEMPTION,
+        authorized: stake::state::Authorized {
+            staker: *withdraw_authority,
+            withdrawer: *withdraw_authority,
+        },
+        lockup: stake_pool.lockup,
+    };
+
+    // create validator stake account
+    let stake = stake::state::Stake {
+        delegation: stake::state::Delegation {
+            voter_pubkey: *voter_pubkey,
+            stake: stake_amount,
+            activation_epoch: 0,
+            deactivation_epoch: u64::MAX,
+            warmup_cooldown_rate: 0.25, // default
+        },
+        credits_observed: 0,
+    };
+
+    let stake_account = Account::create(
+        stake_amount + STAKE_ACCOUNT_RENT_EXEMPTION,
+        bincode::serialize::<stake::state::StakeState>(&stake::state::StakeState::Stake(
+            meta, stake,
+        ))
+        .unwrap(),
+        stake::program::id(),
+        false,
+        Epoch::default(),
+    );
+
+    let (stake_address, _) = find_stake_program_address(&id(), voter_pubkey, stake_pool_pubkey);
+    program_test.add_account(stake_address, stake_account);
+    let active_stake_lamports = stake_amount - MINIMUM_ACTIVE_STAKE;
+    // add to validator list
+    validator_list.validators.push(state::ValidatorStakeInfo {
+        status: state::StakeStatus::Active,
+        vote_account_address: *voter_pubkey,
+        active_stake_lamports,
+        transient_stake_lamports: 0,
+        last_update_epoch: 0,
+        transient_seed_suffix_start: 0,
+        transient_seed_suffix_end: 0,
+    });
+
+    stake_pool.total_lamports += active_stake_lamports;
+    stake_pool.pool_token_supply += active_stake_lamports;
+}
+
+pub fn add_reserve_stake_account(
+    program_test: &mut ProgramTest,
+    reserve_stake: &Pubkey,
+    withdraw_authority: &Pubkey,
+    stake_amount: u64,
+) {
+    let meta = stake::state::Meta {
+        rent_exempt_reserve: STAKE_ACCOUNT_RENT_EXEMPTION,
+        authorized: stake::state::Authorized {
+            staker: *withdraw_authority,
+            withdrawer: *withdraw_authority,
+        },
+        lockup: stake::state::Lockup::default(),
+    };
+    let reserve_stake_account = Account::create(
+        stake_amount + STAKE_ACCOUNT_RENT_EXEMPTION,
+        bincode::serialize::<stake::state::StakeState>(&stake::state::StakeState::Initialized(
+            meta,
+        ))
+        .unwrap(),
+        stake::program::id(),
+        false,
+        Epoch::default(),
+    );
+    program_test.add_account(*reserve_stake, reserve_stake_account);
+}
+
+pub fn add_stake_pool_account(
+    program_test: &mut ProgramTest,
+    stake_pool_pubkey: &Pubkey,
+    stake_pool: &state::StakePool,
+) {
+    let mut stake_pool_bytes = stake_pool.try_to_vec().unwrap();
+    // more room for optionals
+    stake_pool_bytes.extend_from_slice(&Pubkey::default().to_bytes());
+    stake_pool_bytes.extend_from_slice(&Pubkey::default().to_bytes());
+    let stake_pool_account = Account::create(
+        ACCOUNT_RENT_EXEMPTION,
+        stake_pool_bytes,
+        id(),
+        false,
+        Epoch::default(),
+    );
+    program_test.add_account(*stake_pool_pubkey, stake_pool_account);
+}
+
+pub fn add_validator_list_account(
+    program_test: &mut ProgramTest,
+    validator_list_pubkey: &Pubkey,
+    validator_list: &state::ValidatorList,
+    max_validators: u32,
+) {
+    let mut validator_list_bytes = validator_list.try_to_vec().unwrap();
+    // add extra room if needed
+    for _ in validator_list.validators.len()..max_validators as usize {
+        validator_list_bytes
+            .append(&mut state::ValidatorStakeInfo::default().try_to_vec().unwrap());
+    }
+    let validator_list_account = Account::create(
+        ACCOUNT_RENT_EXEMPTION,
+        validator_list_bytes,
+        id(),
+        false,
+        Epoch::default(),
+    );
+    program_test.add_account(*validator_list_pubkey, validator_list_account);
+}
+
+pub fn add_mint_account(
+    program_test: &mut ProgramTest,
+    mint_key: &Pubkey,
+    mint_authority: &Pubkey,
+    supply: u64,
+) {
+    let mut mint_vec = vec![0u8; spl_token::state::Mint::LEN];
+    let mint = spl_token::state::Mint {
+        mint_authority: COption::Some(*mint_authority),
+        supply,
+        decimals: 9,
+        is_initialized: true,
+        freeze_authority: COption::None,
+    };
+    Pack::pack(mint, &mut mint_vec).unwrap();
+    let stake_pool_mint = Account::create(
+        ACCOUNT_RENT_EXEMPTION,
+        mint_vec,
+        spl_token::id(),
+        false,
+        Epoch::default(),
+    );
+    program_test.add_account(*mint_key, stake_pool_mint);
+}
+
+pub fn add_token_account(
+    program_test: &mut ProgramTest,
+    account_key: &Pubkey,
+    mint_key: &Pubkey,
+    owner: &Pubkey,
+) {
+    let mut fee_account_vec = vec![0u8; spl_token::state::Account::LEN];
+    let fee_account_data = spl_token::state::Account {
+        mint: *mint_key,
+        owner: *owner,
+        amount: 0,
+        delegate: COption::None,
+        state: spl_token::state::AccountState::Initialized,
+        is_native: COption::None,
+        delegated_amount: 0,
+        close_authority: COption::None,
+    };
+    Pack::pack(fee_account_data, &mut fee_account_vec).unwrap();
+    let fee_account = Account::create(
+        ACCOUNT_RENT_EXEMPTION,
+        fee_account_vec,
+        spl_token::id(),
+        false,
+        Epoch::default(),
+    );
+    program_test.add_account(*account_key, fee_account);
 }

@@ -30,7 +30,6 @@ use solana_program::{
 
 /// Instructions supported by the Governance program
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-#[repr(C)]
 #[allow(clippy::large_enum_variant)]
 pub enum GovernanceInstruction {
     /// Creates Governance Realm account which aggregates governances for given Community Mint and optional Council Mint
@@ -286,10 +285,14 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]` TokenOwnerRecord of the Proposal owner
-    ///   4. `[writable]` TokenOwnerRecord of the voter. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///   4. `[writable]` TokenOwnerRecord of the voter. PDA seeds: ['governance',realm, vote_governing_token_mint, governing_token_owner]
     ///   5. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   6. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal,governing_token_owner_record]
-    ///   7. `[]` Governing Token Mint
+    ///   6. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal,token_owner_record]
+    ///   7. `[]` The Governing Token Mint which is used to cast the vote (vote_governing_token_mint)
+    ///           The voting token mint is the governing_token_mint of the Proposal for Approve, Deny and Abstain votes
+    ///           For Veto vote the voting token mint is the mint of the opposite voting population
+    ///           Council mint to veto Community proposals and Community mint to veto Council proposals
+    ///           Note: In the current version only Council veto is supported
     ///   8. `[signer]` Payer
     ///   9. `[]` System program
     ///   10. `[]` Realm Config
@@ -317,14 +320,15 @@ pub enum GovernanceInstruction {
     ///  If the Proposal is already in decided state then the instruction has no impact on the Proposal
     ///  and only allows voters to prune their outstanding votes in case they wanted to withdraw Governing tokens from the Realm
     ///
-    ///   0. `[]` Governance account
-    ///   1. `[writable]` Proposal account
-    ///   2. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
-    ///   3. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal,governing_token_owner_record]
-    ///   4. `[]` Governing Token Mint
-    ///   5. `[signer]` Optional Governance Authority (Token Owner or Governance Delegate)
+    ///   0. `[]` Realm account
+    ///   1. `[]` Governance account
+    ///   2. `[writable]` Proposal account
+    ///   3. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, vote_governing_token_mint, governing_token_owner]
+    ///   4. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal, token_owner_record]
+    ///   5. `[]` The Governing Token Mint which was used to cast the vote (vote_governing_token_mint)
+    ///   6. `[signer]` Optional Governance Authority (Token Owner or Governance Delegate)
     ///       It's required only when Proposal is still being voted on
-    ///   6. `[writable]` Optional Beneficiary account which would receive lamports when VoteRecord Account is disposed
+    ///   7. `[writable]` Optional Beneficiary account which would receive lamports when VoteRecord Account is disposed
     ///       It's required only when Proposal is still being voted on
     RelinquishVote,
 
@@ -1020,7 +1024,7 @@ pub fn cast_vote(
     proposal_owner_record: &Pubkey,
     voter_token_owner_record: &Pubkey,
     governance_authority: &Pubkey,
-    governing_token_mint: &Pubkey,
+    vote_governing_token_mint: &Pubkey,
     payer: &Pubkey,
     voter_weight_record: Option<Pubkey>,
     max_voter_weight_record: Option<Pubkey>,
@@ -1038,7 +1042,7 @@ pub fn cast_vote(
         AccountMeta::new(*voter_token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(vote_record_address, false),
-        AccountMeta::new_readonly(*governing_token_mint, false),
+        AccountMeta::new_readonly(*vote_governing_token_mint, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
@@ -1097,24 +1101,27 @@ pub fn finalize_vote(
 }
 
 /// Creates RelinquishVote instruction
+#[allow(clippy::too_many_arguments)]
 pub fn relinquish_vote(
     program_id: &Pubkey,
     // Accounts
+    realm: &Pubkey,
     governance: &Pubkey,
     proposal: &Pubkey,
     token_owner_record: &Pubkey,
-    governing_token_mint: &Pubkey,
+    vote_governing_token_mint: &Pubkey,
     governance_authority: Option<Pubkey>,
     beneficiary: Option<Pubkey>,
 ) -> Instruction {
     let vote_record_address = get_vote_record_address(program_id, proposal, token_owner_record);
 
     let mut accounts = vec![
+        AccountMeta::new_readonly(*realm, false),
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*token_owner_record, false),
         AccountMeta::new(vote_record_address, false),
-        AccountMeta::new_readonly(*governing_token_mint, false),
+        AccountMeta::new_readonly(*vote_governing_token_mint, false),
     ];
 
     if let Some(governance_authority) = governance_authority {

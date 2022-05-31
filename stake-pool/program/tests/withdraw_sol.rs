@@ -195,6 +195,7 @@ async fn fail_overdraw_reserve() {
             &context.payer,
             &context.last_blockhash,
             &validator_stake.transient_stake_account,
+            &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
             TEST_STAKE_AMOUNT - stake_rent,
             validator_stake.transient_stake_seed,

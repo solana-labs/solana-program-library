@@ -157,6 +157,7 @@ export type IncreaseValidatorStakeParams = {
   validatorList: PublicKey;
   reserveStake: PublicKey;
   transientStake: PublicKey;
+  validatorStake: PublicKey;
   validatorVote: PublicKey;
   // Amount of lamports to split into the transient stake account.
   lamports: number;
@@ -343,6 +344,7 @@ export class StakePoolInstruction {
       validatorList,
       reserveStake,
       transientStake,
+      validatorStake,
       validatorVote,
       lamports,
       transientStakeSeed,
@@ -358,6 +360,7 @@ export class StakePoolInstruction {
       { pubkey: validatorList, isSigner: false, isWritable: true },
       { pubkey: reserveStake, isSigner: false, isWritable: true },
       { pubkey: transientStake, isSigner: false, isWritable: true },
+      { pubkey: validatorStake, isSigner: false, isWritable: false },
       { pubkey: validatorVote, isSigner: false, isWritable: false },
       { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
       { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },

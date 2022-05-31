@@ -53,7 +53,6 @@ impl IsInitialized for RealmV1 {
 
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct TokenOwnerRecordV1 {
     /// Governance account type
@@ -102,7 +101,6 @@ impl IsInitialized for TokenOwnerRecordV1 {
 }
 
 /// Governance Account
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GovernanceV1 {
     /// Account type. It can be Uninitialized, Governance, ProgramGovernance, TokenGovernance or MintGovernance
@@ -173,7 +171,6 @@ impl IsInitialized for GovernanceV1 {
 }
 
 /// Governance Proposal
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ProposalV1 {
     /// Governance account type
@@ -263,7 +260,6 @@ impl IsInitialized for ProposalV1 {
 }
 
 /// Account PDA seeds: ['governance', proposal, signatory]
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct SignatoryRecordV1 {
     /// Governance account type
