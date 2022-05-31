@@ -1,14 +1,12 @@
-use crate::state::{
-    change_log::{ChangeLog, Path},
-    node::{Node, EMPTY},
-};
+use crate::utils::ZeroCopy;
 use anchor_lang::{
     prelude::*,
     solana_program::{keccak::hashv, log::sol_log_compute_units},
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 use bytemuck::{Pod, Zeroable};
-use concurrent_merkle_roll::utils::{empty_node, fill_in_proof, recompute, ZeroCopy};
+use concurrent_merkle_tree::state::{ChangeLog, Node, Path, EMPTY};
+use concurrent_merkle_tree::utils::{empty_node, fill_in_proof, recompute};
 use std::convert::AsRef;
 
 #[derive(BorshDeserialize, BorshSerialize)]

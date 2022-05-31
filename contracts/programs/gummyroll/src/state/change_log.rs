@@ -1,7 +1,7 @@
 use crate::state::node::Node;
 use anchor_lang::{prelude::*, solana_program::keccak::hashv};
 use borsh::BorshSerialize;
-use concurrent_merkle_roll::state::ChangeLog;
+use concurrent_merkle_tree::state::{ChangeLog, Node as TreeNode};
 use std::convert::AsRef;
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug)]
@@ -11,8 +11,11 @@ pub struct PathNode {
 }
 
 impl PathNode {
-    pub fn new(node: Node, index: u32) -> Self {
-        Self { node, index }
+    pub fn new(tree_node: TreeNode, index: u32) -> Self {
+        Self {
+            node: Node::from(tree_node),
+            index,
+        }
     }
 }
 
@@ -26,22 +29,30 @@ pub struct ChangeLogEvent {
     /// Bitmap of node parity (used when hashing)
     pub index: u32,
 }
-
-impl<const MAX_DEPTH: usize> ChangeLog<MAX_DEPTH> {
-    pub fn to_event(&self, id: Pubkey, seq: u128) -> Box<ChangeLogEvent> {
-        let path_len = self.path.len() as u32;
-        let mut path: Vec<PathNode> = self
+//  ChangeLog<MAX_DEPTH>
+impl<const MAX_DEPTH: usize> From<(Box<ChangeLog<MAX_DEPTH>>, Pubkey, u128)>
+    for Box<ChangeLogEvent>
+{
+    fn from(log_info: (Box<ChangeLog<MAX_DEPTH>>, Pubkey, u128)) -> Self {
+        let (changelog, tree_id, seq) = log_info;
+        let path_len = changelog.path.len() as u32;
+        let mut path: Vec<PathNode> = changelog
             .path
             .iter()
             .enumerate()
-            .map(|(lvl, n)| PathNode::new(*n, (1 << (path_len - lvl as u32)) + (self.index >> lvl)))
+            .map(|(lvl, n)| {
+                PathNode::new(
+                    *n,
+                    (1 << (path_len - lvl as u32)) + (changelog.index >> lvl),
+                )
+            })
             .collect();
-        path.push(PathNode::new(self.root, 1));
+        path.push(PathNode::new(changelog.root, 1));
         Box::new(ChangeLogEvent {
-            id,
+            id: tree_id,
             path,
             seq,
-            index: self.index,
+            index: changelog.index,
         })
     }
 }

@@ -9,10 +9,9 @@ use std::mem::size_of;
 pub mod state;
 pub mod utils;
 
-use crate::state::{
-    merkle_roll::{MerkleRoll, MerkleRollHeader},
-    node::Node,
-};
+use crate::state::{change_log::ChangeLogEvent, merkle_roll::MerkleRollHeader, node::Node};
+use crate::utils::ZeroCopy;
+use concurrent_merkle_tree::{merkle_roll::MerkleRoll, state::Node as TreeNode};
 
 declare_id!("GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD");
 
@@ -58,7 +57,7 @@ macro_rules! merkle_roll_depth_size_apply_fn {
                     match merkle_roll.$func($($arg)*) {
                         Some(x) => {
                             if $emit_msg {
-                                emit!(*merkle_roll.get_change_log().to_event($id, merkle_roll.sequence_number));
+                                emit!(*Box::<ChangeLogEvent>::from((merkle_roll.get_change_log(), $id, merkle_roll.sequence_number)));
                             }
                             Some(x)
                         }
@@ -163,7 +162,7 @@ pub mod gummyroll {
         // Get rightmost proof from accounts
         let mut proof = vec![];
         for node in ctx.remaining_accounts.iter() {
-            proof.push(Node::new(node.key().to_bytes()));
+            proof.push(TreeNode::new(node.key().to_bytes()));
         }
         assert_eq!(proof.len(), max_depth as usize);
 
@@ -201,7 +200,7 @@ pub mod gummyroll {
 
         let mut proof = vec![];
         for node in ctx.remaining_accounts.iter() {
-            proof.push(Node::new(node.key().to_bytes()));
+            proof.push(TreeNode::new(node.key().to_bytes()));
         }
 
         let id = ctx.accounts.merkle_roll.key();
@@ -254,7 +253,7 @@ pub mod gummyroll {
 
         let mut proof = vec![];
         for node in ctx.remaining_accounts.iter() {
-            proof.push(Node::new(node.key().to_bytes()));
+            proof.push(TreeNode::new(node.key().to_bytes()));
         }
 
         let id = ctx.accounts.merkle_roll.key();
