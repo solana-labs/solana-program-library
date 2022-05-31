@@ -174,8 +174,8 @@ pub mod gummyroll {
             id,
             roll_bytes,
             initialize_with_root,
-            root,
-            leaf,
+            root.into(),
+            leaf.into(),
             proof,
             index
         ) {
@@ -211,9 +211,9 @@ pub mod gummyroll {
             id,
             roll_bytes,
             set_leaf,
-            root,
-            previous_leaf,
-            new_leaf,
+            root.into(),
+            previous_leaf.into(),
+            new_leaf.into(),
             proof,
             index
         ) {
@@ -232,7 +232,7 @@ pub mod gummyroll {
         assert_eq!(header.append_authority, ctx.accounts.append_authority.key());
 
         let id = ctx.accounts.merkle_roll.key();
-        match merkle_roll_apply_fn!(header, true, id, roll_bytes, append, leaf) {
+        match merkle_roll_apply_fn!(header, true, id, roll_bytes, append, leaf.into()) {
             Some(_) => Ok(()),
             None => Err(ProgramError::InvalidInstructionData),
         }
@@ -264,8 +264,8 @@ pub mod gummyroll {
             id,
             roll_bytes,
             fill_empty_or_append,
-            root,
-            leaf,
+            root.into(),
+            leaf.into(),
             proof,
             index
         ) {
