@@ -103,7 +103,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     ) -> Result<Node, CMTError> {
         let old_root = recompute(EMPTY, &proof, 0);
         if old_root == empty_node(MAX_DEPTH as u32) {
-            self.update_and_apply_proof(old_root, EMPTY, leaf, &mut proof, 0, false, false)
+            self.apply_and_record_proof(old_root, EMPTY, leaf, &mut proof, 0, false, false)
         } else {
             return Err(CMTError::TreeAlreadyInitialized);
         }
@@ -244,7 +244,8 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
         fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
         log_compute!();
-        let root = self.find_and_update_leaf(current_root, EMPTY, leaf, &mut proof, index, true);
+        let root =
+            self.apply_and_record_proof(current_root, EMPTY, leaf, &mut proof, index, true, false);
         log_compute!();
         root
     }
@@ -266,12 +267,13 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
 
             log_compute!();
-            let root = self.find_and_update_leaf(
+            let root = self.apply_and_record_proof(
                 current_root,
                 previous_leaf,
                 new_leaf,
                 &mut proof,
                 index,
+                false,
                 false,
             );
             log_compute!();
@@ -289,32 +291,6 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             }
         }
         None
-    }
-
-    /// Internal function used to set leaf value & record changelog
-    fn find_and_update_leaf(
-        &mut self,
-        current_root: Node,
-        leaf: Node,
-        new_leaf: Node,
-        proof: &mut [Node; MAX_DEPTH],
-        index: u32,
-        append_on_conflict: bool,
-    ) -> Result<Node, CMTError> {
-        solana_logging!("Active Index: {}", self.active_index);
-        solana_logging!("Rightmost Index: {}", self.rightmost_proof.index);
-        solana_logging!("Buffer Size: {}", self.buffer_size);
-        solana_logging!("Leaf Index: {}", index);
-
-        return self.update_and_apply_proof(
-            current_root,
-            leaf,
-            new_leaf,
-            proof,
-            index,
-            append_on_conflict,
-            false,
-        );
     }
 
     /// Modifies the `proof` for leaf at `leaf_index`
@@ -366,11 +342,14 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         updated_leaf == leaf
     }
 
+    /// Update root & record changelog
+    /// --------
     /// Fast-forwards submitted proof to be valid for the root at `self.current_index`
-    /// Using the full buffer will skip root matching and just fast forward the given proof
+    ///
+    /// Enabling `use_full_buffer` will skip root matching and just fast forward the given proof
     /// from the beginning of the buffer.
-    /// Note: use_full_buffer significantly reduces security
-    fn update_and_apply_proof(
+    /// Note: `use_full_buffer` significantly reduces security
+    fn apply_and_record_proof(
         &mut self,
         current_root: Node,
         leaf: Node,
@@ -380,6 +359,11 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         append_on_conflict: bool,
         use_full_buffer: bool,
     ) -> Result<Node, CMTError> {
+        solana_logging!("Active Index: {}", self.active_index);
+        solana_logging!("Rightmost Index: {}", self.rightmost_proof.index);
+        solana_logging!("Buffer Size: {}", self.buffer_size);
+        solana_logging!("Leaf Index: {}", leaf_index);
+
         let mask: usize = MAX_BUFFER_SIZE - 1;
         let changelog_buffer_index: u64;
         if use_full_buffer {
@@ -392,11 +376,6 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
                 None => return Err(CMTError::RootNotFound),
             }
         };
-
-        solana_logging!(
-            "Fast-forwarding proof, starting index {}",
-            changelog_buffer_index
-        );
 
         let valid_fast_forward = self.fast_forward_proof(
             new_leaf,
