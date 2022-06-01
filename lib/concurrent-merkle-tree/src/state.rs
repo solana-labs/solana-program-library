@@ -1,4 +1,3 @@
-use crate::error::CMTError;
 use solana_program::keccak::hashv;
 
 #[derive(Copy, Clone, PartialEq)]

@@ -128,3 +128,12 @@ fn test_replaces() {
         assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
     }
 }
+
+#[test]
+fn test_default_node_is_empty() {
+    assert_eq!(
+        Node::default(),
+        EMPTY,
+        "Expected default() to be the empty node"
+    )
+}
