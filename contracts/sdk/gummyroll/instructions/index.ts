@@ -91,8 +91,8 @@ export function createVerifyLeafIx(
         };
     });
     return gummyroll.instruction.verifyLeaf(
-        { inner: Array.from(root) },
-        { inner: Array.from(leaf) },
+        Array.from(root),
+        Array.from(leaf),
         index,
         {
             accounts: {
