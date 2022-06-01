@@ -7,8 +7,11 @@ use bytemuck::{Pod, Zeroable};
 pub(crate) use log_compute;
 pub(crate) use solana_logging;
 
-/// This is the only solana-native import allowed in this crate
 use solana_program::keccak::hashv;
+
+#[cfg(feature = "sol-log")]
+use solana_program::{log::sol_log_compute_units, msg};
+
 /// Tracks updates to off-chain Merkle tree
 ///
 /// Allows for concurrent writes to same merkle tree so long as proof

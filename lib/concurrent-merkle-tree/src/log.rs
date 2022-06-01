@@ -7,7 +7,7 @@ macro_rules! solana_logging {
         msg!($message, $($arg)*);
     };
     ($message:literal) => {
-        println!($message);
+        msg!($message);
     };
 }
 
