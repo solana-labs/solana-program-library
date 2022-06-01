@@ -284,6 +284,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         }
     }
 
+    #[inline]
     fn find_root_in_changelog(&self, current_root: Node) -> Option<u64> {
         let mask: usize = MAX_BUFFER_SIZE - 1;
         for i in 0..self.buffer_size {
@@ -371,10 +372,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     }
 
     /// Fast-forwards submitted proof to be valid for the root at `self.current_index`
-    ///
-    /// Updates proof & updates root & stores
-    ///
-    /// Takes in `j`, which is the root index that this proof was last valid for
+    /// Using the full buffer will skip root matching and just fast forward the given proof
+    /// from the beginning of the buffer.
+    /// Note: use_full_buffer significantly reduces security
     fn update_and_apply_proof(
         &mut self,
         current_root: Node,
@@ -388,17 +388,15 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         let mask: usize = MAX_BUFFER_SIZE - 1;
         let changelog_buffer_index: u64;
         if use_full_buffer {
-            changelog_buffer_index = self.active_index.wrapping_sub(self.buffer_size) & mask as u64;
+            changelog_buffer_index = self.active_index.wrapping_sub(self.buffer_size) & mask as u64
         } else {
             match self.find_root_in_changelog(current_root) {
                 Some(matching_changelog_index) => {
                     changelog_buffer_index = matching_changelog_index;
                 }
-                None => {
-                    return Err(CMTError::RootNotFound);
-                }
+                None => return Err(CMTError::RootNotFound),
             }
-        }
+        };
 
         solana_logging!(
             "Fast-forwarding proof, starting index {}",
