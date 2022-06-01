@@ -1,7 +1,5 @@
 use crate::error::CMTError;
 use solana_program::keccak::hashv;
-use std::ops::Deref;
-use std::ops::DerefMut;
 
 #[derive(Copy, Clone, PartialEq)]
 /// Stores proof for a given Merkle root update
@@ -70,56 +68,59 @@ impl<const MAX_DEPTH: usize> Default for Path<MAX_DEPTH> {
     }
 }
 
-#[derive(Debug, Copy, Clone, Default, PartialEq)]
-pub struct Node {
-    pub inner: [u8; 32],
-}
+pub type Node = [u8; 32];
 
-impl Node {
-    pub fn new(inner: [u8; 32]) -> Self {
-        Self { inner }
-    }
-}
+// #[derive(Debug, Copy, Clone, Default, PartialEq)]
+// pub struct Node {
+//     pub inner: [u8; 32],
+// }
 
-impl TryFrom<Vec<u8>> for Node {
-    type Error = CMTError;
+// impl Node {
+//     pub fn new(inner: [u8; 32]) -> Self {
+//         Self { inner }
+//     }
+// }
 
-    fn try_from(bytes: Vec<u8>) -> Result<Self, CMTError> {
-        if bytes.len() != 32 {
-            Err(CMTError::InvalidNodeByteLength)
-        } else {
-            let mut node: [u8; 32] = [0; 32];
-            node.copy_from_slice(&bytes);
-            Ok(Self { inner: node })
-        }
-    }
-}
+// impl TryFrom<Vec<u8>> for Node {
+//     type Error = CMTError;
 
-impl Deref for Node {
-    type Target = [u8; 32];
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
+//     fn try_from(bytes: Vec<u8>) -> Result<Self, CMTError> {
+//         if bytes.len() != 32 {
+//             Err(CMTError::InvalidNodeByteLength)
+//         } else {
+//             let mut node: [u8; 32] = [0; 32];
+//             node.copy_from_slice(&bytes);
+//             Ok(Self { inner: node })
+//         }
+//     }
+// }
 
-impl DerefMut for Node {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
-    }
-}
+// impl Deref for Node {
+//     type Target = [u8; 32];
+//     fn deref(&self) -> &Self::Target {
+//         &self.inner
+//     }
+// }
 
-impl AsRef<[u8; 32]> for Node {
-    fn as_ref(&self) -> &[u8; 32] {
-        &self.inner
-    }
-}
+// impl DerefMut for Node {
+//     fn deref_mut(&mut self) -> &mut Self::Target {
+//         &mut self.inner
+//     }
+// }
 
-impl From<[u8; 32]> for Node {
-    fn from(inner: [u8; 32]) -> Self {
-        Self { inner }
-    }
-}
+// impl AsRef<[u8; 32]> for Node {
+//     fn as_ref(&self) -> &[u8; 32] {
+//         &self.inner
+//     }
+// }
 
-pub const EMPTY: Node = Node {
-    inner: [0 as u8; 32],
-};
+// impl From<[u8; 32]> for Node {
+//     fn from(inner: [u8; 32]) -> Self {
+//         Self { inner }
+//     }
+// }
+
+// pub const EMPTY: Node = Node {
+//     inner: [0 as u8; 32],
+// };
+pub const EMPTY: Node = [0 as u8; 32];
