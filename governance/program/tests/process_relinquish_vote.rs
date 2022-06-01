@@ -447,7 +447,7 @@ async fn test_relinquish_vote_with_already_relinquished_error() {
 }
 
 #[tokio::test]
-async fn test_relinquish_proposal_in_voting_state_after_vote_time_ended() {
+async fn test_relinquish_proposal_with_cannot_relinquish_in_finalizing_state_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -481,7 +481,7 @@ async fn test_relinquish_proposal_in_voting_state_after_vote_time_ended() {
 
     let clock = governance_test.bench.get_clock().await;
 
-    let mut vote_record_cookie = governance_test
+    governance_test
         .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
@@ -494,32 +494,16 @@ async fn test_relinquish_proposal_in_voting_state_after_vote_time_ended() {
         .await;
 
     // Act
-    governance_test
+    let err = governance_test
         .relinquish_vote(&proposal_cookie, &token_owner_record_cookie)
         .await
+        .err()
         .unwrap();
 
     // Assert
 
-    let proposal_account = governance_test
-        .get_proposal_account(&proposal_cookie.address)
-        .await;
-
-    // Proposal should be still in voting state but the vote count should not change
-    assert_eq!(100, proposal_account.options[0].vote_weight);
-    assert_eq!(ProposalState::Voting, proposal_account.state);
-
-    let token_owner_record = governance_test
-        .get_token_owner_record_account(&token_owner_record_cookie.address)
-        .await;
-
-    assert_eq!(0, token_owner_record.unrelinquished_votes_count);
-    assert_eq!(1, token_owner_record.total_votes_count);
-
-    let vote_record_account = governance_test
-        .get_vote_record_account(&vote_record_cookie.address)
-        .await;
-
-    vote_record_cookie.account.is_relinquished = true;
-    assert_eq!(vote_record_cookie.account, vote_record_account);
+    assert_eq!(
+        err,
+        GovernanceError::CannotRelinquishInFinalizingState.into()
+    );
 }

@@ -401,6 +401,10 @@ pub enum GovernanceError {
     /// Reserved buffer must be empty
     #[error("Reserved buffer must be empty")]
     ReservedBufferMustBeEmpty,
+
+    /// Cannot Relinquish in Finalizing state
+    #[error("Cannot Relinquish in Finalizing state")]
+    CannotRelinquishInFinalizingState,
 }
 
 impl PrintProgramError for GovernanceError {
