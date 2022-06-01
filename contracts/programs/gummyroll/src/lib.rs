@@ -4,6 +4,7 @@ use anchor_lang::{
     solana_program::{entrypoint::ProgramResult, program_error::ProgramError, sysvar::rent::Rent},
 };
 use borsh::{BorshDeserialize, BorshSerialize};
+use std::convert::TryInto;
 use std::mem::size_of;
 
 pub mod error;
@@ -11,9 +12,9 @@ pub mod state;
 pub mod utils;
 
 use crate::error::GummyrollError;
-use crate::state::{ChangeLogEvent, MerkleRollHeader, Node};
-use crate::utils::ZeroCopy;
-use concurrent_merkle_tree::{merkle_roll::MerkleRoll, state::Node as TreeNode};
+use crate::state::{ChangeLogEvent, MerkleRollHeader};
+use crate::utils::{convert_to_node, ZeroCopy};
+use concurrent_merkle_tree::{error::CMTError, merkle_roll::MerkleRoll, state::Node};
 
 declare_id!("GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD");
 
@@ -141,8 +142,8 @@ pub mod gummyroll {
         ctx: Context<Initialize>,
         max_depth: u32,
         max_buffer_size: u32,
-        root: Node,
-        leaf: Node,
+        root: Vec<u8>,
+        leaf: Vec<u8>,
         index: u32,
         changelog_db_uri: String,
         metadata_db_uri: String,
@@ -164,7 +165,7 @@ pub mod gummyroll {
         // Get rightmost proof from accounts
         let mut proof = vec![];
         for node in ctx.remaining_accounts.iter() {
-            proof.push(TreeNode::new(node.key().to_bytes()));
+            proof.push(Node::new(node.key().to_bytes()));
         }
         assert_eq!(proof.len(), max_depth as usize);
 
@@ -176,8 +177,8 @@ pub mod gummyroll {
             id,
             roll_bytes,
             initialize_with_root,
-            root.into(),
-            leaf.into(),
+            convert_to_node(root)?,
+            convert_to_node(leaf)?,
             proof,
             index
         )
@@ -185,9 +186,9 @@ pub mod gummyroll {
 
     pub fn replace_leaf(
         ctx: Context<Modify>,
-        root: Node,
-        previous_leaf: Node,
-        new_leaf: Node,
+        root: Vec<u8>,
+        previous_leaf: Vec<u8>,
+        new_leaf: Vec<u8>,
         index: u32,
     ) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
@@ -199,7 +200,7 @@ pub mod gummyroll {
 
         let mut proof = vec![];
         for node in ctx.remaining_accounts.iter() {
-            proof.push(TreeNode::new(node.key().to_bytes()));
+            proof.push(Node::new(node.key().to_bytes()));
         }
 
         let id = ctx.accounts.merkle_roll.key();
@@ -210,15 +211,15 @@ pub mod gummyroll {
             id,
             roll_bytes,
             set_leaf,
-            root.into(),
-            previous_leaf.into(),
-            new_leaf.into(),
+            convert_to_node(root)?,
+            convert_to_node(previous_leaf)?,
+            convert_to_node(new_leaf)?,
             proof,
             index
         )
     }
 
-    pub fn append(ctx: Context<Append>, leaf: Node) -> Result<()> {
+    pub fn append(ctx: Context<Append>, leaf: Vec<u8>) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
         let (header_bytes, roll_bytes) =
             merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
@@ -228,13 +229,13 @@ pub mod gummyroll {
         assert_eq!(header.append_authority, ctx.accounts.append_authority.key());
 
         let id = ctx.accounts.merkle_roll.key();
-        merkle_roll_apply_fn!(header, true, id, roll_bytes, append, leaf.into())
+        merkle_roll_apply_fn!(header, true, id, roll_bytes, append, convert_to_node(leaf)?)
     }
 
     pub fn insert_or_append(
         ctx: Context<Modify>,
-        root: Node,
-        leaf: Node,
+        root: Vec<u8>,
+        leaf: Vec<u8>,
         index: u32,
     ) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
@@ -246,7 +247,7 @@ pub mod gummyroll {
 
         let mut proof = vec![];
         for node in ctx.remaining_accounts.iter() {
-            proof.push(TreeNode::new(node.key().to_bytes()));
+            proof.push(Node::new(node.key().to_bytes()));
         }
 
         let id = ctx.accounts.merkle_roll.key();
@@ -257,8 +258,8 @@ pub mod gummyroll {
             id,
             roll_bytes,
             fill_empty_or_append,
-            root.into(),
-            leaf.into(),
+            convert_to_node(root)?,
+            convert_to_node(leaf)?,
             proof,
             index
         )
