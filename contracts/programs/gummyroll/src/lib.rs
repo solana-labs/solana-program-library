@@ -11,7 +11,7 @@ pub mod state;
 pub mod utils;
 
 use crate::error::GummyrollError;
-use crate::state::{change_log::ChangeLogEvent, merkle_roll::MerkleRollHeader, node::Node};
+use crate::state::{ChangeLogEvent, MerkleRollHeader, Node};
 use crate::utils::ZeroCopy;
 use concurrent_merkle_tree::{merkle_roll::MerkleRoll, state::Node as TreeNode};
 
