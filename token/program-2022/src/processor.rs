@@ -8,7 +8,7 @@ use {
             confidential_transfer::{self, ConfidentialTransferAccount},
             default_account_state::{self, DefaultAccountState},
             immutable_owner::ImmutableOwner,
-            interest_bearing::{self, InterestBearingConfig},
+            interest_bearing_mint::{self, InterestBearingConfig},
             memo_transfer::{self, check_previous_sibling_instruction_is_memo, memo_required},
             mint_close_authority::MintCloseAuthority,
             non_transferable::NonTransferable,
@@ -1318,8 +1318,12 @@ impl Processor {
                 msg!("Instruction: InitializeNonTransferableMint");
                 Self::process_initialize_non_transferable_mint(accounts)
             }
-            TokenInstruction::InterestBearingExtension => {
-                interest_bearing::processor::process_instruction(program_id, accounts, &input[1..])
+            TokenInstruction::InterestBearingMintExtension => {
+                interest_bearing_mint::processor::process_instruction(
+                    program_id,
+                    accounts,
+                    &input[1..],
+                )
             }
         }
     }

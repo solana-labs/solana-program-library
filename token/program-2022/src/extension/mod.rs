@@ -7,7 +7,7 @@ use {
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
             default_account_state::DefaultAccountState,
             immutable_owner::ImmutableOwner,
-            interest_bearing::InterestBearingConfig,
+            interest_bearing_mint::InterestBearingConfig,
             memo_transfer::MemoTransfer,
             mint_close_authority::MintCloseAuthority,
             non_transferable::NonTransferable,
@@ -35,7 +35,7 @@ pub mod default_account_state;
 /// Immutable Owner extension
 pub mod immutable_owner;
 /// Interest-Bearing Mint extension
-pub mod interest_bearing;
+pub mod interest_bearing_mint;
 /// Memo Transfer extension
 pub mod memo_transfer;
 /// Mint Close Authority extension

@@ -23,7 +23,7 @@ use {
     },
     spl_token_2022::{
         error::TokenError,
-        extension::interest_bearing::InterestBearingConfig,
+        extension::interest_bearing_mint::InterestBearingConfig,
         instruction::{amount_to_ui_amount, ui_amount_to_amount, AuthorityType},
         processor::Processor,
     },

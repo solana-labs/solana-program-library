@@ -3,8 +3,8 @@ use {
         check_program_account,
         error::TokenError,
         extension::{
-            interest_bearing::{
-                instruction::{InitializeInstructionData, InterestBearingInstruction},
+            interest_bearing_mint::{
+                instruction::{InitializeInstructionData, InterestBearingMintInstruction},
                 BasisPoints, InterestBearingConfig,
             },
             StateWithExtensionsMut,
@@ -90,16 +90,16 @@ pub(crate) fn process_instruction(
 ) -> ProgramResult {
     check_program_account(program_id)?;
     match decode_instruction_type(input)? {
-        InterestBearingInstruction::Initialize => {
-            msg!("InterestBearingInstruction::Initialize");
+        InterestBearingMintInstruction::Initialize => {
+            msg!("InterestBearingMintInstruction::Initialize");
             let InitializeInstructionData {
                 rate_authority,
                 rate,
             } = decode_instruction_data(input)?;
             process_initialize(program_id, accounts, rate_authority, rate)
         }
-        InterestBearingInstruction::UpdateRate => {
-            msg!("InterestBearingInstruction::UpdateRate");
+        InterestBearingMintInstruction::UpdateRate => {
+            msg!("InterestBearingMintInstruction::UpdateRate");
             let new_rate = decode_instruction_data(input)?;
             process_update_rate(program_id, accounts, new_rate)
         }

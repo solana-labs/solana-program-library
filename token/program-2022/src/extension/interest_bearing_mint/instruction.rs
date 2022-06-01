@@ -1,7 +1,7 @@
 use {
     crate::{
         check_program_account,
-        extension::interest_bearing::BasisPoints,
+        extension::interest_bearing_mint::BasisPoints,
         instruction::{encode_instruction, TokenInstruction},
         pod::OptionalNonZeroPubkey,
     },
@@ -18,7 +18,7 @@ use {
 /// Interesting-bearing mint extension instructions
 #[derive(Clone, Copy, Debug, PartialEq, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
-pub enum InterestBearingInstruction {
+pub enum InterestBearingMintInstruction {
     /// Initialize a new mint with interest accrual.
     ///
     /// Fails if the mint has already been initialized, so must be called before
@@ -78,8 +78,8 @@ pub fn initialize(
     Ok(encode_instruction(
         token_program_id,
         accounts,
-        TokenInstruction::InterestBearingExtension,
-        InterestBearingInstruction::Initialize,
+        TokenInstruction::InterestBearingMintExtension,
+        InterestBearingMintInstruction::Initialize,
         &InitializeInstructionData {
             rate_authority: rate_authority.try_into()?,
             rate: rate.into(),
@@ -106,8 +106,8 @@ pub fn update_rate(
     Ok(encode_instruction(
         token_program_id,
         accounts,
-        TokenInstruction::InterestBearingExtension,
-        InterestBearingInstruction::UpdateRate,
+        TokenInstruction::InterestBearingMintExtension,
+        InterestBearingMintInstruction::UpdateRate,
         &BasisPoints::from(rate),
     ))
 }

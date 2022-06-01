@@ -17,7 +17,7 @@ use {
     },
     spl_token_2022::{
         extension::{
-            confidential_transfer, default_account_state, interest_bearing, memo_transfer,
+            confidential_transfer, default_account_state, interest_bearing_mint, memo_transfer,
             transfer_fee, ExtensionType, StateWithExtensionsOwned,
         },
         instruction, native_mint,
@@ -144,7 +144,7 @@ impl ExtensionInitializationParams {
             Self::InterestBearingConfig {
                 rate_authority,
                 rate,
-            } => interest_bearing::instruction::initialize(
+            } => interest_bearing_mint::instruction::initialize(
                 token_program_id,
                 mint,
                 rate_authority,
@@ -934,7 +934,7 @@ where
         new_rate: i16,
     ) -> TokenResult<T::Output> {
         self.process_ixs(
-            &[interest_bearing::instruction::update_rate(
+            &[interest_bearing_mint::instruction::update_rate(
                 &self.program_id,
                 self.get_address(),
                 &authority.pubkey(),

@@ -586,9 +586,9 @@ pub enum TokenInstruction<'a> {
     InitializeNonTransferableMint,
     /// The common instruction prefix for Interest Bearing extension instructions.
     ///
-    /// See `extension::interest_bearing::instruction::InterestBearingInstruction` for
+    /// See `extension::interest_bearing_mint::instruction::InterestBearingMintInstruction` for
     /// further details about the extended instructions that share this instruction prefix
-    InterestBearingExtension,
+    InterestBearingMintExtension,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -718,7 +718,7 @@ impl<'a> TokenInstruction<'a> {
             30 => Self::MemoTransferExtension,
             31 => Self::CreateNativeMint,
             32 => Self::InitializeNonTransferableMint,
-            33 => Self::InterestBearingExtension,
+            33 => Self::InterestBearingMintExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -868,7 +868,7 @@ impl<'a> TokenInstruction<'a> {
             &Self::InitializeNonTransferableMint => {
                 buf.push(32);
             }
-            &Self::InterestBearingExtension => {
+            &Self::InterestBearingMintExtension => {
                 buf.push(33);
             }
         };
