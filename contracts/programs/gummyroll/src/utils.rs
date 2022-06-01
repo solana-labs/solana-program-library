@@ -36,11 +36,3 @@ pub fn error_msg<T>(data_len: usize) -> impl Fn(PodCastError) -> ProgramError {
         ProgramError::InvalidAccountData
     }
 }
-
-pub fn convert_to_node(node_bytes: Vec<u8>) -> Result<Node> {
-    let node_result = node_bytes.try_into();
-    match node_result {
-        Ok(node) => Ok(node),
-        Err(cmt_error) => err!(GummyrollError::from(&cmt_error)),
-    }
-}

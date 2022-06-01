@@ -11,7 +11,7 @@ pub struct PathNode {
 impl PathNode {
     pub fn new(tree_node: Node, index: u32) -> Self {
         Self {
-            node: tree_node.inner,
+            node: tree_node,
             index,
         }
     }

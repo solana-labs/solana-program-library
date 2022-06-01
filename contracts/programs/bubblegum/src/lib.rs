@@ -403,7 +403,6 @@ pub mod bubblegum {
             creator_hash,
         );
         emit!(new_leaf.to_event());
-        let root_node = Node::new(root);
         replace_leaf(
             &merkle_slab.key(),
             *ctx.bumps.get("authority").unwrap(),
@@ -411,7 +410,7 @@ pub mod bubblegum {
             &ctx.accounts.authority.to_account_info(),
             &ctx.accounts.merkle_slab.to_account_info(),
             ctx.remaining_accounts,
-            root_node,
+            root,
             previous_leaf.to_node(),
             new_leaf.to_node(),
             index,
@@ -442,7 +441,6 @@ pub mod bubblegum {
         let new_leaf =
             LeafSchema::new(version, owner, new_delegate, nonce, data_hash, creator_hash);
         emit!(new_leaf.to_event());
-        let root_node = Node::new(root);
         replace_leaf(
             &merkle_slab.key(),
             *ctx.bumps.get("authority").unwrap(),
@@ -450,7 +448,7 @@ pub mod bubblegum {
             &ctx.accounts.authority.to_account_info(),
             &ctx.accounts.merkle_slab.to_account_info(),
             ctx.remaining_accounts,
-            root_node,
+            root,
             previous_leaf.to_node(),
             new_leaf.to_node(),
             index,
@@ -480,7 +478,6 @@ pub mod bubblegum {
         );
         emit!(previous_leaf.to_event());
         let new_leaf = Node::default();
-        let root_node = Node::new(root);
         replace_leaf(
             &merkle_slab.key(),
             *ctx.bumps.get("authority").unwrap(),
@@ -488,7 +485,7 @@ pub mod bubblegum {
             &ctx.accounts.authority.to_account_info(),
             &ctx.accounts.merkle_slab.to_account_info(),
             ctx.remaining_accounts,
-            root_node,
+            root,
             previous_leaf.to_node(),
             new_leaf,
             index,
@@ -511,7 +508,6 @@ pub mod bubblegum {
             LeafSchema::new(version, owner, delegate, nonce, data_hash, creator_hash);
         emit!(previous_leaf.to_event());
         let new_leaf = Node::default();
-        let root_node = Node::new(root);
         msg!("{}", ctx.accounts.authority.key());
         replace_leaf(
             &merkle_slab.key(),
@@ -520,7 +516,7 @@ pub mod bubblegum {
             &ctx.accounts.authority.to_account_info(),
             &ctx.accounts.merkle_slab.to_account_info(),
             ctx.remaining_accounts,
-            root_node,
+            root,
             previous_leaf.to_node(),
             new_leaf,
             index,
@@ -539,7 +535,6 @@ pub mod bubblegum {
         assert_eq!(ctx.accounts.owner.key(), voucher.leaf_schema.owner);
         let merkle_slab = ctx.accounts.merkle_slab.to_account_info();
         emit!(voucher.leaf_schema.to_event());
-        let root_node = Node::new(root);
         insert_or_append_leaf(
             &merkle_slab.key(),
             *ctx.bumps.get("authority").unwrap(),
@@ -547,7 +542,7 @@ pub mod bubblegum {
             &ctx.accounts.authority.to_account_info(),
             &ctx.accounts.merkle_slab.to_account_info(),
             ctx.remaining_accounts,
-            root_node,
+            root,
             voucher.leaf_schema.to_node(),
             voucher.index,
         )

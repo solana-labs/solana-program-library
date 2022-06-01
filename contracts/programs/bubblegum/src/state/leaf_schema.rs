@@ -68,12 +68,12 @@ impl LeafSchema {
             nonce: self.nonce,
             data_hash: self.data_hash,
             creator_hash: self.creator_hash,
-            leaf_hash: self.to_node().inner,
+            leaf_hash: self.to_node(),
         }
     }
 
     pub fn to_node(&self) -> Node {
-        let hashed_leaf = keccak::hashv(&[
+        keccak::hashv(&[
             &[self.version.to_bytes()],
             self.owner.as_ref(),
             self.delegate.as_ref(),
@@ -81,7 +81,6 @@ impl LeafSchema {
             self.data_hash.as_ref(),
             self.creator_hash.as_ref(),
         ])
-        .to_bytes();
-        Node::new(hashed_leaf)
+        .to_bytes()
     }
 }

@@ -20,9 +20,3 @@ impl From<&CMTError> for GummyrollError {
         GummyrollError::ConcurrentMerkleTreeError
     }
 }
-
-// impl Into<anchor_lang::error::Error> for GummyrollError {
-//     fn into(error: GummyrollError) -> anchor_lang::error::Error {
-//         err!(error)
-//     }
-// }
