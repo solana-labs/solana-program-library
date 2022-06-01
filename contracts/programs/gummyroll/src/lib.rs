@@ -142,8 +142,8 @@ pub mod gummyroll {
         ctx: Context<Initialize>,
         max_depth: u32,
         max_buffer_size: u32,
-        root: Vec<u8>,
-        leaf: Vec<u8>,
+        root: [u8; 32],
+        leaf: [u8; 32],
         index: u32,
         changelog_db_uri: String,
         metadata_db_uri: String,
@@ -177,8 +177,8 @@ pub mod gummyroll {
             id,
             roll_bytes,
             initialize_with_root,
-            convert_to_node(root)?,
-            convert_to_node(leaf)?,
+            Node::new(root),
+            Node::new(leaf),
             proof,
             index
         )
@@ -186,9 +186,9 @@ pub mod gummyroll {
 
     pub fn replace_leaf(
         ctx: Context<Modify>,
-        root: Vec<u8>,
-        previous_leaf: Vec<u8>,
-        new_leaf: Vec<u8>,
+        root: [u8; 32],
+        previous_leaf: [u8; 32],
+        new_leaf: [u8; 32],
         index: u32,
     ) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
@@ -211,15 +211,15 @@ pub mod gummyroll {
             id,
             roll_bytes,
             set_leaf,
-            convert_to_node(root)?,
-            convert_to_node(previous_leaf)?,
-            convert_to_node(new_leaf)?,
+            Node::new(root),
+            Node::new(previous_leaf),
+            Node::new(new_leaf),
             proof,
             index
         )
     }
 
-    pub fn append(ctx: Context<Append>, leaf: Vec<u8>) -> Result<()> {
+    pub fn append(ctx: Context<Append>, leaf: [u8; 32]) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
         let (header_bytes, roll_bytes) =
             merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
@@ -229,13 +229,13 @@ pub mod gummyroll {
         assert_eq!(header.append_authority, ctx.accounts.append_authority.key());
 
         let id = ctx.accounts.merkle_roll.key();
-        merkle_roll_apply_fn!(header, true, id, roll_bytes, append, convert_to_node(leaf)?)
+        merkle_roll_apply_fn!(header, true, id, roll_bytes, append, Node::new(leaf))
     }
 
     pub fn insert_or_append(
         ctx: Context<Modify>,
-        root: Vec<u8>,
-        leaf: Vec<u8>,
+        root: [u8; 32],
+        leaf: [u8; 32],
         index: u32,
     ) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
@@ -258,8 +258,8 @@ pub mod gummyroll {
             id,
             roll_bytes,
             fill_empty_or_append,
-            convert_to_node(root)?,
-            convert_to_node(leaf)?,
+            Node::new(root),
+            Node::new(leaf),
             proof,
             index
         )
