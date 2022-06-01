@@ -1,3 +1,4 @@
+use crate::error::CMTError;
 use solana_program::keccak::hashv;
 use std::ops::Deref;
 use std::ops::DerefMut;
@@ -71,7 +72,6 @@ impl<const MAX_DEPTH: usize> Default for Path<MAX_DEPTH> {
 }
 
 #[derive(Debug, Copy, Clone, Default, PartialEq)]
-
 pub struct Node {
     pub inner: [u8; 32],
 }
@@ -79,6 +79,20 @@ pub struct Node {
 impl Node {
     pub fn new(inner: [u8; 32]) -> Self {
         Self { inner }
+    }
+}
+
+impl TryFrom<Vec<u8>> for Node {
+    type Error = CMTError;
+
+    fn try_from(bytes: Vec<u8>) -> Result<Self, CMTError> {
+        if bytes.len() != 32 {
+            Err(CMTError::InvalidNodeByteLength)
+        } else {
+            let mut node: [u8; 32] = [0; 32];
+            node.copy_from_slice(&bytes);
+            Ok(Self { inner: node })
+        }
     }
 }
 

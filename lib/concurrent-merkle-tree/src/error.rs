@@ -14,4 +14,6 @@ pub enum CMTError {
     TreeAlreadyInitialized,
     #[error("Leaf was updated since proof was issued")]
     LeafAlreadyUpdated,
+    #[error("Invalid number of bytes passed for node (expected 32 bytes)")]
+    InvalidNodeByteLength,
 }
