@@ -12,9 +12,7 @@ exclude = ["js/**"]
 no-entrypoint = []
 test-bpf = []
 # Remove these features once the underlying syscalls are released on all networks
-default = ["reallocate", "sibling-instruction", "zk-ops"]
-reallocate = []
-sibling-instruction = []
+default = ["zk-ops"]
 zk-ops = []
 
 [dependencies]
