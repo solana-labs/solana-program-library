@@ -80,6 +80,10 @@ impl Node {
     pub fn new(inner: [u8; 32]) -> Self {
         Self { inner }
     }
+
+    pub fn to_vec(&self) -> Vec<u8> {
+        (*self).to_vec()
+    }
 }
 
 impl TryFrom<Vec<u8>> for Node {
