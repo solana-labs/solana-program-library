@@ -584,6 +584,11 @@ pub enum TokenInstruction<'a> {
     ///   None
     ///
     InitializeNonTransferableMint,
+    /// The common instruction prefix for Interest Bearing extension instructions.
+    ///
+    /// See `extension::interest_bearing_mint::instruction::InterestBearingMintInstruction` for
+    /// further details about the extended instructions that share this instruction prefix
+    InterestBearingMintExtension,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -713,6 +718,7 @@ impl<'a> TokenInstruction<'a> {
             30 => Self::MemoTransferExtension,
             31 => Self::CreateNativeMint,
             32 => Self::InitializeNonTransferableMint,
+            33 => Self::InterestBearingMintExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -862,6 +868,9 @@ impl<'a> TokenInstruction<'a> {
             &Self::InitializeNonTransferableMint => {
                 buf.push(32);
             }
+            &Self::InterestBearingMintExtension => {
+                buf.push(33);
+            }
         };
         buf
     }
@@ -940,6 +949,8 @@ pub enum AuthorityType {
     WithheldWithdraw,
     /// Authority to close a mint account
     CloseMint,
+    /// Authority to set the interest rate
+    InterestRate,
 }
 
 impl AuthorityType {
@@ -952,6 +963,7 @@ impl AuthorityType {
             AuthorityType::TransferFeeConfig => 4,
             AuthorityType::WithheldWithdraw => 5,
             AuthorityType::CloseMint => 6,
+            AuthorityType::InterestRate => 7,
         }
     }
 
@@ -964,6 +976,7 @@ impl AuthorityType {
             4 => Ok(AuthorityType::TransferFeeConfig),
             5 => Ok(AuthorityType::WithheldWithdraw),
             6 => Ok(AuthorityType::CloseMint),
+            7 => Ok(AuthorityType::InterestRate),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }

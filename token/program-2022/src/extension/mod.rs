@@ -7,6 +7,7 @@ use {
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
             default_account_state::DefaultAccountState,
             immutable_owner::ImmutableOwner,
+            interest_bearing_mint::InterestBearingConfig,
             memo_transfer::MemoTransfer,
             mint_close_authority::MintCloseAuthority,
             non_transferable::NonTransferable,
@@ -33,6 +34,8 @@ pub mod confidential_transfer;
 pub mod default_account_state;
 /// Immutable Owner extension
 pub mod immutable_owner;
+/// Interest-Bearing Mint extension
+pub mod interest_bearing_mint;
 /// Memo Transfer extension
 pub mod memo_transfer;
 /// Mint Close Authority extension
@@ -604,6 +607,8 @@ pub enum ExtensionType {
     MemoTransfer,
     /// Indicates that the tokens from this mint can't be transfered
     NonTransferable,
+    /// Tokens accrue interest over time,
+    InterestBearingConfig,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -643,6 +648,7 @@ impl ExtensionType {
             ExtensionType::DefaultAccountState => pod_get_packed_len::<DefaultAccountState>(),
             ExtensionType::MemoTransfer => pod_get_packed_len::<MemoTransfer>(),
             ExtensionType::NonTransferable => pod_get_packed_len::<NonTransferable>(),
+            ExtensionType::InterestBearingConfig => pod_get_packed_len::<InterestBearingConfig>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -698,7 +704,8 @@ impl ExtensionType {
             | ExtensionType::MintCloseAuthority
             | ExtensionType::ConfidentialTransferMint
             | ExtensionType::DefaultAccountState
-            | ExtensionType::NonTransferable => AccountType::Mint,
+            | ExtensionType::NonTransferable
+            | ExtensionType::InterestBearingConfig => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount

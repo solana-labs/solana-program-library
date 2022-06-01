@@ -17,8 +17,8 @@ use {
     },
     spl_token_2022::{
         extension::{
-            confidential_transfer, default_account_state, memo_transfer, transfer_fee,
-            ExtensionType, StateWithExtensionsOwned,
+            confidential_transfer, default_account_state, interest_bearing_mint, memo_transfer,
+            transfer_fee, ExtensionType, StateWithExtensionsOwned,
         },
         instruction, native_mint,
         solana_zk_token_sdk::{
@@ -84,6 +84,10 @@ pub enum ExtensionInitializationParams {
         transfer_fee_basis_points: u16,
         maximum_fee: u64,
     },
+    InterestBearingConfig {
+        rate_authority: Option<Pubkey>,
+        rate: i16,
+    },
 }
 impl ExtensionInitializationParams {
     /// Get the extension type associated with the init params
@@ -93,6 +97,7 @@ impl ExtensionInitializationParams {
             Self::DefaultAccountState { .. } => ExtensionType::DefaultAccountState,
             Self::MintCloseAuthority { .. } => ExtensionType::MintCloseAuthority,
             Self::TransferFeeConfig { .. } => ExtensionType::TransferFeeConfig,
+            Self::InterestBearingConfig { .. } => ExtensionType::InterestBearingConfig,
         }
     }
     /// Generate an appropriate initialization instruction for the given mint
@@ -135,6 +140,15 @@ impl ExtensionInitializationParams {
                 withdraw_withheld_authority.as_ref(),
                 transfer_fee_basis_points,
                 maximum_fee,
+            ),
+            Self::InterestBearingConfig {
+                rate_authority,
+                rate,
+            } => interest_bearing_mint::instruction::initialize(
+                token_program_id,
+                mint,
+                rate_authority,
+                rate,
             ),
         }
     }
@@ -907,6 +921,25 @@ where
                 account,
                 &authority.pubkey(),
                 &[],
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Update interest rate
+    pub async fn update_interest_rate<S2: Signer>(
+        &self,
+        authority: &S2,
+        new_rate: i16,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[interest_bearing_mint::instruction::update_rate(
+                &self.program_id,
+                self.get_address(),
+                &authority.pubkey(),
+                &[],
+                new_rate,
             )?],
             &[authority],
         )
