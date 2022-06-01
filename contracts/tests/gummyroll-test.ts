@@ -65,8 +65,8 @@ describe("gummyroll", () => {
     let tx = new Transaction().add(allocAccountIx);
     if (numLeaves > 0) {
 
-      const root = { inner: Array.from(tree.root) };
-      const leaf = { inner: Array.from(leaves[numLeaves - 1]) };
+      const root = Array.from(tree.root);
+      const leaf = Array.from(leaves[numLeaves - 1]);
       const proof = getProofOfLeaf(tree, numLeaves - 1).map((node) => {
         return {
           pubkey: new PublicKey(node.node),
@@ -160,9 +160,9 @@ describe("gummyroll", () => {
     });
 
     return Gummyroll.instruction.replaceLeaf(
-      { inner: Array.from(offChainTree.root) },
-      { inner: Array.from(previousLeaf) },
-      { inner: Array.from(newLeaf) },
+      Array.from(offChainTree.root),
+      Array.from(previousLeaf),
+      Array.from(newLeaf),
       index,
       {
         accounts: {
@@ -204,7 +204,7 @@ describe("gummyroll", () => {
       );
 
       const appendIx = Gummyroll.instruction.append(
-        { inner: Array.from(newLeaf) },
+        Array.from(newLeaf),
         {
           accounts: {
             merkleRoll: merkleRollKeypair.publicKey,
@@ -331,9 +331,9 @@ describe("gummyroll", () => {
           };
         });
         const replaceIx = Gummyroll.instruction.replaceLeaf(
-          { inner: Array.from(offChainTree.root) },
-          { inner: Array.from(offChainTree.leaves[i].node) },
-          { inner: Array.from(newLeaf) },
+          Array.from(offChainTree.root),
+          Array.from(offChainTree.leaves[i].node),
+          Array.from(newLeaf),
           index,
           {
             accounts: {
@@ -388,9 +388,7 @@ describe("gummyroll", () => {
 
       for (let i = 0; i < 2 ** DEPTH; i++) {
         const appendIx = Gummyroll.instruction.append(
-          {
-            inner: Array.from(Buffer.alloc(32, i + 1))
-          },
+          Array.from(Buffer.alloc(32, i + 1)),
           {
             accounts: {
               merkleRoll: merkleRollKeypair.publicKey,
@@ -435,9 +433,9 @@ describe("gummyroll", () => {
 
       const replaceIx = Gummyroll.instruction.replaceLeaf(
         // Root - make this nonsense so it won't match what's in CL, and force proof autocompletion
-        { inner: Buffer.alloc(32) },
-        { inner: maliciousLeafHash },
-        { inner: maliciousLeafHash1 },
+        Buffer.alloc(32),
+        maliciousLeafHash,
+        maliciousLeafHash1,
         0,
         {
           accounts: {
