@@ -35,7 +35,6 @@ unsafe impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> Pod
 }
 
 impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH, MAX_BUFFER_SIZE> {
-    #[cfg(test)]
     pub fn new() -> Self {
         Self {
             sequence_number: 0,

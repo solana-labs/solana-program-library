@@ -17,7 +17,6 @@ pub struct ChangeLog<const MAX_DEPTH: usize> {
 }
 
 impl<const MAX_DEPTH: usize> ChangeLog<MAX_DEPTH> {
-    #[cfg(test)]
     pub fn default() -> Self {
         Self {
             root: EMPTY,
@@ -79,10 +78,6 @@ pub struct Node {
 impl Node {
     pub fn new(inner: [u8; 32]) -> Self {
         Self { inner }
-    }
-
-    pub fn to_vec(&self) -> Vec<u8> {
-        (*self).to_vec()
     }
 }
 
