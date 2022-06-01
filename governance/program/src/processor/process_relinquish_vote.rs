@@ -116,8 +116,10 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
             .checked_sub(1)
             .unwrap();
     } else {
+        // After Proposal voting time ends and it's not tipped then it enters implicit (time based) Finalizing state
+        // and relinquishing votes in this state should be disallowed
         if proposal_data.state == ProposalState::Voting {
-            return Err(GovernanceError::CannotRelinquishInVotingState.into());
+            return Err(GovernanceError::CannotRelinquishInFinalizingState.into());
         }
 
         vote_record_data.is_relinquished = true;

@@ -447,7 +447,7 @@ async fn test_relinquish_vote_with_already_relinquished_error() {
 }
 
 #[tokio::test]
-async fn test_relinquish_proposal_in_voting_state_after_vote_time_ended_error() {
+async fn test_relinquish_proposal_with_cannot_relinquish_in_finalizing_state_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -502,5 +502,8 @@ async fn test_relinquish_proposal_in_voting_state_after_vote_time_ended_error() 
 
     // Assert
 
-    assert_eq!(err, GovernanceError::CannotRelinquishInVotingState.into());
+    assert_eq!(
+        err,
+        GovernanceError::CannotRelinquishInFinalizingState.into()
+    );
 }
