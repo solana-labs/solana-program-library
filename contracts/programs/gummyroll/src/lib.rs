@@ -1,19 +1,15 @@
-use anchor_lang::{
-    emit,
-    prelude::*,
-    solana_program::{entrypoint::ProgramResult, program_error::ProgramError, sysvar::rent::Rent},
-};
+use anchor_lang::{emit, prelude::*, solana_program::sysvar::rent::Rent};
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::mem::size_of;
 
+pub mod error;
 pub mod state;
 pub mod utils;
 
-use crate::state::{
-    merkle_roll::{MerkleRoll, MerkleRollHeader},
-    node::Node,
-};
+use crate::error::GummyrollError;
+use crate::state::{ChangeLogEvent, MerkleRollHeader};
 use crate::utils::ZeroCopy;
+pub use concurrent_merkle_tree::{error::CMTError, merkle_roll::MerkleRoll, state::Node};
 
 declare_id!("GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD");
 
@@ -52,23 +48,26 @@ macro_rules! merkle_roll_depth_size_apply_fn {
             let expected_bytes = size_of::<MerkleRoll::<$max_depth, $max_size>>();
             let bytes_received = $bytes.len();
             msg!("Expected: {}, received: {}", expected_bytes, bytes_received);
-            None
+            err!(GummyrollError::MerkleRollByteLengthMismatch)
         } else {
             match MerkleRoll::<$max_depth, $max_size>::load_mut_bytes($bytes) {
                 Ok(merkle_roll) => {
                     match merkle_roll.$func($($arg)*) {
-                        Some(x) => {
+                        Ok(_) => {
                             if $emit_msg {
-                                emit!(*merkle_roll.get_change_log().to_event($id, merkle_roll.sequence_number));
+                                emit!(*Box::<ChangeLogEvent>::from((merkle_roll.get_change_log(), $id, merkle_roll.sequence_number)));
                             }
-                            Some(x)
+                            Ok(())
                         }
-                        None => None,
+                        Err(err) => {
+                            msg!("Error using concurrent merkle tree: {}", err);
+                            err!(GummyrollError::ConcurrentMerkleTreeError)
+                        }
                     }
                 }
-                Err(e) => {
-                    msg!("Error zero copying merkle roll {}", e);
-                    None
+                Err(err) => {
+                    msg!("Error zero copying merkle roll: {}", err);
+                    err!(GummyrollError::ZeroCopyError)
                 }
             }
         }
@@ -102,7 +101,7 @@ macro_rules! merkle_roll_apply_fn {
             (22, 2048) => merkle_roll_depth_size_apply_fn!(22, 2048, $emit_msg, $id, $bytes, $func, $($arg)*),
             _ => {
                 msg!("Failed to apply {} on merkle roll with max depth {} and max buffer size {}", stringify!($func), $header.max_depth, $header.max_buffer_size);
-                None
+                err!(GummyrollError::MerkleRollConstantsError)
             }
         }
     };
@@ -116,7 +115,7 @@ pub mod gummyroll {
         ctx: Context<Initialize>,
         max_depth: u32,
         max_buffer_size: u32,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
 
         let (mut header_bytes, roll_bytes) =
@@ -131,22 +130,19 @@ pub mod gummyroll {
         );
         header.serialize(&mut header_bytes)?;
         let id = ctx.accounts.merkle_roll.key();
-        match merkle_roll_apply_fn!(header, true, id, roll_bytes, initialize,) {
-            Some(_) => Ok(()),
-            None => Err(ProgramError::InvalidInstructionData),
-        }
+        merkle_roll_apply_fn!(header, true, id, roll_bytes, initialize,)
     }
 
     pub fn init_gummyroll_with_root(
         ctx: Context<Initialize>,
         max_depth: u32,
         max_buffer_size: u32,
-        root: Node,
-        leaf: Node,
+        root: [u8; 32],
+        leaf: [u8; 32],
         index: u32,
         changelog_db_uri: String,
         metadata_db_uri: String,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
 
         let (mut header_bytes, roll_bytes) =
@@ -164,13 +160,13 @@ pub mod gummyroll {
         // Get rightmost proof from accounts
         let mut proof = vec![];
         for node in ctx.remaining_accounts.iter() {
-            proof.push(Node::new(node.key().to_bytes()));
+            proof.push(node.key().to_bytes());
         }
         assert_eq!(proof.len(), max_depth as usize);
 
         let id = ctx.accounts.merkle_roll.key();
         // A call is made to MerkleRoll::initialize_with_root(root, leaf, proof, index)
-        match merkle_roll_apply_fn!(
+        merkle_roll_apply_fn!(
             header,
             true,
             id,
@@ -180,19 +176,16 @@ pub mod gummyroll {
             leaf,
             proof,
             index
-        ) {
-            Some(_) => Ok(()),
-            None => Err(ProgramError::InvalidInstructionData),
-        }
+        )
     }
 
     pub fn replace_leaf(
         ctx: Context<Modify>,
-        root: Node,
-        previous_leaf: Node,
-        new_leaf: Node,
+        root: [u8; 32],
+        previous_leaf: [u8; 32],
+        new_leaf: [u8; 32],
         index: u32,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
         let (header_bytes, roll_bytes) =
             merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
@@ -202,12 +195,12 @@ pub mod gummyroll {
 
         let mut proof = vec![];
         for node in ctx.remaining_accounts.iter() {
-            proof.push(Node::new(node.key().to_bytes()));
+            proof.push(node.key().to_bytes());
         }
 
         let id = ctx.accounts.merkle_roll.key();
         // A call is made to MerkleRoll::set_leaf(root, previous_leaf, new_leaf, proof, index)
-        match merkle_roll_apply_fn!(
+        merkle_roll_apply_fn!(
             header,
             true,
             id,
@@ -218,13 +211,10 @@ pub mod gummyroll {
             new_leaf,
             proof,
             index
-        ) {
-            Some(_) => Ok(()),
-            None => Err(ProgramError::InvalidInstructionData),
-        }
+        )
     }
 
-    pub fn append(ctx: Context<Append>, leaf: Node) -> ProgramResult {
+    pub fn append(ctx: Context<Append>, leaf: [u8; 32]) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
         let (header_bytes, roll_bytes) =
             merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
@@ -234,18 +224,15 @@ pub mod gummyroll {
         assert_eq!(header.append_authority, ctx.accounts.append_authority.key());
 
         let id = ctx.accounts.merkle_roll.key();
-        match merkle_roll_apply_fn!(header, true, id, roll_bytes, append, leaf) {
-            Some(_) => Ok(()),
-            None => Err(ProgramError::InvalidInstructionData),
-        }
+        merkle_roll_apply_fn!(header, true, id, roll_bytes, append, leaf)
     }
 
     pub fn insert_or_append(
         ctx: Context<Modify>,
-        root: Node,
-        leaf: Node,
+        root: [u8; 32],
+        leaf: [u8; 32],
         index: u32,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
         let (header_bytes, roll_bytes) =
             merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
@@ -255,12 +242,12 @@ pub mod gummyroll {
 
         let mut proof = vec![];
         for node in ctx.remaining_accounts.iter() {
-            proof.push(Node::new(node.key().to_bytes()));
+            proof.push(node.key().to_bytes());
         }
 
         let id = ctx.accounts.merkle_roll.key();
         // A call is made to MerkleRoll::fill_empty_or_append
-        match merkle_roll_apply_fn!(
+        merkle_roll_apply_fn!(
             header,
             true,
             id,
@@ -270,9 +257,6 @@ pub mod gummyroll {
             leaf,
             proof,
             index
-        ) {
-            Some(_) => Ok(()),
-            None => Err(ProgramError::InvalidInstructionData),
-        }
+        )
     }
 }

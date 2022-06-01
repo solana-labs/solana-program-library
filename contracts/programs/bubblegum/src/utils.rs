@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use gummyroll::state::node::Node;
+use gummyroll::Node;
 
 pub fn replace_leaf<'info>(
     seed: &Pubkey,
