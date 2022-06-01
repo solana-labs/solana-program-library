@@ -14,7 +14,7 @@ pub mod utils;
 use crate::error::GummyrollError;
 use crate::state::{ChangeLogEvent, MerkleRollHeader};
 use crate::utils::{convert_to_node, ZeroCopy};
-use concurrent_merkle_tree::{error::CMTError, merkle_roll::MerkleRoll, state::Node};
+pub use concurrent_merkle_tree::{error::CMTError, merkle_roll::MerkleRoll, state::Node};
 
 declare_id!("GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD");
 

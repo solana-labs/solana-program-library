@@ -8,7 +8,7 @@ use anchor_lang::{
         system_instruction,
     },
 };
-use gummyroll::{program::Gummyroll, state::node::Node};
+use gummyroll::{program::Gummyroll, Node};
 use spl_token::state::Mint as SplMint;
 
 pub mod state;

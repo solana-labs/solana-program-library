@@ -1,6 +1,6 @@
 use anchor_lang::{prelude::*, solana_program::keccak};
 
-use gummyroll::{program::Gummyroll, state::node::Node};
+use gummyroll::program::Gummyroll;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -180,8 +180,8 @@ pub mod gummyroll_crud {
             cpi_ctx,
             max_depth,
             max_buffer_size,
-            Node::new(root),
-            Node::new(leaf),
+            root.to_vec(),
+            leaf.to_vec(),
             index,
             std::str::from_utf8(&changelog_db_uri).unwrap().to_string(),
             std::str::from_utf8(&metadata_db_uri).unwrap().to_string(),
@@ -210,7 +210,7 @@ pub mod gummyroll_crud {
             },
             authority_pda_signer,
         );
-        let leaf = Node::new(get_message_hash(&authority, &message).to_bytes());
+        let leaf = get_message_hash(&authority, &message).to_bytes().to_vec();
         gummyroll::cpi::append(cpi_ctx, leaf)
     }
 
@@ -245,9 +245,9 @@ pub mod gummyroll_crud {
         .with_remaining_accounts(ctx.remaining_accounts.to_vec());
         // It's important to synthesize the previous leaf ourselves, rather than to
         // accept it as an arg, so that we can ensure the message hasn't been modified.
-        let previous_leaf_node = Node::new(get_message_hash(&owner, &message).to_bytes());
-        let leaf_node = Node::new(get_message_hash(&new_owner, &message).to_bytes());
-        let root_node = Node::new(root);
+        let previous_leaf_node = get_message_hash(&owner, &message).to_bytes().to_vec();
+        let leaf_node = get_message_hash(&new_owner, &message).to_bytes().to_vec();
+        let root_node = root.to_vec();
         gummyroll::cpi::replace_leaf(cpi_ctx, root_node, previous_leaf_node, leaf_node, index)
     }
 
@@ -279,9 +279,9 @@ pub mod gummyroll_crud {
         )
         .with_remaining_accounts(ctx.remaining_accounts.to_vec());
 
-        let previous_leaf_node = Node::new(leaf_hash);
-        let leaf_node = Node::default();
-        let root_node = Node::new(root);
+        let previous_leaf_node = leaf_hash.to_vec();
+        let leaf_node = [0; 32].to_vec();
+        let root_node = root.to_vec();
         gummyroll::cpi::replace_leaf(cpi_ctx, root_node, previous_leaf_node, leaf_node, index)
     }
 }
