@@ -91,14 +91,20 @@ pub struct ConfidentialTransferAccount {
     /// `pending_balance` may only be credited by `Deposit` or `Transfer` instructions if `true`
     pub allow_balance_credits: PodBool,
 
-    /// The total number of `Deposit` and `Transfer` instructions that have credited `pending_balance`
+    /// The total number of `Deposit` and `Transfer` instructions that have credited
+    /// `pending_balance`
     pub pending_balance_credit_counter: PodU64,
+
+    /// The maximum number of `Deposit` and `Transfer` instructions that can credit
+    /// `pending_balance` before the `ApplyPendingBalance` instruction is executed
+    pub maximum_pending_balance_credit_counter: PodU64,
 
     /// The `expected_pending_balance_credit_counter` value that was included in the last
     /// `ApplyPendingBalance` instruction
     pub expected_pending_balance_credit_counter: PodU64,
 
-    /// The actual `pending_balance_credit_counter` when the last `ApplyPendingBalance` instruction was executed
+    /// The actual `pending_balance_credit_counter` when the last `ApplyPendingBalance` instruction
+    /// was executed
     pub actual_pending_balance_credit_counter: PodU64,
 
     /// The withheld amount of fees. This will always be zero if fees are never enabled.

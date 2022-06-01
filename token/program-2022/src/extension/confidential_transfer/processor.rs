@@ -93,6 +93,7 @@ fn process_configure_account(
     ConfigureAccountInstructionData {
         encryption_pubkey,
         decryptable_zero_balance,
+        maximum_pending_balance_credit_counter,
     }: &ConfigureAccountInstructionData,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -128,6 +129,8 @@ fn process_configure_account(
         token_account.init_extension::<ConfidentialTransferAccount>(false)?;
     confidential_transfer_account.approved = confidential_transfer_mint.auto_approve_new_accounts;
     confidential_transfer_account.encryption_pubkey = *encryption_pubkey;
+    confidential_transfer_account.maximum_pending_balance_credit_counter =
+        *maximum_pending_balance_credit_counter;
 
     /*
         An ElGamal ciphertext is of the form
@@ -328,6 +331,12 @@ fn process_deposit(
 
         if !bool::from(&destination_confidential_transfer_account.allow_balance_credits) {
             return Err(TokenError::ConfidentialTransferDepositsAndTransfersDisabled.into());
+        }
+
+        if destination_confidential_transfer_account.pending_balance_credit_counter
+            == destination_confidential_transfer_account.maximum_pending_balance_credit_counter
+        {
+            return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
         }
 
         destination_confidential_transfer_account.pending_balance = ops::add_to(
@@ -698,6 +707,12 @@ fn process_destination_for_transfer(
     if *destination_encryption_pubkey != destination_confidential_transfer_account.encryption_pubkey
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+    }
+
+    if destination_confidential_transfer_account.pending_balance_credit_counter
+        == destination_confidential_transfer_account.maximum_pending_balance_credit_counter
+    {
+        return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
     }
 
     let new_destination_pending_balance = ops::add_with_lo_hi(
