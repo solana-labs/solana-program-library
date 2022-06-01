@@ -12,11 +12,6 @@ use solana_program::keccak::hashv;
 #[cfg(feature = "sol-log")]
 use solana_program::{log::sol_log_compute_units, msg};
 
-pub enum FastForwardResult {
-    LeafUpdated { leaf: Node },
-    Ok,
-}
-
 /// Tracks updates to off-chain Merkle tree
 ///
 /// Allows for concurrent writes to same merkle tree so long as proof
