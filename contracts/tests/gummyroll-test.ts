@@ -65,7 +65,7 @@ describe("gummyroll", () => {
     let tx = new Transaction().add(allocAccountIx);
     if (numLeaves > 0) {
 
-      const root = Array.from(tree.root);
+      const root = Array.from(tree.root.map(x => x));
       const leaf = Array.from(leaves[numLeaves - 1]);
       const proof = getProofOfLeaf(tree, numLeaves - 1).map((node) => {
         return {
