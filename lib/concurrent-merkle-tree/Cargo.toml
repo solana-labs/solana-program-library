@@ -5,7 +5,8 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-sol-log = []
+log = []
+sol-log = [ "log" ]
 
 [dependencies]
 solana-program = "1.10.10"
@@ -16,3 +17,4 @@ thiserror = "1.0.30"
 rand_distr = "0.4.3"
 rand = "0.7"
 merkle-tree-reference = { path = "../merkle-tree-reference" }
+tokio = { version = "0.2", features = ["macros"] }

@@ -1,34 +1,20 @@
 #[cfg(feature = "sol-log")]
 use solana_program::{log::sol_log_compute_units, msg};
 
-#[cfg(feature = "sol-log")]
 macro_rules! solana_logging {
     ($message:literal, $($arg:tt)*) => {
+        #[cfg(feature = "log")]
         msg!($message, $($arg)*);
     };
     ($message:literal) => {
+        #[cfg(feature = "log")]
         msg!($message);
     };
 }
 
-#[cfg(not(feature = "sol-log"))]
-macro_rules! solana_logging {
-    ($message:literal, $($arg:tt)*) => {
-        println!($message, $($arg)*);
-    };
-    ($message:literal) => {
-        println!($message);
-    };
-}
-
-#[cfg(feature = "sol-log")]
 macro_rules! log_compute {
     () => {
+        #[cfg(all(feature = "sol-log", feature = "log"))]
         sol_log_compute_units();
     };
-}
-
-#[cfg(not(feature = "sol-log"))]
-macro_rules! log_compute {
-    () => {};
 }
