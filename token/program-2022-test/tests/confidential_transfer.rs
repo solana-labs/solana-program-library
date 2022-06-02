@@ -31,6 +31,7 @@ use {
 
 const TEST_MAXIMUM_FEE: u64 = 100;
 const TEST_FEE_BASIS_POINTS: u16 = 250;
+const TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER: u64 = 1024;
 
 fn test_epoch_info() -> EpochInfo {
     EpochInfo {
@@ -102,7 +103,8 @@ impl ConfidentialTokenAccountMeta {
             .unwrap();
 
         let (elgamal_keypair, ae_key) = token
-            .confidential_transfer_configure_token_account_and_keypairs(&token_account, owner)
+            .confidential_transfer_configure_token_account_and_keypairs(&token_account, owner,
+                                                                        TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER)
             .await
             .unwrap();
 
