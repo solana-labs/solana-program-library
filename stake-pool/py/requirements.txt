@@ -9,7 +9,7 @@ construct==2.10.67
 flake8==4.0.1
 h11==0.12.0
 httpcore==0.13.7
-httpx==0.20.0
+httpx==0.23.0
 idna==3.3
 iniconfig==1.1.1
 mccabe==0.6.1
