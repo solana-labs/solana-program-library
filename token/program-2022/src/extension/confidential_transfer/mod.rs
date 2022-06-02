@@ -9,6 +9,9 @@ use {
     solana_zk_token_sdk::zk_token_elgamal::pod,
 };
 
+const PENDING_BALANCE_LO_BIT_LENGTH: usize = 16;
+const PENDING_BALANCE_HI_BIT_LENGTH: usize = 48;
+
 /// Confidential Transfer Extension instructions
 pub mod instruction;
 

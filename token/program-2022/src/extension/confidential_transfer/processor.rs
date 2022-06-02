@@ -345,15 +345,17 @@ fn process_deposit(
             return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
         }
 
+        // Divide deposit into the low 16 and high 48 bits and then add to the appropriate pending
+        // ciphertexts
         destination_confidential_transfer_account.pending_balance_lo = ops::add_to(
             &destination_confidential_transfer_account.pending_balance_lo,
-            amount << 48 >> 48,
+            amount << PENDING_BALANCE_HI_BIT_LENGTH >> PENDING_BALANCE_HI_BIT_LENGTH,
         )
         .ok_or(ProgramError::InvalidInstructionData)?;
 
         destination_confidential_transfer_account.pending_balance_hi = ops::add_to(
-            &destination_confidential_transfer_account.pending_balance_lo,
-            amount >> 16,
+            &destination_confidential_transfer_account.pending_balance_hi,
+            amount >> PENDING_BALANCE_LO_BIT_LENGTH,
         )
         .ok_or(ProgramError::InvalidInstructionData)?;
 
@@ -743,8 +745,10 @@ fn process_destination_for_transfer(
         (u64::from(destination_confidential_transfer_account.pending_balance_credit_counter) + 1)
             .into();
 
-    destination_confidential_transfer_account.pending_balance_lo = new_destination_pending_balance_lo;
-    destination_confidential_transfer_account.pending_balance_hi = new_destination_pending_balance_hi;
+    destination_confidential_transfer_account.pending_balance_lo =
+        new_destination_pending_balance_lo;
+    destination_confidential_transfer_account.pending_balance_hi =
+        new_destination_pending_balance_hi;
     destination_confidential_transfer_account.pending_balance_credit_counter =
         new_destination_pending_balance_credit_counter;
 
@@ -772,7 +776,8 @@ fn process_destination_for_transfer(
         )
         .ok_or(ProgramError::InvalidInstructionData)?;
 
-        destination_confidential_transfer_account.pending_balance_lo = new_destination_pending_balance;
+        destination_confidential_transfer_account.pending_balance_lo =
+            new_destination_pending_balance;
         destination_confidential_transfer_account.withheld_amount = new_withheld_amount;
     }
 

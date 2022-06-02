@@ -172,10 +172,17 @@ impl ConfidentialTokenAccountMeta {
 
         assert_eq!(
             extension
-                .pending_balance
+                .pending_balance_lo
                 .decrypt(&self.elgamal_keypair.secret)
                 .unwrap(),
-            expected.pending_balance,
+            expected.pending_balance_lo,
+        );
+        assert_eq!(
+            extension
+                .pending_balance_hi
+                .decrypt(&self.elgamal_keypair.secret)
+                .unwrap(),
+            expected.pending_balance_hi,
         );
         assert_eq!(
             extension
@@ -194,7 +201,8 @@ impl ConfidentialTokenAccountMeta {
 }
 
 struct ConfidentialTokenAccountBalances {
-    pending_balance: u64,
+    pending_balance_lo: u64,
+    pending_balance_hi: u64,
     available_balance: u64,
     decryptable_available_balance: u64,
 }
@@ -465,7 +473,11 @@ async fn ct_deposit() {
     assert_eq!(extension.expected_pending_balance_credit_counter, 0.into());
     assert_eq!(extension.actual_pending_balance_credit_counter, 0.into());
     assert_eq!(
-        extension.pending_balance,
+        extension.pending_balance_lo,
+        zk_token_elgamal::pod::ElGamalCiphertext::zeroed()
+    );
+    assert_eq!(
+        extension.pending_balance_hi,
         zk_token_elgamal::pod::ElGamalCiphertext::zeroed()
     );
     assert_eq!(
@@ -500,7 +512,8 @@ async fn ct_deposit() {
         .check_balances(
             &token,
             ConfidentialTokenAccountBalances {
-                pending_balance: 42,
+                pending_balance_lo: 42,
+                pending_balance_hi: 0,
                 available_balance: 0,
                 decryptable_available_balance: 0,
             },
@@ -537,7 +550,8 @@ async fn ct_deposit() {
         .check_balances(
             &token,
             ConfidentialTokenAccountBalances {
-                pending_balance: 0,
+                pending_balance_lo: 0,
+                pending_balance_hi: 0,
                 available_balance: 42,
                 decryptable_available_balance: 42,
             },
@@ -599,7 +613,8 @@ async fn ct_withdraw() {
         .check_balances(
             &token,
             ConfidentialTokenAccountBalances {
-                pending_balance: 0,
+                pending_balance_lo: 0,
+                pending_balance_hi: 0,
                 available_balance: 21,
                 decryptable_available_balance: 21,
             },
@@ -630,7 +645,8 @@ async fn ct_withdraw() {
         .check_balances(
             &token,
             ConfidentialTokenAccountBalances {
-                pending_balance: 0,
+                pending_balance_lo: 0,
+                pending_balance_hi: 0,
                 available_balance: 0,
                 decryptable_available_balance: 0,
             },
@@ -690,7 +706,8 @@ async fn ct_transfer() {
         .check_balances(
             &token,
             ConfidentialTokenAccountBalances {
-                pending_balance: 0,
+                pending_balance_lo: 0,
+                pending_balance_hi: 0,
                 available_balance: 42,
                 decryptable_available_balance: 42,
             },
@@ -715,7 +732,8 @@ async fn ct_transfer() {
         .check_balances(
             &token,
             ConfidentialTokenAccountBalances {
-                pending_balance: 42,
+                pending_balance_lo: 42,
+                pending_balance_hi: 0,
                 available_balance: 0,
                 decryptable_available_balance: 0,
             },
@@ -736,7 +754,8 @@ async fn ct_transfer() {
         .check_balances(
             &token,
             ConfidentialTokenAccountBalances {
-                pending_balance: 0,
+                pending_balance_lo: 0,
+                pending_balance_hi: 0,
                 available_balance: 42,
                 decryptable_available_balance: 42,
             },
@@ -760,7 +779,8 @@ async fn ct_transfer() {
         .check_balances(
             &token,
             ConfidentialTokenAccountBalances {
-                pending_balance: 0,
+                pending_balance_lo: 0,
+                pending_balance_hi: 0,
                 available_balance: 0,
                 decryptable_available_balance: 0,
             },
@@ -888,7 +908,8 @@ async fn ct_transfer_with_fee() {
         .check_balances(
             &token,
             ConfidentialTokenAccountBalances {
-                pending_balance: 0,
+                pending_balance_lo: 0,
+                pending_balance_hi: 0,
                 available_balance: 100,
                 decryptable_available_balance: 100,
             },
@@ -914,7 +935,8 @@ async fn ct_transfer_with_fee() {
         .check_balances(
             &token,
             ConfidentialTokenAccountBalances {
-                pending_balance: 100,
+                pending_balance_lo: 100,
+                pending_balance_hi: 0,
                 available_balance: 0,
                 decryptable_available_balance: 0,
             },
@@ -935,7 +957,8 @@ async fn ct_transfer_with_fee() {
         .check_balances(
             &token,
             ConfidentialTokenAccountBalances {
-                pending_balance: 0,
+                pending_balance_lo: 0,
+                pending_balance_hi: 0,
                 available_balance: 100,
                 decryptable_available_balance: 100,
             },
@@ -960,7 +983,8 @@ async fn ct_transfer_with_fee() {
         .check_balances(
             &token,
             ConfidentialTokenAccountBalances {
-                pending_balance: 0,
+                pending_balance_lo: 0,
+                pending_balance_hi: 0,
                 available_balance: 0,
                 decryptable_available_balance: 0,
             },
@@ -1103,7 +1127,8 @@ async fn ct_withdraw_withheld_tokens_from_mint() {
         .check_balances(
             &token,
             ConfidentialTokenAccountBalances {
-                pending_balance: 0,
+                pending_balance_lo: 0,
+                pending_balance_hi: 0,
                 available_balance: 100,
                 decryptable_available_balance: 100,
             },
@@ -1173,7 +1198,8 @@ async fn ct_withdraw_withheld_tokens_from_mint() {
         .check_balances(
             &token,
             ConfidentialTokenAccountBalances {
-                pending_balance: 3,
+                pending_balance_lo: 3,
+                pending_balance_hi: 0,
                 available_balance: 0,
                 decryptable_available_balance: 0,
             },
