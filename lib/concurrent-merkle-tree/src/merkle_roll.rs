@@ -103,7 +103,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     ) -> Result<Node, CMTError> {
         let old_root = recompute(EMPTY, &proof, 0);
         if old_root == empty_node(MAX_DEPTH as u32) {
-            self.apply_and_record_proof(old_root, EMPTY, leaf, &mut proof, 0, false, false)
+            self.try_apply_proof(old_root, EMPTY, leaf, &mut proof, 0, false)
         } else {
             return Err(CMTError::TreeAlreadyInitialized);
         }
@@ -244,8 +244,13 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
         fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
         log_compute!();
-        let root =
-            self.apply_and_record_proof(current_root, EMPTY, leaf, &mut proof, index, true, false);
+        let root = match self.try_apply_proof(current_root, EMPTY, leaf, &mut proof, index, false) {
+            Ok(new_root) => Ok(new_root),
+            Err(error) => match error {
+                CMTError::EmptyLeafSpotTaken => self.append(leaf),
+                _ => Err(error),
+            },
+        };
         log_compute!();
         root
     }
@@ -267,13 +272,12 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
 
             log_compute!();
-            let root = self.apply_and_record_proof(
+            let root = self.try_apply_proof(
                 current_root,
                 previous_leaf,
                 new_leaf,
                 &mut proof,
                 index,
-                false,
                 false,
             );
             log_compute!();
@@ -349,14 +353,13 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     /// Enabling `use_full_buffer` will skip root matching and just fast forward the given proof
     /// from the beginning of the buffer.
     /// Note: `use_full_buffer` significantly reduces security
-    fn apply_and_record_proof(
+    fn try_apply_proof(
         &mut self,
         current_root: Node,
         leaf: Node,
         new_leaf: Node,
         proof: &mut [Node; MAX_DEPTH],
         leaf_index: u32,
-        append_on_conflict: bool,
         use_full_buffer: bool,
     ) -> Result<Node, CMTError> {
         solana_logging!("Active Index: {}", self.active_index);
@@ -377,36 +380,28 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             }
         };
 
-        let valid_fast_forward = self.fast_forward_proof(
+        let proof_leaf_unchanged = self.fast_forward_proof(
             new_leaf,
             proof,
             leaf_index,
             changelog_buffer_index,
             use_full_buffer,
         );
-
         let valid_root = recompute(leaf, proof, leaf_index) == self.get_change_log().root;
-        if !valid_fast_forward || leaf_index > self.rightmost_proof.index {
-            // If the supplied root was not found in the queue, the instruction should fail if the leaf index changes
-            // NOTE: previously we checked if the FF'd proof with the value of the overwritten leaf
-            //      could be hashed to match the current root
-            //      However, this was removed for simplicity because it did not add to the security model
-            //      of insert_or_append functionality.
-            if !use_full_buffer && leaf == EMPTY && append_on_conflict {
-                return self.append(new_leaf);
-            } else {
-                return Err(CMTError::LeafAlreadyUpdated);
-            }
-        }
-        if valid_root {
-            self.increment_active_index();
-            self.sequence_number = self.sequence_number.saturating_add(1);
-            Ok(self.apply_changes(new_leaf, proof, leaf_index))
-        } else {
+        if !valid_root {
             return Err(CMTError::InvalidProof);
         }
+
+        if !proof_leaf_unchanged {
+            return Err(CMTError::EmptyLeafSpotTaken);
+        }
+
+        self.increment_active_index();
+        self.sequence_number = self.sequence_number.saturating_add(1);
+        Ok(self.update_buffers_from_proof(new_leaf, proof, leaf_index))
     }
 
+    /// Implements circular addition for changelog buffer index
     fn increment_active_index(&mut self) {
         let mask: usize = MAX_BUFFER_SIZE - 1;
 
@@ -418,7 +413,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     }
 
     /// Creates a new root from a proof that is valid for the root at `self.active_index`
-    fn apply_changes(&mut self, start: Node, proof: &[Node], index: u32) -> Node {
+    fn update_buffers_from_proof(&mut self, start: Node, proof: &[Node], index: u32) -> Node {
         let padding: usize = 32 - MAX_DEPTH;
         let change_log = &mut self.change_logs[self.active_index as usize];
         change_log.index = index;

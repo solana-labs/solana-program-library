@@ -18,4 +18,8 @@ pub enum CMTError {
     InvalidNodeByteLength,
     #[error("Root not found in changelog buffer")]
     RootNotFound,
+    #[error(
+        "Valid proof was passed to an empty leaf, but it was filled since the proof was issued"
+    )]
+    EmptyLeafSpotTaken,
 }
