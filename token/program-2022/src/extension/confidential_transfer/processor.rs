@@ -160,7 +160,8 @@ fn process_configure_account(
 
         This should just be encoded as [0; 64]
     */
-    confidential_transfer_account.pending_balance = EncryptedBalance::zeroed();
+    confidential_transfer_account.pending_balance_lo = EncryptedBalance::zeroed();
+    confidential_transfer_account.pending_balance_hi = EncryptedBalance::zeroed();
     confidential_transfer_account.available_balance = EncryptedBalance::zeroed();
 
     confidential_transfer_account.decryptable_available_balance = *decryptable_zero_balance;
@@ -233,7 +234,12 @@ fn process_empty_account(
         &previous_instruction,
     )?;
 
-    if confidential_transfer_account.pending_balance != EncryptedBalance::zeroed() {
+    if confidential_transfer_account.pending_balance_lo != EncryptedBalance::zeroed() {
+        msg!("Pending balance is not zero");
+        return Err(ProgramError::InvalidAccountData);
+    }
+
+    if confidential_transfer_account.pending_balance_hi != EncryptedBalance::zeroed() {
         msg!("Pending balance is not zero");
         return Err(ProgramError::InvalidAccountData);
     }
@@ -339,9 +345,15 @@ fn process_deposit(
             return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
         }
 
-        destination_confidential_transfer_account.pending_balance = ops::add_to(
-            &destination_confidential_transfer_account.pending_balance,
-            amount,
+        destination_confidential_transfer_account.pending_balance_lo = ops::add_to(
+            &destination_confidential_transfer_account.pending_balance_lo,
+            amount << 48 >> 48,
+        )
+        .ok_or(ProgramError::InvalidInstructionData)?;
+
+        destination_confidential_transfer_account.pending_balance_hi = ops::add_to(
+            &destination_confidential_transfer_account.pending_balance_lo,
+            amount >> 16,
         )
         .ok_or(ProgramError::InvalidInstructionData)?;
 
@@ -715,9 +727,14 @@ fn process_destination_for_transfer(
         return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
     }
 
-    let new_destination_pending_balance = ops::add_with_lo_hi(
-        &destination_confidential_transfer_account.pending_balance,
+    let new_destination_pending_balance_lo = ops::add(
+        &destination_confidential_transfer_account.pending_balance_lo,
         destination_ciphertext_lo,
+    )
+    .ok_or(ProgramError::InvalidInstructionData)?;
+
+    let new_destination_pending_balance_hi = ops::add(
+        &destination_confidential_transfer_account.pending_balance_hi,
         destination_ciphertext_hi,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
@@ -726,7 +743,8 @@ fn process_destination_for_transfer(
         (u64::from(destination_confidential_transfer_account.pending_balance_credit_counter) + 1)
             .into();
 
-    destination_confidential_transfer_account.pending_balance = new_destination_pending_balance;
+    destination_confidential_transfer_account.pending_balance_lo = new_destination_pending_balance_lo;
+    destination_confidential_transfer_account.pending_balance_hi = new_destination_pending_balance_hi;
     destination_confidential_transfer_account.pending_balance_credit_counter =
         new_destination_pending_balance_credit_counter;
 
@@ -742,7 +760,7 @@ fn process_destination_for_transfer(
 
         // subtract fee from destination pending balance
         let new_destination_pending_balance = ops::subtract(
-            &destination_confidential_transfer_account.pending_balance,
+            &destination_confidential_transfer_account.pending_balance_lo,
             &ciphertext_fee_destination,
         )
         .ok_or(ProgramError::InvalidInstructionData)?;
@@ -754,7 +772,7 @@ fn process_destination_for_transfer(
         )
         .ok_or(ProgramError::InvalidInstructionData)?;
 
-        destination_confidential_transfer_account.pending_balance = new_destination_pending_balance;
+        destination_confidential_transfer_account.pending_balance_lo = new_destination_pending_balance;
         destination_confidential_transfer_account.withheld_amount = new_withheld_amount;
     }
 
@@ -791,9 +809,10 @@ fn process_apply_pending_balance(
     let mut confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
 
-    confidential_transfer_account.available_balance = ops::add(
+    confidential_transfer_account.available_balance = ops::add_with_lo_hi(
         &confidential_transfer_account.available_balance,
-        &confidential_transfer_account.pending_balance,
+        &confidential_transfer_account.pending_balance_lo,
+        &confidential_transfer_account.pending_balance_hi,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 
@@ -803,7 +822,8 @@ fn process_apply_pending_balance(
         *expected_pending_balance_credit_counter;
     confidential_transfer_account.decryptable_available_balance =
         *new_decryptable_available_balance;
-    confidential_transfer_account.pending_balance = EncryptedBalance::zeroed();
+    confidential_transfer_account.pending_balance_lo = EncryptedBalance::zeroed();
+    confidential_transfer_account.pending_balance_hi = EncryptedBalance::zeroed();
 
     Ok(())
 }
@@ -916,12 +936,12 @@ fn process_withdraw_withheld_tokens_from_mint(
     // The proof data contains the mint withheld amount encrypted under the destination ElGamal pubkey.
     // This amount should be added to the destination pending balance.
     let new_destination_pending_balance = ops::add(
-        &destination_confidential_transfer_account.pending_balance,
+        &destination_confidential_transfer_account.pending_balance_lo,
         &proof_data.destination_ciphertext,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 
-    destination_confidential_transfer_account.pending_balance = new_destination_pending_balance;
+    destination_confidential_transfer_account.pending_balance_lo = new_destination_pending_balance;
 
     // fee is now withdrawn, so zero out mint withheld amount
     confidential_transfer_mint.withheld_amount = EncryptedWithheldAmount::zeroed();
@@ -1036,12 +1056,12 @@ fn process_withdraw_withheld_tokens_from_accounts(
 
     // add the sum of the withheld fees to destination pending balance
     let new_destination_pending_balance = ops::add(
-        &destination_confidential_transfer_account.pending_balance,
+        &destination_confidential_transfer_account.pending_balance_lo,
         &aggregate_withheld_amount,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 
-    destination_confidential_transfer_account.pending_balance = new_destination_pending_balance;
+    destination_confidential_transfer_account.pending_balance_lo = new_destination_pending_balance;
 
     Ok(())
 }

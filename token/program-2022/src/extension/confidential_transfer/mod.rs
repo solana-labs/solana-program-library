@@ -79,8 +79,11 @@ pub struct ConfidentialTransferAccount {
     /// The public key associated with ElGamal encryption
     pub encryption_pubkey: EncryptionPubkey,
 
-    /// The pending balance (encrypted by `encryption_pubkey`)
-    pub pending_balance: EncryptedBalance,
+    /// The low 16 bits of the pending balance (encrypted by `encryption_pubkey`)
+    pub pending_balance_lo: EncryptedBalance,
+
+    /// The high 48 bits of the pending balance (encrypted by `encryption_pubkey`)
+    pub pending_balance_hi: EncryptedBalance,
 
     /// The available balance (encrypted by `encrypiton_pubkey`)
     pub available_balance: EncryptedBalance,
@@ -127,7 +130,8 @@ impl ConfidentialTransferAccount {
 
     /// Check if a `ConfidentialTransferAccount` is in a closable state
     pub fn closable(&self) -> ProgramResult {
-        if self.pending_balance == EncryptedBalance::zeroed()
+        if self.pending_balance_lo == EncryptedBalance::zeroed()
+            && self.pending_balance_hi == EncryptedBalance::zeroed()
             && self.available_balance == EncryptedBalance::zeroed()
             && self.withheld_amount == EncryptedWithheldAmount::zeroed()
         {
