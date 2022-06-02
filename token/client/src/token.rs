@@ -51,6 +51,8 @@ pub enum TokenError {
     AccountInvalidMint,
     #[error("proof error: {0}")]
     Proof(ProofError),
+    #[error("illegal amount")]
+    IllegalAmount,
 }
 impl PartialEq for TokenError {
     fn eq(&self, other: &Self) -> bool {
@@ -1071,6 +1073,10 @@ where
         amount: u64,
         decimals: u8,
     ) -> TokenResult<T::Output> {
+        if amount >> confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH != 0 {
+            return Err(TokenError::IllegalAmount);
+        }
+
         self.process_ixs(
             &[confidential_transfer::instruction::deposit(
                 &self.program_id,
@@ -1142,6 +1148,10 @@ where
         source_elgamal_keypair: &ElGamalKeypair,
         new_source_decryptable_available_balance: AeCiphertext,
     ) -> TokenResult<T::Output> {
+        if amount >> confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH != 0 {
+            return Err(TokenError::IllegalAmount);
+        }
+
         let source_state = self.get_account_info(source_token_account).await.unwrap();
         let source_extension =
             source_state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;
@@ -1202,6 +1212,10 @@ where
         new_source_decryptable_available_balance: AeCiphertext,
         epoch_info: &EpochInfo,
     ) -> TokenResult<T::Output> {
+        if amount >> confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH != 0 {
+            return Err(TokenError::IllegalAmount);
+        }
+
         let source_state = self.get_account_info(source_token_account).await.unwrap();
         let source_extension =
             source_state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;
