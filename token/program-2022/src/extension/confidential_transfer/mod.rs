@@ -9,7 +9,7 @@ use {
     solana_zk_token_sdk::zk_token_elgamal::pod,
 };
 
-/// Maximum bit length of any deposit transfer amount
+/// Maximum bit length of any deposit or transfer amount
 ///
 /// Any deposit or transfer amount must be less than 2^48
 pub const MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH: usize = 48;

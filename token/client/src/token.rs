@@ -52,7 +52,7 @@ pub enum TokenError {
     #[error("proof error: {0}")]
     Proof(ProofError),
     #[error("illegal amount")]
-    IllegalAmount,
+    MaximumDepositTransferAmountExceeded,
 }
 impl PartialEq for TokenError {
     fn eq(&self, other: &Self) -> bool {
@@ -1074,7 +1074,7 @@ where
         decimals: u8,
     ) -> TokenResult<T::Output> {
         if amount >> confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH != 0 {
-            return Err(TokenError::IllegalAmount);
+            return Err(TokenError::MaximumDepositTransferAmountExceeded);
         }
 
         self.process_ixs(
@@ -1149,7 +1149,7 @@ where
         new_source_decryptable_available_balance: AeCiphertext,
     ) -> TokenResult<T::Output> {
         if amount >> confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH != 0 {
-            return Err(TokenError::IllegalAmount);
+            return Err(TokenError::MaximumDepositTransferAmountExceeded);
         }
 
         let source_state = self.get_account_info(source_token_account).await.unwrap();
@@ -1213,7 +1213,7 @@ where
         epoch_info: &EpochInfo,
     ) -> TokenResult<T::Output> {
         if amount >> confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH != 0 {
-            return Err(TokenError::IllegalAmount);
+            return Err(TokenError::MaximumDepositTransferAmountExceeded);
         }
 
         let source_state = self.get_account_info(source_token_account).await.unwrap();
