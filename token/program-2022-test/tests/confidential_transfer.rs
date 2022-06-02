@@ -103,8 +103,11 @@ impl ConfidentialTokenAccountMeta {
             .unwrap();
 
         let (elgamal_keypair, ae_key) = token
-            .confidential_transfer_configure_token_account_and_keypairs(&token_account, owner,
-                                                                        TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER)
+            .confidential_transfer_configure_token_account_and_keypairs(
+                &token_account,
+                owner,
+                TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER,
+            )
             .await
             .unwrap();
 
