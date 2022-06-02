@@ -209,7 +209,7 @@ pub mod gummyroll {
             initialize_with_root,
             root,
             leaf,
-            proof,
+            &proof,
             index
         )
     }
@@ -247,7 +247,7 @@ pub mod gummyroll {
             root,
             previous_leaf,
             new_leaf,
-            proof,
+            &proof,
             index
         )
     }
@@ -307,7 +307,7 @@ pub mod gummyroll {
 
         let id = ctx.accounts.merkle_roll.key();
 
-        merkle_roll_apply_fn!(header, false, id, roll_bytes, prove_leaf, root, leaf, proof, index)
+        merkle_roll_apply_fn!(header, false, id, roll_bytes, prove_leaf, root, leaf, &proof, index)
     }
 
     /// This instruction allows the tree's mint_authority to append a new leaf to the tree
@@ -360,7 +360,7 @@ pub mod gummyroll {
             fill_empty_or_append,
             root,
             leaf,
-            proof,
+            &proof,
             index
         )
     }
