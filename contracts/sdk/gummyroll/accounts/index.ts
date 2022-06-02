@@ -1,14 +1,8 @@
-import { assertConfirmedTransaction } from '@metaplex-foundation/amman';
 import {
     PublicKey
 } from '@solana/web3.js';
 import * as borsh from 'borsh';
 import { BN } from '@project-serum/anchor';
-
-
-    // maxDepth: number, // u32
-    // maxBufferSize: number, // u32
-    // authority: PublicKey,
 
 /**
  * Manually create a model for MerkleRoll in order to deserialize correctly
@@ -35,7 +29,7 @@ type MerkleRoll = {
 
 type ChangeLog = {
     root: PublicKey,
-    pathNodes: PublicKey[] 
+    pathNodes: PublicKey[]
     index: number, // u32
     _padding: number, // u32
 }
@@ -114,9 +108,9 @@ export function decodeMerkleRoll(buffer: Buffer): OnChainMerkleRoll {
 }
 
 export function getMerkleRollAccountSize(maxDepth: number, maxBufferSize: number): number {
-  let headerSize = 8 + 32 + 32;
-  let changeLogSize = (maxDepth * 32 + 32 + 4 + 4) * maxBufferSize;
-  let rightMostPathSize = maxDepth * 32 + 32 + 4 + 4;
-  let merkleRollSize = 8 + 8 + 16 + changeLogSize + rightMostPathSize;
-  return merkleRollSize + headerSize; 
+    let headerSize = 8 + 32 + 32;
+    let changeLogSize = (maxDepth * 32 + 32 + 4 + 4) * maxBufferSize;
+    let rightMostPathSize = maxDepth * 32 + 32 + 4 + 4;
+    let merkleRollSize = 8 + 8 + 16 + changeLogSize + rightMostPathSize;
+    return merkleRollSize + headerSize;
 }

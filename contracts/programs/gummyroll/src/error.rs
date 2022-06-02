@@ -16,7 +16,7 @@ pub enum GummyrollError {
 }
 
 impl From<&CMTError> for GummyrollError {
-    fn from(error: &CMTError) -> Self {
+    fn from(_error: &CMTError) -> Self {
         GummyrollError::ConcurrentMerkleTreeError
     }
 }

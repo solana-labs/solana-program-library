@@ -1,12 +1,10 @@
-use crate::error::GummyrollError;
 use anchor_lang::{
     prelude::*,
     solana_program::{msg, program_error::ProgramError},
 };
 use bytemuck::{Pod, PodCastError};
-use concurrent_merkle_tree::{merkle_roll::MerkleRoll, state::Node};
+use concurrent_merkle_tree::merkle_roll::MerkleRoll;
 use std::any::type_name;
-use std::convert::TryInto;
 use std::mem::size_of;
 
 pub trait ZeroCopy: Pod {

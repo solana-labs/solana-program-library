@@ -40,6 +40,22 @@ pub struct Append<'info> {
     pub append_authority: Signer<'info>,
 }
 
+#[derive(Accounts)]
+pub struct VerifyLeaf<'info> {
+    /// CHECK: This account is validated in the instruction
+    pub merkle_roll: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TransferAuthority<'info> {
+    #[account(mut)]
+    /// CHECK: This account is validated in the instruction
+    pub merkle_roll: UncheckedAccount<'info>,
+    pub authority: Signer<'info>,
+}
+
+/// This macro applies functions on a merkle roll and emits leaf information
+/// needed to sync the merkle tree state with off-chain indexers.
 macro_rules! merkle_roll_depth_size_apply_fn {
     ($max_depth:literal, $max_size:literal, $emit_msg:ident, $id:ident, $bytes:ident, $func:ident, $($arg:tt)*) => {
         if size_of::<MerkleRoll::<$max_depth, $max_size>>() != $bytes.len() {
@@ -74,6 +90,9 @@ macro_rules! merkle_roll_depth_size_apply_fn {
     }
 }
 
+/// This applies a given function on a merkle roll by
+/// allowing the compiler to infer the size of the tree based
+/// upon the header information stored on-chain
 macro_rules! merkle_roll_apply_fn {
     ($header:ident, $emit_msg:ident, $id:ident, $bytes:ident, $func:ident, $($arg:tt)*) => {
         // Note: max_buffer_size MUST be a power of 2
@@ -111,6 +130,16 @@ macro_rules! merkle_roll_apply_fn {
 pub mod gummyroll {
     use super::*;
 
+    /// Creates a new merkle tree with maximum leaf capacity of power(2, max_depth)
+    /// and a minimum concurrency limit of max_buffer_size.
+    ///
+    /// Concurrency limit represents the # of replace instructions that can be successfully
+    /// executed with proofs dated for the same root. For example, a maximum buffer size of 1024
+    /// means that a minimum of 1024 replaces can be executed before a new proof must be
+    /// generated for the next replace instruction.
+    ///
+    /// Concurrency limit should be determined by empirically testing the demand for
+    /// state built on top of gummyroll.
     pub fn init_empty_gummyroll(
         ctx: Context<Initialize>,
         max_depth: u32,
@@ -133,6 +162,12 @@ pub mod gummyroll {
         merkle_roll_apply_fn!(header, true, id, roll_bytes, initialize,)
     }
 
+    /// Note:
+    /// Supporting this instruction open a security vulnerability for indexers.
+    /// This instruction has been deemed unusable for publicly indexed compressed NFTs.
+    /// Indexing batched data in this way requires indexers to read in the `uri`s onto physical storage
+    /// and then into their database. This opens up a DOS attack vector, whereby this instruction is
+    /// repeatedly invoked, causing indexers to fail.
     pub fn init_gummyroll_with_root(
         ctx: Context<Initialize>,
         max_depth: u32,
@@ -174,11 +209,14 @@ pub mod gummyroll {
             initialize_with_root,
             root,
             leaf,
-            proof,
+            &proof,
             index
         )
     }
 
+    /// Executes an instruction that overwrites a leaf node.
+    /// Composing programs should check that the data hashed into previous_leaf
+    /// matches the authority information necessary to execute this instruction.
     pub fn replace_leaf(
         ctx: Context<Modify>,
         root: [u8; 32],
@@ -209,11 +247,74 @@ pub mod gummyroll {
             root,
             previous_leaf,
             new_leaf,
-            proof,
+            &proof,
             index
         )
     }
 
+    /// Transfers authority or append authority
+    /// requires `authority` to sign
+    pub fn transfer_authority(
+        ctx: Context<TransferAuthority>,
+        new_authority: Option<Pubkey>,
+        new_append_authority: Option<Pubkey>,
+    ) -> Result<()> {
+        let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
+        let (mut header_bytes, _) = merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
+
+        let mut header = Box::new(MerkleRollHeader::try_from_slice(header_bytes)?);
+        assert_eq!(header.authority, ctx.accounts.authority.key());
+
+        match new_authority {
+            Some(new_auth) => {
+                header.authority = new_auth;
+                msg!("Authority transferred to: {:?}", header.authority);
+            }
+            _ => {}
+        }
+        match new_append_authority {
+            Some(new_append_auth) => {
+                header.append_authority = new_append_auth;
+                msg!(
+                    "Append authority transferred to: {:?}",
+                    header.append_authority
+                );
+            }
+            _ => {}
+        }
+        header.serialize(&mut header_bytes)?;
+
+        Ok(())
+    }
+
+    /// If proof is invalid, error is thrown
+    pub fn verify_leaf(
+        ctx: Context<VerifyLeaf>,
+        root: [u8; 32],
+        leaf: [u8; 32],
+        index: u32,
+    ) -> Result<()> {
+        let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
+        let (header_bytes, roll_bytes) =
+            merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
+
+        let header = Box::new(MerkleRollHeader::try_from_slice(header_bytes)?);
+
+        let mut proof = vec![];
+        for node in ctx.remaining_accounts.iter() {
+            proof.push(node.key().to_bytes());
+        }
+
+        let id = ctx.accounts.merkle_roll.key();
+
+        merkle_roll_apply_fn!(header, false, id, roll_bytes, prove_leaf, root, leaf, &proof, index)
+    }
+
+    /// This instruction allows the tree's mint_authority to append a new leaf to the tree
+    /// without having to supply a valid proof.
+    ///
+    /// This is accomplished by using the rightmost_proof of the merkle roll to construct a
+    /// valid proof, and then updating the rightmost_proof for the next leaf if possible.
     pub fn append(ctx: Context<Append>, leaf: [u8; 32]) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
         let (header_bytes, roll_bytes) =
@@ -227,6 +328,10 @@ pub mod gummyroll {
         merkle_roll_apply_fn!(header, true, id, roll_bytes, append, leaf)
     }
 
+    /// This instruction takes a proof, and will attempt to write the given leaf
+    /// to the specified index in the tree. If the insert operation fails, the leaf will be `append`-ed
+    /// to the tree.
+    /// It is up to the indexer to parse the final location of the leaf from the emitted changelog.
     pub fn insert_or_append(
         ctx: Context<Modify>,
         root: [u8; 32],
@@ -255,7 +360,7 @@ pub mod gummyroll {
             fill_empty_or_append,
             root,
             leaf,
-            proof,
+            &proof,
             index
         )
     }

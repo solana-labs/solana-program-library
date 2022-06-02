@@ -6,13 +6,13 @@ import {
     PublicKey, Connection as web3Connection,
 } from "@solana/web3.js";
 import { assert, expect } from "chai";
-import { Gummyroll } from "../target/types/gummyroll";
 import { GummyrollCrud } from "../target/types/gummyroll_crud";
 import { Program, Provider } from "@project-serum/anchor";
 import {
+    Gummyroll,
     decodeMerkleRoll,
     getMerkleRollAccountSize,
-} from "./merkle-roll-serde";
+} from "../sdk/gummyroll";
 import { buildTree, getProofOfLeaf, hash, updateTree } from "./merkle-tree";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 

@@ -1,5 +1,4 @@
 import * as anchor from "@project-serum/anchor";
-import { Gummyroll } from "../target/types/gummyroll";
 import { Program, Provider, } from "@project-serum/anchor";
 import {
   Connection as web3Connection,
@@ -11,7 +10,7 @@ import {
 import { assert } from "chai";
 
 import { buildTree, getProofOfLeaf, updateTree, Tree, getProofOfAssetFromServer, checkProof } from "./merkle-tree";
-import { decodeMerkleRoll, getMerkleRollAccountSize } from "./merkle-roll-serde";
+import { Gummyroll, decodeMerkleRoll, getMerkleRollAccountSize } from "../sdk/gummyroll";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 
 const HOST = "127.0.0.1";
