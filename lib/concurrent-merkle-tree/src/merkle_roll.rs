@@ -70,7 +70,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         &mut self,
         root: Node,
         rightmost_leaf: Node,
-        proof_vec: Vec<Node>,
+        proof_vec: &Vec<Node>,
         index: u32,
     ) -> Result<Node, CMTError> {
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
@@ -238,7 +238,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         &mut self,
         current_root: Node,
         leaf: Node,
-        proof_vec: Vec<Node>,
+        proof_vec: &Vec<Node>,
         index: u32,
     ) -> Result<Node, CMTError> {
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
@@ -262,7 +262,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         current_root: Node,
         previous_leaf: Node,
         new_leaf: Node,
-        proof_vec: Vec<Node>,
+        proof_vec: &Vec<Node>,
         index: u32,
     ) -> Result<Node, CMTError> {
         if index > self.rightmost_proof.index {
