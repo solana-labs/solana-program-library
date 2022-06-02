@@ -113,7 +113,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         &mut self,
         current_root: Node,
         leaf: Node,
-        proof_vec: Vec<Node>,
+        proof_vec: &Vec<Node>,
         leaf_index: u32,
     ) -> Result<Node, CMTError> {
         if leaf_index > self.rightmost_proof.index {
@@ -242,7 +242,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         index: u32,
     ) -> Result<Node, CMTError> {
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
-        fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
+        fill_in_proof::<MAX_DEPTH>(&proof_vec, &mut proof);
         log_compute!();
         let root = match self.try_apply_proof(current_root, EMPTY, leaf, &mut proof, index, false) {
             Ok(new_root) => Ok(new_root),
@@ -269,7 +269,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             return Err(CMTError::LeafIndexOutOfBounds);
         } else {
             let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
-            fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
+            fill_in_proof::<MAX_DEPTH>(&proof_vec, &mut proof);
 
             log_compute!();
             let root = self.try_apply_proof(
@@ -285,7 +285,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn find_root_in_changelog(&self, current_root: Node) -> Option<u64> {
         let mask: usize = MAX_BUFFER_SIZE - 1;
         for i in 0..self.buffer_size {
@@ -301,6 +301,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     /// in place by fast-forwarding the given `proof` through the
     /// `changelog`s, starting at index `changelog_buffer_index`
     /// Returns false if the leaf was updated in the change log
+    #[inline(always)]
     fn fast_forward_proof(
         &mut self,
         leaf: Node,
@@ -327,6 +328,8 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             changelog_buffer_index += 1;
             changelog_buffer_index &= mask as u64;
             if leaf_index != self.change_logs[changelog_buffer_index as usize].index {
+                // This bit math is used to identify which node in the proof
+                // we need to swap for a corresponding node in a saved change log
                 let common_path_len = ((leaf_index
                     ^ self.change_logs[changelog_buffer_index as usize].index)
                     << padding)
@@ -346,13 +349,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         updated_leaf == leaf
     }
 
-    /// Update root & record changelog
-    /// --------
-    /// Fast-forwards submitted proof to be valid for the root at `self.current_index`
-    ///
-    /// Enabling `use_full_buffer` will skip root matching and just fast forward the given proof
-    /// from the beginning of the buffer.
-    /// Note: `use_full_buffer` significantly reduces security
+    /// Note: Enabling `use_full_buffer` will skip root matching and just fast forward the given proof
+    /// from the beginning of the buffer. This option significantly reduces security
+    #[inline(always)]
     fn try_apply_proof(
         &mut self,
         current_root: Node,
