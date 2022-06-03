@@ -26,7 +26,7 @@ pub fn error_msg<T>(data_len: usize) -> impl Fn(PodCastError) -> ProgramError {
 pub fn get_metadata_args(
     url_base: [u8; 64],
     name_base: [u8; 32],
-    symbol: [u8; 32],
+    symbol: [u8; 8],
     seller_fee_basis_points: u16,
     is_mutable: bool,
     collection: Pubkey,

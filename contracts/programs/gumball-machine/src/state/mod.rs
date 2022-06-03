@@ -5,7 +5,6 @@ use std::mem::size_of;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Zeroable, Pod)]
 #[repr(C)]
-// Current Size: 384 bytes
 pub struct GumballMachineHeader {
     // TODO: Add more fields
     // Used to programmatically create the url and name for each field.
@@ -15,7 +14,7 @@ pub struct GumballMachineHeader {
     // Unlike candy machine, each NFT minted has its name programmatically generated 
     // from the config line index as format!("{} #{}", name_base, index)
     pub name_base: [u8; 32],
-    pub symbol: [u8; 32],
+    pub symbol: [u8; 8],
     pub seller_fee_basis_points: u16,
     pub is_mutable: u8,
     pub retain_authority: u8,
@@ -33,11 +32,11 @@ pub struct GumballMachineHeader {
     pub collection_key: Pubkey,
     // Force a single creator (use Hydra)
     pub creator_address: Pubkey,
-    pub extension_len: usize,
+    pub extension_len: u64,
     pub max_mint_size: u64,
-    pub remaining: usize,
+    pub remaining: u64,
     pub max_items: u64,
-    pub total_items_added: usize,
+    pub total_items_added: u64,
 }
 
 impl ZeroCopy for GumballMachineHeader {}
