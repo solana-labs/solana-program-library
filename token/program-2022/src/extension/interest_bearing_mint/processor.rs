@@ -36,7 +36,7 @@ fn process_initialize(
     let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
 
     let clock = Clock::get()?;
-    let extension = mint.init_extension::<InterestBearingConfig>()?;
+    let extension = mint.init_extension::<InterestBearingConfig>(true)?;
     extension.rate_authority = *rate_authority;
     extension.initialization_timestamp = clock.unix_timestamp.into();
     extension.last_update_timestamp = clock.unix_timestamp.into();
