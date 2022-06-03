@@ -15,7 +15,7 @@ use solana_program::{log::sol_log_compute_units, msg};
 /// Tracks updates to off-chain Merkle tree
 ///
 /// Allows for concurrent writes to same merkle tree so long as proof
-/// was generated for a that has had at most MAX_SIZE updates since the tx was submitted
+/// was generated at most MAX_SIZE updates since the tx was submitted
 #[derive(Copy, Clone)]
 pub struct MerkleRoll<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> {
     pub sequence_number: u128,
