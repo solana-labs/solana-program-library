@@ -39,6 +39,25 @@ pub enum UseMethod {
     Single,
 }
 
+impl UseMethod {
+    pub fn to_u8(&self) -> u8 {
+        match self {
+            Self::Burn => 1,
+            Self::Multiple => 2,
+            Self::Single => 3,
+        }
+    }
+
+    pub fn from_u8(i: u8) -> Result<Self> {
+        match i {
+            1 => Ok(Self::Burn),
+            2 => Ok(Self::Multiple),
+            3 => Ok(Self::Single),
+            _ => Err(ProgramError::InvalidArgument.into()) 
+        }
+    }
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Debug, Clone)]
 pub struct Uses {
     // 17 bytes + Option byte

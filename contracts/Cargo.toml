@@ -2,5 +2,6 @@
 members = [
     "programs/gummyroll",
     "programs/gummyroll_crud",
-    "programs/bubblegum"
+    "programs/bubblegum",
+    "programs/gumball-machine"
 ]

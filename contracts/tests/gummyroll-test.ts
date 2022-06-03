@@ -21,8 +21,10 @@ import {
   decodeMerkleRoll,
   getMerkleRollAccountSize,
   createVerifyLeafIx,
+  assertOnChainMerkleRollProperties
 } from '../sdk/gummyroll';
 import { execute } from "./utils";
+import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 
 // @ts-ignore
 let Gummyroll;
@@ -114,31 +116,8 @@ describe("gummyroll", () => {
     await Gummyroll.provider.send(tx, [payer, merkleRollKeypair], {
       commitment: "confirmed",
     });
-    const merkleRoll = await Gummyroll.provider.connection.getAccountInfo(
-      merkleRollKeypair.publicKey
-    );
-
-    let onChainMerkle = decodeMerkleRoll(merkleRoll.data);
-
-    // Check header bytes are set correctly
-    assert(
-      onChainMerkle.header.maxDepth === maxDepth,
-      `Max depth does not match ${onChainMerkle.header.maxDepth}, expected ${maxDepth}`
-    );
-    assert(
-      onChainMerkle.header.maxBufferSize === maxSize,
-      `Max buffer size does not match ${onChainMerkle.header.maxBufferSize}, expected ${maxSize}`
-    );
-
-    assert(
-      onChainMerkle.header.authority.equals(payer.publicKey),
-      "Failed to write auth pubkey"
-    );
-
-    assert(
-      onChainMerkle.roll.changeLogs[0].root.equals(new PublicKey(tree.root)),
-      "On chain root does not match root passed in instruction"
-    );
+    
+    await assertOnChainMerkleRollProperties(Gummyroll.provider.connection, maxDepth, maxSize, payer.publicKey, new PublicKey(tree.root), merkleRollKeypair.publicKey);
 
     return [merkleRollKeypair, tree]
   }

@@ -18,6 +18,7 @@ import { buildTree, Tree } from "./merkle-tree";
 import {
   decodeMerkleRoll,
   getMerkleRollAccountSize,
+  assertOnChainMerkleRollProperties,
 } from "../sdk/gummyroll";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import {
@@ -148,31 +149,8 @@ describe("bubblegum", () => {
     await Bubblegum.provider.send(tx, [payer, merkleRollKeypair], {
       commitment: "confirmed",
     });
-    const merkleRoll = await Bubblegum.provider.connection.getAccountInfo(
-      merkleRollKeypair.publicKey
-    );
-
-    let onChainMerkle = decodeMerkleRoll(merkleRoll.data);
-
-    // Check header bytes are set correctly
-    assert(
-      onChainMerkle.header.maxDepth === MAX_DEPTH,
-      `Max depth does not match ${onChainMerkle.header.maxDepth}, expected ${MAX_DEPTH}`
-    );
-    assert(
-      onChainMerkle.header.maxBufferSize === MAX_SIZE,
-      `Max buffer size does not match ${onChainMerkle.header.maxBufferSize}, expected ${MAX_SIZE}`
-    );
-
-    assert(
-      onChainMerkle.header.authority.equals(authority),
-      "Failed to write auth pubkey"
-    );
-
-    assert(
-      onChainMerkle.roll.changeLogs[0].root.equals(new PublicKey(tree.root)),
-      "On chain root does not match root passed in instruction"
-    );
+    
+    await assertOnChainMerkleRollProperties(Bubblegum.provider.connection, MAX_DEPTH, MAX_SIZE, authority, new PublicKey(tree.root), merkleRollKeypair.publicKey);
 
     return [merkleRollKeypair, tree, authority, nonce];
   }
