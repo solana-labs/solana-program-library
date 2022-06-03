@@ -497,7 +497,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             Ok(extension_ref)
         } else {
             // extension is already initialized, but no overwrite permission
-            return Err(TokenError::ExtensionAlreadyInitialized.into());
+            Err(TokenError::ExtensionAlreadyInitialized.into())
         }
     }
 
