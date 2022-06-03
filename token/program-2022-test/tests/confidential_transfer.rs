@@ -10,6 +10,7 @@ use {
         signer::keypair::Keypair, transaction::TransactionError, transport::TransportError,
     },
     spl_token_2022::{
+        error::TokenError,
         extension::{
             confidential_transfer::{
                 ConfidentialTransferAccount, ConfidentialTransferMint, EncryptedWithheldAmount,
@@ -331,6 +332,27 @@ async fn ct_configure_token_account() {
         .get_extension::<ConfidentialTransferAccount>()
         .unwrap();
     assert!(bool::from(&extension.approved));
+
+    // Configuring an already initialized account should produce an error
+    let err = token
+        .confidential_transfer_configure_token_account(
+            &alice_meta.token_account,
+            &alice,
+            alice_meta.elgamal_keypair.public,
+            alice_meta.ae_key.encrypt(0_u64),
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::ExtensionAlreadyInitialized as u32),
+            )
+        )))
+    );
 }
 
 #[tokio::test]

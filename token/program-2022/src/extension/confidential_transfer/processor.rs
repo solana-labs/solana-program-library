@@ -122,6 +122,15 @@ fn process_configure_account(
     let mint = StateWithExtensions::<Mint>::unpack(mint_data)?;
     let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
 
+    // If a `ConfidentialTransferAccount` extension is already configured, the instruction fails to
+    // prevent overwriting existing data.
+    if token_account
+        .get_extension::<ConfidentialTransferAccount>()
+        .is_ok()
+    {
+        return Err(TokenError::ExtensionAlreadyInitialized.into());
+    }
+
     // Note: The caller is expected to use the `Reallocate` instruction to ensure there is
     // sufficient room in their token account for the new `ConfidentialTransferAccount` extension
     let mut confidential_transfer_account =
