@@ -54,7 +54,7 @@ fn process_initialize_mint(
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
     let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(mint_data)?;
-    *mint.init_extension::<ConfidentialTransferMint>(false)? = *confidential_transfer_mint;
+    *mint.init_extension::<ConfidentialTransferMint>(true)? = *confidential_transfer_mint;
 
     Ok(())
 }
