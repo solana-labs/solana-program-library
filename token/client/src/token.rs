@@ -51,7 +51,7 @@ pub enum TokenError {
     AccountInvalidMint,
     #[error("proof error: {0}")]
     Proof(ProofError),
-    #[error("illegal amount")]
+    #[error("maximum deposit transfer amount exceeded")]
     MaximumDepositTransferAmountExceeded,
 }
 impl PartialEq for TokenError {

@@ -339,8 +339,8 @@ fn process_deposit(
             return Err(TokenError::ConfidentialTransferDepositsAndTransfersDisabled.into());
         }
 
-        if destination_confidential_transfer_account.pending_balance_credit_counter
-            == destination_confidential_transfer_account.maximum_pending_balance_credit_counter
+        if u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
+            >= u64::from(destination_confidential_transfer_account.maximum_pending_balance_credit_counter)
         {
             return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
         }
@@ -723,8 +723,8 @@ fn process_destination_for_transfer(
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
-    if destination_confidential_transfer_account.pending_balance_credit_counter
-        == destination_confidential_transfer_account.maximum_pending_balance_credit_counter
+    if u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
+        >= u64::from(destination_confidential_transfer_account.maximum_pending_balance_credit_counter)
     {
         return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
     }
