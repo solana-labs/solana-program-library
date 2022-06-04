@@ -8,8 +8,10 @@ use {
             confidential_transfer::{self, ConfidentialTransferAccount},
             default_account_state::{self, DefaultAccountState},
             immutable_owner::ImmutableOwner,
+            interest_bearing_mint::{self, InterestBearingConfig},
             memo_transfer::{self, check_previous_sibling_instruction_is_memo, memo_required},
             mint_close_authority::MintCloseAuthority,
+            non_transferable::NonTransferable,
             reallocate,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             ExtensionType, StateWithExtensions, StateWithExtensionsMut,
@@ -290,6 +292,11 @@ impl Processor {
 
             let mint_data = mint_info.try_borrow_data()?;
             let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+
+            if mint.get_extension::<NonTransferable>().is_ok() {
+                return Err(TokenError::NonTransferable.into());
+            }
+
             if expected_decimals != mint.base.decimals {
                 return Err(TokenError::MintDecimalsMismatch.into());
             }
@@ -610,7 +617,7 @@ impl Processor {
                     mint.base.freeze_authority = new_authority;
                     mint.pack_base();
                 }
-                AuthorityType::CloseAccount => {
+                AuthorityType::CloseMint => {
                     let extension = mint.get_extension_mut::<MintCloseAuthority>()?;
                     let maybe_close_authority: Option<Pubkey> = extension.close_authority.into();
                     let close_authority =
@@ -654,6 +661,20 @@ impl Processor {
                     )?;
                     extension.withdraw_withheld_authority = new_authority.try_into()?;
                 }
+                AuthorityType::InterestRate => {
+                    let extension = mint.get_extension_mut::<InterestBearingConfig>()?;
+                    let maybe_rate_authority: Option<Pubkey> = extension.rate_authority.into();
+                    let rate_authority =
+                        maybe_rate_authority.ok_or(TokenError::AuthorityTypeNotSupported)?;
+                    Self::validate_owner(
+                        program_id,
+                        &rate_authority,
+                        authority_info,
+                        authority_info_data_len,
+                        account_info_iter.as_slice(),
+                    )?;
+                    extension.rate_authority = new_authority.try_into()?;
+                }
                 _ => {
                     return Err(TokenError::AuthorityTypeNotSupported.into());
                 }
@@ -694,6 +715,17 @@ impl Processor {
 
         let mut mint_data = mint_info.data.borrow_mut();
         let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
+
+        // If the mint if non-transferable, only allow minting to accounts
+        // with immutable ownership.
+        if mint.get_extension::<NonTransferable>().is_ok()
+            && destination_account
+                .get_extension::<ImmutableOwner>()
+                .is_err()
+        {
+            return Err(TokenError::NonTransferableNeedsImmutableOwnership.into());
+        }
+
         if let Some(expected_decimals) = expected_decimals {
             if expected_decimals != mint.base.decimals {
                 return Err(TokenError::MintDecimalsMismatch.into());
@@ -1043,8 +1075,14 @@ impl Processor {
         let mint_data = mint_info.data.borrow();
         let mint = StateWithExtensions::<Mint>::unpack(&mint_data)
             .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
-        // TODO: update this with interest-bearing token extension logic
-        let ui_amount = crate::amount_to_ui_amount_string_trimmed(amount, mint.base.decimals);
+        let ui_amount = if let Ok(extension) = mint.get_extension::<InterestBearingConfig>() {
+            let unix_timestamp = Clock::get()?.unix_timestamp;
+            extension
+                .amount_to_ui_amount(amount, mint.base.decimals, unix_timestamp)
+                .ok_or(ProgramError::InvalidArgument)?
+        } else {
+            crate::amount_to_ui_amount_string_trimmed(amount, mint.base.decimals)
+        };
 
         set_return_data(&ui_amount.into_bytes());
         Ok(())
@@ -1059,8 +1097,12 @@ impl Processor {
         let mint_data = mint_info.data.borrow();
         let mint = StateWithExtensions::<Mint>::unpack(&mint_data)
             .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
-        // TODO: update this with interest-bearing token extension logic
-        let amount = crate::try_ui_amount_into_amount(ui_amount.to_string(), mint.base.decimals)?;
+        let amount = if let Ok(extension) = mint.get_extension::<InterestBearingConfig>() {
+            let unix_timestamp = Clock::get()?.unix_timestamp;
+            extension.try_ui_amount_into_amount(ui_amount, mint.base.decimals, unix_timestamp)?
+        } else {
+            crate::try_ui_amount_into_amount(ui_amount.to_string(), mint.base.decimals)?
+        };
 
         set_return_data(&amount.to_le_bytes());
         Ok(())
@@ -1109,6 +1151,18 @@ impl Processor {
             },
             &mut native_mint_info.data.borrow_mut(),
         )
+    }
+
+    /// Processes an [InitializeNonTransferableMint](enum.TokenInstruction.html) instruction
+    pub fn process_initialize_non_transferable_mint(accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let mint_account_info = next_account_info(account_info_iter)?;
+
+        let mut mint_data = mint_account_info.data.borrow_mut();
+        let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
+        mint.init_extension::<NonTransferable>()?;
+
+        Ok(())
     }
 
     /// Processes an [Instruction](enum.Instruction.html).
@@ -1259,6 +1313,17 @@ impl Processor {
             TokenInstruction::CreateNativeMint => {
                 msg!("Instruction: CreateNativeMint");
                 Self::process_create_native_mint(accounts)
+            }
+            TokenInstruction::InitializeNonTransferableMint => {
+                msg!("Instruction: InitializeNonTransferableMint");
+                Self::process_initialize_non_transferable_mint(accounts)
+            }
+            TokenInstruction::InterestBearingMintExtension => {
+                interest_bearing_mint::processor::process_instruction(
+                    program_id,
+                    accounts,
+                    &input[1..],
+                )
             }
         }
     }
@@ -1413,6 +1478,12 @@ impl PrintProgramError for TokenError {
             }
             TokenError::NoMemo => {
                 msg!("Error: No memo in previous instruction; required for recipient to receive a transfer");
+            }
+            TokenError::NonTransferable => {
+                msg!("Transfer is disabled for this mint");
+            }
+            TokenError::NonTransferableNeedsImmutableOwnership => {
+                msg!("Non-transferable tokens can't be minted to an account without immutable ownership");
             }
         }
     }

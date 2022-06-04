@@ -11,7 +11,7 @@ use {
         signature::{Keypair, Signer},
         transaction::TransactionError,
     },
-    spl_stake_pool::{error::StakePoolError, state::StakePool},
+    spl_stake_pool::{error::StakePoolError, state::StakePool, MINIMUM_RESERVE_LAMPORTS},
 };
 
 #[tokio::test]
@@ -21,7 +21,12 @@ async fn success_initialize() {
     let stake_pool_accounts = StakePoolAccounts::new_with_deposit_authority(deposit_authority);
     let deposit_authority = stake_pool_accounts.stake_deposit_authority;
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .unwrap();
 
@@ -41,7 +46,12 @@ async fn success_deposit() {
     let stake_pool_accounts =
         StakePoolAccounts::new_with_deposit_authority(stake_deposit_authority);
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .unwrap();
 
@@ -116,7 +126,12 @@ async fn fail_deposit_without_authority_signature() {
     let mut stake_pool_accounts =
         StakePoolAccounts::new_with_deposit_authority(stake_deposit_authority);
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .unwrap();
 

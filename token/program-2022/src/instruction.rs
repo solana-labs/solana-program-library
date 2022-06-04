@@ -571,6 +571,24 @@ pub enum TokenInstruction<'a> {
     ///   2. `[]` System program for mint account funding
     ///
     CreateNativeMint,
+    /// Initialize the non transferable extension for the given mint account
+    ///
+    /// Fails if the account has already been initialized, so must be called before
+    /// `InitializeMint`.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]`  The mint account to initialize.
+    ///
+    /// Data expected by this instruction:
+    ///   None
+    ///
+    InitializeNonTransferableMint,
+    /// The common instruction prefix for Interest Bearing extension instructions.
+    ///
+    /// See `extension::interest_bearing_mint::instruction::InterestBearingMintInstruction` for
+    /// further details about the extended instructions that share this instruction prefix
+    InterestBearingMintExtension,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -699,6 +717,8 @@ impl<'a> TokenInstruction<'a> {
             }
             30 => Self::MemoTransferExtension,
             31 => Self::CreateNativeMint,
+            32 => Self::InitializeNonTransferableMint,
+            33 => Self::InterestBearingMintExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -845,6 +865,12 @@ impl<'a> TokenInstruction<'a> {
             &Self::CreateNativeMint => {
                 buf.push(31);
             }
+            &Self::InitializeNonTransferableMint => {
+                buf.push(32);
+            }
+            &Self::InterestBearingMintExtension => {
+                buf.push(33);
+            }
         };
         buf
     }
@@ -915,12 +941,16 @@ pub enum AuthorityType {
     FreezeAccount,
     /// Owner of a given token account
     AccountOwner,
-    /// Authority to close a mint or token account
+    /// Authority to close a token account
     CloseAccount,
     /// Authority to set the transfer fee
     TransferFeeConfig,
     /// Authority to withdraw withheld tokens from a mint
     WithheldWithdraw,
+    /// Authority to close a mint account
+    CloseMint,
+    /// Authority to set the interest rate
+    InterestRate,
 }
 
 impl AuthorityType {
@@ -932,6 +962,8 @@ impl AuthorityType {
             AuthorityType::CloseAccount => 3,
             AuthorityType::TransferFeeConfig => 4,
             AuthorityType::WithheldWithdraw => 5,
+            AuthorityType::CloseMint => 6,
+            AuthorityType::InterestRate => 7,
         }
     }
 
@@ -943,6 +975,8 @@ impl AuthorityType {
             3 => Ok(AuthorityType::CloseAccount),
             4 => Ok(AuthorityType::TransferFeeConfig),
             5 => Ok(AuthorityType::WithheldWithdraw),
+            6 => Ok(AuthorityType::CloseMint),
+            7 => Ok(AuthorityType::InterestRate),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }
@@ -1680,13 +1714,26 @@ pub fn create_native_mint(
     })
 }
 
+/// Creates an `InitializeNonTransferableMint` instruction
+pub fn initialize_non_transferable_mint(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new(*mint_pubkey, false)],
+        data: TokenInstruction::InitializeNonTransferableMint.pack(),
+    })
+}
+
 /// Utility function that checks index is between MIN_SIGNERS and MAX_SIGNERS
 pub fn is_valid_signer_index(index: usize) -> bool {
     (MIN_SIGNERS..=MAX_SIGNERS).contains(&index)
 }
 
 /// Utility function for decoding just the instruction type
-pub(crate) fn decode_instruction_type<T: TryFrom<u8>>(input: &[u8]) -> Result<T, ProgramError> {
+pub fn decode_instruction_type<T: TryFrom<u8>>(input: &[u8]) -> Result<T, ProgramError> {
     if input.is_empty() {
         Err(ProgramError::InvalidInstructionData)
     } else {
@@ -1695,7 +1742,7 @@ pub(crate) fn decode_instruction_type<T: TryFrom<u8>>(input: &[u8]) -> Result<T,
 }
 
 /// Utility function for decoding instruction data
-pub(crate) fn decode_instruction_data<T: Pod>(input: &[u8]) -> Result<&T, ProgramError> {
+pub fn decode_instruction_data<T: Pod>(input: &[u8]) -> Result<&T, ProgramError> {
     if input.len() != pod_get_packed_len::<T>().saturating_add(1) {
         Err(ProgramError::InvalidInstructionData)
     } else {
@@ -1989,5 +2036,235 @@ mod test {
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
+
+    macro_rules! test_instruction {
+        ($a:ident($($b:tt)*)) => {
+            let instruction_v3 = spl_token::instruction::$a($($b)*).unwrap();
+            let instruction_2022 = $a($($b)*).unwrap();
+            assert_eq!(instruction_v3, instruction_2022);
+        }
+    }
+
+    #[test]
+    fn test_v3_compatibility() {
+        let token_program_id = spl_token::id();
+        let mint_pubkey = Pubkey::new_unique();
+        let mint_authority_pubkey = Pubkey::new_unique();
+        let freeze_authority_pubkey = Pubkey::new_unique();
+        let decimals = 9u8;
+
+        let account_pubkey = Pubkey::new_unique();
+        let owner_pubkey = Pubkey::new_unique();
+
+        let multisig_pubkey = Pubkey::new_unique();
+        let signer_pubkeys_vec = vec![Pubkey::new_unique(); MAX_SIGNERS];
+        let signer_pubkeys = signer_pubkeys_vec.iter().collect::<Vec<_>>();
+        let m = 10u8;
+
+        let source_pubkey = Pubkey::new_unique();
+        let destination_pubkey = Pubkey::new_unique();
+        let authority_pubkey = Pubkey::new_unique();
+        let amount = 1_000_000_000_000;
+
+        let delegate_pubkey = Pubkey::new_unique();
+        let owned_pubkey = Pubkey::new_unique();
+        let new_authority_pubkey = Pubkey::new_unique();
+
+        let ui_amount = "100000.00";
+
+        test_instruction!(initialize_mint(
+            &token_program_id,
+            &mint_pubkey,
+            &mint_authority_pubkey,
+            None,
+            decimals,
+        ));
+        test_instruction!(initialize_mint2(
+            &token_program_id,
+            &mint_pubkey,
+            &mint_authority_pubkey,
+            Some(&freeze_authority_pubkey),
+            decimals,
+        ));
+
+        test_instruction!(initialize_account(
+            &token_program_id,
+            &account_pubkey,
+            &mint_pubkey,
+            &owner_pubkey,
+        ));
+        test_instruction!(initialize_account2(
+            &token_program_id,
+            &account_pubkey,
+            &mint_pubkey,
+            &owner_pubkey,
+        ));
+        test_instruction!(initialize_account3(
+            &token_program_id,
+            &account_pubkey,
+            &mint_pubkey,
+            &owner_pubkey,
+        ));
+        test_instruction!(initialize_multisig(
+            &token_program_id,
+            &multisig_pubkey,
+            &signer_pubkeys,
+            m,
+        ));
+        test_instruction!(initialize_multisig2(
+            &token_program_id,
+            &multisig_pubkey,
+            &signer_pubkeys,
+            m,
+        ));
+        #[allow(deprecated)]
+        {
+            test_instruction!(transfer(
+                &token_program_id,
+                &source_pubkey,
+                &destination_pubkey,
+                &authority_pubkey,
+                &signer_pubkeys,
+                amount
+            ));
+        }
+        test_instruction!(transfer_checked(
+            &token_program_id,
+            &source_pubkey,
+            &mint_pubkey,
+            &destination_pubkey,
+            &authority_pubkey,
+            &signer_pubkeys,
+            amount,
+            decimals,
+        ));
+        test_instruction!(approve(
+            &token_program_id,
+            &source_pubkey,
+            &delegate_pubkey,
+            &owner_pubkey,
+            &signer_pubkeys,
+            amount
+        ));
+        test_instruction!(approve_checked(
+            &token_program_id,
+            &source_pubkey,
+            &mint_pubkey,
+            &delegate_pubkey,
+            &owner_pubkey,
+            &signer_pubkeys,
+            amount,
+            decimals
+        ));
+        test_instruction!(revoke(
+            &token_program_id,
+            &source_pubkey,
+            &owner_pubkey,
+            &signer_pubkeys,
+        ));
+
+        // set_authority
+        {
+            let instruction_v3 = spl_token::instruction::set_authority(
+                &token_program_id,
+                &owned_pubkey,
+                Some(&new_authority_pubkey),
+                spl_token::instruction::AuthorityType::AccountOwner,
+                &owner_pubkey,
+                &signer_pubkeys,
+            )
+            .unwrap();
+            let instruction_2022 = set_authority(
+                &token_program_id,
+                &owned_pubkey,
+                Some(&new_authority_pubkey),
+                AuthorityType::AccountOwner,
+                &owner_pubkey,
+                &signer_pubkeys,
+            )
+            .unwrap();
+            assert_eq!(instruction_v3, instruction_2022);
+        }
+
+        test_instruction!(mint_to(
+            &token_program_id,
+            &mint_pubkey,
+            &account_pubkey,
+            &owner_pubkey,
+            &signer_pubkeys,
+            amount,
+        ));
+        test_instruction!(mint_to_checked(
+            &token_program_id,
+            &mint_pubkey,
+            &account_pubkey,
+            &owner_pubkey,
+            &signer_pubkeys,
+            amount,
+            decimals,
+        ));
+        test_instruction!(burn(
+            &token_program_id,
+            &account_pubkey,
+            &mint_pubkey,
+            &authority_pubkey,
+            &signer_pubkeys,
+            amount,
+        ));
+        test_instruction!(burn_checked(
+            &token_program_id,
+            &account_pubkey,
+            &mint_pubkey,
+            &authority_pubkey,
+            &signer_pubkeys,
+            amount,
+            decimals,
+        ));
+        test_instruction!(close_account(
+            &token_program_id,
+            &account_pubkey,
+            &destination_pubkey,
+            &owner_pubkey,
+            &signer_pubkeys,
+        ));
+        test_instruction!(freeze_account(
+            &token_program_id,
+            &account_pubkey,
+            &mint_pubkey,
+            &owner_pubkey,
+            &signer_pubkeys,
+        ));
+        test_instruction!(thaw_account(
+            &token_program_id,
+            &account_pubkey,
+            &mint_pubkey,
+            &owner_pubkey,
+            &signer_pubkeys,
+        ));
+        test_instruction!(sync_native(&token_program_id, &account_pubkey,));
+
+        // get_account_data_size
+        {
+            let instruction_v3 =
+                spl_token::instruction::get_account_data_size(&token_program_id, &mint_pubkey)
+                    .unwrap();
+            let instruction_2022 =
+                get_account_data_size(&token_program_id, &mint_pubkey, &[]).unwrap();
+            assert_eq!(instruction_v3, instruction_2022);
+        }
+
+        test_instruction!(initialize_immutable_owner(
+            &token_program_id,
+            &account_pubkey,
+        ));
+
+        test_instruction!(amount_to_ui_amount(&token_program_id, &mint_pubkey, amount,));
+
+        test_instruction!(ui_amount_to_amount(
+            &token_program_id,
+            &mint_pubkey,
+            ui_amount,
+        ));
     }
 }

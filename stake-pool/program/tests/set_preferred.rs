@@ -17,6 +17,7 @@ use {
         error, find_transient_stake_program_address, id,
         instruction::{self, PreferredValidatorType},
         state::StakePool,
+        MINIMUM_RESERVE_LAMPORTS,
     },
 };
 
@@ -30,7 +31,12 @@ async fn setup() -> (
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .unwrap();
 

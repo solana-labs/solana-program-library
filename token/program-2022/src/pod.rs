@@ -80,37 +80,48 @@ impl From<PodBool> for bool {
     }
 }
 
-/// The standard `u16` can cause alignment issues when placed in a `Pod`, define a replacement that
-/// is usable in all `Pod`s
+/// Simple macro for implementing conversion functions between Pod* ints and standard ints.
+///
+/// The standard int types can cause alignment issues when placed in a `Pod`,
+/// so these replacements are usable in all `Pod`s.
+macro_rules! impl_int_conversion {
+    ($P:ty, $I:ty) => {
+        impl From<$I> for $P {
+            fn from(n: $I) -> Self {
+                Self(n.to_le_bytes())
+            }
+        }
+        impl From<$P> for $I {
+            fn from(pod: $P) -> Self {
+                Self::from_le_bytes(pod.0)
+            }
+        }
+    };
+}
+
+/// `u16` type that can be used in `Pod`s
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct PodU16([u8; 2]);
-impl From<u16> for PodU16 {
-    fn from(n: u16) -> Self {
-        Self(n.to_le_bytes())
-    }
-}
-impl From<PodU16> for u16 {
-    fn from(pod: PodU16) -> Self {
-        Self::from_le_bytes(pod.0)
-    }
-}
+impl_int_conversion!(PodU16, u16);
 
-/// The standard `u64` can cause alignment issues when placed in a `Pod`, define a replacement that
-/// is usable in all `Pod`s
+/// `i16` type that can be used in `Pod`s
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+#[repr(transparent)]
+pub struct PodI16([u8; 2]);
+impl_int_conversion!(PodI16, i16);
+
+/// `u64` type that can be used in `Pod`s
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct PodU64([u8; 8]);
-impl From<u64> for PodU64 {
-    fn from(n: u64) -> Self {
-        Self(n.to_le_bytes())
-    }
-}
-impl From<PodU64> for u64 {
-    fn from(pod: PodU64) -> Self {
-        Self::from_le_bytes(pod.0)
-    }
-}
+impl_int_conversion!(PodU64, u64);
+
+/// `i64` type that can be used in `Pod`s
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+#[repr(transparent)]
+pub struct PodI64([u8; 8]);
+impl_int_conversion!(PodI64, i64);
 
 /// On-chain size of a `Pod` type
 pub fn pod_get_packed_len<T: Pod>() -> usize {

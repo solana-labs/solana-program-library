@@ -66,21 +66,18 @@ index efea219043..473a92ecfe 100644
 
  bitflags! {
      #[repr(C)]
-diff --git a/web3.js/src/transaction.ts b/web3.js/src/transaction.ts
-index 5466464f5a..5b71b9dc39 100644
---- a/web3.js/src/transaction.ts
-+++ b/web3.js/src/transaction.ts
-@@ -29,8 +29,10 @@ const DEFAULT_SIGNATURE = Buffer.alloc(64).fill(0);
-  * 1280 is IPv6 minimum MTU
+diff --git a/web3.js/src/transaction-constants.ts b/web3.js/src/transaction-constants.ts
+index 591873f8b6..f94d5778ba 100644
+--- a/web3.js/src/transaction-constants.ts
++++ b/web3.js/src/transaction-constants.ts
+@@ -5,6 +5,6 @@
   * 40 bytes is the size of the IPv6 header
   * 8 bytes is the size of the fragment header
-+ *
-+ * Double the minimum to support larger than MTU transactions
   */
 -export const PACKET_DATA_SIZE = 1280 - 40 - 8;
 +export const PACKET_DATA_SIZE = 2464;
 
- const SIGNATURE_LENGTH = 64;
+ export const SIGNATURE_LENGTH_IN_BYTES = 64;
 
 --
 2.32.0 (Apple Git-132)

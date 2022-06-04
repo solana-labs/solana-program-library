@@ -67,7 +67,7 @@ async fn set_authority() {
         .set_authority(
             token.get_address(),
             Some(&new_authority.pubkey()),
-            instruction::AuthorityType::CloseAccount,
+            instruction::AuthorityType::CloseMint,
             &wrong,
         )
         .await
@@ -87,7 +87,7 @@ async fn set_authority() {
         .set_authority(
             token.get_address(),
             Some(&new_authority.pubkey()),
-            instruction::AuthorityType::CloseAccount,
+            instruction::AuthorityType::CloseMint,
             &close_authority,
         )
         .await
@@ -104,7 +104,7 @@ async fn set_authority() {
         .set_authority(
             token.get_address(),
             None,
-            instruction::AuthorityType::CloseAccount,
+            instruction::AuthorityType::CloseMint,
             &new_authority,
         )
         .await
@@ -118,7 +118,7 @@ async fn set_authority() {
         .set_authority(
             token.get_address(),
             Some(&close_authority.pubkey()),
-            instruction::AuthorityType::CloseAccount,
+            instruction::AuthorityType::CloseMint,
             &new_authority,
         )
         .await
@@ -187,7 +187,7 @@ async fn fail_without_extension() {
         .set_authority(
             token.get_address(),
             Some(&close_authority),
-            instruction::AuthorityType::CloseAccount,
+            instruction::AuthorityType::CloseMint,
             &mint_authority,
         )
         .await

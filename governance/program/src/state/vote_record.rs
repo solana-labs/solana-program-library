@@ -17,6 +17,9 @@ use crate::PROGRAM_AUTHORITY_SEED;
 use crate::state::{
     enums::GovernanceAccountType,
     legacy::{VoteRecordV1, VoteWeightV1},
+    proposal::ProposalV2,
+    realm::RealmV2,
+    token_owner_record::TokenOwnerRecordV2,
 };
 
 /// Voter choice for a proposal option
@@ -57,8 +60,26 @@ pub enum Vote {
     Abstain,
 
     /// Veto proposal
-    /// Note: Not supported in the current version
     Veto,
+}
+
+/// VoteKind defines the type of the vote being cast
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum VoteKind {
+    /// Electorate vote is cast by the voting population identified by governing_token_mint
+    /// Approve, Deny and Abstain votes are Electorate votes
+    Electorate,
+
+    /// Vote cast by the opposite voting population to the Electorate identified by governing_token_mint
+    Veto,
+}
+
+/// Returns the VoteKind for the given Vote
+pub fn get_vote_kind(vote: &Vote) -> VoteKind {
+    match vote {
+        Vote::Approve(_) | Vote::Deny | Vote::Abstain => VoteKind::Electorate,
+        Vote::Veto => VoteKind::Veto,
+    }
 }
 
 /// Proposal VoteRecord
@@ -177,12 +198,14 @@ pub fn get_vote_record_data(
     get_account_data::<VoteRecordV2>(program_id, vote_record_info)
 }
 
-/// Deserializes VoteRecord and checks it belongs to the provided Proposal and Governing Token Owner
-pub fn get_vote_record_data_for_proposal_and_token_owner(
+/// Deserializes VoteRecord and checks it belongs to the provided Proposal and TokenOwnerRecord
+pub fn get_vote_record_data_for_proposal_and_token_owner_record(
     program_id: &Pubkey,
     vote_record_info: &AccountInfo,
+    realm_data: &RealmV2,
     proposal: &Pubkey,
-    governing_token_owner: &Pubkey,
+    proposal_data: &ProposalV2,
+    token_owner_record_data: &TokenOwnerRecordV2,
 ) -> Result<VoteRecordV2, ProgramError> {
     let vote_record_data = get_vote_record_data(program_id, vote_record_info)?;
 
@@ -190,8 +213,20 @@ pub fn get_vote_record_data_for_proposal_and_token_owner(
         return Err(GovernanceError::InvalidProposalForVoterRecord.into());
     }
 
-    if vote_record_data.governing_token_owner != *governing_token_owner {
+    if vote_record_data.governing_token_owner != token_owner_record_data.governing_token_owner {
         return Err(GovernanceError::InvalidGoverningTokenOwnerForVoteRecord.into());
+    }
+
+    // Assert governing_token_mint between Proposal and TokenOwnerRecord match for the deserialized VoteRecord
+    // For Approve, Deny and Abstain votes Proposal.governing_token_mint must equal TokenOwnerRecord.governing_token_mint
+    // For Veto vote it must be the governing_token_mint of the opposite voting population
+    let proposal_governing_token_mint = realm_data.get_proposal_governing_token_mint_for_vote(
+        &token_owner_record_data.governing_token_mint,
+        &get_vote_kind(&vote_record_data.vote),
+    )?;
+
+    if proposal_data.governing_token_mint != proposal_governing_token_mint {
+        return Err(GovernanceError::InvalidGoverningMintForProposal.into());
     }
 
     Ok(vote_record_data)

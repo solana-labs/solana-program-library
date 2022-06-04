@@ -267,6 +267,18 @@ async fn set_fee() {
         }])
         .await
         .unwrap();
+
+    // warp to first normal slot to easily calculate epochs
+    let epoch_schedule = context.context.lock().await.genesis_config().epoch_schedule;
+    let first_normal_slot = epoch_schedule.first_normal_slot;
+    let slots_per_epoch = epoch_schedule.slots_per_epoch;
+    context
+        .context
+        .lock()
+        .await
+        .warp_to_slot(first_normal_slot)
+        .unwrap();
+
     let token = context.token_context.unwrap().token;
 
     // set to something new, old fee not touched
@@ -315,9 +327,43 @@ async fn set_fee() {
     );
     assert_eq!(extension.older_transfer_fee, newer_transfer_fee);
 
-    // warp forward one epoch, new fee becomes old fee during set
+    // warp forward one epoch, old fee still not touched when set
+    let new_transfer_fee_basis_points = 10;
+    let new_maximum_fee = 10;
+    context
+        .context
+        .lock()
+        .await
+        .warp_to_slot(first_normal_slot + slots_per_epoch)
+        .unwrap();
+    token
+        .set_transfer_fee(
+            &transfer_fee_config_authority,
+            new_transfer_fee_basis_points,
+            new_maximum_fee,
+        )
+        .await
+        .unwrap();
+    let state = token.get_mint_info().await.unwrap();
+    let extension = state.get_extension::<TransferFeeConfig>().unwrap();
+    assert_eq!(
+        extension.newer_transfer_fee.transfer_fee_basis_points,
+        new_transfer_fee_basis_points.into()
+    );
+    assert_eq!(
+        extension.newer_transfer_fee.maximum_fee,
+        new_maximum_fee.into()
+    );
+    assert_eq!(extension.older_transfer_fee, newer_transfer_fee);
+
+    // warp forward two epochs, old fee is replaced on set
     let newer_transfer_fee = extension.newer_transfer_fee;
-    context.context.lock().await.warp_to_slot(10_000).unwrap();
+    context
+        .context
+        .lock()
+        .await
+        .warp_to_slot(first_normal_slot + 3 * slots_per_epoch)
+        .unwrap();
     let new_transfer_fee_basis_points = MAX_FEE_BASIS_POINTS;
     let new_maximum_fee = u64::MAX;
     token

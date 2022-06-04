@@ -241,11 +241,6 @@ fn process_empty_account(
     }
 
     confidential_transfer_account.available_balance = EncryptedBalance::zeroed();
-
-    if confidential_transfer_account.withheld_amount != EncryptedWithheldAmount::zeroed() {
-        msg!("Withheld amount is not zero");
-        return Err(ProgramError::InvalidAccountData);
-    }
     confidential_transfer_account.closable()?;
 
     Ok(())
@@ -482,12 +477,12 @@ fn process_transfer(
     if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
         // mint is extended for fees
         let proof_data = decode_proof_instruction::<TransferWithFeeData>(
-            ProofInstruction::VerifyTransfer,
+            ProofInstruction::VerifyTransferWithFee,
             &previous_instruction,
         )?;
 
         if proof_data.transfer_with_fee_pubkeys.auditor_pubkey
-            != confidential_transfer_mint.auditor_pubkey
+            != confidential_transfer_mint.auditor_encryption_pubkey
         {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
@@ -496,7 +491,7 @@ fn process_transfer(
         if proof_data
             .transfer_with_fee_pubkeys
             .withdraw_withheld_authority_pubkey
-            != confidential_transfer_mint.withdraw_withheld_authority_pubkey
+            != confidential_transfer_mint.withdraw_withheld_authority_encryption_pubkey
         {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
@@ -551,13 +546,20 @@ fn process_transfer(
             &ciphertext_hi,
             new_source_decryptable_available_balance,
         )?;
+
+        let fee_ciphertext = if token_account_info.key == destination_token_account_info.key {
+            None
+        } else {
+            Some(proof_data.fee_ciphertext)
+        };
+
         process_destination_for_transfer(
             destination_token_account_info,
             mint_info,
             &proof_data.transfer_with_fee_pubkeys.destination_pubkey,
             &ciphertext_lo,
             &ciphertext_hi,
-            Some(proof_data.fee_ciphertext),
+            fee_ciphertext,
         )?;
     } else {
         // mint is not extended for fees
@@ -566,7 +568,9 @@ fn process_transfer(
             &previous_instruction,
         )?;
 
-        if proof_data.transfer_pubkeys.auditor_pubkey != confidential_transfer_mint.auditor_pubkey {
+        if proof_data.transfer_pubkeys.auditor_pubkey
+            != confidential_transfer_mint.auditor_encryption_pubkey
+        {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
 
@@ -578,6 +582,7 @@ fn process_transfer(
             proof_data.ciphertext_hi.commitment,
             proof_data.ciphertext_hi.source_handle,
         ));
+
         process_source_for_transfer(
             program_id,
             token_account_info,
@@ -875,7 +880,7 @@ fn process_withdraw_withheld_tokens_from_mint(
 
     // withdraw withheld authority ElGamal pubkey should match in the proof data and mint
     if proof_data.withdraw_withheld_authority_pubkey
-        != confidential_transfer_mint.withdraw_withheld_authority_pubkey
+        != confidential_transfer_mint.withdraw_withheld_authority_encryption_pubkey
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
@@ -998,7 +1003,7 @@ fn process_withdraw_withheld_tokens_from_accounts(
     // withdraw withheld authority ElGamal pubkey should match in the proof data and mint
     let confidential_transfer_mint = mint.get_extension_mut::<ConfidentialTransferMint>()?;
     if proof_data.withdraw_withheld_authority_pubkey
-        != confidential_transfer_mint.withdraw_withheld_authority_pubkey
+        != confidential_transfer_mint.withdraw_withheld_authority_encryption_pubkey
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
@@ -1161,6 +1166,23 @@ pub(crate) fn process_instruction(
             }
             #[cfg(not(feature = "zk-ops"))]
             Err(ProgramError::InvalidInstructionData)
+        }
+        ConfidentialTransferInstruction::TransferWithFee => {
+            msg!("ConfidentialTransferInstruction::TransferWithFee");
+            #[cfg(feature = "zk-ops")]
+            {
+                let data = decode_instruction_data::<TransferWithFeeInstructionData>(input)?;
+                process_transfer(
+                    program_id,
+                    accounts,
+                    data.new_source_decryptable_available_balance,
+                    data.proof_instruction_offset as i64,
+                )
+            }
+            #[cfg(not(feature = "zk-ops"))]
+            {
+                Err(ProgramError::InvalidInstructionData)
+            }
         }
         ConfidentialTransferInstruction::ApplyPendingBalance => {
             msg!("ConfidentialTransferInstruction::ApplyPendingBalance");

@@ -16,6 +16,7 @@ import stake.instructions as st
 from stake.state import StakeAuthorize
 from stake_pool.constants import \
     MAX_VALIDATORS_TO_UPDATE, \
+    MINIMUM_RESERVE_LAMPORTS, \
     STAKE_POOL_PROGRAM_ID, \
     find_stake_program_address, \
     find_transient_stake_program_address, \
@@ -98,7 +99,7 @@ async def create_all(client: AsyncClient, manager: Keypair, fee: Fee, referral_f
         STAKE_POOL_PROGRAM_ID, stake_pool.public_key)
 
     reserve_stake = Keypair()
-    await create_stake(client, manager, reserve_stake, pool_withdraw_authority, 1)
+    await create_stake(client, manager, reserve_stake, pool_withdraw_authority, MINIMUM_RESERVE_LAMPORTS)
 
     pool_mint = Keypair()
     await create_mint(client, manager, pool_mint, pool_withdraw_authority)
@@ -492,6 +493,11 @@ async def increase_validator_stake(
         stake_pool_address,
         transient_stake_seed,
     )
+    (validator_stake, _) = find_stake_program_address(
+        STAKE_POOL_PROGRAM_ID,
+        validator_info.vote_account_address,
+        stake_pool_address,
+    )
 
     txn = Transaction()
     txn.add(
@@ -504,6 +510,7 @@ async def increase_validator_stake(
                 validator_list=stake_pool.validator_list,
                 reserve_stake=stake_pool.reserve_stake,
                 transient_stake=transient_stake,
+                validator_stake=validator_stake,
                 validator_vote=validator_vote,
                 clock_sysvar=SYSVAR_CLOCK_PUBKEY,
                 rent_sysvar=SYSVAR_RENT_PUBKEY,

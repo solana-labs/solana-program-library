@@ -12,12 +12,9 @@ use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
 use crate::{error::GovernanceError, PROGRAM_AUTHORITY_SEED};
 
-use crate::state::enums::GovernanceAccountType;
-
-use super::legacy::SignatoryRecordV1;
+use crate::state::{enums::GovernanceAccountType, legacy::SignatoryRecordV1};
 
 /// Account PDA seeds: ['governance', proposal, signatory]
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct SignatoryRecordV2 {
     /// Governance account type

@@ -649,6 +649,7 @@ fn command_transfer(
     memo: Option<String>,
     bulk_signers: BulkSigners,
     no_wait: bool,
+    allow_non_system_account_recipient: bool,
 ) -> CommandResult {
     let sender = if let Some(sender) = sender {
         sender
@@ -709,17 +710,31 @@ fn command_transfer(
             .get_account_with_commitment(&recipient, config.rpc_client.commitment())?
             .value
             .map(|account| {
-                account.owner == config.program_id && account.data.len() == Account::LEN
+                (
+                    account.owner == config.program_id && account.data.len() == Account::LEN,
+                    account.owner == system_program::id(),
+                )
             });
-
-        if recipient_account_info.is_none() && !allow_unfunded_recipient {
+        if let Some((recipient_is_token_account, recipient_is_system_account)) =
+            recipient_account_info
+        {
+            if !recipient_is_token_account
+                && !recipient_is_system_account
+                && !allow_non_system_account_recipient
+            {
+                return Err("Error: The recipient address is not owned by the System Program. \
+                                     Add `--allow-non-system-account-recipient` to complete the transfer. \
+                                    ".into());
+            }
+        } else if recipient_account_info.is_none() && !allow_unfunded_recipient {
             return Err("Error: The recipient address is not funded. \
-                                    Add `--allow-unfunded-recipient` to complete the transfer \
+                                    Add `--allow-unfunded-recipient` to complete the transfer. \
                                    "
             .into());
         }
-
-        recipient_account_info.unwrap_or(false)
+        recipient_account_info
+            .map(|(recipient_is_token_account, _)| recipient_is_token_account)
+            .unwrap_or(false)
     } else {
         !recipient_is_ata_owner
     };
@@ -2025,6 +2040,12 @@ fn app<'a, 'b>(
                         .help("Return signature immediately after submitting the transaction, instead of waiting for confirmations"),
                 )
                 .arg(
+                    Arg::with_name("allow_non_system_account_recipient")
+                        .long("allow-non-system-account-recipient")
+                        .takes_value(false)
+                        .help("Send tokens to the recipient even if the recipient is not a wallet owned by System Program."),
+                )
+                .arg(
                     Arg::with_name("recipient_is_ata_owner")
                         .long("recipient-is-ata-owner")
                         .takes_value(false)
@@ -2785,6 +2806,7 @@ fn process_command(
                 memo,
                 bulk_signers,
                 arg_matches.is_present("no_wait"),
+                arg_matches.is_present("allow_non_system_account_recipient"),
             )
         }
         ("burn", arg_matches) => {
@@ -3474,6 +3496,65 @@ mod tests {
                 "spl-token",
                 "transfer",
                 "--fund-recipient",
+                "--allow-unfunded-recipient",
+                &token.to_string(),
+                "10",
+                &recipient,
+            ],
+        );
+        result.unwrap();
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&source)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.token_amount.amount, "90");
+    }
+
+    #[test]
+    fn failing_to_allow_non_system_account_recipient() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+
+        let token = create_token(&config, &payer);
+        let source = create_associated_account(&config, &payer, token);
+        let recipient = token.to_string();
+        let ui_amount = 100.0;
+        mint_tokens(&config, &payer, token, ui_amount, source);
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                "transfer",
+                "--fund-recipient",
+                &token.to_string(),
+                "10",
+                &recipient,
+            ],
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn allow_non_system_account_recipient() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+
+        let token = create_token(&config, &payer);
+        let source = create_associated_account(&config, &payer, token);
+        let recipient = token.to_string();
+        let ui_amount = 100.0;
+        mint_tokens(&config, &payer, token, ui_amount, source);
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                "transfer",
+                "--fund-recipient",
+                "--allow-non-system-account-recipient",
                 "--allow-unfunded-recipient",
                 &token.to_string(),
                 "10",

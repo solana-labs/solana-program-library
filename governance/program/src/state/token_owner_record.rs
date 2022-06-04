@@ -28,7 +28,6 @@ use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct TokenOwnerRecordV2 {
     /// Governance account type

@@ -166,13 +166,14 @@ pub enum StakePoolInstruction {
     ///  3. `[w]` Validator list
     ///  4. `[w]` Stake pool reserve stake
     ///  5. `[w]` Transient stake account
-    ///  6. `[]` Validator vote account to delegate to
-    ///  7. '[]' Clock sysvar
-    ///  8. '[]' Rent sysvar
-    ///  9. `[]` Stake History sysvar
-    /// 10. `[]` Stake Config sysvar
-    /// 11. `[]` System program
-    /// 12. `[]` Stake program
+    ///  6. `[]` Validator stake account
+    ///  7. `[]` Validator vote account to delegate to
+    ///  8. '[]' Clock sysvar
+    ///  9. '[]' Rent sysvar
+    /// 10. `[]` Stake History sysvar
+    /// 11. `[]` Stake Config sysvar
+    /// 12. `[]` System program
+    /// 13. `[]` Stake program
     ///  userdata: amount of lamports to increase on the given validator.
     ///  The actual amount split into the transient stake account is:
     ///  `lamports + stake_rent_exemption`
@@ -538,6 +539,7 @@ pub fn increase_validator_stake(
     validator_list: &Pubkey,
     reserve_stake: &Pubkey,
     transient_stake: &Pubkey,
+    validator_stake: &Pubkey,
     validator: &Pubkey,
     lamports: u64,
     transient_stake_seed: u64,
@@ -549,6 +551,7 @@ pub fn increase_validator_stake(
         AccountMeta::new(*validator_list, false),
         AccountMeta::new(*reserve_stake, false),
         AccountMeta::new(*transient_stake, false),
+        AccountMeta::new_readonly(*validator_stake, false),
         AccountMeta::new_readonly(*validator, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
@@ -671,6 +674,8 @@ pub fn increase_validator_stake_with_vote(
         stake_pool_address,
         transient_stake_seed,
     );
+    let (validator_stake_address, _) =
+        find_stake_program_address(program_id, vote_account_address, stake_pool_address);
 
     increase_validator_stake(
         program_id,
@@ -680,6 +685,7 @@ pub fn increase_validator_stake_with_vote(
         &stake_pool.validator_list,
         &stake_pool.reserve_stake,
         &transient_stake_address,
+        &validator_stake_address,
         vote_account_address,
         lamports,
         transient_stake_seed,

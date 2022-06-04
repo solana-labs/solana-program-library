@@ -8,7 +8,6 @@ use solana_program::{
 use spl_governance_tools::account::{assert_is_valid_account_of_type, AccountMaxSize};
 
 /// Defines all GovernanceChat accounts types
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum GovernanceChatAccountType {
     /// Default uninitialized account state

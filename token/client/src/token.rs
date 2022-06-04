@@ -1,37 +1,41 @@
-use crate::client::{ProgramClient, ProgramClientError, SendTransaction};
-use solana_program_test::tokio::time;
-use solana_sdk::{
-    account::Account as BaseAccount,
-    hash::Hash,
-    instruction::Instruction,
-    program_error::ProgramError,
-    pubkey::Pubkey,
-    signer::{signers::Signers, Signer},
-    system_instruction,
-    transaction::Transaction,
-};
-use spl_associated_token_account::{
-    get_associated_token_address_with_program_id, instruction::create_associated_token_account,
-};
-use spl_token_2022::{
-    extension::{
-        confidential_transfer, default_account_state, memo_transfer, transfer_fee, ExtensionType,
-        StateWithExtensionsOwned,
+use {
+    crate::client::{ProgramClient, ProgramClientError, SendTransaction},
+    solana_program_test::tokio::time,
+    solana_sdk::{
+        account::Account as BaseAccount,
+        epoch_info::EpochInfo,
+        hash::Hash,
+        instruction::Instruction,
+        program_error::ProgramError,
+        pubkey::Pubkey,
+        signer::{signers::Signers, Signer},
+        system_instruction,
+        transaction::Transaction,
     },
-    instruction, native_mint,
-    solana_zk_token_sdk::{
-        encryption::{auth_encryption::*, elgamal::*},
-        errors::ProofError,
+    spl_associated_token_account::{
+        get_associated_token_address_with_program_id, instruction::create_associated_token_account,
     },
-    state::{Account, AccountState, Mint},
+    spl_token_2022::{
+        extension::{
+            confidential_transfer, default_account_state, interest_bearing_mint, memo_transfer,
+            transfer_fee, ExtensionType, StateWithExtensionsOwned,
+        },
+        instruction, native_mint,
+        solana_zk_token_sdk::{
+            encryption::{auth_encryption::*, elgamal::*},
+            errors::ProofError,
+            instruction::transfer_with_fee::FeeParameters,
+        },
+        state::{Account, AccountState, Mint},
+    },
+    std::{
+        convert::TryInto,
+        fmt, io,
+        sync::{Arc, RwLock},
+        time::{Duration, Instant},
+    },
+    thiserror::Error,
 };
-use std::{
-    convert::TryInto,
-    fmt, io,
-    sync::{Arc, RwLock},
-    time::{Duration, Instant},
-};
-use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum TokenError {
@@ -80,6 +84,10 @@ pub enum ExtensionInitializationParams {
         transfer_fee_basis_points: u16,
         maximum_fee: u64,
     },
+    InterestBearingConfig {
+        rate_authority: Option<Pubkey>,
+        rate: i16,
+    },
 }
 impl ExtensionInitializationParams {
     /// Get the extension type associated with the init params
@@ -89,6 +97,7 @@ impl ExtensionInitializationParams {
             Self::DefaultAccountState { .. } => ExtensionType::DefaultAccountState,
             Self::MintCloseAuthority { .. } => ExtensionType::MintCloseAuthority,
             Self::TransferFeeConfig { .. } => ExtensionType::TransferFeeConfig,
+            Self::InterestBearingConfig { .. } => ExtensionType::InterestBearingConfig,
         }
     }
     /// Generate an appropriate initialization instruction for the given mint
@@ -131,6 +140,15 @@ impl ExtensionInitializationParams {
                 withdraw_withheld_authority.as_ref(),
                 transfer_fee_basis_points,
                 maximum_fee,
+            ),
+            Self::InterestBearingConfig {
+                rate_authority,
+                rate,
+            } => interest_bearing_mint::instruction::initialize(
+                token_program_id,
+                mint,
+                rate_authority,
+                rate,
             ),
         }
     }
@@ -909,6 +927,25 @@ where
         .await
     }
 
+    /// Update interest rate
+    pub async fn update_interest_rate<S2: Signer>(
+        &self,
+        authority: &S2,
+        new_rate: i16,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[interest_bearing_mint::instruction::update_rate(
+                &self.program_id,
+                self.get_address(),
+                &authority.pubkey(),
+                &[],
+                new_rate,
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
     /// Update confidential transfer mint
     pub async fn confidential_transfer_update_mint<S2: Signer>(
         &self,
@@ -945,7 +982,7 @@ where
                 &self.program_id,
                 token_account,
                 &self.pubkey,
-                elgamal_pubkey,
+                elgamal_pubkey.into(),
                 decryptable_zero_balance,
                 &authority.pubkey(),
                 &[],
@@ -1127,13 +1164,87 @@ where
             source_elgamal_keypair,
             (
                 &destination_extension.encryption_pubkey.try_into().unwrap(),
-                &ct_mint.auditor_pubkey.try_into().unwrap(),
+                &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
             ),
         )
         .map_err(TokenError::Proof)?;
 
         self.process_ixs(
             &confidential_transfer::instruction::transfer(
+                &self.program_id,
+                source_token_account,
+                destination_token_account,
+                &self.pubkey,
+                new_source_decryptable_available_balance,
+                &source_token_authority.pubkey(),
+                &[],
+                &proof_data,
+            )?,
+            &[source_token_authority],
+        )
+        .await
+    }
+
+    /// Transfer tokens confidentially with fee
+    #[allow(clippy::too_many_arguments)]
+    pub async fn confidential_transfer_transfer_with_fee<S2: Signer>(
+        &self,
+        source_token_account: &Pubkey,
+        destination_token_account: &Pubkey,
+        source_token_authority: &S2,
+        amount: u64,
+        source_available_balance: u64,
+        source_elgamal_keypair: &ElGamalKeypair,
+        new_source_decryptable_available_balance: AeCiphertext,
+        epoch_info: &EpochInfo,
+    ) -> TokenResult<T::Output> {
+        let source_state = self.get_account_info(source_token_account).await.unwrap();
+        let source_extension =
+            source_state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;
+
+        let destination_state = self
+            .get_account_info(destination_token_account)
+            .await
+            .unwrap();
+        let destination_extension = destination_state
+            .get_extension::<confidential_transfer::ConfidentialTransferAccount>(
+        )?;
+
+        let mint_state = self.get_mint_info().await.unwrap();
+        let transfer_fee_config = mint_state
+            .get_extension::<transfer_fee::TransferFeeConfig>()
+            .unwrap();
+
+        let fee_parameters = transfer_fee_config.get_epoch_fee(epoch_info.epoch);
+
+        let ct_mint = mint_state
+            .get_extension::<confidential_transfer::ConfidentialTransferMint>()
+            .unwrap();
+
+        let proof_data = confidential_transfer::instruction::TransferWithFeeData::new(
+            amount,
+            (
+                source_available_balance,
+                &source_extension.available_balance.try_into().unwrap(),
+            ),
+            source_elgamal_keypair,
+            (
+                &destination_extension.encryption_pubkey.try_into().unwrap(),
+                &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
+            ),
+            FeeParameters {
+                fee_rate_basis_points: u16::from(fee_parameters.transfer_fee_basis_points),
+                maximum_fee: u64::from(fee_parameters.maximum_fee),
+            },
+            &ct_mint
+                .withdraw_withheld_authority_encryption_pubkey
+                .try_into()
+                .unwrap(),
+        )
+        .map_err(TokenError::Proof)?;
+
+        self.process_ixs(
+            &confidential_transfer::instruction::transfer_with_fee(
                 &self.program_id,
                 source_token_account,
                 destination_token_account,
@@ -1202,6 +1313,114 @@ where
                 &[],
             )?],
             &[authority],
+        )
+        .await
+    }
+
+    /// Withdraw withheld confidential tokens from mint
+    pub async fn confidential_transfer_withdraw_withheld_tokens_from_mint<S2: Signer>(
+        &self,
+        withdraw_withheld_authority: &S2,
+        withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
+        destination_token_account: &Pubkey,
+        amount: u64,
+    ) -> TokenResult<T::Output> {
+        let mint_state = self.get_mint_info().await.unwrap();
+
+        let ct_mint = mint_state
+            .get_extension::<confidential_transfer::ConfidentialTransferMint>()
+            .unwrap();
+
+        let destination_state = self
+            .get_account_info(destination_token_account)
+            .await
+            .unwrap();
+        let destination_extension = destination_state
+            .get_extension::<confidential_transfer::ConfidentialTransferAccount>(
+        )?;
+
+        let proof_data = confidential_transfer::instruction::WithdrawWithheldTokensData::new(
+            withdraw_withheld_authority_elgamal_keypair,
+            &destination_extension.encryption_pubkey.try_into().unwrap(),
+            &ct_mint.withheld_amount.try_into().unwrap(),
+            amount,
+        )
+        .map_err(TokenError::Proof)?;
+
+        self.process_ixs(
+            &confidential_transfer::instruction::withdraw_withheld_tokens_from_mint(
+                &self.program_id,
+                &self.pubkey,
+                destination_token_account,
+                &withdraw_withheld_authority.pubkey(),
+                &[],
+                &proof_data,
+            )?,
+            &[withdraw_withheld_authority],
+        )
+        .await
+    }
+
+    /// Withdraw withheld confidential tokens from accounts
+    pub async fn confidential_transfer_withdraw_withheld_tokens_from_accounts<S2: Signer>(
+        &self,
+        withdraw_withheld_authority: &S2,
+        withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
+        destination_token_account: &Pubkey,
+        amount: u64,
+        sources: &[&Pubkey],
+    ) -> TokenResult<T::Output> {
+        let mint_state = self.get_mint_info().await.unwrap();
+
+        let ct_mint = mint_state
+            .get_extension::<confidential_transfer::ConfidentialTransferMint>()
+            .unwrap();
+
+        let destination_state = self
+            .get_account_info(destination_token_account)
+            .await
+            .unwrap();
+        let destination_extension = destination_state
+            .get_extension::<confidential_transfer::ConfidentialTransferAccount>(
+        )?;
+
+        let proof_data = confidential_transfer::instruction::WithdrawWithheldTokensData::new(
+            withdraw_withheld_authority_elgamal_keypair,
+            &destination_extension.encryption_pubkey.try_into().unwrap(),
+            &ct_mint.withheld_amount.try_into().unwrap(),
+            amount,
+        )
+        .map_err(TokenError::Proof)?;
+
+        self.process_ixs(
+            &confidential_transfer::instruction::withdraw_withheld_tokens_from_accounts(
+                &self.program_id,
+                &self.pubkey,
+                destination_token_account,
+                &withdraw_withheld_authority.pubkey(),
+                &[],
+                sources,
+                &proof_data,
+            )?,
+            &[withdraw_withheld_authority],
+        )
+        .await
+    }
+
+    /// Harvest withheld confidential tokens to mint
+    pub async fn confidential_transfer_harvest_withheld_tokens_to_mint(
+        &self,
+        sources: &[&Pubkey],
+    ) -> TokenResult<T::Output> {
+        self.process_ixs::<[&dyn Signer; 0]>(
+            &[
+                confidential_transfer::instruction::harvest_withheld_tokens_to_mint(
+                    &self.program_id,
+                    &self.pubkey,
+                    sources,
+                )?,
+            ],
+            &[],
         )
         .await
     }

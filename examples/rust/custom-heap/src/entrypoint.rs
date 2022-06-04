@@ -40,7 +40,7 @@ unsafe impl std::alloc::GlobalAlloc for BumpAllocator {
     }
 }
 
-#[cfg(target_arch = "bpf")]
+#[cfg(target_os = "solana")]
 #[global_allocator]
 static A: BumpAllocator = BumpAllocator;
 

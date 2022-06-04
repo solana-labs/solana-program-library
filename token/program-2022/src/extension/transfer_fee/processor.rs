@@ -91,15 +91,16 @@ fn process_set_transfer_fee(
     // When setting the transfer fee, we have two situations:
     // * newer transfer fee epoch <= current epoch:
     //     newer transfer fee is the active one, so overwrite older transfer fee with newer, then overwrite newer transfer fee
-    // * newer transfer fee epoch == next epoch:
+    // * newer transfer fee epoch >= next epoch:
     //     it was never used, so just overwrite next transfer fee
     let epoch = Clock::get()?.epoch;
-    let next_epoch = epoch.saturating_add(1);
     if u64::from(extension.newer_transfer_fee.epoch) <= epoch {
         extension.older_transfer_fee = extension.newer_transfer_fee;
     }
+    // set two epochs ahead to avoid rug pulls at the end of an epoch
+    let newer_fee_start_epoch = epoch.saturating_add(2);
     let transfer_fee = TransferFee {
-        epoch: next_epoch.into(),
+        epoch: newer_fee_start_epoch.into(),
         transfer_fee_basis_points: transfer_fee_basis_points.into(),
         maximum_fee: maximum_fee.into(),
     };

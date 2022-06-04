@@ -119,6 +119,6 @@ impl TestContext {
     }
 }
 
-fn keypair_clone(kp: &Keypair) -> Keypair {
+pub(crate) fn keypair_clone(kp: &Keypair) -> Keypair {
     Keypair::from_bytes(&kp.to_bytes()).expect("failed to copy keypair")
 }

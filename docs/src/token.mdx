@@ -302,7 +302,7 @@ await mintTo(
   mint,
   tokenAccount.address,
   mintAuthority,
-  100
+  100000000000 // because decimals for the mint are set to 9 
 )
 ```
 
@@ -1578,6 +1578,7 @@ curl http://api.mainnet-beta.solana.com -X POST -H "Content-Type: application/js
       }
     ]
   }
+'
 ```
 
 The `"dataSize": 165` filter selects all [Token

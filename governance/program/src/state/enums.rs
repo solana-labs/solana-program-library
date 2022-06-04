@@ -3,7 +3,6 @@
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
 /// Defines all Governance accounts types
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum GovernanceAccountType {
     /// Default uninitialized account state
@@ -97,7 +96,6 @@ impl Default for GovernanceAccountType {
 }
 
 /// What state a Proposal is in
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum ProposalState {
     /// Draft - Proposal enters Draft state when it's created
@@ -129,6 +127,9 @@ pub enum ProposalState {
     /// Same as Executing but indicates some instructions failed to execute
     /// Proposal can't be transitioned from ExecutingWithErrors to Completed state
     ExecutingWithErrors,
+
+    /// The Proposal was vetoed
+    Vetoed,
 }
 
 impl Default for ProposalState {
@@ -137,27 +138,41 @@ impl Default for ProposalState {
     }
 }
 
-/// The type of the vote threshold percentage used to resolve a vote on a Proposal
-#[repr(C)]
+/// The type of the vote threshold used to resolve a vote on a Proposal
+///
+/// Note: In the current version only YesVotePercentage and Disabled thresholds are supported
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub enum VoteThresholdPercentage {
-    /// Voting threshold of Yes votes in % required to tip the vote
+pub enum VoteThreshold {
+    /// Voting threshold of Yes votes in % required to tip the vote (Approval Quorum)
     /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
     /// Note: If the threshold is below or equal to 50% then an even split of votes ex: 50:50 or 40:40 is always resolved as Defeated
     /// In other words a '+1 vote' tie breaker is always required to have a successful vote
-    YesVote(u8),
+    YesVotePercentage(u8),
 
     /// The minimum number of votes in % out of the entire pool of governance tokens eligible to vote
     /// which must be cast for the vote to be valid
     /// Once the quorum is achieved a simple majority (50%+1) of Yes votes is required for the vote to succeed
     /// Note: Quorum is not implemented in the current version
-    Quorum(u8),
+    QuorumPercentage(u8),
+
+    /// Disabled vote threshold indicates the given voting population (community or council) is not allowed to vote
+    /// on proposals for the given Governance
+    Disabled,
+    //
+    // Absolute vote threshold expressed in the voting mint units
+    // It can be implemented once Solana runtime supports accounts resizing to accommodate u64 size extension
+    // Alternatively we could use the reserved space if it becomes a priority
+    // Absolute(u64)
+    //
+    // Vote threshold which is always accepted
+    // It can be used in a setup where the only security gate is proposal creation
+    // and once created it's automatically approved
+    // Any
 }
 
 /// The type of vote tipping to use on a Proposal.
 ///
 /// Vote tipping means that under some conditions voting will complete early.
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoteTipping {
     /// Tip when there is no way for another option to win and the vote threshold
@@ -177,7 +192,6 @@ pub enum VoteTipping {
 }
 
 /// The status of instruction execution
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum TransactionExecutionStatus {
     /// Transaction was not executed yet
@@ -191,7 +205,6 @@ pub enum TransactionExecutionStatus {
 }
 
 /// Transaction execution flags defining how instructions are executed for a Proposal
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum InstructionExecutionFlags {
     /// No execution flags are specified
@@ -211,7 +224,6 @@ pub enum InstructionExecutionFlags {
 
 /// The source of max vote weight used for voting
 /// Values below 100% mint supply can be used when the governing token is fully minted but not distributed yet
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum MintMaxVoteWeightSource {
     /// Fraction (10^10 precision) of the governing mint supply is used as max vote weight

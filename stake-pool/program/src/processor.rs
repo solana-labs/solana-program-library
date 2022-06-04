@@ -15,16 +15,14 @@ use {
     borsh::{BorshDeserialize, BorshSerialize},
     num_traits::FromPrimitive,
     solana_program::{
-        account_info::next_account_info,
-        account_info::AccountInfo,
+        account_info::{next_account_info, AccountInfo},
         borsh::try_from_slice_unchecked,
         clock::{Clock, Epoch},
         decode_error::DecodeError,
         entrypoint::ProgramResult,
         msg,
         program::{invoke, invoke_signed},
-        program_error::PrintProgramError,
-        program_error::ProgramError,
+        program_error::{PrintProgramError, ProgramError},
         program_pack::Pack,
         pubkey::Pubkey,
         rent::Rent,
@@ -134,6 +132,17 @@ fn check_account_owner(
     } else {
         Ok(())
     }
+}
+
+/// Checks if a stake acount can be managed by the pool
+fn stake_is_usable_by_pool(
+    meta: &stake::state::Meta,
+    expected_authority: &Pubkey,
+    expected_lockup: &stake::state::Lockup,
+) -> bool {
+    meta.authorized.staker == *expected_authority
+        && meta.authorized.withdrawer == *expected_authority
+        && meta.lockup == *expected_lockup
 }
 
 /// Create a transient stake account without transferring lamports
@@ -747,7 +756,7 @@ impl Processor {
         stake_pool.manager_fee_account = *manager_fee_info.key;
         stake_pool.token_program_id = *token_program_info.key;
         stake_pool.total_lamports = total_lamports;
-        stake_pool.pool_token_supply = 0;
+        stake_pool.pool_token_supply = total_lamports;
         stake_pool.last_update_epoch = Clock::get()?.epoch;
         stake_pool.lockup = stake::state::Lockup::default();
         stake_pool.epoch_fee = epoch_fee;
@@ -1231,6 +1240,7 @@ impl Processor {
         let validator_list_info = next_account_info(account_info_iter)?;
         let reserve_stake_account_info = next_account_info(account_info_iter)?;
         let transient_stake_account_info = next_account_info(account_info_iter)?;
+        let validator_stake_account_info = next_account_info(account_info_iter)?;
         let validator_vote_account_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
@@ -1289,6 +1299,32 @@ impl Processor {
         let mut validator_stake_info = maybe_validator_stake_info.unwrap();
         if validator_stake_info.transient_stake_lamports > 0 {
             return Err(StakePoolError::TransientAccountInUse.into());
+        }
+
+        // Check that the validator stake account is actually delegated to the right
+        // validator. This can happen if a validator was force destaked during a
+        // cluster restart.
+        {
+            check_account_owner(validator_stake_account_info, stake_program_info.key)?;
+            check_validator_stake_address(
+                program_id,
+                stake_pool_info.key,
+                validator_stake_account_info.key,
+                vote_account_address,
+            )?;
+            let (meta, stake) = get_stake_state(validator_stake_account_info)?;
+            if !stake_is_usable_by_pool(&meta, withdraw_authority_info.key, &stake_pool.lockup) {
+                msg!("Validator stake for {} not usable by pool, must be owned by withdraw authority", vote_account_address);
+                return Err(StakePoolError::WrongStakeState.into());
+            }
+            if stake.delegation.voter_pubkey != *vote_account_address {
+                msg!(
+                    "Validator stake {} not delegated to {}",
+                    validator_stake_account_info.key,
+                    vote_account_address
+                );
+                return Err(StakePoolError::WrongStakeState.into());
+            }
         }
 
         let transient_stake_bump_seed = check_transient_stake_address(
@@ -1543,10 +1579,11 @@ impl Processor {
             //  * not a stake -> ignore
             match transient_stake_state {
                 Some(stake::state::StakeState::Initialized(meta)) => {
-                    // if transient account was hijacked, ignore it
-                    if meta.authorized.staker == *withdraw_authority_info.key
-                        && meta.authorized.withdrawer == *withdraw_authority_info.key
-                    {
+                    if stake_is_usable_by_pool(
+                        &meta,
+                        withdraw_authority_info.key,
+                        &stake_pool.lockup,
+                    ) {
                         if no_merge {
                             transient_stake_lamports = transient_stake_info.lamports();
                         } else {
@@ -1571,10 +1608,11 @@ impl Processor {
                     }
                 }
                 Some(stake::state::StakeState::Stake(meta, stake)) => {
-                    // if transient account was hijacked, ignore it
-                    if meta.authorized.staker == *withdraw_authority_info.key
-                        && meta.authorized.withdrawer == *withdraw_authority_info.key
-                    {
+                    if stake_is_usable_by_pool(
+                        &meta,
+                        withdraw_authority_info.key,
+                        &stake_pool.lockup,
+                    ) {
                         let account_stake = meta
                             .rent_exempt_reserve
                             .saturating_add(stake.delegation.stake);
@@ -1671,6 +1709,30 @@ impl Processor {
                     } else {
                         msg!("Validator stake account no longer part of the pool, ignoring");
                     }
+                }
+                Some(stake::state::StakeState::Initialized(meta))
+                    if stake_is_usable_by_pool(
+                        &meta,
+                        withdraw_authority_info.key,
+                        &stake_pool.lockup,
+                    ) =>
+                {
+                    // If a validator stake is `Initialized`, the validator could
+                    // have been destaked during a cluster restart. Either way,
+                    // absorb those lamports into the reserve.  The transient
+                    // stake was likely absorbed into the reserve earlier.
+                    Self::stake_merge(
+                        stake_pool_info.key,
+                        validator_stake_info.clone(),
+                        withdraw_authority_info.clone(),
+                        AUTHORITY_WITHDRAW,
+                        stake_pool.stake_withdraw_bump_seed,
+                        reserve_stake_info.clone(),
+                        clock_info.clone(),
+                        stake_history_info.clone(),
+                        stake_program_info.clone(),
+                    )?;
+                    validator_stake_record.status = StakeStatus::ReadyForRemoval;
                 }
                 Some(stake::state::StakeState::Initialized(_))
                 | Some(stake::state::StakeState::Uninitialized)
