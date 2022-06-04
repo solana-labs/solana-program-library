@@ -340,7 +340,9 @@ fn process_deposit(
         }
 
         if u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
-            >= u64::from(destination_confidential_transfer_account.maximum_pending_balance_credit_counter)
+            >= u64::from(
+                destination_confidential_transfer_account.maximum_pending_balance_credit_counter,
+            )
         {
             return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
         }
@@ -724,7 +726,9 @@ fn process_destination_for_transfer(
     }
 
     if u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
-        >= u64::from(destination_confidential_transfer_account.maximum_pending_balance_credit_counter)
+        >= u64::from(
+            destination_confidential_transfer_account.maximum_pending_balance_credit_counter,
+        )
     {
         return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
     }
