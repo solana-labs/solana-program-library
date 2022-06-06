@@ -6,7 +6,7 @@ const {
 const { spawn } = require('child_process');
 const { Solita } = require('@metaplex-foundation/solita');
 const { writeFile } = require('fs/promises');
-const { fstat, existsSync } = require('fs');
+const { fstat, existsSync, realpath, realpathSync } = require('fs');
 
 const PROGRAM_NAME = 'gumball-machine';
 const PROGRAM_ID = 'BRKyVDRGT7SPBtMhjHN4PVSPVYoc3Wa3QTyuRVM4iZkt';
@@ -16,17 +16,10 @@ const cargoToml = path.join(programDir, 'Cargo.toml')
 const generatedIdlDir = path.join(__dirname, 'idl');
 const generatedSDKDir = path.join(__dirname, 'src', 'generated');
 const rootDir = path.join(__dirname, '.crates')
-const rustbinConfig = {
-    rootDir,
-    binaryName: 'anchor',
-    binaryCrateName: 'anchor-cli',
-    libName: 'anchor-lang',
-    dryRun: false,
-    cargoToml,
-}
 
 async function main() {
-    const anchorExecutable = ("~/Documents/core/candyland/deps/anchor/target/debug/anchor").replace("~", process.env.HOME);
+    const anchorExecutable = realpathSync("../../../deps/anchor/target/debug/anchor");
+    // const anchorExecutable = ("~/Documents/core/candyland/deps/anchor/target/debug/anchor").replace("~", process.env.HOME);
     if (!existsSync(anchorExecutable)) {
         console.log(`Could not find: ${anchorExecutable}`);
         throw new Error("Please `cd candyland/deps/anchor/anchor-cli` && cargo build`")

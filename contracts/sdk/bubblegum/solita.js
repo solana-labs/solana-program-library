@@ -16,17 +16,9 @@ const cargoToml = path.join(programDir, 'Cargo.toml')
 const generatedIdlDir = path.join(__dirname, 'idl');
 const generatedSDKDir = path.join(__dirname, 'src', 'generated');
 const rootDir = path.join(__dirname, '.crates')
-const rustbinConfig = {
-    rootDir,
-    binaryName: 'anchor',
-    binaryCrateName: 'anchor-cli',
-    libName: 'anchor-lang',
-    dryRun: false,
-    cargoToml,
-}
 
 async function main() {
-    const anchorExecutable = ("~/Documents/core/candyland/deps/anchor/target/debug/anchor").replace("~", process.env.HOME);
+    const anchorExecutable = realpathSync("../../../deps/anchor/target/debug/anchor");
     if (!existsSync(anchorExecutable)) {
         console.log(`Could not find: ${anchorExecutable}`);
         throw new Error("Please `cd candyland/deps/anchor/anchor-cli` && cargo build`")
