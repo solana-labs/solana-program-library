@@ -90,9 +90,9 @@ This is optional! You can skip these steps and use the [Token Lending CLI](./cli
 
 1. Score yourself some sweet SOL:
    ```shell
-   solana airdrop -k owner.json 10
-   solana airdrop -k owner.json 10
-   solana airdrop -k owner.json 10
+   solana airdrop -k owner.json 2
+   solana airdrop -k owner.json 2
+   solana airdrop -k owner.json 2
    ```
    You'll use this for transaction fees, rent for your program accounts, and initial reserve liquidity. If you run
    into issues with the airdrop command, see the [docs](https://docs.solana.com/cli/transfer-tokens#airdrop-some-tokens-to-get-started) for more info.
@@ -112,10 +112,10 @@ This is optional! You can skip these steps and use the [Token Lending CLI](./cli
    ```shell
    spl-token wrap \
       --fee-payer owner.json \
-      10.0 \
+      2.0 \
       -- owner.json
 
-   # Wrapping 10 SOL into AJ2sgpgj6ZeQazPPiDyTYqN9vbj58QMaZQykB9Sr6XY
+   # Wrapping 2 SOL into AJ2sgpgj6ZeQazPPiDyTYqN9vbj58QMaZQykB9Sr6XY
    ```
    You'll use this for initial reserve liquidity. Note the SPL Token account pubkey (e.g. `AJ2sgpgj6ZeQazPPiDyTYqN9vbj58QMaZQykB9Sr6XY`).
 
