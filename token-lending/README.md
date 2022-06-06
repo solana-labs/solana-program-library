@@ -10,11 +10,11 @@ Web3 bindings are available in the `./js` directory.
 
 Please note that only the lending program deployed to devnet is currently operational.
 
-| Cluster | Program Address |
-| --- | --- |
-| Mainnet Beta | [`LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi`](https://explorer.solana.com/address/LendZqTs7gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi) |
-| Testnet | [`6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH`](https://explorer.solana.com/address/6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH?cluster=testnet) |
-| Devnet | [`6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH`](https://explorer.solana.com/address/6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH?cluster=devnet) |
+| Cluster      | Program Address                                                                                                                                    |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mainnet Beta | [`LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi`](https://explorer.solana.com/address/LendZqTs7gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi)                   |
+| Testnet      | [`6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH`](https://explorer.solana.com/address/6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH?cluster=testnet) |
+| Devnet       | [`6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH`](https://explorer.solana.com/address/6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH?cluster=devnet)  |
 
 ### Documentation
 
@@ -90,9 +90,9 @@ This is optional! You can skip these steps and use the [Token Lending CLI](./cli
 
 1. Score yourself some sweet SOL:
    ```shell
-   solana airdrop -k owner.json 10
-   solana airdrop -k owner.json 10
-   solana airdrop -k owner.json 10
+   solana airdrop -k owner.json 2
+   solana airdrop -k owner.json 2
+   solana airdrop -k owner.json 2
    ```
    You'll use this for transaction fees, rent for your program accounts, and initial reserve liquidity. If you run
    into issues with the airdrop command, see the [docs](https://docs.solana.com/cli/transfer-tokens#airdrop-some-tokens-to-get-started) for more info.
