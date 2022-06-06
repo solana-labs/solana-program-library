@@ -1,0 +1,583 @@
+{
+  "version": "0.1.0",
+  "name": "gumball_machine",
+  "instructions": [
+    {
+      "name": "initializeGumballMachine",
+      "accounts": [
+        {
+          "name": "gumballMachine",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "mint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "willyWonka",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegumAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "gummyroll",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleSlab",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegum",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "maxDepth",
+          "type": "u32"
+        },
+        {
+          "name": "maxBufferSize",
+          "type": "u32"
+        },
+        {
+          "name": "urlBase",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "nameBase",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "symbol",
+          "type": {
+            "array": [
+              "u8",
+              8
+            ]
+          }
+        },
+        {
+          "name": "sellerFeeBasisPoints",
+          "type": "u16"
+        },
+        {
+          "name": "isMutable",
+          "type": "bool"
+        },
+        {
+          "name": "retainAuthority",
+          "type": "bool"
+        },
+        {
+          "name": "price",
+          "type": "u64"
+        },
+        {
+          "name": "goLiveDate",
+          "type": "i64"
+        },
+        {
+          "name": "botWallet",
+          "type": "publicKey"
+        },
+        {
+          "name": "receiver",
+          "type": "publicKey"
+        },
+        {
+          "name": "authority",
+          "type": "publicKey"
+        },
+        {
+          "name": "collectionKey",
+          "type": "publicKey"
+        },
+        {
+          "name": "extensionLen",
+          "type": "u64"
+        },
+        {
+          "name": "maxMintSize",
+          "type": "u64"
+        },
+        {
+          "name": "maxItems",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "addConfigLines",
+      "docs": [
+        "Add can only append config lines to the the end of the list"
+      ],
+      "accounts": [
+        {
+          "name": "gumballMachine",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "newConfigLinesData",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "updateConfigLines",
+      "docs": [
+        "Update only allows the authority to modify previously appended lines"
+      ],
+      "accounts": [
+        {
+          "name": "gumballMachine",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "startingLine",
+          "type": "u64"
+        },
+        {
+          "name": "newConfigLinesData",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "updateHeaderMetadata",
+      "accounts": [
+        {
+          "name": "gumballMachine",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "urlBase",
+          "type": {
+            "option": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        },
+        {
+          "name": "nameBase",
+          "type": {
+            "option": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        },
+        {
+          "name": "symbol",
+          "type": {
+            "option": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          }
+        },
+        {
+          "name": "sellerFeeBasisPoints",
+          "type": {
+            "option": "u16"
+          }
+        },
+        {
+          "name": "isMutable",
+          "type": {
+            "option": "bool"
+          }
+        },
+        {
+          "name": "retainAuthority",
+          "type": {
+            "option": "bool"
+          }
+        },
+        {
+          "name": "price",
+          "type": {
+            "option": "u64"
+          }
+        },
+        {
+          "name": "goLiveDate",
+          "type": {
+            "option": "i64"
+          }
+        },
+        {
+          "name": "botWallet",
+          "type": {
+            "option": "publicKey"
+          }
+        },
+        {
+          "name": "authority",
+          "type": {
+            "option": "publicKey"
+          }
+        },
+        {
+          "name": "maxMintSize",
+          "type": {
+            "option": "u64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "dispenseNftSol",
+      "docs": [
+        "Request to purchase a random NFT from GumballMachine for a specific project.",
+        "@notice: the project must have specified the native mint (Wrapped SOL) for \"mint\"",
+        "in its GumballMachineHeader for this method to succeed. If mint is anything",
+        "else dispense_nft_token should be used."
+      ],
+      "accounts": [
+        {
+          "name": "gumballMachine",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "receiver",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "willyWonka",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "recentBlockhashes",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "instructionSysvarAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegumAuthority",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "This key must sign for all write operations to the NFT Metadata stored in the Merkle slab"
+          ]
+        },
+        {
+          "name": "nonce",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "gummyroll",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleSlab",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegum",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "numItems",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "dispenseNftToken",
+      "docs": [
+        "Request to purchase a random NFT from GumballMachine for a specific project.",
+        "@notice: the project's mint may be any valid Mint account EXCEPT for Wrapped SOL",
+        "if the mint is Wrapped SOL then dispense_token_sol should be used, as the",
+        "project is seeking native SOL as payment."
+      ],
+      "accounts": [
+        {
+          "name": "gumballMachine",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "payerTokens",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "receiver",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "willyWonka",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "recentBlockhashes",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "instructionSysvarAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegumAuthority",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "This key must sign for all write operations to the NFT Metadata stored in the Merkle slab"
+          ]
+        },
+        {
+          "name": "nonce",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "gummyroll",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleSlab",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegum",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "numItems",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "destroy",
+      "docs": [
+        "Reclaim gumball_machine lamports to authority"
+      ],
+      "accounts": [
+        {
+          "name": "gumballMachine",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        }
+      ],
+      "args": []
+    }
+  ],
+  "types": [
+    {
+      "name": "GumballMachineHeader",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "urlBase",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "nameBase",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "symbol",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "sellerFeeBasisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "isMutable",
+            "type": "u8"
+          },
+          {
+            "name": "retainAuthority",
+            "type": "u8"
+          },
+          {
+            "name": "padding",
+            "type": {
+              "array": [
+                "u8",
+                4
+              ]
+            }
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "goLiveDate",
+            "type": "i64"
+          },
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "botWallet",
+            "type": "publicKey"
+          },
+          {
+            "name": "receiver",
+            "type": "publicKey"
+          },
+          {
+            "name": "authority",
+            "type": "publicKey"
+          },
+          {
+            "name": "collectionKey",
+            "type": "publicKey"
+          },
+          {
+            "name": "creatorAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "extensionLen",
+            "type": "u64"
+          },
+          {
+            "name": "maxMintSize",
+            "type": "u64"
+          },
+          {
+            "name": "remaining",
+            "type": "u64"
+          },
+          {
+            "name": "maxItems",
+            "type": "u64"
+          },
+          {
+            "name": "totalItemsAdded",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "address": "BRKyVDRGT7SPBtMhjHN4PVSPVYoc3Wa3QTyuRVM4iZkt"
+  }
+}
