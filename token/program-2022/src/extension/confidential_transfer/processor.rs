@@ -340,14 +340,6 @@ fn process_deposit(
             return Err(TokenError::ConfidentialTransferDepositsAndTransfersDisabled.into());
         }
 
-        if u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
-            > u64::from(
-                destination_confidential_transfer_account.maximum_pending_balance_credit_counter,
-            )
-        {
-            return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
-        }
-
         // Divide deposit into the low 16 and high 48 bits and then add to the appropriate pending
         // ciphertexts
         destination_confidential_transfer_account.pending_balance_lo = ops::add_to(
@@ -367,6 +359,14 @@ fn process_deposit(
                 .checked_add(1)
                 .ok_or(ProgramError::InvalidInstructionData)?)
             .into();
+
+        if u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
+            > u64::from(
+                destination_confidential_transfer_account.maximum_pending_balance_credit_counter,
+            )
+        {
+            return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
+        }
     }
 
     Ok(())
@@ -726,14 +726,6 @@ fn process_destination_for_transfer(
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
-    if u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
-        > u64::from(
-            destination_confidential_transfer_account.maximum_pending_balance_credit_counter,
-        )
-    {
-        return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
-    }
-
     let new_destination_pending_balance_lo = ops::add(
         &destination_confidential_transfer_account.pending_balance_lo,
         destination_ciphertext_lo,
@@ -747,15 +739,24 @@ fn process_destination_for_transfer(
     .ok_or(ProgramError::InvalidInstructionData)?;
 
     let new_destination_pending_balance_credit_counter =
-        (u64::from(destination_confidential_transfer_account.pending_balance_credit_counter) + 1)
-            .into();
+        u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
+            .checked_add(1)
+            .ok_or(ProgramError::InvalidInstructionData)?;
+
+    if new_destination_pending_balance_credit_counter
+        > u64::from(
+            destination_confidential_transfer_account.maximum_pending_balance_credit_counter,
+        )
+    {
+        return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
+    }
 
     destination_confidential_transfer_account.pending_balance_lo =
         new_destination_pending_balance_lo;
     destination_confidential_transfer_account.pending_balance_hi =
         new_destination_pending_balance_hi;
     destination_confidential_transfer_account.pending_balance_credit_counter =
-        new_destination_pending_balance_credit_counter;
+        new_destination_pending_balance_credit_counter.into();
 
     // update destination account withheld fees
     if let Some(ciphertext_fee) = encrypted_fee {
