@@ -12,14 +12,12 @@ pub enum CMTError {
     TreeFull,
     #[error("Tree already initialized")]
     TreeAlreadyInitialized,
-    #[error("Leaf was updated since proof was issued")]
-    LeafAlreadyUpdated,
     #[error("Invalid number of bytes passed for node (expected 32 bytes)")]
     InvalidNodeByteLength,
     #[error("Root not found in changelog buffer")]
     RootNotFound,
     #[error(
-        "Valid proof was passed to an empty leaf, but it was filled since the proof was issued"
+        "Valid proof was passed to a leaf, but it's value has changed since the proof was issued"
     )]
-    EmptyLeafSpotTaken,
+    LeafContentsModified,
 }

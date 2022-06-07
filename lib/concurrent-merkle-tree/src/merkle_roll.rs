@@ -131,10 +131,11 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             // to remove possibility of incorrectly failing
             // due to a leaf collision that happened before the
             // root of the given proof
+            let mut updatable_leaf_node = leaf;
             match self.find_root_in_changelog(current_root) {
                 Some(matching_changelog_index) => {
                     if !self.fast_forward_proof(
-                        leaf,
+                        &mut updatable_leaf_node,
                         &mut proof,
                         leaf_index,
                         matching_changelog_index,
@@ -143,15 +144,21 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
                         solana_logging!(
                             "Leaf was updated since proof was issued. Failing to verify"
                         );
-                        return Err(CMTError::LeafAlreadyUpdated);
+                        return Err(CMTError::LeafContentsModified);
                     }
                 }
                 None => {
-                    if !self.fast_forward_proof(leaf, &mut proof, leaf_index, 0, true) {
+                    if !self.fast_forward_proof(
+                        &mut updatable_leaf_node,
+                        &mut proof,
+                        leaf_index,
+                        0,
+                        true,
+                    ) {
                         solana_logging!(
                             "Leaf was updated since proof was issued. Failing to verify"
                         );
-                        return Err(CMTError::LeafAlreadyUpdated);
+                        return Err(CMTError::LeafContentsModified);
                     }
                 }
             }
@@ -247,7 +254,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         let root = match self.try_apply_proof(current_root, EMPTY, leaf, &mut proof, index, false) {
             Ok(new_root) => Ok(new_root),
             Err(error) => match error {
-                CMTError::EmptyLeafSpotTaken => self.append(leaf),
+                CMTError::LeafContentsModified => self.append(leaf),
                 _ => Err(error),
             },
         };
@@ -304,7 +311,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     #[inline(always)]
     fn fast_forward_proof(
         &mut self,
-        leaf: Node,
+        leaf: &mut Node,
         proof: &mut [Node; MAX_DEPTH],
         leaf_index: u32,
         mut changelog_buffer_index: u64,
@@ -317,7 +324,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         let mask: usize = MAX_BUFFER_SIZE - 1;
         let padding: usize = 32 - MAX_DEPTH;
 
-        let mut updated_leaf = leaf;
+        let mut updated_leaf = *leaf;
         log_compute!();
         // Modifies proof by iterating through the change log
         loop {
@@ -346,7 +353,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             }
         }
         log_compute!();
-        updated_leaf == leaf
+        let proof_leaf_unchanged = updated_leaf == *leaf;
+        *leaf = updated_leaf;
+        proof_leaf_unchanged
     }
 
     /// Note: Enabling `use_full_buffer` will skip root matching and just fast forward the given proof
@@ -379,20 +388,22 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             }
         };
 
+        let mut updatable_leaf_node = leaf;
         let proof_leaf_unchanged = self.fast_forward_proof(
-            new_leaf,
+            &mut updatable_leaf_node,
             proof,
             leaf_index,
             changelog_buffer_index,
             use_full_buffer,
         );
-        let valid_root = recompute(leaf, proof, leaf_index) == self.get_change_log().root;
+        let valid_root =
+            recompute(updatable_leaf_node, proof, leaf_index) == self.get_change_log().root;
         if !valid_root {
             return Err(CMTError::InvalidProof);
         }
 
         if !proof_leaf_unchanged {
-            return Err(CMTError::EmptyLeafSpotTaken);
+            return Err(CMTError::LeafContentsModified);
         }
 
         self.increment_active_index();

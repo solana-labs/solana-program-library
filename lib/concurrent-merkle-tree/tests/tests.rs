@@ -1,3 +1,4 @@
+use concurrent_merkle_tree::error::CMTError;
 use concurrent_merkle_tree::merkle_roll::MerkleRoll;
 use concurrent_merkle_tree::state::{Node, EMPTY};
 use merkle_tree_reference::MerkleTree;
@@ -145,6 +146,48 @@ async fn test_initialize_with_root() {
         tree.get_root(),
         "Init failed to set root properly"
     );
+}
+
+#[tokio::test(threaded_scheduler)]
+async fn test_leaf_contents_modified() {
+    let (mut merkle_roll, mut tree) = setup();
+    let mut rng = thread_rng();
+    merkle_roll.initialize().unwrap();
+
+    // Create tree with a single leaf
+    let leaf = rng.gen::<[u8; 32]>();
+    tree.add_leaf(leaf, 0);
+    merkle_roll.append(leaf).unwrap();
+
+    // Save a proof of this leaf
+    let root = tree.get_root();
+    let proof = tree.get_proof_of_leaf(0);
+
+    // Update leaf to be something else
+    let new_leaf_0 = rng.gen::<[u8; 32]>();
+    tree.add_leaf(leaf, 0);
+    merkle_roll
+        .set_leaf(root, leaf, new_leaf_0, &proof, 0 as u32)
+        .unwrap();
+
+    // Should fail to replace same leaf using outdated info
+    let new_leaf_1 = rng.gen::<[u8; 32]>();
+    tree.add_leaf(leaf, 0);
+    match merkle_roll.set_leaf(root, leaf, new_leaf_1, &proof, 0 as u32) {
+        Ok(_) => {
+            assert!(
+                false,
+                "Merkle roll should fail when replacing leafs with outdated leaf proofs"
+            )
+        }
+        Err(e) => match e {
+            CMTError::LeafContentsModified => {}
+            _ => {
+                // println!()
+                assert!(false, "Wrong error was thrown: {:?}", e);
+            }
+        },
+    }
 }
 
 #[tokio::test(threaded_scheduler)]
