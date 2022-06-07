@@ -48,7 +48,7 @@ import { createMint, getOrCreateAssociatedTokenAccount, mintTo, getAccount } fro
 import {
   NATIVE_MINT
 } from "@solana/spl-token";
-import { logTx, num32ToBuffer } from "./utils";
+import { logTx, num32ToBuffer, arrayEquals } from "./utils";
 
 // @ts-ignore
 let GumballMachine;
@@ -56,14 +56,6 @@ let Bubblegum;
 // @ts-ignore
 let GummyrollProgramId;
 let BubblegumProgramId;
-
-// TODO(sorend): port this to utils
-function arrayEquals(a, b) {
-  return Array.isArray(a) &&
-      Array.isArray(b) &&
-      a.length === b.length &&
-      a.every((val, index) => val === b[index]);
-}
 
 describe("gumball-machine", () => {
   // Configure the client to use the local cluster.

@@ -40,3 +40,9 @@ export function num32ToBuffer(num: number) {
   return Buffer.from([byte1, byte2, byte3, byte4])
 }
 
+export function arrayEquals(a, b) {
+  return Array.isArray(a) &&
+      Array.isArray(b) &&
+      a.length === b.length &&
+      a.every((val, index) => val === b[index]);
+}

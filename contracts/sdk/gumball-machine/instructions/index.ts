@@ -76,7 +76,6 @@ export async function createInitializeGumballMachineIxs(
       },
       gumballMachineInitArgs
     );
-    // initGumballMachineInstr.keys maybe initGumballMachineInstr.keys[].isSigner = true
     return [allocGumballMachineAcctInstr, allocMerkleRollAcctInstr, initGumballMachineInstr];
 }
 
@@ -101,7 +100,6 @@ export async function createDispenseNFTForSolIx(
               gumballMachine: gumballMachineAcctKeypair.publicKey,
               payer: payer.publicKey,
               receiver: receiver,
-              //systemProgram: SystemProgram.programId,
               willyWonka: willyWonkaPDAKey,
               recentBlockhashes: SYSVAR_SLOT_HASHES_PUBKEY,
               instructionSysvarAccount: SYSVAR_INSTRUCTIONS_PUBKEY,
