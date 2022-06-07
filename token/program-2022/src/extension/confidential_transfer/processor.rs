@@ -727,7 +727,7 @@ fn process_destination_for_transfer(
     }
 
     if u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
-        >= u64::from(
+        > u64::from(
             destination_confidential_transfer_account.maximum_pending_balance_credit_counter,
         )
     {
