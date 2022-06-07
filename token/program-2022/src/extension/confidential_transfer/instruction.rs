@@ -379,6 +379,9 @@ pub struct ConfigureAccountInstructionData {
     pub encryption_pubkey: EncryptionPubkey,
     /// The decryptable balance (always 0) once the configure account succeeds
     pub decryptable_zero_balance: DecryptableBalance,
+    /// The maximum number of despots and transfers that an account can receiver before the
+    /// `ApplyPendingBalance` is executed
+    pub maximum_pending_balance_credit_counter: PodU64,
 }
 
 /// Data expected by `ConfidentialTransferInstruction::EmptyAccount`
@@ -511,6 +514,7 @@ pub fn update_mint(
 }
 
 /// Create a `ConfigureAccount` instruction
+#[allow(clippy::too_many_arguments)]
 #[cfg(not(target_os = "solana"))]
 pub fn configure_account(
     token_program_id: &Pubkey,
@@ -518,6 +522,7 @@ pub fn configure_account(
     mint: &Pubkey,
     encryption_pubkey: EncryptionPubkey,
     decryptable_zero_balance: AeCiphertext,
+    maximum_pending_balance_credit_counter: u64,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
@@ -540,6 +545,7 @@ pub fn configure_account(
         &ConfigureAccountInstructionData {
             encryption_pubkey,
             decryptable_zero_balance: decryptable_zero_balance.into(),
+            maximum_pending_balance_credit_counter: maximum_pending_balance_credit_counter.into(),
         },
     ))
 }

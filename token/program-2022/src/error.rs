@@ -145,6 +145,13 @@ pub enum TokenError {
     /// Non-transferable tokens can't be minted to an account without immutable ownership
     #[error("Non-transferable tokens can't be minted to an account without immutable ownership")]
     NonTransferableNeedsImmutableOwnership,
+    /// The total number of `Deposit` and `Transfer` instructions to an account cannot exceed the
+    /// associated `maximum_pending_balance_credit_counter`
+    #[error(
+        "The total number of `Deposit` and `Transfer` instructions to an account cannot exceed
+            the associated `maximum_pending_balance_credit_counter`"
+    )]
+    MaximumPendingBalanceCreditCounterExceeded,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {

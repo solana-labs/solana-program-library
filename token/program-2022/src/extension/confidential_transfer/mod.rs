@@ -9,6 +9,14 @@ use {
     solana_zk_token_sdk::zk_token_elgamal::pod,
 };
 
+/// Maximum bit length of any deposit or transfer amount
+///
+/// Any deposit or transfer amount must be less than 2^48
+pub const MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH: usize = 48;
+
+const PENDING_BALANCE_LO_BIT_LENGTH: usize = 16;
+const PENDING_BALANCE_HI_BIT_LENGTH: usize = 48;
+
 /// Confidential Transfer Extension instructions
 pub mod instruction;
 
@@ -79,8 +87,11 @@ pub struct ConfidentialTransferAccount {
     /// The public key associated with ElGamal encryption
     pub encryption_pubkey: EncryptionPubkey,
 
-    /// The pending balance (encrypted by `encryption_pubkey`)
-    pub pending_balance: EncryptedBalance,
+    /// The low 16 bits of the pending balance (encrypted by `encryption_pubkey`)
+    pub pending_balance_lo: EncryptedBalance,
+
+    /// The high 48 bits of the pending balance (encrypted by `encryption_pubkey`)
+    pub pending_balance_hi: EncryptedBalance,
 
     /// The available balance (encrypted by `encrypiton_pubkey`)
     pub available_balance: EncryptedBalance,
@@ -91,14 +102,20 @@ pub struct ConfidentialTransferAccount {
     /// `pending_balance` may only be credited by `Deposit` or `Transfer` instructions if `true`
     pub allow_balance_credits: PodBool,
 
-    /// The total number of `Deposit` and `Transfer` instructions that have credited `pending_balance`
+    /// The total number of `Deposit` and `Transfer` instructions that have credited
+    /// `pending_balance`
     pub pending_balance_credit_counter: PodU64,
+
+    /// The maximum number of `Deposit` and `Transfer` instructions that can credit
+    /// `pending_balance` before the `ApplyPendingBalance` instruction is executed
+    pub maximum_pending_balance_credit_counter: PodU64,
 
     /// The `expected_pending_balance_credit_counter` value that was included in the last
     /// `ApplyPendingBalance` instruction
     pub expected_pending_balance_credit_counter: PodU64,
 
-    /// The actual `pending_balance_credit_counter` when the last `ApplyPendingBalance` instruction was executed
+    /// The actual `pending_balance_credit_counter` when the last `ApplyPendingBalance` instruction
+    /// was executed
     pub actual_pending_balance_credit_counter: PodU64,
 
     /// The withheld amount of fees. This will always be zero if fees are never enabled.
@@ -121,7 +138,8 @@ impl ConfidentialTransferAccount {
 
     /// Check if a `ConfidentialTransferAccount` is in a closable state
     pub fn closable(&self) -> ProgramResult {
-        if self.pending_balance == EncryptedBalance::zeroed()
+        if self.pending_balance_lo == EncryptedBalance::zeroed()
+            && self.pending_balance_hi == EncryptedBalance::zeroed()
             && self.available_balance == EncryptedBalance::zeroed()
             && self.withheld_amount == EncryptedWithheldAmount::zeroed()
         {

@@ -51,6 +51,8 @@ pub enum TokenError {
     AccountInvalidMint,
     #[error("proof error: {0}")]
     Proof(ProofError),
+    #[error("maximum deposit transfer amount exceeded")]
+    MaximumDepositTransferAmountExceeded,
 }
 impl PartialEq for TokenError {
     fn eq(&self, other: &Self) -> bool {
@@ -976,6 +978,7 @@ where
         authority: &S2,
         elgamal_pubkey: ElGamalPubkey,
         decryptable_zero_balance: AeCiphertext,
+        maximum_pending_balance_credit_counter: u64,
     ) -> TokenResult<T::Output> {
         self.process_ixs(
             &[confidential_transfer::instruction::configure_account(
@@ -984,6 +987,7 @@ where
                 &self.pubkey,
                 elgamal_pubkey.into(),
                 decryptable_zero_balance,
+                maximum_pending_balance_credit_counter,
                 &authority.pubkey(),
                 &[],
             )?],
@@ -996,6 +1000,7 @@ where
         &self,
         token_account: &Pubkey,
         authority: &S2,
+        maximum_pending_balance_credit_counter: u64,
     ) -> TokenResult<(ElGamalKeypair, AeKey)> {
         let elgamal_keypair = ElGamalKeypair::new_rand();
         let ae_key = AeKey::new(authority, token_account).unwrap();
@@ -1005,6 +1010,7 @@ where
             authority,
             elgamal_keypair.public,
             ae_key.encrypt(0_u64),
+            maximum_pending_balance_credit_counter,
         )
         .await
         .map(|_| (elgamal_keypair, ae_key))
@@ -1067,6 +1073,10 @@ where
         amount: u64,
         decimals: u8,
     ) -> TokenResult<T::Output> {
+        if amount >> confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH != 0 {
+            return Err(TokenError::MaximumDepositTransferAmountExceeded);
+        }
+
         self.process_ixs(
             &[confidential_transfer::instruction::deposit(
                 &self.program_id,
@@ -1138,6 +1148,10 @@ where
         source_elgamal_keypair: &ElGamalKeypair,
         new_source_decryptable_available_balance: AeCiphertext,
     ) -> TokenResult<T::Output> {
+        if amount >> confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH != 0 {
+            return Err(TokenError::MaximumDepositTransferAmountExceeded);
+        }
+
         let source_state = self.get_account_info(source_token_account).await.unwrap();
         let source_extension =
             source_state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;
@@ -1198,6 +1212,10 @@ where
         new_source_decryptable_available_balance: AeCiphertext,
         epoch_info: &EpochInfo,
     ) -> TokenResult<T::Output> {
+        if amount >> confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH != 0 {
+            return Err(TokenError::MaximumDepositTransferAmountExceeded);
+        }
+
         let source_state = self.get_account_info(source_token_account).await.unwrap();
         let source_extension =
             source_state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;

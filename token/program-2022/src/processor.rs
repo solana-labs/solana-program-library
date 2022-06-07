@@ -1487,6 +1487,9 @@ impl PrintProgramError for TokenError {
             TokenError::NonTransferableNeedsImmutableOwnership => {
                 msg!("Non-transferable tokens can't be minted to an account without immutable ownership");
             }
+            TokenError::MaximumPendingBalanceCreditCounterExceeded => {
+                msg!("The total number of `Deposit` and `Transfer` instructions to an account cannot exceed the associated `maximum_pending_balance_credit_counter`");
+            }
         }
     }
 }
