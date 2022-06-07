@@ -107,7 +107,7 @@ async fn test_prove_leaf() {
                     off_chain_tree.get_root(),
                     off_chain_tree.get_leaf(random_leaf_idx),
                     new_leaf,
-                    off_chain_tree.get_proof_of_leaf(random_leaf_idx),
+                    &off_chain_tree.get_proof_of_leaf(random_leaf_idx),
                     random_leaf_idx as u32,
                 )
                 .unwrap();
@@ -135,7 +135,7 @@ async fn test_initialize_with_root() {
         .initialize_with_root(
             tree.get_root(),
             tree.get_leaf(last_leaf_idx),
-            tree.get_proof_of_leaf(last_leaf_idx),
+            &tree.get_proof_of_leaf(last_leaf_idx),
             last_leaf_idx as u32,
         )
         .unwrap();
@@ -169,7 +169,7 @@ async fn test_replaces() {
                 tree.get_root(),
                 tree.get_leaf(i),
                 leaf,
-                tree.get_proof_of_leaf(i),
+                &tree.get_proof_of_leaf(i),
                 i as u32,
             )
             .unwrap();
@@ -187,7 +187,7 @@ async fn test_replaces() {
                 tree.get_root(),
                 tree.get_leaf(index),
                 leaf,
-                tree.get_proof_of_leaf(index),
+                &tree.get_proof_of_leaf(index),
                 index as u32,
             )
             .unwrap();
