@@ -10,14 +10,15 @@ import * as beet from '@metaplex-foundation/beet'
  * @category enums
  * @category generated
  */
-export enum LeafSchema {
-  V1,
+export enum EncodeMethod {
+  UTF8,
+  Base58Encode,
 }
 
 /**
  * @category userTypes
  * @category generated
  */
-export const leafSchemaBeet = beet.fixedScalarEnum(
-  LeafSchema
-) as beet.FixedSizeBeet<LeafSchema, LeafSchema>
+export const encodeMethodBeet = beet.fixedScalarEnum(
+  EncodeMethod
+) as beet.FixedSizeBeet<EncodeMethod, EncodeMethod>

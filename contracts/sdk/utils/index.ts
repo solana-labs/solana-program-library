@@ -29,3 +29,11 @@ export function strToByteUint8Array(str: string): Uint8Array {
     [...str].reduce((acc, c, ind) => acc.concat([str.charCodeAt(ind)]), [])
   );
 }
+
+export async function getBubblegumAuthorityPDAKey(merkleRollPubKey: PublicKey, bubblegumProgramId: PublicKey) {
+    const [bubblegumAuthorityPDAKey] = await PublicKey.findProgramAddress(
+      [merkleRollPubKey.toBuffer()],
+      bubblegumProgramId
+    );
+    return bubblegumAuthorityPDAKey;
+}

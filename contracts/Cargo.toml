@@ -3,5 +3,6 @@ members = [
     "programs/gummyroll",
     "programs/gummyroll_crud",
     "programs/bubblegum",
-    "programs/gumball-machine"
+    "programs/gumball-machine",
+    "programs/sugar-shack"
 ]

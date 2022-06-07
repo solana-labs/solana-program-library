@@ -17,7 +17,7 @@ export type NonceArgs = {
   count: beet.bignum
 }
 
-export const nonceDiscriminator = [143, 197, 147, 95, 106, 165, 50, 43]
+const nonceDiscriminator = [143, 197, 147, 95, 106, 165, 50, 43]
 /**
  * Holds the data for the {@link Nonce} Account and provides de/serialization
  * functionality for that data

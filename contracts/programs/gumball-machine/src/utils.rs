@@ -72,6 +72,15 @@ pub fn get_metadata_args(
         },
         uses,
         token_program_version: TokenProgramVersion::Token2022,
+        // TODO: change this placeholder to be more clear. Creators are akin to permanent secondary sale royalty recipients and are to be stored in the gumball header.
+        // We want something more like:
+        /*
+        Creator {
+            address: project_drop_pubkey,
+            verified: true,
+            share: 5,
+        }
+        */
         creators: vec![Creator {
             address: creator,
             verified: true,

@@ -1,0 +1,398 @@
+{
+  "version": "0.1.0",
+  "name": "sugar_shack",
+  "instructions": [
+    {
+      "name": "initializeMarketplace",
+      "docs": [
+        "Initialize the singleton PDA that will store the marketplace's admin info, mainly related to royalties."
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "marketplaceProps",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "royaltyShare",
+          "type": "u16"
+        },
+        {
+          "name": "authority",
+          "type": "publicKey"
+        }
+      ]
+    },
+    {
+      "name": "updateMarketplaceProperties",
+      "docs": [
+        "Enables the authority of the marketplace to update admin properties"
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "marketplaceProps",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "authority",
+          "type": {
+            "option": "publicKey"
+          }
+        },
+        {
+          "name": "share",
+          "type": {
+            "option": "u16"
+          }
+        }
+      ]
+    },
+    {
+      "name": "createOrModifyListing",
+      "docs": [
+        "Enables the owner of a compressed NFT to list their NFT for sale, can also be used to modify the list price of an existing listing."
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "formerDelegate",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "newDelegate",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegumAuthority",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "This key must sign for all write operations to the NFT Metadata stored in the Merkle slab"
+          ]
+        },
+        {
+          "name": "gummyroll",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleSlab",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegum",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "price",
+          "type": "u64"
+        },
+        {
+          "name": "dataHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "creatorHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "nonce",
+          "type": "u64"
+        },
+        {
+          "name": "index",
+          "type": "u32"
+        },
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "removeListing",
+      "docs": [
+        "Enables the owner of a compressed NFT to remove their listing from the marketplace. The new_delegate specified in this instruction",
+        "should not be a PDA owned by this program for removal to be effective."
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "formerDelegate",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "newDelegate",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegumAuthority",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "This key must sign for all write operations to the NFT Metadata stored in the Merkle slab"
+          ]
+        },
+        {
+          "name": "gummyroll",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleSlab",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegum",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "dataHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "creatorHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "nonce",
+          "type": "u64"
+        },
+        {
+          "name": "index",
+          "type": "u32"
+        },
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "purchase",
+      "docs": [
+        "Enables any user to purchase an NFT listed on the marketplace."
+      ],
+      "accounts": [
+        {
+          "name": "formerOwner",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "purchaser",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "listingDelegate",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegumAuthority",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "This key must sign for all write operations to the NFT Metadata stored in the Merkle slab"
+          ]
+        },
+        {
+          "name": "gummyroll",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleSlab",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegum",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "marketplaceProps",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "price",
+          "type": "u64"
+        },
+        {
+          "name": "dataHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "nonce",
+          "type": "u64"
+        },
+        {
+          "name": "index",
+          "type": "u32"
+        },
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "creatorShares",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "withdrawFees",
+      "docs": [
+        "Enables marketplace authority to withdraw some collected fees to an external account"
+      ],
+      "accounts": [
+        {
+          "name": "feePayoutRecipient",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "marketplaceProps",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarRent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "lamportsToWithdraw",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "MarketplaceProperties",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "publicKey"
+          },
+          {
+            "name": "share",
+            "type": "u16"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "address": "9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK"
+  }
+}
