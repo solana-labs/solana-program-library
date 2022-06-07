@@ -832,6 +832,7 @@ fn process_apply_pending_balance(
         *expected_pending_balance_credit_counter;
     confidential_transfer_account.decryptable_available_balance =
         *new_decryptable_available_balance;
+    confidential_transfer_account.pending_balance_credit_counter = 0.into();
     confidential_transfer_account.pending_balance_lo = EncryptedBalance::zeroed();
     confidential_transfer_account.pending_balance_hi = EncryptedBalance::zeroed();
 
