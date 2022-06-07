@@ -1,0 +1,1006 @@
+{
+  "version": "0.1.0",
+  "name": "bubblegum",
+  "instructions": [
+    {
+      "name": "initializeNonce",
+      "accounts": [
+        {
+          "name": "nonce",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "createTree",
+      "accounts": [
+        {
+          "name": "treeCreator",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "gummyrollProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleSlab",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "maxDepth",
+          "type": "u32"
+        },
+        {
+          "name": "maxBufferSize",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "mint",
+      "accounts": [
+        {
+          "name": "mintAuthority",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nonce",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "gummyrollProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "delegate",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleSlab",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "version",
+          "type": {
+            "defined": "Version"
+          }
+        },
+        {
+          "name": "message",
+          "type": {
+            "defined": "MetadataArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "transfer",
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "delegate",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "newOwner",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "gummyrollProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleSlab",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "version",
+          "type": {
+            "defined": "Version"
+          }
+        },
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "dataHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "creatorHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "nonce",
+          "type": "u128"
+        },
+        {
+          "name": "index",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "delegate",
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "previousDelegate",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "newDelegate",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "gummyrollProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleSlab",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "version",
+          "type": {
+            "defined": "Version"
+          }
+        },
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "dataHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "creatorHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "nonce",
+          "type": "u128"
+        },
+        {
+          "name": "index",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "burn",
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "gummyrollProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "delegate",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleSlab",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "version",
+          "type": {
+            "defined": "Version"
+          }
+        },
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "dataHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "creatorHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "nonce",
+          "type": "u128"
+        },
+        {
+          "name": "index",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "redeem",
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "gummyrollProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "delegate",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleSlab",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "voucher",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "version",
+          "type": {
+            "defined": "Version"
+          }
+        },
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "dataHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "creatorHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "nonce",
+          "type": "u128"
+        },
+        {
+          "name": "index",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "cancelRedeem",
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "gummyrollProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleSlab",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "voucher",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "decompress",
+      "accounts": [
+        {
+          "name": "voucher",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "tokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "mint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "mintAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "metadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "masterEdition",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "sysvarRent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadataProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "metadata",
+          "type": {
+            "defined": "MetadataArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "compress",
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleSlab",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "delegate",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "mint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "metadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "masterEdition",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadataProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "gummyrollProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Nonce",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "count",
+            "type": "u128"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Voucher",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "leafSchema",
+            "type": {
+              "defined": "LeafSchema"
+            }
+          },
+          {
+            "name": "index",
+            "type": "u32"
+          },
+          {
+            "name": "merkleSlab",
+            "type": "publicKey"
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "LeafSchema",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "type": {
+              "defined": "Version"
+            }
+          },
+          {
+            "name": "owner",
+            "type": "publicKey"
+          },
+          {
+            "name": "delegate",
+            "type": "publicKey"
+          },
+          {
+            "name": "nonce",
+            "type": "u128"
+          },
+          {
+            "name": "dataHash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "creatorHash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Creator",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "address",
+            "type": "publicKey"
+          },
+          {
+            "name": "verified",
+            "type": "bool"
+          },
+          {
+            "name": "share",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Uses",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "useMethod",
+            "type": {
+              "defined": "UseMethod"
+            }
+          },
+          {
+            "name": "remaining",
+            "type": "u64"
+          },
+          {
+            "name": "total",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Collection",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "verified",
+            "type": "bool"
+          },
+          {
+            "name": "key",
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MetadataArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "docs": [
+              "The name of the asset"
+            ],
+            "type": "string"
+          },
+          {
+            "name": "symbol",
+            "docs": [
+              "The symbol for the asset"
+            ],
+            "type": "string"
+          },
+          {
+            "name": "uri",
+            "docs": [
+              "URI pointing to JSON representing the asset"
+            ],
+            "type": "string"
+          },
+          {
+            "name": "sellerFeeBasisPoints",
+            "docs": [
+              "Royalty basis points that goes to creators in secondary sales (0-10000)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "primarySaleHappened",
+            "type": "bool"
+          },
+          {
+            "name": "isMutable",
+            "type": "bool"
+          },
+          {
+            "name": "editionNonce",
+            "docs": [
+              "nonce for easy calculation of editions, if present"
+            ],
+            "type": {
+              "option": "u8"
+            }
+          },
+          {
+            "name": "tokenStandard",
+            "docs": [
+              "Since we cannot easily change Metadata, we add the new DataV2 fields here at the end."
+            ],
+            "type": {
+              "option": {
+                "defined": "TokenStandard"
+              }
+            }
+          },
+          {
+            "name": "collection",
+            "docs": [
+              "Collection"
+            ],
+            "type": {
+              "option": {
+                "defined": "Collection"
+              }
+            }
+          },
+          {
+            "name": "uses",
+            "docs": [
+              "Uses"
+            ],
+            "type": {
+              "option": {
+                "defined": "Uses"
+              }
+            }
+          },
+          {
+            "name": "tokenProgramVersion",
+            "type": {
+              "defined": "TokenProgramVersion"
+            }
+          },
+          {
+            "name": "creators",
+            "type": {
+              "vec": {
+                "defined": "Creator"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Version",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "V0"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenProgramVersion",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Original"
+          },
+          {
+            "name": "Token2022"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenStandard",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "NonFungible"
+          },
+          {
+            "name": "FungibleAsset"
+          },
+          {
+            "name": "Fungible"
+          },
+          {
+            "name": "NonFungibleEdition"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UseMethod",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Burn"
+          },
+          {
+            "name": "Multiple"
+          },
+          {
+            "name": "Single"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InstructionName",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Unknown"
+          },
+          {
+            "name": "Mint"
+          },
+          {
+            "name": "Redeem"
+          },
+          {
+            "name": "CancelRedeem"
+          },
+          {
+            "name": "Transfer"
+          },
+          {
+            "name": "Delegate"
+          },
+          {
+            "name": "Decompress"
+          }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "name": "LeafSchemaEvent",
+      "fields": [
+        {
+          "name": "version",
+          "type": {
+            "defined": "Version"
+          },
+          "index": false
+        },
+        {
+          "name": "owner",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "delegate",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "nonce",
+          "type": "u128",
+          "index": false
+        },
+        {
+          "name": "dataHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          },
+          "index": false
+        },
+        {
+          "name": "creatorHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          },
+          "index": false
+        },
+        {
+          "name": "leafHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          },
+          "index": false
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "address": "BGUMzZr2wWfD2yzrXFEWTK2HbdYhqQCP2EZoPEkZBD6o"
+  }
+}
