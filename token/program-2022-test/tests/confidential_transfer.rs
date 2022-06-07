@@ -353,6 +353,7 @@ async fn ct_configure_token_account() {
             &alice,
             alice_meta.elgamal_keypair.public,
             alice_meta.ae_key.encrypt(0_u64),
+            TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER,
         )
         .await
         .unwrap_err();
