@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@metaplex-foundation/amman": "^0.0.12",
+    "@metaplex-foundation/beet": "^0.2.0",
     "@metaplex-foundation/mpl-core": "^0.0.4",
     "@metaplex-foundation/mpl-token-metadata": "^2.1.1",
     "@project-serum/anchor": "^0.21.0",

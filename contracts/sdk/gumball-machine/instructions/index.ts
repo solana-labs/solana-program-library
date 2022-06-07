@@ -18,6 +18,17 @@ import {
   InitGumballMachineProps
 } from '../types';
 import {
+  InitializeGumballMachineInstructionArgs,
+  UpdateHeaderMetadataInstructionArgs,
+  UpdateConfigLinesInstructionArgs,
+  createInitializeGumballMachineInstruction,
+  createDispenseNftSolInstruction,
+  createUpdateHeaderMetadataInstruction,
+  createDestroyInstruction,
+  createUpdateConfigLinesInstruction,
+  createDispenseNftTokenInstruction
+} from "../src/generated";
+import {
     getWillyWonkaPDAKey,
     getBubblegumAuthorityPDAKey
 } from '../utils';
@@ -25,7 +36,7 @@ import {
 /**
  * Client side function to faciliate the creation of instructions for: initialize_gumball_machine
  * Handles the creation of merkle roll + gumball machine accounts and the initialization of the gumball machine header
- * with props from InitGumballMachineProps -> see ../types/index.ts for details
+ * with props from InitializeGumballMachineInstructionArgs, -> see ../src/generated/instructions/initializeGumballMachine.ts for details
  * */
 export async function createInitializeGumballMachineIxs(
   payer: Keypair,
@@ -33,9 +44,8 @@ export async function createInitializeGumballMachineIxs(
   gumballMachineAcctSize: number,
   merkleRollKeypair: Keypair,
   merkleRollAccountSize: number,
-  desiredGumballMachineHeader: InitGumballMachineProps,
-  maxDepth: number,
-  maxBufferSize: number,
+  gumballMachineInitArgs: InitializeGumballMachineInstructionArgs,
+  mint: PublicKey,
   gummyrollProgramId: PublicKey,
   bubblegumProgramId: PublicKey,
   gumballMachine: Program<GumballMachine>
@@ -65,38 +75,20 @@ export async function createInitializeGumballMachineIxs(
     const willyWonkaPDAKey = await getWillyWonkaPDAKey(gumballMachineAcctKeypair.publicKey, gumballMachine.programId);
     const bubblegumAuthorityPDAKey = await getBubblegumAuthorityPDAKey(merkleRollKeypair.publicKey, bubblegumProgramId);
 
-    const initGumballMachineInstr = gumballMachine.instruction.initializeGumballMachine(
-      maxDepth,
-      maxBufferSize,
-      desiredGumballMachineHeader.urlBase, 
-      desiredGumballMachineHeader.nameBase,
-      desiredGumballMachineHeader.symbol,
-      desiredGumballMachineHeader.sellerFeeBasisPoints,
-      desiredGumballMachineHeader.isMutable,
-      desiredGumballMachineHeader.retainAuthority,
-      desiredGumballMachineHeader.price,
-      desiredGumballMachineHeader.goLiveDate,
-      desiredGumballMachineHeader.botWallet,
-      desiredGumballMachineHeader.receiver,
-      desiredGumballMachineHeader.authority, 
-      desiredGumballMachineHeader.collectionKey,
-      desiredGumballMachineHeader.extensionLen,
-      desiredGumballMachineHeader.maxMintSize,
-      desiredGumballMachineHeader.maxItems,
+    const initGumballMachineInstr = createInitializeGumballMachineInstruction(
       {
-        accounts: {
-          gumballMachine: gumballMachineAcctKeypair.publicKey,
-          creator: payer.publicKey,
-          mint: desiredGumballMachineHeader.mint,
-          willyWonka: willyWonkaPDAKey,
-          bubblegumAuthority: bubblegumAuthorityPDAKey,
-          gummyroll: gummyrollProgramId,
-          merkleSlab: merkleRollKeypair.publicKey,
-          bubblegum: bubblegumProgramId
-        },
-        signers: [payer],
-      }
+        gumballMachine: gumballMachineAcctKeypair.publicKey,
+        creator: payer.publicKey,
+        mint,
+        willyWonka: willyWonkaPDAKey,
+        bubblegumAuthority: bubblegumAuthorityPDAKey,
+        gummyroll: gummyrollProgramId,
+        merkleSlab: merkleRollKeypair.publicKey,
+        bubblegum: bubblegumProgramId
+      },
+      gumballMachineInitArgs
     );
+    // initGumballMachineInstr.keys maybe initGumballMachineInstr.keys[].isSigner = true
     return [allocGumballMachineAcctInstr, allocMerkleRollAcctInstr, initGumballMachineInstr];
 }
 
@@ -107,28 +99,14 @@ export async function createInitializeGumballMachineIxs(
 export function createUpdateHeaderMetadataIx(
   authority: Keypair,
   gumballMachineAcctKey: PublicKey,
-  newHeader: InitGumballMachineProps,
-  gumballMachine: Program<GumballMachine>
+  updateHeaderArgs: UpdateHeaderMetadataInstructionArgs,
 ): TransactionInstruction {
-  const updateHeaderMetadataInstr = gumballMachine.instruction.updateHeaderMetadata(
-    newHeader.urlBase,
-    newHeader.nameBase,
-    newHeader.symbol,
-    newHeader.sellerFeeBasisPoints,
-    newHeader.isMutable,
-    newHeader.retainAuthority,
-    newHeader.price,
-    newHeader.goLiveDate,
-    newHeader.botWallet,
-    newHeader.authority, 
-    newHeader.maxMintSize,
+  const updateHeaderMetadataInstr = createUpdateHeaderMetadataInstruction(
     {
-      accounts: {
-        gumballMachine: gumballMachineAcctKey,
-        authority: authority.publicKey
-      },
-      signers: [authority]
-    }
+      gumballMachine: gumballMachineAcctKey,
+      authority: authority.publicKey
+    },
+    updateHeaderArgs
   );
   return updateHeaderMetadataInstr;
 }
@@ -150,25 +128,24 @@ export async function createDispenseNFTForSolIx(
   ): Promise<TransactionInstruction> {
     const willyWonkaPDAKey = await getWillyWonkaPDAKey(gumballMachineAcctKeypair.publicKey, gumballMachine.programId);
     const bubblegumAuthorityPDAKey = await getBubblegumAuthorityPDAKey(merkleRollKeypair.publicKey, bubblegumProgramId);
-    const dispenseInstr = gumballMachine.instruction.dispenseNftSol(
-        numNFTs,
-        {
-            accounts: {
-                gumballMachine: gumballMachineAcctKeypair.publicKey,
-                payer: payer.publicKey,
-                receiver: receiver,
-                systemProgram: SystemProgram.programId,
-                willyWonka: willyWonkaPDAKey,
-                recentBlockhashes: SYSVAR_SLOT_HASHES_PUBKEY,
-                instructionSysvarAccount: SYSVAR_INSTRUCTIONS_PUBKEY,
-                bubblegumAuthority: bubblegumAuthorityPDAKey,
-                nonce: noncePDAKey,
-                gummyroll: gummyrollProgramId,
-                merkleSlab: merkleRollKeypair.publicKey,
-                bubblegum: bubblegumProgramId
-            },
-            signers: [payer]
-        }
+    const dispenseInstr = createDispenseNftSolInstruction(
+          {
+              gumballMachine: gumballMachineAcctKeypair.publicKey,
+              payer: payer.publicKey,
+              receiver: receiver,
+              //systemProgram: SystemProgram.programId,
+              willyWonka: willyWonkaPDAKey,
+              recentBlockhashes: SYSVAR_SLOT_HASHES_PUBKEY,
+              instructionSysvarAccount: SYSVAR_INSTRUCTIONS_PUBKEY,
+              bubblegumAuthority: bubblegumAuthorityPDAKey,
+              nonce: noncePDAKey,
+              gummyroll: gummyrollProgramId,
+              merkleSlab: merkleRollKeypair.publicKey,
+              bubblegum: bubblegumProgramId
+          },
+          {
+            numItems: numNFTs
+          }
     );
     return dispenseInstr;
 }
@@ -191,25 +168,23 @@ export async function createDispenseNFTForTokensIx(
 ): Promise<TransactionInstruction> {
     const willyWonkaPDAKey = await getWillyWonkaPDAKey(gumballMachineAcctKeypair.publicKey, gumballMachine.programId);
     const bubblegumAuthorityPDAKey = await getBubblegumAuthorityPDAKey(merkleRollKeypair.publicKey, bubblegumProgramId);
-    const dispenseInstr = gumballMachine.instruction.dispenseNftToken(
-        numNFTs,
+    const dispenseInstr = createDispenseNftTokenInstruction(
         {
-            accounts: {
-                gumballMachine: gumballMachineAcctKeypair.publicKey,
-                payer: payer.publicKey,
-                payerTokens,
-                receiver,
-                tokenProgram: TOKEN_PROGRAM_ID,
-                willyWonka: willyWonkaPDAKey,
-                recentBlockhashes: SYSVAR_SLOT_HASHES_PUBKEY,
-                instructionSysvarAccount: SYSVAR_INSTRUCTIONS_PUBKEY,
-                bubblegumAuthority: bubblegumAuthorityPDAKey,
-                nonce: noncePDAKey,
-                gummyroll: gummyrollProgramId,
-                merkleSlab: merkleRollKeypair.publicKey,
-                bubblegum: bubblegumProgramId
-            },
-            signers: [payer]
+          gumballMachine: gumballMachineAcctKeypair.publicKey,
+          payer: payer.publicKey,
+          payerTokens,
+          receiver,
+          willyWonka: willyWonkaPDAKey,
+          recentBlockhashes: SYSVAR_SLOT_HASHES_PUBKEY,
+          instructionSysvarAccount: SYSVAR_INSTRUCTIONS_PUBKEY,
+          bubblegumAuthority: bubblegumAuthorityPDAKey,
+          nonce: noncePDAKey,
+          gummyroll: gummyrollProgramId,
+          merkleSlab: merkleRollKeypair.publicKey,
+          bubblegum: bubblegumProgramId
+        },
+        {
+          numItems: numNFTs
         }
     );
     return dispenseInstr;
@@ -219,7 +194,7 @@ export async function createDispenseNFTForTokensIx(
  * Client side function to create instruction: add_config_lines.
  * Enables gumballMachine authority to add config lines -> compressed NFTs that can be minted
  * */
-export function createAddConfigLinesIx(
+/*export function createAddConfigLinesIx(
     authority: Keypair,
     gumballMachineAcctKey: PublicKey,
     configLinesToAdd: Buffer,
@@ -236,7 +211,7 @@ export function createAddConfigLinesIx(
         }
     )
     return addConfigLinesInstr;
-}
+}*/
 
 /**
  * Client side function to create instruction: destroy
@@ -245,16 +220,12 @@ export function createAddConfigLinesIx(
  * */
 export function createDestroyGumballMachineIx(
     gumballMachineAcctKeypair: Keypair,
-    authorityKeypair: Keypair,
-    gumballMachine: Program<GumballMachine>
+    authorityKeypair: Keypair
   ): TransactionInstruction {
-    const destroyInstr = gumballMachine.instruction.destroy(
+    const destroyInstr = createDestroyInstruction(
         {
-        accounts: {
             gumballMachine: gumballMachineAcctKeypair.publicKey,
             authority: authorityKeypair.publicKey
-        },
-        signers: [authorityKeypair]
         }
     );
     return destroyInstr;
@@ -267,20 +238,14 @@ export function createDestroyGumballMachineIx(
 export function createUpdateConfigLinesIx(
     authority: Keypair,
     gumballMachineAcctKey: PublicKey,
-    updatedConfigLines: Buffer,
-    indexOfFirstLineToUpdate: BN,
-    gumballMachine: Program<GumballMachine>
+    args: UpdateConfigLinesInstructionArgs
 ): TransactionInstruction {
-    const updateConfigLinesInstr = gumballMachine.instruction.updateConfigLines(
-        indexOfFirstLineToUpdate,
-        updatedConfigLines,
+    const updateConfigLinesInstr = createUpdateConfigLinesInstruction(
         {
-            accounts: {
-            gumballMachine: gumballMachineAcctKey,
-            authority: authority.publicKey
-            },
-            signers: [authority]
-        }
+          gumballMachine: gumballMachineAcctKey,
+          authority: authority.publicKey
+        },
+        args
     );
     return updateConfigLinesInstr;
 }
