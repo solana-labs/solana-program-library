@@ -9,23 +9,12 @@ import {
   TransactionInstruction,
 } from "@solana/web3.js";
 import {
-    ASSOCIATED_TOKEN_PROGRAM_ID,
-    TOKEN_PROGRAM_ID,
-    NATIVE_MINT
-  } from "@solana/spl-token";
-import {
   GumballMachine,
-  InitGumballMachineProps
 } from '../types';
 import {
   InitializeGumballMachineInstructionArgs,
-  UpdateHeaderMetadataInstructionArgs,
-  UpdateConfigLinesInstructionArgs,
   createInitializeGumballMachineInstruction,
   createDispenseNftSolInstruction,
-  createUpdateHeaderMetadataInstruction,
-  createDestroyInstruction,
-  createUpdateConfigLinesInstruction,
   createDispenseNftTokenInstruction
 } from "../src/generated";
 import {
@@ -34,9 +23,8 @@ import {
 } from '../utils';
 
 /**
- * Client side function to faciliate the creation of instructions for: initialize_gumball_machine
- * Handles the creation of merkle roll + gumball machine accounts and the initialization of the gumball machine header
- * with props from InitializeGumballMachineInstructionArgs, -> see ../src/generated/instructions/initializeGumballMachine.ts for details
+ * Wrapper on top of Solita's createInitializeGumballMachineInstruction
+ * Produces a series of instructions to create the merkle roll + gumball machine accounts and initialize gumball machine
  * */
 export async function createInitializeGumballMachineIxs(
   payer: Keypair,
@@ -93,27 +81,7 @@ export async function createInitializeGumballMachineIxs(
 }
 
 /**
- * Client side function to create instruction for: update_header_metadata
- * Enables the gumball machine authority to update config parameters in the GumballMachine header
- * */ 
-export function createUpdateHeaderMetadataIx(
-  authority: Keypair,
-  gumballMachineAcctKey: PublicKey,
-  updateHeaderArgs: UpdateHeaderMetadataInstructionArgs,
-): TransactionInstruction {
-  const updateHeaderMetadataInstr = createUpdateHeaderMetadataInstruction(
-    {
-      gumballMachine: gumballMachineAcctKey,
-      authority: authority.publicKey
-    },
-    updateHeaderArgs
-  );
-  return updateHeaderMetadataInstr;
-}
-
-/**
- * Client side function to create instruction: dispense_nft_sol.
- * Enables payer to purchase a compressed NFT from a project seeking SOL
+ * Wrapper on top of Solita's createDispenseNftSolInstruction. Automatically fetches necessary PDA keys for instruction
  * */
 export async function createDispenseNFTForSolIx(
     numNFTs: BN,
@@ -151,8 +119,7 @@ export async function createDispenseNFTForSolIx(
 }
 
 /**
- * Client side function to create instruction: dispense_nft_token.
- * Enables payer to purchase a compressed NFT from a project seeking SPL tokens
+ * Wrapper on top of Solita's createDispenseNftTokenInstruction. Automatically fetches necessary PDA keys for instruction
  * */
 export async function createDispenseNFTForTokensIx(
     numNFTs: BN,
@@ -188,64 +155,4 @@ export async function createDispenseNFTForTokensIx(
         }
     );
     return dispenseInstr;
-}
-
-/**
- * Client side function to create instruction: add_config_lines.
- * Enables gumballMachine authority to add config lines -> compressed NFTs that can be minted
- * */
-/*export function createAddConfigLinesIx(
-    authority: Keypair,
-    gumballMachineAcctKey: PublicKey,
-    configLinesToAdd: Buffer,
-    gumballMachine: Program<GumballMachine>
-): TransactionInstruction {
-    const addConfigLinesInstr = gumballMachine.instruction.addConfigLines(
-        configLinesToAdd,
-        {
-            accounts: {
-                gumballMachine: gumballMachineAcctKey,
-                authority: authority.publicKey
-            },
-            signers: [authority]
-        }
-    )
-    return addConfigLinesInstr;
-}*/
-
-/**
- * Client side function to create instruction: destroy
- * Enables authority for a GumballMachine to pull all lamports out of their GumballMachine account
- * effectively "destroying" the GumballMachine for use and returning their funds
- * */
-export function createDestroyGumballMachineIx(
-    gumballMachineAcctKeypair: Keypair,
-    authorityKeypair: Keypair
-  ): TransactionInstruction {
-    const destroyInstr = createDestroyInstruction(
-        {
-            gumballMachine: gumballMachineAcctKeypair.publicKey,
-            authority: authorityKeypair.publicKey
-        }
-    );
-    return destroyInstr;
-}
-
-/**
- * Client side function to create instruction: update_config_lines
- * Enables authority to update the data stored in certain config lines which have already been added to their GumballMachine
- * */
-export function createUpdateConfigLinesIx(
-    authority: Keypair,
-    gumballMachineAcctKey: PublicKey,
-    args: UpdateConfigLinesInstructionArgs
-): TransactionInstruction {
-    const updateConfigLinesInstr = createUpdateConfigLinesInstruction(
-        {
-          gumballMachine: gumballMachineAcctKey,
-          authority: authority.publicKey
-        },
-        args
-    );
-    return updateConfigLinesInstr;
 }
