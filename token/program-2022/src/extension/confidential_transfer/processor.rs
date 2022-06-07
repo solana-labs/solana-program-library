@@ -145,8 +145,9 @@ fn process_configure_account(
         - r: encryption randomness (Scalar)
         - x: message (Scalar)
 
-        Upon receiving a `ConfigureAccount` instruction, the ZK Token program should encrypt x=0 (i.e.
-        Scalar::zero()) and store it as `pending_balance` and `available_balance`.
+        Upon receiving a `ConfigureAccount` instruction, the ZK Token program should encrypt x=0
+        (i.e. Scalar::zero()) and store it as `pending_balance_lo`, `pending_balance_hi`, and
+        `available_balance`.
 
         For regular encryption, it is important that r is generated from a proper randomness source. But
         for the `ConfigureAccount` instruction, it is already known that x is always 0. So r can just be
