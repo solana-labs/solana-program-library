@@ -1,13 +1,12 @@
 # Token Swap Program
 
-A Uniswap-like exchange for the Token program on the Solana blockchain, deployed
-to `SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8` on all networks.
+A Uniswap-like exchange for the Token program on the Solana blockchain.
 
 Full documentation is available at https://spl.solana.com/token-swap
 
 JavaScript bindings are available in the `./js` directory.
 
-## Building
+## Building master
 
 To build a development version of the Token Swap program, you can use the normal
 build command for Solana programs:
@@ -16,10 +15,12 @@ build command for Solana programs:
 cargo build-bpf
 ```
 
-For production versions, the Token Swap Program contains a `production` feature
-to fix constraints on fees and fee account owner. A developer can
-deploy the program, allow others to create pools, and earn a "protocol fee" on
-all activity.
+## Building mainnet v2.0.0
+
+For the version deployed to `SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8`,
+the Token Swap Program contains a `production` feature to fix constraints on fees
+and fee account owner. A developer can deploy the program, allow others to create
+pools, and earn a "protocol fee" on all activity.
 
 Since Solana programs cannot contain any modifiable state, we must hard-code
 all constraints into the program.  `SwapConstraints` in `program/src/constraints.rs`
