@@ -1,6 +1,3 @@
-#[cfg(feature = "sol-log")]
-use solana_program::{log::sol_log_compute_units, msg};
-
 macro_rules! solana_logging {
     ($message:literal, $($arg:tt)*) => {
         #[cfg(feature = "log")]
