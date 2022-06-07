@@ -31,7 +31,7 @@ use {
 
 const TEST_MAXIMUM_FEE: u64 = 100;
 const TEST_FEE_BASIS_POINTS: u16 = 250;
-const TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER: u64 = 1024;
+const TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER: u64 = 2;
 
 fn test_epoch_info() -> EpochInfo {
     EpochInfo {
@@ -513,20 +513,54 @@ async fn ct_deposit() {
         .check_balances(
             &token,
             ConfidentialTokenAccountBalances {
-                pending_balance_lo: 42,
-                pending_balance_hi: 0,
+                pending_balance_lo: 1,
+                pending_balance_hi: 1,
                 available_balance: 0,
                 decryptable_available_balance: 0,
             },
         )
         .await;
 
+    token
+        .confidential_transfer_deposit(
+            &alice_meta.token_account,
+            &alice_meta.token_account,
+            &alice,
+            0,
+            decimals,
+        )
+        .await
+        .unwrap();
+
+    let err = token
+        .confidential_transfer_deposit(
+            &alice_meta.token_account,
+            &alice_meta.token_account,
+            &alice,
+            0,
+            decimals,
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(
+                    TokenError::MaximumPendingBalanceCreditCounterExceeded as u32
+                ),
+            )
+        )))
+    );
+
     let new_decryptable_available_balance = alice_meta.ae_key.encrypt(65537_u64);
     token
         .confidential_transfer_apply_pending_balance(
             &alice_meta.token_account,
             &alice,
-            1,
+            2,
             new_decryptable_available_balance.clone(),
         )
         .await
@@ -543,9 +577,9 @@ async fn ct_deposit() {
         extension.decryptable_available_balance,
         new_decryptable_available_balance.into(),
     );
-    assert_eq!(extension.pending_balance_credit_counter, 1.into());
-    assert_eq!(extension.expected_pending_balance_credit_counter, 1.into());
-    assert_eq!(extension.actual_pending_balance_credit_counter, 1.into());
+    assert_eq!(extension.pending_balance_credit_counter, 0.into());
+    assert_eq!(extension.expected_pending_balance_credit_counter, 2.into());
+    assert_eq!(extension.actual_pending_balance_credit_counter, 2.into());
 }
 
 #[tokio::test]
@@ -728,6 +762,31 @@ async fn ct_transfer() {
             },
         )
         .await;
+
+    let err = token
+        .confidential_transfer_transfer(
+            &alice_meta.token_account,
+            &alice_meta.token_account,
+            &alice,
+            0, // amount
+            0, // available balance
+            &alice_meta.elgamal_keypair,
+            alice_meta.ae_key.encrypt(0_u64),
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                1,
+                InstructionError::Custom(
+                    TokenError::MaximumPendingBalanceCreditCounterExceeded as u32
+                ),
+            )
+        )))
+    );
 
     token
         .confidential_transfer_apply_pending_balance(
