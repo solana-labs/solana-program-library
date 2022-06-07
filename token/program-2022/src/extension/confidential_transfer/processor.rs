@@ -54,7 +54,7 @@ fn process_initialize_mint(
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
     let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(mint_data)?;
-    *mint.init_extension::<ConfidentialTransferMint>()? = *confidential_transfer_mint;
+    *mint.init_extension::<ConfidentialTransferMint>(true)? = *confidential_transfer_mint;
 
     Ok(())
 }
@@ -125,7 +125,7 @@ fn process_configure_account(
     // Note: The caller is expected to use the `Reallocate` instruction to ensure there is
     // sufficient room in their token account for the new `ConfidentialTransferAccount` extension
     let mut confidential_transfer_account =
-        token_account.init_extension::<ConfidentialTransferAccount>()?;
+        token_account.init_extension::<ConfidentialTransferAccount>(false)?;
     confidential_transfer_account.approved = confidential_transfer_mint.auto_approve_new_accounts;
     confidential_transfer_account.encryption_pubkey = *encryption_pubkey;
 

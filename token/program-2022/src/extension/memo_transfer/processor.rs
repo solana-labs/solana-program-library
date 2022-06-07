@@ -40,7 +40,7 @@ fn process_enable_required_memo_transfers(
     let extension = if let Ok(extension) = account.get_extension_mut::<MemoTransfer>() {
         extension
     } else {
-        account.init_extension::<MemoTransfer>()?
+        account.init_extension::<MemoTransfer>(true)?
     };
     extension.require_incoming_transfer_memos = true.into();
     Ok(())
@@ -69,7 +69,7 @@ fn process_diasble_required_memo_transfers(
     let extension = if let Ok(extension) = account.get_extension_mut::<MemoTransfer>() {
         extension
     } else {
-        account.init_extension::<MemoTransfer>()?
+        account.init_extension::<MemoTransfer>(true)?
     };
     extension.require_incoming_transfer_memos = false.into();
     Ok(())

@@ -36,7 +36,7 @@ fn process_initialize_default_account_state(
     let mint_account_info = next_account_info(account_info_iter)?;
     let mut mint_data = mint_account_info.data.borrow_mut();
     let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
-    let extension = mint.init_extension::<DefaultAccountState>()?;
+    let extension = mint.init_extension::<DefaultAccountState>(true)?;
     extension.state = state.into();
     Ok(())
 }

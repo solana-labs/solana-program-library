@@ -1031,7 +1031,7 @@ impl Processor {
 
         let mut mint_data = mint_account_info.data.borrow_mut();
         let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
-        let extension = mint.init_extension::<MintCloseAuthority>()?;
+        let extension = mint.init_extension::<MintCloseAuthority>(true)?;
         extension.close_authority = close_authority.try_into()?;
 
         Ok(())
@@ -1063,7 +1063,9 @@ impl Processor {
         let token_account_data = &mut token_account_info.data.borrow_mut();
         let mut token_account =
             StateWithExtensionsMut::<Account>::unpack_uninitialized(token_account_data)?;
-        token_account.init_extension::<ImmutableOwner>().map(|_| ())
+        token_account
+            .init_extension::<ImmutableOwner>(true)
+            .map(|_| ())
     }
 
     /// Processes an [AmountToUiAmount](enum.TokenInstruction.html) instruction
@@ -1160,7 +1162,7 @@ impl Processor {
 
         let mut mint_data = mint_account_info.data.borrow_mut();
         let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
-        mint.init_extension::<NonTransferable>()?;
+        mint.init_extension::<NonTransferable>(true)?;
 
         Ok(())
     }

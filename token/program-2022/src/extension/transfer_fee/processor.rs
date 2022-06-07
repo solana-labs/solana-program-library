@@ -36,7 +36,7 @@ fn process_initialize_transfer_fee_config(
 
     let mut mint_data = mint_account_info.data.borrow_mut();
     let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
-    let extension = mint.init_extension::<TransferFeeConfig>()?;
+    let extension = mint.init_extension::<TransferFeeConfig>(true)?;
     extension.transfer_fee_config_authority = transfer_fee_config_authority.try_into()?;
     extension.withdraw_withheld_authority = withdraw_withheld_authority.try_into()?;
     extension.withheld_amount = 0u64.into();
