@@ -2539,7 +2539,10 @@ fn main() -> Result<(), Error> {
 
     let config = {
         let cli_config = if let Some(config_file) = matches.value_of("config_file") {
-            solana_cli_config::Config::load(config_file).unwrap_or_default()
+            solana_cli_config::Config::load(config_file).unwrap_or_else(|_| {
+                eprintln!("error: Could not find config file `{}`", config_file);
+                exit(1);
+            })
         } else {
             solana_cli_config::Config::default()
         };
@@ -3138,13 +3141,14 @@ fn handle_tx(
 mod tests {
     use {
         super::*,
+        assert_cmd::prelude::*,
         solana_client::blockhash_query::Source,
         solana_sdk::{
             bpf_loader,
             signature::{Keypair, Signer},
         },
         solana_test_validator::{ProgramInfo, TestValidator, TestValidatorGenesis},
-        std::path::PathBuf,
+        std::{path::PathBuf, process::Command},
     };
 
     fn clone_keypair(keypair: &Keypair) -> Keypair {
@@ -3632,5 +3636,17 @@ mod tests {
         let ui_account = config.rpc_client.get_token_account(&aux).unwrap().unwrap();
         assert_eq!(ui_account.mint, token.to_string());
         assert_eq!(ui_account.owner, aux_string);
+    }
+
+    #[test]
+    fn invalid_config_will_cause_commands_to_fail() {
+        let mut cmd = Command::cargo_bin("spl-token").unwrap();
+        let args = &["address", "--config", "~/nonexistent/config.yml"];
+
+        cmd.args(args)
+            .assert()
+            .stderr("error: Could not find config file `~/nonexistent/config.yml`\n");
+
+        cmd.args(args).assert().code(1).failure();
     }
 }

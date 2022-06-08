@@ -33,6 +33,7 @@ spl-memo = { version = "3.0.1", path="../../memo/program", features = ["no-entry
 
 [dev-dependencies]
 solana-test-validator = "=1.10.19"
+assert_cmd = "2.0.4"
 
 [[bin]]
 name = "spl-token"
