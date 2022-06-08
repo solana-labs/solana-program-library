@@ -9,6 +9,7 @@ import { decodeBurnCheckedInstruction, DecodedBurnCheckedInstruction } from './b
 import { decodeCloseAccountInstruction, DecodedCloseAccountInstruction } from './closeAccount';
 import { DecodedFreezeAccountInstruction, decodeFreezeAccountInstruction } from './freezeAccount';
 import { DecodedInitializeAccountInstruction, decodeInitializeAccountInstruction } from './initializeAccount';
+import { DecodedInitializeAccount2Instruction, decodeInitializeAccount2Instruction } from './initializeAccount2';
 import { DecodedInitializeMintInstruction, decodeInitializeMintInstruction } from './initializeMint';
 import { DecodedInitializeMultisigInstruction, decodeInitializeMultisigInstruction } from './initializeMultisig';
 import { DecodedMintToInstruction, decodeMintToInstruction } from './mintTo';
@@ -39,7 +40,7 @@ export type DecodedInstruction =
     | DecodedApproveCheckedInstruction
     | DecodedMintToCheckedInstruction
     | DecodedBurnCheckedInstruction
-    // | DecodedInitializeAccount2Instruction
+    | DecodedInitializeAccount2Instruction
     | DecodedSyncNativeInstruction
     // | DecodedInitializeAccount3Instruction
     // | DecodedInitializeMultisig2Instruction
@@ -72,8 +73,8 @@ export function decodeInstruction(
     if (type === TokenInstruction.ApproveChecked) return decodeApproveCheckedInstruction(instruction, programId);
     if (type === TokenInstruction.MintToChecked) return decodeMintToCheckedInstruction(instruction, programId);
     if (type === TokenInstruction.BurnChecked) return decodeBurnCheckedInstruction(instruction, programId);
-    // TODO: implement
-    if (type === TokenInstruction.InitializeAccount2) throw new TokenInvalidInstructionTypeError();
+    if (type === TokenInstruction.InitializeAccount2)
+        return decodeInitializeAccount2Instruction(instruction, programId);
     if (type === TokenInstruction.SyncNative) return decodeSyncNativeInstruction(instruction, programId);
     // TODO: implement
     if (type === TokenInstruction.InitializeAccount3) throw new TokenInvalidInstructionTypeError();
@@ -171,12 +172,12 @@ export function isBurnCheckedInstruction(decoded: DecodedInstruction): decoded i
     return decoded.data.instruction === TokenInstruction.BurnChecked;
 }
 
-/** TODO: docs, implement */
-// export function isInitializeAccount2Instruction(
-//     decoded: DecodedInstruction
-// ): decoded is DecodedInitializeAccount2Instruction {
-//     return decoded.data.instruction === TokenInstruction.InitializeAccount2;
-// }
+/** TODO: docs */
+export function isInitializeAccount2Instruction(
+    decoded: DecodedInstruction
+): decoded is DecodedInitializeAccount2Instruction {
+    return decoded.data.instruction === TokenInstruction.InitializeAccount2;
+}
 
 /** TODO: docs */
 export function isSyncNativeInstruction(decoded: DecodedInstruction): decoded is DecodedSyncNativeInstruction {
