@@ -187,7 +187,6 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         let intersection = self.rightmost_proof.index.trailing_zeros() as usize;
         let mut change_list = [EMPTY; MAX_DEPTH];
         let mut intersection_node = self.rightmost_proof.leaf;
-        println!("{:?}", &intersection_node);
 
         // Compute proof to the appended node from empty nodes
         for i in 0..intersection {
@@ -216,12 +215,8 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         self.rightmost_proof.proof[intersection] = intersection_node;
 
         // Update the change list path up to the root
-        println!("intersection: {:?}, MAX DEPTH: {}", intersection, MAX_DEPTH);
         for i in intersection + 1..MAX_DEPTH {
             change_list[i] = node;
-            if i == 0 {
-                println!("{:?}", self.rightmost_proof.proof[i].as_ref());
-            }
             let hash = if (self.rightmost_proof.index >> i) & 1 == 1 {
                 hashv(&[self.rightmost_proof.proof[i].as_ref(), node.as_ref()])
             } else {
@@ -439,16 +434,16 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         // Update rightmost path if possible
         if self.rightmost_proof.index < (1 << MAX_DEPTH) {
             if index < self.rightmost_proof.index as u32 {
-                println!("yeehaw: {}", index);
                 if index != self.rightmost_proof.index - 1 {
                     let common_path_len = ((index ^ (self.rightmost_proof.index - 1) as u32)
                         << padding)
                         .leading_zeros() as usize;
                     let critbit_index = (MAX_DEPTH - 1) - common_path_len;
                     self.rightmost_proof.proof[critbit_index] = change_log.path[critbit_index];
+                } else {
+                    self.rightmost_proof.leaf = change_log.get_leaf();
                 }
             } else {
-                println!("beep: {}", index);
                 assert!(index == self.rightmost_proof.index);
                 solana_logging!("Appending rightmost leaf");
                 self.rightmost_proof.proof.copy_from_slice(&proof);

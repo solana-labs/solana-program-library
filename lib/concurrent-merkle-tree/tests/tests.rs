@@ -266,8 +266,8 @@ async fn test_mixed() {
     // Replaces leaves in a random order by 4x capacity
     let mut last_rmp = merkle_roll.rightmost_proof;
 
-    let test_capacity: usize = 5 * (1 << DEPTH);
-    for _ in 0..(test_capacity) {
+    let tree_capacity: usize = 1 << DEPTH;
+    while tree_size < tree_capacity {
         let leaf = rng.gen::<[u8; 32]>();
         let random_num: u32 = rng.gen_range(0, 10);
         if random_num < 5 {
@@ -302,8 +302,8 @@ async fn test_mixed() {
 }
 
 #[tokio::test(threaded_scheduler)]
-/// Replace the last leaf
-async fn test_repro_1() {
+/// Append after replacing the last leaf
+async fn test_append_bug_repro_1() {
     let (mut merkle_roll, mut tree) = setup();
     let mut rng = thread_rng();
     merkle_roll.initialize().unwrap();
@@ -318,26 +318,25 @@ async fn test_repro_1() {
     assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
 
     // Replace the rightmost leaf
-    let mut leaf = rng.gen::<[u8; 32]>();
+    let leaf_0 = rng.gen::<[u8; 32]>();
     let index = 9;
     merkle_roll
         .set_leaf(
             tree.get_root(),
             tree.get_leaf(index),
-            leaf,
+            leaf_0,
             &tree.get_proof_of_leaf(index),
             index as u32,
         )
         .unwrap();
-    tree.add_leaf(leaf, index);
+    tree.add_leaf(leaf_0, index);
 
-    println!("\nLeaf: {:?}", leaf);
     let mut last_rmp = merkle_roll.rightmost_proof;
 
     // Append
-    leaf = rng.gen::<[u8; 32]>();
-    merkle_roll.append(leaf).unwrap();
-    tree.add_leaf(leaf, tree_size);
+    let leaf_1 = rng.gen::<[u8; 32]>();
+    merkle_roll.append(leaf_1).unwrap();
+    tree.add_leaf(leaf_1, tree_size);
     tree_size += 1;
 
     // Now compare something
@@ -351,8 +350,8 @@ async fn test_repro_1() {
 }
 
 #[tokio::test(threaded_scheduler)]
-/// Execute an append via a replace
-async fn test_repro_2() {
+/// Append after also appending via a replace
+async fn test_append_bug_repro_2() {
     let (mut merkle_roll, mut tree) = setup();
     let mut rng = thread_rng();
     merkle_roll.initialize().unwrap();
@@ -381,7 +380,6 @@ async fn test_repro_2() {
     tree.add_leaf(leaf, index);
     tree_size += 1;
 
-    println!("\nLeaf: {:?}", leaf);
     let mut last_rmp = merkle_roll.rightmost_proof;
 
     // Append
