@@ -1,5 +1,9 @@
 //! Approximation calculations
 
+use std::fmt::Display;
+
+use num_traits::{Float, Unsigned};
+
 use {
     num_traits::{CheckedShl, CheckedShr, PrimInt},
     std::cmp::Ordering,
@@ -39,6 +43,46 @@ pub fn sqrt<T: PrimInt + CheckedShl + CheckedShr>(radicand: T) -> Option<T> {
         bit = bit.checked_shr(2)?;
     }
     Some(result)
+}
+
+/// Accurate value of natural log of 10.
+pub const LN10: f32 = 2.302585092994046;
+/// Calculate approximate natural log of a number
+/// using Taylor series of Log_e(x)
+///     
+/// Ideas from https://math.stackexchange.com/a/977836
+/// 
+/// $$ ln(x) = 2 * \sum{ y^{2k+1} \over 2k+1 } $$
+/// where y = (A-1)/(A+1)
+/// where x = A * 10^(n-1)
+pub fn ln<T: Float>(input: T) -> Option<T> {
+    if input.le(&T::zero()) {
+        return None; // fail for less than or equal to 0
+    }
+
+    // x = A * 10^(n-1)
+    let mut mantx = input.clone();
+    while mantx.floor() > T::from(10 as f32).unwrap() {
+        mantx = mantx.div(T::from(10 as f32).unwrap());
+    }
+    
+    // number of digits of input before decimal
+    let mut temp_mantx = mantx.clone();
+    let mut n = 1;
+    while temp_mantx.floor() != input.floor() {
+        temp_mantx = temp_mantx.mul(T::from(10 as f32).unwrap());
+        n += 1;
+    };
+
+    let y: T = (mantx - T::from(1 as f32).unwrap()) / (mantx + T::from(1 as f32).unwrap());
+    
+    let mut sum: T = T::from(0 as f32).unwrap();
+    for k in 0..25 {
+        sum = sum.add(y.powi(2*k + 1).div(T::from(2*k + 1).unwrap()));
+    }
+
+    sum = sum.mul(T::from(2 as f32).unwrap());
+    Some(sum.add( T::from(LN10 * (n - 1) as f32).unwrap() ))
 }
 
 /// Calculate the normal cdf of the given number
@@ -105,6 +149,7 @@ mod tests {
         assert!(abs_difference <= 0.000_2);
     }
 
+
     #[test]
     fn test_normal_cdf_f32_min_max() {
         let test_arguments: [f32; 2] = [f32::MIN, f32::MAX];
@@ -120,4 +165,31 @@ mod tests {
             check_normal_cdf_f32((a as f32)*0.005);
         }
     }
+
+
+    #[test]
+    fn check_ln() {
+        let result = ln(0.56276);
+        println!("{}", result.unwrap());
+    }
+
+    // fn check_ln(i:f32) {
+    //     let result = ln(i);
+
+    // }
+
+    #[test]
+    fn test_ln_min_max() {
+        let test_arguments: [f32; 2] = [f32::MIN, f32::MAX];
+        for i in test_arguments.iter() {
+            // check_ln(*i as f32)
+        }
+    }
+
+    // proptest! {
+    //     #[test]
+    //     fn test_ln(a in 1..10) {
+    //         check_ln(a as f32);
+    //     }
+    // }
 }
