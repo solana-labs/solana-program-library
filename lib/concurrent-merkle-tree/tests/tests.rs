@@ -247,3 +247,153 @@ async fn test_default_node_is_empty() {
         "Expected default() to be the empty node"
     );
 }
+
+#[tokio::test(threaded_scheduler)]
+async fn test_mixed() {
+    let (mut merkle_roll, mut tree) = setup();
+    let mut rng = thread_rng();
+    merkle_roll.initialize().unwrap();
+
+    // Fill both trees with random nodes
+    let mut tree_size = 10;
+    for i in 0..tree_size {
+        let leaf = rng.gen::<[u8; 32]>();
+        tree.add_leaf(leaf, i);
+        merkle_roll.append(leaf).unwrap();
+    }
+    assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
+
+    // Replaces leaves in a random order by 4x capacity
+    let mut last_rmp = merkle_roll.rightmost_proof;
+
+    let tree_capacity: usize = 1 << DEPTH;
+    while tree_size < tree_capacity {
+        let leaf = rng.gen::<[u8; 32]>();
+        let random_num: u32 = rng.gen_range(0, 10);
+        if random_num < 5 {
+            println!("{} append", tree_size);
+            merkle_roll.append(leaf).unwrap();
+            tree.add_leaf(leaf, tree_size);
+            tree_size += 1;
+        } else {
+            let index = rng.gen_range(0, tree_size) % (tree_size);
+            println!("{} replace {}", tree_size, index);
+            merkle_roll
+                .set_leaf(
+                    tree.get_root(),
+                    tree.get_leaf(index),
+                    leaf,
+                    &tree.get_proof_of_leaf(index),
+                    index as u32,
+                )
+                .unwrap();
+            tree.add_leaf(leaf, index);
+        }
+        if merkle_roll.get_change_log().root != tree.get_root() {
+            let last_active_index: usize =
+                (merkle_roll.active_index as usize + BUFFER_SIZE - 1) % BUFFER_SIZE;
+            println!("{:?}", &last_rmp);
+            println!("{:?}", &merkle_roll.change_logs[last_active_index]);
+            println!("{:?}", &merkle_roll.get_change_log())
+        }
+        last_rmp = merkle_roll.rightmost_proof;
+        assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
+    }
+}
+
+#[tokio::test(threaded_scheduler)]
+/// Append after replacing the last leaf
+async fn test_append_bug_repro_1() {
+    let (mut merkle_roll, mut tree) = setup();
+    let mut rng = thread_rng();
+    merkle_roll.initialize().unwrap();
+
+    // Fill both trees with random nodes
+    let mut tree_size = 10;
+    for i in 0..tree_size {
+        let leaf = rng.gen::<[u8; 32]>();
+        tree.add_leaf(leaf, i);
+        merkle_roll.append(leaf).unwrap();
+    }
+    assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
+
+    // Replace the rightmost leaf
+    let leaf_0 = rng.gen::<[u8; 32]>();
+    let index = 9;
+    merkle_roll
+        .set_leaf(
+            tree.get_root(),
+            tree.get_leaf(index),
+            leaf_0,
+            &tree.get_proof_of_leaf(index),
+            index as u32,
+        )
+        .unwrap();
+    tree.add_leaf(leaf_0, index);
+
+    let mut last_rmp = merkle_roll.rightmost_proof;
+
+    // Append
+    let leaf_1 = rng.gen::<[u8; 32]>();
+    merkle_roll.append(leaf_1).unwrap();
+    tree.add_leaf(leaf_1, tree_size);
+    tree_size += 1;
+
+    // Now compare something
+    if merkle_roll.get_change_log().root != tree.get_root() {
+        let last_active_index: usize =
+            (merkle_roll.active_index as usize + BUFFER_SIZE - 1) % BUFFER_SIZE;
+        println!("{:?}", &last_rmp);
+    }
+    last_rmp = merkle_roll.rightmost_proof;
+    assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
+}
+
+#[tokio::test(threaded_scheduler)]
+/// Append after also appending via a replace
+async fn test_append_bug_repro_2() {
+    let (mut merkle_roll, mut tree) = setup();
+    let mut rng = thread_rng();
+    merkle_roll.initialize().unwrap();
+
+    // Fill both trees with random nodes
+    let mut tree_size = 10;
+    for i in 0..tree_size {
+        let leaf = rng.gen::<[u8; 32]>();
+        tree.add_leaf(leaf, i);
+        merkle_roll.append(leaf).unwrap();
+    }
+    assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
+
+    // Replace the rightmost leaf
+    let mut leaf = rng.gen::<[u8; 32]>();
+    let index = 10;
+    merkle_roll
+        .set_leaf(
+            tree.get_root(),
+            tree.get_leaf(index),
+            leaf,
+            &tree.get_proof_of_leaf(index),
+            index as u32,
+        )
+        .unwrap();
+    tree.add_leaf(leaf, index);
+    tree_size += 1;
+
+    let mut last_rmp = merkle_roll.rightmost_proof;
+
+    // Append
+    leaf = rng.gen::<[u8; 32]>();
+    merkle_roll.append(leaf).unwrap();
+    tree.add_leaf(leaf, tree_size);
+    tree_size += 1;
+
+    // Now compare something
+    if merkle_roll.get_change_log().root != tree.get_root() {
+        let last_active_index: usize =
+            (merkle_roll.active_index as usize + BUFFER_SIZE - 1) % BUFFER_SIZE;
+        println!("{:?}", &last_rmp);
+    }
+    last_rmp = merkle_roll.rightmost_proof;
+    assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
+}

@@ -1,6 +1,6 @@
 use solana_program::keccak::hashv;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 /// Stores proof for a given Merkle root update
 #[repr(C)]
 pub struct ChangeLog<const MAX_DEPTH: usize> {
@@ -47,7 +47,7 @@ impl<const MAX_DEPTH: usize> ChangeLog<MAX_DEPTH> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub struct Path<const MAX_DEPTH: usize> {
     pub proof: [Node; MAX_DEPTH],

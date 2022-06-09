@@ -440,6 +440,8 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
                         .leading_zeros() as usize;
                     let critbit_index = (MAX_DEPTH - 1) - common_path_len;
                     self.rightmost_proof.proof[critbit_index] = change_log.path[critbit_index];
+                } else {
+                    self.rightmost_proof.leaf = change_log.get_leaf();
                 }
             } else {
                 assert!(index == self.rightmost_proof.index);
