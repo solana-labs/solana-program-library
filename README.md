@@ -21,15 +21,16 @@ TypeDocs: https://solana-labs.github.io/solana-program-library/token/js/
 
 ### Environment Setup
 
-1. Install the latest Rust stable from https://rustup.rs/
-2. Install Solana v1.6.1 or later from https://docs.solana.com/cli/install-solana-cli-tools
+1. Install Solana **v1.10.19 or later** from https://docs.solana.com/cli/install-solana-cli-tools.
+2. Install the latest Rust stable from https://rustup.rs/. If you already have Rust, run `rustup update` to get the latest version.
 3. Install the `libudev` development package for your distribution (`libudev-dev` on Debian-derived distros, `libudev-devel` on Redhat-derived).
 
 ### Build
 
-The normal cargo build is available for building programs against your host machine:
-```
-$ cargo build
+The normal cargo build is available for building programs against your host machine, and for the Solana BPF target.
+```bash
+$ cargo build      # <-- runs host target build
+$ cargo build-bpf  # <-- runs BPF target build
 ```
 
 To build a specific program, such as SPL Token, for the Solana BPF target:
@@ -47,7 +48,7 @@ $ cargo test-bpf  # <-- runs BPF program tests
 ```
 
 To run a specific program's tests, such as SPL Token:
-```
+```bash
 $ cd token/program
 $ cargo test      # <-- runs host-based tests
 $ cargo test-bpf  # <-- runs BPF program tests
@@ -56,6 +57,24 @@ $ cargo test-bpf  # <-- runs BPF program tests
 Integration testing may be performed via the per-project .js bindings.  See the
 [token program's js project](token/js) for an example.
 
+### Common Issues
+Solutions to a few issues you might run into are mentioned here.
+
+1. `Failed to open: ../../deploy/spl_associated_token_account.so`
+    
+    Update your Rust and Cargo to the latest versions and re-run the `cargo build` and `cargo build-bpf` steps.
+    Make sure you have Solana version **v1.10.19 or later**.
+
+2. [Error while loading shared libraries. (libssl.so.1.1)](https://github.com/project-serum/anchor/issues/1831)
+
+    A working solution was mentioned [here](https://github.com/project-serum/anchor/issues/1831#issuecomment-1109124934).
+
+3.  CPU or Memory usage at 100%
+
+    This is to be expected while building some of the programs in this library.
+    The simplest solution is to add the `--jobs 1` flag to the build commands to limit the number of parallel jobs to 1 and check if that fixes the issue. Although this will mean much longer build times.
+
+
 ### Clippy
 ```bash
 $ cargo clippy
@@ -63,7 +82,7 @@ $ cargo clippy
 
 ### Coverage
 ```bash
-$ ./coverage.sh  # Please help! Coverage build currently fails on MacOS due to an XCode `grcov` mismatch...
+$ ./coverage.sh  # Help wanted! Coverage build currently fails on MacOS due to an XCode `grcov` mismatch...
 ```
 
 #### MacOS
