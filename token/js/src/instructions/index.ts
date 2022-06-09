@@ -23,7 +23,6 @@ export * from './initializeMultisig2'; // 19
 export * from './initializeMint2'; //     20
 export * from './initializeImmutableOwner'; //  22
 export * from './initializeMintCloseAuthority'; // 23
-export * from './transferFee'; //          26
 export * from './createNativeMint'; //    29
 
 export * from './decode';

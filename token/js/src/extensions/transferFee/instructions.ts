@@ -1,13 +1,23 @@
 import { struct, u8, u16 } from '@solana/buffer-layout';
 import { publicKey, u64 } from '@solana/buffer-layout-utils';
-import { AccountMeta, PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { AccountMeta, PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import {
     TokenInvalidInstructionDataError,
     TokenInvalidInstructionKeysError,
     TokenInvalidInstructionProgramError,
     TokenInvalidInstructionTypeError,
-} from '../errors';
-import { TokenInstruction, TransferFeeInstruction } from './types';
+} from '../../errors';
+import { TokenInstruction } from '../../instructions/types';
+import { TOKEN_2022_PROGRAM_ID } from '../../constants';
+
+export enum TransferFeeInstruction {
+    InitializeTransferFeeConfig = 0,
+    TransferCheckedWithFee = 1,
+    WithdrawWithheldTokensFromMint = 2,
+    WithdrawWithheldTokensFromAccounts = 3,
+    HarvestWithheldTokensToMint = 4,
+    SetTransferFee = 5,
+}
 
 // InitializeTransferFeeConfig
 
@@ -32,7 +42,7 @@ export const initializeTransferFeeConfigInstructionData = struct<InitializeTrans
     u8('withdrawWithheldAuthorityOption'),
     publicKey('withdrawWithheldAuthority'),
     u16('transferFeeBasisPoints'),
-    u64('maximum_fee'),
+    u64('maximumFee'),
 ]);
 
 /**
@@ -42,7 +52,7 @@ export const initializeTransferFeeConfigInstructionData = struct<InitializeTrans
  * @param transferFeeConfigAuthority  Optional authority that can update the fees
  * @param withdrawWithheldAuthority Optional authority that can withdraw fees
  * @param transferFeeBasisPoints Amount of transfer collected as fees, expressed as basis points of the transfer amount
- *  @param maximumFee        Maximum fee assessed on transfers
+ * @param maximumFee        Maximum fee assessed on transfers
  * @param programId       SPL Token program account
  *
  * @return Instruction to add to a transaction
@@ -53,7 +63,7 @@ export function createInitializeTransferFeeConfigInstruction(
     withdrawWithheldAuthority: PublicKey | null,
     transferFeeBasisPoints: number,
     maximumFee: BigInt,
-    programId: PublicKey
+    programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     const keys = [{ pubkey: mint, isSigner: false, isWritable: true }];
 
@@ -183,7 +193,6 @@ export function decodeInitializeTransferFeeConfigInstructionUnchecked({
 }
 
 // TransferCheckedWithFee
-
 export interface TransferCheckedWithFeeInstructionData {
     instruction: TokenInstruction.TransferFeeExtension;
     transferFeeInstruction: TransferFeeInstruction.TransferCheckedWithFee;
@@ -200,16 +209,9 @@ export const transferCheckedWithFeeInstructionData = struct<TransferCheckedWithF
     u64('fee'),
 ]);
 
-type account_holder = {
-    pubkey: PublicKey;
-    isSigner: boolean;
-    isWritable: boolean;
-};
-
 /**
  * Construct an TransferCheckedWithFee instruction
  *
- * @param programId       SPL Token program account
  * @param source          The source account
  * @param mint            The token mint
  * @param destination     The destination account
@@ -217,20 +219,21 @@ type account_holder = {
  * @param signers         The signer account(s)
  * @param amount          The amount of tokens to transfer
  * @param decimals        The expected number of base 10 digits to the right of the decimal place
- * @param fee             The expected fee assesed on this transfer, calculated off-chain based on the transfer_fee_basis_points and maximum_fee of the mint.
+ * @param fee             The expected fee assesed on this transfer, calculated off-chain based on the transferFeeBasisPoints and maximumFee of the mint.
+ * @param programId       SPL Token program account
  *
  * @return Instruction to add to a transaction
  */
 export function createTransferCheckedWithFeeInstruction(
-    programId: PublicKey,
     source: PublicKey,
     mint: PublicKey,
     destination: PublicKey,
     authority: PublicKey,
-    signers: PublicKey[],
     amount: BigInt,
     decimals: number,
-    fee: BigInt
+    fee: BigInt,
+    multiSigners: Signer[] = [],
+    programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     const data = Buffer.alloc(transferCheckedWithFeeInstructionData.span);
     transferCheckedWithFeeInstructionData.encode(
@@ -243,13 +246,13 @@ export function createTransferCheckedWithFeeInstruction(
         },
         data
     );
-    const keys: account_holder[] = [];
+    const keys: AccountMeta[] = [];
     keys.push({ pubkey: source, isSigner: false, isWritable: true });
     keys.push({ pubkey: mint, isSigner: false, isWritable: false });
     keys.push({ pubkey: destination, isSigner: false, isWritable: true });
-    keys.push({ pubkey: authority, isSigner: !signers.length, isWritable: false });
-    for (const signer of signers) {
-        keys.push({ pubkey: signer, isSigner: true, isWritable: false });
+    keys.push({ pubkey: authority, isSigner: !multiSigners.length, isWritable: false });
+    for (const signer of multiSigners) {
+        keys.push({ pubkey: signer.publicKey, isSigner: true, isWritable: false });
     }
     return new TransactionInstruction({ keys, programId, data });
 }
@@ -367,7 +370,6 @@ export function decodeTransferCheckedWithFeeInstructionUnchecked({
 }
 
 // WithdrawWithheldTokensFromMint
-
 export interface WithdrawWithheldTokensFromMintInstructionData {
     instruction: TokenInstruction.TransferFeeExtension;
     transferFeeInstruction: TransferFeeInstruction.WithdrawWithheldTokensFromMint;
@@ -381,20 +383,20 @@ export const withdrawWithheldTokensFromMintInstructionData = struct<WithdrawWith
 /**
  * Construct a WithdrawWithheldTokensFromMint instruction
  *
- * @param programID         SPL Token program account
  * @param mint              The token mint
  * @param destination       The destination account
  * @param authority         The source account's owner/delegate
  * @param signers           The signer account(s)
+ * @param programID         SPL Token program account
  *
- * @return Instruciton to add to a transaction
+ * @return Instruction to add to a transaction
  */
 export function createWithdrawWithheldTokensFromMintInstruction(
-    programId: PublicKey,
     mint: PublicKey,
     destination: PublicKey,
     authority: PublicKey,
-    signers: PublicKey[]
+    signers: Signer[] = [],
+    programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     const data = Buffer.alloc(withdrawWithheldTokensFromMintInstructionData.span);
     withdrawWithheldTokensFromMintInstructionData.encode(
@@ -404,14 +406,14 @@ export function createWithdrawWithheldTokensFromMintInstruction(
         },
         data
     );
-    const keys: account_holder[] = [];
+    const keys: AccountMeta[] = [];
     keys.push(
         { pubkey: mint, isSigner: false, isWritable: true },
         { pubkey: destination, isSigner: false, isWritable: true },
         { pubkey: authority, isSigner: !signers.length, isWritable: false }
     );
     for (const signer of signers) {
-        keys.push({ pubkey: signer, isSigner: true, isWritable: false });
+        keys.push({ pubkey: signer.publicKey, isSigner: true, isWritable: false });
     }
     return new TransactionInstruction({ keys, programId, data });
 }
@@ -515,7 +517,6 @@ export function decodeWithdrawWithheldTokensFromMintInstructionUnchecked({
 }
 
 // WithdrawWithheldTokensFromAccounts
-
 export interface WithdrawWithheldTokensFromAccountsInstructionData {
     instruction: TokenInstruction.TransferFeeExtension;
     transferFeeInstruction: TransferFeeInstruction.WithdrawWithheldTokensFromAccounts;
@@ -532,22 +533,22 @@ export const withdrawWithheldTokensFromAccountsInstructionData =
 /**
  * Construct a WithdrawWithheldTokensFromAccounts instruction
  *
- * @param programID         SPL Token program account
  * @param mint              The token mint
  * @param destination       The destination account
  * @param authority         The source account's owner/delegate
  * @param signers           The signer account(s)
  * @param sources           The source accounts to withdraw from
+ * @param programID         SPL Token program account
  *
- * @return Instruciton to add to a transaction
+ * @return Instruction to add to a transaction
  */
 export function createWithdrawWithheldTokensFromAccountsInstruction(
-    programId: PublicKey,
     mint: PublicKey,
     destination: PublicKey,
     authority: PublicKey,
-    signers: PublicKey[],
-    sources: PublicKey[]
+    signers: Signer[],
+    sources: PublicKey[],
+    programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     const data = Buffer.alloc(withdrawWithheldTokensFromAccountsInstructionData.span);
     withdrawWithheldTokensFromAccountsInstructionData.encode(
@@ -558,14 +559,14 @@ export function createWithdrawWithheldTokensFromAccountsInstruction(
         },
         data
     );
-    const keys: account_holder[] = [];
+    const keys: AccountMeta[] = [];
     keys.push(
         { pubkey: mint, isSigner: false, isWritable: true },
         { pubkey: destination, isSigner: false, isWritable: true },
         { pubkey: authority, isSigner: !signers.length, isWritable: false }
     );
     for (const signer of signers) {
-        keys.push({ pubkey: signer, isSigner: true, isWritable: false });
+        keys.push({ pubkey: signer.publicKey, isSigner: true, isWritable: false });
     }
     for (const source of sources) {
         keys.push({ pubkey: source, isSigner: false, isWritable: true });
@@ -700,16 +701,16 @@ export const harvestWithheldTokensToMintInstructionData = struct<HarvestWithheld
 /**
  * Construct a HarvestWithheldTokensToMint instruction
  *
- * @param programID         SPL Token program account
  * @param mint              The token mint
  * @param sources           The source accounts to withdraw from
+ * @param programID         SPL Token program account
  *
- * @return Instruciton to add to a transaction
+ * @return Instruction to add to a transaction
  */
 export function createHarvestWithheldTokensToMintInstruction(
-    programId: PublicKey,
     mint: PublicKey,
-    sources: PublicKey[]
+    sources: PublicKey[],
+    programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     const data = Buffer.alloc(harvestWithheldTokensToMintInstructionData.span);
     harvestWithheldTokensToMintInstructionData.encode(
@@ -719,7 +720,7 @@ export function createHarvestWithheldTokensToMintInstruction(
         },
         data
     );
-    const keys: account_holder[] = [];
+    const keys: AccountMeta[] = [];
     keys.push({ pubkey: mint, isSigner: false, isWritable: true });
     for (const source of sources) {
         keys.push({ pubkey: source, isSigner: false, isWritable: true });

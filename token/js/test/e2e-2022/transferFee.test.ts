@@ -13,34 +13,40 @@ import {
 } from '@solana/web3.js';
 
 import {
-    AuthorityType,
-    setAuthority,
     ExtensionType,
-    createInitializeAccountInstruction,
-    createMint,
-    getAccountLen,
-    getTransferFee,
+    createInitializeMintInstruction,
+    getTransferFeeAmount,
     getTransferFeeConfig,
+    mintTo,
+    transferChecked,
     createAccount,
     getAccount,
+    getMint,
+    getMintLen,
 } from '../../src';
 
 import {
     createInitializeTransferFeeConfigInstruction,
-    createTransferCheckedWithFeeInstruction,
-    createWithdrawWithheldTokensFromMintInstruction,
-    createWithdrawWithheldTokensFromAccountsInstruction,
-    createHarvestWithheldTokensToMintInstruction,
-} from '../../src/instructions/transferFee';
+    harvestWithheldTokensToMint,
+    transferCheckedWithFee,
+    withdrawWithheldTokensFromAccounts,
+    withdrawWithheldTokensFromMint,
+} from '../../src/extensions/transferFee/index';
 
 import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
 const TEST_TOKEN_DECIMALS = 2;
-const EXTENSIONS = [ExtensionType.ImmutableOwner];
+const MINT_EXTENSIONS = [ExtensionType.TransferFeeConfig];
+const MINT_AMOUNT = BigInt(1_000_000_000);
+const TRANSFER_AMOUNT = BigInt(1_000_000);
+const FEE_BASIS_POINTS = 100;
+const MAX_FEE = BigInt(100_000);
+const FEE = (TRANSFER_AMOUNT * BigInt(FEE_BASIS_POINTS)) / BigInt(10_000);
 describe('transferFee', () => {
     let connection: Connection;
     let payer: Signer;
     let owner: Keypair;
-    let account: PublicKey;
+    let sourceAccount: PublicKey;
+    let destinationAccount: PublicKey;
     let mint: PublicKey;
     let transferFeeConfigAuthority: Keypair;
     let withdrawWithheldAuthority: Keypair;
@@ -53,45 +59,178 @@ describe('transferFee', () => {
     beforeEach(async () => {
         const mintAuthority = Keypair.generate();
         const mintKeypair = Keypair.generate();
-        mint = await createMint(
-            connection,
-            payer,
-            mintAuthority.publicKey,
-            mintAuthority.publicKey,
-            TEST_TOKEN_DECIMALS,
-            mintKeypair,
-            undefined,
-            TEST_PROGRAM_ID
-        );
-        owner = Keypair.generate();
-        const accountLen = getAccountLen(EXTENSIONS);
-        const lamports = await connection.getMinimumBalanceForRentExemption(accountLen);
-        const accountKeypair = Keypair.generate();
-        account = accountKeypair.publicKey;
-        const transaction = new Transaction().add(
+        mint = mintKeypair.publicKey;
+        const mintLen = getMintLen(MINT_EXTENSIONS);
+        const mintLamports = await connection.getMinimumBalanceForRentExemption(mintLen);
+        const mintTransaction = new Transaction().add(
             SystemProgram.createAccount({
                 fromPubkey: payer.publicKey,
-                newAccountPubkey: account,
-                space: accountLen,
-                lamports,
+                newAccountPubkey: mint,
+                space: mintLen,
+                lamports: mintLamports,
                 programId: TEST_PROGRAM_ID,
             }),
-            /*createInitializeTransferFeeConfigInstruction(
+            createInitializeTransferFeeConfigInstruction(
                 mint,
                 transferFeeConfigAuthority.publicKey,
                 withdrawWithheldAuthority.publicKey,
-                100,
-                BigInt('100000'),
+                FEE_BASIS_POINTS,
+                MAX_FEE,
                 TEST_PROGRAM_ID
-            ),*/
-            createInitializeAccountInstruction(account, mint, owner.publicKey, TEST_PROGRAM_ID)
+            ),
+            createInitializeMintInstruction(mint, TEST_TOKEN_DECIMALS, mintAuthority.publicKey, null, TEST_PROGRAM_ID)
         );
-        await sendAndConfirmTransaction(connection, transaction, [payer, accountKeypair], undefined);
+        await sendAndConfirmTransaction(connection, mintTransaction, [payer, mintKeypair], undefined);
+
+        owner = Keypair.generate();
+        sourceAccount = await createAccount(
+            connection,
+            payer,
+            mint,
+            owner.publicKey,
+            undefined,
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        await mintTo(
+            connection,
+            payer,
+            mint,
+            sourceAccount,
+            mintAuthority,
+            MINT_AMOUNT,
+            [],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+
+        const accountKeypair = Keypair.generate();
+        destinationAccount = await createAccount(
+            connection,
+            payer,
+            mint,
+            owner.publicKey,
+            accountKeypair,
+            undefined,
+            TEST_PROGRAM_ID
+        );
+
+        await transferChecked(
+            connection,
+            payer,
+            sourceAccount,
+            mint,
+            destinationAccount,
+            owner,
+            TRANSFER_AMOUNT,
+            TEST_TOKEN_DECIMALS,
+            [],
+            undefined,
+            TEST_PROGRAM_ID
+        );
     });
-    it('TransferFeeConfig', async () => {
-        const owner = Keypair.generate();
-        account = await createAccount(connection, payer, mint, owner.publicKey, undefined, undefined, TEST_PROGRAM_ID);
-        //const _account = await getAccount(connection, account);
-        //expect(getTransferFee(_account)).to.not.be.null;
+    it('initializes', async () => {
+        const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
+        const transferFeeConfig = getTransferFeeConfig(mintInfo);
+        expect(transferFeeConfig).to.not.be.null;
+        if (transferFeeConfig !== null) {
+            expect(transferFeeConfig.transferFeeConfigAuthority).to.eql(transferFeeConfigAuthority.publicKey);
+            expect(transferFeeConfig.withdrawWithheldAuthority).to.eql(withdrawWithheldAuthority.publicKey);
+            expect(transferFeeConfig.olderTransferFee.transferFeeBasisPoints).to.eql(FEE_BASIS_POINTS);
+            expect(transferFeeConfig.olderTransferFee.maximumFee).to.eql(MAX_FEE);
+            expect(transferFeeConfig.newerTransferFee.transferFeeBasisPoints).to.eql(FEE_BASIS_POINTS);
+            expect(transferFeeConfig.newerTransferFee.maximumFee).to.eql(MAX_FEE);
+            expect(transferFeeConfig.withheldAmount).to.eql(BigInt(0));
+        }
+
+        const accountInfo = await getAccount(connection, destinationAccount, undefined, TEST_PROGRAM_ID);
+        const transferFeeAmount = getTransferFeeAmount(accountInfo);
+        expect(transferFeeAmount).to.not.be.null;
+        if (transferFeeAmount !== null) {
+            expect(transferFeeAmount.withheldAmount).to.eql(FEE);
+        }
+    });
+    it('transferCheckedWithFee', async () => {
+        await transferCheckedWithFee(
+            connection,
+            payer,
+            sourceAccount,
+            mint,
+            destinationAccount,
+            owner,
+            TRANSFER_AMOUNT,
+            TEST_TOKEN_DECIMALS,
+            FEE,
+            [],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const accountInfo = await getAccount(connection, destinationAccount, undefined, TEST_PROGRAM_ID);
+        const transferFeeAmount = getTransferFeeAmount(accountInfo);
+        expect(transferFeeAmount).to.not.be.null;
+        if (transferFeeAmount !== null) {
+            expect(transferFeeAmount.withheldAmount).to.eql(FEE * BigInt(2));
+        }
+    });
+    it('withdrawWithheldTokensFromAccounts', async () => {
+        await withdrawWithheldTokensFromAccounts(
+            connection,
+            payer,
+            mint,
+            destinationAccount,
+            withdrawWithheldAuthority,
+            [],
+            [destinationAccount],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const accountInfo = await getAccount(connection, destinationAccount, undefined, TEST_PROGRAM_ID);
+        expect(accountInfo.amount).to.eql(TRANSFER_AMOUNT);
+        const transferFeeAmount = getTransferFeeAmount(accountInfo);
+        expect(transferFeeAmount).to.not.be.null;
+        if (transferFeeAmount !== null) {
+            expect(transferFeeAmount.withheldAmount).to.eql(BigInt(0));
+        }
+    });
+    it('harvestWithheldTokensToMint', async () => {
+        await harvestWithheldTokensToMint(connection, payer, mint, [destinationAccount], undefined, TEST_PROGRAM_ID);
+        const accountInfo = await getAccount(connection, destinationAccount, undefined, TEST_PROGRAM_ID);
+        const transferFeeAmount = getTransferFeeAmount(accountInfo);
+        expect(transferFeeAmount).to.not.be.null;
+        if (transferFeeAmount !== null) {
+            expect(transferFeeAmount.withheldAmount).to.eql(BigInt(0));
+        }
+        const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
+        const transferFeeConfig = getTransferFeeConfig(mintInfo);
+        expect(transferFeeConfig).to.not.be.null;
+        if (transferFeeConfig !== null) {
+            expect(transferFeeConfig.withheldAmount).to.eql(FEE);
+        }
+    });
+    it('withdrawWithheldTokensFromMint', async () => {
+        await harvestWithheldTokensToMint(connection, payer, mint, [destinationAccount], undefined, TEST_PROGRAM_ID);
+        await withdrawWithheldTokensFromMint(
+            connection,
+            payer,
+            mint,
+            destinationAccount,
+            withdrawWithheldAuthority,
+            [],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const accountInfo = await getAccount(connection, destinationAccount, undefined, TEST_PROGRAM_ID);
+        expect(accountInfo.amount).to.eql(TRANSFER_AMOUNT);
+        const transferFeeAmount = getTransferFeeAmount(accountInfo);
+        expect(transferFeeAmount).to.not.be.null;
+        if (transferFeeAmount !== null) {
+            expect(transferFeeAmount.withheldAmount).to.eql(BigInt(0));
+        }
+        const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
+        const transferFeeConfig = getTransferFeeConfig(mintInfo);
+        expect(transferFeeConfig).to.not.be.null;
+        if (transferFeeConfig !== null) {
+            expect(transferFeeConfig.withheldAmount).to.eql(BigInt(0));
+        }
     });
 });

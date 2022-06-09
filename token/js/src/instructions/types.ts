@@ -33,12 +33,3 @@ export enum TokenInstruction {
     MemoTransferExtension = 30,
     CreateNativeMint = 31,
 }
-
-export enum TransferFeeInstruction {
-    InitializeTransferFeeConfig = 0,
-    TransferCheckedWithFee = 1,
-    WithdrawWithheldTokensFromMint = 2,
-    WithdrawWithheldTokensFromAccounts = 3,
-    HarvestWithheldTokensToMint = 4,
-    SetTransferFee = 5,
-}
