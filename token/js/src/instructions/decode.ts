@@ -10,6 +10,7 @@ import { decodeCloseAccountInstruction, DecodedCloseAccountInstruction } from '.
 import { DecodedFreezeAccountInstruction, decodeFreezeAccountInstruction } from './freezeAccount';
 import { DecodedInitializeAccountInstruction, decodeInitializeAccountInstruction } from './initializeAccount';
 import { DecodedInitializeAccount2Instruction, decodeInitializeAccount2Instruction } from './initializeAccount2';
+import { DecodedInitializeAccount3Instruction, decodeInitializeAccount3Instruction } from './initializeAccount3';
 import { DecodedInitializeMintInstruction, decodeInitializeMintInstruction } from './initializeMint';
 import { DecodedInitializeMultisigInstruction, decodeInitializeMultisigInstruction } from './initializeMultisig';
 import { DecodedMintToInstruction, decodeMintToInstruction } from './mintTo';
@@ -42,7 +43,7 @@ export type DecodedInstruction =
     | DecodedBurnCheckedInstruction
     | DecodedInitializeAccount2Instruction
     | DecodedSyncNativeInstruction
-    // | DecodedInitializeAccount3Instruction
+    | DecodedInitializeAccount3Instruction
     // | DecodedInitializeMultisig2Instruction
     // | DecodedInitializeMint2Instruction
     // TODO: implement ^ and remove `never`
@@ -77,7 +78,8 @@ export function decodeInstruction(
         return decodeInitializeAccount2Instruction(instruction, programId);
     if (type === TokenInstruction.SyncNative) return decodeSyncNativeInstruction(instruction, programId);
     // TODO: implement
-    if (type === TokenInstruction.InitializeAccount3) throw new TokenInvalidInstructionTypeError();
+    if (type === TokenInstruction.InitializeAccount3)
+        return decodeInitializeAccount3Instruction(instruction, programId);
     // TODO: implement
     if (type === TokenInstruction.InitializeMultisig2) throw new TokenInvalidInstructionTypeError();
     // TODO: implement
@@ -184,12 +186,12 @@ export function isSyncNativeInstruction(decoded: DecodedInstruction): decoded is
     return decoded.data.instruction === TokenInstruction.SyncNative;
 }
 
-/** TODO: docs, implement */
-// export function isInitializeAccount3Instruction(
-//     decoded: DecodedInstruction
-// ): decoded is DecodedInitializeAccount3Instruction {
-//     return decoded.data.instruction === TokenInstruction.InitializeAccount3;
-// }
+/** TODO: docs */
+export function isInitializeAccount3Instruction(
+    decoded: DecodedInstruction
+): decoded is DecodedInitializeAccount3Instruction {
+    return decoded.data.instruction === TokenInstruction.InitializeAccount3;
+}
 
 /** TODO: docs, implement */
 // export function isInitializeMultisig2Instruction(
