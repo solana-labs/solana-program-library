@@ -49,7 +49,10 @@ use spl_token::{
     native_mint,
     state::{Account, Mint, Multisig},
 };
-use std::{collections::HashMap, fmt::Display, process::exit, str::FromStr, sync::Arc};
+use std::{
+    collections::HashMap, fmt::Display, process::exit, str::FromStr, string::ToString, sync::Arc,
+};
+use strum_macros::{EnumString, IntoStaticStr, ToString};
 
 mod config;
 use config::Config;
@@ -100,7 +103,33 @@ pub const MULTISIG_SIGNER_ARG: ArgConstant<'static> = ArgConstant {
     help: "Member signer of a multisig account",
 };
 
-pub const CREATE_TOKEN: &str = "create-token";
+#[derive(Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr, ToString)]
+#[strum(serialize_all = "kebab-case")]
+pub enum CommandName {
+    CreateToken,
+    Close,
+    Bench,
+    CreateAccount,
+    CreateMultisig,
+    Authorize,
+    Transfer,
+    Burn,
+    Mint,
+    Freeze,
+    Thaw,
+    Wrap,
+    Unwrap,
+    Approve,
+    Revoke,
+    Balance,
+    Supply,
+    Accounts,
+    Address,
+    AccountInfo,
+    MultisigInfo,
+    Gc,
+    SyncNative,
+}
 
 pub fn owner_address_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name(OWNER_ADDRESS_ARG.name)
@@ -334,11 +363,11 @@ fn command_create_token(
                 decimals,
                 transaction_data: cli_signature,
             },
-            CREATE_TOKEN,
+            &CommandName::CreateToken,
             config,
         ),
         TransactionReturnData::CliSignOnlyData(cli_sign_only_data) => {
-            format_output(cli_sign_only_data, CREATE_TOKEN, config)
+            format_output(cli_sign_only_data, &CommandName::CreateToken, config)
         }
     })
 }
@@ -1794,7 +1823,7 @@ fn app<'a, 'b>(
                 .help("Use unchecked instruction if appropriate. Supports transfer, burn, mint, and approve."),
         )
         .bench_subcommand()
-        .subcommand(SubCommand::with_name(CREATE_TOKEN).about("Create a new token")
+        .subcommand(SubCommand::with_name(CommandName::CreateToken.into()).about("Create a new token")
                 .arg(
                     Arg::with_name("token_keypair")
                         .value_name("TOKEN_KEYPAIR")
@@ -1841,7 +1870,7 @@ fn app<'a, 'b>(
                 .offline_args(),
         )
         .subcommand(
-            SubCommand::with_name("create-account")
+            SubCommand::with_name(CommandName::CreateAccount.into())
                 .about("Create a new token account")
                 .arg(
                     Arg::with_name("token")
@@ -1869,7 +1898,7 @@ fn app<'a, 'b>(
                 .offline_args(),
         )
         .subcommand(
-            SubCommand::with_name("create-multisig")
+            SubCommand::with_name(CommandName::CreateMultisig.into())
                 .about("Create a new account describing an M:N multisignature")
                 .arg(
                     Arg::with_name("minimum_signers")
@@ -1907,7 +1936,7 @@ fn app<'a, 'b>(
                 .offline_args(),
         )
         .subcommand(
-            SubCommand::with_name("authorize")
+            SubCommand::with_name(CommandName::Authorize.into())
                 .about("Authorize a new signing keypair to a token or token account")
                 .arg(
                     Arg::with_name("address")
@@ -1968,7 +1997,7 @@ fn app<'a, 'b>(
                 .offline_args(),
         )
         .subcommand(
-            SubCommand::with_name("transfer")
+            SubCommand::with_name(CommandName::Transfer.into())
                 .about("Transfer tokens between accounts")
                 .arg(
                     Arg::with_name("token")
@@ -2059,7 +2088,7 @@ fn app<'a, 'b>(
                 .offline_args_config(&SignOnlyNeedsMintDecimals{}),
         )
         .subcommand(
-            SubCommand::with_name("burn")
+            SubCommand::with_name(CommandName::Burn.into())
                 .about("Burn tokens from an account")
                 .arg(
                     Arg::with_name("source")
@@ -2093,7 +2122,7 @@ fn app<'a, 'b>(
                 .offline_args_config(&SignOnlyNeedsFullMintSpec{}),
         )
         .subcommand(
-            SubCommand::with_name("mint")
+            SubCommand::with_name(CommandName::Mint.into())
                 .about("Mint new tokens")
                 .arg(
                     Arg::with_name("token")
@@ -2140,7 +2169,7 @@ fn app<'a, 'b>(
                 .offline_args_config(&SignOnlyNeedsMintDecimals{}),
         )
         .subcommand(
-            SubCommand::with_name("freeze")
+            SubCommand::with_name(CommandName::Freeze.into())
                 .about("Freeze a token account")
                 .arg(
                     Arg::with_name("account")
@@ -2170,7 +2199,7 @@ fn app<'a, 'b>(
                 .offline_args_config(&SignOnlyNeedsMintAddress{}),
         )
         .subcommand(
-            SubCommand::with_name("thaw")
+            SubCommand::with_name(CommandName::Thaw.into())
                 .about("Thaw a token account")
                 .arg(
                     Arg::with_name("account")
@@ -2200,7 +2229,7 @@ fn app<'a, 'b>(
                 .offline_args_config(&SignOnlyNeedsMintAddress{}),
         )
         .subcommand(
-            SubCommand::with_name("wrap")
+            SubCommand::with_name(CommandName::Wrap.into())
                 .about("Wrap native SOL in a SOL token account")
                 .arg(
                     Arg::with_name("amount")
@@ -2234,7 +2263,7 @@ fn app<'a, 'b>(
                 .offline_args(),
         )
         .subcommand(
-            SubCommand::with_name("unwrap")
+            SubCommand::with_name(CommandName::Unwrap.into())
                 .about("Unwrap a SOL token account")
                 .arg(
                     Arg::with_name("address")
@@ -2263,7 +2292,7 @@ fn app<'a, 'b>(
                 .offline_args(),
         )
         .subcommand(
-            SubCommand::with_name("approve")
+            SubCommand::with_name(CommandName::Approve.into())
                 .about("Approve a delegate for a token account")
                 .arg(
                     Arg::with_name("account")
@@ -2301,7 +2330,7 @@ fn app<'a, 'b>(
                 .offline_args_config(&SignOnlyNeedsFullMintSpec{}),
         )
         .subcommand(
-            SubCommand::with_name("revoke")
+            SubCommand::with_name(CommandName::Revoke.into())
                 .about("Revoke a delegate's authority")
                 .arg(
                     Arg::with_name("account")
@@ -2320,7 +2349,7 @@ fn app<'a, 'b>(
                 .offline_args_config(&SignOnlyNeedsDelegateAddress{}),
         )
         .subcommand(
-            SubCommand::with_name("close")
+            SubCommand::with_name(CommandName::Close.into())
                 .about("Close a token account")
                 .arg(
                     Arg::with_name("token")
@@ -2369,7 +2398,7 @@ fn app<'a, 'b>(
                 .offline_args(),
         )
         .subcommand(
-            SubCommand::with_name("balance")
+            SubCommand::with_name(CommandName::Balance.into())
                 .about("Get token account balance")
                 .arg(
                     Arg::with_name("token")
@@ -2393,7 +2422,7 @@ fn app<'a, 'b>(
                 ),
         )
         .subcommand(
-            SubCommand::with_name("supply")
+            SubCommand::with_name(CommandName::Supply.into())
                 .about("Get token supply")
                 .arg(
                     Arg::with_name("address")
@@ -2406,7 +2435,7 @@ fn app<'a, 'b>(
                 ),
         )
         .subcommand(
-            SubCommand::with_name("accounts")
+            SubCommand::with_name(CommandName::Accounts.into())
                 .about("List all token accounts by owner")
                 .arg(
                     Arg::with_name("token")
@@ -2419,7 +2448,7 @@ fn app<'a, 'b>(
                 .arg(owner_address_arg())
         )
         .subcommand(
-            SubCommand::with_name("address")
+            SubCommand::with_name(CommandName::Address.into())
                 .about("Get wallet address")
                 .arg(
                     Arg::with_name("token")
@@ -2439,7 +2468,7 @@ fn app<'a, 'b>(
                 ),
         )
         .subcommand(
-            SubCommand::with_name("account-info")
+            SubCommand::with_name(CommandName::AccountInfo.into())
                 .about("Query details of an SPL Token account by address")
                 .arg(
                     Arg::with_name("token")
@@ -2471,7 +2500,7 @@ fn app<'a, 'b>(
                 ),
         )
         .subcommand(
-            SubCommand::with_name("multisig-info")
+            SubCommand::with_name(CommandName::MultisigInfo.into())
                 .about("Query details about and SPL Token multisig account by address")
                 .arg(
                     Arg::with_name("address")
@@ -2484,7 +2513,7 @@ fn app<'a, 'b>(
                 ),
         )
         .subcommand(
-            SubCommand::with_name("gc")
+            SubCommand::with_name(CommandName::Gc.into())
                 .about("Cleanup unnecessary token accounts")
                 .arg(owner_keypair_arg())
                 .arg(
@@ -2495,7 +2524,7 @@ fn app<'a, 'b>(
                 )
         )
         .subcommand(
-            SubCommand::with_name("sync-native")
+            SubCommand::with_name(CommandName::SyncNative.into())
                 .about("Sync a native SOL token account to its underlying lamports")
                 .arg(
                     owner_address_arg()
@@ -2535,6 +2564,7 @@ fn main() -> Result<(), Error> {
     let mut multisigner_ids = Vec::new();
 
     let (sub_command, sub_matches) = app_matches.subcommand();
+    let sub_command = CommandName::from_str(sub_command).unwrap();
     let matches = sub_matches.unwrap();
 
     let config = {
@@ -2652,27 +2682,27 @@ fn main() -> Result<(), Error> {
     };
 
     solana_logger::setup_with_default("solana=info");
-    let result = process_command(sub_command, matches, &config, wallet_manager, bulk_signers)
+    let result = process_command(&sub_command, matches, &config, wallet_manager, bulk_signers)
         .map_err::<Error, _>(|err| DisplayError::new_as_boxed(err).into())?;
     println!("{}", result);
     Ok(())
 }
 
 fn process_command(
-    sub_command: &str,
+    sub_command: &CommandName,
     sub_matches: &ArgMatches<'_>,
     config: &Config,
     mut wallet_manager: Option<Arc<RemoteWalletManager>>,
     mut bulk_signers: Vec<Box<dyn Signer>>,
 ) -> CommandResult {
     match (sub_command, sub_matches) {
-        ("bench", arg_matches) => bench_process_command(
+        (CommandName::Bench, arg_matches) => bench_process_command(
             arg_matches,
             config,
             std::mem::take(&mut bulk_signers),
             &mut wallet_manager,
         ),
-        (CREATE_TOKEN, arg_matches) => {
+        (CommandName::CreateToken, arg_matches) => {
             let decimals = value_t_or_exit!(arg_matches, "decimals", u8);
             let mint_authority =
                 config.pubkey_or_default(arg_matches, "mint_authority", &mut wallet_manager);
@@ -2693,7 +2723,7 @@ fn process_command(
                 bulk_signers,
             )
         }
-        ("create-account", arg_matches) => {
+        (CommandName::CreateAccount, arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -2709,7 +2739,7 @@ fn process_command(
             let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager);
             command_create_account(config, token, owner, account, bulk_signers)
         }
-        ("create-multisig", arg_matches) => {
+        (CommandName::CreateMultisig, arg_matches) => {
             let minimum_signers = value_of::<u8>(arg_matches, "minimum_signers").unwrap();
             let multisig_members =
                 pubkeys_of_multiple_signers(arg_matches, "multisig_member", &mut wallet_manager)
@@ -2738,7 +2768,7 @@ fn process_command(
                 bulk_signers,
             )
         }
-        ("authorize", arg_matches) => {
+        (CommandName::Authorize, arg_matches) => {
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -2768,7 +2798,7 @@ fn process_command(
                 bulk_signers,
             )
         }
-        ("transfer", arg_matches) => {
+        (CommandName::Transfer, arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -2812,7 +2842,7 @@ fn process_command(
                 arg_matches.is_present("allow_non_system_account_recipient"),
             )
         }
-        ("burn", arg_matches) => {
+        (CommandName::Burn, arg_matches) => {
             let source = pubkey_of_signer(arg_matches, "source", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -2839,7 +2869,7 @@ fn process_command(
                 bulk_signers,
             )
         }
-        ("mint", arg_matches) => {
+        (CommandName::Mint, arg_matches) => {
             let (mint_authority_signer, mint_authority) =
                 config.signer_or_default(arg_matches, "mint_authority", &mut wallet_manager);
             bulk_signers.push(mint_authority_signer);
@@ -2866,7 +2896,7 @@ fn process_command(
                 bulk_signers,
             )
         }
-        ("freeze", arg_matches) => {
+        (CommandName::Freeze, arg_matches) => {
             let (freeze_authority_signer, freeze_authority) =
                 config.signer_or_default(arg_matches, "freeze_authority", &mut wallet_manager);
             bulk_signers.push(freeze_authority_signer);
@@ -2884,7 +2914,7 @@ fn process_command(
                 bulk_signers,
             )
         }
-        ("thaw", arg_matches) => {
+        (CommandName::Thaw, arg_matches) => {
             let (freeze_authority_signer, freeze_authority) =
                 config.signer_or_default(arg_matches, "freeze_authority", &mut wallet_manager);
             bulk_signers.push(freeze_authority_signer);
@@ -2902,7 +2932,7 @@ fn process_command(
                 bulk_signers,
             )
         }
-        ("wrap", arg_matches) => {
+        (CommandName::Wrap, arg_matches) => {
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
             let account = if arg_matches.is_present("create_aux_account") {
                 let (signer, account) = new_throwaway_signer();
@@ -2919,7 +2949,7 @@ fn process_command(
 
             command_wrap(config, amount, wallet_address, account, bulk_signers)
         }
-        ("unwrap", arg_matches) => {
+        (CommandName::Unwrap, arg_matches) => {
             let (wallet_signer, wallet_address) =
                 config.signer_or_default(arg_matches, "wallet_keypair", &mut wallet_manager);
             bulk_signers.push(wallet_signer);
@@ -2927,7 +2957,7 @@ fn process_command(
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
             command_unwrap(config, wallet_address, address, bulk_signers)
         }
-        ("approve", arg_matches) => {
+        (CommandName::Approve, arg_matches) => {
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             bulk_signers.push(owner_signer);
@@ -2955,7 +2985,7 @@ fn process_command(
                 bulk_signers,
             )
         }
-        ("revoke", arg_matches) => {
+        (CommandName::Revoke, arg_matches) => {
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             bulk_signers.push(owner_signer);
@@ -2974,7 +3004,7 @@ fn process_command(
                 bulk_signers,
             )
         }
-        ("close", arg_matches) => {
+        (CommandName::Close, arg_matches) => {
             let (close_authority_signer, close_authority) =
                 config.signer_or_default(arg_matches, "close_authority", &mut wallet_manager);
             bulk_signers.push(close_authority_signer);
@@ -2987,7 +3017,7 @@ fn process_command(
             let recipient = config.pubkey_or_default(arg_matches, "recipient", &mut wallet_manager);
             command_close(config, address, close_authority, recipient, bulk_signers)
         }
-        ("balance", arg_matches) => {
+        (CommandName::Balance, arg_matches) => {
             let address = config.associated_token_address_or_override(
                 arg_matches,
                 "address",
@@ -2995,23 +3025,23 @@ fn process_command(
             );
             command_balance(config, address)
         }
-        ("supply", arg_matches) => {
+        (CommandName::Supply, arg_matches) => {
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
             command_supply(config, address)
         }
-        ("accounts", arg_matches) => {
+        (CommandName::Accounts, arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
             let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager);
             command_accounts(config, token, owner)
         }
-        ("address", arg_matches) => {
+        (CommandName::Address, arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
             let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager);
             command_address(config, token, owner)
         }
-        ("account-info", arg_matches) => {
+        (CommandName::AccountInfo, arg_matches) => {
             let address = config.associated_token_address_or_override(
                 arg_matches,
                 "address",
@@ -3019,13 +3049,13 @@ fn process_command(
             );
             command_account_info(config, address)
         }
-        ("multisig-info", arg_matches) => {
+        (CommandName::MultisigInfo, arg_matches) => {
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
             command_multisig(config, address)
         }
-        ("gc", arg_matches) => {
+        (CommandName::Gc, arg_matches) => {
             match config.output_format {
                 OutputFormat::Json | OutputFormat::JsonCompact => {
                     eprintln!(
@@ -3050,7 +3080,7 @@ fn process_command(
                 bulk_signers,
             )
         }
-        ("sync-native", arg_matches) => {
+        (CommandName::SyncNative, arg_matches) => {
             let address = config.associated_token_address_for_token_or_override(
                 arg_matches,
                 "address",
@@ -3060,16 +3090,15 @@ fn process_command(
 
             command_sync_native(address, bulk_signers, config)
         }
-        _ => unreachable!(),
     }
 }
 
-fn format_output<T>(command_output: T, command_name: &str, config: &Config) -> String
+fn format_output<T>(command_output: T, command_name: &CommandName, config: &Config) -> String
 where
     T: Serialize + Display + QuietDisplay + VerboseDisplay,
 {
     config.output_format.formatted_string(&CommandOutput {
-        command_name: String::from(command_name),
+        command_name: command_name.to_string(),
         command_output,
     })
 }
@@ -3265,18 +3294,23 @@ mod tests {
         )
         .get_matches_from(args);
         let (sub_command, sub_matches) = app_matches.subcommand();
+        let sub_command = CommandName::from_str(sub_command).unwrap();
         let matches = sub_matches.unwrap();
 
         let wallet_manager = None;
         let bulk_signers: Vec<Box<dyn Signer>> = vec![Box::new(clone_keypair(payer))];
-        process_command(sub_command, matches, config, wallet_manager, bulk_signers)
+        process_command(&sub_command, matches, config, wallet_manager, bulk_signers)
     }
 
     #[test]
     fn create_token_default() {
         let (test_validator, payer) = validator_for_test();
         let config = test_config(&test_validator, &payer, &spl_token::id());
-        let result = process_test_command(&config, &payer, &["spl-token", "create-token"]);
+        let result = process_test_command(
+            &config,
+            &payer,
+            &["spl-token", CommandName::CreateToken.into()],
+        );
         let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
         let mint = Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
         let account = config.rpc_client.get_account(&mint).unwrap();
@@ -3291,7 +3325,7 @@ mod tests {
         let result = process_test_command(
             &config,
             &payer,
-            &["spl-token", "supply", &token.to_string()],
+            &["spl-token", CommandName::Supply.into(), &token.to_string()],
         );
         let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
         assert_eq!(value["amount"], "0");
@@ -3306,7 +3340,11 @@ mod tests {
         let result = process_test_command(
             &config,
             &payer,
-            &["spl-token", "create-account", &token.to_string()],
+            &[
+                "spl-token",
+                CommandName::CreateAccount.into(),
+                &token.to_string(),
+            ],
         );
         result.unwrap();
     }
@@ -3320,7 +3358,11 @@ mod tests {
         let result = process_test_command(
             &config,
             &payer,
-            &["spl-token", "account-info", &token.to_string()],
+            &[
+                "spl-token",
+                CommandName::AccountInfo.into(),
+                &token.to_string(),
+            ],
         );
         let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
         let account = get_associated_token_address_with_program_id(
@@ -3345,7 +3387,7 @@ mod tests {
         let result = process_test_command(
             &config,
             &payer,
-            &["spl-token", "balance", &token.to_string()],
+            &["spl-token", CommandName::Balance.into(), &token.to_string()],
         );
         let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
         assert_eq!(value["amount"], "0");
@@ -3361,7 +3403,12 @@ mod tests {
         let result = process_test_command(
             &config,
             &payer,
-            &["spl-token", "mint", &token.to_string(), "100"],
+            &[
+                "spl-token",
+                CommandName::Mint.into(),
+                &token.to_string(),
+                "100",
+            ],
         );
         result.unwrap();
         let ui_account = config
@@ -3385,7 +3432,7 @@ mod tests {
         let result = process_test_command(
             &config,
             &payer,
-            &["spl-token", "balance", &token.to_string()],
+            &["spl-token", CommandName::Balance.into(), &token.to_string()],
         );
         let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
         assert_eq!(value["amount"], format!("{}", ui_amount));
@@ -3401,7 +3448,12 @@ mod tests {
         let token2 = create_token(&config, &payer);
         let _account2 = create_associated_account(&config, &payer, token2);
         let token3 = create_token(&config, &payer);
-        let result = process_test_command(&config, &payer, &["spl-token", "accounts"]).unwrap();
+        let result = process_test_command(
+            &config,
+            &payer,
+            &["spl-token", CommandName::Accounts.into()],
+        )
+        .unwrap();
         assert!(result.contains(&token1.to_string()));
         assert!(result.contains(&token2.to_string()));
         assert!(!result.contains(&token3.to_string()));
@@ -3411,7 +3463,12 @@ mod tests {
     fn wrap() {
         let (test_validator, payer) = validator_for_test();
         let config = test_config(&test_validator, &payer, &spl_token::id());
-        let _result = process_test_command(&config, &payer, &["spl-token", "wrap", "0.5"]).unwrap();
+        let _result = process_test_command(
+            &config,
+            &payer,
+            &["spl-token", CommandName::Wrap.into(), "0.5"],
+        )
+        .unwrap();
         let account = get_associated_token_address_with_program_id(
             &payer.pubkey(),
             &native_mint::id(),
@@ -3440,7 +3497,11 @@ mod tests {
         let result = process_test_command(
             &config,
             &payer,
-            &["spl-token", "unwrap", &account.to_string()],
+            &[
+                "spl-token",
+                CommandName::Unwrap.into(),
+                &account.to_string(),
+            ],
         );
         result.unwrap();
         config.rpc_client.get_token_account(&account).unwrap_err();
@@ -3461,7 +3522,7 @@ mod tests {
             &payer,
             &[
                 "spl-token",
-                "transfer",
+                CommandName::Transfer.into(),
                 &token.to_string(),
                 "10",
                 &destination.to_string(),
@@ -3498,7 +3559,7 @@ mod tests {
             &payer,
             &[
                 "spl-token",
-                "transfer",
+                CommandName::Transfer.into(),
                 "--fund-recipient",
                 "--allow-unfunded-recipient",
                 &token.to_string(),
@@ -3531,7 +3592,7 @@ mod tests {
             &payer,
             &[
                 "spl-token",
-                "transfer",
+                CommandName::Transfer.into(),
                 "--fund-recipient",
                 &token.to_string(),
                 "10",
@@ -3556,7 +3617,7 @@ mod tests {
             &payer,
             &[
                 "spl-token",
-                "transfer",
+                CommandName::Transfer.into(),
                 "--fund-recipient",
                 "--allow-non-system-account-recipient",
                 "--allow-unfunded-recipient",
@@ -3586,7 +3647,7 @@ mod tests {
             &payer,
             &[
                 "spl-token",
-                "authorize",
+                CommandName::Authorize.into(),
                 &token.to_string(),
                 "mint",
                 "--disable",
@@ -3609,13 +3670,24 @@ mod tests {
         let _aux1 = create_auxiliary_account(&config, &payer, token);
         let _aux2 = create_auxiliary_account(&config, &payer, token);
         let _aux3 = create_auxiliary_account(&config, &payer, token);
-        let result = process_test_command(&config, &payer, &["spl-token", "accounts"]).unwrap();
+        let result = process_test_command(
+            &config,
+            &payer,
+            &["spl-token", CommandName::Accounts.into()],
+        )
+        .unwrap();
         let value: serde_json::Value = serde_json::from_str(&result).unwrap();
         assert_eq!(value["accounts"].as_array().unwrap().len(), 4);
         config.output_format = OutputFormat::Display; // fixup eventually?
-        let _result = process_test_command(&config, &payer, &["spl-token", "gc"]).unwrap();
+        let _result =
+            process_test_command(&config, &payer, &["spl-token", CommandName::Gc.into()]).unwrap();
         config.output_format = OutputFormat::JsonCompact;
-        let result = process_test_command(&config, &payer, &["spl-token", "accounts"]).unwrap();
+        let result = process_test_command(
+            &config,
+            &payer,
+            &["spl-token", CommandName::Accounts.into()],
+        )
+        .unwrap();
         let value: serde_json::Value = serde_json::from_str(&result).unwrap();
         assert_eq!(value["accounts"].as_array().unwrap().len(), 1);
     }
@@ -3630,7 +3702,13 @@ mod tests {
         let _result = process_test_command(
             &config,
             &payer,
-            &["spl-token", "authorize", &aux_string, "owner", &aux_string],
+            &[
+                "spl-token",
+                CommandName::Authorize.into(),
+                &aux_string,
+                "owner",
+                &aux_string,
+            ],
         )
         .unwrap();
         let ui_account = config.rpc_client.get_token_account(&aux).unwrap().unwrap();

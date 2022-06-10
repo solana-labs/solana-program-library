@@ -5863,6 +5863,8 @@ dependencies = [
  "spl-associated-token-account 1.0.5",
  "spl-memo 3.0.1",
  "spl-token 3.3.0",
+ "strum",
+ "strum_macros",
  "walkdir",
 ]
 
