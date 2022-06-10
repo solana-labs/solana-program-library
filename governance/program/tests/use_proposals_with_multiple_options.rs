@@ -663,6 +663,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
             &token_owner_record_cookie1,
             0,
             Some(0),
+            None,
         )
         .await
         .unwrap();
@@ -674,6 +675,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
             &token_owner_record_cookie1,
             1,
             Some(0),
+            None,
         )
         .await
         .unwrap();
@@ -685,6 +687,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
             &token_owner_record_cookie1,
             2,
             Some(0),
+            None,
         )
         .await
         .unwrap();
@@ -867,6 +870,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
             &token_owner_record_cookie1,
             0,
             Some(0),
+            None,
         )
         .await
         .unwrap();
@@ -878,6 +882,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
             &token_owner_record_cookie1,
             1,
             Some(0),
+            None,
         )
         .await
         .unwrap();
@@ -889,6 +894,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
             &token_owner_record_cookie1,
             2,
             Some(0),
+            None,
         )
         .await
         .unwrap();

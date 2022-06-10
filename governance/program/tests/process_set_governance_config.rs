@@ -207,6 +207,7 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
             0,
             None,
             &mut set_governance_config_ix,
+            None,
         )
         .await
         .unwrap();
