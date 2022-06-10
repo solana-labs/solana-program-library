@@ -2428,7 +2428,7 @@ fn get_switchboard_price_v2(
         return Err(LendingError::InvalidOracleConfig.into());
     }
     let price = Decimal::from(price_switchboard_desc.mantissa as u128);
-    let exp = (10u64).checked_pow(price_switchboard_desc.scale).unwrap();
+    let exp = Decimal::from((10u128).checked_pow(price_switchboard_desc.scale).unwrap());
     price.try_div(exp)
 }
 
