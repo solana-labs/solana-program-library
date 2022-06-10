@@ -21,22 +21,32 @@ TypeDocs: https://solana-labs.github.io/solana-program-library/token/js/
 
 ### Environment Setup
 
-1. Install Solana **v1.10.19 or later** from https://docs.solana.com/cli/install-solana-cli-tools.
+1. Install the latest Solana tools from from https://docs.solana.com/cli/install-solana-cli-tools.
 2. Install the latest Rust stable from https://rustup.rs/. If you already have Rust, run `rustup update` to get the latest version.
 3. Install the `libudev` development package for your distribution (`libudev-dev` on Debian-derived distros, `libudev-devel` on Redhat-derived).
 
 ### Build
 
-The normal cargo build is available for building programs against your host machine, and for the Solana BPF target.
+### Build on-chain programs
+
 ```bash
-$ cargo build      # <-- runs host target build
-$ cargo build-bpf  # <-- runs BPF target build
+# To build all on-chain programs
+$ cargo build-bpf
+
+# To build a specific on-chain program
+$ cd <program_name>/program
+$ cargo build-bpf
 ```
 
-To build a specific program, such as SPL Token, for the Solana BPF target:
-```
-$ cd token/program
-$ cargo build-bpf
+### Build clients
+
+```bash
+# To build all clients
+$ cargo build
+
+# To build a specific client
+$ cd <program_name>/cli
+$ cargo build
 ```
 
 ### Test
@@ -60,14 +70,19 @@ Integration testing may be performed via the per-project .js bindings.  See the
 ### Common Issues
 Solutions to a few issues you might run into are mentioned here.
 
-1. `Failed to open: ../../deploy/spl_associated_token_account.so`
+1. `Failed to open: ../../deploy/spl_<program-name>.so`
     
-    Update your Rust and Cargo to the latest versions and re-run the `cargo build` and `cargo build-bpf` steps.
-    Make sure you have Solana version **v1.10.19 or later**.
+    Update your Rust and Cargo to the latest versions and re-run `cargo build-bpf` in the relevant `<program-name>` directory,
+    or run it at the repository root to rebuild all on-chain programs.
 
 2. [Error while loading shared libraries. (libssl.so.1.1)](https://github.com/project-serum/anchor/issues/1831)
 
     A working solution was mentioned [here](https://github.com/project-serum/anchor/issues/1831#issuecomment-1109124934).
+    Install libssl.
+    ```bash
+    wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1l-1ubuntu1.2_amd64.deb
+    sudo dpkg -i libssl1.1_1.1.1l-1ubuntu1.2_amd64.deb
+    ```
 
 3.  CPU or Memory usage at 100%
 
