@@ -97,38 +97,39 @@ pub enum GovernanceError {
 
     /// Invalid State: Can't edit Signatories
     #[error("Invalid State: Can't edit Signatories")]
-    InvalidStateCannotEditSignatories,
+    InvalidStateCannotEditSignatories, // 521
 
     /// Invalid Proposal state
     #[error("Invalid Proposal state")]
-    InvalidProposalState,
+    InvalidProposalState, // 522
+
     /// Invalid State: Can't edit transactions
     #[error("Invalid State: Can't edit transactions")]
-    InvalidStateCannotEditTransactions,
+    InvalidStateCannotEditTransactions, // 523
 
     /// Invalid State: Can't execute transaction
     #[error("Invalid State: Can't execute transaction")]
-    InvalidStateCannotExecuteTransaction,
+    InvalidStateCannotExecuteTransaction, // 524
 
     /// Can't execute transaction within its hold up time
     #[error("Can't execute transaction within its hold up time")]
-    CannotExecuteTransactionWithinHoldUpTime,
+    CannotExecuteTransactionWithinHoldUpTime, // 525
 
     /// Transaction already executed
     #[error("Transaction already executed")]
-    TransactionAlreadyExecuted,
+    TransactionAlreadyExecuted, // 526
 
     /// Invalid Transaction index
     #[error("Invalid Transaction index")]
-    InvalidTransactionIndex,
+    InvalidTransactionIndex, // 527
 
     /// Transaction hold up time is below the min specified by Governance
     #[error("Transaction hold up time is below the min specified by Governance")]
-    TransactionHoldUpTimeBelowRequiredMin,
+    TransactionHoldUpTimeBelowRequiredMin, // 528
 
     /// Transaction at the given index for the Proposal already exists
     #[error("Transaction at the given index for the Proposal already exists")]
-    TransactionAlreadyExists,
+    TransactionAlreadyExists, // 529
 
     /// Invalid State: Can't sign off
     #[error("Invalid State: Can't sign off")]

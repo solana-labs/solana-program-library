@@ -2245,6 +2245,7 @@ impl GovernanceProgramTest {
             0,
             None,
             &mut set_governance_config_ix,
+            None,
         )
         .await
     }
@@ -2257,6 +2258,7 @@ impl GovernanceProgramTest {
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         option_index: u8,
         index: Option<u16>,
+        hold_up_time: Option<u32>,
     ) -> Result<ProposalTransactionCookie, ProgramError> {
         let token_account_keypair = Keypair::new();
         self.bench
@@ -2283,6 +2285,7 @@ impl GovernanceProgramTest {
             option_index,
             index,
             &mut instruction,
+            hold_up_time,
         )
         .await
     }
@@ -2320,6 +2323,7 @@ impl GovernanceProgramTest {
             0,
             index,
             &mut instruction,
+            None,
         )
         .await
     }
@@ -2345,6 +2349,7 @@ impl GovernanceProgramTest {
             0,
             None,
             &mut transfer_ix,
+            None,
         )
         .await
     }
@@ -2415,6 +2420,7 @@ impl GovernanceProgramTest {
             0,
             None,
             &mut upgrade_ix,
+            None,
         )
         .await
     }
@@ -2441,6 +2447,7 @@ impl GovernanceProgramTest {
             option_index,
             index,
             &mut instruction,
+            None,
         )
         .await
     }
@@ -2453,8 +2460,9 @@ impl GovernanceProgramTest {
         option_index: u8,
         index: Option<u16>,
         instruction: &mut Instruction,
+        hold_up_time: Option<u32>,
     ) -> Result<ProposalTransactionCookie, ProgramError> {
-        let hold_up_time = 15;
+        let hold_up_time = hold_up_time.unwrap_or(15);
 
         let instruction_data: InstructionData = instruction.clone().into();
         let mut yes_option = &mut proposal_cookie.account.options[0];
