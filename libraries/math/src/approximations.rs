@@ -46,35 +46,37 @@ pub fn sqrt<T: PrimInt + CheckedShl + CheckedShr>(radicand: T) -> Option<T> {
 }
 
 /// Accurate value of natural log of 10.
+/// Used in calculating approximations of ln(x).
 pub const LN10: f32 = 2.302585092994046;
+
 /// Calculate approximate natural log of a number
 /// using Taylor series of Log_e(x)
 ///     
 /// Ideas from https://math.stackexchange.com/a/977836
 /// 
 /// $$ ln(x) = 2 * \sum{ y^{2k+1} \over 2k+1 } $$
-/// where y = (A-1)/(A+1)
-/// where x = A * 10^(n-1)
+/// where y = (A-1)/(A+1) and x = A * 10^(n-1) 
+/// such that 0 <= A < 10
 pub fn ln<T: Float>(input: T) -> Option<T> {
     if input.le(&T::zero()) {
         return None; // fail for less than or equal to 0
     }
 
     // x = A * 10^(n-1)
-    let mut mantx = input.clone();
-    while mantx.floor() > T::from(10 as f32).unwrap() {
-        mantx = mantx.div(T::from(10 as f32).unwrap());
+    let mut mantissa = input.clone();
+    while mantissa.floor() > T::from(10 as f32).unwrap() {
+        mantissa = mantissa.div(T::from(10 as f32).unwrap());
     }
     
     // number of digits of input before decimal
-    let mut temp_mantx = mantx.clone();
+    let mut temp_mantx = mantissa.clone();
     let mut n = 1;
     while temp_mantx.floor() != input.floor() {
         temp_mantx = temp_mantx.mul(T::from(10 as f32).unwrap());
         n += 1;
     };
 
-    let y: T = (mantx - T::from(1 as f32).unwrap()) / (mantx + T::from(1 as f32).unwrap());
+    let y: T = (mantissa - T::from(1 as f32).unwrap()) / (mantissa + T::from(1 as f32).unwrap());
     
     let mut sum: T = T::from(0 as f32).unwrap();
     for k in 0..25 {
@@ -167,16 +169,9 @@ mod tests {
     }
 
 
-    #[test]
     fn check_ln() {
-        let result = ln(0.56276);
-        println!("{}", result.unwrap());
+        
     }
-
-    // fn check_ln(i:f32) {
-    //     let result = ln(i);
-
-    // }
 
     #[test]
     fn test_ln_min_max() {
@@ -186,10 +181,10 @@ mod tests {
         }
     }
 
-    // proptest! {
-    //     #[test]
-    //     fn test_ln(a in 1..10) {
-    //         check_ln(a as f32);
-    //     }
-    // }
+    proptest! {
+        #[test]
+        fn test_ln(a in 1..10) {
+            // check_ln(a as f32);
+        }
+    }
 }
