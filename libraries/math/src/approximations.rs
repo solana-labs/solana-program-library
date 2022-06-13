@@ -1,11 +1,7 @@
 //! Approximation calculations
 
-use std::fmt::Display;
-
-use num_traits::{Float, Unsigned};
-
 use {
-    num_traits::{CheckedShl, CheckedShr, PrimInt},
+    num_traits::{CheckedShl, CheckedShr, PrimInt, Float},
     std::cmp::Ordering,
 };
 
@@ -45,10 +41,6 @@ pub fn sqrt<T: PrimInt + CheckedShl + CheckedShr>(radicand: T) -> Option<T> {
     Some(result)
 }
 
-/// Accurate value of natural log of 10.
-/// Used in calculating approximations of ln(x).
-pub const LN10: f32 = 2.302585092994046;
-
 /// Calculate approximate natural log of a number
 /// using Taylor series of Log_e(x)
 ///     
@@ -57,34 +49,34 @@ pub const LN10: f32 = 2.302585092994046;
 /// $$ ln(x) = 2 * \sum{ y^{2k+1} \over 2k+1 } $$
 /// where y = (A-1)/(A+1) and x = A * 10^(n-1) 
 /// such that 0 <= A < 10
-pub fn ln<T: Float>(input: T) -> Option<T> {
+pub fn ln<T: Float + Copy>(input: T) -> Option<T> {
     if input.le(&T::zero()) {
         return None; // fail for less than or equal to 0
     }
 
     // x = A * 10^(n-1)
     let mut mantissa = input.clone();
-    while mantissa.floor() > T::from(10 as f32).unwrap() {
-        mantissa = mantissa.div(T::from(10 as f32).unwrap());
+    while mantissa.floor() > T::from(10_f64).unwrap() {
+        mantissa = mantissa.div(T::from(10_f64).unwrap());
     }
     
     // number of digits of input before decimal
     let mut temp_mantx = mantissa.clone();
     let mut n = 1;
     while temp_mantx.floor() != input.floor() {
-        temp_mantx = temp_mantx.mul(T::from(10 as f32).unwrap());
+        temp_mantx = temp_mantx.mul(T::from(10_f64).unwrap());
         n += 1;
     };
 
-    let y: T = (mantissa - T::from(1 as f32).unwrap()) / (mantissa + T::from(1 as f32).unwrap());
+    let y: T = (mantissa - T::from(1_f64).unwrap()) / (mantissa + T::from(1_f64).unwrap());
     
-    let mut sum: T = T::from(0 as f32).unwrap();
+    let mut sum: T = T::from(0_f64).unwrap();
     for k in 0..25 {
         sum = sum.add(y.powi(2*k + 1).div(T::from(2*k + 1).unwrap()));
     }
 
-    sum = sum.mul(T::from(2 as f32).unwrap());
-    Some(sum.add( T::from(LN10 * (n - 1) as f32).unwrap() ))
+    sum = sum.mul(T::from(2_f64).unwrap());
+    Some(sum.add( T::from(std::f64::consts::LN_10 * (n - 1) as f64).unwrap() ))
 }
 
 /// Calculate the normal cdf of the given number
