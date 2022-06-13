@@ -144,6 +144,10 @@ pub fn process_instruction(
                 accounts,
             )
         }
+        LendingInstruction::RedeemFees => {
+            msg!("Instruction: RedeemFees");
+            process_redeem_fees(program_id, accounts)
+        }
     }
 }
 
@@ -2197,6 +2201,87 @@ fn process_update_reserve_config(
     Ok(())
 }
 
+#[inline(never)] // avoid stack frame limit
+fn process_redeem_fees(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter().peekable();
+    let reserve_info = next_account_info(account_info_iter)?;
+    let reserve_liquidity_fee_receiver_info = next_account_info(account_info_iter)?;
+    let reserve_supply_liquidity_info = next_account_info(account_info_iter)?;
+    let lending_market_info = next_account_info(account_info_iter)?;
+    let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let token_program_id = next_account_info(account_info_iter)?;
+    let clock = &Clock::get()?;
+
+    let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
+    if reserve_info.owner != program_id {
+        msg!(
+            "Reserve provided is not owned by the lending program {} != {}",
+            &reserve_info.owner.to_string(),
+            &program_id.to_string(),
+        );
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+
+    if &reserve.config.fee_receiver != reserve_liquidity_fee_receiver_info.key {
+        msg!("Reserve liquidity fee receiver does not match the reserve liquidity fee receiver provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &reserve.liquidity.supply_pubkey != reserve_supply_liquidity_info.key {
+        msg!("Reserve liquidity supply must be used as the reserve supply liquidity provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &reserve.lending_market != lending_market_info.key {
+        msg!("Reserve lending market does not match the lending market provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if reserve.last_update.is_stale(clock.slot)? {
+        msg!("reserve is stale and must be refreshed in the current slot");
+        return Err(LendingError::ReserveStale.into());
+    }
+
+    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    if lending_market_info.owner != program_id {
+        msg!("Lending market provided is not owned by the lending program");
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &lending_market.token_program_id != token_program_id.key {
+        msg!("Lending market token program does not match the token program provided");
+        return Err(LendingError::InvalidTokenProgram.into());
+    }
+    let authority_signer_seeds = &[
+        lending_market_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+    let lending_market_authority_pubkey =
+        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
+    if &lending_market_authority_pubkey != lending_market_authority_info.key {
+        msg!(
+            "Derived lending market authority does not match the lending market authority provided"
+        );
+        return Err(LendingError::InvalidMarketAuthority.into());
+    }
+
+    let withdraw_amount = reserve.calculate_redeem_fees()?;
+    if withdraw_amount == 0 {
+        return Err(LendingError::InsufficientProtocolFeesToRedeem.into());
+    }
+
+    reserve.liquidity.redeem_fees(withdraw_amount)?;
+    reserve.last_update.mark_stale();
+    Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
+
+    spl_token_transfer(TokenTransferParams {
+        source: reserve_supply_liquidity_info.clone(),
+        destination: reserve_liquidity_fee_receiver_info.clone(),
+        amount: withdraw_amount,
+        authority: lending_market_authority_info.clone(),
+        authority_signer_seeds,
+        token_program: token_program_id.clone(),
+    })?;
+
+    Ok(())
+}
+
 fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
     if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
         msg!(
@@ -2603,6 +2688,10 @@ fn validate_reserve_config(config: ReserveConfig) -> ProgramResult {
     }
     if config.protocol_liquidation_fee > 100 {
         msg!("Protocol liquidation fee must be in range [0, 100]");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.protocol_take_rate > 100 {
+        msg!("Protocol take rate must be in range [0, 100]");
         return Err(LendingError::InvalidConfig.into());
     }
     Ok(())

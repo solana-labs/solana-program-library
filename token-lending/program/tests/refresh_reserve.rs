@@ -11,7 +11,7 @@ use solana_sdk::{
 };
 use solend_program::{
     instruction::refresh_reserve,
-    math::{Decimal, Rate, TryAdd, TryDiv, TryMul},
+    math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub},
     processor::process_instruction,
     state::SLOTS_PER_YEAR,
 };
@@ -25,7 +25,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(28_000);
+    test.set_bpf_compute_max_units(31_000);
 
     const SOL_RESERVE_LIQUIDITY_LAMPORTS: u64 = 100 * LAMPORTS_TO_SOL;
     const USDC_RESERVE_LIQUIDITY_FRACTIONAL: u64 = 100 * FRACTIONAL_TO_USDC;
@@ -117,6 +117,11 @@ async fn test_success() {
         .unwrap();
     let compound_rate = Rate::one().try_add(slot_rate).unwrap();
     let compound_borrow = Decimal::from(BORROW_AMOUNT).try_mul(compound_rate).unwrap();
+    let net_new_debt = compound_borrow
+        .try_sub(Decimal::from(BORROW_AMOUNT))
+        .unwrap();
+    let protocol_take_rate = Rate::from_percent(usdc_reserve.config.protocol_take_rate);
+    let delta_accumulated_protocol_fees = net_new_debt.try_mul(protocol_take_rate).unwrap();
 
     assert_eq!(
         sol_reserve.liquidity.cumulative_borrow_rate_wads,
@@ -138,5 +143,13 @@ async fn test_success() {
     assert_eq!(
         usdc_reserve.liquidity.market_price,
         usdc_test_reserve.market_price
+    );
+    assert_eq!(
+        delta_accumulated_protocol_fees,
+        usdc_reserve.liquidity.accumulated_protocol_fees_wads
+    );
+    assert_eq!(
+        delta_accumulated_protocol_fees,
+        sol_reserve.liquidity.accumulated_protocol_fees_wads
     );
 }

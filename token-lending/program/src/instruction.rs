@@ -408,6 +408,16 @@ pub enum LendingInstruction {
         /// Amount of liquidity to repay - u64::MAX for up to 100% of borrowed amount
         liquidity_amount: u64,
     },
+
+    // 18
+    ///   0. `[writable]` Reserve account.
+    ///   1. `[writable]` Borrow reserve liquidity fee receiver account.
+    ///                     Must be the fee account specified at InitReserve.
+    ///   2. `[writable]` Reserve liquidity supply SPL Token account.
+    ///   3. `[]` Lending market account.
+    ///   4. `[]` Derived lending market authority.
+    ///   5. `[]` Token program id.
+    RedeemFees,
 }
 
 impl LendingInstruction {
@@ -444,7 +454,8 @@ impl LendingInstruction {
                 let (deposit_limit, rest) = Self::unpack_u64(rest)?;
                 let (borrow_limit, rest) = Self::unpack_u64(rest)?;
                 let (fee_receiver, rest) = Self::unpack_pubkey(rest)?;
-                let (protocol_liquidation_fee, _rest) = Self::unpack_u8(rest)?;
+                let (protocol_liquidation_fee, rest) = Self::unpack_u8(rest)?;
+                let (protocol_take_rate, _rest) = Self::unpack_u8(rest)?;
                 Self::InitReserve {
                     liquidity_amount,
                     config: ReserveConfig {
@@ -464,6 +475,7 @@ impl LendingInstruction {
                         borrow_limit,
                         fee_receiver,
                         protocol_liquidation_fee,
+                        protocol_take_rate,
                     },
                 }
             }
@@ -524,7 +536,8 @@ impl LendingInstruction {
                 let (deposit_limit, rest) = Self::unpack_u64(rest)?;
                 let (borrow_limit, rest) = Self::unpack_u64(rest)?;
                 let (fee_receiver, rest) = Self::unpack_pubkey(rest)?;
-                let (protocol_liquidation_fee, _rest) = Self::unpack_u8(rest)?;
+                let (protocol_liquidation_fee, rest) = Self::unpack_u8(rest)?;
+                let (protocol_take_rate, _rest) = Self::unpack_u8(rest)?;
                 Self::UpdateReserveConfig {
                     config: ReserveConfig {
                         optimal_utilization_rate,
@@ -543,6 +556,7 @@ impl LendingInstruction {
                         borrow_limit,
                         fee_receiver,
                         protocol_liquidation_fee,
+                        protocol_take_rate,
                     },
                 }
             }
@@ -550,6 +564,7 @@ impl LendingInstruction {
                 let (liquidity_amount, _rest) = Self::unpack_u64(rest)?;
                 Self::LiquidateObligationAndRedeemReserveCollateral { liquidity_amount }
             }
+            18 => Self::RedeemFees,
             _ => {
                 msg!("Instruction cannot be unpacked");
                 return Err(LendingError::InstructionUnpackError.into());
@@ -646,6 +661,7 @@ impl LendingInstruction {
                         borrow_limit,
                         fee_receiver,
                         protocol_liquidation_fee,
+                        protocol_take_rate,
                     },
             } => {
                 buf.push(2);
@@ -664,6 +680,7 @@ impl LendingInstruction {
                 buf.extend_from_slice(&borrow_limit.to_le_bytes());
                 buf.extend_from_slice(&fee_receiver.to_bytes());
                 buf.extend_from_slice(&protocol_liquidation_fee.to_le_bytes());
+                buf.extend_from_slice(&protocol_take_rate.to_le_bytes());
             }
             Self::RefreshReserve => {
                 buf.push(3);
@@ -730,10 +747,14 @@ impl LendingInstruction {
                 buf.extend_from_slice(&config.borrow_limit.to_le_bytes());
                 buf.extend_from_slice(&config.fee_receiver.to_bytes());
                 buf.extend_from_slice(&config.protocol_liquidation_fee.to_le_bytes());
+                buf.extend_from_slice(&config.protocol_take_rate.to_le_bytes());
             }
             Self::LiquidateObligationAndRedeemReserveCollateral { liquidity_amount } => {
                 buf.push(17);
                 buf.extend_from_slice(&liquidity_amount.to_le_bytes());
+            }
+            Self::RedeemFees {} => {
+                buf.push(18);
             }
         }
         buf
@@ -1350,5 +1371,32 @@ pub fn liquidate_obligation_and_redeem_reserve_collateral(
             liquidity_amount,
         }
         .pack(),
+    }
+}
+
+/// Creates a `RedeemFees` instruction
+pub fn redeem_fees(
+    program_id: Pubkey,
+    reserve_pubkey: Pubkey,
+    reserve_liquidity_fee_receiver_pubkey: Pubkey,
+    reserve_supply_liquidity_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
+        &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
+        &program_id,
+    );
+    let accounts = vec![
+        AccountMeta::new(reserve_pubkey, false),
+        AccountMeta::new(reserve_liquidity_fee_receiver_pubkey, false),
+        AccountMeta::new(reserve_supply_liquidity_pubkey, false),
+        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+    ];
+    Instruction {
+        program_id,
+        accounts,
+        data: LendingInstruction::RedeemFees.pack(),
     }
 }

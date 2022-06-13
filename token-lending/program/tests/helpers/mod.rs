@@ -60,6 +60,7 @@ pub fn test_reserve_config() -> ReserveConfig {
         borrow_limit: u64::MAX,
         fee_receiver: Keypair::new().pubkey(),
         protocol_liquidation_fee: 30,
+        protocol_take_rate: 10,
     }
 }
 
@@ -265,7 +266,7 @@ pub fn add_reserve(
     } = args;
 
     let is_native = if liquidity_mint_pubkey == spl_token::native_mint::id() {
-        COption::Some(1)
+        COption::Some(2039280u64)
     } else {
         COption::None
     };
@@ -1217,6 +1218,7 @@ pub fn add_sol_oracle(test: &mut ProgramTest) -> TestOracle {
         Pubkey::from_str(SOL_SWITCHBOARD_FEED).unwrap(),
         // Set SOL price to $20
         Decimal::from(20u64),
+        0,
     )
 }
 
@@ -1228,6 +1230,7 @@ pub fn add_sol_oracle_switchboardv2(test: &mut ProgramTest) -> TestOracle {
         Pubkey::from_str(SOL_SWITCHBOARDV2_FEED).unwrap(),
         // Set SOL price to $20
         Decimal::from(20u64),
+        0,
     )
 }
 
@@ -1240,6 +1243,7 @@ pub fn add_usdc_oracle(test: &mut ProgramTest) -> TestOracle {
         Pubkey::from_str(SRM_SWITCHBOARD_FEED).unwrap(),
         // Set USDC price to $1
         Decimal::from(1u64),
+        0,
     )
 }
 
@@ -1252,6 +1256,7 @@ pub fn add_usdc_oracle_switchboardv2(test: &mut ProgramTest) -> TestOracle {
         Pubkey::from_str(SRM_SWITCHBOARDV2_FEED).unwrap(),
         // Set USDC price to $1
         Decimal::from(1u64),
+        0,
     )
 }
 
@@ -1261,6 +1266,7 @@ pub fn add_oracle(
     pyth_price_pubkey: Pubkey,
     switchboard_feed_pubkey: Pubkey,
     price: Decimal,
+    valid_slot: u64,
 ) -> TestOracle {
     let oracle_program_id = read_keypair_file("tests/fixtures/oracle_program_id.json").unwrap();
 
@@ -1286,7 +1292,7 @@ pub fn add_oracle(
             .checked_pow(pyth_price.expo.checked_abs().unwrap().try_into().unwrap())
             .unwrap();
 
-        pyth_price.valid_slot = 0;
+        pyth_price.valid_slot = valid_slot;
         pyth_price.agg.price = price
             .try_round_u64()
             .unwrap()

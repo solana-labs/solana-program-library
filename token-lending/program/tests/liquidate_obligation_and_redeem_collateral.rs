@@ -111,7 +111,7 @@ async fn test_success() {
         get_token_balance(&mut banks_client, sol_test_reserve.collateral_supply_pubkey).await;
     let initial_user_withdraw_liquidity_balance =
         get_token_balance(&mut banks_client, sol_test_reserve.user_liquidity_pubkey).await;
-    let initial_fee_reciever_withdraw_liquidity_balance =
+    let initial_fee_receiver_withdraw_liquidity_balance =
         get_token_balance(&mut banks_client, sol_test_reserve.config.fee_receiver).await;
 
     let mut transaction = Transaction::new_with_payer(
@@ -165,12 +165,12 @@ async fn test_success() {
 
     let user_withdraw_liquidity_balance =
         get_token_balance(&mut banks_client, sol_test_reserve.user_liquidity_pubkey).await;
-    let fee_reciever_withdraw_liquidity_balance =
+    let fee_receiver_withdraw_liquidity_balance =
         get_token_balance(&mut banks_client, sol_test_reserve.config.fee_receiver).await;
     assert_eq!(
-        user_withdraw_liquidity_balance + fee_reciever_withdraw_liquidity_balance,
+        user_withdraw_liquidity_balance + fee_receiver_withdraw_liquidity_balance,
         initial_user_withdraw_liquidity_balance
-            + initial_fee_reciever_withdraw_liquidity_balance
+            + initial_fee_receiver_withdraw_liquidity_balance
             + SOL_LIQUIDATION_AMOUNT_LAMPORTS
     );
 
@@ -179,7 +179,7 @@ async fn test_success() {
         // SOL_LIQUIDATION_AMOUNT_LAMPORTS * 3 / 10 / 11,
         // 0 % min 1 for now
         max(SOL_LIQUIDATION_AMOUNT_LAMPORTS * 0 / 10 / 11, 1),
-        (fee_reciever_withdraw_liquidity_balance - initial_fee_reciever_withdraw_liquidity_balance)
+        (fee_receiver_withdraw_liquidity_balance - initial_fee_receiver_withdraw_liquidity_balance)
     );
 
     let collateral_supply_balance =

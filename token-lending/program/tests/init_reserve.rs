@@ -419,6 +419,7 @@ async fn test_update_reserve_config() {
         borrow_limit: 300_000,
         fee_receiver: Keypair::new().pubkey(),
         protocol_liquidation_fee: 30,
+        protocol_take_rate: 10,
     };
 
     let (mut banks_client, payer, recent_blockhash) = test.start().await;
