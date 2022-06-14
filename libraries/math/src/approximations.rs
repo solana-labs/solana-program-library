@@ -46,37 +46,37 @@ pub fn sqrt<T: PrimInt + CheckedShl + CheckedShr>(radicand: T) -> Option<T> {
 ///     
 /// Ideas from https://math.stackexchange.com/a/977836
 /// 
-/// $$ ln(x) = 2 * \sum{ y^{2k+1} \over 2k+1 } $$
-/// where y = (A-1)/(A+1) and x = A * 10^(n-1) 
-/// such that 0 <= A < 10
+/// $$ ln(x) = (n-1)*ln(10) + 2 * \sum{ y^{2k+1} \over 2k+1 } $$
+/// where x = A * 10^(n-1) such that 0 <= A < 10
+/// and y = (A-1)/(A+1)
 pub fn ln<T: Float + Copy>(input: T) -> Option<T> {
     if input.le(&T::zero()) {
         return None; // fail for less than or equal to 0
     }
 
-    // x = A * 10^(n-1)
     let mut mantissa = input.clone();
-    while mantissa.floor() > T::from(10_f64).unwrap() {
-        mantissa = mantissa.div(T::from(10_f64).unwrap());
+    while mantissa.floor() > T::from(10_f32).unwrap() {
+        mantissa = mantissa.div(T::from(10_f32).unwrap());
     }
     
     // number of digits of input before decimal
+    let mut n: i32 = 1;
     let mut temp_mantx = mantissa.clone();
-    let mut n = 1;
     while temp_mantx.floor() != input.floor() {
-        temp_mantx = temp_mantx.mul(T::from(10_f64).unwrap());
+        temp_mantx = temp_mantx.mul(T::from(10_f32).unwrap());
         n += 1;
     };
-
-    let y: T = (mantissa - T::from(1_f64).unwrap()) / (mantissa + T::from(1_f64).unwrap());
     
-    let mut sum: T = T::from(0_f64).unwrap();
-    for k in 0..25 {
+    // y = (A-1)/(A+1)
+    let y: T = (mantissa - T::from(1_f32).unwrap()) / (mantissa + T::from(1_f32).unwrap());
+    
+    let mut sum: T = T::from(0_f32).unwrap();
+    for k in 0..(25*n) {
         sum = sum.add(y.powi(2*k + 1).div(T::from(2*k + 1).unwrap()));
     }
 
-    sum = sum.mul(T::from(2_f64).unwrap());
-    Some(sum.add( T::from(std::f64::consts::LN_10 * (n - 1) as f64).unwrap() ))
+    sum = sum.mul(T::from(2_f32).unwrap());
+    Some(sum.add( T::from(std::f32::consts::LN_10 * (n - 1) as f32).unwrap() ))
 }
 
 /// Calculate the normal cdf of the given number
@@ -155,28 +155,34 @@ mod tests {
     proptest! {
         #[test]
         fn test_normal_cdf(a in -1000..1000) {
-
             check_normal_cdf_f32((a as f32)*0.005);
         }
     }
 
+    fn check_ln(input: f32) {
+        if input <= 0_f32 {
+            assert!(ln(input).is_none() == true);
+            return;
+        }
 
-    fn check_ln() {
-        
+        let approx_log = ln(input).unwrap();
+        let std_log = input.ln();
+        let error = (approx_log - std_log).abs();
+        assert!(error <= 0.000_01);
     }
 
     #[test]
     fn test_ln_min_max() {
         let test_arguments: [f32; 2] = [f32::MIN, f32::MAX];
         for i in test_arguments.iter() {
-            // check_ln(*i as f32)
+            check_ln(*i as f32)
         }
     }
 
     proptest! {
         #[test]
-        fn test_ln(a in 1..10) {
-            // check_ln(a as f32);
+        fn test_ln(a in 1..u32::MAX) {
+            check_ln(a as f32);
         }
     }
 }
