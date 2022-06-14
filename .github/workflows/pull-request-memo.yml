@@ -60,7 +60,7 @@ jobs:
   js-test:
     runs-on: ubuntu-latest
     env:
-      NODE_VERSION: 14.x
+      NODE_VERSION: 16.x
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
@@ -71,4 +71,4 @@ jobs:
         with:
           path: ~/.cache/yarn
           key: yarn-${{ hashFiles('memo/ts/yarn.lock') }}
-      - run: ./ci/js-test-memo.sh
+      - run: ./ci/ts-test-memo.sh
