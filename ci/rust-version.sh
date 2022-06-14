@@ -27,7 +27,6 @@ else
   nightly_version=2022-02-24
 fi
 
-
 export rust_stable="$stable_version"
 export rust_stable_docker_image=solanalabs/rust:"$stable_version"
 
