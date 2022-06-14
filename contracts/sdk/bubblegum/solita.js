@@ -6,7 +6,7 @@ const {
 const { spawn } = require('child_process');
 const { Solita } = require('@metaplex-foundation/solita');
 const { writeFile } = require('fs/promises');
-const { fstat, existsSync } = require('fs');
+const { fstat, existsSync, realpathSync } = require('fs');
 
 const PROGRAM_NAME = 'bubblegum';
 const PROGRAM_ID = 'BGUMzZr2wWfD2yzrXFEWTK2HbdYhqQCP2EZoPEkZBD6o';

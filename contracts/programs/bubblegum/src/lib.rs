@@ -19,7 +19,7 @@ use crate::state::{
     leaf_schema::{LeafSchema, Version},
     metaplex_adapter::{MetadataArgs, TokenProgramVersion},
     metaplex_anchor::{MasterEdition, TokenMetadata},
-    Nonce, Voucher,
+    NewNFTEvent, Nonce, Voucher,
 };
 use crate::utils::{append_leaf, insert_or_append_leaf, replace_leaf};
 
@@ -357,6 +357,11 @@ pub mod bubblegum {
             data_hash.to_bytes(),
             creator_hash.to_bytes(),
         );
+        emit!(NewNFTEvent {
+            version,
+            metadata: message,
+            nonce: nonce.count
+        });
         emit!(leaf.to_event());
         nonce.count = nonce.count.saturating_add(1);
         append_leaf(

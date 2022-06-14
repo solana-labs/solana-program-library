@@ -4,6 +4,8 @@ pub mod metaplex_anchor;
 
 use anchor_lang::prelude::*;
 use leaf_schema::LeafSchema;
+use leaf_schema::Version;
+use metaplex_adapter::MetadataArgs;
 
 #[account]
 #[derive(Copy)]
@@ -27,4 +29,11 @@ impl Voucher {
             merkle_slab,
         }
     }
+}
+
+#[event]
+pub struct NewNFTEvent {
+    pub version: Version,
+    pub metadata: MetadataArgs,
+    pub nonce: u128,
 }

@@ -18,6 +18,13 @@ impl PathNode {
 }
 
 #[event]
+pub struct NewLeafEvent {
+    /// Public key of the merkle roll
+    pub id: Pubkey,
+    pub leaf: [u8; 32],
+}
+
+#[event]
 pub struct ChangeLogEvent {
     /// Public key of the Merkle Roll
     pub id: Pubkey,

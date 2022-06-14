@@ -998,6 +998,30 @@
           "index": false
         }
       ]
+    },
+    {
+      "name": "NewNFTEvent",
+      "fields": [
+        {
+          "name": "version",
+          "type": {
+            "defined": "Version"
+          },
+          "index": false
+        },
+        {
+          "name": "metadata",
+          "type": {
+            "defined": "MetadataArgs"
+          },
+          "index": false
+        },
+        {
+          "name": "nonce",
+          "type": "u128",
+          "index": false
+        }
+      ]
     }
   ],
   "metadata": {
