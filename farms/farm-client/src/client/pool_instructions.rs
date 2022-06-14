@@ -4,6 +4,7 @@ use {
     crate::error::FarmClientError,
     solana_farm_sdk::{
         instruction::amm::AmmInstruction, pool::PoolRoute, program::account, token::TokenSelector,
+        Protocol,
     },
     solana_sdk::{instruction::Instruction, program_error::ProgramError, pubkey::Pubkey},
 };
@@ -129,7 +130,7 @@ impl FarmClient {
     pub fn new_instruction_swap(
         &self,
         wallet_address: &Pubkey,
-        protocol: &str,
+        protocol: Protocol,
         from_token: &str,
         to_token: &str,
         ui_amount_in: f64,
@@ -453,7 +454,7 @@ impl FarmClient {
     pub fn all_instructions_swap(
         &self,
         wallet_address: &Pubkey,
-        protocol: &str,
+        protocol: Protocol,
         from_token: &str,
         to_token: &str,
         ui_amount_in: f64,

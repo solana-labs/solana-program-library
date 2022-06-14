@@ -490,27 +490,33 @@ pub fn get_pool_swap_amounts<'a, 'b>(
     }
     if coin_token_amount_in == 0 {
         // pc to coin
-        let amount_in_no_fee =
-            math::get_no_fee_amount(pc_token_amount_in, 100, RAYDIUM_FEE_DENOMINATOR)? as u128;
+        let amount_in_no_fee = math::get_no_fee_amount(
+            pc_token_amount_in,
+            RAYDIUM_FEE_NUMERATOR,
+            RAYDIUM_FEE_DENOMINATOR,
+        )? as u128;
         let estimated_coin_amount = math::checked_as_u64(math::checked_div(
             math::checked_mul(coin_balance as u128, amount_in_no_fee)?,
             math::checked_add(pc_balance as u128, amount_in_no_fee)?,
         )?)?;
         Ok((
             pc_token_amount_in,
-            math::get_no_fee_amount(estimated_coin_amount, 100, RAYDIUM_FEE_DENOMINATOR)?,
+            math::get_no_fee_amount(estimated_coin_amount, 3, 100)?,
         ))
     } else {
         // coin to pc
-        let amount_in_no_fee =
-            math::get_no_fee_amount(coin_token_amount_in, 100, RAYDIUM_FEE_DENOMINATOR)? as u128;
+        let amount_in_no_fee = math::get_no_fee_amount(
+            coin_token_amount_in,
+            RAYDIUM_FEE_NUMERATOR,
+            RAYDIUM_FEE_DENOMINATOR,
+        )? as u128;
         let estimated_pc_amount = math::checked_as_u64(math::checked_div(
             math::checked_mul(pc_balance as u128, amount_in_no_fee)?,
             math::checked_add(coin_balance as u128, amount_in_no_fee)?,
         )?)?;
         Ok((
             coin_token_amount_in,
-            math::get_no_fee_amount(estimated_pc_amount, 100, RAYDIUM_FEE_DENOMINATOR)?,
+            math::get_no_fee_amount(estimated_pc_amount, 3, 100)?,
         ))
     }
 }
@@ -694,11 +700,7 @@ pub fn remove_liquidity_with_seeds(
             accounts: raydium_accounts,
             data: RaydiumRemoveLiquidity {
                 instruction: 4,
-                amount: if amount > 0 {
-                    amount
-                } else {
-                    account::get_token_balance(lp_token_custody_account)?
-                },
+                amount,
             }
             .to_vec()?,
         };

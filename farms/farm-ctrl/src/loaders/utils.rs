@@ -70,38 +70,31 @@ pub fn normalize_name(name: &str, allow_dashes: bool) -> String {
     }
 }
 
-pub fn get_saber_lp_token_name(lp_token: &str) -> String {
-    "LP.SBR.".to_string() + &normalize_name(lp_token.split(' ').collect::<Vec<&str>>()[1], true)
-}
-
-pub fn extract_saber_wrapped_token_name(name: &str) -> String {
-    if name.len() > 3
-        && (&name[..1] == "s" || &name[..1] == "S")
-        && vec!["_8", "_9", "10"].contains(&&name[name.len() - 2..])
-    {
-        name.split('_').collect::<Vec<&str>>()[0][1..].to_string()
-    } else {
-        panic!("Unexpected Saber wrapped token name {}", name);
-    }
-}
-
 pub fn is_saber_wrapped(token: &GitToken) -> bool {
     token.symbol.len() > 3 && token.tags.contains(&String::from("saber-dec-wrapped"))
 }
 
-pub fn get_saber_pool_name(token1: &GitToken, token2: &GitToken) -> String {
-    let token1_symbol_norm = normalize_name(&token1.symbol, false);
-    let token2_symbol_norm = normalize_name(&token2.symbol, false);
-    let token1_name = if is_saber_wrapped(token1) {
-        extract_saber_wrapped_token_name(&token1_symbol_norm)
+pub fn get_saber_token_name(client: &FarmClient, token: &GitToken) -> String {
+    if is_saber_wrapped(token) {
+        client
+            .get_token_with_mint(&convert_pubkey(
+                token.extra["extensions"]["assetContract"].as_str().unwrap(),
+            ))
+            .unwrap()
+            .name
+            .to_string()
     } else {
-        token1_symbol_norm
-    };
-    let token2_name = if is_saber_wrapped(token2) {
-        extract_saber_wrapped_token_name(&token2_symbol_norm)
-    } else {
-        token2_symbol_norm
-    };
+        client
+            .get_token_with_mint(&token.address)
+            .unwrap()
+            .name
+            .to_string()
+    }
+}
+
+pub fn get_saber_pool_name(client: &FarmClient, token1: &GitToken, token2: &GitToken) -> String {
+    let token1_name = get_saber_token_name(client, token1);
+    let token2_name = get_saber_token_name(client, token2);
     format!("SBR.{}-{}-V1", token1_name, token2_name)
 }
 

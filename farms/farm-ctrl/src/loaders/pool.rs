@@ -18,98 +18,153 @@ use {
     std::str::FromStr,
 };
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
-struct JsonRaydiumPool {
-    name: String,
-    coin: String,
-    pc: String,
-    lp: String,
-    version: u8,
+struct JsonRaydiumPoolLegacy {
+    pub name: String,
+    pub coin: String,
+    pub pc: String,
+    pub lp: String,
+    pub version: u8,
     #[serde(rename = "programId")]
-    program_id: String,
+    pub program_id: String,
     #[serde(rename = "ammId", deserialize_with = "pubkey_deserialize")]
-    amm_id: Pubkey,
+    pub amm_id: Pubkey,
     #[serde(rename = "ammAuthority", deserialize_with = "pubkey_deserialize")]
-    amm_authority: Pubkey,
+    pub amm_authority: Pubkey,
     #[serde(rename = "ammOpenOrders", deserialize_with = "pubkey_deserialize")]
-    amm_open_orders: Pubkey,
+    pub amm_open_orders: Pubkey,
     #[serde(rename = "ammTargetOrders", deserialize_with = "pubkey_deserialize")]
-    amm_target_orders: Pubkey,
+    pub amm_target_orders: Pubkey,
     #[serde(rename = "ammQuantities", deserialize_with = "pubkey_deserialize")]
-    amm_quantities: Pubkey,
+    pub amm_quantities: Pubkey,
     #[serde(
         rename = "poolCoinTokenAccount",
         deserialize_with = "pubkey_deserialize"
     )]
-    pool_coin_token_account: Pubkey,
+    pub pool_coin_token_account: Pubkey,
     #[serde(rename = "poolPcTokenAccount", deserialize_with = "pubkey_deserialize")]
-    pool_pc_token_account: Pubkey,
+    pub pool_pc_token_account: Pubkey,
     #[serde(rename = "poolWithdrawQueue", deserialize_with = "pubkey_deserialize")]
-    pool_withdraw_queue: Pubkey,
+    pub pool_withdraw_queue: Pubkey,
     #[serde(
         rename = "poolTempLpTokenAccount",
         deserialize_with = "pubkey_deserialize"
     )]
-    pool_temp_lp_token_account: Pubkey,
+    pub pool_temp_lp_token_account: Pubkey,
     #[serde(rename = "serumProgramId")]
-    serum_program_id: String,
+    pub serum_program_id: String,
     #[serde(rename = "serumMarket", deserialize_with = "pubkey_deserialize")]
-    serum_market: Pubkey,
+    pub serum_market: Pubkey,
     #[serde(
         rename = "serumBids",
         deserialize_with = "optional_pubkey_deserialize",
         default
     )]
-    serum_bids: Option<Pubkey>,
+    pub serum_bids: Option<Pubkey>,
     #[serde(
         rename = "serumAsks",
         deserialize_with = "optional_pubkey_deserialize",
         default
     )]
-    serum_asks: Option<Pubkey>,
+    pub serum_asks: Option<Pubkey>,
     #[serde(
         rename = "serumEventQueue",
         deserialize_with = "optional_pubkey_deserialize",
         default
     )]
-    serum_event_queue: Option<Pubkey>,
+    pub serum_event_queue: Option<Pubkey>,
     #[serde(
         rename = "serumCoinVaultAccount",
         deserialize_with = "pubkey_deserialize"
     )]
-    serum_coin_vault_account: Pubkey,
+    pub serum_coin_vault_account: Pubkey,
     #[serde(
         rename = "serumPcVaultAccount",
         deserialize_with = "pubkey_deserialize"
     )]
-    serum_pc_vault_account: Pubkey,
+    pub serum_pc_vault_account: Pubkey,
     #[serde(rename = "serumVaultSigner", deserialize_with = "pubkey_deserialize")]
-    serum_vault_signer: Pubkey,
-    official: bool,
+    pub serum_vault_signer: Pubkey,
+    pub official: bool,
 }
 
 #[allow(dead_code)]
 #[derive(Deserialize, Debug)]
-struct JsonSaberPool {
-    name: String,
-    tokens: Vec<GitToken>,
+pub struct JsonRaydiumPool {
+    #[serde(deserialize_with = "pubkey_deserialize")]
+    pub id: Pubkey,
+    #[serde(rename = "baseMint", deserialize_with = "pubkey_deserialize")]
+    pub base_mint: Pubkey,
+    #[serde(rename = "quoteMint", deserialize_with = "pubkey_deserialize")]
+    pub quote_mint: Pubkey,
+    #[serde(rename = "lpMint", deserialize_with = "pubkey_deserialize")]
+    pub lp_mint: Pubkey,
+    #[serde(rename = "baseDecimals")]
+    pub base_decimals: u8,
+    #[serde(rename = "quoteDecimals")]
+    pub quote_decimals: u8,
+    #[serde(rename = "lpDecimals")]
+    pub lp_decimals: u8,
+    pub version: u8,
+    #[serde(rename = "programId", deserialize_with = "pubkey_deserialize")]
+    pub program_id: Pubkey,
+    #[serde(deserialize_with = "pubkey_deserialize")]
+    pub authority: Pubkey,
+    #[serde(rename = "openOrders", deserialize_with = "pubkey_deserialize")]
+    pub open_orders: Pubkey,
+    #[serde(rename = "targetOrders", deserialize_with = "pubkey_deserialize")]
+    pub target_orders: Pubkey,
+    #[serde(rename = "baseVault", deserialize_with = "pubkey_deserialize")]
+    pub base_vault: Pubkey,
+    #[serde(rename = "quoteVault", deserialize_with = "pubkey_deserialize")]
+    pub quote_vault: Pubkey,
+    #[serde(rename = "withdrawQueue", deserialize_with = "pubkey_deserialize")]
+    pub withdraw_queue: Pubkey,
+    #[serde(rename = "lpVault", deserialize_with = "pubkey_deserialize")]
+    pub lp_vault: Pubkey,
+    #[serde(rename = "marketVersion")]
+    pub market_version: u8,
+    #[serde(rename = "marketProgramId", deserialize_with = "pubkey_deserialize")]
+    pub market_program_id: Pubkey,
+    #[serde(rename = "marketId", deserialize_with = "pubkey_deserialize")]
+    pub market_id: Pubkey,
+    #[serde(rename = "marketAuthority", deserialize_with = "pubkey_deserialize")]
+    pub market_authority: Pubkey,
+    #[serde(rename = "marketBaseVault", deserialize_with = "pubkey_deserialize")]
+    pub market_base_vault: Pubkey,
+    #[serde(rename = "marketQuoteVault", deserialize_with = "pubkey_deserialize")]
+    pub market_quote_vault: Pubkey,
+    #[serde(rename = "marketBids", deserialize_with = "pubkey_deserialize")]
+    pub market_bids: Pubkey,
+    #[serde(rename = "marketAsks", deserialize_with = "pubkey_deserialize")]
+    pub market_asks: Pubkey,
+    #[serde(rename = "marketEventQueue", deserialize_with = "pubkey_deserialize")]
+    pub market_event_queue: Pubkey,
+}
+
+#[allow(dead_code)]
+#[derive(Deserialize, Debug)]
+pub struct JsonSaberPool {
+    pub name: String,
+    pub tokens: Vec<GitToken>,
     #[serde(rename = "lpToken")]
-    lp_token: GitToken,
+    pub lp_token: GitToken,
 
     #[serde(deserialize_with = "pubkey_deserialize")]
-    quarry: Pubkey,
+    pub quarry: Pubkey,
 }
 
 #[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 pub struct JsonOrcaToken {
-    tag: String,
-    name: String,
+    pub tag: String,
+    pub name: String,
     #[serde(deserialize_with = "pubkey_deserialize")]
-    mint: Pubkey,
-    scale: u8,
+    pub mint: Pubkey,
+    pub scale: u8,
     #[serde(deserialize_with = "pubkey_deserialize")]
-    addr: Pubkey,
+    pub addr: Pubkey,
 }
 
 #[derive(Deserialize, Debug)]
@@ -142,6 +197,8 @@ pub fn load(client: &FarmClient, config: &Config, data: &str, remove_mode: bool)
         .expect("Pool RefDB query error");
 
     if parsed["name"] == "Raydium Pools" {
+        load_raydium_pool_legacy(client, config, remove_mode, &parsed, last_index);
+    } else if parsed["name"] == "Raydium Mainnet Liquidity Pools" {
         load_raydium_pool(client, config, remove_mode, &parsed, last_index);
     } else if parsed["name"] == "Orca Pools" {
         load_orca_pool(client, config, remove_mode, &parsed, last_index);
@@ -152,7 +209,7 @@ pub fn load(client: &FarmClient, config: &Config, data: &str, remove_mode: bool)
     }
 }
 
-fn load_raydium_pool(
+fn load_raydium_pool_legacy(
     client: &FarmClient,
     config: &Config,
     remove_mode: bool,
@@ -163,11 +220,16 @@ fn load_raydium_pool(
     let pools = parsed["pools"].as_array().unwrap();
     let router_id = client.get_program_id("RaydiumRouter").unwrap();
     for val in pools {
-        let json_pool: JsonRaydiumPool = serde_json::from_value(val.clone()).unwrap();
+        let json_pool: JsonRaydiumPoolLegacy = serde_json::from_value(val.clone()).unwrap();
+        let token_a = client
+            .get_token_with_account(&json_pool.pool_coin_token_account)
+            .unwrap();
+        let token_b = client
+            .get_token_with_account(&json_pool.pool_pc_token_account)
+            .unwrap();
         let name = format!(
-            "RDM.{}-V{}",
-            json_pool.name.to_uppercase(),
-            json_pool.version
+            "RDM.{}-{}-V{}",
+            token_a.name, token_b.name, json_pool.version
         );
         if !remove_mode {
             if config.skip_existing && client.get_pool(&name).is_ok() {
@@ -186,6 +248,7 @@ fn load_raydium_pool(
             last_index += 1;
             (Some(last_index - 1), 0u16)
         };
+
         let pool = Pool {
             name: str_to_as64(&name).unwrap(),
             version: json_pool.version as u16,
@@ -193,12 +256,8 @@ fn load_raydium_pool(
             official: json_pool.official,
             refdb_index: index,
             refdb_counter: counter,
-            token_a_ref: Some(
-                client
-                    .get_token_ref(&json_pool.coin.to_uppercase())
-                    .unwrap(),
-            ),
-            token_b_ref: Some(client.get_token_ref(&json_pool.pc.to_uppercase()).unwrap()),
+            token_a_ref: Some(client.get_token_ref(&token_a.name).unwrap()),
+            token_b_ref: Some(client.get_token_ref(&token_b.name).unwrap()),
             lp_token_ref: Some(client.get_token_ref(&json_pool.lp.to_uppercase()).unwrap()),
             token_a_account: Some(json_pool.pool_coin_token_account),
             token_b_account: Some(json_pool.pool_pc_token_account),
@@ -230,7 +289,7 @@ fn load_raydium_pool(
     }
 }
 
-fn load_saber_pool(
+fn load_raydium_pool(
     client: &FarmClient,
     config: &Config,
     remove_mode: bool,
@@ -238,12 +297,17 @@ fn load_saber_pool(
     last_index: u32,
 ) {
     let mut last_index = last_index;
-    let pools = parsed["pools"].as_array().unwrap();
-    let router_id = client.get_program_id("SaberRouter").unwrap();
-    let decimal_wrapper_program = client.get_program_id("SaberDecimalWrapper").unwrap();
+    let pools = parsed["official"].as_array().unwrap();
+    let router_id = client.get_program_id("RaydiumRouter").unwrap();
     for val in pools {
-        let json_pool: JsonSaberPool = serde_json::from_value(val.clone()).unwrap();
-        let name = get_saber_pool_name(&json_pool.tokens[0], &json_pool.tokens[1]);
+        let json_pool: JsonRaydiumPool = serde_json::from_value(val.clone()).unwrap();
+        let token_a = client.get_token_with_mint(&json_pool.base_mint).unwrap();
+        let token_b = client.get_token_with_mint(&json_pool.quote_mint).unwrap();
+        let lp_token = client.get_token_with_mint(&json_pool.lp_mint).unwrap();
+        let name = format!(
+            "RDM.{}-{}-V{}",
+            token_a.name, token_b.name, json_pool.version
+        );
         if !remove_mode {
             if config.skip_existing && client.get_pool(&name).is_ok() {
                 info!("Skipping existing Pool \"{}\"...", name);
@@ -261,9 +325,91 @@ fn load_saber_pool(
             last_index += 1;
             (Some(last_index - 1), 0u16)
         };
-        let pool_token_name = get_saber_lp_token_name(&json_pool.lp_token.name);
-        if json_pool.tokens[0].address != val["swap"]["state"]["tokenA"]["mint"]
-            || json_pool.tokens[1].address != val["swap"]["state"]["tokenB"]["mint"]
+
+        let pool = Pool {
+            name: str_to_as64(&name).unwrap(),
+            version: json_pool.version as u16,
+            pool_type: PoolType::Amm,
+            official: true,
+            refdb_index: index,
+            refdb_counter: counter,
+            token_a_ref: Some(client.get_token_ref(&token_a.name).unwrap()),
+            token_b_ref: Some(client.get_token_ref(&token_b.name).unwrap()),
+            lp_token_ref: Some(client.get_token_ref(&lp_token.name).unwrap()),
+            token_a_account: Some(json_pool.base_vault),
+            token_b_account: Some(json_pool.quote_vault),
+            router_program_id: router_id,
+            pool_program_id: json_pool.program_id,
+            route: PoolRoute::Raydium {
+                amm_id: json_pool.id,
+                amm_authority: json_pool.authority,
+                amm_open_orders: json_pool.open_orders,
+                amm_target: json_pool.target_orders,
+                pool_withdraw_queue: json_pool.withdraw_queue,
+                pool_temp_lp_token_account: json_pool.lp_vault,
+                serum_program_id: json_pool.market_program_id,
+                serum_market: json_pool.market_id,
+                serum_coin_vault_account: json_pool.market_base_vault,
+                serum_pc_vault_account: json_pool.market_quote_vault,
+                serum_vault_signer: json_pool.market_authority,
+                serum_bids: if json_pool.market_bids == Pubkey::default() {
+                    None
+                } else {
+                    Some(json_pool.market_bids)
+                },
+                serum_asks: if json_pool.market_asks == Pubkey::default() {
+                    None
+                } else {
+                    Some(json_pool.market_asks)
+                },
+                serum_event_queue: if json_pool.market_event_queue == Pubkey::default() {
+                    None
+                } else {
+                    Some(json_pool.market_event_queue)
+                },
+            },
+        };
+
+        client.add_pool(config.keypair.as_ref(), pool).unwrap();
+    }
+}
+
+fn load_saber_pool(
+    client: &FarmClient,
+    config: &Config,
+    remove_mode: bool,
+    parsed: &Value,
+    last_index: u32,
+) {
+    let mut last_index = last_index;
+    let pools = parsed["pools"].as_array().unwrap();
+    let router_id = client.get_program_id("SaberRouter").unwrap();
+    let decimal_wrapper_program = client.get_program_id("SaberDecimalWrapper").unwrap();
+    for val in pools {
+        let json_pool: JsonSaberPool = serde_json::from_value(val.clone()).unwrap();
+        let name = get_saber_pool_name(client, &json_pool.tokens[0], &json_pool.tokens[1]);
+        if !remove_mode {
+            if config.skip_existing && client.get_pool(&name).is_ok() {
+                info!("Skipping existing Pool \"{}\"...", name);
+                continue;
+            }
+            info!("Writing Pool \"{}\" to on-chain RefDB...", name);
+        } else {
+            info!("Removing Pool \"{}\" from on-chain RefDB...", name);
+            client.remove_pool(config.keypair.as_ref(), &name).unwrap();
+            continue;
+        }
+        let (index, counter) = if let Ok(pool) = client.get_pool(&name) {
+            (pool.refdb_index, pool.refdb_counter)
+        } else {
+            last_index += 1;
+            (Some(last_index - 1), 0u16)
+        };
+        let pool_token_name = get_saber_token_name(client, &json_pool.lp_token);
+        if json_pool.tokens[0].address
+            != convert_pubkey(val["swap"]["state"]["tokenA"]["mint"].as_str().unwrap())
+            || json_pool.tokens[1].address
+                != convert_pubkey(val["swap"]["state"]["tokenB"]["mint"].as_str().unwrap())
         {
             panic!("Pool metadata mismatch");
         }
@@ -271,51 +417,23 @@ fn load_saber_pool(
         // check if there are Saber wrapped symbols
         let token1_wrapped = is_saber_wrapped(&json_pool.tokens[0]);
         let token2_wrapped = is_saber_wrapped(&json_pool.tokens[1]);
-        let symbol1 = normalize_name(&json_pool.tokens[0].symbol, false);
-        let symbol2 = normalize_name(&json_pool.tokens[1].symbol, false);
-
-        let token_a_symbol = if token1_wrapped {
-            let symbol = extract_saber_wrapped_token_name(&symbol1);
-            if client.get_token(&symbol).unwrap().mint.to_string()
-                != json_pool.tokens[0].extra["extensions"]["assetContract"]
-                    .as_str()
-                    .unwrap()
-            {
-                panic!(
-                    "Unwrapped token address mismatch for token {}",
-                    json_pool.tokens[0].symbol
-                );
-            }
-            symbol
-        } else {
-            symbol1.clone()
-        };
-
-        let token_b_symbol = if token2_wrapped {
-            let symbol = extract_saber_wrapped_token_name(&symbol2);
-            if client.get_token(&symbol).unwrap().mint.to_string()
-                != json_pool.tokens[1].extra["extensions"]["assetContract"]
-                    .as_str()
-                    .unwrap()
-            {
-                panic!(
-                    "Unwrapped token address mismatch for token {} {}",
-                    json_pool.tokens[1].symbol, symbol
-                );
-            }
-            symbol
-        } else {
-            symbol2.clone()
-        };
+        let token_a_symbol = get_saber_token_name(client, &json_pool.tokens[0]);
+        let token_b_symbol = get_saber_token_name(client, &json_pool.tokens[1]);
 
         // wrapped token refs
         let wrapped_token_a_ref = if token1_wrapped {
-            Some(client.get_token_ref(&symbol1).unwrap())
+            Some(get_token_ref_with_mint(
+                client,
+                &json_pool.tokens[0].address,
+            ))
         } else {
             None
         };
         let wrapped_token_b_ref = if token2_wrapped {
-            Some(client.get_token_ref(&symbol2).unwrap())
+            Some(get_token_ref_with_mint(
+                client,
+                &json_pool.tokens[1].address,
+            ))
         } else {
             None
         };
@@ -341,16 +459,8 @@ fn load_saber_pool(
             official: true,
             refdb_index: index,
             refdb_counter: counter,
-            token_a_ref: Some(
-                client
-                    .get_token_ref(&normalize_name(&token_a_symbol, false))
-                    .unwrap(),
-            ),
-            token_b_ref: Some(
-                client
-                    .get_token_ref(&normalize_name(&token_b_symbol, false))
-                    .unwrap(),
-            ),
+            token_a_ref: Some(client.get_token_ref(&token_a_symbol).unwrap()),
+            token_b_ref: Some(client.get_token_ref(&token_b_symbol).unwrap()),
             lp_token_ref: Some(client.get_token_ref(&pool_token_name).unwrap()),
             token_a_account: Some(json_to_pubkey(&val["swap"]["state"]["tokenA"]["reserve"])),
             token_b_account: Some(json_to_pubkey(&val["swap"]["state"]["tokenB"]["reserve"])),
@@ -388,7 +498,13 @@ fn load_orca_pool(
     let pool_program_id = client.get_program_id("OrcaSwap").unwrap();
     for val in pools {
         let json_pool: JsonOrcaPool = serde_json::from_value(val.clone()).unwrap();
-        let name = format!("ORC.{}-V1", json_pool.name.to_uppercase().replace('_', "-"));
+        let token_a = client
+            .get_token_with_mint(&convert_pubkey(&json_pool.token_ids[0]))
+            .unwrap();
+        let token_b = client
+            .get_token_with_mint(&convert_pubkey(&json_pool.token_ids[1]))
+            .unwrap();
+        let name = format!("ORC.{}-{}-V1", token_a.name, token_b.name);
         if !remove_mode {
             if config.skip_existing && client.get_pool(&name).is_ok() {
                 info!("Skipping existing Pool \"{}\"...", name);
@@ -406,6 +522,12 @@ fn load_orca_pool(
             last_index += 1;
             (Some(last_index - 1), 0u16)
         };
+        // validate mints
+        if token_a.mint != json_pool.tokens[&json_pool.token_ids[0]].mint
+            || token_b.mint != json_pool.tokens[&json_pool.token_ids[1]].mint
+        {
+            panic!("Pool metadata mismatch");
+        }
         let pool = Pool {
             name: str_to_as64(&name).unwrap(),
             version: 1,
@@ -417,14 +539,8 @@ fn load_orca_pool(
             official: true,
             refdb_index: index,
             refdb_counter: counter,
-            token_a_ref: Some(get_token_ref_with_mint(
-                client,
-                &convert_pubkey(&json_pool.token_ids[0]),
-            )),
-            token_b_ref: Some(get_token_ref_with_mint(
-                client,
-                &convert_pubkey(&json_pool.token_ids[1]),
-            )),
+            token_a_ref: Some(client.get_token_ref(&token_a.name).unwrap()),
+            token_b_ref: Some(client.get_token_ref(&token_b.name).unwrap()),
             lp_token_ref: Some(get_token_ref_with_mint(client, &json_pool.pool_token_mint)),
             token_a_account: Some(json_pool.tokens[&json_pool.token_ids[0]].addr),
             token_b_account: Some(json_pool.tokens[&json_pool.token_ids[1]].addr),
@@ -483,14 +599,27 @@ fn get_saber_wrappers(
         "srenLUNA-9" => "4R6PmC8BJcPDBsEMGpXpLCnFFkUZhEgZy6pMNtc2LqA4",
         "sUSDC-8" => "AQhP39mE4o6BYNwnwYqnz7ZobkPBSLpCg8WvEESq1viZ",
         "sUSDC-9" => "77XHXCWYQ76E9Q3uCuz1geTaxsqJZf9RfX5ZY7yyLDYt",
+        "sUSDT-8" => "3cjAWoyDcco8UVCN17keNUNHoyz37ctgDa7G6zkeb81Y",
         "sUSDT-9" => "BSTjdztBrsptuxfz9JHS31Wc9CknpLeL1wqZjeVs1Ths",
         "sBTC-8" => "6hYDFhZ5ddfzoqaAbzRHm8mzG2MQzYQV9295sQHsvNBV",
         "sBTC-9" => "B22gDMgN2tNWmvyzhb5tamJKanWcUUUw2zN3h3qjgQg8",
         "sETH-8" => "4JWyJ4ZYsQ8uiYue2tTEqcHcFXrDuaQ1rsyjNFfrZm65",
+        "sETH-9" => "4fUL9yLbFZEuG32SaCjWqJXwDTBFNnipteBWxMvvFoC8",
         "sFTT-9" => "H5tnZcfHCzHueNnfd6foeBBUUW4g7qXKt6rKzT7wg6oP",
         "ssoFTT-8" => "7dVPR6jx3hKyNfuHPo3WtWdUpH4eh4Up4rfFhLHZqwy3",
+        "sagEUR-9" => "8YC5eCS99umbK9K9LnHnTMMjnr7EWg1gam5maNB6uf9d",
+        "sCASH-8" => "5s2et753hMXV945U3p5uz6RQqMkZGCPEjKjNPdUcCLLF",
+        "sCASH-9" => "3YCGgStAV9H7TdPYdBnRP8yoH4Zqdmyt7xo6KB4Wa8xt",
+        "sLUNA-9" => "AvqMJWHsZscPWTAUcj8dZi2ch6XQEHMpiCMprfFovaU",
+        "sUST-8" => "9YB1zRL4ETuQFG8ZK1yD4GHBVDmH81EzwuSj75zdnKhK",
+        "sUST-9" => "GxpyQZi5VkZDSq5TUycMau11sCkQkVCa8xYhBgiPMsyK",
+        "ssoFTT-9" => "H5tnZcfHCzHueNnfd6foeBBUUW4g7qXKt6rKzT7wg6oP",
+        "ssoETH-8" => "4JWyJ4ZYsQ8uiYue2tTEqcHcFXrDuaQ1rsyjNFfrZm65",
         _ => {
-            panic!("Unknown Saber wrapped token {}", saber_symbol);
+            panic!(
+                "Unknown Saber wrapped token {} with wrapper {} and program {}",
+                saber_symbol, wrapper, decimal_wrapper_program
+            );
         }
     };
     (wrapper, Pubkey::from_str(wrapper_vault).unwrap())

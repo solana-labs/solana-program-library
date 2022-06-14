@@ -668,7 +668,7 @@ impl FarmClient {
             AccountMeta::new(custody_fees_token_account, false),
             AccountMeta::new_readonly(custody_metadata, false),
             AccountMeta::new_readonly(token_ref, false),
-            AccountMeta::new_readonly(oracle_account, false),
+            AccountMeta::new_readonly(oracle_account.unwrap_or_else(zero::id), false),
         ];
 
         Ok(Instruction {
@@ -778,7 +778,7 @@ impl FarmClient {
             AccountMeta::new(custody_fees_token_account, false),
             AccountMeta::new_readonly(custody_metadata, false),
             AccountMeta::new_readonly(token_ref, false),
-            AccountMeta::new_readonly(oracle_account, false),
+            AccountMeta::new_readonly(oracle_account.unwrap_or_else(zero::id), false),
         ];
 
         Ok(Instruction {
@@ -943,7 +943,7 @@ impl FarmClient {
             AccountMeta::new(custody_fees_token_account, false),
             AccountMeta::new_readonly(custody_metadata, false),
             AccountMeta::new_readonly(token_ref, false),
-            AccountMeta::new_readonly(oracle_account, false),
+            AccountMeta::new_readonly(oracle_account.unwrap_or_else(zero::id), false),
         ];
 
         Ok(Instruction {
@@ -1053,7 +1053,7 @@ impl FarmClient {
             AccountMeta::new(custody_fees_token_account, false),
             AccountMeta::new_readonly(custody_metadata, false),
             AccountMeta::new_readonly(token_ref, false),
-            AccountMeta::new_readonly(oracle_account, false),
+            AccountMeta::new_readonly(oracle_account.unwrap_or_else(zero::id), false),
         ];
 
         Ok(Instruction {
@@ -1359,7 +1359,7 @@ impl FarmClient {
             AccountMeta::new(custody_token_account, false),
             AccountMeta::new(custody_metadata, false),
             AccountMeta::new_readonly(custody.token_ref, false),
-            AccountMeta::new_readonly(oracle_account, false),
+            AccountMeta::new_readonly(oracle_account.unwrap_or_else(zero::id), false),
         ];
 
         Ok(Instruction {
@@ -1428,6 +1428,7 @@ impl FarmClient {
                 amm_open_orders,
                 ..
             } => (amm_id, amm_open_orders),
+            PoolRoute::Orca { amm_id, .. } => (amm_id, zero::id()),
             _ => {
                 return Err(FarmClientError::ValueError(
                     "Unsupported pool route".to_string(),
@@ -1441,12 +1442,12 @@ impl FarmClient {
         let vaults_assets_account =
             self.get_fund_assets_account(fund_name, FundAssetType::Vault)?;
         let (_, oracle_account_token_a) = if token_names.0.is_empty() {
-            (OracleType::Unsupported, zero::id())
+            (OracleType::Unsupported, None)
         } else {
             self.get_oracle(&token_names.0)?
         };
         let (_, oracle_account_token_b) = if token_names.1.is_empty() {
-            (OracleType::Unsupported, zero::id())
+            (OracleType::Unsupported, None)
         } else {
             self.get_oracle(&token_names.1)?
         };
@@ -1488,8 +1489,8 @@ impl FarmClient {
             ),
             AccountMeta::new_readonly(amm_id, false),
             AccountMeta::new_readonly(amm_open_orders, false),
-            AccountMeta::new_readonly(oracle_account_token_a, false),
-            AccountMeta::new_readonly(oracle_account_token_b, false),
+            AccountMeta::new_readonly(oracle_account_token_a.unwrap_or_else(zero::id), false),
+            AccountMeta::new_readonly(oracle_account_token_b.unwrap_or_else(zero::id), false),
             AccountMeta::new_readonly(sysvar::instructions::id(), false),
         ];
 

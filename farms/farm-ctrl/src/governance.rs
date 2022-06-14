@@ -5,10 +5,8 @@ use {
     log::info,
     solana_farm_client::client::FarmClient,
     solana_farm_sdk::{
-        id::{
-            main_router_admin, zero, DAO_CUSTODY_NAME, DAO_MINT_NAME, DAO_PROGRAM_NAME,
-            DAO_TOKEN_NAME,
-        },
+        id::*,
+        refdb,
         refdb::StorageType,
         string::str_to_as64,
         token::{OracleType, Token, TokenType},
@@ -85,7 +83,8 @@ pub fn init(client: &FarmClient, config: &Config, dao_program: &Pubkey, mint_ui_
             chain_id: 101,
             mint: mint_address,
             oracle_type: OracleType::Unsupported,
-            oracle_account: zero::id(),
+            oracle_account: None,
+            description_account: refdb::find_description_pda(StorageType::Token, DAO_TOKEN_NAME).0,
         };
 
         inst.push(client.new_instruction_add_token(&wallet, token).unwrap());

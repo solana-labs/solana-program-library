@@ -195,10 +195,6 @@ impl FarmClient {
                 pool_ref,
                 farm_ref,
                 lp_token_custody,
-                token_a_custody: _,
-                token_b_custody: _,
-                token_a_reward_custody: _,
-                token_b_reward_custody: _,
                 vault_stake_info,
                 ..
             } => {
@@ -281,10 +277,6 @@ impl FarmClient {
                 pool_ref,
                 farm_ref,
                 lp_token_custody,
-                token_a_custody: _,
-                token_b_custody: _,
-                token_a_reward_custody: _,
-                token_b_reward_custody: _,
                 vault_stake_info,
                 ..
             } => {

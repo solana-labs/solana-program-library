@@ -4,10 +4,14 @@ use {
     crate::{common, fund_info::FundInfo},
     solana_farm_sdk::{
         fund::{Fund, FundAssetType, FundVault, FundVaultType, DISCRIMINATOR_FUND_VAULT},
+        id::zero,
         math,
         pool::{Pool, PoolRoute},
         program,
-        program::{account, clock, protocol::raydium},
+        program::{
+            account, clock,
+            protocol::{orca, raydium},
+        },
         token::Token,
         traits::Packed,
     },
@@ -103,23 +107,37 @@ pub fn update_assets_with_vault(fund: &Fund, accounts: &[AccountInfo]) -> Progra
             msg!("Error: Invalid Pool metadata account");
             return Err(ProgramError::Custom(533));
         }
-        if let PoolRoute::Raydium {
-            amm_id: amm_id_key,
-            amm_open_orders: amm_open_orders_key,
-            ..
-        } = pool.route
-        {
-            if &amm_open_orders_key != amm_open_orders.key || &amm_id_key != amm_id.key {
-                msg!("Error: Invalid Pool route metadata");
-                return Err(ProgramError::Custom(534));
+
+        match pool.route {
+            PoolRoute::Raydium {
+                amm_id: amm_id_key,
+                amm_open_orders: amm_open_orders_key,
+                ..
+            } => {
+                if &amm_open_orders_key != amm_open_orders.key || &amm_id_key != amm_id.key {
+                    msg!("Error: Invalid Pool route metadata");
+                    return Err(ProgramError::Custom(534));
+                }
+            }
+            PoolRoute::Orca {
+                amm_id: amm_id_key, ..
+            } => {
+                if &zero::id() != amm_open_orders.key || &amm_id_key != amm_id.key {
+                    msg!("Error: Invalid Pool route metadata");
+                    return Err(ProgramError::Custom(534));
+                }
+            }
+            _ => {
+                msg!("Error: Unsupported Pool route");
+                return Err(ProgramError::Custom(522));
             }
         }
 
         // unpack pool tokens
         let token_a = account::unpack::<Token>(pool_token_a_ref, "token_a")?;
         let token_b = account::unpack::<Token>(pool_token_b_ref, "token_b")?;
-        if &token_a.oracle_account != oracle_account_token_a.key
-            || &token_b.oracle_account != oracle_account_token_b.key
+        if &token_a.oracle_account.unwrap_or_else(zero::id) != oracle_account_token_a.key
+            || &token_b.oracle_account.unwrap_or_else(zero::id) != oracle_account_token_b.key
         {
             msg!("Error: Invalid oracle accounts");
             return Err(ProgramError::Custom(531));
@@ -162,6 +180,12 @@ pub fn update_assets_with_vault(fund: &Fund, accounts: &[AccountInfo]) -> Progra
                     pool_token_b_account,
                     amm_open_orders,
                     amm_id,
+                    underlying_lp_token_mint,
+                    vault.lp_balance,
+                )?,
+                PoolRoute::Orca { .. } => orca::get_pool_withdrawal_amounts(
+                    pool_token_a_account,
+                    pool_token_b_account,
                     underlying_lp_token_mint,
                     vault.lp_balance,
                 )?,

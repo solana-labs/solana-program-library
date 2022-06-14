@@ -7,6 +7,7 @@ use {
     solana_farm_sdk::{
         fund::{Fund, FundAssetsTrackingConfig, FundCustodyType, FundSchedule, FundVaultType},
         string::to_pretty_json,
+        Protocol,
     },
     solana_sdk::{clock::UnixTimestamp, pubkey::Pubkey},
 };
@@ -18,7 +19,7 @@ pub fn init(client: &FarmClient, config: &Config, fund_names: &str, step: u64) {
         info!(
             "Signature: {}",
             client
-                .init_vault(config.keypair.as_ref(), fund, step)
+                .init_fund(config.keypair.as_ref(), fund, step)
                 .unwrap()
         );
     }
@@ -202,7 +203,8 @@ pub fn set_deposit_schedule(
     start_time: UnixTimestamp,
     end_time: UnixTimestamp,
     approval_required: bool,
-    limit_usd: f64,
+    min_amount_usd: f64,
+    max_amount_usd: f64,
     fee: f64,
 ) {
     let funds = fund_names.split(',').collect::<Vec<_>>();
@@ -218,7 +220,8 @@ pub fn set_deposit_schedule(
                         start_time,
                         end_time,
                         approval_required,
-                        limit_usd,
+                        min_amount_usd,
+                        max_amount_usd,
                         fee
                     }
                 )
@@ -310,7 +313,8 @@ pub fn set_withdrawal_schedule(
     start_time: UnixTimestamp,
     end_time: UnixTimestamp,
     approval_required: bool,
-    limit_usd: f64,
+    min_amount_usd: f64,
+    max_amount_usd: f64,
     fee: f64,
 ) {
     let funds = fund_names.split(',').collect::<Vec<_>>();
@@ -326,7 +330,8 @@ pub fn set_withdrawal_schedule(
                         start_time,
                         end_time,
                         approval_required,
-                        limit_usd,
+                        min_amount_usd,
+                        max_amount_usd,
                         fee
                     }
                 )
@@ -620,7 +625,7 @@ pub fn swap(
     client: &FarmClient,
     config: &Config,
     fund_names: &str,
-    protocol: &str,
+    protocol: Protocol,
     from_token: &str,
     to_token: &str,
     ui_amount_in: f64,

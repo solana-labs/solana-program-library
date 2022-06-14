@@ -128,10 +128,19 @@ pub fn request_deposit(fund: &Fund, accounts: &[AccountInfo], amount: u64) -> Pr
         )?;
 
         // check for deposit limit
-        let deposit_limit = fund_info.get_deposit_limit_usd()?;
+        let deposit_limit = fund_info.get_deposit_max_amount_usd()?;
         if deposit_limit > 0.0 && deposit_limit < deposit_value_usd {
             msg!(
                 "Error: Deposit amount {} is over the limit {}",
+                deposit_value_usd,
+                deposit_limit
+            );
+            return Err(ProgramError::Custom(221));
+        }
+        let deposit_limit = fund_info.get_deposit_min_amount_usd()?;
+        if deposit_limit > 0.0 && deposit_limit > deposit_value_usd {
+            msg!(
+                "Error: Deposit amount {} is below the minimum {}",
                 deposit_value_usd,
                 deposit_limit
             );

@@ -46,6 +46,10 @@ impl AddLiquidity for VaultInstruction {
             if !user_account.is_signer {
                 return Err(ProgramError::MissingRequiredSignature);
             }
+            if !account::check_token_account_owner(user_lp_token_account, user_account.key)? {
+                msg!("Error: Invalid token account owner");
+                return Err(ProgramError::IllegalOwner);
+            }
             if let VaultStrategy::StakeLpCompoundRewards {
                 pool_id: pool_id_key,
                 lp_token_custody: lp_token_custody_key,
@@ -82,7 +86,7 @@ impl AddLiquidity for VaultInstruction {
             let initial_lp_user_balance = account::get_token_balance(user_lp_token_account)?;
 
             // calculate deposit amounts
-            let (_, max_token_a_deposit_amount, max_token_b_deposit_amount) =
+            let (min_lp_token_amount, max_token_a_deposit_amount, max_token_b_deposit_amount) =
                 raydium::get_pool_deposit_amounts(
                     pool_coin_token_account,
                     pool_pc_token_account,
@@ -131,8 +135,11 @@ impl AddLiquidity for VaultInstruction {
                 initial_token_b_user_balance,
                 max_token_b_deposit_amount,
             )?;
-            let lp_tokens_received =
-                account::check_tokens_received(user_lp_token_account, initial_lp_user_balance, 1)?;
+            let lp_tokens_received = account::check_tokens_received(
+                user_lp_token_account,
+                initial_lp_user_balance,
+                min_lp_token_amount,
+            )?;
 
             // transfer LP tokens to the custody
             msg!(
@@ -147,7 +154,6 @@ impl AddLiquidity for VaultInstruction {
                 user_account,
                 lp_tokens_received,
             )?;
-
 
             // update user stats
             msg!("Update user stats");

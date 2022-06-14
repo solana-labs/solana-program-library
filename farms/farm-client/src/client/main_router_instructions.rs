@@ -8,10 +8,7 @@ use {
         id::{main_router, main_router_multisig},
         instruction::{main_router::MainInstruction, refdb::RefDbInstruction},
         pool::Pool,
-        program::{
-            multisig::Multisig,
-            pda::{find_refdb_pda, find_target_pda},
-        },
+        program::multisig::Multisig,
         refdb,
         string::str_to_as64,
         token::Token,
@@ -44,7 +41,7 @@ impl FarmClient {
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new(main_router_multisig::id(), false),
-                AccountMeta::new(find_refdb_pda(refdb_name).0, false),
+                AccountMeta::new(refdb::find_refdb_pda(refdb_name).0, false),
                 AccountMeta::new_readonly(system_program::id(), false),
             ],
         };
@@ -71,7 +68,7 @@ impl FarmClient {
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new(main_router_multisig::id(), false),
-                AccountMeta::new(find_refdb_pda(refdb_name).0, false),
+                AccountMeta::new(refdb::find_refdb_pda(refdb_name).0, false),
                 AccountMeta::new_readonly(system_program::id(), false),
             ],
         };
@@ -100,7 +97,7 @@ impl FarmClient {
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new(main_router_multisig::id(), false),
-                AccountMeta::new(find_refdb_pda(refdb_name).0, false),
+                AccountMeta::new(refdb::find_refdb_pda(refdb_name).0, false),
                 AccountMeta::new_readonly(system_program::id(), false),
             ],
         };
@@ -132,7 +129,7 @@ impl FarmClient {
             accounts: vec![
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new(main_router_multisig::id(), false),
-                AccountMeta::new(find_refdb_pda(refdb_name).0, false),
+                AccountMeta::new(refdb::find_refdb_pda(refdb_name).0, false),
                 AccountMeta::new_readonly(system_program::id(), false),
             ],
         };
@@ -357,11 +354,11 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
-                    find_refdb_pda(&refdb::StorageType::Fund.to_string()).0,
+                    refdb::find_refdb_pda(&refdb::StorageType::Fund.to_string()).0,
                     false,
                 ),
                 AccountMeta::new(
-                    find_target_pda(refdb::StorageType::Fund, &fund.name).0,
+                    refdb::find_target_pda(refdb::StorageType::Fund, &fund.name).0,
                     false,
                 ),
                 AccountMeta::new_readonly(system_program::id(), false),
@@ -392,10 +389,13 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
-                    find_refdb_pda(&refdb::StorageType::Fund.to_string()).0,
+                    refdb::find_refdb_pda(&refdb::StorageType::Fund.to_string()).0,
                     false,
                 ),
-                AccountMeta::new(find_target_pda(refdb::StorageType::Fund, &name).0, false),
+                AccountMeta::new(
+                    refdb::find_target_pda(refdb::StorageType::Fund, &name).0,
+                    false,
+                ),
                 AccountMeta::new_readonly(system_program::id(), false),
             ],
         };
@@ -419,11 +419,11 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
-                    find_refdb_pda(&refdb::StorageType::Vault.to_string()).0,
+                    refdb::find_refdb_pda(&refdb::StorageType::Vault.to_string()).0,
                     false,
                 ),
                 AccountMeta::new(
-                    find_target_pda(refdb::StorageType::Vault, &vault.name).0,
+                    refdb::find_target_pda(refdb::StorageType::Vault, &vault.name).0,
                     false,
                 ),
                 AccountMeta::new_readonly(system_program::id(), false),
@@ -454,10 +454,13 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
-                    find_refdb_pda(&refdb::StorageType::Vault.to_string()).0,
+                    refdb::find_refdb_pda(&refdb::StorageType::Vault.to_string()).0,
                     false,
                 ),
-                AccountMeta::new(find_target_pda(refdb::StorageType::Vault, &name).0, false),
+                AccountMeta::new(
+                    refdb::find_target_pda(refdb::StorageType::Vault, &name).0,
+                    false,
+                ),
                 AccountMeta::new_readonly(system_program::id(), false),
             ],
         };
@@ -481,11 +484,11 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
-                    find_refdb_pda(&refdb::StorageType::Pool.to_string()).0,
+                    refdb::find_refdb_pda(&refdb::StorageType::Pool.to_string()).0,
                     false,
                 ),
                 AccountMeta::new(
-                    find_target_pda(refdb::StorageType::Pool, &pool.name).0,
+                    refdb::find_target_pda(refdb::StorageType::Pool, &pool.name).0,
                     false,
                 ),
                 AccountMeta::new_readonly(system_program::id(), false),
@@ -517,10 +520,13 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
-                    find_refdb_pda(&refdb::StorageType::Pool.to_string()).0,
+                    refdb::find_refdb_pda(&refdb::StorageType::Pool.to_string()).0,
                     false,
                 ),
-                AccountMeta::new(find_target_pda(refdb::StorageType::Pool, &name).0, false),
+                AccountMeta::new(
+                    refdb::find_target_pda(refdb::StorageType::Pool, &name).0,
+                    false,
+                ),
                 AccountMeta::new_readonly(system_program::id(), false),
             ],
         };
@@ -544,11 +550,11 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
-                    find_refdb_pda(&refdb::StorageType::Farm.to_string()).0,
+                    refdb::find_refdb_pda(&refdb::StorageType::Farm.to_string()).0,
                     false,
                 ),
                 AccountMeta::new(
-                    find_target_pda(refdb::StorageType::Farm, &farm.name).0,
+                    refdb::find_target_pda(refdb::StorageType::Farm, &farm.name).0,
                     false,
                 ),
                 AccountMeta::new_readonly(system_program::id(), false),
@@ -580,10 +586,13 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
-                    find_refdb_pda(&refdb::StorageType::Farm.to_string()).0,
+                    refdb::find_refdb_pda(&refdb::StorageType::Farm.to_string()).0,
                     false,
                 ),
-                AccountMeta::new(find_target_pda(refdb::StorageType::Farm, &name).0, false),
+                AccountMeta::new(
+                    refdb::find_target_pda(refdb::StorageType::Farm, &name).0,
+                    false,
+                ),
                 AccountMeta::new_readonly(system_program::id(), false),
             ],
         };
@@ -607,11 +616,11 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
-                    find_refdb_pda(&refdb::StorageType::Token.to_string()).0,
+                    refdb::find_refdb_pda(&refdb::StorageType::Token.to_string()).0,
                     false,
                 ),
                 AccountMeta::new(
-                    find_target_pda(refdb::StorageType::Token, &token.name).0,
+                    refdb::find_target_pda(refdb::StorageType::Token, &token.name).0,
                     false,
                 ),
                 AccountMeta::new_readonly(system_program::id(), false),
@@ -643,10 +652,13 @@ impl FarmClient {
                 AccountMeta::new_readonly(*admin_address, true),
                 AccountMeta::new(main_router_multisig::id(), false),
                 AccountMeta::new(
-                    find_refdb_pda(&refdb::StorageType::Token.to_string()).0,
+                    refdb::find_refdb_pda(&refdb::StorageType::Token.to_string()).0,
                     false,
                 ),
-                AccountMeta::new(find_target_pda(refdb::StorageType::Token, &name).0, false),
+                AccountMeta::new(
+                    refdb::find_target_pda(refdb::StorageType::Token, &name).0,
+                    false,
+                ),
                 AccountMeta::new_readonly(system_program::id(), false),
             ],
         };

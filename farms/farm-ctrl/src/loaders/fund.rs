@@ -43,7 +43,6 @@ pub fn load(client: &FarmClient, config: &Config, data: &str, remove_mode: bool)
         };
         let fund = Fund {
             name: json_fund.name,
-            description: json_fund.description,
             version: json_fund.version as u16,
             fund_type: json_fund.fund_type,
             official: json_fund.official,
@@ -61,6 +60,7 @@ pub fn load(client: &FarmClient, config: &Config, data: &str, remove_mode: bool)
             multisig_account: json_fund.multisig_account,
             vaults_assets_info: json_fund.vaults_assets_info,
             custodies_assets_info: json_fund.custodies_assets_info,
+            description_account: json_fund.description_account,
         };
 
         client.add_fund(config.keypair.as_ref(), fund).unwrap();

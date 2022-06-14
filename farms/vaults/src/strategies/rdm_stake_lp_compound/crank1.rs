@@ -123,8 +123,14 @@ pub fn crank1(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
             msg!("Error: Invalid fee. fee: {}", fee);
             return Err(ProgramError::Custom(260));
         }
-        let fees_a = math::checked_as_u64(token_a_rewards as f64 * fee)?;
-        let fees_b = math::checked_as_u64(token_b_rewards as f64 * fee)?;
+        let mut fees_a = math::checked_as_u64(token_a_rewards as f64 * fee)?;
+        if fees_a == 0 && token_a_rewards > 0 {
+            fees_a = 1;
+        }
+        let mut fees_b = math::checked_as_u64(token_b_rewards as f64 * fee)?;
+        if fees_b == 0 && token_b_rewards > 0 {
+            fees_b = 1;
+        }
 
         msg!(
             "Apply fees. fee: {}, fees_a: {}, fees_b: {}",

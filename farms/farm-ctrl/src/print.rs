@@ -5,8 +5,13 @@ use {
     log::info,
     solana_farm_client::client::FarmClient,
     solana_farm_sdk::{
-        farm::Farm, fund::Fund, math, pool::Pool, program::pda, refdb::ReferenceType,
-        refdb::StorageType, token::Token, vault::Vault,
+        farm::Farm,
+        fund::Fund,
+        math,
+        pool::Pool,
+        refdb::{find_refdb_pda, ReferenceType, StorageType},
+        token::Token,
+        vault::Vault,
     },
 };
 
@@ -14,7 +19,7 @@ pub fn print_pda(_client: &FarmClient, _config: &Config, target: StorageType) {
     info!(
         "{} RefDB address: {}",
         target,
-        pda::find_refdb_pda(&target.to_string()).0
+        find_refdb_pda(&target.to_string()).0
     );
 }
 

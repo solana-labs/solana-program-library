@@ -112,7 +112,10 @@ pub fn crank2(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
             msg!("Error: Invalid fee. fee: {}", fee);
             return Err(ProgramError::Custom(260));
         }
-        let sbr_fees = math::checked_as_u64(iou_tokens_balance as f64 * fee)?;
+        let mut sbr_fees = math::checked_as_u64(iou_tokens_balance as f64 * fee)?;
+        if sbr_fees == 0 && iou_tokens_balance > 0 {
+            sbr_fees = 1;
+        }
 
         msg!("Apply fees. fee: {}, sbr_fees: {}", fee, sbr_fees);
         pda::transfer_tokens_with_seeds(

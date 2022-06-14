@@ -143,12 +143,18 @@ pub fn get_no_fee_amount(
     fee_numerator: u64,
     fee_denominator: u64,
 ) -> Result<u64, ProgramError> {
+    if amount == 0 {
+        return Ok(0);
+    }
     checked_sub(
         amount,
-        checked_as_u64(checked_div(
-            checked_mul(amount as u128, fee_numerator as u128)?,
-            fee_denominator as u128,
-        )?)?,
+        std::cmp::max(
+            checked_as_u64(checked_div(
+                checked_mul(amount as u128, fee_numerator as u128)?,
+                fee_denominator as u128,
+            )?)?,
+            1,
+        ),
     )
 }
 

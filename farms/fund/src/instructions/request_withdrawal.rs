@@ -129,10 +129,19 @@ pub fn request_withdrawal(fund: &Fund, accounts: &[AccountInfo], amount: u64) ->
             fund_info.get_current_assets_usd()? * amount_with_fee as f64 / ft_supply_amount as f64;
 
         // check for withdrawal limit
-        let withdrawal_limit = fund_info.get_withdrawal_limit_usd()?;
+        let withdrawal_limit = fund_info.get_withdrawal_max_amount_usd()?;
         if !liquidation && withdrawal_limit > 0.0 && withdrawal_limit < withdrawal_value_usd {
             msg!(
                 "Error: Withdrawal amount {} is over the limit {}",
+                withdrawal_value_usd,
+                withdrawal_limit
+            );
+            return Err(ProgramError::Custom(225));
+        }
+        let withdrawal_limit = fund_info.get_withdrawal_min_amount_usd()?;
+        if !liquidation && withdrawal_limit > 0.0 && withdrawal_limit > withdrawal_value_usd {
+            msg!(
+                "Error: Withdrawal amount {} is below the minimum {}",
                 withdrawal_value_usd,
                 withdrawal_limit
             );

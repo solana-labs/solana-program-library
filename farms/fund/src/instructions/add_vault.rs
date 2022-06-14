@@ -89,6 +89,7 @@ pub fn add_vault(
                 let pool = account::unpack::<Pool>(target_vault_metadata, "Pool")?;
                 let pool_ammid = match pool.route {
                     PoolRoute::Raydium { amm_id, .. } => amm_id,
+                    PoolRoute::Orca { amm_id, .. } => amm_id,
                     _ => {
                         msg!("Error: Unsupported Pool route");
                         return Err(ProgramError::Custom(522));
@@ -100,6 +101,7 @@ pub fn add_vault(
                 let farm = account::unpack::<Farm>(target_vault_metadata, "Farm")?;
                 let farm_id = match farm.route {
                     FarmRoute::Raydium { farm_id, .. } => farm_id,
+                    FarmRoute::Orca { farm_id, .. } => farm_id,
                     _ => {
                         msg!("Error: Unsupported Farm route");
                         return Err(ProgramError::Custom(522));

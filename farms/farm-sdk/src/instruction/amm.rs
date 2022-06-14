@@ -77,7 +77,7 @@ pub enum AmmInstructionType {
 }
 
 impl AmmInstruction {
-    pub const MAX_LEN: usize = std::mem::size_of::<AmmInstruction>();
+    pub const MAX_LEN: usize = 25;
     pub const USER_INIT_LEN: usize = 1;
     pub const ADD_LIQUIDITY_LEN: usize = 17;
     pub const REMOVE_LIQUIDITY_LEN: usize = 9;

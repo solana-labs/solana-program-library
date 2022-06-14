@@ -13,16 +13,6 @@ pub const DISCRIMINATOR_FUND_CUSTODY: u64 = 15979585294446943865;
 pub const DISCRIMINATOR_FUND_VAULT: u64 = 10084386823844633785;
 pub const DISCRIMINATOR_FUND_USER_REQUESTS: u64 = 13706702285134686038;
 
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct Protocol {
-    pub protocol: String,
-    pub name: String,
-    pub link: String,
-    pub pools: u32,
-    pub farms: u32,
-    pub vaults: u32,
-}
-
 #[repr(u8)]
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, TryFromPrimitive)]
 pub enum FundType {
@@ -36,11 +26,6 @@ pub struct Fund {
         deserialize_with = "as64_deserialize"
     )]
     pub name: ArrayString64,
-    #[serde(
-        serialize_with = "as64_serialize",
-        deserialize_with = "as64_deserialize"
-    )]
-    pub description: ArrayString64,
     pub version: u16,
     pub fund_type: FundType,
     pub official: bool,
@@ -92,6 +77,11 @@ pub struct Fund {
         serialize_with = "pubkey_serialize"
     )]
     pub custodies_assets_info: Pubkey,
+    #[serde(
+        deserialize_with = "pubkey_deserialize",
+        serialize_with = "pubkey_serialize"
+    )]
+    pub description_account: Pubkey,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -278,7 +268,8 @@ pub struct FundSchedule {
     pub start_time: UnixTimestamp,
     pub end_time: UnixTimestamp,
     pub approval_required: bool,
-    pub limit_usd: f64,
+    pub min_amount_usd: f64,
+    pub max_amount_usd: f64,
     pub fee: f64,
 }
 
@@ -693,7 +684,7 @@ impl Packed for FundVault {
 }
 
 impl Fund {
-    pub const LEN: usize = 399;
+    pub const LEN: usize = 367;
 }
 
 impl Packed for Fund {
@@ -708,7 +699,6 @@ impl Packed for Fund {
 
         let (
             name_out,
-            description_out,
             version_out,
             fund_type_out,
             official_out,
@@ -726,12 +716,12 @@ impl Packed for Fund {
             multisig_account_out,
             vaults_assets_info_out,
             custodies_assets_info_out,
+            description_account_out,
         ) = mut_array_refs![
-            output, 64, 64, 2, 1, 1, 5, 2, 1, 1, 1, 1, 32, 32, 32, 32, 32, 32, 32, 32
+            output, 64, 2, 1, 1, 5, 2, 1, 1, 1, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32
         ];
 
         pack_array_string64(&self.name, name_out);
-        pack_array_string64(&self.description, description_out);
         *version_out = self.version.to_le_bytes();
         fund_type_out[0] = self.fund_type as u8;
         official_out[0] = self.official as u8;
@@ -749,6 +739,7 @@ impl Packed for Fund {
         multisig_account_out.copy_from_slice(self.multisig_account.as_ref());
         vaults_assets_info_out.copy_from_slice(self.vaults_assets_info.as_ref());
         custodies_assets_info_out.copy_from_slice(self.custodies_assets_info.as_ref());
+        description_account_out.copy_from_slice(self.description_account.as_ref());
 
         Ok(Self::LEN)
     }
@@ -769,7 +760,6 @@ impl Packed for Fund {
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             name,
-            description,
             version,
             fund_type,
             official,
@@ -787,11 +777,11 @@ impl Packed for Fund {
             multisig_account,
             vaults_assets_info,
             custodies_assets_info,
-        ) = array_refs![input, 64, 64, 2, 1, 1, 5, 2, 1, 1, 1, 1, 32, 32, 32, 32, 32, 32, 32, 32];
+            description_account,
+        ) = array_refs![input, 64, 2, 1, 1, 5, 2, 1, 1, 1, 1, 32, 32, 32, 32, 32, 32, 32, 32, 32];
 
         Ok(Self {
             name: unpack_array_string64(name)?,
-            description: unpack_array_string64(description)?,
             version: u16::from_le_bytes(*version),
             fund_type: FundType::try_from_primitive(fund_type[0])
                 .or(Err(ProgramError::InvalidAccountData))?,
@@ -810,13 +800,8 @@ impl Packed for Fund {
             multisig_account: Pubkey::new_from_array(*multisig_account),
             vaults_assets_info: Pubkey::new_from_array(*vaults_assets_info),
             custodies_assets_info: Pubkey::new_from_array(*custodies_assets_info),
+            description_account: Pubkey::new_from_array(*description_account),
         })
-    }
-}
-
-impl std::fmt::Display for Protocol {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", to_string(&self).unwrap())
     }
 }
 

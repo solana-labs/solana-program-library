@@ -23,6 +23,7 @@ pub fn set_deposit_schedule(
     fund_info.set_deposit_start_time(schedule.start_time)?;
     fund_info.set_deposit_end_time(schedule.end_time)?;
     fund_info.set_deposit_approval_required(schedule.approval_required)?;
-    fund_info.set_deposit_limit_usd(schedule.limit_usd)?;
+    fund_info.set_deposit_min_amount_usd(schedule.min_amount_usd)?;
+    fund_info.set_deposit_max_amount_usd(schedule.max_amount_usd)?;
     fund_info.set_deposit_fee(schedule.fee)
 }

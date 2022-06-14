@@ -28,13 +28,14 @@ use {
         farm::Farm,
         fund::{
             Fund, FundAssets, FundCustody, FundInfo, FundSchedule, FundUserInfo, FundUserRequests,
-            FundVault, Protocol,
+            FundVault,
         },
         pool::Pool,
         program::multisig::Multisig,
         string::{instruction_to_string, pubkey_map_to_string},
         token::{GitToken, Token},
         vault::{Vault, VaultInfo, VaultUserInfo},
+        ProtocolInfo,
     },
     solana_sdk::{
         commitment_config::CommitmentConfig, instruction::Instruction, pubkey::Pubkey,
@@ -234,7 +235,7 @@ impl<'r> Responder<'r, 'static> for JsonWithInstructions {
 #[get("/protocols")]
 async fn get_protocols(
     farm_client: &State<FarmClientArc>,
-) -> Result<Json<Vec<Protocol>>, NotFound<String>> {
+) -> Result<Json<Vec<ProtocolInfo>>, NotFound<String>> {
     let farm_client = farm_client
         .inner()
         .lock()
@@ -660,6 +661,9 @@ async fn find_pools(
     token_b: &str,
     farm_client: &State<FarmClientArc>,
 ) -> Result<Json<Vec<Pool>>, NotFound<String>> {
+    let protocol = protocol
+        .parse()
+        .map_err(|_| NotFound("Invalid protocol argument".to_string()))?;
     let farm_client = farm_client
         .inner()
         .lock()
@@ -719,7 +723,9 @@ async fn get_oracle(
         .get_oracle(symbol)
         .map_err(|e| NotFound(e.to_string()))?;
 
-    Ok(Json(oracle.1))
+    Ok(Json(oracle.1.ok_or_else(|| {
+        NotFound(format!("Oracle for {} is not configured", symbol))
+    })?))
 }
 
 /// Returns the price in USD for the given token
@@ -961,7 +967,7 @@ async fn get_token_name(
 }
 
 /// Returns the Token metadata for the specified mint
-#[get("/get_token_with_mint?<token_mint>")]
+#[get("/token_with_mint?<token_mint>")]
 async fn get_token_with_mint(
     token_mint: Option<PubkeyParam>,
     farm_client: &State<FarmClientArc>,
@@ -973,6 +979,24 @@ async fn get_token_with_mint(
         .map_err(|e| NotFound(e.to_string()))?;
     let token = farm_client
         .get_token_with_mint(&token_mint)
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(Json(token))
+}
+
+/// Returns the Token metadata for the specified token account
+#[get("/token_with_account?<token_account>")]
+async fn get_token_with_account(
+    token_account: Option<PubkeyParam>,
+    farm_client: &State<FarmClientArc>,
+) -> Result<Json<Token>, NotFound<String>> {
+    let token_account = check_unwrap_pubkey(token_account, "token_account")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let token = farm_client
+        .get_token_with_account(&token_account)
         .map_err(|e| NotFound(e.to_string()))?;
 
     Ok(Json(token))
@@ -1063,6 +1087,28 @@ async fn is_fund_manager(
         .map_err(|e| NotFound(e.to_string()))?;
 
     Ok(Json(is_fund_manager))
+}
+
+/// Returns all Funds managed by the given address
+#[get("/managed_funds?<wallet_address>")]
+async fn get_managed_funds(
+    wallet_address: Option<PubkeyParam>,
+    farm_client: &State<FarmClientArc>,
+) -> Result<Json<Vec<Fund>>, NotFound<String>> {
+    let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let funds = farm_client
+        .get_funds()
+        .map_err(|e| NotFound(e.to_string()))?
+        .values()
+        .filter(|&f| f.fund_manager == wallet_address)
+        .copied()
+        .collect::<Vec<Fund>>();
+
+    Ok(Json(funds))
 }
 
 /// Creates a new system account
@@ -1486,7 +1532,25 @@ async fn get_fund_user_info(
     Ok(Json(user_info))
 }
 
-/// Returns user requests for specific Fund
+/// Returns user stats for all Funds
+#[get("/all_fund_user_infos?<wallet_address>")]
+async fn get_all_fund_user_infos(
+    wallet_address: Option<PubkeyParam>,
+    farm_client: &State<FarmClientArc>,
+) -> Result<Json<Vec<FundUserInfo>>, NotFound<String>> {
+    let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let user_infos = farm_client
+        .get_all_fund_user_infos(&wallet_address)
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(Json(user_infos))
+}
+
+/// Returns user requests for specific Fund and token
 #[get("/fund_user_requests?<wallet_address>&<fund_name>&<token_name>")]
 async fn get_fund_user_requests(
     wallet_address: Option<PubkeyParam>,
@@ -1506,8 +1570,8 @@ async fn get_fund_user_requests(
     Ok(Json(user_requests))
 }
 
-/// Returns user requests accounts for all tokens in the Fund
-#[get("/get_all_fund_user_requests?<fund_name>")]
+/// Returns user requests for all tokens accepted by the Fund
+#[get("/all_fund_user_requests?<fund_name>")]
 async fn get_all_fund_user_requests(
     fund_name: &str,
     farm_client: &State<FarmClientArc>,
@@ -1950,6 +2014,9 @@ async fn swap(
     farm_client: &State<FarmClientArc>,
 ) -> Result<String, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
+    let protocol = protocol
+        .parse()
+        .map_err(|_| NotFound("Invalid protocol argument".to_string()))?;
     let farm_client = farm_client
         .inner()
         .lock()
@@ -2219,7 +2286,7 @@ async fn start_liquidation_fund(
 }
 
 /// Sets a new deposit schedule for the Fund
-#[post("/set_fund_deposit_schedule?<wallet_keypair>&<fund_name>&<start_time>&<end_time>&<approval_required>&<limit_usd>&<fee>")]
+#[post("/set_fund_deposit_schedule?<wallet_keypair>&<fund_name>&<start_time>&<end_time>&<approval_required>&<min_amount_usd>&<max_amount_usd>&<fee>")]
 #[allow(clippy::too_many_arguments)]
 async fn set_fund_deposit_schedule(
     wallet_keypair: Option<KeypairParam>,
@@ -2227,7 +2294,8 @@ async fn set_fund_deposit_schedule(
     start_time: i64,
     end_time: i64,
     approval_required: bool,
-    limit_usd: f64,
+    min_amount_usd: f64,
+    max_amount_usd: f64,
     fee: f64,
     farm_client: &State<FarmClientArc>,
 ) -> Result<String, NotFound<String>> {
@@ -2244,7 +2312,8 @@ async fn set_fund_deposit_schedule(
                 start_time,
                 end_time,
                 approval_required,
-                limit_usd,
+                min_amount_usd,
+                max_amount_usd,
                 fee,
             },
         )
@@ -2333,7 +2402,7 @@ async fn deny_deposit_fund(
 }
 
 /// Sets a new withdrawal schedule for the Fund
-#[post("/set_fund_withdrawal_schedule?<wallet_keypair>&<fund_name>&<start_time>&<end_time>&<approval_required>&<limit_usd>&<fee>")]
+#[post("/set_fund_withdrawal_schedule?<wallet_keypair>&<fund_name>&<start_time>&<end_time>&<approval_required>&<min_amount_usd>&<max_amount_usd>&<fee>")]
 #[allow(clippy::too_many_arguments)]
 async fn set_fund_withdrawal_schedule(
     wallet_keypair: Option<KeypairParam>,
@@ -2341,7 +2410,8 @@ async fn set_fund_withdrawal_schedule(
     start_time: i64,
     end_time: i64,
     approval_required: bool,
-    limit_usd: f64,
+    min_amount_usd: f64,
+    max_amount_usd: f64,
     fee: f64,
     farm_client: &State<FarmClientArc>,
 ) -> Result<String, NotFound<String>> {
@@ -2358,7 +2428,8 @@ async fn set_fund_withdrawal_schedule(
                 start_time,
                 end_time,
                 approval_required,
-                limit_usd,
+                min_amount_usd,
+                max_amount_usd,
                 fee,
             },
         )
@@ -2584,6 +2655,9 @@ async fn fund_swap(
     farm_client: &State<FarmClientArc>,
 ) -> Result<String, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
+    let protocol = protocol
+        .parse()
+        .map_err(|_| NotFound("Invalid protocol argument".to_string()))?;
     let farm_client = farm_client
         .inner()
         .lock()
@@ -3240,6 +3314,9 @@ async fn new_instruction_swap(
     farm_client: &State<FarmClientArc>,
 ) -> Result<JsonWithInstruction, NotFound<String>> {
     let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
+    let protocol = protocol
+        .parse()
+        .map_err(|_| NotFound("Invalid protocol argument".to_string()))?;
     let farm_client = farm_client
         .inner()
         .lock()
@@ -3480,7 +3557,7 @@ async fn new_instruction_start_liquidation_fund(
 }
 
 /// Returns a new set deposit schedule Instruction
-#[get("/new_instruction_set_fund_deposit_schedule?<wallet_address>&<fund_name>&<start_time>&<end_time>&<approval_required>&<limit_usd>&<fee>")]
+#[get("/new_instruction_set_fund_deposit_schedule?<wallet_address>&<fund_name>&<start_time>&<end_time>&<approval_required>&<min_amount_usd>&<max_amount_usd>&<fee>")]
 #[allow(clippy::too_many_arguments)]
 async fn new_instruction_set_fund_deposit_schedule(
     wallet_address: Option<PubkeyParam>,
@@ -3488,7 +3565,8 @@ async fn new_instruction_set_fund_deposit_schedule(
     start_time: i64,
     end_time: i64,
     approval_required: bool,
-    limit_usd: f64,
+    min_amount_usd: f64,
+    max_amount_usd: f64,
     fee: f64,
     farm_client: &State<FarmClientArc>,
 ) -> Result<JsonWithInstruction, NotFound<String>> {
@@ -3505,7 +3583,8 @@ async fn new_instruction_set_fund_deposit_schedule(
                 start_time,
                 end_time,
                 approval_required,
-                limit_usd,
+                min_amount_usd,
+                max_amount_usd,
                 fee,
             },
         )
@@ -3592,7 +3671,7 @@ async fn new_instruction_deny_deposit_fund(
 }
 
 /// Returns a new set withdrawal schedule Instruction
-#[get("/new_instruction_set_fund_withdrawal_schedule?<wallet_address>&<fund_name>&<start_time>&<end_time>&<approval_required>&<limit_usd>&<fee>")]
+#[get("/new_instruction_set_fund_withdrawal_schedule?<wallet_address>&<fund_name>&<start_time>&<end_time>&<approval_required>&<min_amount_usd>&<max_amount_usd>&<fee>")]
 #[allow(clippy::too_many_arguments)]
 async fn new_instruction_set_fund_withdrawal_schedule(
     wallet_address: Option<PubkeyParam>,
@@ -3600,7 +3679,8 @@ async fn new_instruction_set_fund_withdrawal_schedule(
     start_time: i64,
     end_time: i64,
     approval_required: bool,
-    limit_usd: f64,
+    min_amount_usd: f64,
+    max_amount_usd: f64,
     fee: f64,
     farm_client: &State<FarmClientArc>,
 ) -> Result<JsonWithInstruction, NotFound<String>> {
@@ -3617,7 +3697,8 @@ async fn new_instruction_set_fund_withdrawal_schedule(
                 start_time,
                 end_time,
                 approval_required,
-                limit_usd,
+                min_amount_usd,
+                max_amount_usd,
                 fee,
             },
         )
@@ -3799,6 +3880,9 @@ async fn new_instruction_fund_swap(
     farm_client: &State<FarmClientArc>,
 ) -> Result<JsonWithInstruction, NotFound<String>> {
     let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
+    let protocol = protocol
+        .parse()
+        .map_err(|_| NotFound("Invalid protocol argument".to_string()))?;
     let farm_client = farm_client
         .inner()
         .lock()
@@ -4292,6 +4376,9 @@ async fn all_instructions_swap(
     farm_client: &State<FarmClientArc>,
 ) -> Result<JsonWithInstructions, NotFound<String>> {
     let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
+    let protocol = protocol
+        .parse()
+        .map_err(|_| NotFound("Invalid protocol argument".to_string()))?;
     let farm_client = farm_client
         .inner()
         .lock()
@@ -4429,6 +4516,9 @@ async fn all_instructions_fund_swap(
     farm_client: &State<FarmClientArc>,
 ) -> Result<JsonWithInstructions, NotFound<String>> {
     let wallet_address = check_unwrap_pubkey(wallet_address, "wallet_address")?;
+    let protocol = protocol
+        .parse()
+        .map_err(|_| NotFound("Invalid protocol argument".to_string()))?;
     let farm_client = farm_client
         .inner()
         .lock()
@@ -4721,7 +4811,7 @@ async fn init_db(
         let git_token: GitToken = from_value(val.clone()).unwrap();
         if git_token.chain_id == 101 {
             if let Ok(spl_token) = farm_client.get_token(&git_token.symbol) {
-                if spl_token.mint == Pubkey::from_str(&git_token.address).unwrap() {
+                if spl_token.mint == git_token.address {
                     git_tokens.insert(git_token.symbol.clone(), git_token.clone());
                 }
             }
@@ -4806,6 +4896,7 @@ pub async fn stage(config: &Config) -> AdHoc {
                     get_token_by_ref,
                     get_token_name,
                     get_token_with_mint,
+                    get_token_with_account,
                     get_program_id,
                     get_program_ids,
                     get_program_name,
@@ -4819,6 +4910,7 @@ pub async fn stage(config: &Config) -> AdHoc {
                     get_vault_info,
                     get_fund_admins,
                     get_fund_user_info,
+                    get_all_fund_user_infos,
                     get_fund_user_requests,
                     get_all_fund_user_requests,
                     get_fund_info,
@@ -4835,6 +4927,7 @@ pub async fn stage(config: &Config) -> AdHoc {
                     get_protocols,
                     is_official_id,
                     is_fund_manager,
+                    get_managed_funds,
                     create_system_account,
                     create_system_account_with_seed,
                     assign_system_account,

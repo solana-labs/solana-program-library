@@ -4,7 +4,7 @@
 //! query on-chain objects metadata, and perform common operations with accounts.
 //!
 //! Client's methods accept human readable names (tokens, polls, etc.) and UI (decimal)
-//! amounts, so you can simply call client.swap(&keypair, "RDM", "SOL", "RAY", 0.1, 0.0)
+//! amounts, so you can simply call client.swap(&keypair, Protocol::Orca, "SOL", "USDC", 0.1, 0.0)
 //! to swap 0.1 SOL for RAY in a Raydium pool. All metadata required to lookup account
 //! addresses, decimals, etc. is stored on-chain.
 //!
@@ -41,10 +41,10 @@
 //! #  client.get_token("SRM").unwrap();
 //! #
 //! #  // find Raydium pools with RAY and SRM tokens
-//! #  client.find_pools("RDM", "RAY", "SRM").unwrap();
+//! #  client.find_pools(Protocol::Raydium, "RAY", "SRM").unwrap();
 //! #
 //! #  // find Saber pools with USDC and USDT tokens
-//! #  client.find_pools("SBR", "USDC", "USDT").unwrap();
+//! #  client.find_pools(Protocol::Saber, "USDC", "USDT").unwrap();
 //! #
 //! #  // get pool metadata
 //! #  client.get_pool("RDM.RAY-SRM").unwrap();
@@ -79,10 +79,10 @@
 //! #  client.get_program_ids().unwrap();
 //! #
 //! #  // swap in the Raydium pool
-//! #  client.swap(&keypair, "RDM", "SOL", "RAY", 0.01, 0.0).unwrap();
+//! #  client.swap(&keypair, Protocol::Raydium, "SOL", "RAY", 0.01, 0.0).unwrap();
 //! #
 //! #  // swap in the Saber pool
-//! #  client.swap(&keypair, "SBR", "USDC", "USDT", 0.01, 0.0).unwrap();
+//! #  client.swap(&keypair, Protocol::Saber, "USDC", "USDT", 0.01, 0.0).unwrap();
 //! #
 //! #  // deposit liquidity to the Raydium pool (zero second token amount means calculate it automatically)
 //! #  client
@@ -174,7 +174,7 @@ use {
     pyth_client::{PriceStatus, PriceType},
     solana_account_decoder::{
         parse_bpf_loader::{parse_bpf_upgradeable_loader, BpfUpgradeableLoaderAccountType},
-        parse_token::{parse_token, TokenAccountType, UiAccountState, UiTokenAccount},
+        parse_token::{parse_token, TokenAccountType, UiAccountState, UiMint, UiTokenAccount},
         UiAccountEncoding,
     },
     solana_client::{
@@ -189,7 +189,7 @@ use {
         fund::{
             Fund, FundAssetType, FundAssets, FundAssetsTrackingConfig, FundCustody,
             FundCustodyType, FundCustodyWithBalance, FundInfo, FundSchedule, FundUserInfo,
-            FundUserRequests, FundVault, FundVaultType, Protocol, DISCRIMINATOR_FUND_CUSTODY,
+            FundUserRequests, FundVault, FundVaultType, DISCRIMINATOR_FUND_CUSTODY,
             DISCRIMINATOR_FUND_USER_REQUESTS, DISCRIMINATOR_FUND_VAULT,
         },
         id::{
@@ -200,8 +200,8 @@ use {
         pool::{Pool, PoolRoute},
         program::{
             multisig::Multisig,
-            pda::{find_refdb_pda, find_target_pda},
             protocol::{
+                orca::OrcaUserStakeInfo,
                 raydium::{RaydiumUserStakeInfo, RaydiumUserStakeInfoV4},
                 saber::Miner,
             },
@@ -212,7 +212,7 @@ use {
         token::{OracleType, Token, TokenSelector, TokenType},
         traits::Packed,
         vault::{Vault, VaultInfo, VaultStrategy, VaultUserInfo},
-        ProgramIDType,
+        ProgramIDType, Protocol, ProtocolInfo,
     },
     solana_sdk::{
         account::Account,
@@ -630,13 +630,13 @@ impl FarmClient {
     /// Returns all Pools with tokens A and B sorted by version for the given protocol
     pub fn find_pools(
         &self,
-        protocol: &str,
+        protocol: Protocol,
         token_a: &str,
         token_b: &str,
     ) -> Result<Vec<Pool>, FarmClientError> {
         self.reload_pool_refs_if_stale()?;
-        let pattern1 = format!("{}.{}-{}-", protocol, token_a, token_b);
-        let pattern2 = format!("{}.{}-{}-", protocol, token_b, token_a);
+        let pattern1 = format!("{}.{}-{}-", protocol.id(), token_a, token_b);
+        let pattern2 = format!("{}.{}-{}-", protocol.id(), token_b, token_a);
         let mut res = vec![];
         for (name, _) in self.pool_refs.borrow().data.iter() {
             if name.starts_with(&pattern1) || name.starts_with(&pattern2) {
@@ -656,12 +656,12 @@ impl FarmClient {
 
     /// Returns all Pools sorted by version for the given LP token
     pub fn find_pools_with_lp(&self, lp_token_name: &str) -> Result<Vec<Pool>, FarmClientError> {
-        let (protocol, token_a, token_b) = FarmClient::extract_token_names(lp_token_name)?;
-        let pools = self.find_pools(&protocol, &token_a, &token_b)?;
+        let lp_token_ref = self.get_token_ref(lp_token_name)?;
+        let pools = self.get_pools()?;
         let mut res = vec![];
-        for pool in &pools {
-            if let Some(lp_token) = self.get_token_by_ref_from_cache(&pool.lp_token_ref)? {
-                if lp_token.name.as_str() == lp_token_name {
+        for pool in pools.values() {
+            if let Some(pool_lp_token_ref) = pool.lp_token_ref {
+                if lp_token_ref == pool_lp_token_ref {
                     res.push(*pool);
                 }
             }
@@ -669,8 +669,8 @@ impl FarmClient {
 
         if res.is_empty() {
             Err(FarmClientError::RecordNotFound(format!(
-                "{} Pool with LP token {}",
-                protocol, lp_token_name
+                "Pool with LP token {}",
+                lp_token_name
             )))
         } else {
             res.sort_by(|a, b| b.version.cmp(&a.version));
@@ -813,26 +813,21 @@ impl FarmClient {
 
     /// Returns all Farms for the given LP token
     pub fn find_farms_with_lp(&self, lp_token_name: &str) -> Result<Vec<Farm>, FarmClientError> {
-        self.reload_farm_refs_if_stale()?;
-        let (protocol, token_a, token_b) = FarmClient::extract_token_names(lp_token_name)?;
-        let pattern1 = format!("{}.{}-{}-", protocol, token_a, token_b);
-        let pattern2 = format!("{}.{}-{}-", protocol, token_b, token_a);
+        let lp_token_ref = self.get_token_ref(lp_token_name)?;
+        let farms = self.get_farms()?;
         let mut res = vec![];
-        for (name, _) in self.farm_refs.borrow().data.iter() {
-            if name.contains(&pattern1) || name.contains(&pattern2) {
-                let farm = self.get_farm(name)?;
-                if let Some(lp_token) = self.get_token_by_ref_from_cache(&farm.lp_token_ref)? {
-                    if lp_token.name.as_str() == lp_token_name {
-                        res.push(farm);
-                    }
+        for farm in farms.values() {
+            if let Some(farm_lp_token_ref) = farm.lp_token_ref {
+                if lp_token_ref == farm_lp_token_ref {
+                    res.push(*farm);
                 }
             }
         }
 
         if res.is_empty() {
             Err(FarmClientError::RecordNotFound(format!(
-                "{} Farm with LP token {}",
-                protocol, lp_token_name
+                "Farm with LP token {}",
+                lp_token_name
             )))
         } else {
             res.sort_by(|a, b| b.version.cmp(&a.version));
@@ -912,7 +907,7 @@ impl FarmClient {
     /// This function loads all tokens to the cache, slow on the first call.
     pub fn get_token_with_mint(&self, token_mint: &Pubkey) -> Result<Token, FarmClientError> {
         let tokens = self.get_tokens()?;
-        for (_name, token) in tokens.iter() {
+        for token in tokens.values() {
             if token_mint == &token.mint {
                 return Ok(*token);
             }
@@ -921,6 +916,26 @@ impl FarmClient {
             "Token with mint {}",
             token_mint
         )))
+    }
+
+    /// Returns the Token metadata for the specified token account
+    /// This function loads all tokens to the cache, slow on the first call.
+    pub fn get_token_with_account(&self, token_account: &Pubkey) -> Result<Token, FarmClientError> {
+        let data = self.rpc_client.get_account_data(token_account)?;
+        let res = parse_token(data.as_slice(), Some(0))?;
+        if let TokenAccountType::Account(ui_account) = res {
+            self.get_token_with_mint(&Pubkey::from_str(&ui_account.mint).map_err(|_| {
+                FarmClientError::ValueError(format!(
+                    "Failed to parse mint in token account {}",
+                    token_account
+                ))
+            })?)
+        } else {
+            Err(FarmClientError::ValueError(format!(
+                "No account data found in token account {}",
+                token_account
+            )))
+        }
     }
 
     /// Returns token supply as UI amount
@@ -1480,6 +1495,25 @@ impl FarmClient {
         }
     }
 
+    /// Returns UiMint struct data for the associated token account address
+    pub fn get_token_mint_data(
+        &self,
+        wallet_address: &Pubkey,
+        token_name: &str,
+    ) -> Result<UiMint, FarmClientError> {
+        let token_address = self.get_associated_token_address(wallet_address, token_name)?;
+        let data = self.rpc_client.get_account_data(&token_address)?;
+        let res = parse_token(data.as_slice(), None)?;
+        if let TokenAccountType::Mint(ui_mint) = res {
+            Ok(ui_mint)
+        } else {
+            Err(FarmClientError::ValueError(format!(
+                "No mint data found for token {}",
+                token_name
+            )))
+        }
+    }
+
     /// Returns native SOL balance
     pub fn get_account_balance(&self, wallet_address: &Pubkey) -> Result<f64, FarmClientError> {
         Ok(self.tokens_to_ui_amount_with_decimals(
@@ -1795,7 +1829,10 @@ impl FarmClient {
                                 FarmRoute::Saber { .. } => {
                                     Miner::unpack(stake_data.as_slice())?.balance
                                 }
-                                FarmRoute::Orca { .. } => 0,
+                                FarmRoute::Orca { .. } => {
+                                    OrcaUserStakeInfo::unpack(stake_data.as_slice())?
+                                        .base_tokens_converted
+                                }
                             }
                         } else {
                             0
@@ -1923,7 +1960,7 @@ impl FarmClient {
     pub fn swap(
         &self,
         signer: &dyn Signer,
-        protocol: &str,
+        protocol: Protocol,
         from_token: &str,
         to_token: &str,
         ui_amount_in: f64,
@@ -2006,7 +2043,7 @@ impl FarmClient {
         &self,
         refdb_name: &str,
     ) -> Result<(Header, PubkeyMap), FarmClientError> {
-        let refdb_address = find_refdb_pda(refdb_name).0;
+        let refdb_address = refdb::find_refdb_pda(refdb_name).0;
         let data = self.rpc_client.get_account_data(&refdb_address)?;
         if !RefDB::is_initialized(data.as_slice()) {
             return Err(ProgramError::UninitializedAccount.into());
@@ -2023,7 +2060,7 @@ impl FarmClient {
 
     /// Returns raw RefDB data, can be further used with refdb::RefDB
     pub fn get_refdb_data(&self, refdb_name: &str) -> Result<Vec<u8>, FarmClientError> {
-        let refdb_address = find_refdb_pda(refdb_name).0;
+        let refdb_address = refdb::find_refdb_pda(refdb_name).0;
         self.rpc_client
             .get_account_data(&refdb_address)
             .map_err(Into::into)
@@ -2055,7 +2092,7 @@ impl FarmClient {
 
     /// Checks if RefDB is initialized
     pub fn is_refdb_initialized(&self, refdb_name: &str) -> Result<bool, FarmClientError> {
-        let refdb_address = find_refdb_pda(refdb_name).0;
+        let refdb_address = refdb::find_refdb_pda(refdb_name).0;
         if let Ok(data) = self.rpc_client.get_account_data(&refdb_address) {
             Ok(RefDB::is_initialized(data.as_slice()))
         } else {
@@ -2073,7 +2110,7 @@ impl FarmClient {
         init_account: bool,
     ) -> Result<Signature, FarmClientError> {
         if init_account && !refdb::REFDB_ONCHAIN_INIT {
-            let refdb_address = find_refdb_pda(refdb_name).0;
+            let refdb_address = refdb::find_refdb_pda(refdb_name).0;
             if let Ok(refdb_account) = self.rpc_client.get_account(&refdb_address) {
                 if refdb_account.owner != main_router::id() {
                     return Err(FarmClientError::ValueError(format!(
@@ -2215,7 +2252,7 @@ impl FarmClient {
                 .insert(fund.name.to_string(), fund);
             self.fund_refs.borrow_mut().data.insert(
                 fund.name.to_string(),
-                find_target_pda(refdb::StorageType::Fund, &fund.name).0,
+                refdb::find_target_pda(refdb::StorageType::Fund, &fund.name).0,
             );
         }
         res
@@ -2251,7 +2288,7 @@ impl FarmClient {
                 .insert(vault.name.to_string(), vault);
             self.vault_refs.borrow_mut().data.insert(
                 vault.name.to_string(),
-                find_target_pda(refdb::StorageType::Vault, &vault.name).0,
+                refdb::find_target_pda(refdb::StorageType::Vault, &vault.name).0,
             );
             FarmClient::reinsert_latest_versions(
                 &self.vault_refs.borrow().data,
@@ -2295,7 +2332,7 @@ impl FarmClient {
                 .insert(pool.name.to_string(), pool);
             self.pool_refs.borrow_mut().data.insert(
                 pool.name.to_string(),
-                find_target_pda(refdb::StorageType::Pool, &pool.name).0,
+                refdb::find_target_pda(refdb::StorageType::Pool, &pool.name).0,
             );
             FarmClient::reinsert_latest_versions(
                 &self.pool_refs.borrow().data,
@@ -2339,7 +2376,7 @@ impl FarmClient {
                 .insert(farm.name.to_string(), farm);
             self.farm_refs.borrow_mut().data.insert(
                 farm.name.to_string(),
-                find_target_pda(refdb::StorageType::Farm, &farm.name).0,
+                refdb::find_target_pda(refdb::StorageType::Farm, &farm.name).0,
             );
             FarmClient::reinsert_latest_versions(
                 &self.farm_refs.borrow().data,
@@ -2383,7 +2420,7 @@ impl FarmClient {
                 .insert(token.name.to_string(), token);
             self.token_refs.borrow_mut().data.insert(
                 token.name.to_string(),
-                find_target_pda(refdb::StorageType::Token, &token.name).0,
+                refdb::find_target_pda(refdb::StorageType::Token, &token.name).0,
             );
         }
         res
@@ -2439,7 +2476,7 @@ impl FarmClient {
     /// Cranks all Vaults
     pub fn crank_vaults(&self, signer: &dyn Signer, step: u64) -> Result<usize, FarmClientError> {
         let vaults = self.get_vaults()?;
-        for (vault_name, _) in vaults.iter() {
+        for vault_name in vaults.keys() {
             let _ = self.crank_vault(signer, vault_name, step)?;
         }
         Ok(vaults.len())
@@ -2959,7 +2996,7 @@ impl FarmClient {
         .0)
     }
 
-    /// Returns user info for specific Fund
+    /// Returns user stats for specific Fund
     pub fn get_fund_user_info(
         &self,
         wallet_address: &Pubkey,
@@ -2983,6 +3020,20 @@ impl FarmClient {
         Ok(fund_user_info)
     }
 
+    /// Returns user stats for all Funds
+    pub fn get_all_fund_user_infos(
+        &self,
+        wallet_address: &Pubkey,
+    ) -> Result<Vec<FundUserInfo>, FarmClientError> {
+        let mut user_infos = vec![];
+        let funds = self.get_funds()?;
+        for fund in funds.keys() {
+            user_infos.push(self.get_fund_user_info(wallet_address, fund)?);
+        }
+
+        Ok(user_infos)
+    }
+
     /// Returns the account address where user requests are stored for the Fund
     pub fn get_fund_user_requests_account(
         &self,
@@ -3004,7 +3055,7 @@ impl FarmClient {
         .0)
     }
 
-    /// Returns user requests for the specific Fund
+    /// Returns user requests for specific Fund and token
     pub fn get_fund_user_requests(
         &self,
         wallet_address: &Pubkey,
@@ -3017,7 +3068,7 @@ impl FarmClient {
         FundUserRequests::unpack(data.as_slice()).map_err(|e| e.into())
     }
 
-    /// Returns all user requests accounts for the specific Fund
+    /// Returns user requests for all tokens accepted by the Fund
     pub fn get_all_fund_user_requests(
         &self,
         fund_name: &str,
@@ -3060,8 +3111,11 @@ impl FarmClient {
                     "DepositApprovalRequired" => {
                         fund_info.deposit_schedule.approval_required = data != 0
                     }
-                    "DepositLimitUsd" => {
-                        fund_info.deposit_schedule.limit_usd = f64::from_bits(data)
+                    "DepositMinAmountUsd" => {
+                        fund_info.deposit_schedule.min_amount_usd = f64::from_bits(data)
+                    }
+                    "DepositMaxAmountUsd" => {
+                        fund_info.deposit_schedule.max_amount_usd = f64::from_bits(data)
                     }
                     "DepositFee" => fund_info.deposit_schedule.fee = f64::from_bits(data),
                     "WithdrawalStartTime" => {
@@ -3073,8 +3127,11 @@ impl FarmClient {
                     "WithdrawalApprovalRequired" => {
                         fund_info.withdrawal_schedule.approval_required = data != 0
                     }
-                    "WithdrawalLimitUsd" => {
-                        fund_info.withdrawal_schedule.limit_usd = f64::from_bits(data)
+                    "WithdrawalMinAmountUsd" => {
+                        fund_info.withdrawal_schedule.min_amount_usd = f64::from_bits(data)
+                    }
+                    "WithdrawalMaxAmountUsd" => {
+                        fund_info.withdrawal_schedule.max_amount_usd = f64::from_bits(data)
                     }
                     "WithdrawalFee" => fund_info.withdrawal_schedule.fee = f64::from_bits(data),
                     "AssetsLimitUsd" => {
@@ -3087,7 +3144,7 @@ impl FarmClient {
                     "AssetsMaxPriceAgeSec" => fund_info.assets_config.max_price_age_sec = data,
                     "IssueVirtualTokens" => fund_info.assets_config.issue_virtual_tokens = data > 0,
                     "VirtualTokensSupply" => fund_info.virtual_tokens_supply = data,
-                    "AmountIvestedUsd" => fund_info.amount_invested_usd = f64::from_bits(data),
+                    "AmountInvestedUsd" => fund_info.amount_invested_usd = f64::from_bits(data),
                     "AmountRemovedUsd" => fund_info.amount_removed_usd = f64::from_bits(data),
                     "CurrentAssetsUsd" => fund_info.current_assets_usd = f64::from_bits(data),
                     "AssetsUpdateTime" => fund_info.assets_update_time = data as UnixTimestamp,
@@ -3853,7 +3910,7 @@ impl FarmClient {
         &self,
         admin_signer: &dyn Signer,
         fund_name: &str,
-        protocol: &str,
+        protocol: Protocol,
         from_token: &str,
         to_token: &str,
         ui_amount_in: f64,
@@ -4043,7 +4100,10 @@ impl FarmClient {
     }
 
     /// Returns oracle type and address for the given token
-    pub fn get_oracle(&self, symbol: &str) -> Result<(OracleType, Pubkey), FarmClientError> {
+    pub fn get_oracle(
+        &self,
+        symbol: &str,
+    ) -> Result<(OracleType, Option<Pubkey>), FarmClientError> {
         let token = self.get_token(symbol)?;
         Ok((token.oracle_type, token.oracle_account))
     }
@@ -4056,12 +4116,19 @@ impl FarmClient {
         max_price_error: f64,
     ) -> Result<f64, FarmClientError> {
         let (oracle_type, oracle_account) = self.get_oracle(symbol)?;
-        if oracle_type != OracleType::Pyth {
+        if oracle_type == OracleType::Unsupported {
+            return Err(FarmClientError::ValueError(format!(
+                "Oracle for {} is not configured",
+                symbol
+            )));
+        } else if oracle_type != OracleType::Pyth {
             return Err(FarmClientError::ValueError(
                 "Unsupported oracle type".to_string(),
             ));
         }
-        let pyth_price_data = self.rpc_client.get_account_data(&oracle_account)?;
+        let pyth_price_data = self
+            .rpc_client
+            .get_account_data(&oracle_account.ok_or(ProgramError::UninitializedAccount)?)?;
         let pyth_price = pyth_client::load_price(pyth_price_data.as_slice())?;
 
         if !matches!(pyth_price.agg.status, PriceStatus::Trading)
@@ -4100,30 +4167,31 @@ impl FarmClient {
     }
 
     /// Returns description and stats of all supported protocols
-    pub fn get_protocols(&self) -> Result<Vec<Protocol>, FarmClientError> {
-        let (raydium_pools, raydium_farms, raydium_vaults) = self.get_protocol_stats("RDM")?;
-        let (saber_pools, saber_farms, saber_vaults) = self.get_protocol_stats("SBR")?;
-        let (orca_pools, orca_farms, orca_vaults) = self.get_protocol_stats("ORC")?;
+    pub fn get_protocols(&self) -> Result<Vec<ProtocolInfo>, FarmClientError> {
+        let (raydium_pools, raydium_farms, raydium_vaults) =
+            self.get_protocol_stats(Protocol::Raydium)?;
+        let (saber_pools, saber_farms, saber_vaults) = self.get_protocol_stats(Protocol::Saber)?;
+        let (orca_pools, orca_farms, orca_vaults) = self.get_protocol_stats(Protocol::Orca)?;
         Ok(vec![
-            Protocol {
-                protocol: "RDM".to_string(),
-                name: "Raydium".to_string(),
+            ProtocolInfo {
+                protocol: Protocol::Raydium,
+                description: "Raydium protocol".to_string(),
                 link: "www.raydium.io".to_string(),
                 pools: raydium_pools,
                 farms: raydium_farms,
                 vaults: raydium_vaults,
             },
-            Protocol {
-                protocol: "SBR".to_string(),
-                name: "Saber".to_string(),
+            ProtocolInfo {
+                protocol: Protocol::Saber,
+                description: "Saber protocol".to_string(),
                 link: "www.saber.so".to_string(),
                 pools: saber_pools,
                 farms: saber_farms,
                 vaults: saber_vaults,
             },
-            Protocol {
-                protocol: "ORC".to_string(),
-                name: "Orca".to_string(),
+            ProtocolInfo {
+                protocol: Protocol::Orca,
+                description: "Orca protocol".to_string(),
                 link: "www.orca.so".to_string(),
                 pools: orca_pools,
                 farms: orca_farms,
@@ -4228,16 +4296,25 @@ impl FarmClient {
         self.pool_has_sol_tokens(&pool_name)
     }
 
-    pub fn get_protocol(vault_or_pool_name: &str) -> Result<String, FarmClientError> {
-        Ok(
-            vault_or_pool_name[..vault_or_pool_name.find('.').ok_or_else(|| {
+    pub fn get_protocol(vault_or_pool_name: &str) -> Result<Protocol, FarmClientError> {
+        let protocol_str =
+            &vault_or_pool_name[..vault_or_pool_name.find('.').ok_or_else(|| {
                 FarmClientError::ValueError(format!(
                     "Invalid vault or pool name: {}",
                     vault_or_pool_name
                 ))
-            })?]
-                .to_string(),
-        )
+            })?];
+        Ok(match protocol_str {
+            "RDM" => Protocol::Raydium,
+            "SBR" => Protocol::Saber,
+            "ORC" => Protocol::Orca,
+            _ => {
+                return Err(FarmClientError::ValueError(format!(
+                    "Unrecognized protocol: {}",
+                    protocol_str
+                )))
+            }
+        })
     }
 
     pub fn get_pool_token_names(
@@ -4430,11 +4507,84 @@ impl FarmClient {
         }
     }
 
+    /// Checks if the given address is the Fund manager
     pub fn is_fund_manager(&self, wallet_address: &Pubkey) -> Result<bool, FarmClientError> {
         Ok(self
             .get_funds()?
             .values()
             .any(|&f| &f.fund_manager == wallet_address))
+    }
+
+    /// Extracts version from the full pool name
+    pub fn extract_pool_version(name: &str) -> Result<u16, FarmClientError> {
+        if name.len() > 3
+            && &name[name.len() - 2..name.len() - 1].to_uppercase() == "V"
+            && &name[name.len() - 3..name.len() - 2] == "-"
+        {
+            if let Ok(ver) = name[name.len() - 1..name.len()].parse::<u16>() {
+                return Ok(ver);
+            }
+        }
+        Err(FarmClientError::ProgramError(ProgramError::InvalidArgument))
+    }
+
+    /// Extracts name and version from the pool or liquidity token name
+    pub fn extract_pool_name_and_version(name: &str) -> Result<(String, u16), FarmClientError> {
+        if FarmClient::is_liquidity_token(name) {
+            if name.len() > 6 {
+                return Ok((
+                    name[3..name.len() - 3].to_string(),
+                    FarmClient::extract_pool_version(name)?,
+                ));
+            }
+        } else if name.len() > 3 {
+            return Ok((
+                name[..name.len() - 3].to_string(),
+                FarmClient::extract_pool_version(name)?,
+            ));
+        }
+        Err(FarmClientError::ProgramError(ProgramError::InvalidArgument))
+    }
+
+    /// Checks if token is a liquidity token
+    pub fn is_liquidity_token(name: &str) -> bool {
+        name.len() > 3 && ["LP.", "VT.", "FD."].contains(&&name[..3])
+    }
+
+    /// Extracts individual token names and protocol from the pool or liquidity token name
+    pub fn extract_token_names(name: &str) -> Result<(Protocol, String, String), FarmClientError> {
+        let dot_split = if FarmClient::is_liquidity_token(name) {
+            name[3..].split('.').collect::<Vec<&str>>()
+        } else {
+            name.split('.').collect::<Vec<&str>>()
+        };
+        if dot_split.len() < 2 || dot_split[0].is_empty() {
+            return Err(FarmClientError::ValueError(format!(
+                "Can't extract token names from {}",
+                name
+            )));
+        }
+        let dash_split = dot_split.last().unwrap().split('-').collect::<Vec<&str>>();
+        if dash_split.is_empty()
+            || dash_split[0].is_empty()
+            || (dash_split.len() > 1 && dash_split[1].is_empty())
+        {
+            return Err(FarmClientError::ValueError(format!(
+                "Can't extract token names from {}",
+                name
+            )));
+        }
+        Ok((
+            dot_split[0].parse()?,
+            dash_split[0].to_string(),
+            if dash_split.len() > 1
+                && (FarmClient::extract_pool_version(name).is_err() || dash_split.len() > 2)
+            {
+                dash_split[1].to_string()
+            } else {
+                String::default()
+            },
+        ))
     }
 
     ////////////// private helpers
@@ -4488,29 +4638,6 @@ impl FarmClient {
         Ok(Fund::unpack(data.as_slice())?)
     }
 
-    fn extract_version(name: &str) -> Result<u16, FarmClientError> {
-        if &name[..1].to_uppercase() == "V" {
-            if let Ok(ver) = name[1..].parse::<u16>() {
-                return Ok(ver);
-            }
-        }
-        Err(FarmClientError::ProgramError(ProgramError::InvalidArgument))
-    }
-
-    fn extract_name_and_version(name: &str) -> Result<(String, u16), FarmClientError> {
-        let dot_split = name.split('.').collect::<Vec<&str>>();
-        if dot_split.len() < 2 || dot_split[0].is_empty() {
-            return Err(FarmClientError::ProgramError(ProgramError::InvalidArgument));
-        }
-        let dash_split = dot_split.last().unwrap().split('-').collect::<Vec<&str>>();
-        if dash_split.len() < 2 {
-            return Err(FarmClientError::ProgramError(ProgramError::InvalidArgument));
-        }
-        let ver_string = dash_split.last().unwrap();
-        let ver = FarmClient::extract_version(ver_string)?;
-        Ok((name[..name.len() - ver_string.len() - 1].to_string(), ver))
-    }
-
     // insert version-stripped names that point to the latest version
     fn reinsert_latest_versions(
         source: &HashMap<String, Pubkey>,
@@ -4518,7 +4645,7 @@ impl FarmClient {
     ) {
         let mut latest = HashMap::<String, (String, u16)>::default();
         for (full_name, _) in source.iter() {
-            if let Ok((name_no_ver, ver)) = FarmClient::extract_name_and_version(full_name) {
+            if let Ok((name_no_ver, ver)) = FarmClient::extract_pool_name_and_version(full_name) {
                 if let Some((_, cur_ver)) = latest.get(&name_no_ver) {
                     if *cur_ver < ver {
                         latest.insert(name_no_ver, (full_name.clone(), ver));
@@ -4549,7 +4676,7 @@ impl FarmClient {
     }
 
     fn reload_funds_if_empty(&self) -> Result<bool, FarmClientError> {
-        if self.funds.borrow().is_empty() {
+        if self.funds.borrow().is_empty() || self.funds.borrow().is_updated(1) {
             let refs_map = &self.fund_refs.borrow().data;
             let refs: Vec<Pubkey> = refs_map.values().copied().collect();
             if refs.is_empty() {
@@ -4576,7 +4703,7 @@ impl FarmClient {
                 idx += 100;
             }
 
-            self.funds.borrow_mut().set(fund_map, 0);
+            self.funds.borrow_mut().set(fund_map, 1);
             Ok(true)
         } else {
             Ok(false)
@@ -4603,7 +4730,7 @@ impl FarmClient {
     }
 
     fn reload_vaults_if_empty(&self) -> Result<bool, FarmClientError> {
-        if self.vaults.borrow().is_empty() {
+        if self.vaults.borrow().is_empty() || self.vaults.borrow().is_updated(1) {
             let refs_map = &self.vault_refs.borrow().data;
             let refs: Vec<Pubkey> = refs_map.values().copied().collect();
             if refs.is_empty() {
@@ -4630,7 +4757,7 @@ impl FarmClient {
                 idx += 100;
             }
 
-            self.vaults.borrow_mut().set(vault_map, 0);
+            self.vaults.borrow_mut().set(vault_map, 1);
             Ok(true)
         } else {
             Ok(false)
@@ -4657,7 +4784,7 @@ impl FarmClient {
     }
 
     fn reload_pools_if_empty(&self) -> Result<bool, FarmClientError> {
-        if self.pools.borrow().is_empty() {
+        if self.pools.borrow().is_empty() || self.pools.borrow().is_updated(1) {
             let refs_map = &self.pool_refs.borrow().data;
             let refs: Vec<Pubkey> = refs_map.values().copied().collect();
             if refs.is_empty() {
@@ -4684,7 +4811,7 @@ impl FarmClient {
                 idx += 100;
             }
 
-            self.pools.borrow_mut().set(pool_map, 0);
+            self.pools.borrow_mut().set(pool_map, 1);
             Ok(true)
         } else {
             Ok(false)
@@ -4711,7 +4838,7 @@ impl FarmClient {
     }
 
     fn reload_farms_if_empty(&self) -> Result<bool, FarmClientError> {
-        if self.farms.borrow().is_empty() {
+        if self.farms.borrow().is_empty() || self.farms.borrow().is_updated(1) {
             let refs_map = &self.farm_refs.borrow().data;
             let refs: Vec<Pubkey> = refs_map.values().copied().collect();
             if refs.is_empty() {
@@ -4738,7 +4865,7 @@ impl FarmClient {
                 idx += 100;
             }
 
-            self.farms.borrow_mut().set(farm_map, 0);
+            self.farms.borrow_mut().set(farm_map, 1);
             Ok(true)
         } else {
             Ok(false)
@@ -4761,7 +4888,7 @@ impl FarmClient {
     }
 
     fn reload_tokens_if_empty(&self) -> Result<bool, FarmClientError> {
-        if self.tokens.borrow().is_empty() {
+        if self.tokens.borrow().is_empty() || self.tokens.borrow().is_updated(1) {
             let refs_map = &self.token_refs.borrow().data;
             let refs: Vec<Pubkey> = refs_map.values().copied().collect();
             if refs.is_empty() {
@@ -4788,7 +4915,7 @@ impl FarmClient {
                 idx += 100;
             }
 
-            self.tokens.borrow_mut().set(token_map, 0);
+            self.tokens.borrow_mut().set(token_map, 1);
             Ok(true)
         } else {
             Ok(false)
@@ -4825,43 +4952,6 @@ impl FarmClient {
 
     fn get_token_account(&self, wallet_address: &Pubkey, token: &Option<Token>) -> Option<Pubkey> {
         token.map(|token_info| get_associated_token_address(wallet_address, &token_info.mint))
-    }
-
-    fn is_liquidity_token(name: &str) -> bool {
-        name.len() > 3 && ["LP.", "VT.", "FD."].contains(&&name[..3])
-    }
-
-    fn extract_token_names(name: &str) -> Result<(String, String, String), FarmClientError> {
-        let dot_split = if FarmClient::is_liquidity_token(name) {
-            name[3..].split('.').collect::<Vec<&str>>()
-        } else {
-            name.split('.').collect::<Vec<&str>>()
-        };
-        if dot_split.len() < 2 || dot_split[0].is_empty() {
-            return Err(FarmClientError::ValueError(format!(
-                "Can't extract token names from {}",
-                name
-            )));
-        }
-        let dash_split = dot_split.last().unwrap().split('-').collect::<Vec<&str>>();
-        if dash_split.is_empty()
-            || dash_split[0].is_empty()
-            || (dash_split.len() > 1 && dash_split[1].is_empty())
-        {
-            return Err(FarmClientError::ValueError(format!(
-                "Can't extract token names from {}",
-                name
-            )));
-        }
-        Ok((
-            dot_split[0].to_string(),
-            dash_split[0].to_string(),
-            if dash_split.len() > 1 && FarmClient::extract_version(dash_split[1]).is_err() {
-                dash_split[1].to_string()
-            } else {
-                String::default()
-            },
-        ))
     }
 
     fn pool_has_reverse_tokens(pool_name: &str, token_a: &str) -> Result<bool, FarmClientError> {
@@ -5177,6 +5267,9 @@ impl FarmClient {
                     .push(self.new_instruction_create_token_account(wallet_address, &tkn.name)?);
                 if ui_amount > 0.0 {
                     if tkn.token_type == TokenType::WrappedSol {
+                        if self.get_account_balance(wallet_address)? < ui_amount {
+                            return Err(FarmClientError::InsufficientBalance(tkn.name.to_string()));
+                        }
                         let _ =
                             self.send_sol_to_wsol(wallet_address, ui_amount, instruction_vec)?;
                     } else {
@@ -5187,6 +5280,9 @@ impl FarmClient {
                 let balance = self.get_token_account_balance(wallet_address, &tkn.name)?;
                 if balance < ui_amount {
                     if tkn.token_type == TokenType::WrappedSol {
+                        if self.get_account_balance(wallet_address)? < ui_amount - balance {
+                            return Err(FarmClientError::InsufficientBalance(tkn.name.to_string()));
+                        }
                         let _ = self.send_sol_to_wsol(
                             wallet_address,
                             ui_amount - balance,
@@ -5797,14 +5893,14 @@ impl FarmClient {
         self.get_pool_price(&pool_name)
     }
 
-    fn get_protocol_stats(&self, protocol: &str) -> Result<(u32, u32, u32), FarmClientError> {
+    fn get_protocol_stats(&self, protocol: Protocol) -> Result<(u32, u32, u32), FarmClientError> {
         let pools = self.get_pools()?;
         let farms = self.get_farms()?;
         let vaults = self.get_vaults()?;
         let mut pools_num = 0u32;
         let mut farms_num = 0u32;
         let mut vaults_num = 0u32;
-        let protocol = protocol.to_string() + ".";
+        let protocol = protocol.id().to_string() + ".";
         for name in pools.keys() {
             if name.starts_with(&protocol) {
                 pools_num += 1;
@@ -5829,7 +5925,7 @@ mod farm_accounts_raydium;
 mod farm_accounts_saber;
 mod farm_instructions;
 mod fund_instructions;
-mod fund_instructions_raydium;
+mod fund_instructions_pools;
 mod governance_instructions;
 mod main_router_instructions;
 mod pool_accounts_orca;
@@ -5838,11 +5934,13 @@ mod pool_accounts_saber;
 mod pool_instructions;
 mod system_instructions;
 mod vault_instructions;
+mod vault_stc_accounts_orca;
 mod vault_stc_accounts_raydium;
 mod vault_stc_accounts_saber;
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use solana_farm_sdk::string::{str_to_as64, ArrayString64};
 
     #[test]
@@ -5856,5 +5954,88 @@ mod test {
             ),
             Err(_)
         ));
+    }
+
+    #[test]
+    fn test_extract_pool_version() {
+        assert_eq!(FarmClient::extract_pool_version("RDM.V-V3").unwrap(), 3);
+        assert_eq!(FarmClient::extract_pool_version("V-V3").unwrap(), 3);
+        assert_eq!(FarmClient::extract_pool_version("RDM.V-V-V3").unwrap(), 3);
+        assert!(FarmClient::extract_pool_version("RDM.V-3").is_err());
+        assert!(FarmClient::extract_pool_version("RDM.V-V03").is_err());
+        assert!(FarmClient::extract_pool_version("RDM.V-V").is_err());
+        assert!(FarmClient::extract_pool_version("RDM.V-VV").is_err());
+        assert!(FarmClient::extract_pool_version("RDM.V3").is_err());
+        assert!(FarmClient::extract_pool_version("-V3").is_err());
+        assert!(FarmClient::extract_pool_version("V3").is_err());
+        assert!(FarmClient::extract_pool_version("3").is_err());
+    }
+
+    #[test]
+    fn test_extract_pool_name_and_version() {
+        assert_eq!(
+            FarmClient::extract_pool_name_and_version("RDM.Q-V-V3").unwrap(),
+            ("RDM.Q-V".to_string(), 3)
+        );
+        assert_eq!(
+            FarmClient::extract_pool_name_and_version("RDM.Q-V1-V3").unwrap(),
+            ("RDM.Q-V1".to_string(), 3)
+        );
+        assert_eq!(
+            FarmClient::extract_pool_name_and_version("RDM.Q-W-V-V3").unwrap(),
+            ("RDM.Q-W-V".to_string(), 3)
+        );
+        assert_eq!(
+            FarmClient::extract_pool_name_and_version("LP.RDM.V-V3").unwrap(),
+            ("RDM.V".to_string(), 3)
+        );
+        assert_eq!(
+            FarmClient::extract_pool_name_and_version("RDM.V-V3").unwrap(),
+            ("RDM.V".to_string(), 3)
+        );
+    }
+
+    #[test]
+    fn test_extract_token_names() {
+        assert_eq!(
+            FarmClient::extract_token_names("RDM.Q-V-V3").unwrap(),
+            (Protocol::Raydium, "Q".to_string(), "V".to_string())
+        );
+        assert_eq!(
+            FarmClient::extract_token_names("RDM.Q-V1-V3").unwrap(),
+            (Protocol::Raydium, "Q".to_string(), "V1".to_string())
+        );
+        assert_eq!(
+            FarmClient::extract_token_names("RDM.Q-W-V-V3").unwrap(),
+            (Protocol::Raydium, "Q".to_string(), "W".to_string())
+        );
+        assert_eq!(
+            FarmClient::extract_token_names("RDM.RAY-V3").unwrap(),
+            (Protocol::Raydium, "RAY".to_string(), String::default())
+        );
+        assert_eq!(
+            FarmClient::extract_token_names("LP.RDM.Q-V-V3").unwrap(),
+            (Protocol::Raydium, "Q".to_string(), "V".to_string())
+        );
+        assert_eq!(
+            FarmClient::extract_token_names("LP.RDM.Q-W-V-V3").unwrap(),
+            (Protocol::Raydium, "Q".to_string(), "W".to_string())
+        );
+        assert_eq!(
+            FarmClient::extract_token_names("LP.RDM.RAY-V3").unwrap(),
+            (Protocol::Raydium, "RAY".to_string(), String::default())
+        );
+        assert_eq!(
+            FarmClient::extract_token_names("RDM.Q-V").unwrap(),
+            (Protocol::Raydium, "Q".to_string(), "V".to_string())
+        );
+        assert_eq!(
+            FarmClient::extract_token_names("RDM.Q").unwrap(),
+            (Protocol::Raydium, "Q".to_string(), String::default())
+        );
+        assert_eq!(
+            FarmClient::extract_token_names("LP.RDM.Q-V").unwrap(),
+            (Protocol::Raydium, "Q".to_string(), "V".to_string())
+        );
     }
 }

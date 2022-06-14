@@ -141,7 +141,7 @@ pub fn crank3(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
         // one of the amounts can come out over the balance because ratios didn't reflect
         // deposited volume, while get_pool_deposit_amounts does include it.
         // in this case we just flip the side.
-        let (lp_token_amount, max_token_a_deposit_amount, max_token_b_deposit_amount) =
+        let (min_lp_token_amount, max_token_a_deposit_amount, max_token_b_deposit_amount) =
             if max_token_b_deposit_amount > token_b_balance {
                 raydium::get_pool_deposit_amounts(
                     pool_coin_token_account,
@@ -163,21 +163,26 @@ pub fn crank3(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
                     0,
                 )?
             } else {
-                (raydium::estimate_lp_tokens_amount(
-                lp_token_mint,
-                max_token_a_deposit_amount,
-                max_token_b_deposit_amount,
-                pool_coin_balance,
-                pool_pc_balance)?, max_token_a_deposit_amount, max_token_b_deposit_amount)
+                (
+                    raydium::estimate_lp_tokens_amount(
+                        lp_token_mint,
+                        max_token_a_deposit_amount,
+                        max_token_b_deposit_amount,
+                        pool_coin_balance,
+                        pool_pc_balance,
+                    )?,
+                    max_token_a_deposit_amount,
+                    max_token_b_deposit_amount,
+                )
             };
 
-        msg!("Deposit tokens into the pool. lp_token_amount: {}, max_token_a_deposit_amount: {}, max_token_b_deposit_amount: {}",
-                        lp_token_amount,
+        msg!("Deposit tokens into the pool. min_lp_token_amount: {}, max_token_a_deposit_amount: {}, max_token_b_deposit_amount: {}",
+                        min_lp_token_amount,
                         max_token_a_deposit_amount,
                         max_token_b_deposit_amount);
         if max_token_a_deposit_amount == 0
             || max_token_b_deposit_amount == 0
-            || lp_token_amount < 2
+            || min_lp_token_amount < 2
         {
             msg!("Nothing to do: Tokens balance is not large enough");
             return Ok(());
@@ -219,8 +224,11 @@ pub fn crank3(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
 
         // Stake LP tokens
         let dual_rewards = *farm_second_reward_token_account.key != zero::id();
-        let lp_tokens_received =
-            account::check_tokens_received(lp_token_custody, lp_token_balance, lp_token_amount)?;
+        let lp_tokens_received = account::check_tokens_received(
+            lp_token_custody,
+            lp_token_balance,
+            min_lp_token_amount,
+        )?;
         msg!(
             "Stake LP tokens. tokens_a_spent: {}, tokens_b_spent: {}, lp_tokens_received: {}",
             tokens_a_spent,

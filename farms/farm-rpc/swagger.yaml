@@ -13,6 +13,23 @@ paths:
       responses:
         default:
           description: Json object or error string
+  /api/v1/admins:
+    get:
+      description: "Returns current admin signers for the Main Router"
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/program_admins:
+    get:
+      description: "Returns program upgrade signers"
+      parameters:
+        - name: program_id
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
   /api/v1/git_token:
     get:
       description: "Returns Token metadata from Github"
@@ -429,11 +446,22 @@ paths:
       responses:
         default:
           description: Json object or error string
-  /api/v1/get_token_with_mint:
+  /api/v1/token_with_mint:
     get:
       description: "Returns the Token metadata for the specified mint"
       parameters:
         - name: token_mint
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/token_with_account:
+    get:
+      description: "Returns the Token metadata for the specified token account"
+      parameters:
+        - name: token_account
           in: query
           schema:
             type: string
@@ -490,201 +518,11 @@ paths:
       responses:
         default:
           description: Json object or error string
-  /api/v1/create_system_account:
-    post:
-      description: "Creates a new system account"
+  /api/v1/managed_funds:
+    get:
+      description: "Returns all Funds managed by the given address"
       parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: new_account_keypair
-          in: query
-          schema:
-            type: string
-        - name: lamports
-          in: query
-          schema:
-            type: string
-        - name: space
-          in: query
-          schema:
-            type: string
-        - name: owner
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/create_system_account_with_seed:
-    post:
-      description: "Creates a new system account with seed"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: base_address
-          in: query
-          schema:
-            type: string
-        - name: seed
-          in: query
-          schema:
-            type: string
-        - name: lamports
-          in: query
-          schema:
-            type: string
-        - name: space
-          in: query
-          schema:
-            type: string
-        - name: owner
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/assign_system_account:
-    post:
-      description: "Assigns system account to a program"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: program_address
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/close_system_account:
-    post:
-      description: "Closes existing system account"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: target_account_keypair
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/transfer:
-    post:
-      description: "Transfers native SOL from the wallet to the destination"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: destination_wallet
-          in: query
-          schema:
-            type: string
-        - name: sol_ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/token_transfer:
-    post:
-      description: "Transfers tokens from the wallet to the destination"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: token_name
-          in: query
-          schema:
-            type: string
-        - name: destination_wallet
-          in: query
-          schema:
-            type: string
-        - name: ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/wrap_sol:
-    post:
-      description: "Transfers native SOL from the wallet to the associated Wrapped SOL account"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/unwrap_sol:
-    post:
-      description: "Transfers Wrapped SOL back to SOL by closing the associated Wrapped SOL account"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/sync_token_balance:
-    post:
-      description: "Updates token balance of the account, usefull after transfer SOL to WSOL account"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: token_name
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/create_token_account:
-    post:
-      description: "Returns the associated token account for the given user's main account or creates one"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: token_name
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/close_token_account:
-    post:
-      description: "Closes existing token account associated with the given user's main account"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: token_name
+        - name: wallet_address
           in: query
           schema:
             type: string
@@ -795,6 +633,17 @@ paths:
       responses:
         default:
           description: Json object or error string
+  /api/v1/fund_admins:
+    get:
+      description: "Returns current admin signers for the Fund"
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
   /api/v1/fund_user_info:
     get:
       description: "Returns user stats for specific Fund"
@@ -807,7 +656,44 @@ paths:
           in: query
           schema:
             type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/all_fund_user_infos:
+    get:
+      description: "Returns user stats for all Funds"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/fund_user_requests:
+    get:
+      description: "Returns user requests for specific Fund and token"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
         - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/all_fund_user_requests:
+    get:
+      description: "Returns user requests for all tokens accepted by the Fund"
+      parameters:
+        - name: fund_name
           in: query
           schema:
             type: string
@@ -949,6 +835,17 @@ paths:
       responses:
         default:
           description: Json object or error string
+  /api/v1/vault_admins:
+    get:
+      description: "Returns current admin signers for the Vault"
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
   /api/v1/vault_user_info:
     get:
       description: "Returns user stats for specific Vault"
@@ -991,717 +888,6 @@ paths:
       description: "Returns number of decimal digits of the Vault token"
       parameters:
         - name: pool_name
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/user_init_vault:
-    post:
-      description: "Initializes a new User for the Vault"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: vault_name
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/add_liquidity_vault:
-    post:
-      description: "Adds liquidity to the Vault"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: vault_name
-          in: query
-          schema:
-            type: string
-        - name: max_token_a_ui_amount
-          in: query
-          schema:
-            type: string
-        - name: max_token_b_ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/add_locked_liquidity_vault:
-    post:
-      description: "Adds locked liquidity to the Vault"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: vault_name
-          in: query
-          schema:
-            type: string
-        - name: ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/remove_liquidity_vault:
-    post:
-      description: "Removes liquidity from the Vault"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: vault_name
-          in: query
-          schema:
-            type: string
-        - name: ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/remove_unlocked_liquidity_vault:
-    post:
-      description: "Removes unlocked liquidity from the Vault"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: vault_name
-          in: query
-          schema:
-            type: string
-        - name: ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/add_liquidity_pool:
-    post:
-      description: "Adds liquidity to the Pool"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: pool_name
-          in: query
-          schema:
-            type: string
-        - name: max_token_a_ui_amount
-          in: query
-          schema:
-            type: string
-        - name: max_token_b_ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/remove_liquidity_pool:
-    post:
-      description: "Removes liquidity from the Pool"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: pool_name
-          in: query
-          schema:
-            type: string
-        - name: ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/swap:
-    post:
-      description: "Swaps tokens"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: protocol
-          in: query
-          schema:
-            type: string
-        - name: from_token
-          in: query
-          schema:
-            type: string
-        - name: to_token
-          in: query
-          schema:
-            type: string
-        - name: ui_amount_in
-          in: query
-          schema:
-            type: string
-        - name: min_ui_amount_out
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/user_init:
-    post:
-      description: "Initializes a new User for the Farm"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: farm_name
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/stake:
-    post:
-      description: "Stakes tokens to the Farm"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: farm_name
-          in: query
-          schema:
-            type: string
-        - name: ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/unstake:
-    post:
-      description: "Unstakes tokens from the Farm"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: farm_name
-          in: query
-          schema:
-            type: string
-        - name: ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/harvest:
-    post:
-      description: "Harvests rewards from the Farm"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: farm_name
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/crank_vault:
-    post:
-      description: "Cranks single Vault"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: vault_name
-          in: query
-          schema:
-            type: string
-        - name: step
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/crank_vaults:
-    post:
-      description: "Cranks all Vaults"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: step
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/reset_cache:
-    post:
-      description: "Clears cache records to force re-pull from blockchain"
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/user_init_fund:
-    post:
-      description: "Initializes a new User for the Fund"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: token_name
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/request_deposit_fund:
-    post:
-      description: "Requests a new deposit to the Fund"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: token_name
-          in: query
-          schema:
-            type: string
-        - name: ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/cancel_deposit_fund:
-    post:
-      description: "Cancels pending deposit to the Fund"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: token_name
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/request_withdrawal_fund:
-    post:
-      description: "Requests a new withdrawal from the Fund"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: token_name
-          in: query
-          schema:
-            type: string
-        - name: ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/cancel_withdrawal_fund:
-    post:
-      description: "Cancels pending deposit to the Fund"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: token_name
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/start_liquidation_fund:
-    post:
-      description: "Starts the Fund liquidation"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/update_fund_assets_with_custody:
-    post:
-      description: "Update Fund assets info based on custody holdings"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: custody_id
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/update_fund_assets_with_custodies:
-    post:
-      description: "Update Fund assets info based on all custodies"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/update_fund_assets_with_vault:
-    post:
-      description: "Update Fund assets info based on Vault holdings"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: vault_id
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/update_fund_assets_with_vaults:
-    post:
-      description: "Update Fund assets info based on Vault holdings"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/fund_add_liquidity_pool:
-    post:
-      description: "Adds liquidity to the Pool in the Fund"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: pool_name
-          in: query
-          schema:
-            type: string
-        - name: max_token_a_ui_amount
-          in: query
-          schema:
-            type: string
-        - name: max_token_b_ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/fund_remove_liquidity_pool:
-    post:
-      description: "Removes liquidity from the Pool in the Fund"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: pool_name
-          in: query
-          schema:
-            type: string
-        - name: ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/fund_user_init_farm:
-    post:
-      description: "Initializes a new User for the Farm in the Fund"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: farm_name
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/fund_stake:
-    post:
-      description: "Stakes tokens to the Farm in the Fund"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: farm_name
-          in: query
-          schema:
-            type: string
-        - name: ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/fund_unstake:
-    post:
-      description: "Unstakes tokens from the Farm in the Fund"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: farm_name
-          in: query
-          schema:
-            type: string
-        - name: ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/fund_harvest:
-    post:
-      description: "Harvests rewards from the Farm in the Fund"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: farm_name
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/fund_user_init_vault:
-    post:
-      description: "Initializes a new User for the Vault in the Fund"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: vault_name
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/fund_add_liquidity_vault:
-    post:
-      description: "Adds liquidity to the Vault in the Fund"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: vault_name
-          in: query
-          schema:
-            type: string
-        - name: max_token_a_ui_amount
-          in: query
-          schema:
-            type: string
-        - name: max_token_b_ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/fund_add_locked_liquidity_vault:
-    post:
-      description: "Adds locked liquidity to the Vault in the Fund"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: vault_name
-          in: query
-          schema:
-            type: string
-        - name: ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/fund_remove_liquidity_vault:
-    post:
-      description: "Removes liquidity from the Vault in the Fund"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: vault_name
-          in: query
-          schema:
-            type: string
-        - name: ui_amount
-          in: query
-          schema:
-            type: string
-      responses:
-        default:
-          description: Json object or error string
-  /api/v1/fund_remove_unlocked_liquidity_vault:
-    post:
-      description: "Removes unlocked liquidity from the Vault in the Fund"
-      parameters:
-        - name: wallet_keypair
-          in: query
-          schema:
-            type: string
-        - name: fund_name
-          in: query
-          schema:
-            type: string
-        - name: vault_name
-          in: query
-          schema:
-            type: string
-        - name: ui_amount
           in: query
           schema:
             type: string
@@ -2287,6 +1473,268 @@ paths:
       responses:
         default:
           description: Json object or error string
+  /api/v1/new_instruction_set_fund_deposit_schedule:
+    get:
+      description: "Returns a new set deposit schedule Instruction"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          schema:
+            type: string
+        - name: end_time
+          in: query
+          schema:
+            type: string
+        - name: approval_required
+          in: query
+          schema:
+            type: string
+        - name: min_amount_usd
+          in: query
+          schema:
+            type: string
+        - name: max_amount_usd
+          in: query
+          schema:
+            type: string
+        - name: fee
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_disable_deposits_fund:
+    get:
+      description: "Returns a new Instruction for disabling deposits to the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_approve_deposit_fund:
+    get:
+      description: "Returns a new Instruction for approving deposit to the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: user_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_deny_deposit_fund:
+    get:
+      description: "Returns a new Instruction for denying deposit to the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: user_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: deny_reason
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_set_fund_withdrawal_schedule:
+    get:
+      description: "Returns a new set withdrawal schedule Instruction"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          schema:
+            type: string
+        - name: end_time
+          in: query
+          schema:
+            type: string
+        - name: approval_required
+          in: query
+          schema:
+            type: string
+        - name: min_amount_usd
+          in: query
+          schema:
+            type: string
+        - name: max_amount_usd
+          in: query
+          schema:
+            type: string
+        - name: fee
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_disable_withdrawals_fund:
+    get:
+      description: "Returns a new Instruction for disabling withdrawals from the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_approve_withdrawal_fund:
+    get:
+      description: "Returns a new Instruction for approving withdrawal from the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: user_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_deny_withdrawal_fund:
+    get:
+      description: "Returns a new Instruction for denying withdrawal from the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: user_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: deny_reason
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_lock_assets_fund:
+    get:
+      description: "Returns a new Instruction for moving deposited assets to the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_unlock_assets_fund:
+    get:
+      description: "Returns a new Instruction for releasing assets from the Fund to Deposit/Withdraw custody"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
   /api/v1/new_instruction_update_fund_assets_with_custody:
     get:
       description: "Returns a new Instruction for updating Fund assets based on custody holdings"
@@ -2319,6 +1767,41 @@ paths:
           schema:
             type: string
         - name: vault_id
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_fund_swap:
+    get:
+      description: "Returns a new Instruction for tokens swap in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: protocol
+          in: query
+          schema:
+            type: string
+        - name: from_token
+          in: query
+          schema:
+            type: string
+        - name: to_token
+          in: query
+          schema:
+            type: string
+        - name: ui_amount_in
+          in: query
+          schema:
+            type: string
+        - name: min_ui_amount_out
           in: query
           schema:
             type: string
@@ -2875,6 +2358,41 @@ paths:
       responses:
         default:
           description: Json object or error string
+  /api/v1/all_instructions_fund_swap:
+    get:
+      description: "Returns a new complete set of Instructions for swapping tokens in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: protocol
+          in: query
+          schema:
+            type: string
+        - name: from_token
+          in: query
+          schema:
+            type: string
+        - name: to_token
+          in: query
+          schema:
+            type: string
+        - name: ui_amount_in
+          in: query
+          schema:
+            type: string
+        - name: min_ui_amount_out
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
   /api/v1/all_instructions_fund_add_liquidity_pool:
     get:
       description: "Returns a new complete set of Instructions for adding liquidity to the Pool in the Fund"
@@ -3068,6 +2586,1215 @@ paths:
       description: "Returns a new complete set of Instructions for removing unlocked liquidity from the Vault in the Fund"
       parameters:
         - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/create_system_account:
+    post:
+      description: "Creates a new system account"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: new_account_keypair
+          in: query
+          schema:
+            type: string
+        - name: lamports
+          in: query
+          schema:
+            type: string
+        - name: space
+          in: query
+          schema:
+            type: string
+        - name: owner
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/create_system_account_with_seed:
+    post:
+      description: "Creates a new system account with seed"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: base_address
+          in: query
+          schema:
+            type: string
+        - name: seed
+          in: query
+          schema:
+            type: string
+        - name: lamports
+          in: query
+          schema:
+            type: string
+        - name: space
+          in: query
+          schema:
+            type: string
+        - name: owner
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/assign_system_account:
+    post:
+      description: "Assigns system account to a program"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: program_address
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/close_system_account:
+    post:
+      description: "Closes existing system account"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: target_account_keypair
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/transfer:
+    post:
+      description: "Transfers native SOL from the wallet to the destination"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: destination_wallet
+          in: query
+          schema:
+            type: string
+        - name: sol_ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/token_transfer:
+    post:
+      description: "Transfers tokens from the wallet to the destination"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: destination_wallet
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/wrap_sol:
+    post:
+      description: "Transfers native SOL from the wallet to the associated Wrapped SOL account"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/unwrap_sol:
+    post:
+      description: "Transfers Wrapped SOL back to SOL by closing the associated Wrapped SOL account"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/sync_token_balance:
+    post:
+      description: "Updates token balance of the account, usefull after transfer SOL to WSOL account"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/create_token_account:
+    post:
+      description: "Returns the associated token account for the given user's main account or creates one"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/close_token_account:
+    post:
+      description: "Closes existing token account associated with the given user's main account"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/user_init_vault:
+    post:
+      description: "Initializes a new User for the Vault"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/add_liquidity_vault:
+    post:
+      description: "Adds liquidity to the Vault"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: string
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/add_locked_liquidity_vault:
+    post:
+      description: "Adds locked liquidity to the Vault"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/remove_liquidity_vault:
+    post:
+      description: "Removes liquidity from the Vault"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/remove_unlocked_liquidity_vault:
+    post:
+      description: "Removes unlocked liquidity from the Vault"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/add_liquidity_pool:
+    post:
+      description: "Adds liquidity to the Pool"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: string
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/remove_liquidity_pool:
+    post:
+      description: "Removes liquidity from the Pool"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/swap:
+    post:
+      description: "Swaps tokens"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: protocol
+          in: query
+          schema:
+            type: string
+        - name: from_token
+          in: query
+          schema:
+            type: string
+        - name: to_token
+          in: query
+          schema:
+            type: string
+        - name: ui_amount_in
+          in: query
+          schema:
+            type: string
+        - name: min_ui_amount_out
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/user_init:
+    post:
+      description: "Initializes a new User for the Farm"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/stake:
+    post:
+      description: "Stakes tokens to the Farm"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/unstake:
+    post:
+      description: "Unstakes tokens from the Farm"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/harvest:
+    post:
+      description: "Harvests rewards from the Farm"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/crank_vault:
+    post:
+      description: "Cranks single Vault"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: step
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/crank_vaults:
+    post:
+      description: "Cranks all Vaults"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: step
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/reset_cache:
+    post:
+      description: "Clears cache records to force re-pull from blockchain"
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/user_init_fund:
+    post:
+      description: "Initializes a new User for the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/request_deposit_fund:
+    post:
+      description: "Requests a new deposit to the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/cancel_deposit_fund:
+    post:
+      description: "Cancels pending deposit to the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/request_withdrawal_fund:
+    post:
+      description: "Requests a new withdrawal from the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/cancel_withdrawal_fund:
+    post:
+      description: "Cancels pending deposit to the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/start_liquidation_fund:
+    post:
+      description: "Starts the Fund liquidation"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/set_fund_deposit_schedule:
+    post:
+      description: "Sets a new deposit schedule for the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          schema:
+            type: string
+        - name: end_time
+          in: query
+          schema:
+            type: string
+        - name: approval_required
+          in: query
+          schema:
+            type: string
+        - name: min_amount_usd
+          in: query
+          schema:
+            type: string
+        - name: max_amount_usd
+          in: query
+          schema:
+            type: string
+        - name: fee
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/disable_deposits_fund:
+    post:
+      description: "Disables deposits to the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/approve_deposit_fund:
+    post:
+      description: "Approves pending deposit to the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: user_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/deny_deposit_fund:
+    post:
+      description: "Denies pending deposit to the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: user_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: deny_reason
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/set_fund_withdrawal_schedule:
+    post:
+      description: "Sets a new withdrawal schedule for the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          schema:
+            type: string
+        - name: end_time
+          in: query
+          schema:
+            type: string
+        - name: approval_required
+          in: query
+          schema:
+            type: string
+        - name: min_amount_usd
+          in: query
+          schema:
+            type: string
+        - name: max_amount_usd
+          in: query
+          schema:
+            type: string
+        - name: fee
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/disable_withdrawals_fund:
+    post:
+      description: "Disables withdrawals from the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/approve_withdrawal_fund:
+    post:
+      description: "Approves pending withdrawal from the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: user_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/deny_withdrawal_fund:
+    post:
+      description: "Denies pending withdrawal from the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: user_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: deny_reason
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/lock_assets_fund:
+    post:
+      description: "Moves deposited assets from Deposit/Withdraw custody to the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/unlock_assets_fund:
+    post:
+      description: "Releases assets from the Fund to Deposit/Withdraw custody"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/update_fund_assets_with_custody:
+    post:
+      description: "Update Fund assets info based on custody holdings"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: custody_id
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/update_fund_assets_with_custodies:
+    post:
+      description: "Update Fund assets info based on all custodies"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/update_fund_assets_with_vault:
+    post:
+      description: "Update Fund assets info based on Vault holdings"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_id
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/update_fund_assets_with_vaults:
+    post:
+      description: "Update Fund assets info based on Vault holdings"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/fund_swap:
+    post:
+      description: "Swaps tokens in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: protocol
+          in: query
+          schema:
+            type: string
+        - name: from_token
+          in: query
+          schema:
+            type: string
+        - name: to_token
+          in: query
+          schema:
+            type: string
+        - name: ui_amount_in
+          in: query
+          schema:
+            type: string
+        - name: min_ui_amount_out
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/fund_add_liquidity_pool:
+    post:
+      description: "Adds liquidity to the Pool in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: string
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/fund_remove_liquidity_pool:
+    post:
+      description: "Removes liquidity from the Pool in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/fund_user_init_farm:
+    post:
+      description: "Initializes a new User for the Farm in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/fund_stake:
+    post:
+      description: "Stakes tokens to the Farm in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/fund_unstake:
+    post:
+      description: "Unstakes tokens from the Farm in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/fund_harvest:
+    post:
+      description: "Harvests rewards from the Farm in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/fund_user_init_vault:
+    post:
+      description: "Initializes a new User for the Vault in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/fund_add_liquidity_vault:
+    post:
+      description: "Adds liquidity to the Vault in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: string
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/fund_add_locked_liquidity_vault:
+    post:
+      description: "Adds locked liquidity to the Vault in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/fund_remove_liquidity_vault:
+    post:
+      description: "Removes liquidity from the Vault in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/fund_remove_unlocked_liquidity_vault:
+    post:
+      description: "Removes unlocked liquidity from the Vault in the Fund"
+      parameters:
+        - name: wallet_keypair
           in: query
           schema:
             type: string

@@ -7,7 +7,7 @@ use {
             Fund, FundAssetType, FundAssets, FundCustody, FundCustodyType, FundUserRequests,
             FundVault, FundVaultType, DISCRIMINATOR_FUND_CUSTODY, DISCRIMINATOR_FUND_VAULT,
         },
-        id::main_router,
+        id::{main_router, zero},
         math,
         program::{account, clock},
         token::Token,
@@ -66,7 +66,7 @@ pub fn check_wd_custody_accounts<'a, 'b>(
         || custody.custody_type != FundCustodyType::DepositWithdraw
         || &custody.address != custody_account.key
         || &custody.fees_address != custody_fees_account.key
-        || &custody_token.oracle_account != oracle_account.key
+        || &custody_token.oracle_account.unwrap_or_else(zero::id) != oracle_account.key
     {
         msg!("Error: Invalid custody accounts");
         Err(ProgramError::Custom(504))

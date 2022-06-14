@@ -1,14 +1,14 @@
+use std::str::FromStr;
 use {
     log::info,
     solana_farm_client::{client::FarmClient, error::FarmClientError},
     solana_farm_sdk::{
         farm::{FarmRoute, FarmType},
         fund::{Fund, FundType},
-        id::zero,
         pool::PoolRoute,
-        program::pda::find_target_pda,
-        refdb::StorageType,
-        string::{str_to_as64, ArrayString64},
+        refdb,
+        refdb::{find_target_pda, StorageType},
+        string::str_to_as64,
         token::{OracleType, Token, TokenType},
         vault::{Vault, VaultStrategy, VaultType},
     },
@@ -36,6 +36,16 @@ pub fn init_fund(
         fund_name
     };
 
+    client
+        .add_program_id(
+            admin_keypair,
+            "FarmFund",
+            &Pubkey::from_str("EmpaFV97uaRPXwWcq8iaHMMTCx7oWkrMSsTcRFJKXHmy").unwrap(),
+            solana_farm_sdk::ProgramIDType::Fund,
+            None,
+        )
+        .unwrap();
+
     let fund_address = client.get_program_id("FarmFund")?;
 
     if client.get_token(fund_token_name).is_err() {
@@ -54,7 +64,8 @@ pub fn init_fund(
             )
             .0,
             oracle_type: OracleType::Unsupported,
-            oracle_account: zero::id(),
+            oracle_account: None,
+            description_account: refdb::find_description_pda(StorageType::Token, fund_token_name).0,
         };
 
         info!("Recording token {}", fund_token_name);
@@ -65,7 +76,6 @@ pub fn init_fund(
         let last_index = client.get_refdb_last_index(&StorageType::Fund.to_string())?;
         let fund = Fund {
             name: str_to_as64(fund_name).unwrap(),
-            description: ArrayString64::default(),
             version: 1,
             fund_type: FundType::General,
             official: true,
@@ -119,6 +129,11 @@ pub fn init_fund(
                 &fund_address,
             )
             .0,
+            description_account: Pubkey::find_program_address(
+                &[b"description_account", fund_name.as_bytes()],
+                &fund_address,
+            )
+            .0,
         };
 
         info!("Recording Fund {}", fund_name);
@@ -156,7 +171,9 @@ pub fn init_vault(
             )
             .0,
             oracle_type: OracleType::Unsupported,
-            oracle_account: zero::id(),
+            oracle_account: None,
+            description_account: refdb::find_description_pda(StorageType::Token, vault_token_name)
+                .0,
         };
 
         info!("Recording token {}", vault_token_name);
@@ -302,6 +319,9 @@ pub fn init_vault(
                     )
                     .0
                 },
+                vault_stake_custody: None,
+                reward_exchange_pool_id: None,
+                reward_exchange_pool_ref: None,
             },
         };
 

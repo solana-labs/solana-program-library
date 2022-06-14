@@ -10,6 +10,7 @@ pub mod disable_deposits;
 pub mod disable_withdrawals;
 pub mod init;
 pub mod lock_assets;
+pub mod orca;
 pub mod raydium;
 pub mod remove_custody;
 pub mod remove_multisig;

@@ -528,8 +528,8 @@ pub fn close_system_account<'a, 'b>(
     let cur_balance = target_account.try_lamports()?;
     transfer_sol_from_owned(target_account, receiving_account, cur_balance)?;
 
-    if target_account.data_len() > 1000 {
-        target_account.try_borrow_mut_data()?[..1000].fill(0);
+    if target_account.data_len() > 2000 {
+        target_account.try_borrow_mut_data()?[..2000].fill(0);
     } else {
         target_account.try_borrow_mut_data()?.fill(0);
     }

@@ -36,9 +36,6 @@ impl FarmClient {
             amm_authority,
             amm_open_orders,
             amm_target,
-            pool_withdraw_queue: _,
-            pool_temp_lp_token_account: _,
-            serum_program_id: _,
             serum_market,
             ..
         } = pool.route

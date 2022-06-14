@@ -18,7 +18,7 @@ pub fn do_swap(client: &FarmClient, keypair: &Keypair, swap: &Swap) {
     } else {
         swap.amount
     };
-    if amount < 0.0001 {
+    if amount < 0.0002 {
         return;
     }
     println!(
@@ -30,7 +30,9 @@ pub fn do_swap(client: &FarmClient, keypair: &Keypair, swap: &Swap) {
         client
             .swap(
                 keypair,
-                swap.protocol,
+                swap.protocol
+                    .parse()
+                    .expect("Failed to parse protocol argument"),
                 swap.from_token,
                 swap.to_token,
                 amount,

@@ -44,6 +44,10 @@ impl AddLiquidity for VaultInstruction {
             if !user_account.is_signer {
                 return Err(ProgramError::MissingRequiredSignature);
             }
+            if !account::check_token_account_owner(user_lp_token_account, user_account.key)? {
+                msg!("Error: Invalid token account owner");
+                return Err(ProgramError::IllegalOwner);
+            }
             if let VaultStrategy::StakeLpCompoundRewards {
                 pool_id: pool_id_key,
                 lp_token_custody: lp_token_custody_key,
@@ -79,6 +83,12 @@ impl AddLiquidity for VaultInstruction {
             let initial_token_b_user_balance = account::get_token_balance(user_token_b_account)?;
             let initial_lp_user_balance = account::get_token_balance(user_lp_token_account)?;
 
+            // Deposit tokens into the pool
+            msg!("Deposit tokens into the pool. max_token_a_amount: {}, max_token_b_amount: {}", max_token_a_amount, max_token_b_amount);
+            if max_token_a_amount == 0 && max_token_b_amount == 0 {
+                msg!("Error: Zero deposit amount");
+                return Err(ProgramError::InsufficientFunds);
+            }
             saber::add_liquidity(
                 &[
                     user_account.clone(),

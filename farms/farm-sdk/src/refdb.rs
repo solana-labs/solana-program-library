@@ -3,10 +3,8 @@
 use {
     crate::{
         error::FarmError,
-        pack::{
-            as64_deserialize, as64_serialize, check_data_len, pack_array_string64,
-            unpack_array_string64,
-        },
+        id::{main_router, main_router_admin},
+        pack::*,
         string::ArrayString64,
         traits::*,
     },
@@ -23,6 +21,56 @@ use {
 /// Off-chain is required for accounts with data size > 10K.
 /// This is temporary solution until realloc is implemented.
 pub const REFDB_ONCHAIN_INIT: bool = false;
+
+/// Derives the RefDB storage address and the bump seed for the given string
+pub fn find_refdb_pda(refdb_name: &str) -> (Pubkey, u8) {
+    if REFDB_ONCHAIN_INIT {
+        Pubkey::find_program_address(&[refdb_name.as_bytes()], &main_router::id())
+    } else {
+        (
+            Pubkey::create_with_seed(&main_router_admin::id(), refdb_name, &main_router::id())
+                .unwrap(),
+            0,
+        )
+    }
+}
+
+/// Derives the target metadata object address for the given storage type and object name
+pub fn find_target_pda(storage_type: StorageType, target_name: &str) -> (Pubkey, u8) {
+    Pubkey::find_program_address(
+        &[storage_type.to_string().as_bytes(), target_name.as_bytes()],
+        &main_router::id(),
+    )
+}
+
+/// Returns the target metadata object address for the given storage type, object name, and bump
+pub fn find_target_pda_with_bump(
+    storage_type: StorageType,
+    target_name: &str,
+    bump: u8,
+) -> Result<Pubkey, ProgramError> {
+    Pubkey::create_program_address(
+        &[
+            storage_type.to_string().as_bytes(),
+            target_name.as_bytes(),
+            &[bump],
+        ],
+        &main_router::id(),
+    )
+    .map_err(|_| ProgramError::InvalidSeeds)
+}
+
+/// Derives the description metadata object address for the given storage type and object name
+pub fn find_description_pda(storage_type: StorageType, target_name: &str) -> (Pubkey, u8) {
+    Pubkey::find_program_address(
+        &[
+            storage_type.to_string().as_bytes(),
+            target_name.as_bytes(),
+            b"description",
+        ],
+        &main_router::id(),
+    )
+}
 
 /// Storage Header, one per account
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
@@ -181,9 +229,9 @@ impl StorageType {
         match storage_type {
             StorageType::Program => 25000usize,
             StorageType::Fund => 10000usize,
-            StorageType::Vault => 25000usize,
+            StorageType::Vault => 50000usize,
             StorageType::Pool => 50000usize,
-            StorageType::Farm => 25000usize,
+            StorageType::Farm => 50000usize,
             StorageType::Token => 500000usize,
             _ => 0usize,
         }

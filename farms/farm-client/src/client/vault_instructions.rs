@@ -37,7 +37,9 @@ impl FarmClient {
                     PoolRoute::Saber { .. } => {
                         self.get_stc_user_init_accounts_saber(wallet_address, vault_name)
                     }
-                    _ => unreachable!(),
+                    PoolRoute::Orca { .. } => {
+                        self.get_stc_user_init_accounts_orca(wallet_address, vault_name)
+                    }
                 }
             }
             _ => {
@@ -80,7 +82,12 @@ impl FarmClient {
                         max_token_a_ui_amount,
                         max_token_b_ui_amount,
                     ),
-                    _ => unreachable!(),
+                    PoolRoute::Orca { .. } => self.get_stc_add_liquidity_accounts_orca(
+                        wallet_address,
+                        vault_name,
+                        max_token_a_ui_amount,
+                        max_token_b_ui_amount,
+                    ),
                 }
             }
             _ => {
@@ -120,7 +127,11 @@ impl FarmClient {
                         vault_name,
                         ui_amount,
                     ),
-                    _ => unreachable!(),
+                    PoolRoute::Orca { .. } => self.get_stc_lock_liquidity_accounts_orca(
+                        wallet_address,
+                        vault_name,
+                        ui_amount,
+                    ),
                 }
             }
             _ => {
@@ -159,7 +170,11 @@ impl FarmClient {
                         "LockLiquidity is not supported by Vault {}",
                         vault_name
                     ))),
-                    _ => unreachable!(),
+                    PoolRoute::Orca { .. } => self.get_stc_unlock_liquidity_accounts_orca(
+                        wallet_address,
+                        vault_name,
+                        ui_amount,
+                    ),
                 }
             }
             _ => {
@@ -199,7 +214,11 @@ impl FarmClient {
                         vault_name,
                         ui_amount,
                     ),
-                    _ => unreachable!(),
+                    PoolRoute::Orca { .. } => self.get_stc_remove_liquidity_accounts_orca(
+                        wallet_address,
+                        vault_name,
+                        ui_amount,
+                    ),
                 }
             }
             _ => {
@@ -235,7 +254,9 @@ impl FarmClient {
                     PoolRoute::Saber { .. } => {
                         self.get_stc_init_accounts_saber(admin_address, vault_name, step)
                     }
-                    _ => unreachable!(),
+                    PoolRoute::Orca { .. } => {
+                        self.get_stc_init_accounts_orca(admin_address, vault_name, step)
+                    }
                 }
             }
             _ => {
@@ -270,7 +291,9 @@ impl FarmClient {
                     PoolRoute::Saber { .. } => {
                         self.get_stc_shutdown_accounts_saber(admin_address, vault_name)
                     }
-                    _ => unreachable!(),
+                    PoolRoute::Orca { .. } => {
+                        self.get_stc_shutdown_accounts_orca(admin_address, vault_name)
+                    }
                 }
             }
             _ => {
@@ -375,7 +398,9 @@ impl FarmClient {
                     PoolRoute::Saber { .. } => {
                         self.get_stc_crank_accounts_saber(wallet_address, vault_name, step)
                     }
-                    _ => unreachable!(),
+                    PoolRoute::Orca { .. } => {
+                        self.get_stc_crank_accounts_orca(wallet_address, vault_name, step)
+                    }
                 }
             }
             _ => {

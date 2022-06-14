@@ -204,7 +204,7 @@ impl Versioned for Farm {
 }
 
 impl Farm {
-    pub const MAX_LEN: usize = std::mem::size_of::<Farm>();
+    pub const MAX_LEN: usize = 655;
     pub const RAYDIUM_FARM_LEN: usize = 400;
     pub const SABER_FARM_LEN: usize = 655;
     pub const ORCA_FARM_LEN: usize = 399;

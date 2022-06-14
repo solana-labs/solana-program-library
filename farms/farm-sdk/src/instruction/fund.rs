@@ -119,6 +119,12 @@ pub enum FundInstruction {
 
     /// Raydium vault instructions
     VaultInstructionRaydium { instruction: VaultInstruction },
+
+    /// Orca pool instructions
+    AmmInstructionOrca { instruction: AmmInstruction },
+
+    /// Orca vault instructions
+    VaultInstructionOrca { instruction: VaultInstruction },
 }
 
 #[repr(u8)]
@@ -154,21 +160,23 @@ pub enum FundInstructionType {
     WithdrawFees,
     AmmInstructionRaydium,
     VaultInstructionRaydium,
+    AmmInstructionOrca,
+    VaultInstructionOrca,
 }
 
 impl FundInstruction {
-    pub const MAX_LEN: usize = std::mem::size_of::<FundInstruction>();
+    pub const MAX_LEN: usize = 65;
     pub const USER_INIT_LEN: usize = 1;
     pub const REQUEST_DEPOSIT_LEN: usize = 9;
     pub const CANCEL_DEPOSIT_LEN: usize = 1;
     pub const REQUEST_WITHDRAWAL_LEN: usize = 9;
     pub const CANCEL_WITHDRAWAL_LEN: usize = 1;
     pub const INIT_LEN: usize = 9;
-    pub const SET_DEPOSIT_SCHEDULE_LEN: usize = 34;
+    pub const SET_DEPOSIT_SCHEDULE_LEN: usize = 42;
     pub const DISABLE_DEPOSITS_LEN: usize = 1;
     pub const APPROVE_DEPOSIT_LEN: usize = 9;
     pub const DENY_DEPOSIT_LEN: usize = 65;
-    pub const SET_WITHDRAWAL_SCHEDULE_LEN: usize = 34;
+    pub const SET_WITHDRAWAL_SCHEDULE_LEN: usize = 42;
     pub const DISABLE_WITHDRAWALS_LEN: usize = 1;
     pub const APPROVE_WITHDRAWAL_LEN: usize = 9;
     pub const DENY_WITHDRAWAL_LEN: usize = 65;
@@ -219,6 +227,8 @@ impl FundInstruction {
             Self::WithdrawFees { .. } => self.pack_withdraw_fees(output),
             Self::AmmInstructionRaydium { .. } => self.pack_amm_instruction_raydium(output),
             Self::VaultInstructionRaydium { .. } => self.pack_vault_instruction_raydium(output),
+            Self::AmmInstructionOrca { .. } => self.pack_amm_instruction_orca(output),
+            Self::VaultInstructionOrca { .. } => self.pack_vault_instruction_orca(output),
         }
     }
 
@@ -291,6 +301,12 @@ impl FundInstruction {
             }
             FundInstructionType::VaultInstructionRaydium => {
                 FundInstruction::unpack_vault_instruction_raydium(input)
+            }
+            FundInstructionType::AmmInstructionOrca => {
+                FundInstruction::unpack_amm_instruction_orca(input)
+            }
+            FundInstructionType::VaultInstructionOrca => {
+                FundInstruction::unpack_vault_instruction_orca(input)
             }
         }
     }
@@ -398,16 +414,18 @@ impl FundInstruction {
                 start_time_out,
                 end_time_out,
                 approval_required_out,
-                limit_usd_out,
+                min_amount_usd_out,
+                max_amount_usd_out,
                 fee_out,
-            ) = mut_array_refs![output, 1, 8, 8, 1, 8, 8];
+            ) = mut_array_refs![output, 1, 8, 8, 1, 8, 8, 8];
 
             instruction_type_out[0] = FundInstructionType::SetDepositSchedule as u8;
 
             *start_time_out = schedule.start_time.to_le_bytes();
             *end_time_out = schedule.end_time.to_le_bytes();
             pack_bool(schedule.approval_required, approval_required_out);
-            *limit_usd_out = schedule.limit_usd.to_le_bytes();
+            *min_amount_usd_out = schedule.min_amount_usd.to_le_bytes();
+            *max_amount_usd_out = schedule.max_amount_usd.to_le_bytes();
             *fee_out = schedule.fee.to_le_bytes();
 
             Ok(FundInstruction::SET_DEPOSIT_SCHEDULE_LEN)
@@ -474,16 +492,18 @@ impl FundInstruction {
                 start_time_out,
                 end_time_out,
                 approval_required_out,
-                limit_usd_out,
+                min_amount_usd_out,
+                max_amount_usd_out,
                 fee_out,
-            ) = mut_array_refs![output, 1, 8, 8, 1, 8, 8];
+            ) = mut_array_refs![output, 1, 8, 8, 1, 8, 8, 8];
 
             instruction_type_out[0] = FundInstructionType::SetWithdrawalSchedule as u8;
 
             *start_time_out = schedule.start_time.to_le_bytes();
             *end_time_out = schedule.end_time.to_le_bytes();
             pack_bool(schedule.approval_required, approval_required_out);
-            *limit_usd_out = schedule.limit_usd.to_le_bytes();
+            *min_amount_usd_out = schedule.min_amount_usd.to_le_bytes();
+            *max_amount_usd_out = schedule.max_amount_usd.to_le_bytes();
             *fee_out = schedule.fee.to_le_bytes();
 
             Ok(FundInstruction::SET_WITHDRAWAL_SCHEDULE_LEN)
@@ -827,6 +847,32 @@ impl FundInstruction {
         }
     }
 
+    fn pack_amm_instruction_orca(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        if let FundInstruction::AmmInstructionOrca { instruction } = self {
+            check_data_len(output, 1)?;
+
+            let instruction_type_out = array_mut_ref![output, 0, 1];
+            instruction_type_out[0] = FundInstructionType::AmmInstructionOrca as u8;
+
+            Ok(instruction.pack(&mut output[1..])? + 1)
+        } else {
+            Err(ProgramError::InvalidInstructionData)
+        }
+    }
+
+    fn pack_vault_instruction_orca(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        if let FundInstruction::VaultInstructionOrca { instruction } = self {
+            check_data_len(output, 1)?;
+
+            let instruction_type_out = array_mut_ref![output, 0, 1];
+            instruction_type_out[0] = FundInstructionType::VaultInstructionOrca as u8;
+
+            Ok(instruction.pack(&mut output[1..])? + 1)
+        } else {
+            Err(ProgramError::InvalidInstructionData)
+        }
+    }
+
     fn unpack_user_init(input: &[u8]) -> Result<FundInstruction, ProgramError> {
         check_data_len(input, FundInstruction::USER_INIT_LEN)?;
         Ok(Self::UserInit)
@@ -868,15 +914,16 @@ impl FundInstruction {
 
         let input = array_ref![input, 1, FundInstruction::SET_DEPOSIT_SCHEDULE_LEN - 1];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (start_time, end_time, approval_required, limit, fee) =
-            array_refs![input, 8, 8, 1, 8, 8];
+        let (start_time, end_time, approval_required, min_amount_usd, max_amount_usd, fee) =
+            array_refs![input, 8, 8, 1, 8, 8, 8];
 
         Ok(Self::SetDepositSchedule {
             schedule: FundSchedule {
                 start_time: i64::from_le_bytes(*start_time),
                 end_time: i64::from_le_bytes(*end_time),
                 approval_required: unpack_bool(approval_required)?,
-                limit_usd: f64::from_le_bytes(*limit),
+                min_amount_usd: f64::from_le_bytes(*min_amount_usd),
+                max_amount_usd: f64::from_le_bytes(*max_amount_usd),
                 fee: f64::from_le_bytes(*fee),
             },
         })
@@ -906,15 +953,16 @@ impl FundInstruction {
 
         let input = array_ref![input, 1, FundInstruction::SET_WITHDRAWAL_SCHEDULE_LEN - 1];
         #[allow(clippy::ptr_offset_with_cast)]
-        let (start_time, end_time, approval_required, limit, fee) =
-            array_refs![input, 8, 8, 1, 8, 8];
+        let (start_time, end_time, approval_required, min_amount_usd, max_amount_usd, fee) =
+            array_refs![input, 8, 8, 1, 8, 8, 8];
 
         Ok(Self::SetWithdrawalSchedule {
             schedule: FundSchedule {
                 start_time: i64::from_le_bytes(*start_time),
                 end_time: i64::from_le_bytes(*end_time),
                 approval_required: unpack_bool(approval_required)?,
-                limit_usd: f64::from_le_bytes(*limit),
+                min_amount_usd: f64::from_le_bytes(*min_amount_usd),
+                max_amount_usd: f64::from_le_bytes(*max_amount_usd),
                 fee: f64::from_le_bytes(*fee),
             },
         })
@@ -1092,6 +1140,18 @@ impl FundInstruction {
             instruction: VaultInstruction::unpack(&input[1..])?,
         })
     }
+
+    fn unpack_amm_instruction_orca(input: &[u8]) -> Result<FundInstruction, ProgramError> {
+        Ok(Self::AmmInstructionOrca {
+            instruction: AmmInstruction::unpack(&input[1..])?,
+        })
+    }
+
+    fn unpack_vault_instruction_orca(input: &[u8]) -> Result<FundInstruction, ProgramError> {
+        Ok(Self::VaultInstructionOrca {
+            instruction: VaultInstruction::unpack(&input[1..])?,
+        })
+    }
 }
 
 impl std::fmt::Display for FundInstructionType {
@@ -1127,6 +1187,8 @@ impl std::fmt::Display for FundInstructionType {
             FundInstructionType::WithdrawFees => write!(f, "WithdrawFees"),
             FundInstructionType::AmmInstructionRaydium => write!(f, "AmmInstructionRaydium"),
             FundInstructionType::VaultInstructionRaydium => write!(f, "VaultInstructionRaydium"),
+            FundInstructionType::AmmInstructionOrca => write!(f, "AmmInstructionOrca"),
+            FundInstructionType::VaultInstructionOrca => write!(f, "VaultInstructionOrca"),
         }
     }
 }

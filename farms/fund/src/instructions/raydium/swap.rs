@@ -71,7 +71,7 @@ pub fn swap(
             }
         }
         if !program::is_last_instruction(sysvar_account)? {
-            msg!("Error: Swap must be last instruction in the transaction");
+            msg!("Error: Swap must be the last instruction in the transaction");
             return Err(ProgramError::InvalidArgument);
         }
 

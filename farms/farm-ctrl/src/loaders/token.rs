@@ -3,15 +3,21 @@
 use {
     crate::{
         config::Config,
-        loaders::{farm::JsonOrcaFarm, pool::JsonOrcaPool, utils::*},
+        loaders::{
+            farm::JsonOrcaFarm,
+            pool::{JsonOrcaPool, JsonRaydiumPool, JsonSaberPool},
+            utils::*,
+        },
     },
-    log::info,
+    log::{error, info},
     serde::Deserialize,
     serde_json::Value,
+    solana_account_decoder::parse_token::{parse_token, TokenAccountType},
     solana_farm_client::client::FarmClient,
     solana_farm_sdk::{
         id::zero,
         pack::{as64_deserialize, pubkey_deserialize},
+        refdb,
         refdb::StorageType,
         string::{str_to_as64, ArrayString64},
         token::{GitToken, OracleType, Token, TokenType},
@@ -40,19 +46,49 @@ pub fn load(client: &FarmClient, config: &Config, data: &str, remove_mode: bool)
     let last_index = client
         .get_refdb_last_index(&StorageType::Token.to_string())
         .expect("Token RefDB query error");
-    let is_saber = parsed["name"] == "Saber Tokens";
 
-    if parsed["name"] == "Solana Token List" || is_saber {
-        load_solana_tokens(client, config, remove_mode, &parsed, last_index);
-    } else if parsed["name"] == "Raydium LP Tokens" {
-        load_raydium_tokens(client, config, remove_mode, &parsed, last_index);
-    } else if parsed["name"] == "Orca Pools" {
-        load_orca_pool_tokens(client, config, remove_mode, &parsed, last_index);
-    } else if parsed["name"] == "Orca Farms" {
-        load_orca_farm_tokens(client, config, remove_mode, &parsed, last_index);
+    if parsed.get("name").is_some() {
+        if parsed["name"] == "Solana Token List"
+            || parsed["name"] == "Saber Tokens"
+            || parsed["name"] == "Raydium Mainnet Token List"
+        {
+            load_solana_tokens(client, config, remove_mode, &parsed, last_index);
+        } else if parsed["name"] == "Raydium LP Tokens" {
+            load_raydium_tokens_legacy(client, config, remove_mode, &parsed, last_index);
+        } else if parsed["name"] == "Raydium Mainnet Liquidity Pools" {
+            load_raydium_pool_tokens(client, config, remove_mode, &parsed, last_index);
+        } else if parsed["name"] == "Orca Pools" {
+            load_orca_pool_tokens(client, config, remove_mode, &parsed, last_index);
+        } else if parsed["name"] == "Orca Farms" {
+            load_orca_farm_tokens(client, config, remove_mode, &parsed, last_index);
+        }
+    } else if parsed.get("pools").is_some() {
+        load_saber_pool_tokens(client, config, remove_mode, &parsed, last_index);
     } else {
         panic!("Unsupported tokens file");
     }
+}
+
+fn check_token(client: &FarmClient, config: &Config, name: &str, mint: &Pubkey) -> bool {
+    if let Ok(existing_token) = client.get_token(name) {
+        if existing_token.mint != *mint {
+            error!(
+                "Existing mint for token \"{}\" doesn't match new one: {}",
+                name, mint
+            )
+        }
+        if config.skip_existing {
+            info!("Skipping existing Token \"{}\"...", name);
+            return false;
+        }
+    } else if let Ok(existing_token) = client.get_token_with_mint(mint) {
+        error!(
+            "Skipping token \"{}\": Another token with mint {} already exists: \"{}\"...",
+            name, mint, existing_token.name
+        );
+        return false;
+    }
+    true
 }
 
 fn load_solana_tokens(
@@ -63,8 +99,11 @@ fn load_solana_tokens(
     last_index: u32,
 ) {
     let mut last_index = last_index;
-    let is_saber = parsed["name"] == "Saber Tokens";
-    let tokens = parsed["tokens"].as_array().unwrap();
+    let tokens = if parsed["name"] == "Raydium Mainnet Token List" {
+        parsed["official"].as_array().unwrap()
+    } else {
+        parsed["tokens"].as_array().unwrap()
+    };
     for val in tokens {
         let git_token: GitToken = serde_json::from_value(val.clone()).unwrap();
         let token_type = if git_token.symbol.to_uppercase() == "SOL" {
@@ -72,21 +111,17 @@ fn load_solana_tokens(
         } else {
             get_token_type_from_tags(&git_token.tags)
         };
-        let name = if is_saber && token_type == TokenType::LpToken {
-            "LP.SBR.".to_string()
-                + &normalize_name(git_token.name.split(' ').collect::<Vec<&str>>()[0], true)
-        } else if token_type == TokenType::VtToken || token_type == TokenType::FundToken {
+        let name = if token_type == TokenType::VtToken || token_type == TokenType::FundToken {
             git_token.symbol
         } else {
             normalize_name(&git_token.symbol, false)
         };
 
-        if git_token.chain_id != 101 || (token_type == TokenType::LpToken && !is_saber) {
+        if git_token.chain_id != 101 || token_type == TokenType::LpToken {
             continue;
         }
         if !remove_mode {
-            if config.skip_existing && client.get_token(&name).is_ok() {
-                info!("Skipping existing Token \"{}\"...", name);
+            if !check_token(client, config, &name, &git_token.address) {
                 continue;
             }
             info!("Writing Token \"{}\" to on-chain RefDB...", name);
@@ -108,18 +143,27 @@ fn load_solana_tokens(
             token_type,
             refdb_index: index,
             refdb_counter: counter,
-            decimals: git_token.decimals as u8,
+            decimals: if token_type == TokenType::VtToken || token_type == TokenType::FundToken {
+                git_token.decimals as u8
+            } else {
+                get_mint_decimals(client, &git_token.address)
+            },
             chain_id: git_token.chain_id as u16,
-            mint: convert_pubkey(&git_token.address),
+            mint: git_token.address,
             oracle_type,
-            oracle_account,
+            oracle_account: if oracle_type != OracleType::Unsupported {
+                Some(oracle_account)
+            } else {
+                None
+            },
+            description_account: refdb::find_description_pda(StorageType::Token, &name).0,
         };
 
         client.add_token(config.keypair.as_ref(), token).unwrap();
     }
 }
 
-fn load_raydium_tokens(
+fn load_raydium_tokens_legacy(
     client: &FarmClient,
     config: &Config,
     remove_mode: bool,
@@ -132,8 +176,7 @@ fn load_raydium_tokens(
     for (symbol, token) in tokens.iter() {
         let name = "LP.RDM.".to_string() + &normalize_name(symbol, true);
         if !remove_mode {
-            if config.skip_existing && client.get_token(&name).is_ok() {
-                info!("Skipping existing Token \"{}\"...", name);
+            if !check_token(client, config, &name, &token.mint_address) {
                 continue;
             }
             info!("Writing Token \"{}\" to on-chain RefDB...", name);
@@ -155,18 +198,23 @@ fn load_raydium_tokens(
             token_type: TokenType::LpToken,
             refdb_index: index,
             refdb_counter: counter,
-            decimals: token.decimals,
+            decimals: get_mint_decimals(client, &token.mint_address),
             chain_id: 101u16,
             mint: token.mint_address,
             oracle_type,
-            oracle_account,
+            oracle_account: if oracle_type != OracleType::Unsupported {
+                Some(oracle_account)
+            } else {
+                None
+            },
+            description_account: refdb::find_description_pda(StorageType::Token, &name).0,
         };
 
         client.add_token(config.keypair.as_ref(), token).unwrap();
     }
 }
 
-fn load_orca_pool_tokens(
+fn load_raydium_pool_tokens(
     client: &FarmClient,
     config: &Config,
     remove_mode: bool,
@@ -174,13 +222,17 @@ fn load_orca_pool_tokens(
     last_index: u32,
 ) {
     let mut last_index = last_index;
-    let pools = parsed["pools"].as_array().unwrap();
+    let pools = parsed["official"].as_array().unwrap();
     for val in pools {
-        let json_pool: JsonOrcaPool = serde_json::from_value(val.clone()).unwrap();
-        let name = "LP.ORC.".to_string() + &json_pool.name.to_uppercase().replace('_', "-");
+        let json_pool: JsonRaydiumPool = serde_json::from_value(val.clone()).unwrap();
+        let token_a = client.get_token_with_mint(&json_pool.base_mint).unwrap();
+        let token_b = client.get_token_with_mint(&json_pool.quote_mint).unwrap();
+        let name = format!(
+            "LP.RDM.{}-{}-V{}",
+            token_a.name, token_b.name, json_pool.version
+        );
         if !remove_mode {
-            if config.skip_existing && client.get_token(&name).is_ok() {
-                info!("Skipping existing Token \"{}\"...", name);
+            if !check_token(client, config, &name, &json_pool.lp_mint) {
                 continue;
             }
             info!("Writing Token \"{}\" to on-chain RefDB...", name);
@@ -198,15 +250,129 @@ fn load_orca_pool_tokens(
         let (oracle_type, oracle_account) = get_oracle_price_account(config, &name);
         let token = Token {
             name: str_to_as64(&name).unwrap(),
-            description: str_to_as64(format!("Orca {} LP Token", json_pool.name).as_str()).unwrap(),
+            description: str_to_as64(format!("Raydium {} LP Token", &name[7..]).as_str()).unwrap(),
             token_type: TokenType::LpToken,
             refdb_index: index,
             refdb_counter: counter,
-            decimals: json_pool.pool_token_decimals,
+            decimals: get_mint_decimals(client, &json_pool.lp_mint),
+            chain_id: 101u16,
+            mint: json_pool.lp_mint,
+            oracle_type,
+            oracle_account: if oracle_type != OracleType::Unsupported {
+                Some(oracle_account)
+            } else {
+                None
+            },
+            description_account: refdb::find_description_pda(StorageType::Token, &name).0,
+        };
+
+        client.add_token(config.keypair.as_ref(), token).unwrap();
+    }
+}
+
+fn load_saber_pool_tokens(
+    client: &FarmClient,
+    config: &Config,
+    remove_mode: bool,
+    parsed: &Value,
+    last_index: u32,
+) {
+    let mut last_index = last_index;
+    let pools = parsed["pools"].as_array().unwrap();
+    for val in pools {
+        let json_pool: JsonSaberPool = serde_json::from_value(val.clone()).unwrap();
+        let name = "LP.".to_string()
+            + &get_saber_pool_name(client, &json_pool.tokens[0], &json_pool.tokens[1]);
+        if !remove_mode {
+            if !check_token(client, config, &name, &json_pool.lp_token.address) {
+                continue;
+            }
+            info!("Writing Token \"{}\" to on-chain RefDB...", name);
+        } else {
+            info!("Removing Token \"{}\" from on-chain RefDB...", name);
+            let _ = client.remove_token(config.keypair.as_ref(), &name);
+            continue;
+        }
+        let (index, counter) = if let Ok(token) = client.get_token(&name) {
+            (token.refdb_index, token.refdb_counter)
+        } else {
+            last_index += 1;
+            (Some(last_index - 1), 0u16)
+        };
+        let (oracle_type, oracle_account) = get_oracle_price_account(config, &name);
+        let token = Token {
+            name: str_to_as64(&name).unwrap(),
+            description: str_to_as64(format!("Saber {} LP Token", &name[7..]).as_str()).unwrap(),
+            token_type: TokenType::LpToken,
+            refdb_index: index,
+            refdb_counter: counter,
+            decimals: get_mint_decimals(client, &json_pool.lp_token.address),
+            chain_id: 101u16,
+            mint: json_pool.lp_token.address,
+            oracle_type,
+            oracle_account: if oracle_type != OracleType::Unsupported {
+                Some(oracle_account)
+            } else {
+                None
+            },
+            description_account: refdb::find_description_pda(StorageType::Token, &name).0,
+        };
+
+        client.add_token(config.keypair.as_ref(), token).unwrap();
+    }
+}
+
+fn load_orca_pool_tokens(
+    client: &FarmClient,
+    config: &Config,
+    remove_mode: bool,
+    parsed: &Value,
+    last_index: u32,
+) {
+    let mut last_index = last_index;
+    let pools = parsed["pools"].as_array().unwrap();
+    for val in pools {
+        let json_pool: JsonOrcaPool = serde_json::from_value(val.clone()).unwrap();
+        let token_a = client
+            .get_token_with_mint(&convert_pubkey(&json_pool.token_ids[0]))
+            .unwrap();
+        let token_b = client
+            .get_token_with_mint(&convert_pubkey(&json_pool.token_ids[1]))
+            .unwrap();
+        let name = format!("LP.ORC.{}-{}-V1", token_a.name, token_b.name);
+        if !remove_mode {
+            if !check_token(client, config, &name, &json_pool.pool_token_mint) {
+                continue;
+            }
+            info!("Writing Token \"{}\" to on-chain RefDB...", name);
+        } else {
+            info!("Removing Token \"{}\" from on-chain RefDB...", name);
+            let _ = client.remove_token(config.keypair.as_ref(), &name);
+            continue;
+        }
+        let (index, counter) = if let Ok(token) = client.get_token(&name) {
+            (token.refdb_index, token.refdb_counter)
+        } else {
+            last_index += 1;
+            (Some(last_index - 1), 0u16)
+        };
+        let (oracle_type, oracle_account) = get_oracle_price_account(config, &name);
+        let token = Token {
+            name: str_to_as64(&name).unwrap(),
+            description: str_to_as64(format!("Orca {} LP Token", &name[7..]).as_str()).unwrap(),
+            token_type: TokenType::LpToken,
+            refdb_index: index,
+            refdb_counter: counter,
+            decimals: get_mint_decimals(client, &json_pool.pool_token_mint),
             chain_id: 101u16,
             mint: json_pool.pool_token_mint,
             oracle_type,
-            oracle_account,
+            oracle_account: if oracle_type != OracleType::Unsupported {
+                Some(oracle_account)
+            } else {
+                None
+            },
+            description_account: refdb::find_description_pda(StorageType::Token, &name).0,
         };
 
         client.add_token(config.keypair.as_ref(), token).unwrap();
@@ -224,10 +390,22 @@ fn load_orca_farm_tokens(
     let farms = parsed["farms"].as_array().unwrap();
     for val in farms {
         let json_farm: JsonOrcaFarm = serde_json::from_value(val.clone()).unwrap();
-        let name = "LP.ORC.".to_string() + &json_farm.name.to_uppercase().replace('_', "-");
+
+        let lp_token = client
+            .get_token_with_mint(&json_farm.base_token_mint)
+            .unwrap();
+        let (pool_name, _) = if FarmClient::is_liquidity_token(&lp_token.name) {
+            FarmClient::extract_pool_name_and_version(&lp_token.name).unwrap()
+        } else {
+            ("ORC.".to_string() + &lp_token.name, 0)
+        };
+        let name = if pool_name.ends_with("-AQ") {
+            format!("LP.{}-DD-V1", &pool_name[..pool_name.len() - 3])
+        } else {
+            format!("LP.{}-AQ-V1", pool_name)
+        };
         if !remove_mode {
-            if config.skip_existing && client.get_token(&name).is_ok() {
-                info!("Skipping existing Token \"{}\"...", name);
+            if !check_token(client, config, &name, &json_farm.farm_token_mint) {
                 continue;
             }
             info!("Writing Token \"{}\" to on-chain RefDB...", name);
@@ -250,15 +428,28 @@ fn load_orca_farm_tokens(
             token_type: TokenType::LpToken,
             refdb_index: index,
             refdb_counter: counter,
-            decimals: json_farm.base_token_decimals,
+            decimals: get_mint_decimals(client, &json_farm.farm_token_mint),
             chain_id: 101u16,
             mint: json_farm.farm_token_mint,
             oracle_type,
-            oracle_account,
+            oracle_account: if oracle_type != OracleType::Unsupported {
+                Some(oracle_account)
+            } else {
+                None
+            },
+            description_account: refdb::find_description_pda(StorageType::Token, &name).0,
         };
 
         client.add_token(config.keypair.as_ref(), token).unwrap();
     }
+}
+
+fn get_mint_decimals(client: &FarmClient, mint_address: &Pubkey) -> u8 {
+    let data = client.rpc_client.get_account_data(mint_address).unwrap();
+    if let Ok(TokenAccountType::Mint(ui_mint)) = parse_token(data.as_slice(), None) {
+        return ui_mint.decimals;
+    }
+    panic!("Failed to parse mint data at address {}", mint_address);
 }
 
 fn get_token_type_from_tags(tags: &[String]) -> TokenType {

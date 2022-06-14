@@ -247,7 +247,7 @@ impl Versioned for Pool {
 }
 
 impl Pool {
-    pub const MAX_LEN: usize = std::mem::size_of::<Pool>();
+    pub const MAX_LEN: usize = 756;
     pub const RAYDIUM_POOL_LEN: usize = 756;
     pub const SABER_POOL_LEN: usize = 663;
     pub const ORCA_POOL_LEN: usize = 401;

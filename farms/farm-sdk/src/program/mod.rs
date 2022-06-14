@@ -33,7 +33,7 @@ pub fn is_first_or_last_instruction(sysvar_account: &AccountInfo) -> Result<bool
         .is_err())
 }
 
-/// Returns true if currently executing instruction is last instruction in the transaction
+/// Returns true if currently executing instruction is the last instruction in the transaction
 pub fn is_last_instruction(sysvar_account: &AccountInfo) -> Result<bool, ProgramError> {
     if &instructions::id() != sysvar_account.key {
         return Err(ProgramError::UnsupportedSysvar);

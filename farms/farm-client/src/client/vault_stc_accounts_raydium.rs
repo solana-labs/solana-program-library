@@ -95,9 +95,6 @@ impl FarmClient {
                         amm_authority,
                         amm_open_orders,
                         amm_target,
-                        pool_withdraw_queue: _,
-                        pool_temp_lp_token_account: _,
-                        serum_program_id: _,
                         serum_market,
                         ..
                     } => {
@@ -187,8 +184,6 @@ impl FarmClient {
                 pool_ref,
                 farm_ref,
                 lp_token_custody,
-                token_a_custody: _,
-                token_b_custody: _,
                 token_a_reward_custody,
                 token_b_reward_custody,
                 vault_stake_info,
@@ -293,8 +288,6 @@ impl FarmClient {
                 pool_ref,
                 farm_ref,
                 lp_token_custody,
-                token_a_custody: _,
-                token_b_custody: _,
                 token_a_reward_custody,
                 token_b_reward_custody,
                 vault_stake_info,

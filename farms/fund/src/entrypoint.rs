@@ -18,7 +18,7 @@ use {
             approve_withdrawal::approve_withdrawal, cancel_deposit::cancel_deposit,
             cancel_withdrawal::cancel_withdrawal, deny_deposit::deny_deposit,
             deny_withdrawal::deny_withdrawal, disable_deposits::disable_deposits,
-            disable_withdrawals::disable_withdrawals, init::init, lock_assets::lock_assets,
+            disable_withdrawals::disable_withdrawals, init::init, lock_assets::lock_assets, orca,
             raydium, remove_custody::remove_custody, remove_multisig::remove_multisig,
             remove_vault::remove_vault, request_deposit::request_deposit,
             request_withdrawal::request_withdrawal, set_admin_signers::set_admin_signers,
@@ -37,7 +37,7 @@ use {
         id::{main_router, main_router_admin, main_router_multisig},
         instruction::{amm::AmmInstruction, fund::FundInstruction, vault::VaultInstruction},
         log::sol_log_params_short,
-        program::{account, multisig, pda},
+        program::{account, multisig},
         refdb,
         string::ArrayString64,
     },
@@ -189,7 +189,7 @@ pub fn process_instruction(
     // unpack Fund's metadata and validate Fund accounts
     let fund = account::unpack::<Fund>(fund_metadata, "Fund")?;
     let derived_fund_metadata =
-        pda::find_target_pda_with_bump(refdb::StorageType::Fund, &fund.name, fund.metadata_bump)?;
+        refdb::find_target_pda_with_bump(refdb::StorageType::Fund, &fund.name, fund.metadata_bump)?;
     if &fund.info_account != fund_info_account.key
         || &derived_fund_metadata != fund_metadata.key
         || fund_metadata.owner != &main_router::id()
@@ -482,7 +482,7 @@ pub fn process_instruction(
                 max_token_a_amount,
                 max_token_b_amount,
             } => {
-                log_start("VaultAddLiquidity", &fund.name);
+                log_start("VaultAddLiquidityRaydium", &fund.name);
                 check_manager_authority(user_account, &fund)?;
                 raydium::vault_add_liquidity::add_liquidity(
                     &fund,
@@ -492,24 +492,122 @@ pub fn process_instruction(
                 )?;
             }
             VaultInstruction::LockLiquidity { amount } => {
-                log_start("VaultLockLiquidity", &fund.name);
+                log_start("VaultLockLiquidityRaydium", &fund.name);
                 check_manager_authority(user_account, &fund)?;
                 raydium::vault_lock_liquidity::lock_liquidity(&fund, accounts, amount)?;
             }
             VaultInstruction::UnlockLiquidity { amount } => {
-                log_start("VaultUnlockLiquidity", &fund.name);
+                log_start("VaultUnlockLiquidityRaydium", &fund.name);
                 check_manager_authority_or_liquidation(user_account, fund_info_account, &fund)?;
                 raydium::vault_unlock_liquidity::unlock_liquidity(&fund, accounts, amount)?;
             }
             VaultInstruction::RemoveLiquidity { amount } => {
-                log_start("VaultRemoveLiquidity", &fund.name);
+                log_start("VaultRemoveLiquidityRaydium", &fund.name);
                 check_manager_authority_or_liquidation(user_account, fund_info_account, &fund)?;
                 raydium::vault_remove_liquidity::remove_liquidity(&fund, accounts, amount)?;
             }
             VaultInstruction::UserInit {} => {
-                log_start("VaultUserInit", &fund.name);
+                log_start("VaultUserInitRaydium", &fund.name);
                 check_manager_authority(user_account, &fund)?;
                 raydium::vault_user_init::user_init(&fund, accounts)?;
+            }
+            _ => {
+                msg!("Error: Unimplemented");
+                return Err(ProgramError::Custom(513));
+            }
+        },
+        FundInstruction::AmmInstructionOrca { instruction } => match instruction {
+            AmmInstruction::UserInit => {
+                log_start("UserInitOrca", &fund.name);
+                check_manager_authority(user_account, &fund)?;
+                orca::user_init::user_init(&fund, accounts)?;
+            }
+            AmmInstruction::AddLiquidity {
+                max_token_a_amount,
+                max_token_b_amount,
+            } => {
+                log_start("AddLiquidityOrca", &fund.name);
+                check_manager_authority(user_account, &fund)?;
+                orca::add_liquidity::add_liquidity(
+                    &fund,
+                    accounts,
+                    max_token_a_amount,
+                    max_token_b_amount,
+                )?;
+            }
+            AmmInstruction::RemoveLiquidity { amount } => {
+                log_start("RemoveLiquidityOrca", &fund.name);
+                check_manager_authority_or_liquidation(user_account, fund_info_account, &fund)?;
+                orca::remove_liquidity::remove_liquidity(&fund, accounts, amount)?;
+            }
+            AmmInstruction::Swap {
+                token_a_amount_in,
+                token_b_amount_in,
+                min_token_amount_out,
+            } => {
+                log_start("SwapOrca", &fund.name);
+                check_manager_authority_or_liquidation(user_account, fund_info_account, &fund)?;
+                orca::swap::swap(
+                    &fund,
+                    accounts,
+                    token_a_amount_in,
+                    token_b_amount_in,
+                    min_token_amount_out,
+                )?;
+            }
+            AmmInstruction::Stake { amount } => {
+                log_start("StakeOrca", &fund.name);
+                check_manager_authority(user_account, &fund)?;
+                orca::stake::stake(&fund, accounts, amount)?;
+            }
+            AmmInstruction::Unstake { amount } => {
+                log_start("UnstakeOrca", &fund.name);
+                check_manager_authority_or_liquidation(user_account, fund_info_account, &fund)?;
+                orca::unstake::unstake(&fund, accounts, amount)?;
+            }
+            AmmInstruction::Harvest => {
+                log_start("HarvestOrca", &fund.name);
+                check_manager_authority_or_liquidation(user_account, fund_info_account, &fund)?;
+                orca::harvest::harvest(&fund, accounts)?;
+            }
+            _ => {
+                msg!("Error: Unimplemented");
+                return Err(ProgramError::Custom(512));
+            }
+        },
+        FundInstruction::VaultInstructionOrca { instruction } => match instruction {
+            VaultInstruction::AddLiquidity {
+                max_token_a_amount,
+                max_token_b_amount,
+            } => {
+                log_start("VaultAddLiquidityOrca", &fund.name);
+                check_manager_authority(user_account, &fund)?;
+                orca::vault_add_liquidity::add_liquidity(
+                    &fund,
+                    accounts,
+                    max_token_a_amount,
+                    max_token_b_amount,
+                )?;
+            }
+            VaultInstruction::LockLiquidity { amount } => {
+                log_start("VaultLockLiquidityOrca", &fund.name);
+                check_manager_authority(user_account, &fund)?;
+                orca::vault_lock_liquidity::lock_liquidity(&fund, accounts, amount)?;
+            }
+            VaultInstruction::UnlockLiquidity { amount } => {
+                log_start("VaultUnlockLiquidityOrca", &fund.name);
+                check_manager_authority_or_liquidation(user_account, fund_info_account, &fund)?;
+                orca::vault_unlock_liquidity::unlock_liquidity(&fund, accounts, amount)?;
+            }
+            VaultInstruction::RemoveLiquidity { amount } => {
+                log_start("VaultRemoveLiquidityOrca", &fund.name);
+                check_manager_authority_or_liquidation(user_account, fund_info_account, &fund)?;
+                orca::vault_remove_liquidity::remove_liquidity(&fund, accounts, amount)?;
+            }
+            VaultInstruction::UserInit {} => {
+                log_start("VaultUserInitOrca", &fund.name);
+                check_manager_authority(user_account, &fund)?;
+                orca::vault_user_init::user_init(&fund, accounts)?;
             }
             _ => {
                 msg!("Error: Unimplemented");

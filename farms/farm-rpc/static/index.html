@@ -48,6 +48,10 @@
       <p class="request_type">Get:</p>
       <p class="description"> Returns description and stats of all supported protocols</p>
       <a class="link" href="/api/v1/protocols">/api/v1/protocols</a>
+      <p class="description"> Returns current admin signers for the Main Router</p>
+      <a class="link" href="/api/v1/admins">/api/v1/admins</a>
+      <p class="description"> Returns program upgrade signers</p>
+      <a class="link" href="/api/v1/program_admins?program_id=[program_id]">/api/v1/program_admins?program_id=[program_id]</a>
       <p class="description"> Returns Token metadata from Github</p>
       <a class="link" href="/api/v1/git_token?name=[name]">/api/v1/git_token?name=[name]</a>
       <p class="description"> Returns all Tokens from Github</p>
@@ -137,7 +141,10 @@
       <a class="link" href="/api/v1/token_name?token_ref=[token_ref]">/api/v1/token_name?token_ref=[token_ref]</a>
       <p class="description"> Returns the Token metadata for the specified mint</p>
       <a class="link"
-        href="/api/v1/get_token_with_mint?token_mint=[token_mint]">/api/v1/get_token_with_mint?token_mint=[token_mint]</a>
+        href="/api/v1/token_with_mint?token_mint=[token_mint]">/api/v1/token_with_mint?token_mint=[token_mint]</a>
+      <p class="description"> Returns the Token metadata for the specified token account</p>
+      <a class="link"
+        href="/api/v1/token_with_account?token_account=[token_account]">/api/v1/token_with_account?token_account=[token_account]</a>
       <p class="description"> Returns the official Program ID for the given name</p>
       <a class="link" href="/api/v1/program_id?name=[name]">/api/v1/program_id?name=[name]</a>
       <p class="description"> Returns all official Program IDs available</p>
@@ -149,6 +156,9 @@
       <p class="description"> Checks if the given address is the Fund manager</p>
       <a class="link"
         href="/api/v1/is_fund_manager?wallet_address=[wallet_address]">/api/v1/is_fund_manager?wallet_address=[wallet_address]</a>
+      <p class="description"> Returns all Funds managed by the given address</p>
+      <a class="link"
+        href="/api/v1/managed_funds?wallet_address=[wallet_address]">/api/v1/managed_funds?wallet_address=[wallet_address]</a>
       <p class="description"> Returns token supply as UI amount</p>
       <a class="link" href="/api/v1/token_supply?token_name=[token_name]">/api/v1/token_supply?token_name=[token_name]</a>
       <p class="description"> Returns the associated token account address for the given token name</p>
@@ -172,9 +182,20 @@
       <p class="description"> Returns true if the associated token account exists and is initialized</p>
       <a class="link"
         href="/api/v1/has_active_token_account?wallet_address=[wallet_address]&amp;token_name=[token_name]">/api/v1/has_active_token_account?wallet_address=[wallet_address]&amp;token_name=[token_name]</a>
+      <p class="description"> Returns current admin signers for the Fund</p>
+      <a class="link" href="/api/v1/fund_admins?name=[name]">/api/v1/fund_admins?name=[name]</a>
       <p class="description"> Returns user stats for specific Fund</p>
       <a class="link"
-        href="/api/v1/fund_user_info?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]">/api/v1/fund_user_info?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]</a>
+        href="/api/v1/fund_user_info?wallet_address=[wallet_address]&amp;fund_name=[fund_name]">/api/v1/fund_user_info?wallet_address=[wallet_address]&amp;fund_name=[fund_name]</a>
+      <p class="description"> Returns user stats for all Funds</p>
+      <a class="link"
+        href="/api/v1/all_fund_user_infos?wallet_address=[wallet_address]">/api/v1/all_fund_user_infos?wallet_address=[wallet_address]</a>
+      <p class="description"> Returns user requests for specific Fund and token</p>
+      <a class="link"
+        href="/api/v1/fund_user_requests?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]">/api/v1/fund_user_requests?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]</a>
+      <p class="description"> Returns user requests for all tokens accepted by the Fund</p>
+      <a class="link"
+        href="/api/v1/all_fund_user_requests?fund_name=[fund_name]">/api/v1/all_fund_user_requests?fund_name=[fund_name]</a>
       <p class="description"> Returns Fund stats and config</p>
       <a class="link" href="/api/v1/fund_info?fund_name=[fund_name]">/api/v1/fund_info?fund_name=[fund_name]</a>
       <p class="description"> Returns the Fund assets info</p>
@@ -199,6 +220,8 @@
       <p class="description"> Returns Vault's stacked balance</p>
       <a class="link"
         href="/api/v1/vault_stake_balance?vault_name=[vault_name]">/api/v1/vault_stake_balance?vault_name=[vault_name]</a>
+      <p class="description"> Returns current admin signers for the Vault</p>
+      <a class="link" href="/api/v1/vault_admins?name=[name]">/api/v1/vault_admins?name=[name]</a>
       <p class="description"> Returns user stats for specific Vault</p>
       <a class="link"
         href="/api/v1/vault_user_info?wallet_address=[wallet_address]&amp;vault_name=[vault_name]">/api/v1/vault_user_info?wallet_address=[wallet_address]&amp;vault_name=[vault_name]</a>
@@ -297,12 +320,45 @@
       <p class="description"> Returns a new Instruction for initiating liquidation of the Fund</p>
       <a class="link"
         href="/api/v1/new_instruction_start_liquidation_fund?wallet_address=[wallet_address]&amp;fund_name=[fund_name]">/api/v1/new_instruction_start_liquidation_fund?wallet_address=[wallet_address]&amp;fund_name=[fund_name]</a>
+      <p class="description"> Returns a new set deposit schedule Instruction</p>
+      <a class="link"
+        href="/api/v1/new_instruction_set_fund_deposit_schedule?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;start_time=[start_time]&amp;end_time=[end_time]&amp;approval_required=[approval_required]&amp;min_amount_usd=[min_amount_usd]&amp;max_amount_usd=[max_amount_usd]&amp;fee=[fee]">/api/v1/new_instruction_set_fund_deposit_schedule?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;start_time=[start_time]&amp;end_time=[end_time]&amp;approval_required=[approval_required]&amp;min_amount_usd=[min_amount_usd]&amp;max_amount_usd=[max_amount_usd]&amp;fee=[fee]</a>
+      <p class="description"> Returns a new Instruction for disabling deposits to the Fund</p>
+      <a class="link"
+        href="/api/v1/new_instruction_disable_deposits_fund?wallet_address=[wallet_address]&amp;fund_name=[fund_name]">/api/v1/new_instruction_disable_deposits_fund?wallet_address=[wallet_address]&amp;fund_name=[fund_name]</a>
+      <p class="description"> Returns a new Instruction for approving deposit to the Fund</p>
+      <a class="link"
+        href="/api/v1/new_instruction_approve_deposit_fund?wallet_address=[wallet_address]&amp;user_address=[user_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]&amp;ui_amount=[ui_amount]">/api/v1/new_instruction_approve_deposit_fund?wallet_address=[wallet_address]&amp;user_address=[user_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]&amp;ui_amount=[ui_amount]</a>
+      <p class="description"> Returns a new Instruction for denying deposit to the Fund</p>
+      <a class="link"
+        href="/api/v1/new_instruction_deny_deposit_fund?wallet_address=[wallet_address]&amp;user_address=[user_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]&amp;deny_reason=[deny_reason]">/api/v1/new_instruction_deny_deposit_fund?wallet_address=[wallet_address]&amp;user_address=[user_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]&amp;deny_reason=[deny_reason]</a>
+      <p class="description"> Returns a new set withdrawal schedule Instruction</p>
+      <a class="link"
+        href="/api/v1/new_instruction_set_fund_withdrawal_schedule?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;start_time=[start_time]&amp;end_time=[end_time]&amp;approval_required=[approval_required]&amp;min_amount_usd=[min_amount_usd]&amp;max_amount_usd=[max_amount_usd]&amp;fee=[fee]">/api/v1/new_instruction_set_fund_withdrawal_schedule?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;start_time=[start_time]&amp;end_time=[end_time]&amp;approval_required=[approval_required]&amp;min_amount_usd=[min_amount_usd]&amp;max_amount_usd=[max_amount_usd]&amp;fee=[fee]</a>
+      <p class="description"> Returns a new Instruction for disabling withdrawals from the Fund</p>
+      <a class="link"
+        href="/api/v1/new_instruction_disable_withdrawals_fund?wallet_address=[wallet_address]&amp;fund_name=[fund_name]">/api/v1/new_instruction_disable_withdrawals_fund?wallet_address=[wallet_address]&amp;fund_name=[fund_name]</a>
+      <p class="description"> Returns a new Instruction for approving withdrawal from the Fund</p>
+      <a class="link"
+        href="/api/v1/new_instruction_approve_withdrawal_fund?wallet_address=[wallet_address]&amp;user_address=[user_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]&amp;ui_amount=[ui_amount]">/api/v1/new_instruction_approve_withdrawal_fund?wallet_address=[wallet_address]&amp;user_address=[user_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]&amp;ui_amount=[ui_amount]</a>
+      <p class="description"> Returns a new Instruction for denying withdrawal from the Fund</p>
+      <a class="link"
+        href="/api/v1/new_instruction_deny_withdrawal_fund?wallet_address=[wallet_address]&amp;user_address=[user_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]&amp;deny_reason=[deny_reason]">/api/v1/new_instruction_deny_withdrawal_fund?wallet_address=[wallet_address]&amp;user_address=[user_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]&amp;deny_reason=[deny_reason]</a>
+      <p class="description"> Returns a new Instruction for moving deposited assets to the Fund</p>
+      <a class="link"
+        href="/api/v1/new_instruction_lock_assets_fund?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]&amp;ui_amount=[ui_amount]">/api/v1/new_instruction_lock_assets_fund?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]&amp;ui_amount=[ui_amount]</a>
+      <p class="description"> Returns a new Instruction for releasing assets from the Fund to Deposit/Withdraw custody</p>
+      <a class="link"
+        href="/api/v1/new_instruction_unlock_assets_fund?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]&amp;ui_amount=[ui_amount]">/api/v1/new_instruction_unlock_assets_fund?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]&amp;ui_amount=[ui_amount]</a>
       <p class="description"> Returns a new Instruction for updating Fund assets based on custody holdings</p>
       <a class="link"
         href="/api/v1/new_instruction_update_fund_assets_with_custody?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;custody_id=[custody_id]">/api/v1/new_instruction_update_fund_assets_with_custody?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;custody_id=[custody_id]</a>
       <p class="description"> Returns a new Instruction for updating Fund assets with Vault holdings</p>
       <a class="link"
         href="/api/v1/new_instruction_update_fund_assets_with_vault?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;vault_id=[vault_id]">/api/v1/new_instruction_update_fund_assets_with_vault?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;vault_id=[vault_id]</a>
+      <p class="description"> Returns a new Instruction for tokens swap in the Fund</p>
+      <a class="link"
+        href="/api/v1/new_instruction_fund_swap?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;protocol=[protocol]&amp;from_token=[from_token]&amp;to_token=[to_token]&amp;ui_amount_in=[ui_amount_in]&amp;min_ui_amount_out=[min_ui_amount_out]">/api/v1/new_instruction_fund_swap?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;protocol=[protocol]&amp;from_token=[from_token]&amp;to_token=[to_token]&amp;ui_amount_in=[ui_amount_in]&amp;min_ui_amount_out=[min_ui_amount_out]</a>
       <p class="description"> Returns a new Instruction for adding liquidity to the Pool in the Fund</p>
       <a class="link"
         href="/api/v1/new_instruction_fund_add_liquidity_pool?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;pool_name=[pool_name]&amp;max_token_a_ui_amount=[max_token_a_ui_amount]&amp;max_token_b_ui_amount=[max_token_b_ui_amount]">/api/v1/new_instruction_fund_add_liquidity_pool?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;pool_name=[pool_name]&amp;max_token_a_ui_amount=[max_token_a_ui_amount]&amp;max_token_b_ui_amount=[max_token_b_ui_amount]</a>
@@ -381,6 +437,9 @@
       <p class="description"> Returns a new complete set of Instructions for requesting a new withdrawal from the Fund</p>
       <a class="link"
         href="/api/v1/all_instructions_request_withdrawal_fund?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]&amp;ui_amount=[ui_amount]">/api/v1/all_instructions_request_withdrawal_fund?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;token_name=[token_name]&amp;ui_amount=[ui_amount]</a>
+      <p class="description"> Returns a new complete set of Instructions for swapping tokens in the Fund</p>
+      <a class="link"
+        href="/api/v1/all_instructions_fund_swap?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;protocol=[protocol]&amp;from_token=[from_token]&amp;to_token=[to_token]&amp;ui_amount_in=[ui_amount_in]&amp;min_ui_amount_out=[min_ui_amount_out]">/api/v1/all_instructions_fund_swap?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;protocol=[protocol]&amp;from_token=[from_token]&amp;to_token=[to_token]&amp;ui_amount_in=[ui_amount_in]&amp;min_ui_amount_out=[min_ui_amount_out]</a>
       <p class="description"> Returns a new complete set of Instructions for adding liquidity to the Pool in the Fund</p>
       <a class="link"
         href="/api/v1/all_instructions_fund_add_liquidity_pool?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;pool_name=[pool_name]&amp;max_token_a_ui_amount=[max_token_a_ui_amount]&amp;max_token_b_ui_amount=[max_token_b_ui_amount]">/api/v1/all_instructions_fund_add_liquidity_pool?wallet_address=[wallet_address]&amp;fund_name=[fund_name]&amp;pool_name=[pool_name]&amp;max_token_a_ui_amount=[max_token_a_ui_amount]&amp;max_token_b_ui_amount=[max_token_b_ui_amount]</a>
@@ -492,6 +551,34 @@
         /api/v1/cancel_withdrawal_fund?wallet_keypair=[wallet_keypair]&amp;fund_name=[fund_name]&amp;token_name=[token_name]</a>
       <p class="description"> Starts the Fund liquidation</p>
       <p class="link">/api/v1/start_liquidation_fund?wallet_keypair=[wallet_keypair]&amp;fund_name=[fund_name]</a>
+      <p class="description"> Sets a new deposit schedule for the Fund</p>
+      <p class="link">
+        /api/v1/set_fund_deposit_schedule?wallet_keypair=[wallet_keypair]&amp;fund_name=[fund_name]&amp;start_time=[start_time]&amp;end_time=[end_time]&amp;approval_required=[approval_required]&amp;min_amount_usd=[min_amount_usd]&amp;max_amount_usd=[max_amount_usd]&amp;fee=[fee]</a>
+      <p class="description"> Disables deposits to the Fund</p>
+      <p class="link">/api/v1/disable_deposits_fund?wallet_keypair=[wallet_keypair]&amp;fund_name=[fund_name]</a>
+      <p class="description"> Approves pending deposit to the Fund</p>
+      <p class="link">
+        /api/v1/approve_deposit_fund?wallet_keypair=[wallet_keypair]&amp;fund_name=[fund_name]&amp;user_address=[user_address]&amp;token_name=[token_name]&amp;ui_amount=[ui_amount]</a>
+      <p class="description"> Denies pending deposit to the Fund</p>
+      <p class="link">
+        /api/v1/deny_deposit_fund?wallet_keypair=[wallet_keypair]&amp;fund_name=[fund_name]&amp;user_address=[user_address]&amp;token_name=[token_name]&amp;deny_reason=[deny_reason]</a>
+      <p class="description"> Sets a new withdrawal schedule for the Fund</p>
+      <p class="link">
+        /api/v1/set_fund_withdrawal_schedule?wallet_keypair=[wallet_keypair]&amp;fund_name=[fund_name]&amp;start_time=[start_time]&amp;end_time=[end_time]&amp;approval_required=[approval_required]&amp;min_amount_usd=[min_amount_usd]&amp;max_amount_usd=[max_amount_usd]&amp;fee=[fee]</a>
+      <p class="description"> Disables withdrawals from the Fund</p>
+      <p class="link">/api/v1/disable_withdrawals_fund?wallet_keypair=[wallet_keypair]&amp;fund_name=[fund_name]</a>
+      <p class="description"> Approves pending withdrawal from the Fund</p>
+      <p class="link">
+        /api/v1/approve_withdrawal_fund?wallet_keypair=[wallet_keypair]&amp;fund_name=[fund_name]&amp;user_address=[user_address]&amp;token_name=[token_name]&amp;ui_amount=[ui_amount]</a>
+      <p class="description"> Denies pending withdrawal from the Fund</p>
+      <p class="link">
+        /api/v1/deny_withdrawal_fund?wallet_keypair=[wallet_keypair]&amp;fund_name=[fund_name]&amp;user_address=[user_address]&amp;token_name=[token_name]&amp;deny_reason=[deny_reason]</a>
+      <p class="description"> Moves deposited assets from Deposit/Withdraw custody to the Fund</p>
+      <p class="link">
+        /api/v1/lock_assets_fund?wallet_keypair=[wallet_keypair]&amp;fund_name=[fund_name]&amp;token_name=[token_name]&amp;ui_amount=[ui_amount]</a>
+      <p class="description"> Releases assets from the Fund to Deposit/Withdraw custody</p>
+      <p class="link">
+        /api/v1/unlock_assets_fund?wallet_keypair=[wallet_keypair]&amp;fund_name=[fund_name]&amp;token_name=[token_name]&amp;ui_amount=[ui_amount]</a>
       <p class="description"> Update Fund assets info based on custody holdings</p>
       <p class="link">
         /api/v1/update_fund_assets_with_custody?wallet_keypair=[wallet_keypair]&amp;fund_name=[fund_name]&amp;custody_id=[custody_id]</a>
@@ -502,6 +589,9 @@
         /api/v1/update_fund_assets_with_vault?wallet_keypair=[wallet_keypair]&amp;fund_name=[fund_name]&amp;vault_id=[vault_id]</a>
       <p class="description"> Update Fund assets info based on Vault holdings</p>
       <p class="link">/api/v1/update_fund_assets_with_vaults?wallet_keypair=[wallet_keypair]&amp;fund_name=[fund_name]</a>
+      <p class="description"> Swaps tokens in the Fund</p>
+      <p class="link">
+        /api/v1/fund_swap?wallet_keypair=[wallet_keypair]&amp;fund_name=[fund_name]&amp;protocol=[protocol]&amp;from_token=[from_token]&amp;to_token=[to_token]&amp;ui_amount_in=[ui_amount_in]&amp;min_ui_amount_out=[min_ui_amount_out]</a>
       <p class="description"> Adds liquidity to the Pool in the Fund</p>
       <p class="link">
         /api/v1/fund_add_liquidity_pool?wallet_keypair=[wallet_keypair]&amp;fund_name=[fund_name]&amp;pool_name=[pool_name]&amp;max_token_a_ui_amount=[max_token_a_ui_amount]&amp;max_token_b_ui_amount=[max_token_b_ui_amount]</a>

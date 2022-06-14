@@ -58,9 +58,10 @@ pub fn process_refdb_instruction(
             RefDB::init(*refdb_account.try_borrow_mut_data()?, &name, reference_type)?;
         }
         RefDbInstruction::Drop { close_account } => {
-            let _ = RefDB::drop(*refdb_account.try_borrow_mut_data()?)?;
             if close_account {
                 account::close_system_account(signer_account, refdb_account, program_id)?;
+            } else {
+                let _ = RefDB::drop(*refdb_account.try_borrow_mut_data()?)?;
             }
         }
         RefDbInstruction::Write { record } => {

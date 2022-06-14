@@ -5,7 +5,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-pub const RELOAD_INTERVAL: Duration = Duration::from_secs(86400);
+pub const RELOAD_INTERVAL: Duration = Duration::from_secs(21600);
 
 #[derive(Clone)]
 pub struct Cache<T> {

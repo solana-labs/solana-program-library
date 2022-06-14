@@ -361,7 +361,8 @@ fn main() {
                 config::get_str_val_raw(subcommand_matches, "approval_required")
                     .parse()
                     .unwrap(),
-                config::get_floating_val(subcommand_matches, "limit_usd"),
+                config::get_floating_val(subcommand_matches, "min_amount_usd"),
+                config::get_floating_val(subcommand_matches, "max_amount_usd"),
                 config::get_floating_val(subcommand_matches, "fee"),
             );
         }
@@ -402,7 +403,8 @@ fn main() {
                 config::get_str_val_raw(subcommand_matches, "approval_required")
                     .parse()
                     .unwrap(),
-                config::get_floating_val(subcommand_matches, "limit_usd"),
+                config::get_floating_val(subcommand_matches, "min_amount_usd"),
+                config::get_floating_val(subcommand_matches, "max_amount_usd"),
                 config::get_floating_val(subcommand_matches, "fee"),
             );
         }
@@ -532,7 +534,9 @@ fn main() {
                 &client,
                 &config,
                 &config::get_str_val(subcommand_matches, "fund_name"),
-                &config::get_str_val(subcommand_matches, "protocol"),
+                config::get_str_val(subcommand_matches, "protocol")
+                    .parse()
+                    .expect("Failed to parse protocol argument"),
                 &config::get_str_val(subcommand_matches, "from_token"),
                 &config::get_str_val(subcommand_matches, "to_token"),
                 config::get_floating_val(subcommand_matches, "amount_in"),

@@ -96,7 +96,7 @@ Vaults are on-chain programs that implement various yield farming strategies. Un
 - Vaults should be cranked on a periodic basis. Crank operation is permissionless and can be done by anyone. And it is executed for the entire Vault, not per individual user. Crank consists of three steps: 1. Harvest Farm rewards (in one or both tokens); 2. Rebalance rewards to get proper amounts of each token; 3. Place rewards back into the Pool and stake received LP tokens. A small Vault fee is taken from rewards, and it can be used to incentivize Crank operations.
 - Upon liquidity removal, the user gets original tokens back in amounts proportional to Vault tokens they hold. Vault tokens are then burned.
 
-`SBR-STAKE-LP-COMPOUND` is a similar strategy, but it uses Saber Pools and Farms.
+`SBR-STAKE-LP-COMPOUND` and `ORC-STAKE-LP-COMPOUND` are similar strategies, but use Saber and Orca protocols.
 
 ### Main Router
 

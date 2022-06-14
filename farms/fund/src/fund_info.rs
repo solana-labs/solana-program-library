@@ -21,32 +21,34 @@ pub struct FundInfo<'a, 'b> {
 }
 
 impl<'a, 'b> FundInfo<'a, 'b> {
-    pub const LEN: usize = StorageType::get_storage_size_for_records(ReferenceType::U64, 25);
+    pub const LEN: usize = StorageType::get_storage_size_for_records(ReferenceType::U64, 27);
     pub const DEPOSIT_START_TIME_INDEX: usize = 0;
     pub const DEPOSIT_END_TIME_INDEX: usize = 1;
     pub const DEPOSIT_APPROVAL_REQUIRED_INDEX: usize = 2;
-    pub const DEPOSIT_LIMIT_USD_INDEX: usize = 3;
-    pub const DEPOSIT_FEE_INDEX: usize = 4;
-    pub const WITHDRAWAL_START_TIME_INDEX: usize = 5;
-    pub const WITHDRAWAL_END_TIME_INDEX: usize = 6;
-    pub const WITHDRAWAL_APPROVAL_REQUIRED_INDEX: usize = 7;
-    pub const WITHDRAWAL_LIMIT_INDEX: usize = 8;
-    pub const WITHDRAWAL_FEE_INDEX: usize = 9;
-    pub const ASSETS_LIMIT_USD_INDEX: usize = 10;
-    pub const ASSETS_MAX_UPDATE_AGE_SEC_INDEX: usize = 11;
-    pub const ASSETS_MAX_PRICE_ERROR_INDEX: usize = 12;
-    pub const ASSETS_MAX_PRICE_AGE_SEC_INDEX: usize = 13;
-    pub const ISSUE_VIRTUAL_TOKENS_INDEX: usize = 14;
-    pub const VIRTUAL_TOKENS_SUPPLY_INDEX: usize = 15;
-    pub const AMOUNT_INVESTED_USD_INDEX: usize = 16;
-    pub const AMOUNT_REMOVED_USD_INDEX: usize = 17;
-    pub const CURRENT_ASSETS_USD_INDEX: usize = 18;
-    pub const ASSETS_UPDATE_TIME_INDEX: usize = 19;
-    pub const ADMIN_ACTION_TIME_INDEX: usize = 20;
-    pub const LAST_TRADE_TIME_INDEX: usize = 21;
-    pub const LIQUIDATION_START_TIME_INDEX: usize = 22;
-    pub const LIQUIDATION_AMOUNT_USD_INDEX: usize = 23;
-    pub const LIQUIDATION_AMOUNT_TOKENS_INDEX: usize = 24;
+    pub const DEPOSIT_MIN_AMOUNT_USD_INDEX: usize = 3;
+    pub const DEPOSIT_MAX_AMOUNT_USD_INDEX: usize = 4;
+    pub const DEPOSIT_FEE_INDEX: usize = 5;
+    pub const WITHDRAWAL_START_TIME_INDEX: usize = 6;
+    pub const WITHDRAWAL_END_TIME_INDEX: usize = 7;
+    pub const WITHDRAWAL_APPROVAL_REQUIRED_INDEX: usize = 8;
+    pub const WITHDRAWAL_MIN_AMOUNT_USD_INDEX: usize = 9;
+    pub const WITHDRAWAL_MAX_AMOUNT_USD_INDEX: usize = 10;
+    pub const WITHDRAWAL_FEE_INDEX: usize = 11;
+    pub const ASSETS_LIMIT_USD_INDEX: usize = 12;
+    pub const ASSETS_MAX_UPDATE_AGE_SEC_INDEX: usize = 13;
+    pub const ASSETS_MAX_PRICE_ERROR_INDEX: usize = 14;
+    pub const ASSETS_MAX_PRICE_AGE_SEC_INDEX: usize = 15;
+    pub const ISSUE_VIRTUAL_TOKENS_INDEX: usize = 16;
+    pub const VIRTUAL_TOKENS_SUPPLY_INDEX: usize = 17;
+    pub const AMOUNT_INVESTED_USD_INDEX: usize = 18;
+    pub const AMOUNT_REMOVED_USD_INDEX: usize = 19;
+    pub const CURRENT_ASSETS_USD_INDEX: usize = 20;
+    pub const ASSETS_UPDATE_TIME_INDEX: usize = 21;
+    pub const ADMIN_ACTION_TIME_INDEX: usize = 22;
+    pub const LAST_TRADE_TIME_INDEX: usize = 23;
+    pub const LIQUIDATION_START_TIME_INDEX: usize = 24;
+    pub const LIQUIDATION_AMOUNT_USD_INDEX: usize = 25;
+    pub const LIQUIDATION_AMOUNT_TOKENS_INDEX: usize = 26;
 
     pub fn new(account: &'a AccountInfo<'b>) -> Self {
         Self {
@@ -77,8 +79,13 @@ impl<'a, 'b> FundInfo<'a, 'b> {
             Reference::U64 { data: 0 },
         )?;
         self.init_refdb_field(
-            FundInfo::DEPOSIT_LIMIT_USD_INDEX,
-            "DepositLimitUsd",
+            FundInfo::DEPOSIT_MIN_AMOUNT_USD_INDEX,
+            "DepositMinAmountUsd",
+            Reference::U64 { data: 0 },
+        )?;
+        self.init_refdb_field(
+            FundInfo::DEPOSIT_MAX_AMOUNT_USD_INDEX,
+            "DepositMaxAmountUsd",
             Reference::U64 { data: 0 },
         )?;
         self.init_refdb_field(
@@ -102,8 +109,13 @@ impl<'a, 'b> FundInfo<'a, 'b> {
             Reference::U64 { data: 0 },
         )?;
         self.init_refdb_field(
-            FundInfo::WITHDRAWAL_LIMIT_INDEX,
-            "WithdrawalLimitUsd",
+            FundInfo::WITHDRAWAL_MIN_AMOUNT_USD_INDEX,
+            "WithdrawalMinAmountUsd",
+            Reference::U64 { data: 0 },
+        )?;
+        self.init_refdb_field(
+            FundInfo::WITHDRAWAL_MAX_AMOUNT_USD_INDEX,
+            "WithdrawalMaxAmountUsd",
             Reference::U64 { data: 0 },
         )?;
         self.init_refdb_field(
@@ -143,7 +155,7 @@ impl<'a, 'b> FundInfo<'a, 'b> {
         )?;
         self.init_refdb_field(
             FundInfo::AMOUNT_INVESTED_USD_INDEX,
-            "AmountIvestedUsd",
+            "AmountInvestedUsd",
             Reference::U64 { data: 0 },
         )?;
         self.init_refdb_field(
@@ -236,15 +248,29 @@ impl<'a, 'b> FundInfo<'a, 'b> {
         .map(|_| ())
     }
 
-    pub fn set_deposit_limit_usd(&mut self, deposit_limit_usd: f64) -> ProgramResult {
-        if deposit_limit_usd < 0.0 {
+    pub fn set_deposit_min_amount_usd(&mut self, deposit_min_amount_usd: f64) -> ProgramResult {
+        if deposit_min_amount_usd < 0.0 {
             return Err(FarmError::InvalidValue.into());
         }
         RefDB::update_at(
             &mut self.data,
-            FundInfo::DEPOSIT_LIMIT_USD_INDEX,
+            FundInfo::DEPOSIT_MIN_AMOUNT_USD_INDEX,
             &Reference::U64 {
-                data: deposit_limit_usd.to_bits(),
+                data: deposit_min_amount_usd.to_bits(),
+            },
+        )
+        .map(|_| ())
+    }
+
+    pub fn set_deposit_max_amount_usd(&mut self, deposit_max_amount_usd: f64) -> ProgramResult {
+        if deposit_max_amount_usd < 0.0 {
+            return Err(FarmError::InvalidValue.into());
+        }
+        RefDB::update_at(
+            &mut self.data,
+            FundInfo::DEPOSIT_MAX_AMOUNT_USD_INDEX,
+            &Reference::U64 {
+                data: deposit_max_amount_usd.to_bits(),
             },
         )
         .map(|_| ())
@@ -309,15 +335,35 @@ impl<'a, 'b> FundInfo<'a, 'b> {
         .map(|_| ())
     }
 
-    pub fn set_withdrawal_limit_usd(&mut self, withdrawal_limit: f64) -> ProgramResult {
-        if withdrawal_limit < 0.0 {
+    pub fn set_withdrawal_min_amount_usd(
+        &mut self,
+        withdrawal_min_amount_usd: f64,
+    ) -> ProgramResult {
+        if withdrawal_min_amount_usd < 0.0 {
             return Err(FarmError::InvalidValue.into());
         }
         RefDB::update_at(
             &mut self.data,
-            FundInfo::WITHDRAWAL_LIMIT_INDEX,
+            FundInfo::WITHDRAWAL_MIN_AMOUNT_USD_INDEX,
             &Reference::U64 {
-                data: withdrawal_limit.to_bits(),
+                data: withdrawal_min_amount_usd.to_bits(),
+            },
+        )
+        .map(|_| ())
+    }
+
+    pub fn set_withdrawal_max_amount_usd(
+        &mut self,
+        withdrawal_max_amount_usd: f64,
+    ) -> ProgramResult {
+        if withdrawal_max_amount_usd < 0.0 {
+            return Err(FarmError::InvalidValue.into());
+        }
+        RefDB::update_at(
+            &mut self.data,
+            FundInfo::WITHDRAWAL_MAX_AMOUNT_USD_INDEX,
+            &Reference::U64 {
+                data: withdrawal_max_amount_usd.to_bits(),
             },
         )
         .map(|_| ())
@@ -588,8 +634,17 @@ impl<'a, 'b> FundInfo<'a, 'b> {
         Err(FarmError::InvalidRefdbRecord.into())
     }
 
-    pub fn get_deposit_limit_usd(&self) -> Result<f64, ProgramError> {
-        if let Some(rec) = RefDB::read_at(&self.data, FundInfo::DEPOSIT_LIMIT_USD_INDEX)? {
+    pub fn get_deposit_min_amount_usd(&self) -> Result<f64, ProgramError> {
+        if let Some(rec) = RefDB::read_at(&self.data, FundInfo::DEPOSIT_MIN_AMOUNT_USD_INDEX)? {
+            if let Reference::U64 { data } = rec.reference {
+                return Ok(f64::from_bits(data));
+            }
+        }
+        Err(FarmError::InvalidRefdbRecord.into())
+    }
+
+    pub fn get_deposit_max_amount_usd(&self) -> Result<f64, ProgramError> {
+        if let Some(rec) = RefDB::read_at(&self.data, FundInfo::DEPOSIT_MAX_AMOUNT_USD_INDEX)? {
             if let Reference::U64 { data } = rec.reference {
                 return Ok(f64::from_bits(data));
             }
@@ -646,8 +701,17 @@ impl<'a, 'b> FundInfo<'a, 'b> {
         Err(FarmError::InvalidRefdbRecord.into())
     }
 
-    pub fn get_withdrawal_limit_usd(&self) -> Result<f64, ProgramError> {
-        if let Some(rec) = RefDB::read_at(&self.data, FundInfo::WITHDRAWAL_LIMIT_INDEX)? {
+    pub fn get_withdrawal_min_amount_usd(&self) -> Result<f64, ProgramError> {
+        if let Some(rec) = RefDB::read_at(&self.data, FundInfo::WITHDRAWAL_MIN_AMOUNT_USD_INDEX)? {
+            if let Reference::U64 { data } = rec.reference {
+                return Ok(f64::from_bits(data));
+            }
+        }
+        Err(FarmError::InvalidRefdbRecord.into())
+    }
+
+    pub fn get_withdrawal_max_amount_usd(&self) -> Result<f64, ProgramError> {
+        if let Some(rec) = RefDB::read_at(&self.data, FundInfo::WITHDRAWAL_MAX_AMOUNT_USD_INDEX)? {
             if let Reference::U64 { data } = rec.reference {
                 return Ok(f64::from_bits(data));
             }

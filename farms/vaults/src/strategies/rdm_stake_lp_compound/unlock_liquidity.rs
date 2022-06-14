@@ -63,8 +63,8 @@ impl UnlockLiquidity for VaultInstruction {
                 token_a_reward_custody,
                 token_b_reward_custody,
                 vault_stake_info,
-                 None,
-                 Some(farm_id.key),
+                None,
+                Some(farm_id.key),
                 false,
             )?;
             if !UserInfo::validate_account(vault, user_info_account, user_account.key) {
@@ -97,9 +97,9 @@ impl UnlockLiquidity for VaultInstruction {
                 msg!("Error: Zero balance");
                 return Err(ProgramError::InsufficientFunds);
             }
-            let lp_remove_amount =  math::checked_as_u64(math::checked_div(
-            math::checked_mul(stake_balance as u128, vt_remove_amount as u128)?,
-            vt_supply_amount as u128,
+            let lp_remove_amount = math::checked_as_u64(math::checked_div(
+                math::checked_mul(stake_balance as u128, vt_remove_amount as u128)?,
+                vt_supply_amount as u128,
             )?)?;
 
             // unstake

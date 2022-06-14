@@ -8,17 +8,19 @@ use {
     solana_farm_client::client::FarmClient,
     solana_farm_sdk::{
         farm::{Farm, FarmRoute, FarmType},
-        pack::{optional_pubkey_deserialize, pubkey_deserialize},
+        pack::{optional_pubkey_deserialize, pubkey_deserialize, pubkey_slice_deserialize},
         program::protocol::orca::OrcaFarmState,
         refdb::StorageType,
         string::str_to_as64,
         token::GitToken,
     },
     solana_sdk::{hash::Hasher, pubkey::Pubkey},
+    std::str::FromStr,
 };
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
-struct JsonRaydiumFarm {
+struct JsonRaydiumFarmLegacy {
     name: String,
     lp: String,
     reward: String,
@@ -50,6 +52,27 @@ struct JsonRaydiumFarm {
         default
     )]
     farm_reward_token_account_b: Option<Pubkey>,
+}
+
+#[allow(dead_code)]
+#[derive(Deserialize, Debug)]
+struct JsonRaydiumFarm {
+    #[serde(deserialize_with = "pubkey_deserialize")]
+    id: Pubkey,
+    #[serde(rename = "lpMint", deserialize_with = "pubkey_deserialize")]
+    lp_mint: Pubkey,
+    #[serde(rename = "rewardMints", deserialize_with = "pubkey_slice_deserialize")]
+    reward_mints: Vec<Pubkey>,
+    version: u8,
+    #[serde(rename = "programId", deserialize_with = "pubkey_deserialize")]
+    program_id: Pubkey,
+    #[serde(deserialize_with = "pubkey_deserialize")]
+    authority: Pubkey,
+    #[serde(rename = "lpVault", deserialize_with = "pubkey_deserialize")]
+    lp_vault: Pubkey,
+    #[serde(rename = "rewardVaults", deserialize_with = "pubkey_slice_deserialize")]
+    reward_vaults: Vec<Pubkey>,
+    upcoming: bool,
 }
 
 #[derive(Deserialize, Debug)]
@@ -87,6 +110,8 @@ pub fn load(client: &FarmClient, config: &Config, data: &str, remove_mode: bool)
         .expect("Farm RefDB query error");
 
     if parsed["name"] == "Raydium Farms" {
+        load_raydium_farm_legacy(client, config, remove_mode, &parsed, last_index);
+    } else if parsed["name"] == "Raydium Mainnet Farm Pools" {
         load_raydium_farm(client, config, remove_mode, &parsed, last_index);
     } else if parsed["name"] == "Orca Farms" {
         load_orca_farm(client, config, remove_mode, &parsed, last_index);
@@ -97,7 +122,7 @@ pub fn load(client: &FarmClient, config: &Config, data: &str, remove_mode: bool)
     }
 }
 
-fn load_raydium_farm(
+fn load_raydium_farm_legacy(
     client: &FarmClient,
     config: &Config,
     remove_mode: bool,
@@ -108,12 +133,14 @@ fn load_raydium_farm(
     let router_id = client.get_program_id("RaydiumRouter").unwrap();
     let farms = parsed["farms"].as_array().unwrap();
     for val in farms {
-        let json_farm: JsonRaydiumFarm = serde_json::from_value(val.clone()).unwrap();
-        let name = format!(
-            "RDM.{}-V{}",
-            json_farm.name.to_uppercase(),
-            json_farm.version
-        );
+        let json_farm: JsonRaydiumFarmLegacy = serde_json::from_value(val.clone()).unwrap();
+        let lp_token = client.get_token(&json_farm.lp.to_uppercase()).unwrap();
+        let (pool_name, _) = if FarmClient::is_liquidity_token(&lp_token.name) {
+            FarmClient::extract_pool_name_and_version(&lp_token.name).unwrap()
+        } else {
+            ("RDM.".to_string() + &lp_token.name, 0)
+        };
+        let name = format!("{}-V{}", pool_name, json_farm.version);
         if !remove_mode {
             if json_farm.legacy {
                 info!("Skipping legacy Farm \"{}\"...", name);
@@ -171,6 +198,94 @@ fn load_raydium_farm(
                 farm_lp_token_account: json_farm.farm_lp_token_account,
                 farm_first_reward_token_account: json_farm.farm_reward_token_account,
                 farm_second_reward_token_account: json_farm.farm_reward_token_account_b,
+            },
+        };
+
+        client.add_farm(config.keypair.as_ref(), farm).unwrap();
+    }
+}
+
+fn load_raydium_farm(
+    client: &FarmClient,
+    config: &Config,
+    remove_mode: bool,
+    parsed: &Value,
+    last_index: u32,
+) {
+    let mut last_index = last_index;
+    let router_id = client.get_program_id("RaydiumRouter").unwrap();
+    let farms = parsed["official"].as_array().unwrap();
+    for val in farms {
+        let json_farm: JsonRaydiumFarm = serde_json::from_value(val.clone()).unwrap();
+        let lp_token = if let Ok(token) = client.get_token_with_mint(&json_farm.lp_mint) {
+            token
+        } else {
+            info!(
+                "Skipping Farm with unrecognized lp token {}",
+                json_farm.lp_mint
+            );
+            continue;
+        };
+        let (pool_name, _) = if FarmClient::is_liquidity_token(&lp_token.name) {
+            FarmClient::extract_pool_name_and_version(&lp_token.name).unwrap()
+        } else {
+            ("RDM.".to_string() + &lp_token.name, 0)
+        };
+        let name = format!("{}-V{}", pool_name, json_farm.version);
+        if !remove_mode {
+            if config.skip_existing && client.get_farm(&name).is_ok() {
+                info!("Skipping existing Farm \"{}\"...", name);
+                continue;
+            }
+            info!("Writing Farm \"{}\" to on-chain RefDB...", name);
+        } else {
+            info!("Removing Farm \"{}\" from on-chain RefDB...", name);
+            client.remove_farm(config.keypair.as_ref(), &name).unwrap();
+            continue;
+        }
+        let (index, counter) = if let Ok(farm) = client.get_farm(&name) {
+            (farm.refdb_index, farm.refdb_counter)
+        } else {
+            last_index += 1;
+            (Some(last_index - 1), 0u16)
+        };
+        let farm = Farm {
+            name: str_to_as64(&name).unwrap(),
+            version: json_farm.version as u16,
+            farm_type: if json_farm.reward_mints.len() > 1 {
+                FarmType::DualReward
+            } else if json_farm.lp_mint
+                == Pubkey::from_str("4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R").unwrap()
+            {
+                FarmType::ProtocolTokenStake
+            } else {
+                FarmType::SingleReward
+            },
+            official: true,
+            refdb_index: index,
+            refdb_counter: counter,
+            lp_token_ref: Some(client.get_token_ref(&lp_token.name).unwrap()),
+            first_reward_token_ref: Some(get_token_ref_with_mint(
+                client,
+                &json_farm.reward_mints[0],
+            )),
+            second_reward_token_ref: if json_farm.reward_mints.len() < 2 {
+                None
+            } else {
+                Some(get_token_ref_with_mint(client, &json_farm.reward_mints[1]))
+            },
+            router_program_id: router_id,
+            farm_program_id: json_farm.program_id,
+            route: FarmRoute::Raydium {
+                farm_id: json_farm.id,
+                farm_authority: json_farm.authority,
+                farm_lp_token_account: json_farm.lp_vault,
+                farm_first_reward_token_account: json_farm.reward_vaults[0],
+                farm_second_reward_token_account: if json_farm.reward_vaults.len() < 2 {
+                    None
+                } else {
+                    Some(json_farm.reward_vaults[1])
+                },
             },
         };
 
@@ -237,7 +352,7 @@ fn load_saber_farm(
 
     for val in pools {
         let json_farm: JsonSaberFarm = serde_json::from_value(val.clone()).unwrap();
-        let name = get_saber_pool_name(&json_farm.tokens[0], &json_farm.tokens[1]);
+        let name = get_saber_pool_name(client, &json_farm.tokens[0], &json_farm.tokens[1]);
         if !remove_mode {
             if config.skip_existing && client.get_farm(&name).is_ok() {
                 info!("Skipping existing Farm \"{}\"...", name);
@@ -255,9 +370,11 @@ fn load_saber_farm(
             last_index += 1;
             (Some(last_index - 1), 0u16)
         };
-        let farm_token_name = get_saber_lp_token_name(&json_farm.lp_token.name);
-        if json_farm.tokens[0].address != val["swap"]["state"]["tokenA"]["mint"]
-            || json_farm.tokens[1].address != val["swap"]["state"]["tokenB"]["mint"]
+        let farm_token_name = get_saber_token_name(client, &json_farm.lp_token);
+        if json_farm.tokens[0].address
+            != convert_pubkey(val["swap"]["state"]["tokenA"]["mint"].as_str().unwrap())
+            || json_farm.tokens[1].address
+                != convert_pubkey(val["swap"]["state"]["tokenB"]["mint"].as_str().unwrap())
         {
             panic!("Farm metadata mismatch");
         }
@@ -307,15 +424,19 @@ fn load_orca_farm(
     let farms = parsed["farms"].as_array().unwrap();
     for val in farms {
         let json_farm: JsonOrcaFarm = serde_json::from_value(val.clone()).unwrap();
-        let upper_name = json_farm.name.to_uppercase().replace('_', "-");
-        let lp_token_name = if upper_name.ends_with("-DD") {
-            "LP.ORC.".to_string() + &upper_name[..upper_name.len() - 3] + "-AQ"
-        } else if upper_name.ends_with("-AQ") {
-            "LP.ORC.".to_string() + &upper_name[..upper_name.len() - 3]
+        let lp_token = client
+            .get_token_with_mint(&json_farm.base_token_mint)
+            .unwrap();
+        let (pool_name, _) = if FarmClient::is_liquidity_token(&lp_token.name) {
+            FarmClient::extract_pool_name_and_version(&lp_token.name).unwrap()
         } else {
-            "LP.ORC.".to_string() + upper_name.as_str()
+            ("ORC.".to_string() + &lp_token.name, 0)
         };
-        let name = format!("ORC.{}-V1", upper_name);
+        let name = if pool_name.ends_with("-AQ") {
+            format!("{}-DD-V1", &pool_name[..pool_name.len() - 3])
+        } else {
+            format!("{}-AQ-V1", pool_name)
+        };
         if !remove_mode {
             if config.skip_existing && client.get_farm(&name).is_ok() {
                 info!("Skipping existing Farm \"{}\"...", name);
@@ -345,7 +466,7 @@ fn load_orca_farm(
             official: true,
             refdb_index: index,
             refdb_counter: counter,
-            lp_token_ref: Some(client.get_token_ref(&lp_token_name).unwrap()),
+            lp_token_ref: Some(client.get_token_ref(&lp_token.name).unwrap()),
             first_reward_token_ref: Some(get_token_ref_with_mint(
                 client,
                 &json_farm.reward_token_mint,

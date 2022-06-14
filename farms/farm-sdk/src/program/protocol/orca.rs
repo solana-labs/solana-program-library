@@ -1,9 +1,24 @@
 //! Orca specific functions
 
 use {
-    crate::{error::FarmError, math, pack::check_data_len, program::account},
+    crate::{
+        error::FarmError,
+        instruction::orca::{OrcaHarvest, OrcaStake, OrcaUnstake},
+        math,
+        pack::check_data_len,
+        program::account,
+    },
     arrayref::{array_ref, array_refs},
-    solana_program::{account_info::AccountInfo, msg, program_error::ProgramError, pubkey::Pubkey},
+    solana_program::{
+        account_info::AccountInfo,
+        entrypoint::ProgramResult,
+        instruction::{AccountMeta, Instruction},
+        msg,
+        program::{invoke, invoke_signed},
+        program_error::ProgramError,
+        pubkey::Pubkey,
+    },
+    spl_token_swap::instruction,
 };
 
 pub mod orca_swap {
@@ -263,11 +278,7 @@ pub fn get_pool_swap_amounts<'a, 'b>(
 
         Ok((
             token_b_amount_in,
-            math::get_no_fee_amount(
-                estimated_token_a_amount,
-                ORCA_FEE_NUMERATOR,
-                ORCA_FEE_DENOMINATOR,
-            )?,
+            math::get_no_fee_amount(estimated_token_a_amount, 3, 100)?,
         ))
     } else {
         // a to b
@@ -281,11 +292,7 @@ pub fn get_pool_swap_amounts<'a, 'b>(
 
         Ok((
             token_a_amount_in,
-            math::get_no_fee_amount(
-                estimated_token_b_amount,
-                ORCA_FEE_NUMERATOR,
-                ORCA_FEE_DENOMINATOR,
-            )?,
+            math::get_no_fee_amount(estimated_token_b_amount, 3, 100)?,
         ))
     }
 }
@@ -332,5 +339,368 @@ pub fn estimate_lp_tokens_amount(
         )?)
     } else {
         Ok(0)
+    }
+}
+
+pub fn add_liquidity(
+    accounts: &[AccountInfo],
+    max_token_a_amount: u64,
+    max_token_b_amount: u64,
+    min_lp_token_amount: u64,
+) -> ProgramResult {
+    #[allow(clippy::deprecated_cfg_attr)]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    if let [
+        user_account,
+        user_token_a_account,
+        user_token_b_account,
+        user_lp_token_account,
+        pool_program_id,
+        pool_token_a_account,
+        pool_token_b_account,
+        lp_token_mint,
+        _spl_token_id,
+        amm_id,
+        amm_authority
+        ] = accounts
+    {
+        if !check_pool_program_id(pool_program_id.key) {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        let data = instruction::DepositAllTokenTypes {
+            pool_token_amount: min_lp_token_amount,
+            maximum_token_a_amount: max_token_a_amount,
+            maximum_token_b_amount: max_token_b_amount,
+        };
+
+        let instruction = instruction::deposit_all_token_types(
+            pool_program_id.key,
+            &spl_token::id(),
+            amm_id.key,
+            amm_authority.key,
+            user_account.key,
+            user_token_a_account.key,
+            user_token_b_account.key,
+            pool_token_a_account.key,
+            pool_token_b_account.key,
+            lp_token_mint.key,
+            user_lp_token_account.key,
+            data,
+        )?;
+
+        invoke(&instruction, accounts)
+    } else {
+        Err(ProgramError::NotEnoughAccountKeys)
+    }
+}
+
+pub fn add_liquidity_with_seeds(
+    accounts: &[AccountInfo],
+    seeds: &[&[&[u8]]],
+    max_token_a_amount: u64,
+    max_token_b_amount: u64,
+    min_lp_token_amount: u64,
+) -> ProgramResult {
+    #[allow(clippy::deprecated_cfg_attr)]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    if let [
+        authority_account,
+        token_a_custody_account,
+        token_b_custody_account,
+        lp_token_custody_account,
+        pool_program_id,
+        pool_token_a_account,
+        pool_token_b_account,
+        lp_token_mint,
+        _spl_token_id,
+        amm_id,
+        amm_authority
+        ] = accounts
+    {
+        if !check_pool_program_id(pool_program_id.key) {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        let data = instruction::DepositAllTokenTypes {
+            pool_token_amount: min_lp_token_amount,
+            maximum_token_a_amount: max_token_a_amount,
+            maximum_token_b_amount: max_token_b_amount,
+        };
+
+        let instruction = instruction::deposit_all_token_types(
+            pool_program_id.key,
+            &spl_token::id(),
+            amm_id.key,
+            amm_authority.key,
+            authority_account.key,
+            token_a_custody_account.key,
+            token_b_custody_account.key,
+            pool_token_a_account.key,
+            pool_token_b_account.key,
+            lp_token_mint.key,
+            lp_token_custody_account.key,
+            data,
+        )?;
+
+        invoke_signed(&instruction, accounts, seeds)
+    } else {
+        Err(ProgramError::NotEnoughAccountKeys)
+    }
+}
+
+pub fn remove_liquidity_with_seeds(
+    accounts: &[AccountInfo],
+    seeds: &[&[&[u8]]],
+    lp_amount: u64,
+    min_token_a_amount: u64,
+    min_token_b_amount: u64,
+) -> ProgramResult {
+    #[allow(clippy::deprecated_cfg_attr)]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    if let [
+        authority_account,
+        token_a_custody_account,
+        token_b_custody_account,
+        lp_token_custody_account,
+        pool_program_id,
+        pool_token_a_account,
+        pool_token_b_account,
+        lp_token_mint,
+        _spl_token_id,
+        amm_id,
+        amm_authority,
+        fees_account
+        ] = accounts
+    {
+        if !check_pool_program_id(pool_program_id.key) {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        
+        let data = instruction::WithdrawAllTokenTypes {
+            pool_token_amount: lp_amount,
+            minimum_token_a_amount: min_token_a_amount,
+            minimum_token_b_amount: min_token_b_amount,
+        };
+
+        let instruction = instruction::withdraw_all_token_types(
+            pool_program_id.key,
+            &spl_token::id(),
+            amm_id.key,
+            amm_authority.key,
+            authority_account.key,
+            lp_token_mint.key,
+            fees_account.key,
+            lp_token_custody_account.key,
+            pool_token_a_account.key,
+            pool_token_b_account.key,
+            token_a_custody_account.key,
+            token_b_custody_account.key,
+            data,
+        )?;
+
+        invoke_signed(&instruction, accounts, seeds)
+    } else {
+        Err(ProgramError::NotEnoughAccountKeys)
+    }
+}
+
+pub fn stake_with_seeds(
+    accounts: &[AccountInfo],
+    seeds: &[&[&[u8]]],
+    amount: u64,
+) -> ProgramResult {
+    #[allow(clippy::deprecated_cfg_attr)]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    if let [
+        authority_account,
+        stake_info_account,
+        lp_token_custody_account,
+        reward_token_custody_account,
+        farm_lp_token_custody_account,
+        farm_lp_token_mint,
+        farm_program_id,
+        base_token_vault,
+        reward_token_vault,
+        _spl_token_id,
+        farm_id,
+        farm_authority
+        ] = accounts
+    {
+        if !check_stake_program_id(farm_program_id.key) {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        let orca_accounts = vec![
+            AccountMeta::new_readonly(*authority_account.key, true),
+            AccountMeta::new(*lp_token_custody_account.key, false),
+            AccountMeta::new(*base_token_vault.key, false),
+            AccountMeta::new_readonly(*authority_account.key, true),
+            AccountMeta::new(*farm_lp_token_mint.key, false),
+            AccountMeta::new(*farm_lp_token_custody_account.key, false),
+            AccountMeta::new(*farm_id.key, false),
+            AccountMeta::new(*stake_info_account.key, false),
+            AccountMeta::new(*reward_token_vault.key, false),
+            AccountMeta::new(*reward_token_custody_account.key, false),
+            AccountMeta::new_readonly(*farm_authority.key, false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ];
+
+        let instruction = Instruction {
+            program_id: *farm_program_id.key,
+            accounts: orca_accounts,
+            data: OrcaStake { amount }.to_vec()?,
+        };
+        
+        invoke_signed(&instruction, accounts, seeds)
+    } else {
+        Err(ProgramError::NotEnoughAccountKeys)
+    }
+}
+
+pub fn harvest_with_seeds(accounts: &[AccountInfo], seeds: &[&[&[u8]]]) -> ProgramResult {
+    #[allow(clippy::deprecated_cfg_attr)]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    if let [
+        authority_account,
+        stake_info_account,
+        reward_token_custody_account,
+        farm_program_id,
+        base_token_vault,
+        reward_token_vault,
+        _spl_token_id,
+        farm_id,
+        farm_authority
+        ] = accounts
+    {
+        if !check_stake_program_id(farm_program_id.key) {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        
+        let orca_accounts = vec![
+            AccountMeta::new_readonly(*authority_account.key, true),
+            AccountMeta::new(*farm_id.key, false),
+            AccountMeta::new(*stake_info_account.key, false),
+            AccountMeta::new_readonly(*base_token_vault.key, false),
+            AccountMeta::new(*reward_token_vault.key, false),
+            AccountMeta::new(*reward_token_custody_account.key, false),
+            AccountMeta::new_readonly(*farm_authority.key, false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ];
+
+        let instruction = Instruction {
+            program_id: *farm_program_id.key,
+            accounts: orca_accounts,
+            data: OrcaHarvest {}.to_vec()?,
+        };
+
+        invoke_signed(&instruction, accounts, seeds)
+    } else {
+        Err(ProgramError::NotEnoughAccountKeys)
+    }
+}
+
+pub fn swap_with_seeds(
+    accounts: &[AccountInfo],
+    seeds: &[&[&[u8]]],
+    amount_in: u64,
+    min_amount_out: u64,
+) -> ProgramResult {
+    #[allow(clippy::deprecated_cfg_attr)]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    if let [
+        authority_account,
+        token_a_custody_account,
+        token_b_custody_account,
+        pool_program_id,
+        pool_token_a_account,
+        pool_token_b_account,
+        lp_token_mint,
+        _spl_token_id,
+        amm_id,
+        amm_authority,
+        fees_account
+        ] = accounts
+    {
+        if !check_pool_program_id(pool_program_id.key) {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        let data = instruction::Swap {
+            amount_in,
+            minimum_amount_out: min_amount_out,
+        };
+
+        let instruction = instruction::swap(
+            pool_program_id.key,
+            &spl_token::id(),
+            amm_id.key,
+            amm_authority.key,
+            authority_account.key,
+            token_a_custody_account.key,
+            pool_token_a_account.key,
+            pool_token_b_account.key,
+            token_b_custody_account.key,
+            lp_token_mint.key,
+            fees_account.key,
+            None,
+            data,
+        )?;
+
+        invoke_signed(&instruction, accounts, seeds)
+    } else {
+        Err(ProgramError::NotEnoughAccountKeys)
+    }
+}
+
+pub fn unstake_with_seeds(
+    accounts: &[AccountInfo],
+    seeds: &[&[&[u8]]],
+    amount: u64,
+) -> ProgramResult {
+    #[allow(clippy::deprecated_cfg_attr)]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    if let [
+        authority_account,
+        stake_info_account,
+        lp_token_custody_account,
+        reward_token_custody_account,
+        farm_lp_token_custody_account,
+        farm_lp_token_mint,
+        farm_program_id,
+        base_token_vault,
+        reward_token_vault,
+        _spl_token_id,
+        farm_id,
+        farm_authority
+        ] = accounts
+    {
+        if !check_stake_program_id(farm_program_id.key) {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        let orca_accounts = vec![
+            AccountMeta::new_readonly(*authority_account.key, true),
+            AccountMeta::new(*lp_token_custody_account.key, false),
+            AccountMeta::new(*base_token_vault.key, false),
+            AccountMeta::new(*farm_lp_token_mint.key, false),
+            AccountMeta::new(*farm_lp_token_custody_account.key, false),
+            AccountMeta::new_readonly(*authority_account.key, true),
+            AccountMeta::new(*farm_id.key, false),
+            AccountMeta::new(*stake_info_account.key, false),
+            AccountMeta::new(*reward_token_vault.key, false),
+            AccountMeta::new(*reward_token_custody_account.key, false),
+            AccountMeta::new_readonly(*farm_authority.key, false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ];
+
+        let instruction = Instruction {
+            program_id: *farm_program_id.key,
+            accounts: orca_accounts,
+            data: OrcaUnstake { amount }.to_vec()?,
+        };
+        invoke_signed(&instruction, accounts, seeds)
+    } else {
+        Err(ProgramError::NotEnoughAccountKeys)
     }
 }

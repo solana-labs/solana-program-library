@@ -11,6 +11,7 @@ use {
         },
         id::zero,
         string::str_to_as64,
+        Protocol,
     },
     solana_sdk::{
         commitment_config::{CommitmentConfig, CommitmentLevel},
@@ -173,7 +174,8 @@ fn run_tests() -> Result<(), FarmClientError> {
         start_time: 0,
         end_time: utils::get_time() + 600,
         approval_required: true,
-        limit_usd: client.get_oracle_price("SOL", 0, 0.0)? * 1.5,
+        min_amount_usd: 0.0,
+        max_amount_usd: client.get_oracle_price("SOL", 0, 0.0)? * 1.5,
         fee: 0.01,
     };
     client.set_fund_deposit_schedule(&admin_keypair, &fund_name, &schedule)?;
@@ -387,7 +389,8 @@ fn run_tests() -> Result<(), FarmClientError> {
         start_time: 0,
         end_time: utils::get_time() + 600,
         approval_required: false,
-        limit_usd: client.get_oracle_price("SOL", 0, 0.0)? * 1.5,
+        min_amount_usd: 0.0,
+        max_amount_usd: client.get_oracle_price("SOL", 0, 0.0)? * 1.5,
         fee: 0.01,
     };
     client.set_fund_deposit_schedule(&manager_keypair, &fund_name, &schedule)?;
@@ -424,7 +427,8 @@ fn run_tests() -> Result<(), FarmClientError> {
         start_time: 0,
         end_time: utils::get_time() + 600,
         approval_required: true,
-        limit_usd: client.get_oracle_price("SOL", 0, 0.0)? * 0.1,
+        min_amount_usd: 0.0,
+        max_amount_usd: client.get_oracle_price("SOL", 0, 0.0)? * 0.1,
         fee: 0.01,
     };
     client.set_fund_withdrawal_schedule(&admin_keypair, &fund_name, &schedule)?;
@@ -448,7 +452,8 @@ fn run_tests() -> Result<(), FarmClientError> {
         start_time: 0,
         end_time: utils::get_time() + 600,
         approval_required: true,
-        limit_usd: client.get_oracle_price("SOL", 0, 0.0)? * 0.2,
+        min_amount_usd: 0.0,
+        max_amount_usd: client.get_oracle_price("SOL", 0, 0.0)? * 0.2,
         fee: 0.01,
     };
     client.set_fund_withdrawal_schedule(&manager_keypair, &fund_name, &schedule)?;
@@ -541,7 +546,8 @@ fn run_tests() -> Result<(), FarmClientError> {
         start_time: 0,
         end_time: utils::get_time() + 600,
         approval_required: false,
-        limit_usd: client.get_oracle_price("SOL", 0, 0.0)? * 1.5,
+        min_amount_usd: 0.0,
+        max_amount_usd: client.get_oracle_price("SOL", 0, 0.0)? * 1.5,
         fee: 0.01,
     };
     client.set_fund_withdrawal_schedule(&admin_keypair, &fund_name, &schedule)?;
@@ -690,7 +696,8 @@ fn run_tests() -> Result<(), FarmClientError> {
             start_time: 0,
             end_time: utils::get_time() + 600,
             approval_required: false,
-            limit_usd: f64::MAX,
+            min_amount_usd: 0.0,
+            max_amount_usd: f64::MAX,
             fee: 0.01,
         };
         client.set_fund_deposit_schedule(&admin_keypair, &fund_name, &schedule)?;
@@ -720,7 +727,7 @@ fn run_tests() -> Result<(), FarmClientError> {
         client.fund_swap(
             &manager_keypair,
             &fund_name,
-            "RDM",
+            Protocol::Raydium,
             token_a,
             token_b,
             amount,
@@ -1228,7 +1235,8 @@ fn run_tests() -> Result<(), FarmClientError> {
         start_time: 0,
         end_time: utils::get_time() + 600,
         approval_required: false,
-        limit_usd: client.get_oracle_price("SOL", 0, 0.0)? * 3.0,
+        min_amount_usd: 0.0,
+        max_amount_usd: client.get_oracle_price("SOL", 0, 0.0)? * 3.0,
         fee: 0.01,
     };
     client.set_fund_deposit_schedule(&manager_keypair, &fund_name, &schedule)?;
@@ -1247,7 +1255,8 @@ fn run_tests() -> Result<(), FarmClientError> {
         start_time: 0,
         end_time: utils::get_time() + 600,
         approval_required: true,
-        limit_usd: 0.0001,
+        min_amount_usd: 0.0,
+        max_amount_usd: 0.0001,
         fee: 1.0,
     };
     client.lock_assets_fund(&manager_keypair, &fund_name, token_name, 0.0)?;
@@ -1376,7 +1385,8 @@ fn run_tests() -> Result<(), FarmClientError> {
         start_time: 0,
         end_time: utils::get_time() + 600,
         approval_required: false,
-        limit_usd: 1000.0,
+        min_amount_usd: 0.0,
+        max_amount_usd: 1000.0,
         fee: 0.01,
     };
     client.set_fund_withdrawal_schedule(&manager_keypair, &fund_name, &schedule)?;

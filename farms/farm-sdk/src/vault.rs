@@ -79,6 +79,21 @@ pub enum VaultStrategy {
             serialize_with = "pubkey_serialize"
         )]
         vault_stake_info: Pubkey,
+        #[serde(
+            deserialize_with = "optional_pubkey_deserialize",
+            serialize_with = "optional_pubkey_serialize"
+        )]
+        vault_stake_custody: Option<Pubkey>,
+        #[serde(
+            deserialize_with = "optional_pubkey_deserialize",
+            serialize_with = "optional_pubkey_serialize"
+        )]
+        reward_exchange_pool_id: Option<Pubkey>,
+        #[serde(
+            deserialize_with = "optional_pubkey_deserialize",
+            serialize_with = "optional_pubkey_serialize"
+        )]
+        reward_exchange_pool_ref: Option<Pubkey>,
     },
     DynamicHedge,
 }
@@ -189,8 +204,8 @@ impl Versioned for Vault {
 }
 
 impl Vault {
-    pub const MAX_LEN: usize = std::mem::size_of::<Vault>();
-    pub const STAKE_LP_COMPOUND_REWARDS_LEN: usize = 693;
+    pub const MAX_LEN: usize = 792;
+    pub const STAKE_LP_COMPOUND_REWARDS_LEN: usize = 792;
     pub const DYNAMIC_HEDGE_LEN: usize = 1;
 
     fn pack_stake_lp_compound_rewards(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
@@ -209,6 +224,9 @@ impl Vault {
             token_a_reward_custody,
             token_b_reward_custody,
             vault_stake_info,
+            vault_stake_custody,
+            reward_exchange_pool_id,
+            reward_exchange_pool_ref,
         } = self.strategy
         {
             let output = array_mut_ref![output, 0, Vault::STAKE_LP_COMPOUND_REWARDS_LEN];
@@ -245,9 +263,12 @@ impl Vault {
                 token_a_reward_custody_out,
                 token_b_reward_custody_out,
                 vault_stake_info_out,
+                vault_stake_custody_out,
+                reward_exchange_pool_id_out,
+                reward_exchange_pool_ref_out,
             ) = mut_array_refs![
                 output, 1, 64, 2, 1, 1, 5, 2, 1, 1, 1, 1, 1, 32, 32, 32, 32, 32, 33, 33, 32, 32,
-                32, 32, 32, 32, 32, 32, 33, 32, 33, 32
+                32, 32, 32, 32, 32, 32, 33, 32, 33, 32, 33, 33, 33
             ];
 
             strategy_type_out[0] = VaultStrategyType::StakeLpCompoundRewards as u8;
@@ -282,6 +303,9 @@ impl Vault {
             token_a_reward_custody_out.copy_from_slice(token_a_reward_custody.as_ref());
             pack_option_key(&token_b_reward_custody, token_b_reward_custody_out);
             vault_stake_info_out.copy_from_slice(vault_stake_info.as_ref());
+            pack_option_key(&vault_stake_custody, vault_stake_custody_out);
+            pack_option_key(&reward_exchange_pool_id, reward_exchange_pool_id_out);
+            pack_option_key(&reward_exchange_pool_ref, reward_exchange_pool_ref_out);
 
             Ok(Vault::STAKE_LP_COMPOUND_REWARDS_LEN)
         } else {
@@ -325,9 +349,12 @@ impl Vault {
             token_a_reward_custody,
             token_b_reward_custody,
             vault_stake_info,
+            vault_stake_custody,
+            reward_exchange_pool_id,
+            reward_exchange_pool_ref,
         ) = array_refs![
             input, 64, 2, 1, 1, 5, 2, 1, 1, 1, 1, 1, 32, 32, 32, 32, 32, 33, 33, 32, 32, 32, 32,
-            32, 32, 32, 32, 33, 32, 33, 32
+            32, 32, 32, 32, 33, 32, 33, 32, 33, 33, 33
         ];
 
         Ok(Self {
@@ -363,6 +390,9 @@ impl Vault {
                 token_a_reward_custody: Pubkey::new_from_array(*token_a_reward_custody),
                 token_b_reward_custody: unpack_option_key(token_b_reward_custody)?,
                 vault_stake_info: Pubkey::new_from_array(*vault_stake_info),
+                vault_stake_custody: unpack_option_key(vault_stake_custody)?,
+                reward_exchange_pool_id: unpack_option_key(reward_exchange_pool_id)?,
+                reward_exchange_pool_ref: unpack_option_key(reward_exchange_pool_ref)?,
             },
         })
     }

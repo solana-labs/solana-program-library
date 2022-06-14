@@ -313,7 +313,11 @@ fn main() {
             let protocol = config::get_str_val(subcommand_matches, "protocol");
             let token1 = config::get_str_val(subcommand_matches, "token_name");
             let token2 = config::get_str_val(subcommand_matches, "token_name2");
-            match client.find_pools(&protocol, &token1, &token2) {
+            match client.find_pools(
+                protocol.parse().expect("Failed to parse protocol argument"),
+                &token1,
+                &token2,
+            ) {
                 Ok(pools) => {
                     for pool in pools {
                         println!("{}", pool.name);
@@ -388,7 +392,7 @@ fn main() {
                 client
                     .swap(
                         config.keypair.as_ref(),
-                        &protocol,
+                        protocol.parse().expect("Failed to parse protocol argument"),
                         &token_from,
                         &token_to,
                         amount_in,
@@ -945,7 +949,7 @@ fn main() {
                 let instruction = client
                     .new_instruction_swap(
                         &custody_authority,
-                        &protocol,
+                        protocol.parse().expect("Failed to parse protocol argument"),
                         &token_from,
                         &token_to,
                         amount_in,
@@ -976,7 +980,7 @@ fn main() {
                 let instruction = client
                     .new_instruction_swap(
                         &custody_authority,
-                        &protocol,
+                        protocol.parse().expect("Failed to parse protocol argument"),
                         &token_from,
                         &token_to,
                         amount_in,

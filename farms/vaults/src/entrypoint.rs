@@ -17,7 +17,7 @@ use {
         id::{main_router, main_router_admin, main_router_multisig},
         instruction::vault::VaultInstruction,
         log::sol_log_params_short,
-        program::{multisig, pda},
+        program::multisig,
         refdb,
         string::ArrayString64,
         traits::Packed,
@@ -108,7 +108,7 @@ pub fn process_instruction(
 
     // unpack Vault's metadata and validate Vault accounts
     let vault = Vault::unpack(&vault_metadata.try_borrow_data()?)?;
-    let derived_vault_metadata = pda::find_target_pda_with_bump(
+    let derived_vault_metadata = refdb::find_target_pda_with_bump(
         refdb::StorageType::Vault,
         &vault.name,
         vault.metadata_bump,

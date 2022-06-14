@@ -127,7 +127,7 @@ pub enum VaultInstructionType {
 }
 
 impl VaultInstruction {
-    pub const MAX_LEN: usize = std::mem::size_of::<VaultInstruction>();
+    pub const MAX_LEN: usize = 17;
     pub const USER_INIT_LEN: usize = 1;
     pub const ADD_LIQUIDITY_LEN: usize = 17;
     pub const LOCK_LIQUIDITY_LEN: usize = 9;

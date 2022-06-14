@@ -81,7 +81,7 @@ pub fn crank3(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
         }
 
         if !program::is_last_instruction(sysvar_account)? {
-            msg!("Error: Crank3 must be last instruction in the transaction");
+            msg!("Error: Crank3 must be the last instruction in the transaction");
             return Err(ProgramError::InvalidArgument);
         }
 

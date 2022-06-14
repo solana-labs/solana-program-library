@@ -83,47 +83,51 @@ pub fn init(fund: &Fund, accounts: &[AccountInfo], _step: u64) -> ProgramResult 
         )?;
 
         // init vaults assets info
-        msg!("Init vaults assets info");
-        let bump = pda::init_system_account(
-            admin_account,
-            vaults_assets_info,
-            &fund.fund_program_id,
-            &fund.fund_program_id,
-            &[b"vaults_assets_info", fund.name.as_bytes()],
-            FundAssets::LEN,
-        )?;
-        let mut fund_assets = account::unpack::<FundAssets>(vaults_assets_info, "Vaults assets")?;
-        fund_assets.asset_type = FundAssetType::Vault;
-        fund_assets.target_hash = 0;
-        fund_assets.current_hash = 0;
-        fund_assets.current_cycle = 0;
-        fund_assets.current_assets_usd = 0.0;
-        fund_assets.cycle_start_time = 0;
-        fund_assets.cycle_end_time = 0;
-        fund_assets.bump = bump;
-        fund_assets.pack(*vaults_assets_info.try_borrow_mut_data()?)?;
+        if account::is_empty(vaults_assets_info)? {
+            msg!("Init vaults assets info");
+            let bump = pda::init_system_account(
+                admin_account,
+                vaults_assets_info,
+                &fund.fund_program_id,
+                &fund.fund_program_id,
+                &[b"vaults_assets_info", fund.name.as_bytes()],
+                FundAssets::LEN,
+            )?;
+            let mut fund_assets = account::unpack::<FundAssets>(vaults_assets_info, "Vaults assets")?;
+            fund_assets.asset_type = FundAssetType::Vault;
+            fund_assets.target_hash = 0;
+            fund_assets.current_hash = 0;
+            fund_assets.current_cycle = 0;
+            fund_assets.current_assets_usd = 0.0;
+            fund_assets.cycle_start_time = 0;
+            fund_assets.cycle_end_time = 0;
+            fund_assets.bump = bump;
+            fund_assets.pack(*vaults_assets_info.try_borrow_mut_data()?)?;
+        }
 
         // init custodies assets info
-        msg!("Init custodies assets info");
-        let bump = pda::init_system_account(
-            admin_account,
-            custodies_assets_info,
-            &fund.fund_program_id,
-            &fund.fund_program_id,
-            &[b"custodies_assets_info", fund.name.as_bytes()],
-            FundAssets::LEN,
-        )?;
-        let mut fund_assets =
-            account::unpack::<FundAssets>(custodies_assets_info, "Custodies assets")?;
-        fund_assets.asset_type = FundAssetType::Custody;
-        fund_assets.target_hash = 0;
-        fund_assets.current_hash = 0;
-        fund_assets.current_cycle = 0;
-        fund_assets.current_assets_usd = 0.0;
-        fund_assets.cycle_start_time = 0;
-        fund_assets.cycle_end_time = 0;
-        fund_assets.bump = bump;
-        fund_assets.pack(*custodies_assets_info.try_borrow_mut_data()?)?;
+        if account::is_empty(custodies_assets_info)? {
+            msg!("Init custodies assets info");
+            let bump = pda::init_system_account(
+                admin_account,
+                custodies_assets_info,
+                &fund.fund_program_id,
+                &fund.fund_program_id,
+                &[b"custodies_assets_info", fund.name.as_bytes()],
+                FundAssets::LEN,
+            )?;
+            let mut fund_assets =
+                account::unpack::<FundAssets>(custodies_assets_info, "Custodies assets")?;
+            fund_assets.asset_type = FundAssetType::Custody;
+            fund_assets.target_hash = 0;
+            fund_assets.current_hash = 0;
+            fund_assets.current_cycle = 0;
+            fund_assets.current_assets_usd = 0.0;
+            fund_assets.cycle_start_time = 0;
+            fund_assets.cycle_end_time = 0;
+            fund_assets.bump = bump;
+            fund_assets.pack(*custodies_assets_info.try_borrow_mut_data()?)?;
+        }
 
         Ok(())
     } else {

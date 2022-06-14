@@ -68,17 +68,26 @@ pub struct Token {
     pub mint: Pubkey,
     pub oracle_type: OracleType,
     #[serde(
+        deserialize_with = "optional_pubkey_deserialize",
+        serialize_with = "optional_pubkey_serialize"
+    )]
+    pub oracle_account: Option<Pubkey>,
+    #[serde(
         deserialize_with = "pubkey_deserialize",
         serialize_with = "pubkey_serialize"
     )]
-    pub oracle_account: Pubkey,
+    pub description_account: Pubkey,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GitToken {
     #[serde(rename = "chainId")]
     pub chain_id: i32,
-    pub address: String,
+    #[serde(
+        deserialize_with = "pubkey_deserialize",
+        serialize_with = "pubkey_serialize"
+    )]
+    pub address: Pubkey,
     pub symbol: String,
     pub name: String,
     pub decimals: i32,
@@ -97,7 +106,7 @@ impl Named for Token {
 }
 
 impl Token {
-    pub const LEN: usize = 204;
+    pub const LEN: usize = 237;
 }
 
 impl Packed for Token {
@@ -121,7 +130,8 @@ impl Packed for Token {
             mint_out,
             oracle_type_out,
             oracle_account_out,
-        ) = mut_array_refs![output, 64, 64, 1, 5, 2, 1, 2, 32, 1, 32];
+            description_account_out,
+        ) = mut_array_refs![output, 64, 64, 1, 5, 2, 1, 2, 32, 1, 33, 32];
         pack_array_string64(&self.name, name_out);
         pack_array_string64(&self.description, description_out);
         token_type_out[0] = self.token_type as u8;
@@ -131,7 +141,8 @@ impl Packed for Token {
         *chain_id_out = self.chain_id.to_le_bytes();
         mint_out.copy_from_slice(self.mint.as_ref());
         oracle_type_out[0] = self.oracle_type as u8;
-        oracle_account_out.copy_from_slice(self.oracle_account.as_ref());
+        pack_option_key(&self.oracle_account, oracle_account_out);
+        description_account_out.copy_from_slice(self.description_account.as_ref());
 
         Ok(Token::LEN)
     }
@@ -161,7 +172,8 @@ impl Packed for Token {
             mint,
             oracle_type,
             oracle_account,
-        ) = array_refs![input, 64, 64, 1, 5, 2, 1, 2, 32, 1, 32];
+            description_account,
+        ) = array_refs![input, 64, 64, 1, 5, 2, 1, 2, 32, 1, 33, 32];
 
         Ok(Self {
             name: unpack_array_string64(name)?,
@@ -175,7 +187,8 @@ impl Packed for Token {
             mint: Pubkey::new_from_array(*mint),
             oracle_type: OracleType::try_from_primitive(oracle_type[0])
                 .or(Err(ProgramError::InvalidAccountData))?,
-            oracle_account: Pubkey::new_from_array(*oracle_account),
+            oracle_account: unpack_option_key(oracle_account)?,
+            description_account: Pubkey::new_from_array(*description_account),
         })
     }
 }

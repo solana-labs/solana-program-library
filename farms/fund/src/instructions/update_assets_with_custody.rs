@@ -4,6 +4,7 @@ use {
     crate::{common, fund_info::FundInfo},
     solana_farm_sdk::{
         fund::{Fund, FundAssetType, FundCustody},
+        id::zero,
         math,
         program::{account, clock},
         token::Token,
@@ -54,7 +55,7 @@ pub fn update_assets_with_custody(fund: &Fund, accounts: &[AccountInfo]) -> Prog
             None,
         )?;
 
-        if oracle_account.key != &custody_token.oracle_account {
+        if oracle_account.key != &custody_token.oracle_account.unwrap_or_else(zero::id) {
             msg!("Error: Invalid oracle account");
             return Err(ProgramError::Custom(531));
         }

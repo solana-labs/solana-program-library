@@ -1,58 +1,12 @@
 //! Common PDA functions
 
 use {
-    crate::{
-        id::{main_router, main_router_admin},
-        program::account,
-        refdb,
-        string::ArrayString64,
-    },
+    crate::program::account,
     solana_program::{
         account_info::AccountInfo, entrypoint::ProgramResult, program, program_error::ProgramError,
         program_pack::Pack, pubkey::Pubkey, rent::Rent, system_instruction, sysvar, sysvar::Sysvar,
     },
 };
-
-/// Derives the RefDB storage address and the bump seed for the given string
-pub fn find_refdb_pda(refdb_name: &str) -> (Pubkey, u8) {
-    if refdb::REFDB_ONCHAIN_INIT {
-        Pubkey::find_program_address(&[refdb_name.as_bytes()], &main_router::id())
-    } else {
-        (
-            Pubkey::create_with_seed(&main_router_admin::id(), refdb_name, &main_router::id())
-                .unwrap(),
-            0,
-        )
-    }
-}
-
-/// Derives the target metadata object address for the given storage type and object name
-pub fn find_target_pda(
-    storage_type: refdb::StorageType,
-    target_name: &ArrayString64,
-) -> (Pubkey, u8) {
-    Pubkey::find_program_address(
-        &[storage_type.to_string().as_bytes(), target_name.as_bytes()],
-        &main_router::id(),
-    )
-}
-
-/// Returns the target metadata object address for the given storage type, object name, and bump
-pub fn find_target_pda_with_bump(
-    storage_type: refdb::StorageType,
-    target_name: &ArrayString64,
-    bump: u8,
-) -> Result<Pubkey, ProgramError> {
-    Pubkey::create_program_address(
-        &[
-            storage_type.to_string().as_bytes(),
-            target_name.as_bytes(),
-            &[bump],
-        ],
-        &main_router::id(),
-    )
-    .map_err(|_| ProgramError::InvalidSeeds)
-}
 
 pub fn init_token_account<'a, 'b>(
     funding_account: &'a AccountInfo<'b>,
