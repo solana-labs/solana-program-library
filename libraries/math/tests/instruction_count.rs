@@ -180,6 +180,22 @@ async fn test_f32_natural_log() {
 }
 
 #[tokio::test]
+async fn test_approx_natural_log() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    pc.set_compute_max_units(3500);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction = Transaction::new_with_payer(
+        &[approximations::ln(1_f32.exp())],
+        Some(&payer.pubkey()),
+    ); 
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
 async fn test_f32_normal_cdf() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 

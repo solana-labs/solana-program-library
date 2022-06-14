@@ -49,7 +49,7 @@ pub fn sqrt<T: PrimInt + CheckedShl + CheckedShr>(radicand: T) -> Option<T> {
 /// $$ ln(x) = (n-1)*ln(10) + 2 * \sum{ y^{2k+1} \over 2k+1 } $$
 /// where x = A * 10^(n-1) such that 0 <= A < 10
 /// and y = (A-1)/(A+1)
-pub fn ln<T: Float + Copy>(input: T) -> Option<T> {
+pub fn ln<T: Float + Clone>(input: T) -> Option<T> {
     if input.le(&T::zero()) {
         return None; // fail for less than or equal to 0
     }
