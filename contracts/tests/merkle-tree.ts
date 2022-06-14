@@ -12,7 +12,7 @@ export type Tree = {
     root: Buffer,
 }
 
-type TreeNode = {
+export type TreeNode = {
     node: Buffer,
     left: TreeNode | undefined,
     right: TreeNode | undefined,
