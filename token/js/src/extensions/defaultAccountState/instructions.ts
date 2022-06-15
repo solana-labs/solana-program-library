@@ -1,0 +1,89 @@
+import { struct, u8 } from '@solana/buffer-layout';
+import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
+import { AccountState } from '../../state/account';
+import { TokenInstruction } from '../../instructions/types';
+import { TOKEN_2022_PROGRAM_ID } from '../../constants';
+
+export enum DefaultAccountStateInstruction {
+    Initialize = 0,
+    Update = 1,
+}
+
+/** TODO: docs */
+export interface DefaultAccountStateInstructionData {
+    instruction: TokenInstruction.DefaultAccountStateExtension;
+    defaultAccountStateInstruction: DefaultAccountStateInstruction;
+    accountState: AccountState;
+}
+
+/** TODO: docs */
+export const defaultAccountStateInstructionData = struct<DefaultAccountStateInstructionData>([
+    u8('instruction'),
+    u8('defaultAccountStateInstruction'),
+    u8('accountState'),
+]);
+
+/**
+ * Construct an InitializeDefaultAccountState instruction
+ *
+ * @param mint         Mint to initialize
+ * @param accountState Default account state to set on all new accounts
+ * @param programId    SPL Token program account
+ *
+ * @return Instruction to add to a transaction
+ */
+export function createInitializeDefaultAccountStateInstruction(
+    mint: PublicKey,
+    accountState: AccountState,
+    programId = TOKEN_2022_PROGRAM_ID
+): TransactionInstruction {
+    const keys = [{ pubkey: mint, isSigner: false, isWritable: true }];
+    const data = Buffer.alloc(defaultAccountStateInstructionData.span);
+    defaultAccountStateInstructionData.encode(
+        {
+            instruction: TokenInstruction.DefaultAccountStateExtension,
+            defaultAccountStateInstruction: DefaultAccountStateInstruction.Initialize,
+            accountState,
+        },
+        data
+    );
+
+    return new TransactionInstruction({ keys, programId, data });
+}
+
+/**
+ * Construct an UpdateDefaultAccountState instruction
+ *
+ * @param mint         Mint to update
+ * @param accountState    Default account state to set on all accounts
+ * @param freezeAuthority       The mint's freeze authority
+ * @param signers         The signer account(s) for a multisig
+ * @param programId       SPL Token program account
+ *
+ * @return Instruction to add to a transaction
+ */
+export function createUpdateDefaultAccountStateInstruction(
+    mint: PublicKey,
+    accountState: AccountState,
+    freezeAuthority: PublicKey,
+    multiSigners: Signer[] = [],
+    programId = TOKEN_2022_PROGRAM_ID
+): TransactionInstruction {
+    const keys = [{ pubkey: mint, isSigner: false, isWritable: true }];
+    keys.push({ pubkey: freezeAuthority, isSigner: !multiSigners.length, isWritable: false });
+    for (const signer of multiSigners) {
+        keys.push({ pubkey: signer.publicKey, isSigner: true, isWritable: false });
+    }
+
+    const data = Buffer.alloc(defaultAccountStateInstructionData.span);
+    defaultAccountStateInstructionData.encode(
+        {
+            instruction: TokenInstruction.DefaultAccountStateExtension,
+            defaultAccountStateInstruction: DefaultAccountStateInstruction.Update,
+            accountState,
+        },
+        data
+    );
+
+    return new TransactionInstruction({ keys, programId, data });
+}
