@@ -766,13 +766,10 @@ fn command_transfer(
                     true
                 } else if recipient_token_account_data.owner == config.program_id {
                     if let Ok(token_account) = Account::unpack(&recipient_token_account_data.data) {
-                        if (token.owner == recipient) {
-                            false
-                        } else {
+                        if token_account.owner != recipient {
                             return Err(
-                                format!("Error: ATA address [{}] with Owner [{}] doesn't match recipient address [{}].", 
-                                recipient_token_account, token_account.owner, recipient).into(),
-                            );
+                                    format!("Error: ATA address [{}] with Owner [{}] doesn't match recipient address [{}].", 
+                                    recipient_token_account, token_account.owner, recipient).into());
                         }
                     }
                     false
