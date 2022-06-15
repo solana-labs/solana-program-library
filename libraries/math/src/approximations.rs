@@ -54,29 +54,22 @@ pub fn ln<T: Float + Clone>(input: T) -> Option<T> {
         return None; // fail for less than or equal to 0
     }
 
-    let mut mantissa = input.clone();
-    while mantissa.floor() > T::from(10_f32).unwrap() {
-        mantissa = mantissa.div(T::from(10_f32).unwrap());
-    }
-    
     // number of digits of input before decimal
-    let mut n: i32 = 1;
-    let mut temp_mantx = mantissa.clone();
-    while temp_mantx.floor() != input.floor() {
-        temp_mantx = temp_mantx.mul(T::from(10_f32).unwrap());
+    let mut n = 1;
+    let mut mantissa = input.to_f64().unwrap();
+    while mantissa.floor() > 10_f64 {
+        mantissa /= 10_f64;
         n += 1;
-    };
-    
-    // y = (A-1)/(A+1)
-    let y: T = (mantissa - T::from(1_f32).unwrap()) / (mantissa + T::from(1_f32).unwrap());
-    
-    let mut sum: T = T::from(0_f32).unwrap();
-    for k in 0..(25*n) {
-        sum = sum.add(y.powi(2*k + 1).div(T::from(2*k + 1).unwrap()));
     }
 
-    sum = sum.mul(T::from(2_f32).unwrap());
-    Some(sum.add( T::from(std::f32::consts::LN_10 * (n - 1) as f32).unwrap() ))
+    // y = (A-1)/(A+1)
+    let y = (mantissa - 1_f64) / (mantissa + 1_f64);
+    let mut sum = 0_f64;
+    for k in 0..50 {
+        sum += 2_f64 * y.powi(2*k + 1) / ((2*k + 1) as f64);
+    }
+
+    T::from(sum + ( std::f64::consts::LN_10 * (n - 1) as f64 ))
 }
 
 /// Calculate the normal cdf of the given number
@@ -168,7 +161,7 @@ mod tests {
         let approx_log = ln(input).unwrap();
         let std_log = input.ln();
         let error = (approx_log - std_log).abs();
-        assert!(error <= 0.000_01);
+        assert!(error <= 0.000_000_000_1);
     }
 
     #[test]

@@ -2,7 +2,7 @@
 
 use {
     crate::{
-        approximations::{f32_normal_cdf, sqrt},
+        approximations::{f32_normal_cdf, ln, sqrt},
         instruction::MathInstruction,
         precise_number::PreciseNumber,
     },
@@ -52,7 +52,7 @@ fn f32_natural_log(argument: f32) -> f32 {
 /// f32_approx_natural_log
 #[inline(never)]
 fn f32_approx_natural_log(argument: f32) -> f32 {
-    argument.ln()
+    ln(argument).unwrap()
 }
 
 /// Instruction processor
