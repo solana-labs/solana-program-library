@@ -1,9 +1,6 @@
 import { Program, web3 } from "@project-serum/anchor";
 import fetch from "node-fetch";
-import {
-  getMerkleRollAccountSize,
-  Gummyroll,
-} from "../gummyroll";
+import { getMerkleRollAccountSize, Gummyroll } from "../gummyroll";
 import * as anchor from "@project-serum/anchor";
 import {
   AccountMeta,
@@ -16,13 +13,13 @@ import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import { Bubblegum } from "../../target/types/bubblegum";
 import {
   createCreateTreeInstruction,
-  createInitializeNonceInstruction,
   createMintInstruction,
   createTransferInstruction,
   TokenProgramVersion,
   Version,
 } from "../bubblegum/src/generated";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
+import { logTx } from "../../tests/utils";
 
 async function main() {
   const connection = new web3.Connection("http://127.0.0.1:8899", {
@@ -98,44 +95,34 @@ async function main() {
     [merkleRollKeypair.publicKey.toBuffer()],
     BubblegumCtx.programId
   );
+  let [nonce] = await PublicKey.findProgramAddress(
+    [Buffer.from("bubblegum"), merkleRollKeypair.publicKey.toBuffer()],
+    BubblegumCtx.programId
+  );
   let createTreeIx = createCreateTreeInstruction(
     {
       treeCreator: payer.publicKey,
+      payer: payer.publicKey,
       authority: authority,
       gummyrollProgram: GummyrollCtx.programId,
       merkleSlab: merkleRollKeypair.publicKey,
+      nonce: nonce,
     },
     {
       maxDepth,
       maxBufferSize: maxSize,
     }
   );
-  let [nonce] = await PublicKey.findProgramAddress(
-    [Buffer.from("bubblegum")],
-    BubblegumCtx.programId
-  );
   let tx = new Transaction();
-  try {
-    const nonceAccount = await BubblegumCtx.provider.connection.getAccountInfo(
-      nonce
-    );
-    if (nonceAccount.data.length === 0 || nonceAccount.lamports === 0) {
-      throw new Error("Nonce account not yet initialized");
-    }
-  } catch {
-    // Only initialize the nonce if it does not exist
-    const initNonceIx = BubblegumCtx.instruction.initializeNonce({
-      accounts: {
-        nonce: nonce,
-        payer: payer.publicKey,
-        systemProgram: SystemProgram.programId,
-      },
-      signers: [payer],
-    });
-    tx = tx.add(initNonceIx);
-  }
   tx = tx.add(allocAccountIx).add(createTreeIx);
-  await GummyrollCtx.provider.send(tx, [payer, merkleRollKeypair]);
+  let txId = await BubblegumCtx.provider.connection.sendTransaction(
+    tx,
+    [payer, merkleRollKeypair],
+    {
+      skipPreflight: true,
+    }
+  );
+  await logTx(BubblegumCtx.provider, txId);
   let numMints = 0;
   while (1) {
     let i = Math.floor(Math.random() * wallets.length);
@@ -192,7 +179,7 @@ async function main() {
       }
       let k = Math.floor(Math.random() * assets.length);
       response = await fetch(
-        `${proofServerUrl}?leafHash=${assets[k].leafHash}`,
+        `${proofServerUrl}?leafHash=${assets[k].leafHash}&treeId=${assets[k].treeId}`,
         { method: "GET" }
       );
       const proof = await response.json();
@@ -203,13 +190,17 @@ async function main() {
           isSigner: false,
         };
       });
+      let [merkleAuthority] = await PublicKey.findProgramAddress(
+        [bs58.decode(assets[k].treeId)],
+        BubblegumCtx.programId
+      );
       let replaceIx = createTransferInstruction(
         {
           owner: wallets[i].publicKey,
           delegate: new PublicKey(proof.delegate),
           newOwner: wallets[j].publicKey,
-          authority: authority,
-          merkleSlab: merkleRollKeypair.publicKey,
+          authority: merkleAuthority,
+          merkleSlab: new PublicKey(assets[k].treeId),
           gummyrollProgram: GummyrollCtx.programId,
         },
         {
@@ -226,7 +217,15 @@ async function main() {
       let tx = new Transaction().add(replaceIx);
       await BubblegumCtx.provider.connection
         .sendTransaction(tx, [wallets[i]])
-        .then(() => console.log("Successfully transferred asset"))
+        .then(() =>
+          console.log(
+            `Successfully transferred asset (${assets[k].leafHash} from tree: ${
+              assets[k].treeId
+            }) - ${wallets[i].publicKey.toBase58()} -> ${wallets[
+              j
+            ].publicKey.toBase58()}`
+          )
+        )
         .catch((e) => console.log("Encountered Error when transferring", e));
     }
   }

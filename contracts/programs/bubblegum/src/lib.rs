@@ -30,10 +30,10 @@ const NONCE_PREFIX: &str = "bubblegum";
 declare_id!("BGUMzZr2wWfD2yzrXFEWTK2HbdYhqQCP2EZoPEkZBD6o");
 
 #[derive(Accounts)]
-pub struct InitNonce<'info> {
+pub struct CreateTree<'info> {
     #[account(
         init,
-        seeds = [NONCE_PREFIX.as_ref()],
+        seeds = [NONCE_PREFIX.as_ref(), merkle_slab.key().as_ref()],
         payer = payer,
         space = NONCE_SIZE,
         bump,
@@ -41,12 +41,8 @@ pub struct InitNonce<'info> {
     pub nonce: Account<'info, Nonce>,
     #[account(mut)]
     pub payer: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-pub struct CreateTree<'info> {
     pub tree_creator: Signer<'info>,
+    pub system_program: Program<'info, System>,
     #[account(
         seeds = [merkle_slab.key().as_ref()],
         bump,
@@ -71,7 +67,7 @@ pub struct Mint<'info> {
     pub authority: UncheckedAccount<'info>,
     #[account(
         mut,
-        seeds = [NONCE_PREFIX.as_ref()],
+        seeds = [NONCE_PREFIX.as_ref(), merkle_slab.key.as_ref()],
         bump,
     )]
     pub nonce: Account<'info, Nonce>,
@@ -305,10 +301,6 @@ pub fn get_instruction_type(full_bytes: &[u8]) -> InstructionName {
 #[program]
 pub mod bubblegum {
     use super::*;
-
-    pub fn initialize_nonce(_ctx: Context<InitNonce>) -> Result<()> {
-        Ok(())
-    }
 
     pub fn create_tree(
         ctx: Context<CreateTree>,

@@ -92,13 +92,15 @@ export function parseBubblegumMint(
     .data as NewLeafEvent;
   const leafSchema = parseEventFromLog(logs[2] as string, parser.Bubblegum.idl)
     .data as LeafSchema;
-  db.updateNFTMetadata(newLeafData, leafSchema.nonce);
+  let treeId = changeLog.id.toBase58();
+  db.updateNFTMetadata(newLeafData, leafSchema.nonce, treeId);
   db.updateLeafSchema(
     leafSchema,
     new PublicKey(changeLog.path[0].node),
-    optionalInfo.txId
+    optionalInfo.txId,
+    treeId,
   );
-  db.updateChangeLogs(changeLog, optionalInfo.txId);
+  db.updateChangeLogs(changeLog, optionalInfo.txId, treeId);
 }
 
 export function parseBubblegumTransfer(
@@ -110,12 +112,14 @@ export function parseBubblegumTransfer(
   const changeLog = findGummyrollEvent(logs, parser);
   const leafSchema = parseEventFromLog(logs[1] as string, parser.Bubblegum.idl)
     .data as LeafSchema;
+  let treeId = changeLog.id.toBase58();
   db.updateLeafSchema(
     leafSchema,
     new PublicKey(changeLog.path[0].node),
-    optionalInfo.txId
+    optionalInfo.txId,
+    treeId
   );
-  db.updateChangeLogs(changeLog, optionalInfo.txId);
+  db.updateChangeLogs(changeLog, optionalInfo.txId, treeId);
 }
 
 export function parseBubblegumCreateTree(
@@ -125,7 +129,8 @@ export function parseBubblegumCreateTree(
   optionalInfo: OptionalInfo
 ) {
   const changeLog = findGummyrollEvent(logs, parser);
-  db.updateChangeLogs(changeLog, optionalInfo.txId);
+  let treeId = changeLog.id.toBase58();
+  db.updateChangeLogs(changeLog, optionalInfo.txId, treeId);
 }
 
 export function parseBubblegumDelegate(
@@ -137,12 +142,14 @@ export function parseBubblegumDelegate(
   const changeLog = findGummyrollEvent(logs, parser);
   const leafSchema = parseEventFromLog(logs[1] as string, parser.Bubblegum.idl)
     .data as LeafSchema;
+  let treeId = changeLog.id.toBase58();
   db.updateLeafSchema(
     leafSchema,
     new PublicKey(changeLog.path[0].node),
-    optionalInfo.txId
+    optionalInfo.txId,
+    treeId
   );
-  db.updateChangeLogs(changeLog, optionalInfo.txId);
+  db.updateChangeLogs(changeLog, optionalInfo.txId, treeId);
 }
 
 export function parseBubblegumRedeem(
@@ -152,7 +159,8 @@ export function parseBubblegumRedeem(
   optionalInfo: OptionalInfo
 ) {
   const changeLog = findGummyrollEvent(logs, parser);
-  db.updateChangeLogs(changeLog, optionalInfo.txId);
+  let treeId = changeLog.id.toBase58();
+  db.updateChangeLogs(changeLog, optionalInfo.txId, treeId);
 }
 
 export function parseBubblegumCancelRedeem(
@@ -164,12 +172,14 @@ export function parseBubblegumCancelRedeem(
   const changeLog = findGummyrollEvent(logs, parser);
   const leafSchema = parseEventFromLog(logs[1] as string, parser.Bubblegum.idl)
     .data as LeafSchema;
+  let treeId = changeLog.id.toBase58();
   db.updateLeafSchema(
     leafSchema,
     new PublicKey(changeLog.path[0].node),
-    optionalInfo.txId
+    optionalInfo.txId,
+    treeId
   );
-  db.updateChangeLogs(changeLog, optionalInfo.txId);
+  db.updateChangeLogs(changeLog, optionalInfo.txId, treeId);
 }
 
 export function parseBubblegumDecompress(

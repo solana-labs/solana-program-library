@@ -14,7 +14,7 @@ import { assert } from "chai";
 import { buildTree } from "./merkle-tree";
 import {
   getMerkleRollAccountSize,
-  assertOnChainMerkleRollProperties
+  assertOnChainMerkleRollProperties,
 } from "../sdk/gummyroll";
 import {
   GumballMachine,
@@ -24,7 +24,7 @@ import {
   createDispenseNFTForTokensIx,
   createInitializeGumballMachineIxs,
   getBubblegumAuthorityPDAKey,
-} from '../sdk/gumball-machine';
+} from "../sdk/gumball-machine";
 import {
   InitializeGumballMachineInstructionArgs,
   createAddConfigLinesInstruction,
@@ -34,20 +34,19 @@ import {
   createUpdateHeaderMetadataInstruction,
   createDestroyInstruction,
 } from "../sdk/gumball-machine/src/generated/instructions";
-import {
-  val,
-  strToByteArray,
-  strToByteUint8Array
-} from "../sdk/utils/index";
+import { val, strToByteArray, strToByteUint8Array } from "../sdk/utils/index";
 import {
   GumballMachineHeader,
-  gumballMachineHeaderBeet
+  gumballMachineHeaderBeet,
 } from "../sdk/gumball-machine/src/generated/types/index";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
-import { createMint, getOrCreateAssociatedTokenAccount, mintTo, getAccount } from "../../deps/solana-program-library/token/js/src";
 import {
-  NATIVE_MINT
-} from "@solana/spl-token";
+  createMint,
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
+  getAccount,
+} from "../../deps/solana-program-library/token/js/src";
+import { NATIVE_MINT } from "@solana/spl-token";
 import { logTx, num32ToBuffer, arrayEquals } from "./utils";
 
 // @ts-ignore
@@ -61,7 +60,7 @@ describe("gumball-machine", () => {
   // Configure the client to use the local cluster.
 
   const payer = Keypair.generate();
-  
+
   let connection = new web3Connection("http://localhost:8899", {
     commitment: "confirmed",
   });
@@ -78,8 +77,11 @@ describe("gumball-machine", () => {
   Bubblegum = anchor.workspace.Bubblegum as Program<Bubblegum>;
   GummyrollProgramId = anchor.workspace.Gummyroll.programId;
   BubblegumProgramId = anchor.workspace.Bubblegum.programId;
-  
-  function assertGumballMachineHeaderProperties(gm: OnChainGumballMachine, expectedHeader: GumballMachineHeader) {
+
+  function assertGumballMachineHeaderProperties(
+    gm: OnChainGumballMachine,
+    expectedHeader: GumballMachineHeader
+  ) {
     assert(
       arrayEquals(gm.header.urlBase, expectedHeader.urlBase),
       "Gumball Machine has incorrect url base"
@@ -154,20 +156,32 @@ describe("gumball-machine", () => {
     );
   }
 
-  function assertGumballMachineConfigProperties(gm: OnChainGumballMachine, expectedIndexArray: Buffer, expectedConfigLines: Buffer, onChainConfigLinesNumBytes: number) {
+  function assertGumballMachineConfigProperties(
+    gm: OnChainGumballMachine,
+    expectedIndexArray: Buffer,
+    expectedConfigLines: Buffer,
+    onChainConfigLinesNumBytes: number
+  ) {
     assert(
       gm.configData.indexArray.equals(expectedIndexArray),
       "Onchain index array doesn't match expectation"
-    )
+    );
 
     // Calculate full-sized on-chain config bytes buffer, we must null pad the buffer up to the end of the account size
-    const numExpectedInitializedBytesInConfig = expectedConfigLines.byteLength
-    const bufferOfNonInitializedConfigLineBytes = Buffer.from("\0".repeat(onChainConfigLinesNumBytes-numExpectedInitializedBytesInConfig))
-    const actualExpectedConfigLinesBuffer = Buffer.concat([expectedConfigLines, bufferOfNonInitializedConfigLineBytes])
+    const numExpectedInitializedBytesInConfig = expectedConfigLines.byteLength;
+    const bufferOfNonInitializedConfigLineBytes = Buffer.from(
+      "\0".repeat(
+        onChainConfigLinesNumBytes - numExpectedInitializedBytesInConfig
+      )
+    );
+    const actualExpectedConfigLinesBuffer = Buffer.concat([
+      expectedConfigLines,
+      bufferOfNonInitializedConfigLineBytes,
+    ]);
     assert(
       gm.configData.configLines.equals(actualExpectedConfigLinesBuffer),
       "Config lines on gumball machine do not match expectation"
-    )
+    );
   }
 
   async function initializeGumballMachine(
@@ -177,33 +191,67 @@ describe("gumball-machine", () => {
     merkleRollKeypair: Keypair,
     merkleRollAccountSize: number,
     gumballMachineInitArgs: InitializeGumballMachineInstructionArgs,
-    mint: PublicKey
+    mint: PublicKey,
+    nonce: PublicKey
   ) {
-    const bubblegumAuthorityPDAKey = await getBubblegumAuthorityPDAKey(merkleRollKeypair.publicKey, BubblegumProgramId);
-    const initializeGumballMachineInstrs = await createInitializeGumballMachineIxs(payer, gumballMachineAcctKeypair, gumballMachineAcctSize, merkleRollKeypair, merkleRollAccountSize, gumballMachineInitArgs, mint, GummyrollProgramId, BubblegumProgramId, GumballMachine);
+    const bubblegumAuthorityPDAKey = await getBubblegumAuthorityPDAKey(
+      merkleRollKeypair.publicKey,
+      BubblegumProgramId
+    );
+    const initializeGumballMachineInstrs =
+      await createInitializeGumballMachineIxs(
+        payer,
+        gumballMachineAcctKeypair,
+        gumballMachineAcctSize,
+        merkleRollKeypair,
+        merkleRollAccountSize,
+        gumballMachineInitArgs,
+        mint,
+        nonce,
+        GummyrollProgramId,
+        BubblegumProgramId,
+        GumballMachine
+      );
     const tx = new Transaction();
     initializeGumballMachineInstrs.forEach((instr) => tx.add(instr));
-    await GumballMachine.provider.send(tx, [payer, gumballMachineAcctKeypair, merkleRollKeypair], {
-      commitment: "confirmed",
-    });
-
-    const tree = buildTree(Array(2 ** gumballMachineInitArgs.maxDepth).fill(Buffer.alloc(32)));
-    await assertOnChainMerkleRollProperties(GumballMachine.provider.connection, gumballMachineInitArgs.maxDepth, gumballMachineInitArgs.maxBufferSize, bubblegumAuthorityPDAKey, new PublicKey(tree.root), merkleRollKeypair.publicKey);
-
-    const onChainGumballMachineAccount = await GumballMachine.provider.connection.getAccountInfo(
-      gumballMachineAcctKeypair.publicKey
+    await GumballMachine.provider.send(
+      tx,
+      [payer, gumballMachineAcctKeypair, merkleRollKeypair],
+      {
+        commitment: "confirmed",
+      }
     );
 
-    const gumballMachine = decodeGumballMachine(onChainGumballMachineAccount.data, gumballMachineAcctSize);
-    
+    const tree = buildTree(
+      Array(2 ** gumballMachineInitArgs.maxDepth).fill(Buffer.alloc(32))
+    );
+    await assertOnChainMerkleRollProperties(
+      GumballMachine.provider.connection,
+      gumballMachineInitArgs.maxDepth,
+      gumballMachineInitArgs.maxBufferSize,
+      bubblegumAuthorityPDAKey,
+      new PublicKey(tree.root),
+      merkleRollKeypair.publicKey
+    );
+
+    const onChainGumballMachineAccount =
+      await GumballMachine.provider.connection.getAccountInfo(
+        gumballMachineAcctKeypair.publicKey
+      );
+
+    const gumballMachine = decodeGumballMachine(
+      onChainGumballMachineAccount.data,
+      gumballMachineAcctSize
+    );
+
     let expectedOnChainHeader: GumballMachineHeader = {
       urlBase: gumballMachineInitArgs.urlBase,
       nameBase: gumballMachineInitArgs.nameBase,
-      symbol: gumballMachineInitArgs.symbol, 
+      symbol: gumballMachineInitArgs.symbol,
       sellerFeeBasisPoints: gumballMachineInitArgs.sellerFeeBasisPoints,
       isMutable: gumballMachineInitArgs.isMutable ? 1 : 0,
       retainAuthority: gumballMachineInitArgs.retainAuthority ? 1 : 0,
-      padding: [0,0,0,0],
+      padding: [0, 0, 0, 0],
       price: gumballMachineInitArgs.price,
       goLiveDate: gumballMachineInitArgs.goLiveDate,
       mint,
@@ -216,8 +264,8 @@ describe("gumball-machine", () => {
       maxMintSize: gumballMachineInitArgs.maxMintSize,
       remaining: new BN(0),
       maxItems: gumballMachineInitArgs.maxItems,
-      totalItemsAdded: new BN(0)
-    }
+      totalItemsAdded: new BN(0),
+    };
     assertGumballMachineHeaderProperties(gumballMachine, expectedOnChainHeader);
   }
 
@@ -233,28 +281,40 @@ describe("gumball-machine", () => {
     const addConfigLinesInstr = createAddConfigLinesInstruction(
       {
         gumballMachine: gumballMachineAcctKey,
-        authority: authority.publicKey
+        authority: authority.publicKey,
       },
       {
-        newConfigLinesData: configLinesToAdd
+        newConfigLinesData: configLinesToAdd,
       }
     );
-    const tx = new Transaction().add(addConfigLinesInstr)
+    const tx = new Transaction().add(addConfigLinesInstr);
     await GumballMachine.provider.send(tx, [authority], {
       commitment: "confirmed",
     });
-    const onChainGumballMachineAccount = await GumballMachine.provider.connection.getAccountInfo(
-      gumballMachineAcctKey
+    const onChainGumballMachineAccount =
+      await GumballMachine.provider.connection.getAccountInfo(
+        gumballMachineAcctKey
+      );
+    const gumballMachine = decodeGumballMachine(
+      onChainGumballMachineAccount.data,
+      gumballMachineAcctSize
     );
-    const gumballMachine = decodeGumballMachine(onChainGumballMachineAccount.data, gumballMachineAcctSize);
 
     // Create the expected buffer for the indices of the account
-    const expectedIndexArrBuffer = [...Array(gumballMachineAcctConfigIndexArrSize/4).keys()].reduce(
-      (prevVal, curVal) => Buffer.concat([prevVal, Buffer.from(num32ToBuffer(curVal))]),
+    const expectedIndexArrBuffer = [
+      ...Array(gumballMachineAcctConfigIndexArrSize / 4).keys(),
+    ].reduce(
+      (prevVal, curVal) =>
+        Buffer.concat([prevVal, Buffer.from(num32ToBuffer(curVal))]),
       Buffer.from([])
     );
 
-    assertGumballMachineConfigProperties(gumballMachine, expectedIndexArrBuffer, allExpectedInitializedConfigLines, gumballMachineAcctConfigLinesSize);
+    assertGumballMachineConfigProperties(
+      gumballMachine,
+      expectedIndexArrBuffer,
+      allExpectedInitializedConfigLines,
+      gumballMachineAcctConfigLinesSize
+    );
   }
 
   async function updateConfigLines(
@@ -267,30 +327,45 @@ describe("gumball-machine", () => {
     allExpectedInitializedConfigLines: Buffer,
     indexOfFirstLineToUpdate: BN
   ) {
-    const args: UpdateConfigLinesInstructionArgs = { startingLine: indexOfFirstLineToUpdate, newConfigLinesData: updatedConfigLines };
+    const args: UpdateConfigLinesInstructionArgs = {
+      startingLine: indexOfFirstLineToUpdate,
+      newConfigLinesData: updatedConfigLines,
+    };
     const updateConfigLinesInstr = createUpdateConfigLinesInstruction(
       {
-        authority: authority.publicKey, 
-        gumballMachine: gumballMachineAcctKey, 
+        authority: authority.publicKey,
+        gumballMachine: gumballMachineAcctKey,
       },
       args
     );
-    const tx = new Transaction().add(updateConfigLinesInstr)
+    const tx = new Transaction().add(updateConfigLinesInstr);
     await GumballMachine.provider.send(tx, [authority], {
       commitment: "confirmed",
     });
 
-    const onChainGumballMachineAccount = await GumballMachine.provider.connection.getAccountInfo(
-      gumballMachineAcctKey
+    const onChainGumballMachineAccount =
+      await GumballMachine.provider.connection.getAccountInfo(
+        gumballMachineAcctKey
+      );
+    const gumballMachine = decodeGumballMachine(
+      onChainGumballMachineAccount.data,
+      gumballMachineAcctSize
     );
-    const gumballMachine = decodeGumballMachine(onChainGumballMachineAccount.data, gumballMachineAcctSize);
-    
+
     // Create the expected buffer for the indices of the account
-    const expectedIndexArrBuffer = [...Array(gumballMachineAcctConfigIndexArrSize/4).keys()].reduce(
-      (prevVal, curVal) => Buffer.concat([prevVal, Buffer.from(num32ToBuffer(curVal))]),
+    const expectedIndexArrBuffer = [
+      ...Array(gumballMachineAcctConfigIndexArrSize / 4).keys(),
+    ].reduce(
+      (prevVal, curVal) =>
+        Buffer.concat([prevVal, Buffer.from(num32ToBuffer(curVal))]),
       Buffer.from([])
-    )
-    assertGumballMachineConfigProperties(gumballMachine, expectedIndexArrBuffer, allExpectedInitializedConfigLines, gumballMachineAcctConfigLinesSize);
+    );
+    assertGumballMachineConfigProperties(
+      gumballMachine,
+      expectedIndexArrBuffer,
+      allExpectedInitializedConfigLines,
+      gumballMachineAcctConfigLinesSize
+    );
   }
 
   async function updateHeaderMetadata(
@@ -303,19 +378,26 @@ describe("gumball-machine", () => {
     const updateHeaderMetadataInstr = createUpdateHeaderMetadataInstruction(
       {
         gumballMachine: gumballMachineAcctKey,
-        authority: authority.publicKey
+        authority: authority.publicKey,
       },
       newHeader
     );
-    const tx = new Transaction().add(updateHeaderMetadataInstr)
+    const tx = new Transaction().add(updateHeaderMetadataInstr);
     await GumballMachine.provider.send(tx, [authority], {
       commitment: "confirmed",
     });
-    const onChainGumballMachineAccount = await GumballMachine.provider.connection.getAccountInfo(
-      gumballMachineAcctKey
+    const onChainGumballMachineAccount =
+      await GumballMachine.provider.connection.getAccountInfo(
+        gumballMachineAcctKey
+      );
+    const gumballMachine = decodeGumballMachine(
+      onChainGumballMachineAccount.data,
+      gumballMachineAcctSize
     );
-    const gumballMachine = decodeGumballMachine(onChainGumballMachineAccount.data, gumballMachineAcctSize);
-    assertGumballMachineHeaderProperties(gumballMachine, resultingExpectedOnChainHeader);
+    assertGumballMachineHeaderProperties(
+      gumballMachine,
+      resultingExpectedOnChainHeader
+    );
   }
 
   async function dispenseCompressedNFTForSol(
@@ -340,7 +422,7 @@ describe("gumball-machine", () => {
     const tx = new Transaction().add(dispenseInstr);
     await GumballMachine.provider.send(tx, [payer], {
       commitment: "confirmed",
-    });            
+    });
   }
 
   async function dispenseCompressedNFTForTokens(
@@ -367,34 +449,38 @@ describe("gumball-machine", () => {
     const tx = new Transaction().add(dispenseInstr);
     await GumballMachine.provider.send(tx, [payer], {
       commitment: "confirmed",
-    });             
+    });
   }
 
   async function destroyGumballMachine(
     gumballMachineAcctKeypair: Keypair,
     authorityKeypair: Keypair
   ) {
-    const originalGumballMachineAcctBalance = await connection.getBalance(gumballMachineAcctKeypair.publicKey);
-    const originalAuthorityAcctBalance = await connection.getBalance(authorityKeypair.publicKey);
-    const destroyInstr = createDestroyInstruction(
-      {
-          gumballMachine: gumballMachineAcctKeypair.publicKey,
-          authority: authorityKeypair.publicKey
-      }
+    const originalGumballMachineAcctBalance = await connection.getBalance(
+      gumballMachineAcctKeypair.publicKey
     );
+    const originalAuthorityAcctBalance = await connection.getBalance(
+      authorityKeypair.publicKey
+    );
+    const destroyInstr = createDestroyInstruction({
+      gumballMachine: gumballMachineAcctKeypair.publicKey,
+      authority: authorityKeypair.publicKey,
+    });
     const tx = new Transaction().add(destroyInstr);
     await GumballMachine.provider.send(tx, [authorityKeypair], {
       commitment: "confirmed",
     });
 
     assert(
-      0 === await connection.getBalance(gumballMachineAcctKeypair.publicKey),
+      0 === (await connection.getBalance(gumballMachineAcctKeypair.publicKey)),
       "Failed to remove lamports from gumball machine acct"
     );
 
-    const expectedAuthorityAcctBalance = originalAuthorityAcctBalance + originalGumballMachineAcctBalance
+    const expectedAuthorityAcctBalance =
+      originalAuthorityAcctBalance + originalGumballMachineAcctBalance;
     assert(
-      expectedAuthorityAcctBalance === await connection.getBalance(authorityKeypair.publicKey),
+      expectedAuthorityAcctBalance ===
+        (await connection.getBalance(authorityKeypair.publicKey)),
       "Failed to transfer correct balance to authority"
     );
   }
@@ -408,37 +494,21 @@ describe("gumball-machine", () => {
     let nftBuyer: Keypair;
     const GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE = 1000;
     const GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE = 7000;
-    const GUMBALL_MACHINE_ACCT_SIZE = gumballMachineHeaderBeet.byteSize + GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE + GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE;
-    const MERKLE_ROLL_ACCT_SIZE = getMerkleRollAccountSize(3,8);
+    const GUMBALL_MACHINE_ACCT_SIZE =
+      gumballMachineHeaderBeet.byteSize +
+      GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE +
+      GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE;
+    const MERKLE_ROLL_ACCT_SIZE = getMerkleRollAccountSize(3, 8);
 
     before(async () => {
-
       // Give funds to the payer for the whole suite
       await GumballMachine.provider.connection.confirmTransaction(
-        await GumballMachine.provider.connection.requestAirdrop(payer.publicKey, 25e9),
+        await GumballMachine.provider.connection.requestAirdrop(
+          payer.publicKey,
+          25e9
+        ),
         "confirmed"
       );
-
-      [noncePDAKey] = await PublicKey.findProgramAddress(
-        [Buffer.from("bubblegum")],
-        BubblegumProgramId
-      );
-
-      // Attempt to initialize the nonce account. Since localnet is not torn down between suites,
-      // there is some shared state. Specifically, the Bubblegum suite may initialize this account
-      // if it is run first. Thus even in the case of an error, we proceed.
-      try {
-        await Bubblegum.rpc.initializeNonce({
-          accounts: {
-            nonce: noncePDAKey,
-            payer: payer.publicKey,
-            systemProgram: SystemProgram.programId,
-          },
-          signers: [payer],
-        });
-      } catch(e) {
-        console.log("Bubblegum nonce PDA already initialized by other suite")
-      }
     });
 
     describe("native sol projects", async () => {
@@ -450,12 +520,18 @@ describe("gumball-machine", () => {
         gumballMachineAcctKeypair = Keypair.generate();
         merkleRollKeypair = Keypair.generate();
 
+        [noncePDAKey] = await PublicKey.findProgramAddress(
+          [Buffer.from("bubblegum"), merkleRollKeypair.publicKey.toBuffer()],
+          BubblegumProgramId
+        );
         baseGumballMachineInitProps = {
           maxDepth: 3,
           maxBufferSize: 8,
-          urlBase: strToByteArray("https://arweave.net/Rmg4pcIv-0FQ7M7X838p2r592Q4NU63Fj7o7XsvBHEEl"),
+          urlBase: strToByteArray(
+            "https://arweave.net/Rmg4pcIv-0FQ7M7X838p2r592Q4NU63Fj7o7XsvBHEEl"
+          ),
           nameBase: strToByteArray("zfgfsxrwieciemyavrpkuqehkmhqmnim"),
-          symbol: strToByteArray("12345678"), 
+          symbol: strToByteArray("12345678"),
           sellerFeeBasisPoints: 100,
           isMutable: true,
           retainAuthority: true,
@@ -469,27 +545,53 @@ describe("gumball-machine", () => {
           maxMintSize: new BN(10),
           maxItems: new BN(250),
         };
-  
+
         // Give creator enough funds to produce accounts for NFT
         await GumballMachine.provider.connection.confirmTransaction(
-          await GumballMachine.provider.connection.requestAirdrop(creatorAddress.publicKey, LAMPORTS_PER_SOL),
+          await GumballMachine.provider.connection.requestAirdrop(
+            creatorAddress.publicKey,
+            LAMPORTS_PER_SOL
+          ),
           "confirmed"
         );
-  
-        await initializeGumballMachine(creatorAddress, gumballMachineAcctKeypair, GUMBALL_MACHINE_ACCT_SIZE, merkleRollKeypair, MERKLE_ROLL_ACCT_SIZE, baseGumballMachineInitProps, NATIVE_MINT);
-        await addConfigLines(creatorAddress, gumballMachineAcctKeypair.publicKey, GUMBALL_MACHINE_ACCT_SIZE, GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE, GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE, strToByteUint8Array("uluvnpwncgchwnbqfpbtdlcpdthc"), Buffer.from("uluvnpwncgchwnbqfpbtdlcpdthc"));
+
+        await initializeGumballMachine(
+          creatorAddress,
+          gumballMachineAcctKeypair,
+          GUMBALL_MACHINE_ACCT_SIZE,
+          merkleRollKeypair,
+          MERKLE_ROLL_ACCT_SIZE,
+          baseGumballMachineInitProps,
+          NATIVE_MINT,
+          noncePDAKey
+        );
+        await addConfigLines(
+          creatorAddress,
+          gumballMachineAcctKeypair.publicKey,
+          GUMBALL_MACHINE_ACCT_SIZE,
+          GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE,
+          GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE,
+          strToByteUint8Array("uluvnpwncgchwnbqfpbtdlcpdthc"),
+          Buffer.from("uluvnpwncgchwnbqfpbtdlcpdthc")
+        );
       });
       describe("dispense nft sol instruction", async () => {
         beforeEach(async () => {
           // Give the recipient address enough money to not get rent exempt
           await GumballMachine.provider.connection.confirmTransaction(
-            await GumballMachine.provider.connection.requestAirdrop(baseGumballMachineInitProps.receiver, LAMPORTS_PER_SOL),
+            await GumballMachine.provider.connection.requestAirdrop(
+              baseGumballMachineInitProps.receiver,
+              LAMPORTS_PER_SOL
+            ),
             "confirmed"
           );
-  
+
           // Fund the NFT Buyer
           await GumballMachine.provider.connection.confirmTransaction(
-            await GumballMachine.provider.connection.requestAirdrop(nftBuyer.publicKey, LAMPORTS_PER_SOL),
+            await GumballMachine.provider.connection.requestAirdrop(
+              nftBuyer.publicKey,
+              LAMPORTS_PER_SOL
+            ),
             "confirmed"
           );
         });
@@ -499,7 +601,17 @@ describe("gumball-machine", () => {
           let dummyInstr;
 
           beforeEach(async () => {
-            dispenseNFTForSolInstr = await createDispenseNFTForSolIx(new BN(1), nftBuyer, baseGumballMachineInitProps.receiver, gumballMachineAcctKeypair, merkleRollKeypair, noncePDAKey, GummyrollProgramId, BubblegumProgramId, GumballMachine);
+            dispenseNFTForSolInstr = await createDispenseNFTForSolIx(
+              new BN(1),
+              nftBuyer,
+              baseGumballMachineInitProps.receiver,
+              gumballMachineAcctKeypair,
+              merkleRollKeypair,
+              noncePDAKey,
+              GummyrollProgramId,
+              BubblegumProgramId,
+              GumballMachine
+            );
             dummyNewAcctKeypair = Keypair.generate();
             dummyInstr = SystemProgram.createAccount({
               fromPubkey: payer.publicKey,
@@ -510,53 +622,96 @@ describe("gumball-machine", () => {
             });
           });
           it("Cannot dispense NFT for SOL with subsequent instructions in transaction", async () => {
-            const tx = new Transaction().add(dispenseNFTForSolInstr).add(dummyInstr);
+            const tx = new Transaction()
+              .add(dispenseNFTForSolInstr)
+              .add(dummyInstr);
             try {
-              await GumballMachine.provider.send(tx, [nftBuyer, payer, dummyNewAcctKeypair], {
-                commitment: "confirmed",
-              })
-              assert(false, "Dispense should fail when part of transaction with multiple instructions, but it succeeded");
-            } catch(e) {}
+              await GumballMachine.provider.send(
+                tx,
+                [nftBuyer, payer, dummyNewAcctKeypair],
+                {
+                  commitment: "confirmed",
+                }
+              );
+              assert(
+                false,
+                "Dispense should fail when part of transaction with multiple instructions, but it succeeded"
+              );
+            } catch (e) {}
           });
           it("Cannot dispense NFT for SOL with prior instructions in transaction", async () => {
-            const tx = new Transaction().add(dummyInstr).add(dispenseNFTForSolInstr);
+            const tx = new Transaction()
+              .add(dummyInstr)
+              .add(dispenseNFTForSolInstr);
             try {
-              await GumballMachine.provider.send(tx, [nftBuyer, payer, dummyNewAcctKeypair], {
-                commitment: "confirmed",
-              })
-              assert(false, "Dispense should fail when part of transaction with multiple instructions, but it succeeded");
-            } catch(e) {}
+              await GumballMachine.provider.send(
+                tx,
+                [nftBuyer, payer, dummyNewAcctKeypair],
+                {
+                  commitment: "confirmed",
+                }
+              );
+              assert(
+                false,
+                "Dispense should fail when part of transaction with multiple instructions, but it succeeded"
+              );
+            } catch (e) {}
           });
         });
         it("Can dispense single NFT paid in sol", async () => {
           // Give the recipient address enough money to not get rent exempt
           await GumballMachine.provider.connection.confirmTransaction(
-            await GumballMachine.provider.connection.requestAirdrop(baseGumballMachineInitProps.receiver, LAMPORTS_PER_SOL),
+            await GumballMachine.provider.connection.requestAirdrop(
+              baseGumballMachineInitProps.receiver,
+              LAMPORTS_PER_SOL
+            ),
             "confirmed"
           );
-  
+
           // Fund the NFT Buyer
           await GumballMachine.provider.connection.confirmTransaction(
-            await GumballMachine.provider.connection.requestAirdrop(nftBuyer.publicKey, LAMPORTS_PER_SOL),
+            await GumballMachine.provider.connection.requestAirdrop(
+              nftBuyer.publicKey,
+              LAMPORTS_PER_SOL
+            ),
             "confirmed"
           );
-    
-          const nftBuyerBalanceBeforePurchase = await connection.getBalance(nftBuyer.publicKey);
-          const creatorBalanceBeforePurchase = await connection.getBalance(baseGumballMachineInitProps.receiver);
-  
+
+          const nftBuyerBalanceBeforePurchase = await connection.getBalance(
+            nftBuyer.publicKey
+          );
+          const creatorBalanceBeforePurchase = await connection.getBalance(
+            baseGumballMachineInitProps.receiver
+          );
+
           // Purchase the compressed NFT with SOL
-          await dispenseCompressedNFTForSol(new BN(1), nftBuyer, baseGumballMachineInitProps.receiver, gumballMachineAcctKeypair, merkleRollKeypair, noncePDAKey);
-          const nftBuyerBalanceAfterPurchase = await connection.getBalance(nftBuyer.publicKey);
-          const creatorBalanceAfterPurchase = await connection.getBalance(baseGumballMachineInitProps.receiver);
-    
+          await dispenseCompressedNFTForSol(
+            new BN(1),
+            nftBuyer,
+            baseGumballMachineInitProps.receiver,
+            gumballMachineAcctKeypair,
+            merkleRollKeypair,
+            noncePDAKey
+          );
+          const nftBuyerBalanceAfterPurchase = await connection.getBalance(
+            nftBuyer.publicKey
+          );
+          const creatorBalanceAfterPurchase = await connection.getBalance(
+            baseGumballMachineInitProps.receiver
+          );
+
           // Assert on how the creator and buyer's balances changed
           assert(
-            await creatorBalanceAfterPurchase === (creatorBalanceBeforePurchase + val(baseGumballMachineInitProps.price).toNumber()),
+            (await creatorBalanceAfterPurchase) ===
+              creatorBalanceBeforePurchase +
+                val(baseGumballMachineInitProps.price).toNumber(),
             "Creator balance did not update as expected after NFT purchase"
           );
-    
+
           assert(
-            await nftBuyerBalanceAfterPurchase === (nftBuyerBalanceBeforePurchase - val(baseGumballMachineInitProps.price).toNumber()),
+            (await nftBuyerBalanceAfterPurchase) ===
+              nftBuyerBalanceBeforePurchase -
+                val(baseGumballMachineInitProps.price).toNumber(),
             "NFT purchaser balance did not decrease as expected after NFT purchase"
           );
         });
@@ -564,13 +719,24 @@ describe("gumball-machine", () => {
       // @notice: We only test admin instructions on SOL projects because they are completely (for now) independent of project mint
       describe("admin instructions", async () => {
         it("Can update config lines", async () => {
-          await updateConfigLines(creatorAddress, gumballMachineAcctKeypair.publicKey, GUMBALL_MACHINE_ACCT_SIZE, GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE, GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE, Buffer.from("aaavnpwncgchwnbqfpbtdlcpdaaa"), Buffer.from("aaavnpwncgchwnbqfpbtdlcpdaaa"), new BN(0));
+          await updateConfigLines(
+            creatorAddress,
+            gumballMachineAcctKeypair.publicKey,
+            GUMBALL_MACHINE_ACCT_SIZE,
+            GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE,
+            GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE,
+            Buffer.from("aaavnpwncgchwnbqfpbtdlcpdaaa"),
+            Buffer.from("aaavnpwncgchwnbqfpbtdlcpdaaa"),
+            new BN(0)
+          );
         });
         it("Can update gumball header", async () => {
           const newGumballMachineHeader: UpdateHeaderMetadataInstructionArgs = {
-            urlBase: strToByteArray("https://arweave.net/bzdjillretjcraaxawlnhqrhmexzbsixyajrlzhfcvcc"),
+            urlBase: strToByteArray(
+              "https://arweave.net/bzdjillretjcraaxawlnhqrhmexzbsixyajrlzhfcvcc"
+            ),
             nameBase: strToByteArray("wmqeslreeondhmcmtfebrwqnqcoasbye"),
-            symbol: strToByteArray("abcdefgh"), 
+            symbol: strToByteArray("abcdefgh"),
             sellerFeeBasisPoints: 50,
             isMutable: false,
             retainAuthority: false,
@@ -578,17 +744,17 @@ describe("gumball-machine", () => {
             goLiveDate: new BN(5678.0),
             botWallet: Keypair.generate().publicKey,
             authority: Keypair.generate().publicKey,
-            maxMintSize: new BN(15)
+            maxMintSize: new BN(15),
           };
 
           const expectedOnChainHeader: GumballMachineHeader = {
             urlBase: newGumballMachineHeader.urlBase,
             nameBase: newGumballMachineHeader.nameBase,
-            symbol: newGumballMachineHeader.symbol, 
+            symbol: newGumballMachineHeader.symbol,
             sellerFeeBasisPoints: newGumballMachineHeader.sellerFeeBasisPoints,
             isMutable: newGumballMachineHeader.isMutable ? 1 : 0,
             retainAuthority: newGumballMachineHeader.retainAuthority ? 1 : 0,
-            padding: [0,0,0,0],
+            padding: [0, 0, 0, 0],
             price: newGumballMachineHeader.price,
             goLiveDate: newGumballMachineHeader.goLiveDate,
             mint: NATIVE_MINT,
@@ -601,12 +767,21 @@ describe("gumball-machine", () => {
             maxMintSize: newGumballMachineHeader.maxMintSize,
             remaining: new BN(0),
             maxItems: baseGumballMachineInitProps.maxItems,
-            totalItemsAdded: new BN(0)
-          }
-          await updateHeaderMetadata(creatorAddress, gumballMachineAcctKeypair.publicKey, GUMBALL_MACHINE_ACCT_SIZE, newGumballMachineHeader, expectedOnChainHeader);
+            totalItemsAdded: new BN(0),
+          };
+          await updateHeaderMetadata(
+            creatorAddress,
+            gumballMachineAcctKeypair.publicKey,
+            GUMBALL_MACHINE_ACCT_SIZE,
+            newGumballMachineHeader,
+            expectedOnChainHeader
+          );
         });
         it("Can destroy gumball machine and reclaim lamports", async () => {
-          await destroyGumballMachine(gumballMachineAcctKeypair, creatorAddress);
+          await destroyGumballMachine(
+            gumballMachineAcctKeypair,
+            creatorAddress
+          );
         });
       });
     });
@@ -623,21 +798,41 @@ describe("gumball-machine", () => {
         nftBuyer = Keypair.generate();
         botWallet = Keypair.generate();
 
+        [noncePDAKey] = await PublicKey.findProgramAddress(
+          [Buffer.from("bubblegum"), merkleRollKeypair.publicKey.toBuffer()],
+          BubblegumProgramId
+        );
         // Give creator enough funds to produce accounts for gumball-machine
         await GumballMachine.provider.connection.confirmTransaction(
-          await GumballMachine.provider.connection.requestAirdrop(creatorAddress.publicKey, 4 * LAMPORTS_PER_SOL),
+          await GumballMachine.provider.connection.requestAirdrop(
+            creatorAddress.publicKey,
+            4 * LAMPORTS_PER_SOL
+          ),
           "confirmed"
         );
 
-        someMint = await createMint(connection, payer, payer.publicKey, null, 9);
-        creatorReceiverTokenAccount = await getOrCreateAssociatedTokenAccount(connection, payer, someMint, creatorAddress.publicKey);
+        someMint = await createMint(
+          connection,
+          payer,
+          payer.publicKey,
+          null,
+          9
+        );
+        creatorReceiverTokenAccount = await getOrCreateAssociatedTokenAccount(
+          connection,
+          payer,
+          someMint,
+          creatorAddress.publicKey
+        );
 
         baseGumballMachineInitProps = {
           maxDepth: 3,
           maxBufferSize: 8,
-          urlBase: strToByteArray("https://arweave.net/Rmg4pcIv-0FQ7M7X838p2r592Q4NU63Fj7o7XsvBHEEl"),
+          urlBase: strToByteArray(
+            "https://arweave.net/Rmg4pcIv-0FQ7M7X838p2r592Q4NU63Fj7o7XsvBHEEl"
+          ),
           nameBase: strToByteArray("zfgfsxrwieciemyavrpkuqehkmhqmnim"),
-          symbol: strToByteArray("12345678"), 
+          symbol: strToByteArray("12345678"),
           sellerFeeBasisPoints: 100,
           isMutable: true,
           retainAuthority: true,
@@ -651,13 +846,46 @@ describe("gumball-machine", () => {
           maxMintSize: new BN(10),
           maxItems: new BN(250),
         };
-  
-        await initializeGumballMachine(creatorAddress, gumballMachineAcctKeypair, GUMBALL_MACHINE_ACCT_SIZE, merkleRollKeypair, MERKLE_ROLL_ACCT_SIZE, baseGumballMachineInitProps, someMint);
-        await addConfigLines(creatorAddress, gumballMachineAcctKeypair.publicKey, GUMBALL_MACHINE_ACCT_SIZE, GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE, GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE, Buffer.from("uluvnpwncgchwnbqfpbtdlcpdthc" + "aauvnpwncgchwnbqfpbtdlcpdthc"), Buffer.from("uluvnpwncgchwnbqfpbtdlcpdthc" + "aauvnpwncgchwnbqfpbtdlcpdthc"));
+
+        await initializeGumballMachine(
+          creatorAddress,
+          gumballMachineAcctKeypair,
+          GUMBALL_MACHINE_ACCT_SIZE,
+          merkleRollKeypair,
+          MERKLE_ROLL_ACCT_SIZE,
+          baseGumballMachineInitProps,
+          someMint,
+          noncePDAKey,
+        );
+        await addConfigLines(
+          creatorAddress,
+          gumballMachineAcctKeypair.publicKey,
+          GUMBALL_MACHINE_ACCT_SIZE,
+          GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE,
+          GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE,
+          Buffer.from(
+            "uluvnpwncgchwnbqfpbtdlcpdthc" + "aauvnpwncgchwnbqfpbtdlcpdthc"
+          ),
+          Buffer.from(
+            "uluvnpwncgchwnbqfpbtdlcpdthc" + "aauvnpwncgchwnbqfpbtdlcpdthc"
+          )
+        );
 
         // Create and fund the NFT pruchaser
-        nftBuyerTokenAccount = await getOrCreateAssociatedTokenAccount(connection, payer, someMint, nftBuyer.publicKey);
-        await mintTo(connection, payer, someMint, nftBuyerTokenAccount.address, payer, 50);
+        nftBuyerTokenAccount = await getOrCreateAssociatedTokenAccount(
+          connection,
+          payer,
+          someMint,
+          nftBuyer.publicKey
+        );
+        await mintTo(
+          connection,
+          payer,
+          someMint,
+          nftBuyerTokenAccount.address,
+          payer,
+          50
+        );
       });
       describe("transaction atomicity attacks fail", async () => {
         let dispenseNFTForTokensInstr;
@@ -665,7 +893,18 @@ describe("gumball-machine", () => {
         let dummyInstr;
 
         beforeEach(async () => {
-          dispenseNFTForTokensInstr = await createDispenseNFTForTokensIx(new BN(1), nftBuyer, nftBuyerTokenAccount.address, creatorReceiverTokenAccount.address, gumballMachineAcctKeypair, merkleRollKeypair, noncePDAKey, GummyrollProgramId, BubblegumProgramId, GumballMachine);
+          dispenseNFTForTokensInstr = await createDispenseNFTForTokensIx(
+            new BN(1),
+            nftBuyer,
+            nftBuyerTokenAccount.address,
+            creatorReceiverTokenAccount.address,
+            gumballMachineAcctKeypair,
+            merkleRollKeypair,
+            noncePDAKey,
+            GummyrollProgramId,
+            BubblegumProgramId,
+            GumballMachine
+          );
           dummyNewAcctKeypair = Keypair.generate();
           dummyInstr = SystemProgram.createAccount({
             fromPubkey: payer.publicKey,
@@ -676,55 +915,112 @@ describe("gumball-machine", () => {
           });
         });
         it("Cannot dispense NFT for tokens with subsequent instructions in transaction", async () => {
-          const tx = new Transaction().add(dispenseNFTForTokensInstr).add(dummyInstr);
+          const tx = new Transaction()
+            .add(dispenseNFTForTokensInstr)
+            .add(dummyInstr);
           try {
-            await GumballMachine.provider.send(tx, [nftBuyer, payer, dummyNewAcctKeypair], {
-              commitment: "confirmed",
-            })
-            assert(false, "Dispense should fail when part of transaction with multiple instructions, but it succeeded");
-          } catch(e) {}
+            await GumballMachine.provider.send(
+              tx,
+              [nftBuyer, payer, dummyNewAcctKeypair],
+              {
+                commitment: "confirmed",
+              }
+            );
+            assert(
+              false,
+              "Dispense should fail when part of transaction with multiple instructions, but it succeeded"
+            );
+          } catch (e) {}
         });
         it("Cannot dispense NFT for SOL with prior instructions in transaction", async () => {
-          const tx = new Transaction().add(dummyInstr).add(dispenseNFTForTokensInstr);
+          const tx = new Transaction()
+            .add(dummyInstr)
+            .add(dispenseNFTForTokensInstr);
           try {
-            await GumballMachine.provider.send(tx, [nftBuyer, payer, dummyNewAcctKeypair], {
-              commitment: "confirmed",
-            })
-            assert(false, "Dispense should fail when part of transaction with multiple instructions, but it succeeded");
-          } catch(e) {}
+            await GumballMachine.provider.send(
+              tx,
+              [nftBuyer, payer, dummyNewAcctKeypair],
+              {
+                commitment: "confirmed",
+              }
+            );
+            assert(
+              false,
+              "Dispense should fail when part of transaction with multiple instructions, but it succeeded"
+            );
+          } catch (e) {}
         });
       });
       it("Can dispense multiple NFTs paid in token", async () => {
-        let buyerTokenAccount = await getAccount(connection, nftBuyerTokenAccount.address);
-        await dispenseCompressedNFTForTokens(new BN(1), nftBuyer, nftBuyerTokenAccount.address, creatorReceiverTokenAccount.address, gumballMachineAcctKeypair, merkleRollKeypair, noncePDAKey);
-  
-        let newCreatorTokenAccount = await getAccount(connection, creatorReceiverTokenAccount.address);
-        let newBuyerTokenAccount = await getAccount(connection, nftBuyerTokenAccount.address);
-        
+        let buyerTokenAccount = await getAccount(
+          connection,
+          nftBuyerTokenAccount.address
+        );
+        await dispenseCompressedNFTForTokens(
+          new BN(1),
+          nftBuyer,
+          nftBuyerTokenAccount.address,
+          creatorReceiverTokenAccount.address,
+          gumballMachineAcctKeypair,
+          merkleRollKeypair,
+          noncePDAKey
+        );
+
+        let newCreatorTokenAccount = await getAccount(
+          connection,
+          creatorReceiverTokenAccount.address
+        );
+        let newBuyerTokenAccount = await getAccount(
+          connection,
+          nftBuyerTokenAccount.address
+        );
+
         assert(
-          Number(newCreatorTokenAccount.amount) === Number(creatorReceiverTokenAccount.amount) + val(baseGumballMachineInitProps.price).toNumber(),
+          Number(newCreatorTokenAccount.amount) ===
+            Number(creatorReceiverTokenAccount.amount) +
+              val(baseGumballMachineInitProps.price).toNumber(),
           "The creator did not receive their payment as expected"
         );
-  
+
         assert(
-          Number(newBuyerTokenAccount.amount) === Number(buyerTokenAccount.amount) - val(baseGumballMachineInitProps.price).toNumber(),
+          Number(newBuyerTokenAccount.amount) ===
+            Number(buyerTokenAccount.amount) -
+              val(baseGumballMachineInitProps.price).toNumber(),
           "The nft buyer did not pay for the nft as expected"
         );
 
-        await dispenseCompressedNFTForTokens(new BN(1), nftBuyer, nftBuyerTokenAccount.address, creatorReceiverTokenAccount.address, gumballMachineAcctKeypair, merkleRollKeypair, noncePDAKey);
+        await dispenseCompressedNFTForTokens(
+          new BN(1),
+          nftBuyer,
+          nftBuyerTokenAccount.address,
+          creatorReceiverTokenAccount.address,
+          gumballMachineAcctKeypair,
+          merkleRollKeypair,
+          noncePDAKey
+        );
 
         creatorReceiverTokenAccount = newCreatorTokenAccount;
         buyerTokenAccount = newBuyerTokenAccount;
-        newCreatorTokenAccount = await getAccount(connection, creatorReceiverTokenAccount.address);
-        newBuyerTokenAccount = await getAccount(connection, nftBuyerTokenAccount.address);
-        
+        newCreatorTokenAccount = await getAccount(
+          connection,
+          creatorReceiverTokenAccount.address
+        );
+        newBuyerTokenAccount = await getAccount(
+          connection,
+          nftBuyerTokenAccount.address
+        );
+
         assert(
-          Number(newCreatorTokenAccount.amount) === Number(creatorReceiverTokenAccount.amount) + val(baseGumballMachineInitProps.price).toNumber(),
+          Number(newCreatorTokenAccount.amount) ===
+            Number(creatorReceiverTokenAccount.amount) +
+              val(baseGumballMachineInitProps.price).toNumber(),
           "The creator did not receive their payment as expected"
         );
-  
+
         assert(
-          Number(newBuyerTokenAccount.amount) === Number(buyerTokenAccount.amount) - val(baseGumballMachineInitProps.price).toNumber(),
+          Number(newBuyerTokenAccount.amount) ===
+            Number(buyerTokenAccount.amount) -
+              val(baseGumballMachineInitProps.price).toNumber(),
           "The nft buyer did not pay for the nft as expected"
         );
       });

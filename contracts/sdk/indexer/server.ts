@@ -36,10 +36,11 @@ function stringifyProof(proof: Proof): string {
 
 app.get("/proof", async (req, res) => {
   const leafHashString = req.query.leafHash;
+  const treeId = req.query.treeId;
   console.log("GET request:", leafHashString);
   const nftDb = await bootstrap(false);
   const leafHash: Buffer = bs58.decode(leafHashString);
-  const proof = await nftDb.getProof(leafHash, false);
+  const proof = await nftDb.getProof(leafHash, treeId, false);
   res.send(stringifyProof(proof));
 });
 

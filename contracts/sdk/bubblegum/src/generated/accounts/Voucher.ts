@@ -21,7 +21,7 @@ export type VoucherArgs = {
   merkleSlab: web3.PublicKey
 }
 
-const voucherDiscriminator = [191, 204, 149, 234, 213, 165, 13, 65]
+export const voucherDiscriminator = [191, 204, 149, 234, 213, 165, 13, 65]
 /**
  * Holds the data for the {@link Voucher} Account and provides de/serialization
  * functionality for that data

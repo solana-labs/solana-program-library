@@ -64,7 +64,7 @@ export class NFTDatabaseConnection {
     });
   }
 
-  async updateChangeLogs(changeLog: ChangeLogEvent, txId: string) {
+  async updateChangeLogs(changeLog: ChangeLogEvent, txId: string, treeId: string) {
     console.log("Update Change Log");
     if (changeLog.seq == 0) {
       return;
@@ -73,10 +73,11 @@ export class NFTDatabaseConnection {
       this.connection.run(
         `
           INSERT INTO 
-          merkle(transaction_id, node_idx, seq, level, hash)
-          VALUES (?, ?, ?, ?, ?)
+          merkle(transaction_id, tree_id, node_idx, seq, level, hash)
+          VALUES (?, ?, ?, ?, ?, ?)
         `,
         txId,
+        treeId,
         pathNode.index,
         changeLog.seq,
         i,
@@ -85,13 +86,14 @@ export class NFTDatabaseConnection {
     }
   }
 
-  async updateLeafSchema(leafSchema: LeafSchema, leafHash: PublicKey, txId: string) {
+  async updateLeafSchema(leafSchema: LeafSchema, leafHash: PublicKey, txId: string, treeId: string) {
     console.log("Update Leaf Schema");
     this.connection.run(
       `
         INSERT INTO
         leaf_schema(
           nonce,
+          tree_id,
           transaction_id,
           owner,
           delegate,
@@ -99,8 +101,8 @@ export class NFTDatabaseConnection {
           creator_hash,
           leaf_hash  
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT (nonce)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (nonce, tree_id)
         DO UPDATE SET 
           owner = excluded.owner,
           delegate = excluded.delegate,
@@ -109,6 +111,7 @@ export class NFTDatabaseConnection {
           leaf_hash = excluded.leaf_hash
       `,
       (leafSchema.nonce.valueOf() as BN).toNumber(),
+      treeId,
       txId,
       leafSchema.owner.toBase58(),
       leafSchema.delegate.toBase58(),
@@ -118,7 +121,7 @@ export class NFTDatabaseConnection {
     );
   }
 
-  async updateNFTMetadata(newLeafEvent: NewLeafEvent, nonce: bignum) {
+  async updateNFTMetadata(newLeafEvent: NewLeafEvent, nonce: bignum, treeId: string) {
     console.log("Update NFT");
     const uri = newLeafEvent.metadata.uri;
     const name = newLeafEvent.metadata.name;
@@ -143,6 +146,7 @@ export class NFTDatabaseConnection {
         INSERT INTO 
         nft(
           nonce,
+          tree_id,
           uri,
           name,
           symbol,
@@ -165,8 +169,8 @@ export class NFTDatabaseConnection {
           share4,
           verified4
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT (nonce)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (nonce, tree_id)
         DO UPDATE SET
           uri = excluded.uri,
           name = excluded.name,
@@ -176,6 +180,7 @@ export class NFTDatabaseConnection {
           is_mutable = excluded.is_mutable
       `,
       (nonce as BN).toNumber(),
+      treeId,
       uri,
       name,
       symbol,
@@ -279,7 +284,7 @@ export class NFTDatabaseConnection {
     return leafIdxs;
   }
 
-  async getProof(hash: Buffer, check: boolean = true): Promise<Proof | null> {
+  async getProof(hash: Buffer, treeId: string, check: boolean = true): Promise<Proof | null> {
     let hashString = bs58.encode(hash);
     let res = await this.connection.all(
       `
@@ -293,11 +298,12 @@ export class NFTDatabaseConnection {
           max(m.seq) as seq
         FROM merkle m
         JOIN leaf_schema l
-        ON m.hash = l.leaf_hash
-        WHERE hash = ? and level = 0
+        ON m.hash = l.leaf_hash and m.tree_id = l.tree_id
+        WHERE hash = ? and m.tree_id = ? and level = 0
         GROUP BY node_idx
       `,
-      hashString
+      hashString,
+      treeId,
     );
     if (res.length == 1) {
       let data = res[0]
@@ -397,6 +403,7 @@ export class NFTDatabaseConnection {
     let rawNftMetadata = await this.connection.all(
       `
       SELECT
+        ls.tree_id as treeId,
         ls.nonce as nonce,
         n.uri as uri,
         n.name as name,
@@ -422,7 +429,7 @@ export class NFTDatabaseConnection {
         n.verified4 as verified4
       FROM leaf_schema ls
       JOIN nft n
-      ON ls.nonce = n.nonce
+      ON ls.nonce = n.nonce and ls.tree_id = n.tree_id
       WHERE owner = ?
       `,
       owner
@@ -467,6 +474,7 @@ export class NFTDatabaseConnection {
       }
       assets.push({
         nonce: metadata.nonce,
+        treeId: metadata.treeId,
         uri: metadata.uri,
         name: metadata.name,
         symbol: metadata.symbol,
@@ -512,6 +520,7 @@ export async function bootstrap(
       `
         CREATE TABLE IF NOT EXISTS merkle (
           id INTEGER PRIMARY KEY,
+          tree_id TEXT,
           transaction_id TEXT,
           node_idx INT,
           seq INT,
@@ -524,7 +533,8 @@ export async function bootstrap(
     await db.run(
       `
       CREATE TABLE IF NOT EXISTS nft (
-        nonce BIGINT PRIMARY KEY,
+        tree_id TEXT,
+        nonce BIGINT,
         name TEXT,
         symbol TEXT,
         uri TEXT,
@@ -545,30 +555,23 @@ export async function bootstrap(
         verified3 BOOLEAN,
         creator4 TEXT,
         share4 INT,
-        verified4 BOOLEAN
+        verified4 BOOLEAN,
+        PRIMARY KEY (tree_id, nonce)
       );
       `
     );
     await db.run(
       `
       CREATE TABLE IF NOT EXISTS leaf_schema (
-        nonce BIGINT PRIMARY KEY,
+        tree_id TEXT,
+        nonce BIGINT,
         transaction_id TEXT,
         owner TEXT,
         delegate TEXT,
         data_hash TEXT,
         creator_hash TEXT,
-        leaf_hash TEXT
-      );
-      `
-    );
-    await db.run(
-      `
-      CREATE TABLE IF NOT EXISTS creators (
-        nonce BIGINT,
-        creator TEXT,
-        share INT,
-        verifed BOOLEAN 
+        leaf_hash TEXT,
+        PRIMARY KEY (tree_id, nonce)
       );
       `
     );

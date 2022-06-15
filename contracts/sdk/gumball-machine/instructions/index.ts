@@ -34,10 +34,11 @@ export async function createInitializeGumballMachineIxs(
   merkleRollAccountSize: number,
   gumballMachineInitArgs: InitializeGumballMachineInstructionArgs,
   mint: PublicKey,
+  noncePDAKey: PublicKey,
   gummyrollProgramId: PublicKey,
   bubblegumProgramId: PublicKey,
   gumballMachine: Program<GumballMachine>
-): Promise<[TransactionInstruction]> {
+): Promise<TransactionInstruction[]> {
     const allocGumballMachineAcctInstr = SystemProgram.createAccount({
       fromPubkey: payer.publicKey,
       newAccountPubkey: gumballMachineAcctKeypair.publicKey,
@@ -68,6 +69,7 @@ export async function createInitializeGumballMachineIxs(
         gumballMachine: gumballMachineAcctKeypair.publicKey,
         creator: payer.publicKey,
         mint,
+        nonce: noncePDAKey,
         willyWonka: willyWonkaPDAKey,
         bubblegumAuthority: bubblegumAuthorityPDAKey,
         gummyroll: gummyrollProgramId,

@@ -30,7 +30,7 @@ function chunk<T>(arr: T[], size: number): T[][] {
   );
 }
 
-describe("gummyroll-continuous", () => {
+describe.skip("gummyroll-continuous", () => {
   let connection: web3Connection;
   let wallet: NodeWallet;
   let offChainTree: ReturnType<typeof buildTree>;

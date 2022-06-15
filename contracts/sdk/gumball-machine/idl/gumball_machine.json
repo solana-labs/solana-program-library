@@ -12,7 +12,7 @@
         },
         {
           "name": "creator",
-          "isMut": false,
+          "isMut": true,
           "isSigner": true
         },
         {
@@ -23,6 +23,11 @@
         {
           "name": "willyWonka",
           "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nonce",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -42,6 +47,11 @@
         },
         {
           "name": "bubblegum",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
           "isMut": false,
           "isSigner": false
         }

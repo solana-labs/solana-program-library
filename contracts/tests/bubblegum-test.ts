@@ -124,6 +124,10 @@ describe("bubblegum", () => {
       [merkleRollKeypair.publicKey.toBuffer()],
       Bubblegum.programId
     );
+    let [nonce] = await PublicKey.findProgramAddress(
+      [Buffer.from("bubblegum"), merkleRollKeypair.publicKey.toBuffer()],
+      Bubblegum.programId
+    );
 
     const initGummyrollIx = Bubblegum.instruction.createTree(
       MAX_DEPTH,
@@ -131,9 +135,12 @@ describe("bubblegum", () => {
       {
         accounts: {
           treeCreator: payer.publicKey,
+          payer: payer.publicKey,
+          nonce: nonce,
           authority: authority,
           gummyrollProgram: GummyrollProgramId,
           merkleSlab: merkleRollKeypair.publicKey,
+          systemProgram: SystemProgram.programId,
         },
         signers: [payer],
       }
@@ -143,29 +150,6 @@ describe("bubblegum", () => {
       .add(allocAccountIx)
       .add(initGummyrollIx);
 
-    let [nonce] = await PublicKey.findProgramAddress(
-      [Buffer.from("bubblegum")],
-      Bubblegum.programId
-    );
-    try {
-      const nonceAccount = await Bubblegum.provider.connection.getAccountInfo(
-        nonce
-      );
-      if (nonceAccount.data.length === 0 || nonceAccount.lamports === 0) {
-        throw new Error("Nonce account not yet initialized");
-      }
-    } catch {
-      // Only initialize the nonce if it does not exist
-      const initNonceIx = Bubblegum.instruction.initializeNonce({
-        accounts: {
-          nonce: nonce,
-          payer: payer.publicKey,
-          systemProgram: SystemProgram.programId,
-        },
-        signers: [payer],
-      });
-      tx = tx.add(initNonceIx);
-    }
 
     await Bubblegum.provider.send(tx, [payer, merkleRollKeypair], {
       commitment: "confirmed",

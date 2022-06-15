@@ -69,9 +69,10 @@ export const initializeGumballMachineStruct = new beet.BeetArgsStruct<
  * Accounts required by the _initializeGumballMachine_ instruction
  *
  * @property [_writable_] gumballMachine
- * @property [**signer**] creator
+ * @property [_writable_, **signer**] creator
  * @property [] mint
  * @property [] willyWonka
+ * @property [_writable_] nonce
  * @property [] bubblegumAuthority
  * @property [] gummyroll
  * @property [_writable_] merkleSlab
@@ -85,6 +86,7 @@ export type InitializeGumballMachineInstructionAccounts = {
   creator: web3.PublicKey
   mint: web3.PublicKey
   willyWonka: web3.PublicKey
+  nonce: web3.PublicKey
   bubblegumAuthority: web3.PublicKey
   gummyroll: web3.PublicKey
   merkleSlab: web3.PublicKey
@@ -114,6 +116,7 @@ export function createInitializeGumballMachineInstruction(
     creator,
     mint,
     willyWonka,
+    nonce,
     bubblegumAuthority,
     gummyroll,
     merkleSlab,
@@ -132,7 +135,7 @@ export function createInitializeGumballMachineInstruction(
     },
     {
       pubkey: creator,
-      isWritable: false,
+      isWritable: true,
       isSigner: true,
     },
     {
@@ -143,6 +146,11 @@ export function createInitializeGumballMachineInstruction(
     {
       pubkey: willyWonka,
       isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: nonce,
+      isWritable: true,
       isSigner: false,
     },
     {
@@ -162,6 +170,11 @@ export function createInitializeGumballMachineInstruction(
     },
     {
       pubkey: bubblegum,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: web3.SystemProgram.programId,
       isWritable: false,
       isSigner: false,
     },

@@ -1,25 +1,17 @@
 use anchor_lang::{
     prelude::*,
     solana_program::{
-        keccak::hashv, 
-        sysvar,
-        sysvar::instructions::{load_instruction_at_checked}, 
-        sysvar::SysvarId, 
-        pubkey::Pubkey, 
-        program::{invoke, invoke_signed},
-        system_instruction,
-        instruction::{Instruction},
+        keccak::hashv, program::invoke, pubkey::Pubkey, system_instruction, sysvar,
+        sysvar::instructions::load_instruction_at_checked, sysvar::SysvarId,
     },
 };
-use anchor_spl::token::{Mint, TokenAccount, Token, Transfer, transfer};
-use spl_token::native_mint;
+use anchor_spl::token::{transfer, Mint, Token, TokenAccount, Transfer};
 use bubblegum::program::Bubblegum;
-use bubblegum::state::metaplex_adapter::UseMethod;
-use bubblegum::state::metaplex_adapter::Uses;
-use bubblegum::state::metaplex_adapter::MetadataArgs;
 use bubblegum::state::leaf_schema::Version;
+use bubblegum::state::metaplex_adapter::MetadataArgs;
 use bytemuck::cast_slice_mut;
 use gummyroll::program::Gummyroll;
+use spl_token::native_mint;
 pub mod state;
 pub mod utils;
 
@@ -33,6 +25,7 @@ pub struct InitGumballMachine<'info> {
     /// CHECK: Validation occurs in instruction
     #[account(zero)]
     gumball_machine: AccountInfo<'info>,
+    #[account(mut)]
     creator: Signer<'info>,
     mint: Account<'info, Mint>,
     /// CHECK: Mint/append authority to the merkle slab
@@ -41,6 +34,9 @@ pub struct InitGumballMachine<'info> {
         bump,
     )]
     willy_wonka: AccountInfo<'info>,
+    /// CHECK: Tree nonce, checked in Bubblegum
+    #[account(mut)]
+    nonce: UncheckedAccount<'info>,
     /// CHECK: Tree authority to the merkle slab, PDA owned by BubbleGum
     bubblegum_authority: AccountInfo<'info>,
     gummyroll: Program<'info, Gummyroll>,
@@ -48,6 +44,7 @@ pub struct InitGumballMachine<'info> {
     #[account(zero)]
     merkle_slab: AccountInfo<'info>,
     bubblegum: Program<'info, Bubblegum>,
+    system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -97,7 +94,7 @@ pub struct DispenseSol<'info> {
     bubblegum_authority: AccountInfo<'info>,
     /// CHECK: PDA is checked in Bubblegum
     #[account(mut)]
-    nonce: AccountInfo<'info>,
+    nonce: UncheckedAccount<'info>,
     gummyroll: Program<'info, Gummyroll>,
     /// CHECK: Validation occurs in Gummyroll
     #[account(mut)]
@@ -112,7 +109,7 @@ pub struct DispenseToken<'info> {
     gumball_machine: AccountInfo<'info>,
 
     payer: Signer<'info>,
-    
+
     #[account(mut)]
     payer_tokens: Account<'info, TokenAccount>,
 
@@ -137,7 +134,7 @@ pub struct DispenseToken<'info> {
     bubblegum_authority: AccountInfo<'info>,
     /// CHECK: PDA is checked in Bubblegum
     #[account(mut)]
-    nonce: AccountInfo<'info>,
+    nonce: UncheckedAccount<'info>,
     gummyroll: Program<'info, Gummyroll>,
     /// CHECK: Validation occurs in Gummyroll
     #[account(mut)]
@@ -157,9 +154,11 @@ pub struct Destroy<'info> {
 #[inline(always)]
 // Bots may try to buy only valuable NFTs by sending instructions to dispense an NFT along with
 // instructions that fail if they do not get the one that they want. We prevent this by forcing
-// all transactions that hit the "dispense" functions to have a single instruction body, and 
+// all transactions that hit the "dispense" functions to have a single instruction body, and
 // that the call to "dispense" is the top level of the single instruction (not a CPI)
-fn assert_valid_single_instruction_transaction<'info>(instruction_sysvar_account: &AccountInfo<'info>) -> Result<()> {
+fn assert_valid_single_instruction_transaction<'info>(
+    instruction_sysvar_account: &AccountInfo<'info>,
+) -> Result<()> {
     // There should only be one instruction in this transaction (the current call to dispense_...)
     let instruction_sysvar = instruction_sysvar_account.try_borrow_data()?;
     let mut fixed_data = [0u8; 2];
@@ -170,7 +169,7 @@ fn assert_valid_single_instruction_transaction<'info>(instruction_sysvar_account
     // We should not be executing dispense... from a CPI
     let only_instruction = load_instruction_at_checked(0, instruction_sysvar_account)?;
     assert_eq!(only_instruction.program_id, id());
-    return Ok(())
+    return Ok(());
 }
 
 #[inline(always)]
@@ -181,8 +180,8 @@ fn fisher_yates_shuffle_and_fetch_nft_metadata<'info>(
     gumball_header: &mut GumballMachineHeader,
     indices: &mut [u32],
     line_size: usize,
-    config_lines_data: &mut [u8]
-) -> Result<(MetadataArgs)> {
+    config_lines_data: &mut [u8],
+) -> Result<MetadataArgs> {
     // Get 8 bytes of entropy from the SlotHashes sysvar
     let mut buf: [u8; 8] = [0; 8];
     buf.copy_from_slice(
@@ -233,9 +232,8 @@ fn find_and_mint_compressed_nft<'info>(
     gummyroll: &Program<'info, Gummyroll>,
     merkle_slab: &AccountInfo<'info>,
     bubblegum: &Program<'info, Bubblegum>,
-    num_items: u64
+    num_items: u64,
 ) -> Result<GumballMachineHeader> {
-    
     // Prevent atomic transaction exploit attacks
     // TODO: potentially record information about botting now as pretains to payments to bot_wallet
     assert_valid_single_instruction_transaction(instruction_sysvar_account)?;
@@ -257,10 +255,18 @@ fn find_and_mint_compressed_nft<'info>(
 
     // TODO: Validate data
 
-    let mut indices = cast_slice_mut::<u8, u32>(indices_data);
-    for _ in 0..(num_items as usize).max(1).min(gumball_header.remaining as usize) {
-        
-        let message = fisher_yates_shuffle_and_fetch_nft_metadata(recent_blockhashes, gumball_header, indices, line_size, config_lines_data)?;
+    let indices = cast_slice_mut::<u8, u32>(indices_data);
+    for _ in 0..(num_items as usize)
+        .max(1)
+        .min(gumball_header.remaining as usize)
+    {
+        let message = fisher_yates_shuffle_and_fetch_nft_metadata(
+            recent_blockhashes,
+            gumball_header,
+            indices,
+            line_size,
+            config_lines_data,
+        )?;
 
         let seed = gumball_machine.key();
         let seeds = &[seed.as_ref(), &[*willy_wonka_bump]];
@@ -352,10 +358,13 @@ pub mod gumball_machine {
         let cpi_ctx = CpiContext::new_with_signer(
             ctx.accounts.bubblegum.to_account_info(),
             bubblegum::cpi::accounts::CreateTree {
+                nonce: ctx.accounts.nonce.to_account_info(),
                 tree_creator: ctx.accounts.willy_wonka.to_account_info(),
                 authority: ctx.accounts.bubblegum_authority.to_account_info(),
                 gummyroll_program: ctx.accounts.gummyroll.to_account_info(),
                 merkle_slab: ctx.accounts.merkle_slab.to_account_info(),
+                payer: ctx.accounts.creator.to_account_info(),
+                system_program: ctx.accounts.system_program.to_account_info(),
             },
             authority_pda_signer,
         );
@@ -373,7 +382,6 @@ pub mod gumball_machine {
         let mut gumball_header = GumballMachineHeader::load_mut_bytes(&mut header_bytes)?;
         let size = gumball_header.max_items as usize;
         let index_array_size = std::mem::size_of::<u32>() * size;
-        let config_size = gumball_header.extension_len as usize * size;
         let line_size = gumball_header.extension_len as usize;
         let num_lines = new_config_lines_data.len() / line_size; // unchecked divide by zero? maybe we don't care since this will throw and the instr will fail
         let start_index = gumball_header.total_items_added as usize;
@@ -488,7 +496,7 @@ pub mod gumball_machine {
     }
 
     /// Request to purchase a random NFT from GumballMachine for a specific project.
-    /// @notice: the project must have specified the native mint (Wrapped SOL) for "mint" 
+    /// @notice: the project must have specified the native mint (Wrapped SOL) for "mint"
     ///          in its GumballMachineHeader for this method to succeed. If mint is anything
     ///          else dispense_nft_token should be used.
     pub fn dispense_nft_sol(ctx: Context<DispenseSol>, num_items: u64) -> Result<()> {
@@ -504,7 +512,7 @@ pub mod gumball_machine {
             &ctx.accounts.gummyroll,
             &ctx.accounts.merkle_slab,
             &ctx.accounts.bubblegum,
-            num_items
+            num_items,
         )?;
 
         // Process payment for NFT
@@ -518,13 +526,13 @@ pub mod gumball_machine {
             &system_instruction::transfer(
                 &ctx.accounts.payer.key(),
                 &ctx.accounts.receiver.key(),
-                gumball_header.price
+                gumball_header.price,
             ),
             &[
                 ctx.accounts.payer.to_account_info(),
                 ctx.accounts.receiver.to_account_info(),
-                ctx.accounts.system_program.to_account_info()
-            ]
+                ctx.accounts.system_program.to_account_info(),
+            ],
         )?;
 
         Ok(())
@@ -547,7 +555,7 @@ pub mod gumball_machine {
             &ctx.accounts.gummyroll,
             &ctx.accounts.merkle_slab,
             &ctx.accounts.bubblegum,
-            num_items
+            num_items,
         )?;
 
         // Process payment for NFT
@@ -560,9 +568,9 @@ pub mod gumball_machine {
                     from: ctx.accounts.payer_tokens.to_account_info(),
                     to: ctx.accounts.receiver.to_account_info(),
                     authority: ctx.accounts.payer.to_account_info(),
-                }
+                },
             ),
-            gumball_header.price
+            gumball_header.price,
         )?;
 
         Ok(())

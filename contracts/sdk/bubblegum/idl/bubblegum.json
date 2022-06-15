@@ -3,7 +3,7 @@
   "name": "bubblegum",
   "instructions": [
     {
-      "name": "initializeNonce",
+      "name": "createTree",
       "accounts": [
         {
           "name": "nonce",
@@ -16,20 +16,14 @@
           "isSigner": true
         },
         {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "createTree",
-      "accounts": [
-        {
           "name": "treeCreator",
           "isMut": false,
           "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         },
         {
           "name": "authority",
