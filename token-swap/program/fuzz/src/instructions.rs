@@ -13,6 +13,7 @@ use {
             constant_product::ConstantProductCurve,
             fees::Fees,
             offset::OffsetCurve,
+            pmm::PMMCurve,
             stable::StableCurve,
         },
         error::SwapError,
@@ -468,6 +469,12 @@ fn get_swap_curve(curve_type: CurveType) -> SwapCurve {
             CurveType::Stable => Arc::new(StableCurve { amp: 100 }),
             CurveType::Offset => Arc::new(OffsetCurve {
                 token_b_offset: 100_000_000_000,
+            }),
+            CurveType::ProactiveMarketMaker => Arc::new(PMMCurve {
+                mid_price: 1000,
+                liquidity_parameter_ppb: 1_000_000_000,
+                base_regression_target: 1000,
+                quote_regression_target: 1000,
             }),
         },
     }

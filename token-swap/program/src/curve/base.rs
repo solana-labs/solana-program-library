@@ -11,6 +11,7 @@ use crate::curve::{
     constant_product::ConstantProductCurve,
     fees::Fees,
     offset::OffsetCurve,
+    pmm::PMMCurve,
     stable::StableCurve,
 };
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
@@ -34,6 +35,8 @@ pub enum CurveType {
     Stable,
     /// Offset curve, like Uniswap, but the token B side has a faked offset
     Offset,
+    /// Proactive Market Maker curve, A Universal Liquidity Framework
+    ProactiveMarketMaker,
 }
 
 /// Encodes all results of swapping from a source token to a destination token
@@ -203,8 +206,8 @@ impl Sealed for SwapCurve {}
 impl Pack for SwapCurve {
     /// Size of encoding of all curve parameters, which include fees and any other
     /// constants used to calculate swaps, deposits, and withdrawals.
-    /// This includes 1 byte for the type, and 72 for the calculator to use as
-    /// it needs.  Some calculators may be smaller than 72 bytes.
+    /// This includes 1 byte for the type, and 32 for the calculator to use as
+    /// it needs.  Some calculators may be smaller than 32 bytes.
     const LEN: usize = 33;
 
     /// Unpacks a byte buffer into a SwapCurve
@@ -224,6 +227,9 @@ impl Pack for SwapCurve {
                 }
                 CurveType::Stable => Arc::new(StableCurve::unpack_from_slice(calculator)?),
                 CurveType::Offset => Arc::new(OffsetCurve::unpack_from_slice(calculator)?),
+                CurveType::ProactiveMarketMaker => {
+                    Arc::new(PMMCurve::unpack_from_slice(calculator)?)
+                }
             },
         })
     }
@@ -254,6 +260,7 @@ impl TryFrom<u8> for CurveType {
             1 => Ok(CurveType::ConstantPrice),
             2 => Ok(CurveType::Stable),
             3 => Ok(CurveType::Offset),
+            4 => Ok(CurveType::ProactiveMarketMaker),
             _ => Err(ProgramError::InvalidAccountData),
         }
     }
