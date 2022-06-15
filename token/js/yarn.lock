@@ -143,6 +143,14 @@
   dependencies:
     buffer "~6.0.3"
 
+"@solana/spl-memo@^0.1.0":
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@solana/spl-memo/-/spl-memo-0.1.0.tgz#2578a48da5184b306195bef0d658dec532b46c74"
+  integrity sha512-2Ob89TYXVkLXsdRIsVh9H/9rJrVXpOTapn/f/32n5/B8JRaSRBcVBLIAgAwSjMH1oJdBlmBO0lt8+cbWBrRLuA==
+  dependencies:
+    "@solana/web3.js" "^1.41.0"
+    buffer "^6.0.3"
+
 "@solana/web3.js@^1.32.0", "@solana/web3.js@^1.41.0":
   version "1.41.10"
   resolved "https://registry.yarnpkg.com/@solana/web3.js/-/web3.js-1.41.10.tgz#fb1bf7d8ca25f126a2166fed1733fe357298a076"
@@ -595,7 +603,7 @@ buffer@6.0.1:
     base64-js "^1.3.1"
     ieee754 "^1.2.1"
 
-buffer@~6.0.3:
+buffer@^6.0.3, buffer@~6.0.3:
   version "6.0.3"
   resolved "https://registry.yarnpkg.com/buffer/-/buffer-6.0.3.tgz#2ace578459cc8fbe2a70aaa8f52ee63b6a74c6c6"
   integrity sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA==
