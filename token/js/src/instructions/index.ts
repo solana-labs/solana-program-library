@@ -24,6 +24,7 @@ export * from './initializeMint2'; //     20
 export * from './initializeImmutableOwner'; //  22
 export * from './initializeMintCloseAuthority'; // 23
 export * from './createNativeMint'; //    29
+export * from './initializeNonTransferableMint'; //    32
 
 export * from './decode';
 

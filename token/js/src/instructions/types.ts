@@ -32,4 +32,5 @@ export enum TokenInstruction {
     Reallocate = 29,
     MemoTransferExtension = 30,
     CreateNativeMint = 31,
+    InitializeNonTransferableMint = 32,
 }

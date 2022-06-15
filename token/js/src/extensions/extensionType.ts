@@ -5,6 +5,7 @@ import { ACCOUNT_TYPE_SIZE } from './accountType';
 import { MINT_CLOSE_AUTHORITY_SIZE } from './mintCloseAuthority';
 import { IMMUTABLE_OWNER_SIZE } from './immutableOwner';
 import { TRANSFER_FEE_CONFIG_SIZE, TRANSFER_FEE_AMOUNT_SIZE } from './transferFee';
+import { NON_TRANSFERABLE_SIZE } from './nonTransferable';
 
 export enum ExtensionType {
     Uninitialized,
@@ -16,6 +17,7 @@ export enum ExtensionType {
     DefaultAccountState,
     ImmutableOwner,
     MemoTransfer,
+    NonTransferable,
 }
 
 export const TYPE_SIZE = 2;
@@ -43,6 +45,8 @@ export function getTypeLen(e: ExtensionType): number {
             return IMMUTABLE_OWNER_SIZE;
         case ExtensionType.MemoTransfer:
             return 1;
+        case ExtensionType.NonTransferable:
+            return NON_TRANSFERABLE_SIZE;
         default:
             throw Error(`Unknown extension type: ${e}`);
     }
@@ -60,6 +64,7 @@ export function getAccountTypeOfMintType(e: ExtensionType): ExtensionType {
         case ExtensionType.ImmutableOwner:
         case ExtensionType.MemoTransfer:
         case ExtensionType.MintCloseAuthority:
+        case ExtensionType.NonTransferable:
         case ExtensionType.Uninitialized:
             return ExtensionType.Uninitialized;
     }
