@@ -35,7 +35,7 @@
         "test:e2e-native": "start-server-and-test 'solana-test-validator --reset --quiet' http://localhost:8899/health 'mocha test/e2e'",
         "docs": "shx rm -rf docs && NODE_OPTIONS=--max_old_space_size=4096 typedoc && shx cp .nojekyll docs/",
         "fmt": "prettier --write '{*,**/*}.{js,ts,jsx,tsx,json}'",
-        "lint": "eslint --ext .ts . && prettier --check '{*,**/*}.{js,ts,jsx,tsx,json}'",
+        "lint": "eslint --max-warnings 0 --ext .ts . && prettier --check '{*,**/*}.{js,ts,jsx,tsx,json}'",
         "lint:fix": "eslint --fix --ext .ts . && yarn fmt",
         "nuke": "shx rm -rf node_modules yarn.lock"
     },
