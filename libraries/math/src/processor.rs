@@ -49,6 +49,12 @@ fn f32_natural_log(argument: f32) -> f32 {
     argument.ln()
 }
 
+/// f32_approx_natural_log
+#[inline(never)]
+fn f32_approx_natural_log(argument: f32) -> f32 {
+    argument.ln()
+}
+
 /// Instruction processor
 pub fn process_instruction(
     _program_id: &Pubkey,
@@ -132,6 +138,14 @@ pub fn process_instruction(
             msg!("Calculating f32 Natural Log");
             sol_log_compute_units();
             let result = f32_natural_log(argument);
+            sol_log_compute_units();
+            msg!("{}", result as u64);
+            Ok(())
+        }
+        MathInstruction::F32ApproximateNaturalLog { argument } => {
+            msg!("Calculating f32 Approximate Natural Log");
+            sol_log_compute_units();
+            let result = f32_approx_natural_log(argument);
             sol_log_compute_units();
             msg!("{}", result as u64);
             Ok(())

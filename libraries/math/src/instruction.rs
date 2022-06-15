@@ -89,6 +89,14 @@ pub enum MathInstruction {
         argument: f32,
     },
 
+    /// Approximate Natural Log of a float
+    ///
+    /// No accounts required for this instruction
+    F32ApproximateNaturalLog {
+        /// The argument
+        argument: f32,
+    },
+
     /// The Normal CDF of a float
     ///
     /// No accounts required for this instruction
@@ -203,6 +211,17 @@ pub fn f32_natural_log(argument: f32) -> Instruction {
         program_id: id(),
         accounts: vec![],
         data: MathInstruction::F32NaturalLog { argument }
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+/// Create F32 Approximate Natural Log instruction
+pub fn f32_approx_natural_log(argument: f32) -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![],
+        data: MathInstruction::F32ApproximateNaturalLog { argument }
             .try_to_vec()
             .unwrap(),
     }
@@ -360,6 +379,19 @@ mod tests {
         assert_eq!(
             instruction.data,
             MathInstruction::F32NaturalLog { argument: f32::MAX }
+                .try_to_vec()
+                .unwrap()
+        );
+        assert_eq!(instruction.program_id, crate::id())
+    }
+
+    #[test]
+    fn test_f32_approx_natural_log() {
+        let instruction = f32_approx_natural_log(f32::MAX);
+        assert_eq!(0, instruction.accounts.len());
+        assert_eq!(
+            instruction.data,
+            MathInstruction::F32ApproximateNaturalLog { argument: f32::MAX }
                 .try_to_vec()
                 .unwrap()
         );
