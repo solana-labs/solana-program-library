@@ -2,6 +2,7 @@ import { ACCOUNT_SIZE } from '../state/account';
 import { Mint, MINT_SIZE } from '../state/mint';
 import { MULTISIG_SIZE } from '../state/multisig';
 import { ACCOUNT_TYPE_SIZE } from './accountType';
+import { DEFAULT_ACCOUNT_STATE_SIZE } from './defaultAccountState';
 import { MINT_CLOSE_AUTHORITY_SIZE } from './mintCloseAuthority';
 import { IMMUTABLE_OWNER_SIZE } from './immutableOwner';
 import { TRANSFER_FEE_CONFIG_SIZE, TRANSFER_FEE_AMOUNT_SIZE } from './transferFee';
@@ -38,7 +39,7 @@ export function getTypeLen(e: ExtensionType): number {
         case ExtensionType.ConfidentialTransferAccount:
             return 286;
         case ExtensionType.DefaultAccountState:
-            return 1;
+            return DEFAULT_ACCOUNT_STATE_SIZE;
         case ExtensionType.ImmutableOwner:
             return IMMUTABLE_OWNER_SIZE;
         case ExtensionType.MemoTransfer:
