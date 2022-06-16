@@ -21,7 +21,7 @@
     "dev": "tsc && node --trace-warnings dist/transfer.js",
     "build": "tsc",
     "prepublish": "tsc",
-    "lint": "yarn pretty && eslint 'src/*.ts'",
+    "lint": "yarn pretty && eslint --max-warnings 0 'src/*.ts'",
     "lint:fix": "yarn pretty:fix && eslint 'src/*.ts' --fix",
     "pretty": "prettier --check 'src/*.ts'",
     "pretty:fix": "prettier --write 'src/*.ts'",

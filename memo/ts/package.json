@@ -13,7 +13,7 @@
   "scripts": {
     "build": "npm run clean && tsc",
     "clean": "rimraf ./dist",
-    "lint": "eslint . && npm run pretty",
+    "lint": "eslint --max-warnings 0 . && npm run pretty",
     "lint:fix": "eslint . --fix && npm run pretty:fix",
     "pretty": "prettier --check '{,{src,test}/**/}*.{j,t}s'",
     "pretty:fix": "prettier --write '{,{src,test}/**/}*.{j,t}s'",

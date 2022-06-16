@@ -4,7 +4,7 @@
   "description": "SPL Stake Pool Program JS API",
   "scripts": {
     "build": "npm run clean && tsc && cross-env NODE_ENV=production rollup -c",
-    "lint": "eslint .",
+    "lint": "eslint --max-warnings 0 .",
     "lint:fix": "eslint . --fix",
     "test": "jest",
     "test:watch": "jest --watch",
