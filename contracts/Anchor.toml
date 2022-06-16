@@ -1,7 +1,7 @@
 [programs.localnet]
 gummyroll = "GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD"
 gummyroll_crud = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-bubblegum = "BGUMzZr2wWfD2yzrXFEWTK2HbdYhqQCP2EZoPEkZBD6o"
+bubblegum = "BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY"
 gumball_machine = "BRKyVDRGT7SPBtMhjHN4PVSPVYoc3Wa3QTyuRVM4iZkt"
 
 [[test.genesis]]

@@ -27,7 +27,7 @@ const NONCE_SIZE: usize = 8 + 16;
 const VOUCHER_SIZE: usize = 8 + 1 + 32 + 32 + 16 + 32 + 4 + 32 + 32 + 32;
 const NONCE_PREFIX: &str = "bubblegum";
 
-declare_id!("BGUMzZr2wWfD2yzrXFEWTK2HbdYhqQCP2EZoPEkZBD6o");
+declare_id!("BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY");
 
 #[derive(Accounts)]
 pub struct CreateTree<'info> {

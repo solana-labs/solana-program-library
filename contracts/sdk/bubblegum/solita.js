@@ -9,7 +9,7 @@ const { writeFile } = require('fs/promises');
 const { fstat, existsSync, realpathSync } = require('fs');
 
 const PROGRAM_NAME = 'bubblegum';
-const PROGRAM_ID = 'BGUMzZr2wWfD2yzrXFEWTK2HbdYhqQCP2EZoPEkZBD6o';
+const PROGRAM_ID = 'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY';
 
 const programDir = path.join(__dirname, '..', '..', 'programs', 'bubblegum');
 const cargoToml = path.join(programDir, 'Cargo.toml')

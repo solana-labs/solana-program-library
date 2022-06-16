@@ -132,7 +132,7 @@ export function createMintInstruction(
 
   const ix = new web3.TransactionInstruction({
     programId: new web3.PublicKey(
-      'BGUMzZr2wWfD2yzrXFEWTK2HbdYhqQCP2EZoPEkZBD6o'
+      'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY'
     ),
     keys,
     data,

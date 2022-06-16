@@ -2,7 +2,7 @@
 args=(
   --reset
   --bpf-program metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s ../../../deps/metaplex-program-library/token-metadata/target/deploy/mpl_token_metadata.so
-  --bpf-program BGUMzZr2wWfD2yzrXFEWTK2HbdYhqQCP2EZoPEkZBD6o ../../target/deploy/bubblegum.so
+  --bpf-program BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY ../../target/deploy/bubblegum.so
   --bpf-program Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS ../../target/deploy/gummyroll_crud.so
   --bpf-program GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD ../../target/deploy/gummyroll.so
   --bpf-program BRKyVDRGT7SPBtMhjHN4PVSPVYoc3Wa3QTyuRVM4iZkt ../../target/deploy/gumball_machine.so
