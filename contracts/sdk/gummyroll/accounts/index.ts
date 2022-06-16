@@ -46,6 +46,7 @@ type MerkleRollHeader = {
   maxBufferSize: number; // u32
   authority: PublicKey;
   appendAuthority: PublicKey;
+  creationSlot: BN;
 };
 
 type MerkleRoll = {
@@ -83,10 +84,11 @@ export function decodeMerkleRoll(buffer: Buffer): OnChainMerkleRoll {
     maxDepth: reader.readU32(),
     authority: readPublicKey(reader),
     appendAuthority: readPublicKey(reader),
+    creationSlot: reader.readU64(),
   };
 
   // Decode MerkleRoll
-  let sequenceNumber = reader.readU128();
+  let sequenceNumber = reader.readU64();
   let activeIndex = reader.readU64().toNumber();
   let bufferSize = reader.readU64().toNumber();
 
