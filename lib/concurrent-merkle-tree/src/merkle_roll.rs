@@ -18,7 +18,7 @@ use solana_program::{log::sol_log_compute_units, msg};
 /// was generated at most MAX_SIZE updates since the tx was submitted
 #[derive(Copy, Clone)]
 pub struct MerkleRoll<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> {
-    pub sequence_number: u128,
+    pub sequence_number: u64,
     /// Index of most recent root & changes
     pub active_index: u64,
     /// Number of active changes we are tracking
