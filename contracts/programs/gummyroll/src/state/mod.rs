@@ -30,15 +30,15 @@ pub struct ChangeLogEvent {
     pub id: Pubkey,
     /// Nodes of off-chain merkle tree
     pub path: Vec<PathNode>,
-    pub seq: u128,
+    pub seq: u64,
     /// Bitmap of node parity (used when hashing)
     pub index: u32,
 }
 //  ChangeLog<MAX_DEPTH>
-impl<const MAX_DEPTH: usize> From<(Box<ChangeLog<MAX_DEPTH>>, Pubkey, u128)>
+impl<const MAX_DEPTH: usize> From<(Box<ChangeLog<MAX_DEPTH>>, Pubkey, u64)>
     for Box<ChangeLogEvent>
 {
-    fn from(log_info: (Box<ChangeLog<MAX_DEPTH>>, Pubkey, u128)) -> Self {
+    fn from(log_info: (Box<ChangeLog<MAX_DEPTH>>, Pubkey, u64)) -> Self {
         let (changelog, tree_id, seq) = log_info;
         let path_len = changelog.path.len() as u32;
         let mut path: Vec<PathNode> = changelog
@@ -69,6 +69,7 @@ pub struct MerkleRollHeader {
     pub max_depth: u32,
     pub authority: Pubkey,
     pub append_authority: Pubkey,
+    pub creation_slot: u64,
 }
 
 impl MerkleRollHeader {
@@ -78,6 +79,7 @@ impl MerkleRollHeader {
         max_buffer_size: u32,
         authority: &Pubkey,
         append_authority: &Pubkey,
+        creation_slot: u64, 
     ) {
         // Check header is empty
         assert_eq!(self.max_buffer_size, 0);
@@ -86,5 +88,6 @@ impl MerkleRollHeader {
         self.max_depth = max_depth;
         self.authority = *authority;
         self.append_authority = *append_authority;
+        self.creation_slot = creation_slot;
     }
 }

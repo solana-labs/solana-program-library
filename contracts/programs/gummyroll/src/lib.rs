@@ -1,4 +1,8 @@
-use anchor_lang::{emit, prelude::*, solana_program::sysvar::rent::Rent};
+use anchor_lang::{
+    emit,
+    prelude::*,
+    solana_program::sysvar::{clock::Clock, rent::Rent},
+};
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::mem::size_of;
 
@@ -156,6 +160,7 @@ pub mod gummyroll {
             max_buffer_size,
             &ctx.accounts.authority.key(),
             &ctx.accounts.append_authority.key(),
+            Clock::get()?.slot,
         );
         header.serialize(&mut header_bytes)?;
         let id = ctx.accounts.merkle_roll.key();
@@ -189,6 +194,7 @@ pub mod gummyroll {
             max_buffer_size,
             &ctx.accounts.authority.key(),
             &ctx.accounts.append_authority.key(),
+            Clock::get()?.slot,
         );
         header.serialize(&mut header_bytes)?;
 
