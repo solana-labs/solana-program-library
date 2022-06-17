@@ -4,6 +4,7 @@ use {
         ProgramTest,
     },
     solana_sdk::{
+        account::Account,
         program_option::COption,
         signer::{keypair::Keypair, Signer},
     },
@@ -130,6 +131,20 @@ async fn get_or_create_associated_token_account() {
             is_native: COption::None,
             delegated_amount: 0,
             close_authority: COption::None,
+        }
+    );
+
+    assert_eq!(
+        token
+            .get_or_create_associated_token_account(&alice.pubkey())
+            .await
+            .expect("failed to get account"),
+        Account {
+            lamports: 0,
+            data: vec![],
+            owner: alice.pubkey(),
+            executable: false,
+            rent_epoch: 0
         }
     );
 }

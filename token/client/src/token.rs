@@ -430,6 +430,22 @@ where
             .ok_or(TokenError::AccountNotFound)
     }
 
+    /// Retrieve a raw associated account or create one if not exists
+    pub async fn get_or_create_associated_token_account(
+        &self,
+        owner: &Pubkey,
+    ) -> TokenResult<BaseAccount> {
+        let account = self.get_associated_token_address(owner);
+        match self.get_account(&account).await {
+            Ok(account) => Ok(account),
+            Err(TokenError::AccountNotFound) => {
+                self.create_associated_token_account(owner).await?;
+                self.get_account(&account).await
+            }
+            Err(error) => Err(error),
+        }
+    }
+
     /// Retrive mint information.
     pub async fn get_mint_info(&self) -> TokenResult<StateWithExtensionsOwned<Mint>> {
         let account = self.get_account(&self.pubkey).await?;
