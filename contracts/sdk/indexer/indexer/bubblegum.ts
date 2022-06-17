@@ -20,6 +20,12 @@ function parseIxName(logLine: string): BubblegumIx | null {
   return logLine.match(ixRegEx)[1] as BubblegumIx;
 }
 
+function skipTx(sequenceNumber, startSeq, endSeq): boolean {
+  let left = startSeq !== null ? sequenceNumber <= startSeq : false;
+  let right = endSeq !== null ? sequenceNumber >= endSeq : false;
+  return left || right;
+}
+
 export type BubblegumIx =
   | "Redeem"
   | "Decompress"
@@ -35,9 +41,10 @@ export type NewLeafEvent = {
   nonce: BN;
 };
 
-export function parseBubblegum(
+export async function parseBubblegum(
   db: NFTDatabaseConnection,
   parsedLog: ParsedLog,
+  slot: number,
   parser: ParserState,
   optionalInfo: OptionalInfo
 ) {
@@ -45,22 +52,52 @@ export function parseBubblegum(
   console.log("Bubblegum:", ixName);
   switch (ixName) {
     case "CreateTree":
-      parseBubblegumCreateTree(db, parsedLog.logs, parser, optionalInfo);
+      await parseBubblegumCreateTree(
+        db,
+        parsedLog.logs,
+        slot,
+        parser,
+        optionalInfo
+      );
       break;
     case "Mint":
-      parseBubblegumMint(db, parsedLog.logs, parser, optionalInfo);
+      await parseBubblegumMint(db, parsedLog.logs, slot, parser, optionalInfo);
       break;
     case "Redeem":
-      parseBubblegumRedeem(db, parsedLog.logs, parser, optionalInfo);
+      await parseBubblegumRedeem(
+        db,
+        parsedLog.logs,
+        slot,
+        parser,
+        optionalInfo
+      );
       break;
     case "CancelRedeem":
-      parseBubblegumCancelRedeem(db, parsedLog.logs, parser, optionalInfo);
+      await parseBubblegumCancelRedeem(
+        db,
+        parsedLog.logs,
+        slot,
+        parser,
+        optionalInfo
+      );
       break;
     case "Transfer":
-      parseBubblegumTransfer(db, parsedLog.logs, parser, optionalInfo);
+      await parseBubblegumTransfer(
+        db,
+        parsedLog.logs,
+        slot,
+        parser,
+        optionalInfo
+      );
       break;
     case "Delegate":
-      parseBubblegumDelegate(db, parsedLog.logs, parser, optionalInfo);
+      await parseBubblegumDelegate(
+        db,
+        parsedLog.logs,
+        slot,
+        parser,
+        optionalInfo
+      );
       break;
   }
 }
@@ -81,9 +118,10 @@ function findGummyrollEvent(
   return changeLog;
 }
 
-export function parseBubblegumMint(
+export async function parseBubblegumMint(
   db: NFTDatabaseConnection,
   logs: (string | ParsedLog)[],
+  slot: number,
   parser: ParserState,
   optionalInfo: OptionalInfo
 ) {
@@ -93,19 +131,28 @@ export function parseBubblegumMint(
   const leafSchema = parseEventFromLog(logs[2] as string, parser.Bubblegum.idl)
     .data as LeafSchema;
   let treeId = changeLog.id.toBase58();
-  db.updateNFTMetadata(newLeafData, leafSchema.nonce, treeId);
-  db.updateLeafSchema(
+  let sequenceNumber = changeLog.seq;
+  let { startSeq, endSeq, txId } = optionalInfo;
+  if (skipTx(sequenceNumber, startSeq, endSeq)) {
+    return;
+  }
+  console.log(`Sequence Number: ${sequenceNumber}`);
+  await db.updateNFTMetadata(newLeafData, leafSchema.nonce, treeId);
+  await db.updateLeafSchema(
     leafSchema,
     new PublicKey(changeLog.path[0].node),
-    optionalInfo.txId,
-    treeId,
+    txId,
+    slot,
+    sequenceNumber,
+    treeId
   );
-  db.updateChangeLogs(changeLog, optionalInfo.txId, treeId);
+  await db.updateChangeLogs(changeLog, optionalInfo.txId, slot, treeId);
 }
 
-export function parseBubblegumTransfer(
+export async function parseBubblegumTransfer(
   db: NFTDatabaseConnection,
   logs: (string | ParsedLog)[],
+  slot: number,
   parser: ParserState,
   optionalInfo: OptionalInfo
 ) {
@@ -113,29 +160,39 @@ export function parseBubblegumTransfer(
   const leafSchema = parseEventFromLog(logs[1] as string, parser.Bubblegum.idl)
     .data as LeafSchema;
   let treeId = changeLog.id.toBase58();
-  db.updateLeafSchema(
+  let sequenceNumber = changeLog.seq;
+  let { startSeq, endSeq, txId } = optionalInfo;
+  if (skipTx(sequenceNumber, startSeq, endSeq)) {
+    return;
+  }
+  console.log(`Sequence Number: ${sequenceNumber}`);
+  await db.updateLeafSchema(
     leafSchema,
     new PublicKey(changeLog.path[0].node),
-    optionalInfo.txId,
+    txId,
+    slot,
+    sequenceNumber,
     treeId
   );
-  db.updateChangeLogs(changeLog, optionalInfo.txId, treeId);
+  await db.updateChangeLogs(changeLog, optionalInfo.txId, slot, treeId);
 }
 
-export function parseBubblegumCreateTree(
+export async function parseBubblegumCreateTree(
   db: NFTDatabaseConnection,
   logs: (string | ParsedLog)[],
+  slot: number,
   parser: ParserState,
   optionalInfo: OptionalInfo
 ) {
   const changeLog = findGummyrollEvent(logs, parser);
   let treeId = changeLog.id.toBase58();
-  db.updateChangeLogs(changeLog, optionalInfo.txId, treeId);
+  await db.updateChangeLogs(changeLog, optionalInfo.txId, slot, treeId);
 }
 
-export function parseBubblegumDelegate(
+export async function parseBubblegumDelegate(
   db: NFTDatabaseConnection,
   logs: (string | ParsedLog)[],
+  slot: number,
   parser: ParserState,
   optionalInfo: OptionalInfo
 ) {
@@ -143,29 +200,45 @@ export function parseBubblegumDelegate(
   const leafSchema = parseEventFromLog(logs[1] as string, parser.Bubblegum.idl)
     .data as LeafSchema;
   let treeId = changeLog.id.toBase58();
-  db.updateLeafSchema(
+  let sequenceNumber = changeLog.seq;
+  let { startSeq, endSeq, txId } = optionalInfo;
+  if (skipTx(sequenceNumber, startSeq, endSeq)) {
+    return;
+  }
+  console.log(`Sequence Number: ${sequenceNumber}`);
+  await db.updateLeafSchema(
     leafSchema,
     new PublicKey(changeLog.path[0].node),
-    optionalInfo.txId,
+    txId,
+    slot,
+    sequenceNumber,
     treeId
   );
-  db.updateChangeLogs(changeLog, optionalInfo.txId, treeId);
+  await db.updateChangeLogs(changeLog, optionalInfo.txId, slot, treeId);
 }
 
-export function parseBubblegumRedeem(
+export async function parseBubblegumRedeem(
   db: NFTDatabaseConnection,
   logs: (string | ParsedLog)[],
+  slot: number,
   parser: ParserState,
   optionalInfo: OptionalInfo
 ) {
   const changeLog = findGummyrollEvent(logs, parser);
+  const sequenceNumber = changeLog.seq;
+  let { startSeq, endSeq, txId } = optionalInfo;
+  if (skipTx(sequenceNumber, startSeq, endSeq)) {
+    return;
+  }
+  console.log(`Sequence Number: ${sequenceNumber}`);
   let treeId = changeLog.id.toBase58();
-  db.updateChangeLogs(changeLog, optionalInfo.txId, treeId);
+  await db.updateChangeLogs(changeLog, txId, slot, treeId);
 }
 
-export function parseBubblegumCancelRedeem(
+export async function parseBubblegumCancelRedeem(
   db: NFTDatabaseConnection,
   logs: (string | ParsedLog)[],
+  slot: number,
   parser: ParserState,
   optionalInfo: OptionalInfo
 ) {
@@ -173,16 +246,24 @@ export function parseBubblegumCancelRedeem(
   const leafSchema = parseEventFromLog(logs[1] as string, parser.Bubblegum.idl)
     .data as LeafSchema;
   let treeId = changeLog.id.toBase58();
-  db.updateLeafSchema(
+  let sequenceNumber = changeLog.seq;
+  let { startSeq, endSeq, txId } = optionalInfo;
+  if (skipTx(sequenceNumber, startSeq, endSeq)) {
+    return;
+  }
+  console.log(`Sequence Number: ${sequenceNumber}`);
+  await db.updateLeafSchema(
     leafSchema,
     new PublicKey(changeLog.path[0].node),
-    optionalInfo.txId,
+    txId,
+    slot,
+    sequenceNumber,
     treeId
   );
-  db.updateChangeLogs(changeLog, optionalInfo.txId, treeId);
+  await db.updateChangeLogs(changeLog, optionalInfo.txId, slot, treeId);
 }
 
-export function parseBubblegumDecompress(
+export async function parseBubblegumDecompress(
   db: NFTDatabaseConnection,
   logs: (string | ParsedLog)[],
   parser: ParserState,

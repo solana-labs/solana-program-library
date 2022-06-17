@@ -7,10 +7,7 @@ import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 import { NewLeafEvent } from "./indexer/bubblegum";
 import { BN } from "@project-serum/anchor";
 import { bignum } from "@metaplex-foundation/beet";
-import {
-  Creator,
-  LeafSchema,
-} from "../bubblegum/src/generated";
+import { Creator, LeafSchema } from "../bubblegum/src/generated";
 import { ChangeLogEvent } from "./indexer/gummyroll";
 let fs = require("fs");
 
@@ -21,89 +18,99 @@ export function hash(left: Buffer, right: Buffer): Buffer {
   return Buffer.from(keccak_256.digest(Buffer.concat([left, right])));
 }
 
+export type GapInfo = {
+  prevSeq: number;
+  currSeq: number;
+  prevSlot: number;
+  currSlot: number;
+};
 export class NFTDatabaseConnection {
   connection: Database<sqlite3.Database, sqlite3.Statement>;
-  tree: Map<number, [number, string]>;
   emptyNodeCache: Map<number, Buffer>;
 
   constructor(connection: Database<sqlite3.Database, sqlite3.Statement>) {
     this.connection = connection;
-    this.tree = new Map<number, [number, string]>();
     this.emptyNodeCache = new Map<number, Buffer>();
   }
 
   async beginTransaction() {
-    return this.connection.run("BEGIN TRANSACTION");
+    return await this.connection.run("BEGIN TRANSACTION");
   }
 
   async rollback() {
-    return this.connection.run("ROLLBACK");
+    return await this.connection.run("ROLLBACK");
   }
 
   async commit() {
-    return this.connection.run("COMMIT");
+    return await this.connection.run("COMMIT");
   }
 
-  async upsertRowsFromBackfill(rows: Array<[PathNode, number, number]>) {
-    this.connection.db.serialize(() => {
-      this.connection.run("BEGIN TRANSACTION");
-      for (const [node, seq, i] of rows) {
-        this.connection.run(
-          `
-            INSERT INTO 
-            merkle(node_idx, seq, level, hash)
-            VALUES (?, ?, ?, ?)
-          `,
-          node.index,
-          seq,
-          i,
-          node.node.toBase58()
-        );
-      }
-      this.connection.run("COMMIT");
-    });
-  }
-
-  async updateChangeLogs(changeLog: ChangeLogEvent, txId: string, treeId: string) {
-    console.log("Update Change Log");
+  async updateChangeLogs(
+    changeLog: ChangeLogEvent,
+    txId: string,
+    slot: number,
+    treeId: string
+  ) {
     if (changeLog.seq == 0) {
       return;
     }
     for (const [i, pathNode] of changeLog.path.entries()) {
-      this.connection.run(
-        `
+      await this.connection
+        .run(
+          `
           INSERT INTO 
-          merkle(transaction_id, tree_id, node_idx, seq, level, hash)
-          VALUES (?, ?, ?, ?, ?, ?)
+          merkle(transaction_id, slot, tree_id, node_idx, seq, level, hash)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT (tree_id, seq, node_idx)
+          DO UPDATE SET
+            transaction_id = excluded.transaction_id,
+            slot = excluded.slot,
+            tree_id = excluded.tree_id,
+            level = excluded.level,
+            hash = excluded.hash
         `,
-        txId,
-        treeId,
-        pathNode.index,
-        changeLog.seq,
-        i,
-        new PublicKey(pathNode.node).toBase58()
-      );
+          txId,
+          slot,
+          treeId,
+          pathNode.index,
+          changeLog.seq,
+          i,
+          new PublicKey(pathNode.node).toBase58()
+        )
+        .catch((e) => {
+          console.log("DB error on change log upsert", e);
+        });
     }
   }
 
-  async updateLeafSchema(leafSchema: LeafSchema, leafHash: PublicKey, txId: string, treeId: string) {
-    console.log("Update Leaf Schema");
-    this.connection.run(
+  async updateLeafSchema(
+    leafSchema: LeafSchema,
+    leafHash: PublicKey,
+    txId: string,
+    slot: number,
+    sequenceNumber: number,
+    treeId: string
+  ) {
+    await this.connection.run(
       `
         INSERT INTO
         leaf_schema(
           nonce,
           tree_id,
+          seq,
           transaction_id,
+          slot,
           owner,
           delegate,
           data_hash,
           creator_hash,
           leaf_hash  
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (nonce, tree_id)
         DO UPDATE SET 
+          seq = excluded.seq,
+          transaction_id = excluded.transaction_id,
           owner = excluded.owner,
           delegate = excluded.delegate,
           data_hash = excluded.data_hash,
@@ -112,7 +119,9 @@ export class NFTDatabaseConnection {
       `,
       (leafSchema.nonce.valueOf() as BN).toNumber(),
       treeId,
+      sequenceNumber,
       txId,
+      slot,
       leafSchema.owner.toBase58(),
       leafSchema.delegate.toBase58(),
       bs58.encode(leafSchema.dataHash),
@@ -121,8 +130,11 @@ export class NFTDatabaseConnection {
     );
   }
 
-  async updateNFTMetadata(newLeafEvent: NewLeafEvent, nonce: bignum, treeId: string) {
-    console.log("Update NFT");
+  async updateNFTMetadata(
+    newLeafEvent: NewLeafEvent,
+    nonce: bignum,
+    treeId: string
+  ) {
     const uri = newLeafEvent.metadata.uri;
     const name = newLeafEvent.metadata.name;
     const symbol = newLeafEvent.metadata.symbol;
@@ -141,7 +153,7 @@ export class NFTDatabaseConnection {
         creators.push(newLeafEvent.metadata.creators[i]);
       }
     }
-    this.connection.run(
+    await this.connection.run(
       `
         INSERT INTO 
         nft(
@@ -217,33 +229,87 @@ export class NFTDatabaseConnection {
     return result;
   }
 
-  async updateTree() {
-    let res = await this.connection.all(
-      `
-        SELECT DISTINCT 
-        node_idx, hash, level, max(seq) as seq
-        FROM merkle
-        GROUP BY node_idx
-      `
-    );
-    for (const row of res) {
-      this.tree.set(row.node_idx, [row.seq, row.hash]);
+  async getTree(treeId: string, maxSeq: number | null) {
+    let res;
+    if (maxSeq) {
+      res = await this.connection.all(
+        `
+          SELECT DISTINCT 
+          node_idx, hash, level, max(seq) as seq
+          FROM merkle
+          where tree_id = ? and seq <= ?
+          GROUP BY node_idx
+        `,
+        treeId,
+        maxSeq
+      );
+    } else {
+      res = await this.connection.all(
+        `
+          SELECT DISTINCT 
+          node_idx, hash, level, max(seq) as seq
+          FROM merkle
+          where tree_id = ?
+          GROUP BY node_idx
+        `,
+        treeId
+      );
     }
     return res;
   }
 
-  async getSequenceNumbers() {
-    return new Set<number>(
-      (
-        await this.connection.all(
-          `
-            SELECT DISTINCT seq 
-            FROM merkle
-            ORDER by seq
-          `
-        )
-      ).map((x) => x.seq)
-    );
+  async getMissingData(minSeq: number, treeId: string) {
+    let gaps: Array<GapInfo> = [];
+    let res = await this.connection
+      .all(
+        `
+        SELECT DISTINCT seq, slot
+        FROM merkle
+        where tree_id = ? and seq >= ?
+        order by seq
+      `,
+        treeId,
+        minSeq
+      )
+      .catch((e) => {
+        console.log("Failed to make query", e);
+        return [gaps, null, null];
+      });
+    for (let i = 0; i < res.length - 1; ++i) {
+      let [prevSeq, prevSlot] = [res[i].seq, res[i].slot];
+      let [currSeq, currSlot] = [res[i + 1].seq, res[i + 1].slot];
+      if (currSeq === prevSeq) {
+        throw new Error(
+          `Error in DB, encountered identical sequence numbers with different slots: ${prevSlot} ${currSlot}`
+        );
+      }
+      if (currSeq - prevSeq > 1) {
+        gaps.push({ prevSeq, currSeq, prevSlot, currSlot });
+      }
+    }
+    if (res.length > 0) {
+      return [gaps, res[res.length - 1].seq, res[res.length - 1].slot];
+    }
+    return [gaps, null, null];
+  }
+
+  async getTrees() {
+    let res = await this.connection
+      .all(
+        `
+        SELECT DISTINCT tree_id, max(level) as depth
+        FROM merkle
+        GROUP BY tree_id
+      `
+      )
+      .catch((e) => {
+        console.log("Failed to query table", e);
+        return [];
+      });
+
+    return res.map((x) => {
+      return [x.tree_id, x.depth];
+    });
   }
 
   async getAllLeaves() {
@@ -284,30 +350,145 @@ export class NFTDatabaseConnection {
     return leafIdxs;
   }
 
-  async getProof(hash: Buffer, treeId: string, check: boolean = true): Promise<Proof | null> {
+  async getMaxSeq(treeId: string) {
+    let res = await this.connection.get(
+      `
+        SELECT max(seq) as seq
+        FROM merkle 
+        WHERE tree_id = ?
+      `,
+      treeId
+    );
+    if (res) {
+      return res.seq;
+    } else {
+      return null;
+    }
+  }
+  async getInferredProof(
+    hash: Buffer,
+    treeId: string,
+    check: boolean = true
+  ): Promise<Proof | null> {
+    let latestSeq = await this.getMaxSeq(treeId);
+    if (!latestSeq) {
+      return null;
+    }
+    let gapIndex = await this.connection.get(
+      `
+        SELECT 
+          m0.seq as seq
+        FROM merkle m0
+        WHERE NOT EXISTS (
+          SELECT NULL
+          FROM merkle m1
+          WHERE m1.seq = m0.seq + 1 AND m1.tree_id = ?
+        ) AND tree_id = ?
+        ORDER BY m0.seq
+        LIMIT 1
+      `,
+      treeId,
+      treeId
+    );
+    if (gapIndex && gapIndex.seq < latestSeq) {
+      return await this.inferProofWithKnownGap(
+        hash,
+        treeId,
+        gapIndex.seq,
+        check
+      );
+    } else {
+      return await this.getProof(hash, treeId, check);
+    }
+  }
+
+  async inferProofWithKnownGap(
+    hash: Buffer,
+    treeId: string,
+    seq: number,
+    check: boolean = true
+  ) {
+    let hashString = bs58.encode(hash);
+    let depth = await this.getDepth(treeId);
+    if (!depth) {
+      return null;
+    }
+
+    let res = await this.connection.get(
+      `
+        SELECT 
+          data_hash as dataHash,
+          creator_hash as creatorHash,
+          nonce as nonce,
+          owner as owner,
+          delegate as delegate
+        FROM leaf_schema
+        WHERE leaf_hash = ? and tree_id = ?
+      `,
+      hashString,
+      treeId
+    );
+    if (res) {
+      return this.generateProof(
+        treeId,
+        (1 << depth) + res.nonce,
+        hash,
+        res.dataHash,
+        res.creatorHash,
+        res.nonce,
+        res.owner,
+        res.delegate,
+        check,
+        seq
+      );
+    } else {
+      return null;
+    }
+  }
+
+  async getDepth(treeId: string) {
+    let res = await this.connection.get(
+      `
+        SELECT max(level) as depth
+        FROM merkle 
+        WHERE tree_id = ?
+      `,
+      treeId
+    );
+    if (res) {
+      return res.depth;
+    } else {
+      return null;
+    }
+  }
+
+  async getProof(
+    hash: Buffer,
+    treeId: string,
+    check: boolean = true
+  ): Promise<Proof | null> {
     let hashString = bs58.encode(hash);
     let res = await this.connection.all(
       `
         SELECT 
-          DISTINCT m.node_idx as nodeIdx,
+          m.node_idx as nodeIdx,
           l.data_hash as dataHash,
           l.creator_hash as creatorHash,
           l.nonce as nonce,
           l.owner as owner,
-          l.delegate as delegate,
-          max(m.seq) as seq
+          l.delegate as delegate
         FROM merkle m
         JOIN leaf_schema l
-        ON m.hash = l.leaf_hash and m.tree_id = l.tree_id
+        ON m.hash = l.leaf_hash and m.tree_id = l.tree_id and m.seq = l.seq
         WHERE hash = ? and m.tree_id = ? and level = 0
-        GROUP BY node_idx
       `,
       hashString,
-      treeId,
+      treeId
     );
     if (res.length == 1) {
-      let data = res[0]
+      let data = res[0];
       return this.generateProof(
+        treeId,
         data.nodeIdx,
         hash,
         data.dataHash,
@@ -323,6 +504,7 @@ export class NFTDatabaseConnection {
   }
 
   async generateProof(
+    treeId: string,
     nodeIdx: number,
     hash: Buffer,
     dataHash: string,
@@ -330,7 +512,8 @@ export class NFTDatabaseConnection {
     nonce: number,
     owner: string,
     delegate: string,
-    check: boolean = true
+    check: boolean = true,
+    maxSequenceNumber: number | null = null
   ): Promise<Proof | null> {
     let nodes = [];
     let n = nodeIdx;
@@ -343,14 +526,32 @@ export class NFTDatabaseConnection {
       n >>= 1;
     }
     nodes.push(1);
-    let res = await this.connection.all(
-      `
-      SELECT DISTINCT node_idx, hash, level, max(seq) as seq
-      FROM merkle where node_idx in (${nodes.join(",")})
-      GROUP BY node_idx
-      ORDER BY level
-      `
-    );
+    let res;
+    if (maxSequenceNumber) {
+      res = await this.connection.all(
+        `
+        SELECT DISTINCT node_idx, hash, level, max(seq) as seq
+        FROM merkle WHERE 
+          node_idx in (${nodes.join(",")}) AND tree_id = ? AND seq <= ?
+        GROUP BY node_idx
+        ORDER BY level
+        `,
+        treeId,
+        maxSequenceNumber
+      );
+    } else {
+      res = await this.connection.all(
+        `
+        SELECT DISTINCT node_idx, hash, level, max(seq) as seq
+        FROM merkle WHERE 
+          node_idx in (${nodes.join(",")}) AND tree_id = ?
+        GROUP BY node_idx
+        ORDER BY level
+        `,
+        treeId
+      );
+    }
+
     if (res.length < 1) {
       return null;
     }
@@ -377,6 +578,10 @@ export class NFTDatabaseConnection {
       owner: owner,
       delegate: delegate,
     };
+    if (maxSequenceNumber) {
+      // If this parameter is set, we directly attempt to infer the root value
+      inferredProof.root = bs58.encode(this.generateRoot(inferredProof));
+    }
     if (check && !this.verifyProof(inferredProof)) {
       console.log("Proof is invalid");
       return null;
@@ -384,7 +589,7 @@ export class NFTDatabaseConnection {
     return inferredProof;
   }
 
-  verifyProof(proof: Proof) {
+  generateRoot(proof: Proof) {
     let node = bs58.decode(proof.leaf);
     let index = proof.index;
     for (const [i, pNode] of proof.proofNodes.entries()) {
@@ -394,6 +599,11 @@ export class NFTDatabaseConnection {
         node = hash(new PublicKey(pNode).toBuffer(), node);
       }
     }
+    return node;
+  }
+
+  verifyProof(proof: Proof) {
+    let node = this.generateRoot(proof);
     const rehashed = new PublicKey(node).toString();
     const received = new PublicKey(proof.root).toString();
     return rehashed === received;
@@ -481,7 +691,7 @@ export class NFTDatabaseConnection {
         sellerFeeBasisPoints: metadata.sellerFeeBasisPoints,
         owner: metadata.owner,
         delegate: metadata.delegate,
-        leafHash: metadata.leafHash, 
+        leafHash: metadata.leafHash,
         creators: creators,
       });
     }
@@ -515,66 +725,100 @@ export async function bootstrap(
     driver: sqlite3.Database,
   });
 
-  if (create) {
-    await db.run(
-      `
-        CREATE TABLE IF NOT EXISTS merkle (
-          id INTEGER PRIMARY KEY,
-          tree_id TEXT,
-          transaction_id TEXT,
-          node_idx INT,
-          seq INT,
-          level INT,
-          hash TEXT
-        );
-      `
-    );
+  // Allows concurrency in SQLITE
+  await db.run("PRAGMA journal_mode = WAL;");
 
-    await db.run(
-      `
-      CREATE TABLE IF NOT EXISTS nft (
-        tree_id TEXT,
-        nonce BIGINT,
-        name TEXT,
-        symbol TEXT,
-        uri TEXT,
-        seller_fee_basis_points INT, 
-        primary_sale_happened BOOLEAN, 
-        is_mutable BOOLEAN,
-        creator0 TEXT,
-        share0 INT,
-        verified0 BOOLEAN,
-        creator1 TEXT,
-        share1 INT,
-        verified1 BOOLEAN,
-        creator2 TEXT,
-        share2 INT,
-        verified2 BOOLEAN,
-        creator3 TEXT,
-        share3 INT,
-        verified3 BOOLEAN,
-        creator4 TEXT,
-        share4 INT,
-        verified4 BOOLEAN,
-        PRIMARY KEY (tree_id, nonce)
+  if (create) {
+    db.db.serialize(() => {
+      db.run("BEGIN TRANSACTION");
+      db.run(
+        `
+          CREATE TABLE IF NOT EXISTS merkle (
+            tree_id TEXT,
+            transaction_id TEXT,
+            slot INT,
+            node_idx INT,
+            seq INT,
+            level INT,
+            hash TEXT,
+            PRIMARY KEY (tree_id, seq, node_idx) 
+          );
+        `
       );
-      `
-    );
-    await db.run(
-      `
-      CREATE TABLE IF NOT EXISTS leaf_schema (
-        tree_id TEXT,
-        nonce BIGINT,
-        transaction_id TEXT,
-        owner TEXT,
-        delegate TEXT,
-        data_hash TEXT,
-        creator_hash TEXT,
-        leaf_hash TEXT,
-        PRIMARY KEY (tree_id, nonce)
+      db.run(
+        `
+          CREATE INDEX IF NOT EXISTS sequence_number
+          ON merkle(seq)
+        `
       );
-      `
-    );
+      db.run(
+        `
+          CREATE INDEX IF NOT EXISTS nodes 
+          ON merkle(node_idx)
+        `
+      );
+      db.run(
+        `
+        CREATE TABLE IF NOT EXISTS nft (
+          tree_id TEXT,
+          nonce BIGINT,
+          name TEXT,
+          symbol TEXT,
+          uri TEXT,
+          seller_fee_basis_points INT, 
+          primary_sale_happened BOOLEAN, 
+          is_mutable BOOLEAN,
+          creator0 TEXT,
+          share0 INT,
+          verified0 BOOLEAN,
+          creator1 TEXT,
+          share1 INT,
+          verified1 BOOLEAN,
+          creator2 TEXT,
+          share2 INT,
+          verified2 BOOLEAN,
+          creator3 TEXT,
+          share3 INT,
+          verified3 BOOLEAN,
+          creator4 TEXT,
+          share4 INT,
+          verified4 BOOLEAN,
+          PRIMARY KEY (tree_id, nonce)
+        );
+        `
+      );
+      db.run(
+        `
+        CREATE TABLE IF NOT EXISTS leaf_schema (
+          tree_id TEXT,
+          nonce BIGINT,
+          seq INT,
+          slot INT,
+          transaction_id TEXT,
+          owner TEXT,
+          delegate TEXT,
+          data_hash TEXT,
+          creator_hash TEXT,
+          leaf_hash TEXT,
+          PRIMARY KEY (tree_id, nonce)
+        );
+        `
+      );
+      db.run(
+        `
+          CREATE TABLE IF NOT EXISTS merkle_snapshot (
+            max_seq INT,
+            tree_id TEXT,
+            transaction_id TEXT,
+            node_idx INT,
+            seq INT,
+            level INT,
+            hash TEXT
+          );
+        `
+      );
+      db.run("COMMIT");
+    });
   }
 
   return new NFTDatabaseConnection(db);

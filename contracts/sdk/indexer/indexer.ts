@@ -1,65 +1,18 @@
 import { Keypair } from "@solana/web3.js";
-import { Connection, Context, Logs } from "@solana/web3.js";
+import { Connection } from "@solana/web3.js";
 import { PROGRAM_ID as BUBBLEGUM_PROGRAM_ID } from "../bubblegum/src/generated";
 import { PROGRAM_ID as GUMMYROLL_PROGRAM_ID } from "../gummyroll/index";
 import * as anchor from "@project-serum/anchor";
 import { Bubblegum } from "../../target/types/bubblegum";
 import { Gummyroll } from "../../target/types/gummyroll";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
-import { loadProgram, ParsedLog, parseLogs } from "./indexer/utils";
-import { parseBubblegum } from "./indexer/bubblegum";
-import { bootstrap, NFTDatabaseConnection } from "./db";
+import { loadProgram, handleLogs, handleLogsAtomic } from "./indexer/utils";
+import { bootstrap } from "./db";
+import { fetchAndPlugGaps, validateTree } from "./backfiller";
 
-const MAX_DEPTH = 20;
-const MAX_SIZE = 1024;
 const localhostUrl = "http://127.0.0.1:8899";
 let Bubblegum: anchor.Program<Bubblegum>;
 let Gummyroll: anchor.Program<Gummyroll>;
-
-function indexParsedLog(
-  db: NFTDatabaseConnection,
-  txId: string,
-  parsedLog: ParsedLog | string
-) {
-  if (typeof parsedLog === "string") {
-    return;
-  }
-  if (parsedLog.programId.equals(BUBBLEGUM_PROGRAM_ID)) {
-    return parseBubblegum(
-      db,
-      parsedLog,
-      { Bubblegum, Gummyroll },
-      { txId: txId }
-    );
-  } else {
-    for (const log of parsedLog.logs) {
-      indexParsedLog(db, txId, log);
-    }
-  }
-}
-
-async function handleLogs(
-  db: NFTDatabaseConnection,
-  logs: Logs,
-  _context: Context
-) {
-  if (logs.err) {
-    return;
-  }
-  const parsedLogs = parseLogs(logs.logs);
-  if (parsedLogs.length == 0) {
-    return;
-  }
-  db.connection.db.serialize(() => {
-    db.beginTransaction();
-    for (const parsedLog of parsedLogs) {
-      indexParsedLog(db, logs.signature, parsedLog);
-    }
-    console.log("Done executing queries");
-    db.commit();
-    console.log("Committed");
-  });
-}
 
 async function main() {
   const endpoint = localhostUrl;
@@ -83,8 +36,36 @@ async function main() {
   console.log("loaded programs...");
   let subscriptionId = connection.onLogs(
     BUBBLEGUM_PROGRAM_ID,
-    async (logs, ctx) => await handleLogs(db, logs, ctx)
+    (logs, ctx) => handleLogsAtomic(db, logs, ctx, { Gummyroll, Bubblegum }),
+    "confirmed"
   );
+  while (true) {
+    try {
+      const trees = await db.getTrees();
+      for (const [treeId, depth] of trees) {
+        console.log("Scanning for gaps");
+        let maxSeq = await fetchAndPlugGaps(connection, db, 0, treeId, {
+          Gummyroll,
+          Bubblegum,
+        });
+        console.log("Validation:");
+        console.log(
+          `    Off-chain tree ${treeId} is consistent: ${await validateTree(
+            db,
+            depth,
+            maxSeq,
+            treeId
+          )}`
+        );
+        console.log("Moving to next tree");
+      }
+    } catch (e) {
+      console.log("ERROR");
+      console.log(e);
+      continue;
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
 }
 
 main();

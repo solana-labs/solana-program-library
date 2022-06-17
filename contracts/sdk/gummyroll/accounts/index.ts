@@ -50,7 +50,7 @@ type MerkleRollHeader = {
 };
 
 type MerkleRoll = {
-  sequenceNumber: BN; // u128
+  sequenceNumber: BN; // u64
   activeIndex: number; // u64
   bufferSize: number; // u64
   changeLogs: ChangeLog[];
