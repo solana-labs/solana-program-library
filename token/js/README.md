@@ -7,7 +7,6 @@ A TypeScript library for interacting with the SPL Token program.
 - [TypeScript Docs](https://solana-labs.github.io/solana-program-library/token/js/)
 - [FAQ (Frequently Asked Questions)](./FAQ.md)
 - [Install](#install)
-- [Usage](#usage)
 - [Build from Source](#build-from-source)
 
 ## Install
@@ -38,12 +37,17 @@ yarn install
 yarn build
 ```
 
-5. Run the tests:
+5. Build the on-chain programs:
+```shell
+yarn test:build-programs
+```
+
+6. Run the tests:
 ```shell
 yarn test
 ```
 
-6. Run the example:
+7. Run the example:
 ```shell
 yarn example
 ```
