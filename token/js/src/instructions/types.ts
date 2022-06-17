@@ -33,4 +33,5 @@ export enum TokenInstruction {
     MemoTransferExtension = 30,
     CreateNativeMint = 31,
     InitializeNonTransferableMint = 32,
+    InterestBearingMintExtension = 33,
 }
