@@ -3,16 +3,10 @@ use gummyroll::Node;
 
 #[event]
 pub struct LeafSchemaEvent {
-    pub version: Version,
-    pub owner: Pubkey,
-    pub delegate: Pubkey, // Defaults to owner
-    pub nonce: u128,
-    pub data_hash: [u8; 32],
-    pub creator_hash: [u8; 32],
-    pub leaf_hash: [u8; 32],
+    pub schema: LeafSchema,
 }
-#[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug)]
 
+#[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug)]
 pub enum Version {
     V0,
 }
@@ -31,27 +25,42 @@ impl Version {
     }
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, Default, Debug)]
-pub struct LeafSchema {
-    pub version: Version,
-    pub owner: Pubkey,
-    pub delegate: Pubkey, // Defaults to owner
-    pub nonce: u128,
-    pub data_hash: [u8; 32],
-    pub creator_hash: [u8; 32],
+#[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug)]
+pub enum LeafSchema {
+    V0 {
+        id: Pubkey,
+        owner: Pubkey,
+        delegate: Pubkey,
+        nonce: u64,
+        data_hash: [u8; 32],
+        creator_hash: [u8; 32],
+    },
+}
+
+impl Default for LeafSchema {
+    fn default() -> Self {
+        Self::V0 {
+            id: Default::default(),
+            owner: Default::default(),
+            delegate: Default::default(),
+            nonce: 0,
+            data_hash: [0; 32],
+            creator_hash: [0; 32],
+        }
+    }
 }
 
 impl LeafSchema {
-    pub fn new(
-        version: Version,
+    pub fn new_v0(
+        id: Pubkey,
         owner: Pubkey,
         delegate: Pubkey,
-        nonce: u128,
+        nonce: u64,
         data_hash: [u8; 32],
         creator_hash: [u8; 32],
     ) -> Self {
-        Self {
-            version,
+        Self::V0 {
+            id,
             owner,
             delegate,
             nonce,
@@ -60,27 +69,54 @@ impl LeafSchema {
         }
     }
 
-    pub fn to_event(&self) -> LeafSchemaEvent {
-        LeafSchemaEvent {
-            version: self.version,
-            owner: self.owner,
-            delegate: self.delegate,
-            nonce: self.nonce,
-            data_hash: self.data_hash,
-            creator_hash: self.creator_hash,
-            leaf_hash: self.to_node(),
+    pub fn version(&self) -> Version {
+        match self {
+            LeafSchema::V0 { .. } => Version::V0,
         }
     }
 
+    pub fn id(&self) -> Pubkey {
+        match self {
+            LeafSchema::V0 { id, .. } => *id,
+        }
+    }
+
+    pub fn nonce(&self) -> u64 {
+        match self {
+            LeafSchema::V0 { nonce, .. } => *nonce,
+        }
+    }
+
+    pub fn data_hash(&self) -> [u8; 32] {
+        match self {
+            LeafSchema::V0 { data_hash, .. } => *data_hash,
+        }
+    }
+
+    pub fn to_event(&self) -> LeafSchemaEvent {
+        LeafSchemaEvent { schema: *self }
+    }
+
     pub fn to_node(&self) -> Node {
-        keccak::hashv(&[
-            &[self.version.to_bytes()],
-            self.owner.as_ref(),
-            self.delegate.as_ref(),
-            self.nonce.to_le_bytes().as_ref(),
-            self.data_hash.as_ref(),
-            self.creator_hash.as_ref(),
-        ])
-        .to_bytes()
+        let hashed_leaf = match self {
+            LeafSchema::V0 {
+                id,
+                owner,
+                delegate,
+                nonce,
+                data_hash,
+                creator_hash,
+            } => keccak::hashv(&[
+                &[self.version().to_bytes()],
+                id.as_ref(),
+                owner.as_ref(),
+                delegate.as_ref(),
+                nonce.to_le_bytes().as_ref(),
+                data_hash.as_ref(),
+                creator_hash.as_ref(),
+            ])
+            .to_bytes(),
+        };
+        hashed_leaf
     }
 }

@@ -10,7 +10,7 @@ use metaplex_adapter::MetadataArgs;
 #[account]
 #[derive(Copy)]
 pub struct Nonce {
-    pub count: u128,
+    pub count: u64,
 }
 
 #[account]
@@ -30,10 +30,9 @@ impl Voucher {
         }
     }
 }
-
 #[event]
 pub struct NewNFTEvent {
     pub version: Version,
     pub metadata: MetadataArgs,
-    pub nonce: u128,
+    pub nonce: u64,
 }

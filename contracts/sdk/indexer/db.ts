@@ -4,10 +4,10 @@ import { PathNode } from "../gummyroll";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { keccak_256 } from "js-sha3";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
-import { NewLeafEvent } from "./indexer/bubblegum";
+import { LeafSchemaEvent, NewLeafEvent } from "./indexer/bubblegum";
 import { BN } from "@project-serum/anchor";
 import { bignum } from "@metaplex-foundation/beet";
-import { Creator, LeafSchema } from "../bubblegum/src/generated";
+import { Creator } from "../bubblegum/src/generated";
 import { ChangeLogEvent } from "./indexer/gummyroll";
 let fs = require("fs");
 
@@ -84,17 +84,20 @@ export class NFTDatabaseConnection {
   }
 
   async updateLeafSchema(
-    leafSchema: LeafSchema,
+    leafSchemaRecord: LeafSchemaEvent,
     leafHash: PublicKey,
     txId: string,
     slot: number,
     sequenceNumber: number,
-    treeId: string
+    treeId: string,
+    compressed: boolean = true,
   ) {
+    const leafSchema = leafSchemaRecord.schema.v0;
     await this.connection.run(
       `
         INSERT INTO
         leaf_schema(
+          asset_id,
           nonce,
           tree_id,
           seq,
@@ -104,19 +107,23 @@ export class NFTDatabaseConnection {
           delegate,
           data_hash,
           creator_hash,
-          leaf_hash  
+          leaf_hash,
+          compressed
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (nonce, tree_id)
         DO UPDATE SET 
+          asset_id = excluded.asset_id,
           seq = excluded.seq,
           transaction_id = excluded.transaction_id,
           owner = excluded.owner,
           delegate = excluded.delegate,
           data_hash = excluded.data_hash,
           creator_hash = excluded.creator_hash,
-          leaf_hash = excluded.leaf_hash
+          leaf_hash = excluded.leaf_hash,
+          compressed = excluded.compressed
       `,
+      leafSchema.id.toBase58(),
       (leafSchema.nonce.valueOf() as BN).toNumber(),
       treeId,
       sequenceNumber,
@@ -126,14 +133,14 @@ export class NFTDatabaseConnection {
       leafSchema.delegate.toBase58(),
       bs58.encode(leafSchema.dataHash),
       bs58.encode(leafSchema.creatorHash),
-      leafHash.toBase58()
+      leafHash.toBase58(),
+      compressed
     );
   }
 
   async updateNFTMetadata(
     newLeafEvent: NewLeafEvent,
-    nonce: bignum,
-    treeId: string
+    assetId: string
   ) {
     const uri = newLeafEvent.metadata.uri;
     const name = newLeafEvent.metadata.name;
@@ -157,8 +164,7 @@ export class NFTDatabaseConnection {
       `
         INSERT INTO 
         nft(
-          nonce,
-          tree_id,
+          asset_id,
           uri,
           name,
           symbol,
@@ -181,18 +187,32 @@ export class NFTDatabaseConnection {
           share4,
           verified4
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT (nonce, tree_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (asset_id)
         DO UPDATE SET
           uri = excluded.uri,
           name = excluded.name,
           symbol = excluded.symbol,
           primary_sale_happened = excluded.primary_sale_happened,
           seller_fee_basis_points = excluded.seller_fee_basis_points,
-          is_mutable = excluded.is_mutable
+          is_mutable = excluded.is_mutable,
+          creator0 = excluded.creator0,
+          share0 = excluded.share0,
+          verified0 = excluded.verified0,
+          creator1 = excluded.creator1,
+          share1 = excluded.share1,
+          verified1 = excluded.verified1,
+          creator2 = excluded.creator2,
+          share2 = excluded.share2,
+          verified2 = excluded.verified2,
+          creator3 = excluded.creator3,
+          share3 = excluded.share3,
+          verified3 = excluded.verified3,
+          creator4 = excluded.creator4,
+          share4 = excluded.share4,
+          verified4 = excluded.verified4
       `,
-      (nonce as BN).toNumber(),
-      treeId,
+      assetId,
       uri,
       name,
       symbol,
@@ -615,6 +635,7 @@ export class NFTDatabaseConnection {
       SELECT
         ls.tree_id as treeId,
         ls.nonce as nonce,
+        n.asset_id as assetId,
         n.uri as uri,
         n.name as name,
         n.symbol as symbol,
@@ -639,7 +660,7 @@ export class NFTDatabaseConnection {
         n.verified4 as verified4
       FROM leaf_schema ls
       JOIN nft n
-      ON ls.nonce = n.nonce and ls.tree_id = n.tree_id
+      ON ls.asset_id = n.asset_id
       WHERE owner = ?
       `,
       owner
@@ -685,6 +706,7 @@ export class NFTDatabaseConnection {
       assets.push({
         nonce: metadata.nonce,
         treeId: metadata.treeId,
+        assetId: metadata.assetId,
         uri: metadata.uri,
         name: metadata.name,
         symbol: metadata.symbol,
@@ -760,8 +782,7 @@ export async function bootstrap(
       db.run(
         `
         CREATE TABLE IF NOT EXISTS nft (
-          tree_id TEXT,
-          nonce BIGINT,
+          asset_id TEXT PRIMARY KEY,
           name TEXT,
           symbol TEXT,
           uri TEXT,
@@ -782,14 +803,14 @@ export async function bootstrap(
           verified3 BOOLEAN,
           creator4 TEXT,
           share4 INT,
-          verified4 BOOLEAN,
-          PRIMARY KEY (tree_id, nonce)
+          verified4 BOOLEAN
         );
         `
       );
       db.run(
         `
         CREATE TABLE IF NOT EXISTS leaf_schema (
+          asset_id TEXT,
           tree_id TEXT,
           nonce BIGINT,
           seq INT,
@@ -800,6 +821,7 @@ export async function bootstrap(
           data_hash TEXT,
           creator_hash TEXT,
           leaf_hash TEXT,
+          compressed BOOLEAN,
           PRIMARY KEY (tree_id, nonce)
         );
         `
@@ -815,6 +837,12 @@ export async function bootstrap(
             level INT,
             hash TEXT
           );
+        `
+      );
+      db.run(
+        `
+          CREATE INDEX IF NOT EXISTS assets
+          ON leaf_schema(asset_id)
         `
       );
       db.run("COMMIT");

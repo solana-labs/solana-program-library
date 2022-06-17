@@ -43,8 +43,7 @@ export const dispenseNftTokenStruct = new beet.BeetArgsStruct<
  * @property [] willyWonka
  * @property [] recentBlockhashes
  * @property [] instructionSysvarAccount
- * @property [] bubblegumAuthority
- * @property [_writable_] nonce
+ * @property [_writable_] bubblegumAuthority
  * @property [] gummyroll
  * @property [_writable_] merkleSlab
  * @property [] bubblegum
@@ -61,7 +60,6 @@ export type DispenseNftTokenInstructionAccounts = {
   recentBlockhashes: web3.PublicKey
   instructionSysvarAccount: web3.PublicKey
   bubblegumAuthority: web3.PublicKey
-  nonce: web3.PublicKey
   gummyroll: web3.PublicKey
   merkleSlab: web3.PublicKey
   bubblegum: web3.PublicKey
@@ -94,7 +92,6 @@ export function createDispenseNftTokenInstruction(
     recentBlockhashes,
     instructionSysvarAccount,
     bubblegumAuthority,
-    nonce,
     gummyroll,
     merkleSlab,
     bubblegum,
@@ -147,11 +144,6 @@ export function createDispenseNftTokenInstruction(
     },
     {
       pubkey: bubblegumAuthority,
-      isWritable: false,
-      isSigner: false,
-    },
-    {
-      pubkey: nonce,
       isWritable: true,
       isSigner: false,
     },

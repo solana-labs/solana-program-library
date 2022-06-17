@@ -19,8 +19,8 @@ import {
   createTransferInstruction,
   createDelegateInstruction,
   createRedeemInstruction,
-  createCancelRedeemInstruction
-} from '../sdk/bubblegum/src/generated/instructions';
+  createCancelRedeemInstruction,
+} from "../sdk/bubblegum/src/generated/instructions";
 
 import { buildTree, Tree } from "./merkle-tree";
 import {
@@ -33,12 +33,10 @@ import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
-  Token
+  Token,
 } from "@solana/spl-token";
 import { execute, logTx } from "./utils";
-import { createMint } from "../../deps/solana-program-library/token/js/src";
 import { TokenProgramVersion, Version } from "../sdk/bubblegum/src/generated";
-import { createTransferAuthorityInstruction } from "../sdk/solita/gummyroll/src/generated";
 
 // @ts-ignore
 let Bubblegum;
@@ -59,7 +57,6 @@ describe("bubblegum", () => {
   let offChainTree: Tree;
   let treeAuthority: PublicKey;
   let merkleRollKeypair: Keypair;
-  let nonceAccount: PublicKey;
 
   const MAX_SIZE = 64;
   const MAX_DEPTH = 20;
@@ -84,7 +81,7 @@ describe("bubblegum", () => {
     payer: Keypair,
     destination: Keypair,
     delegate: Keypair
-  ): Promise<[Keypair, Tree, PublicKey, PublicKey]> {
+  ): Promise<[Keypair, Tree, PublicKey]> {
     const merkleRollKeypair = Keypair.generate();
 
     await Bubblegum.provider.connection.confirmTransaction(
@@ -124,10 +121,6 @@ describe("bubblegum", () => {
       [merkleRollKeypair.publicKey.toBuffer()],
       Bubblegum.programId
     );
-    let [nonce] = await PublicKey.findProgramAddress(
-      [Buffer.from("bubblegum"), merkleRollKeypair.publicKey.toBuffer()],
-      Bubblegum.programId
-    );
 
     const initGummyrollIx = Bubblegum.instruction.createTree(
       MAX_DEPTH,
@@ -136,7 +129,6 @@ describe("bubblegum", () => {
         accounts: {
           treeCreator: payer.publicKey,
           payer: payer.publicKey,
-          nonce: nonce,
           authority: authority,
           gummyrollProgram: GummyrollProgramId,
           merkleSlab: merkleRollKeypair.publicKey,
@@ -146,32 +138,31 @@ describe("bubblegum", () => {
       }
     );
 
-    let tx = new Transaction()
-      .add(allocAccountIx)
-      .add(initGummyrollIx);
-
+    let tx = new Transaction().add(allocAccountIx).add(initGummyrollIx);
 
     await Bubblegum.provider.send(tx, [payer, merkleRollKeypair], {
       commitment: "confirmed",
     });
 
-    await assertOnChainMerkleRollProperties(Bubblegum.provider.connection, MAX_DEPTH, MAX_SIZE, authority, new PublicKey(tree.root), merkleRollKeypair.publicKey);
+    await assertOnChainMerkleRollProperties(
+      Bubblegum.provider.connection,
+      MAX_DEPTH,
+      MAX_SIZE,
+      authority,
+      new PublicKey(tree.root),
+      merkleRollKeypair.publicKey
+    );
 
-    return [merkleRollKeypair, tree, authority, nonce];
+    return [merkleRollKeypair, tree, authority];
   }
 
   describe("Testing bubblegum", () => {
     beforeEach(async () => {
-      let [
-        computedMerkleRoll,
-        computedOffChainTree,
-        computedTreeAuthority,
-        computedNonce,
-      ] = await createTreeOnChain(payer, destination, delegateKey);
+      let [computedMerkleRoll, computedOffChainTree, computedTreeAuthority] =
+        await createTreeOnChain(payer, destination, delegateKey);
       merkleRollKeypair = computedMerkleRoll;
       offChainTree = computedOffChainTree;
       treeAuthority = computedTreeAuthority;
-      nonceAccount = computedNonce;
     });
     it("Mint to tree", async () => {
       const metadata = {
@@ -189,15 +180,17 @@ describe("bubblegum", () => {
         creators: [],
       };
       let version = Version.V0;
-      const mintIx = createMintInstruction({
-        mintAuthority: payer.publicKey,
-        authority: treeAuthority,
-        nonce: nonceAccount,
-        gummyrollProgram: GummyrollProgramId,
-        owner: payer.publicKey,
-        delegate: payer.publicKey,
-        merkleSlab: merkleRollKeypair.publicKey,
-      }, { version, message: metadata });
+      const mintIx = createMintInstruction(
+        {
+          mintAuthority: payer.publicKey,
+          authority: treeAuthority,
+          gummyrollProgram: GummyrollProgramId,
+          owner: payer.publicKey,
+          delegate: payer.publicKey,
+          merkleSlab: merkleRollKeypair.publicKey,
+        },
+        { version, message: metadata }
+      );
       console.log(" - Minting to tree");
       const mintTx = await Bubblegum.provider.send(
         new Transaction().add(mintIx),
@@ -207,7 +200,9 @@ describe("bubblegum", () => {
           commitment: "confirmed",
         }
       );
-      const dataHash = bufferToArray(Buffer.from(keccak_256.digest(mintIx.data.slice(9))));
+      const dataHash = bufferToArray(
+        Buffer.from(keccak_256.digest(mintIx.data.slice(9)))
+      );
       const creatorHash = bufferToArray(Buffer.from(keccak_256.digest([])));
       let merkleRollAccount =
         await Bubblegum.provider.connection.getAccountInfo(
@@ -218,8 +213,12 @@ describe("bubblegum", () => {
         merkleRoll.roll.changeLogs[merkleRoll.roll.activeIndex].root.toBuffer();
 
       console.log(" - Transferring Ownership");
-      const nonceInfo = await (Bubblegum.provider.connection as web3Connection).getAccountInfo(nonceAccount);
-      const leafNonce = (new BN(nonceInfo.data.slice(8, 24), "le")).sub(new BN(1));
+      const nonceInfo = await (
+        Bubblegum.provider.connection as web3Connection
+      ).getAccountInfo(treeAuthority);
+      const leafNonce = new BN(nonceInfo.data.slice(8, 16), "le").sub(
+        new BN(1)
+      );
       let transferIx = createTransferInstruction(
         {
           authority: treeAuthority,
@@ -230,7 +229,6 @@ describe("bubblegum", () => {
           merkleSlab: merkleRollKeypair.publicKey,
         },
         {
-          version,
           root: bufferToArray(onChainRoot),
           dataHash,
           creatorHash,
@@ -238,7 +236,7 @@ describe("bubblegum", () => {
           index: 0,
         }
       );
-      await execute(Bubblegum.provider, [transferIx], [payer])
+      await execute(Bubblegum.provider, [transferIx], [payer]);
 
       merkleRollAccount = await Bubblegum.provider.connection.getAccountInfo(
         merkleRollKeypair.publicKey
@@ -258,7 +256,6 @@ describe("bubblegum", () => {
           merkleSlab: merkleRollKeypair.publicKey,
         },
         {
-          version,
           root: bufferToArray(onChainRoot),
           dataHash,
           creatorHash,
@@ -276,16 +273,16 @@ describe("bubblegum", () => {
         merkleRoll.roll.changeLogs[merkleRoll.roll.activeIndex].root.toBuffer();
 
       console.log(" - Transferring Ownership (through delegate)");
-      let delTransferIx = createTransferInstruction({
-        authority: treeAuthority,
-        owner: destination.publicKey,
-        delegate: delegateKey.publicKey,
-        newOwner: payer.publicKey,
-        gummyrollProgram: GummyrollProgramId,
-        merkleSlab: merkleRollKeypair.publicKey,
-      },
+      let delTransferIx = createTransferInstruction(
         {
-          version,
+          authority: treeAuthority,
+          owner: destination.publicKey,
+          delegate: delegateKey.publicKey,
+          newOwner: payer.publicKey,
+          gummyrollProgram: GummyrollProgramId,
+          merkleSlab: merkleRollKeypair.publicKey,
+        },
+        {
           root: bufferToArray(onChainRoot),
           dataHash,
           creatorHash,
@@ -310,7 +307,7 @@ describe("bubblegum", () => {
         merkleRoll.roll.changeLogs[merkleRoll.roll.activeIndex].root.toBuffer();
 
       let [voucher] = await PublicKey.findProgramAddress(
-        [merkleRollKeypair.publicKey.toBuffer(), leafNonce.toBuffer("le", 16)],
+        [merkleRollKeypair.publicKey.toBuffer(), leafNonce.toBuffer("le", 8)],
         Bubblegum.programId
       );
 
@@ -325,7 +322,6 @@ describe("bubblegum", () => {
           voucher: voucher,
         },
         {
-          version,
           root: bufferToArray(onChainRoot),
           dataHash,
           creatorHash,
@@ -351,10 +347,9 @@ describe("bubblegum", () => {
           voucher: voucher,
         },
         {
-          root: bufferToArray(onChainRoot)
+          root: bufferToArray(onChainRoot),
         }
-
-      )
+      );
       let cancelRedeemTx = await Bubblegum.provider.send(
         new Transaction().add(cancelRedeemIx),
         [payer],
@@ -365,25 +360,23 @@ describe("bubblegum", () => {
 
       console.log(" - Decompressing leaf");
 
-      redeemIx =
-        createRedeemInstruction(
-          {
-            authority: treeAuthority,
-            owner: payer.publicKey,
-            delegate: payer.publicKey,
-            gummyrollProgram: GummyrollProgramId,
-            merkleSlab: merkleRollKeypair.publicKey,
-            voucher: voucher,
-          },
-          {
-            version,
-            root: bufferToArray(onChainRoot),
-            dataHash,
-            creatorHash,
-            nonce: leafNonce,
-            index: 0,
-          }
-        )
+      redeemIx = createRedeemInstruction(
+        {
+          authority: treeAuthority,
+          owner: payer.publicKey,
+          delegate: payer.publicKey,
+          gummyrollProgram: GummyrollProgramId,
+          merkleSlab: merkleRollKeypair.publicKey,
+          voucher: voucher,
+        },
+        {
+          root: bufferToArray(onChainRoot),
+          dataHash,
+          creatorHash,
+          nonce: leafNonce,
+          index: 0,
+        }
+      );
       redeemTx = await Bubblegum.provider.send(
         new Transaction().add(redeemIx),
         [payer],
@@ -394,9 +387,18 @@ describe("bubblegum", () => {
 
       let voucherData = await Bubblegum.account.voucher.fetch(voucher);
 
-      let tokenMint = Keypair.generate();
+      let [asset] = await PublicKey.findProgramAddress(
+        [merkleRollKeypair.publicKey.toBuffer(), leafNonce.toBuffer("le", 8)],
+        Bubblegum.programId
+      );
+
+      let [tokenMint] = await PublicKey.findProgramAddress(
+        [asset.toBuffer(), TOKEN_PROGRAM_ID.toBuffer()],
+        Bubblegum.programId
+      );
+
       let [mintAuthority] = await PublicKey.findProgramAddress(
-        [tokenMint.publicKey.toBuffer()],
+        [tokenMint.toBuffer()],
         Bubblegum.programId
       );
 
@@ -434,13 +436,13 @@ describe("bubblegum", () => {
           tokenAccount: await Token.getAssociatedTokenAddress(
             ASSOCIATED_TOKEN_PROGRAM_ID,
             TOKEN_PROGRAM_ID,
-            tokenMint.publicKey,
+            tokenMint,
             payer.publicKey
           ),
-          mint: tokenMint.publicKey,
+          mint: tokenMint,
           mintAuthority: mintAuthority,
-          metadata: await getMetadata(tokenMint.publicKey),
-          masterEdition: await getMasterEdition(tokenMint.publicKey),
+          metadata: await getMetadata(tokenMint),
+          masterEdition: await getMasterEdition(tokenMint),
           sysvarRent: SYSVAR_RENT_PUBKEY,
           tokenMetadataProgram: PROGRAM_ID,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -450,10 +452,9 @@ describe("bubblegum", () => {
         }
       );
 
-      decompressIx.keys[3].isSigner = true;
       let decompressTx = await Bubblegum.provider.send(
         new Transaction().add(decompressIx),
-        [payer, tokenMint],
+        [payer],
         {
           commitment: "confirmed",
         }

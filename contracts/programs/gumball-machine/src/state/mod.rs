@@ -8,10 +8,10 @@ use std::mem::size_of;
 pub struct GumballMachineHeader {
     // TODO: Add more fields
     // Used to programmatically create the url and name for each field.
-    // Unlike candy machine, each NFT minted has its url programmatically generated 
+    // Unlike candy machine, each NFT minted has its url programmatically generated
     // from the config line index as format!("{} #{}", url_base, index)
     pub url_base: [u8; 64],
-    // Unlike candy machine, each NFT minted has its name programmatically generated 
+    // Unlike candy machine, each NFT minted has its name programmatically generated
     // from the config line index as format!("{} #{}", name_base, index)
     pub name_base: [u8; 32],
     pub symbol: [u8; 8],

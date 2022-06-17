@@ -10,12 +10,13 @@ import { loadProgram, handleLogs, handleLogsAtomic } from "./indexer/utils";
 import { bootstrap } from "./db";
 import { fetchAndPlugGaps, validateTree } from "./backfiller";
 
-const localhostUrl = "http://127.0.0.1:8899";
+// const url = "http://api.internal.mainnet-beta.solana.com";
+const url = "http://127.0.0.1:8899";
 let Bubblegum: anchor.Program<Bubblegum>;
 let Gummyroll: anchor.Program<Gummyroll>;
 
 async function main() {
-  const endpoint = localhostUrl;
+  const endpoint = url;
   const connection = new Connection(endpoint, "confirmed");
   const payer = Keypair.generate();
   const provider = new anchor.Provider(connection, new NodeWallet(payer), {

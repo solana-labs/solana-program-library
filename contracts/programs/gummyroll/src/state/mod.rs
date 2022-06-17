@@ -79,7 +79,7 @@ impl MerkleRollHeader {
         max_buffer_size: u32,
         authority: &Pubkey,
         append_authority: &Pubkey,
-        creation_slot: u64, 
+        creation_slot: u64,
     ) {
         // Check header is empty
         assert_eq!(self.max_buffer_size, 0);

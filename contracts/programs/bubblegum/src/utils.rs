@@ -1,4 +1,6 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::program_memory::sol_memcmp;
+use anchor_lang::solana_program::pubkey::PUBKEY_BYTES;
 use gummyroll::Node;
 
 pub fn replace_leaf<'info>(
@@ -73,4 +75,25 @@ pub fn insert_or_append_leaf<'info>(
     )
     .with_remaining_accounts(remaining_accounts.to_vec());
     gummyroll::cpi::insert_or_append(cpi_ctx, root_node, leaf, index)
+}
+
+pub fn cmp_pubkeys(a: &Pubkey, b: &Pubkey) -> bool {
+    sol_memcmp(a.as_ref(), b.as_ref(), PUBKEY_BYTES) == 0
+}
+
+pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> Result<()> {
+    if !cmp_pubkeys(account.owner, owner) {
+        //todo add better errors
+        Err(ProgramError::IllegalOwner.into())
+    } else {
+        Ok(())
+    }
+}
+
+pub fn get_asset_id(tree_id: &Pubkey, nonce: u64) -> Pubkey {
+    Pubkey::find_program_address(
+        &[tree_id.as_ref(), nonce.to_le_bytes().as_ref()],
+        &crate::id(),
+    )
+    .0
 }
