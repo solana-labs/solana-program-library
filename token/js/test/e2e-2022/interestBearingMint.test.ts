@@ -22,6 +22,7 @@ import {
 import { getConnection, newAccountWithLamports, TEST_PROGRAM_ID } from '../common';
 
 const TEST_TOKEN_DECIMALS = 2;
+const TEST_RATE = 10;
 
 describe('interestBearingMint', () => {
     let connection: Connection;
@@ -52,7 +53,7 @@ describe('interestBearingMint', () => {
                 lamports,
                 programId: TEST_PROGRAM_ID,
             }),
-            createInitializeInterestBearingMintInstruction(mint, rateAuthority.publicKey, 10, TEST_PROGRAM_ID),
+            createInitializeInterestBearingMintInstruction(mint, rateAuthority.publicKey, TEST_RATE, TEST_PROGRAM_ID),
             createInitializeMintInstruction(
                 mint,
                 TEST_TOKEN_DECIMALS,
@@ -69,7 +70,11 @@ describe('interestBearingMint', () => {
         const interestBearingMintConfigState = getInterestBearingMintConfigState(mintInfo);
         expect(interestBearingMintConfigState).to.not.be.null;
         if (interestBearingMintConfigState !== null) {
-            expect(interestBearingMintConfigState.currentRate).to.eql(10);
+            expect(interestBearingMintConfigState.rateAuthority).to.eql(rateAuthority.publicKey);
+            expect(interestBearingMintConfigState.preUpdateAverageRate).to.eql(0);
+            expect(interestBearingMintConfigState.currentRate).to.eql(TEST_RATE);
+            expect(interestBearingMintConfigState.lastUpdateTimestamp).to.be.greaterThan(0);
+            expect(interestBearingMintConfigState.initializationTimestamp).to.be.greaterThan(0);
         }
     });
 });

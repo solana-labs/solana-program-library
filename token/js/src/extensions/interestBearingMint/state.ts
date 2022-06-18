@@ -6,9 +6,9 @@ import { ExtensionType, getExtensionData } from '../extensionType';
 
 export interface InterestBearingMintConfigState {
     rateAuthority: PublicKey;
-    initializationTimestamp: number;
+    initializationTimestamp: BigInt;
     preUpdateAverageRate: number;
-    lastUpdateTimestamp: number;
+    lastUpdateTimestamp: BigInt;
     currentRate: number;
 }
 

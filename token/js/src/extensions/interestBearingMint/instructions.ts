@@ -1,8 +1,9 @@
 import { struct, s16, u8 } from '@solana/buffer-layout';
 import { publicKey } from '@solana/buffer-layout-utils';
-import { PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_2022_PROGRAM_ID } from '../../constants';
 import { TokenInstruction } from '../../instructions';
+import { addSigners } from '../../instructions/internal';
 
 export enum InterestBearingMintInstruction {
     Initialize = 0,
@@ -25,6 +26,7 @@ export interface InterestBearingMintUpdateRateInstructionData {
 export const interestBearingMintInitializeInstructionData = struct<InterestBearingMintInitializeInstructionData>([
     u8('instruction'),
     u8('interestBearingMintInstruction'),
+    // TODO: Make this an optional public key
     publicKey('rateAuthority'),
     s16('rate'),
 ]);
@@ -34,9 +36,6 @@ export const interestBearingMintUpdateRateInstructionData = struct<InterestBeari
     u8('interestBearingMintInstruction'),
     s16('rate'),
 ]);
-
-export const INTEREST_BEARING_MINT_INITIALIZE_SIZE = interestBearingMintInitializeInstructionData.span;
-export const INTEREST_BEARING_MINT_UPDATE_RATE_SIZE = interestBearingMintUpdateRateInstructionData.span;
 
 /**
  * Construct an InitializeInterestBearingMint instruction
@@ -73,16 +72,26 @@ export function createInitializeInterestBearingMintInstruction(
  *
  * @param mint           Mint to initialize
  * @param rate           The updated interest rate
+ * @param multiSigners   Signing accounts if `rateAuthority` is a multisig
  * @param programId      SPL Token program account
  *
  * @return Instruction to add to a transaction
  */
 export function createUpdateRateInterestBearingMintInstruction(
     mint: PublicKey,
+    mintRateAuthority: PublicKey,
     rate: number,
+    multiSigners: Signer[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ) {
-    const keys = [{ pubkey: mint, isSigner: false, isWritable: true }];
+    const keys = addSigners(
+        [
+            { pubkey: mint, isSigner: false, isWritable: true },
+            { pubkey: mintRateAuthority, isSigner: true, isWritable: false },
+        ],
+        mintRateAuthority,
+        multiSigners
+    );
     const data = Buffer.alloc(interestBearingMintInitializeInstructionData.span);
     interestBearingMintUpdateRateInstructionData.encode(
         {
