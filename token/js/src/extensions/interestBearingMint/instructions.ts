@@ -92,7 +92,7 @@ export function createUpdateRateInterestBearingMintInstruction(
         mintRateAuthority,
         multiSigners
     );
-    const data = Buffer.alloc(interestBearingMintInitializeInstructionData.span);
+    const data = Buffer.alloc(interestBearingMintUpdateRateInstructionData.span);
     interestBearingMintUpdateRateInstructionData.encode(
         {
             instruction: TokenInstruction.InterestBearingMintExtension,
