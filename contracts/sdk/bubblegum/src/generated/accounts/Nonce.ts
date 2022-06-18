@@ -147,7 +147,7 @@ export const nonceBeet = new beet.BeetStruct<
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['count', beet.u128],
+    ['count', beet.u64],
   ],
   Nonce.fromArgs,
   'Nonce'

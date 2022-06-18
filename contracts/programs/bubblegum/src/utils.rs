@@ -1,11 +1,12 @@
 use {
-    crate::{NONCE_PREFIX, Voucher},
+    crate::{NONCE_PREFIX},
+    crate::error::BubblegumError,
     anchor_lang::{
         prelude::*,
         solana_program::program_memory::sol_memcmp,
         solana_program::pubkey::PUBKEY_BYTES,
     },
-    gummyroll::Node,
+    gummyroll::Node
 };
 
 
@@ -31,7 +32,7 @@ pub fn replace_leaf<'info>(
         },
         authority_pda_signer,
     )
-        .with_remaining_accounts(remaining_accounts.to_vec());
+    .with_remaining_accounts(remaining_accounts.to_vec());
     gummyroll::cpi::replace_leaf(cpi_ctx, root_node, previous_leaf, new_leaf, index)
 }
 
@@ -79,12 +80,24 @@ pub fn insert_or_append_leaf<'info>(
         },
         authority_pda_signer,
     )
-        .with_remaining_accounts(remaining_accounts.to_vec());
+    .with_remaining_accounts(remaining_accounts.to_vec());
     gummyroll::cpi::insert_or_append(cpi_ctx, root_node, leaf, index)
 }
 
 pub fn cmp_pubkeys(a: &Pubkey, b: &Pubkey) -> bool {
     sol_memcmp(a.as_ref(), b.as_ref(), PUBKEY_BYTES) == 0
+}
+
+pub fn assert_pubkey_equal(a: &Pubkey, b: &Pubkey, error: Option<anchor_lang::error::Error>) -> Result<()>  {
+    if !cmp_pubkeys(a, b) {
+        if error.is_some() {
+            let err = error.unwrap();
+            return Err(err);
+        }
+        return Err(BubblegumError::PublicKeyMismatch.into());
+    } else {
+        Ok(())
+    }
 }
 
 pub fn assert_derivation(
@@ -115,14 +128,14 @@ pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> Result<()> {
     }
 }
 
-pub fn get_asset_id(nonce_account: &Pubkey, nonce: u64) -> (Pubkey, u8) {
+pub fn get_asset_id(nonce_account: &Pubkey, nonce: u64) -> Pubkey {
     Pubkey::find_program_address(
         &[
             nonce_account.as_ref(),
             nonce.to_le_bytes().as_ref()
         ],
         &crate::id(),
-    )
+    ).0
 }
 
 pub fn get_nonce_account_id(slab: &Pubkey) -> (Pubkey, u8) {

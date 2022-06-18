@@ -26,13 +26,8 @@
           "isSigner": false
         },
         {
-          "name": "nonce",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "bubblegumAuthority",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -338,16 +333,11 @@
         },
         {
           "name": "bubblegumAuthority",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false,
           "docs": [
             "This key must sign for all write operations to the NFT Metadata stored in the Merkle slab"
           ]
-        },
-        {
-          "name": "nonce",
-          "isMut": true,
-          "isSigner": false
         },
         {
           "name": "gummyroll",
@@ -423,16 +413,11 @@
         },
         {
           "name": "bubblegumAuthority",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false,
           "docs": [
             "This key must sign for all write operations to the NFT Metadata stored in the Merkle slab"
           ]
-        },
-        {
-          "name": "nonce",
-          "isMut": true,
-          "isSigner": false
         },
         {
           "name": "gummyroll",

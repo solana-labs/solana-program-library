@@ -11,7 +11,7 @@ pub mod state;
 pub mod utils;
 
 use crate::error::GummyrollError;
-use crate::state::{ChangeLogEvent, MerkleRollHeader, NewLeafEvent};
+use crate::state::{ChangeLogEvent, MerkleRollHeader};
 use crate::utils::ZeroCopy;
 pub use concurrent_merkle_tree::{error::CMTError, merkle_roll::MerkleRoll, state::Node};
 
@@ -180,8 +180,8 @@ pub mod gummyroll {
         root: [u8; 32],
         leaf: [u8; 32],
         index: u32,
-        changelog_db_uri: String,
-        metadata_db_uri: String,
+        _changelog_db_uri: String,
+        _metadata_db_uri: String,
     ) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
 
@@ -230,10 +230,6 @@ pub mod gummyroll {
         new_leaf: [u8; 32],
         index: u32,
     ) -> Result<()> {
-        emit!(NewLeafEvent {
-            id: ctx.accounts.merkle_roll.key(),
-            leaf: new_leaf
-        });
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
         let (header_bytes, roll_bytes) =
             merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
@@ -326,10 +322,6 @@ pub mod gummyroll {
     /// This is accomplished by using the rightmost_proof of the merkle roll to construct a
     /// valid proof, and then updating the rightmost_proof for the next leaf if possible.
     pub fn append(ctx: Context<Append>, leaf: [u8; 32]) -> Result<()> {
-        emit!(NewLeafEvent {
-            id: ctx.accounts.merkle_roll.key(),
-            leaf
-        });
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
         let (header_bytes, roll_bytes) =
             merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
@@ -352,10 +344,6 @@ pub mod gummyroll {
         leaf: [u8; 32],
         index: u32,
     ) -> Result<()> {
-        emit!(NewLeafEvent {
-            id: ctx.accounts.merkle_roll.key(),
-            leaf
-        });
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
         let (header_bytes, roll_bytes) =
             merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());

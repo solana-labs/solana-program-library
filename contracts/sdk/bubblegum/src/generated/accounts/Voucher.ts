@@ -128,7 +128,7 @@ export class Voucher implements VoucherArgs {
    */
   pretty() {
     return {
-      leafSchema: this.leafSchema,
+      leafSchema: this.leafSchema.__kind,
       index: this.index,
       merkleSlab: this.merkleSlab.toBase58(),
     }

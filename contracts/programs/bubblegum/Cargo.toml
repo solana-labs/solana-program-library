@@ -18,7 +18,6 @@ default = []
 [dependencies]
 anchor-lang = { path="../../../deps/anchor/lang" }
 anchor-spl = { path="../../../deps/anchor/spl" }
-
 spl-token = { version = "3.3.0", features = [ "no-entrypoint" ] }
 spl-associated-token-account = { version = "1.0.5", features = [ "no-entrypoint" ] }
 mpl-token-metadata = { git = "https://github.com/jarry-xiao/metaplex-program-library", rev="7e2810a", features = [ "no-entrypoint" ] }

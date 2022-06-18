@@ -40,8 +40,7 @@ export const mintStruct = new beet.FixableBeetArgsStruct<
  * Accounts required by the _mint_ instruction
  *
  * @property [**signer**] mintAuthority
- * @property [] authority
- * @property [_writable_] nonce
+ * @property [_writable_] authority
  * @property [] gummyrollProgram
  * @property [**signer**] owner
  * @property [] delegate
@@ -53,7 +52,6 @@ export const mintStruct = new beet.FixableBeetArgsStruct<
 export type MintInstructionAccounts = {
   mintAuthority: web3.PublicKey
   authority: web3.PublicKey
-  nonce: web3.PublicKey
   gummyrollProgram: web3.PublicKey
   owner: web3.PublicKey
   delegate: web3.PublicKey
@@ -81,7 +79,6 @@ export function createMintInstruction(
   const {
     mintAuthority,
     authority,
-    nonce,
     gummyrollProgram,
     owner,
     delegate,
@@ -100,11 +97,6 @@ export function createMintInstruction(
     },
     {
       pubkey: authority,
-      isWritable: false,
-      isSigner: false,
-    },
-    {
-      pubkey: nonce,
       isWritable: true,
       isSigner: false,
     },

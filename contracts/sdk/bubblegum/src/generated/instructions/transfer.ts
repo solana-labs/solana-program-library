@@ -7,7 +7,6 @@
 
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
-import { Version, versionBeet } from '../types/Version'
 
 /**
  * @category Instructions
@@ -15,7 +14,6 @@ import { Version, versionBeet } from '../types/Version'
  * @category generated
  */
 export type TransferInstructionArgs = {
-  version: Version
   root: number[] /* size: 32 */
   dataHash: number[] /* size: 32 */
   creatorHash: number[] /* size: 32 */
@@ -34,11 +32,10 @@ export const transferStruct = new beet.BeetArgsStruct<
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['version', versionBeet],
     ['root', beet.uniformFixedSizeArray(beet.u8, 32)],
     ['dataHash', beet.uniformFixedSizeArray(beet.u8, 32)],
     ['creatorHash', beet.uniformFixedSizeArray(beet.u8, 32)],
-    ['nonce', beet.u128],
+    ['nonce', beet.u64],
     ['index', beet.u32],
   ],
   'TransferInstructionArgs'

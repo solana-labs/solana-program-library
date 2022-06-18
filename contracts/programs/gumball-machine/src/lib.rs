@@ -7,7 +7,7 @@ use anchor_lang::{
 };
 use anchor_spl::token::{transfer, Mint, Token, TokenAccount, Transfer};
 use bubblegum::program::Bubblegum;
-use bubblegum::state::leaf_schema::Version;
+
 use bubblegum::state::metaplex_adapter::MetadataArgs;
 use bytemuck::cast_slice_mut;
 use gummyroll::program::Gummyroll;
@@ -34,10 +34,8 @@ pub struct InitGumballMachine<'info> {
         bump,
     )]
     willy_wonka: AccountInfo<'info>,
-    /// CHECK: Tree nonce, checked in Bubblegum
-    #[account(mut)]
-    nonce: UncheckedAccount<'info>,
     /// CHECK: Tree authority to the merkle slab, PDA owned by BubbleGum
+    #[account(mut)]
     bubblegum_authority: AccountInfo<'info>,
     gummyroll: Program<'info, Gummyroll>,
     /// CHECK: Empty merkle slab
@@ -91,10 +89,8 @@ pub struct DispenseSol<'info> {
     instruction_sysvar_account: AccountInfo<'info>,
     /// CHECK: PDA is checked in CPI from Bubblegum to Gummyroll
     /// This key must sign for all write operations to the NFT Metadata stored in the Merkle slab
-    bubblegum_authority: AccountInfo<'info>,
-    /// CHECK: PDA is checked in Bubblegum
     #[account(mut)]
-    nonce: UncheckedAccount<'info>,
+    bubblegum_authority: AccountInfo<'info>,
     gummyroll: Program<'info, Gummyroll>,
     /// CHECK: Validation occurs in Gummyroll
     #[account(mut)]
@@ -131,10 +127,8 @@ pub struct DispenseToken<'info> {
     instruction_sysvar_account: AccountInfo<'info>,
     /// CHECK: PDA is checked in CPI from Bubblegum to Gummyroll
     /// This key must sign for all write operations to the NFT Metadata stored in the Merkle slab
-    bubblegum_authority: AccountInfo<'info>,
-    /// CHECK: PDA is checked in Bubblegum
     #[account(mut)]
-    nonce: UncheckedAccount<'info>,
+    bubblegum_authority: AccountInfo<'info>,
     gummyroll: Program<'info, Gummyroll>,
     /// CHECK: Validation occurs in Gummyroll
     #[account(mut)]
@@ -228,7 +222,6 @@ fn find_and_mint_compressed_nft<'info>(
     recent_blockhashes: &UncheckedAccount<'info>,
     instruction_sysvar_account: &AccountInfo<'info>,
     bubblegum_authority: &AccountInfo<'info>,
-    nonce: &AccountInfo<'info>,
     gummyroll: &Program<'info, Gummyroll>,
     merkle_slab: &AccountInfo<'info>,
     bubblegum: &Program<'info, Bubblegum>,
@@ -273,10 +266,9 @@ fn find_and_mint_compressed_nft<'info>(
         let authority_pda_signer = &[&seeds[..]];
         let cpi_ctx = CpiContext::new_with_signer(
             bubblegum.to_account_info(),
-            bubblegum::cpi::accounts::Mint {
+            bubblegum::cpi::accounts::MintV1 {
                 mint_authority: willy_wonka.to_account_info(),
                 authority: bubblegum_authority.to_account_info(),
-                nonce: nonce.to_account_info(),
                 gummyroll_program: gummyroll.to_account_info(),
                 owner: payer.to_account_info(),
                 delegate: payer.to_account_info(),
@@ -284,7 +276,7 @@ fn find_and_mint_compressed_nft<'info>(
             },
             authority_pda_signer,
         );
-        bubblegum::cpi::mint(cpi_ctx, Version::V0, message)?;
+        bubblegum::cpi::mint_v1(cpi_ctx, message)?;
     }
     Ok(*gumball_header)
 }
@@ -358,7 +350,6 @@ pub mod gumball_machine {
         let cpi_ctx = CpiContext::new_with_signer(
             ctx.accounts.bubblegum.to_account_info(),
             bubblegum::cpi::accounts::CreateTree {
-                nonce: ctx.accounts.nonce.to_account_info(),
                 tree_creator: ctx.accounts.willy_wonka.to_account_info(),
                 authority: ctx.accounts.bubblegum_authority.to_account_info(),
                 gummyroll_program: ctx.accounts.gummyroll.to_account_info(),
@@ -508,7 +499,6 @@ pub mod gumball_machine {
             &ctx.accounts.recent_blockhashes,
             &ctx.accounts.instruction_sysvar_account,
             &ctx.accounts.bubblegum_authority,
-            &ctx.accounts.nonce,
             &ctx.accounts.gummyroll,
             &ctx.accounts.merkle_slab,
             &ctx.accounts.bubblegum,
@@ -551,7 +541,6 @@ pub mod gumball_machine {
             &ctx.accounts.recent_blockhashes,
             &ctx.accounts.instruction_sysvar_account,
             &ctx.accounts.bubblegum_authority,
-            &ctx.accounts.nonce,
             &ctx.accounts.gummyroll,
             &ctx.accounts.merkle_slab,
             &ctx.accounts.bubblegum,

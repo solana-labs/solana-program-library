@@ -9,7 +9,7 @@ import { parseBubblegum } from "./bubblegum";
 
 const startRegEx = /Program (\w*) invoke \[(\d)\]/;
 const endRegEx = /Program (\w*) success/;
-const dataRegEx =
+export const dataRegEx =
   /Program data: ((?:[A-Za-z\d+/]{4})*(?:[A-Za-z\d+/]{3}=|[A-Za-z\d+/]{2}==)?$)/;
 export const ixRegEx = /Program log: Instruction: (\w+)/;
 
@@ -110,7 +110,7 @@ export function parseEventFromLog(
  * @param idl
  * @returns
  */
-function decodeEvent(data: string, idl: anchor.Idl): anchor.Event | null {
+export function decodeEvent(data: string, idl: anchor.Idl): anchor.Event | null {
   let eventCoder = new anchor.BorshEventCoder(idl);
   return eventCoder.decode(data);
 }

@@ -30,3 +30,9 @@ impl Voucher {
         }
     }
 }
+#[event]
+pub struct NewNFTEvent {
+    pub version: Version,
+    pub metadata: MetadataArgs,
+    pub nonce: u64,
+}
