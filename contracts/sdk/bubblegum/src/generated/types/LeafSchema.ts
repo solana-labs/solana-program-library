@@ -18,7 +18,7 @@ import * as beetSolana from '@metaplex-foundation/beet-solana'
  * @private
  */
 export type LeafSchemaRecord = {
-  V0: {
+  V1: {
     id: web3.PublicKey
     owner: web3.PublicKey
     delegate: web3.PublicKey
@@ -41,9 +41,9 @@ export type LeafSchemaRecord = {
  */
 export type LeafSchema = beet.DataEnumKeyAsKind<LeafSchemaRecord>
 
-export const isLeafSchemaV0 = (
+export const isLeafSchemaV1 = (
   x: LeafSchema
-): x is LeafSchema & { __kind: 'V0' } => x.__kind === 'V0'
+): x is LeafSchema & { __kind: 'V1' } => x.__kind === 'V1'
 
 /**
  * @category userTypes
@@ -51,8 +51,8 @@ export const isLeafSchemaV0 = (
  */
 export const leafSchemaBeet = beet.dataEnum<LeafSchemaRecord>([
   [
-    'V0',
-    new beet.BeetArgsStruct<LeafSchemaRecord['V0']>(
+    'V1',
+    new beet.BeetArgsStruct<LeafSchemaRecord['V1']>(
       [
         ['id', beetSolana.publicKey],
         ['owner', beetSolana.publicKey],
@@ -61,7 +61,7 @@ export const leafSchemaBeet = beet.dataEnum<LeafSchemaRecord>([
         ['dataHash', beet.uniformFixedSizeArray(beet.u8, 32)],
         ['creatorHash', beet.uniformFixedSizeArray(beet.u8, 32)],
       ],
-      'LeafSchemaRecord["V0"]'
+      'LeafSchemaRecord["V1"]'
     ),
   ],
-]) as beet.FixedSizeBeet<LeafSchema> | any
+]) as beet.FixedSizeBeet<LeafSchema>

@@ -14,8 +14,8 @@ import {
 } from "@solana/web3.js";
 import { assert } from "chai";
 import {
-  createMintInstruction,
-  createDecompressInstruction,
+  createMintV1Instruction,
+  createDecompressV1Instruction,
   createTransferInstruction,
   createDelegateInstruction,
   createRedeemInstruction,
@@ -179,8 +179,7 @@ describe("bubblegum", () => {
         uses: null,
         creators: [],
       };
-      let version = Version.V0;
-      const mintIx = createMintInstruction(
+      const mintIx = createMintV1Instruction(
         {
           mintAuthority: payer.publicKey,
           authority: treeAuthority,
@@ -189,7 +188,7 @@ describe("bubblegum", () => {
           delegate: payer.publicKey,
           merkleSlab: merkleRollKeypair.publicKey,
         },
-        { version, message: metadata }
+        { message: metadata }
       );
       console.log(" - Minting to tree");
       const mintTx = await Bubblegum.provider.send(
@@ -219,6 +218,7 @@ describe("bubblegum", () => {
       const leafNonce = new BN(nonceInfo.data.slice(8, 16), "le").sub(
         new BN(1)
       );
+      console.log(leafNonce);
       let transferIx = createTransferInstruction(
         {
           authority: treeAuthority,
@@ -329,7 +329,7 @@ describe("bubblegum", () => {
           index: 0,
         }
       );
-      let redeemTx = await Bubblegum.provider.send(
+        let redeemTx = await Bubblegum.provider.send(
         new Transaction().add(redeemIx),
         [payer],
         {
@@ -395,7 +395,7 @@ describe("bubblegum", () => {
       let [tokenMint] = await PublicKey.findProgramAddress(
         [asset.toBuffer(), TOKEN_PROGRAM_ID.toBuffer()],
         Bubblegum.programId
-      );
+      ); //TODO -> change this for v1 id must be the mint
 
       let [mintAuthority] = await PublicKey.findProgramAddress(
         [tokenMint.toBuffer()],
@@ -429,7 +429,7 @@ describe("bubblegum", () => {
         )[0];
       };
 
-      let decompressIx = createDecompressInstruction(
+      let decompressIx = createDecompressV1Instruction(
         {
           voucher: voucher,
           owner: payer.publicKey,

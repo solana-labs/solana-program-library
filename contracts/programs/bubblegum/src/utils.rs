@@ -128,10 +128,10 @@ pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> Result<()> {
     }
 }
 
-pub fn get_asset_id(nonce_account: &Pubkey, nonce: u64) -> Pubkey {
+pub fn get_asset_id(authority: &Pubkey, nonce: u64) -> Pubkey {
     Pubkey::find_program_address(
         &[
-            nonce_account.as_ref(),
+            authority.as_ref(),
             nonce.to_le_bytes().as_ref()
         ],
         &crate::id(),

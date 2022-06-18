@@ -344,6 +344,7 @@ pub mod bubblegum {
         let creator_data = message
             .creators
             .iter()
+            //TODO include verified
             .map(|c| [c.address.as_ref(), &[c.share]].concat())
             .collect::<Vec<_>>();
         let creator_hash = keccak::hashv(
@@ -388,6 +389,7 @@ pub mod bubblegum {
         nonce: u64,
         index: u32,
     ) -> Result<()> {
+        // TODO add back version to select hash schema
         let merkle_slab = ctx.accounts.merkle_slab.to_account_info();
         let owner = ctx.accounts.owner.to_account_info();
         let delegate = ctx.accounts.delegate.to_account_info();

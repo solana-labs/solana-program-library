@@ -48,7 +48,7 @@
       ]
     },
     {
-      "name": "mint",
+      "name": "mintV1",
       "accounts": [
         {
           "name": "mintAuthority",
@@ -68,7 +68,7 @@
         {
           "name": "owner",
           "isMut": false,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "delegate",
@@ -82,12 +82,6 @@
         }
       ],
       "args": [
-        {
-          "name": "version",
-          "type": {
-            "defined": "Version"
-          }
-        },
         {
           "name": "message",
           "type": {
@@ -426,7 +420,7 @@
       ]
     },
     {
-      "name": "decompress",
+      "name": "decompressV1",
       "accounts": [
         {
           "name": "voucher",
@@ -771,7 +765,7 @@
         "kind": "enum",
         "variants": [
           {
-            "name": "V0"
+            "name": "V1"
           }
         ]
       }
@@ -782,7 +776,7 @@
         "kind": "enum",
         "variants": [
           {
-            "name": "V0",
+            "name": "V1",
             "fields": [
               {
                 "name": "id",
@@ -883,7 +877,7 @@
             "name": "Unknown"
           },
           {
-            "name": "Mint"
+            "name": "MintV1"
           },
           {
             "name": "Redeem"
@@ -898,7 +892,7 @@
             "name": "Delegate"
           },
           {
-            "name": "Decompress"
+            "name": "DecompressV1"
           }
         ]
       }
@@ -909,9 +903,26 @@
       "name": "LeafSchemaEvent",
       "fields": [
         {
+          "name": "version",
+          "type": {
+            "defined": "Version"
+          },
+          "index": false
+        },
+        {
           "name": "schema",
           "type": {
             "defined": "LeafSchema"
+          },
+          "index": false
+        },
+        {
+          "name": "leafHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
           },
           "index": false
         }
@@ -940,6 +951,18 @@
           "index": false
         }
       ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "AssetOwnerMismatch",
+      "msg": "Asset Owner Does not match"
+    },
+    {
+      "code": 6001,
+      "name": "PublicKeyMismatch",
+      "msg": "PublicKeyMismatch"
     }
   ],
   "metadata": {

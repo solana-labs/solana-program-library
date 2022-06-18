@@ -11,7 +11,7 @@ import * as beet from '@metaplex-foundation/beet'
  * @category generated
  */
 export enum Version {
-  V0,
+  V1,
 }
 
 /**
