@@ -71,6 +71,7 @@ export function createInitializeInterestBearingMintInstruction(
  * Construct an UpdateRateInterestBearingMint instruction
  *
  * @param mint           Mint to initialize
+ * @param rateAuthority  The public key for the account that can update the rate
  * @param rate           The updated interest rate
  * @param multiSigners   Signing accounts if `rateAuthority` is a multisig
  * @param programId      SPL Token program account
@@ -79,7 +80,7 @@ export function createInitializeInterestBearingMintInstruction(
  */
 export function createUpdateRateInterestBearingMintInstruction(
     mint: PublicKey,
-    mintRateAuthority: PublicKey,
+    rateAuthority: PublicKey,
     rate: number,
     multiSigners: Signer[] = [],
     programId = TOKEN_2022_PROGRAM_ID
@@ -87,9 +88,9 @@ export function createUpdateRateInterestBearingMintInstruction(
     const keys = addSigners(
         [
             { pubkey: mint, isSigner: false, isWritable: true },
-            { pubkey: mintRateAuthority, isSigner: true, isWritable: false },
+            { pubkey: rateAuthority, isSigner: true, isWritable: false },
         ],
-        mintRateAuthority,
+        rateAuthority,
         multiSigners
     );
     const data = Buffer.alloc(interestBearingMintUpdateRateInstructionData.span);
