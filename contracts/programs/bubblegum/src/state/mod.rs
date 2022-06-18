@@ -10,7 +10,7 @@ use metaplex_adapter::MetadataArgs;
 #[account]
 #[derive(Copy)]
 pub struct Nonce {
-    pub count: u128,
+    pub count: u64,
 }
 
 #[account]
@@ -29,11 +29,4 @@ impl Voucher {
             merkle_slab,
         }
     }
-}
-
-#[event]
-pub struct NewNFTEvent {
-    pub version: Version,
-    pub metadata: MetadataArgs,
-    pub nonce: u128,
 }
