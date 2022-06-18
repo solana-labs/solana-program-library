@@ -31,10 +31,10 @@ function skipTx(sequenceNumber, startSeq, endSeq): boolean {
 
 export type BubblegumIx =
   | "Redeem"
-  | "Decompress"
+  | "DecompressV1"
   | "Transfer"
   | "CreateTree"
-  | "Mint"
+  | "MintV1"
   | "Burn"
   | "CancelRedeem"
   | "Delegate";
@@ -77,7 +77,7 @@ export async function parseBubblegum(
         optionalInfo
       );
       break;
-    case "Mint":
+    case "MintV1":
       await parseBubblegumMint(db, parsedLog.logs, slot, parser, optionalInfo);
       break;
     case "Redeem":

@@ -1,6 +1,6 @@
 use {
-    crate::{NONCE_PREFIX},
     crate::error::BubblegumError,
+    crate::ASSET_PREFIX,
     anchor_lang::{
         prelude::*,
         solana_program::program_memory::sol_memcmp,
@@ -8,7 +8,6 @@ use {
     },
     gummyroll::Node
 };
-
 
 pub fn replace_leaf<'info>(
     seed: &Pubkey,
@@ -128,22 +127,13 @@ pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> Result<()> {
     }
 }
 
-pub fn get_asset_id(authority: &Pubkey, nonce: u64) -> Pubkey {
+pub fn get_asset_id(tree_id: &Pubkey, nonce: u64) -> Pubkey {
     Pubkey::find_program_address(
         &[
-            authority.as_ref(),
-            nonce.to_le_bytes().as_ref()
+            ASSET_PREFIX.as_ref(),
+            tree_id.as_ref(),
+            &nonce.to_le_bytes()
         ],
         &crate::id(),
     ).0
-}
-
-pub fn get_nonce_account_id(slab: &Pubkey) -> (Pubkey, u8) {
-    Pubkey::find_program_address(
-        &[
-            NONCE_PREFIX.as_ref(),
-            slab.as_ref()
-        ],
-        &crate::id(),
-    )
 }

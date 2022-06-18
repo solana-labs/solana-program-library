@@ -1,6 +1,10 @@
 use {
     crate::state::metaplex_anchor::MplTokenMetadata,
     crate::state::{
+        NONCE_SIZE,
+        VOUCHER_PREFIX,
+        VOUCHER_SIZE,
+        ASSET_PREFIX,
         leaf_schema::{LeafSchema, Version},
         metaplex_anchor::{MasterEdition, TokenMetadata},
         Nonce, Voucher,
@@ -30,10 +34,6 @@ use {
 pub mod state;
 pub mod utils;
 pub mod error;
-
-const NONCE_SIZE: usize = 8 + 8;
-const VOUCHER_SIZE: usize = 8 + 1 + 32 + 32 + 16 + 32 + 4 + 32 + 32 + 32;
-const NONCE_PREFIX: &str = "bubblegum";
 
 declare_id!("BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY");
 
@@ -137,7 +137,11 @@ pub struct Delegate<'info> {
 
 #[derive(Accounts)]
 #[instruction(
+_root: [u8; 32],
+_data_hash: [u8; 32],
+_creator_hash: [u8; 32],
 nonce: u64,
+_index: u32,
 )]
 pub struct Redeem<'info> {
     #[account(
@@ -152,11 +156,15 @@ pub struct Redeem<'info> {
     /// CHECK: This account is chekced in the instruction
     pub delegate: UncheckedAccount<'info>,
     #[account(mut)]
-    /// CHECK: unsafe
+    /// CHECK: checked in cpi
     pub merkle_slab: UncheckedAccount<'info>,
     #[account(
     init,
-    seeds = [merkle_slab.key().as_ref(), nonce.to_le_bytes().as_ref()],
+    seeds = [
+    VOUCHER_PREFIX.as_ref(),
+    merkle_slab.key().as_ref(),
+    & nonce.to_le_bytes()
+    ],
     payer = owner,
     space = VOUCHER_SIZE,
     bump
@@ -181,8 +189,9 @@ pub struct CancelRedeem<'info> {
     mut,
     close = owner,
     seeds = [
+    VOUCHER_PREFIX.as_ref(),
     merkle_slab.key().as_ref(),
-    voucher.leaf_schema.nonce().to_le_bytes().as_ref()
+    & voucher.leaf_schema.nonce().to_le_bytes()
     ],
     bump
     )]
@@ -197,6 +206,7 @@ pub struct DecompressV1<'info> {
     mut,
     close = owner,
     seeds = [
+    VOUCHER_PREFIX.as_ref(),
     voucher.merkle_slab.as_ref(),
     voucher.leaf_schema.nonce().to_le_bytes().as_ref()
     ],
@@ -286,6 +296,8 @@ pub enum InstructionName {
     Transfer,
     Delegate,
     DecompressV1,
+    Compress,
+    Burn,
 }
 
 pub fn get_instruction_type(full_bytes: &[u8]) -> InstructionName {
@@ -295,12 +307,14 @@ pub fn get_instruction_type(full_bytes: &[u8]) -> InstructionName {
         disc
     };
     match disc {
-        [51, 57, 225, 47, 182, 146, 137, 166] => InstructionName::MintV1,
+        [145, 98, 192, 118, 184, 147, 118, 104] => InstructionName::MintV1,
         [111, 76, 232, 50, 39, 175, 48, 242] => InstructionName::CancelRedeem,
         [184, 12, 86, 149, 70, 196, 97, 225] => InstructionName::Redeem,
         [163, 52, 200, 231, 140, 3, 69, 186] => InstructionName::Transfer,
         [90, 147, 75, 178, 85, 88, 4, 137] => InstructionName::Delegate,
-        [74, 60, 49, 197, 18, 110, 93, 154] => InstructionName::DecompressV1,
+        [54, 85, 76, 70, 228, 250, 164, 81] => InstructionName::DecompressV1,
+        [116, 110, 29, 56, 107, 219, 42, 93] => InstructionName::Burn,
+        [82, 193, 176, 117, 176, 21, 115, 253] => InstructionName::Compress,
         _ => InstructionName::Unknown,
     }
 }

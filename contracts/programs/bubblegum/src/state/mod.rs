@@ -13,6 +13,11 @@ pub struct Nonce {
     pub count: u64,
 }
 
+pub const NONCE_SIZE: usize = 8 + 8;
+pub const VOUCHER_SIZE: usize = 8 + 1 + 32 + 32 + 32 + 8 + 32 + 32 + 4 + 32;
+pub const VOUCHER_PREFIX: &str = "voucher";
+pub const ASSET_PREFIX: &str = "asset";
+
 #[account]
 #[derive(Copy)]
 pub struct Voucher {
