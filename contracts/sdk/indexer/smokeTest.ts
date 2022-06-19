@@ -156,13 +156,9 @@ async function main() {
           }
         )
       );
-      await BubblegumCtx.provider.connection.sendTransaction(
-        tx,
-        [payer, wallets[i]],
-        {
-          skipPreflight: true,
-        }
-      );
+      await BubblegumCtx.provider.connection.sendTransaction(tx, [payer], {
+        skipPreflight: true,
+      });
       numMints++;
     } else {
       let response = await fetch(

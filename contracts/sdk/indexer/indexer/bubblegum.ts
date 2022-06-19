@@ -47,7 +47,7 @@ export type NewLeafEvent = {
 
 export type LeafSchemaEvent = {
   schema: {
-    v0: {
+    v1: {
       id: PublicKey;
       owner: PublicKey;
       delegate: PublicKey;
@@ -159,7 +159,7 @@ export async function parseBubblegumMint(
     return;
   }
   console.log(`Sequence Number: ${sequenceNumber}`);
-  await db.updateNFTMetadata(newLeafData, leafSchema.schema.v0.id.toBase58());
+  await db.updateNFTMetadata(newLeafData, leafSchema.schema.v1.id.toBase58());
   await db.updateLeafSchema(
     leafSchema,
     new PublicKey(changeLog.path[0].node),

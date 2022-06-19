@@ -92,7 +92,7 @@ export class NFTDatabaseConnection {
     treeId: string,
     compressed: boolean = true,
   ) {
-    const leafSchema = leafSchemaRecord.schema.v0;
+    const leafSchema = leafSchemaRecord.schema.v1;
     await this.connection.run(
       `
         INSERT INTO
