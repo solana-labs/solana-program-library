@@ -943,6 +943,21 @@ fn command_burn(
     })
 }
 
+
+fn check_mint(
+    config: &Config,
+    token: Pubkey,
+    ui_amount : f64,
+) -> bool {
+    let supply = config.rpc_client.get_token_supply(&token).unwrap();
+    let amount = ui_amount;
+    if amount + supply.ui_amount.unwrap()> 18446744073709551615.0 {
+    return true;
+    };
+    return false;
+}
+    
+
 #[allow(clippy::too_many_arguments)]
 fn command_mint(
     config: &Config,
@@ -2885,6 +2900,10 @@ fn process_command(
             );
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
+            if check_mint(config, token, amount) {
+                return Err("Supply requested to be minted is greater than the u64 token supply limit".to_string().into());
+            }
+            else {
             command_mint(
                 config,
                 token,
@@ -2895,6 +2914,8 @@ fn process_command(
                 use_unchecked_instruction,
                 bulk_signers,
             )
+        }
+
         }
         (CommandName::Freeze, arg_matches) => {
             let (freeze_authority_signer, freeze_authority) =
