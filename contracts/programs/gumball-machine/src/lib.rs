@@ -7,7 +7,7 @@ use anchor_lang::{
 };
 use anchor_spl::token::{transfer, Mint, Token, TokenAccount, Transfer};
 use bubblegum::program::Bubblegum;
-use bubblegum::state::leaf_schema::Version;
+
 use bubblegum::state::metaplex_adapter::MetadataArgs;
 use bytemuck::cast_slice_mut;
 use gummyroll::program::Gummyroll;
@@ -266,7 +266,7 @@ fn find_and_mint_compressed_nft<'info>(
         let authority_pda_signer = &[&seeds[..]];
         let cpi_ctx = CpiContext::new_with_signer(
             bubblegum.to_account_info(),
-            bubblegum::cpi::accounts::Mint {
+            bubblegum::cpi::accounts::MintV1 {
                 mint_authority: willy_wonka.to_account_info(),
                 authority: bubblegum_authority.to_account_info(),
                 gummyroll_program: gummyroll.to_account_info(),
@@ -276,7 +276,7 @@ fn find_and_mint_compressed_nft<'info>(
             },
             authority_pda_signer,
         );
-        bubblegum::cpi::mint(cpi_ctx, Version::V0, message)?;
+        bubblegum::cpi::mint_v1(cpi_ctx, message)?;
     }
     Ok(*gumball_header)
 }

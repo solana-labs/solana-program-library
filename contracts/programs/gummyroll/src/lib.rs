@@ -11,7 +11,7 @@ pub mod state;
 pub mod utils;
 
 use crate::error::GummyrollError;
-use crate::state::{ChangeLogEvent, MerkleRollHeader, NewLeafEvent};
+use crate::state::{ChangeLogEvent, MerkleRollHeader};
 use crate::utils::ZeroCopy;
 pub use concurrent_merkle_tree::{error::CMTError, merkle_roll::MerkleRoll, state::Node};
 
@@ -180,8 +180,8 @@ pub mod gummyroll {
         root: [u8; 32],
         leaf: [u8; 32],
         index: u32,
-        changelog_db_uri: String,
-        metadata_db_uri: String,
+        _changelog_db_uri: String,
+        _metadata_db_uri: String,
     ) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
 

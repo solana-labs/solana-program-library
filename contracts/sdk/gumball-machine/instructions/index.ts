@@ -69,7 +69,6 @@ export async function createInitializeGumballMachineIxs(
         gumballMachine: gumballMachineAcctKeypair.publicKey,
         creator: payer.publicKey,
         mint,
-        nonce: noncePDAKey,
         willyWonka: willyWonkaPDAKey,
         bubblegumAuthority: bubblegumAuthorityPDAKey,
         gummyroll: gummyrollProgramId,
@@ -106,7 +105,6 @@ export async function createDispenseNFTForSolIx(
               recentBlockhashes: SYSVAR_SLOT_HASHES_PUBKEY,
               instructionSysvarAccount: SYSVAR_INSTRUCTIONS_PUBKEY,
               bubblegumAuthority: bubblegumAuthorityPDAKey,
-              nonce: noncePDAKey,
               gummyroll: gummyrollProgramId,
               merkleSlab: merkleRollKeypair.publicKey,
               bubblegum: bubblegumProgramId
@@ -145,7 +143,6 @@ export async function createDispenseNFTForTokensIx(
           recentBlockhashes: SYSVAR_SLOT_HASHES_PUBKEY,
           instructionSysvarAccount: SYSVAR_INSTRUCTIONS_PUBKEY,
           bubblegumAuthority: bubblegumAuthorityPDAKey,
-          nonce: noncePDAKey,
           gummyroll: gummyrollProgramId,
           merkleSlab: merkleRollKeypair.publicKey,
           bubblegum: bubblegumProgramId

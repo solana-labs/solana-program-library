@@ -12,19 +12,19 @@ import { MetadataArgs, metadataArgsBeet } from '../types/MetadataArgs'
 
 /**
  * @category Instructions
- * @category Decompress
+ * @category DecompressV1
  * @category generated
  */
-export type DecompressInstructionArgs = {
+export type DecompressV1InstructionArgs = {
   metadata: MetadataArgs
 }
 /**
  * @category Instructions
- * @category Decompress
+ * @category DecompressV1
  * @category generated
  */
-export const decompressStruct = new beet.FixableBeetArgsStruct<
-  DecompressInstructionArgs & {
+export const decompressV1Struct = new beet.FixableBeetArgsStruct<
+  DecompressV1InstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
@@ -32,10 +32,10 @@ export const decompressStruct = new beet.FixableBeetArgsStruct<
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['metadata', metadataArgsBeet],
   ],
-  'DecompressInstructionArgs'
+  'DecompressV1InstructionArgs'
 )
 /**
- * Accounts required by the _decompress_ instruction
+ * Accounts required by the _decompressV1_ instruction
  *
  * @property [_writable_] voucher
  * @property [_writable_, **signer**] owner
@@ -48,10 +48,10 @@ export const decompressStruct = new beet.FixableBeetArgsStruct<
  * @property [] tokenMetadataProgram
  * @property [] associatedTokenProgram
  * @category Instructions
- * @category Decompress
+ * @category DecompressV1
  * @category generated
  */
-export type DecompressInstructionAccounts = {
+export type DecompressV1InstructionAccounts = {
   voucher: web3.PublicKey
   owner: web3.PublicKey
   tokenAccount: web3.PublicKey
@@ -64,23 +64,23 @@ export type DecompressInstructionAccounts = {
   associatedTokenProgram: web3.PublicKey
 }
 
-export const decompressInstructionDiscriminator = [
-  74, 60, 49, 197, 18, 110, 93, 154,
+export const decompressV1InstructionDiscriminator = [
+  54, 85, 76, 70, 228, 250, 164, 81,
 ]
 
 /**
- * Creates a _Decompress_ instruction.
+ * Creates a _DecompressV1_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category Decompress
+ * @category DecompressV1
  * @category generated
  */
-export function createDecompressInstruction(
-  accounts: DecompressInstructionAccounts,
-  args: DecompressInstructionArgs
+export function createDecompressV1Instruction(
+  accounts: DecompressV1InstructionAccounts,
+  args: DecompressV1InstructionArgs
 ) {
   const {
     voucher,
@@ -95,8 +95,8 @@ export function createDecompressInstruction(
     associatedTokenProgram,
   } = accounts
 
-  const [data] = decompressStruct.serialize({
-    instructionDiscriminator: decompressInstructionDiscriminator,
+  const [data] = decompressV1Struct.serialize({
+    instructionDiscriminator: decompressV1InstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [

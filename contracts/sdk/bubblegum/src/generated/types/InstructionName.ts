@@ -12,12 +12,12 @@ import * as beet from '@metaplex-foundation/beet'
  */
 export enum InstructionName {
   Unknown,
-  Mint,
+  MintV1,
   Redeem,
   CancelRedeem,
   Transfer,
   Delegate,
-  Decompress,
+  DecompressV1,
 }
 
 /**

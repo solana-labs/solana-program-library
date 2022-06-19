@@ -1,41 +1,50 @@
-use anchor_lang::{
-    prelude::*,
-    solana_program::{
-        keccak,
-        program::{invoke, invoke_signed},
-        program_error::ProgramError,
-        program_pack::Pack,
-        system_instruction,
+use {
+    crate::state::metaplex_anchor::MplTokenMetadata,
+    crate::state::{
+        NONCE_SIZE,
+        VOUCHER_PREFIX,
+        VOUCHER_SIZE,
+        ASSET_PREFIX,
+        leaf_schema::{LeafSchema, Version},
+        metaplex_anchor::{MasterEdition, TokenMetadata},
+        Nonce, Voucher,
+        metaplex_adapter::{MetadataArgs, TokenProgramVersion},
+        NewNFTEvent,
     },
+    gummyroll::{program::Gummyroll, Node},
+    crate::utils::{append_leaf,
+                   insert_or_append_leaf,
+                   replace_leaf,
+                   get_asset_id,
+    },
+    anchor_lang::{
+        prelude::*,
+        solana_program::{
+            keccak,
+            program::{invoke, invoke_signed},
+            program_error::ProgramError,
+            program_pack::Pack,
+            system_instruction,
+        },
+    },
+    spl_token::state::Mint as SplMint,
 };
-use gummyroll::{program::Gummyroll, Node};
-use spl_token::state::Mint as SplMint;
+
 
 pub mod state;
 pub mod utils;
-
-use crate::state::metaplex_anchor::MplTokenMetadata;
-use crate::state::{
-    leaf_schema::{LeafSchema, Version},
-    metaplex_adapter::{MetadataArgs, TokenProgramVersion},
-    metaplex_anchor::{MasterEdition, TokenMetadata},
-    NewNFTEvent, Nonce, Voucher,
-};
-use crate::utils::{append_leaf, get_asset_id, insert_or_append_leaf, replace_leaf};
-
-const NONCE_SIZE: usize = 8 + 8;
-const VOUCHER_SIZE: usize = 8 + 1 + 32 + 32 + 16 + 32 + 4 + 32 + 32 + 32;
+pub mod error;
 
 declare_id!("BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY");
 
 #[derive(Accounts)]
 pub struct CreateTree<'info> {
     #[account(
-        init,
-        seeds = [merkle_slab.key().as_ref()],
-        payer = payer,
-        space = NONCE_SIZE,
-        bump,
+    init,
+    seeds = [merkle_slab.key().as_ref()],
+    payer = payer,
+    space = NONCE_SIZE,
+    bump,
     )]
     pub authority: Account<'info, Nonce>,
     #[account(mut)]
@@ -49,20 +58,21 @@ pub struct CreateTree<'info> {
 }
 
 #[derive(Accounts)]
-pub struct Mint<'info> {
+pub struct MintV1<'info> {
     /// CHECK: This account is neither written to nor read from.
     pub mint_authority: Signer<'info>,
     #[account(
-        seeds = [merkle_slab.key().as_ref()],
-        bump,
+    seeds = [merkle_slab.key().as_ref()],
+    bump,
     )]
     /// CHECK: This account is neither written to nor read from.
     #[account(mut)]
     pub authority: Account<'info, Nonce>,
     pub gummyroll_program: Program<'info, Gummyroll>,
-    pub owner: Signer<'info>,
     /// CHECK: This account is neither written to nor read from.
-    pub delegate: UncheckedAccount<'info>,
+    pub owner: AccountInfo<'info>,
+    /// CHECK: This account is neither written to nor read from.
+    pub delegate: AccountInfo<'info>,
     #[account(mut)]
     /// CHECK: unsafe
     pub merkle_slab: UncheckedAccount<'info>,
@@ -71,8 +81,8 @@ pub struct Mint<'info> {
 #[derive(Accounts)]
 pub struct Burn<'info> {
     #[account(
-        seeds = [merkle_slab.key().as_ref()],
-        bump,
+    seeds = [merkle_slab.key().as_ref()],
+    bump,
     )]
     /// CHECK: This account is neither written to nor read from.
     pub authority: Account<'info, Nonce>,
@@ -89,8 +99,8 @@ pub struct Burn<'info> {
 #[derive(Accounts)]
 pub struct Transfer<'info> {
     #[account(
-        seeds = [merkle_slab.key().as_ref()],
-        bump,
+    seeds = [merkle_slab.key().as_ref()],
+    bump,
     )]
     /// CHECK: This account is neither written to nor read from.
     pub authority: Account<'info, Nonce>,
@@ -109,8 +119,8 @@ pub struct Transfer<'info> {
 #[derive(Accounts)]
 pub struct Delegate<'info> {
     #[account(
-        seeds = [merkle_slab.key().as_ref()],
-        bump,
+    seeds = [merkle_slab.key().as_ref()],
+    bump,
     )]
     /// CHECK: This account is neither written to nor read from.
     pub authority: Account<'info, Nonce>,
@@ -127,16 +137,16 @@ pub struct Delegate<'info> {
 
 #[derive(Accounts)]
 #[instruction(
-    _root: [u8; 32],
-    _data_hash: [u8; 32],
-    _creator_hash: [u8; 32],
-    nonce: u64,
-    _index: u32,
+_root: [u8; 32],
+_data_hash: [u8; 32],
+_creator_hash: [u8; 32],
+nonce: u64,
+_index: u32,
 )]
 pub struct Redeem<'info> {
     #[account(
-        seeds = [merkle_slab.key().as_ref()],
-        bump,
+    seeds = [merkle_slab.key().as_ref()],
+    bump,
     )]
     /// CHECK: This account is neither written to nor read from.
     pub authority: Account<'info, Nonce>,
@@ -146,14 +156,18 @@ pub struct Redeem<'info> {
     /// CHECK: This account is chekced in the instruction
     pub delegate: UncheckedAccount<'info>,
     #[account(mut)]
-    /// CHECK: unsafe
+    /// CHECK: checked in cpi
     pub merkle_slab: UncheckedAccount<'info>,
     #[account(
-        init,
-        seeds = [merkle_slab.key().as_ref(), nonce.to_le_bytes().as_ref()],
-        payer = owner,
-        space = VOUCHER_SIZE,
-        bump
+    init,
+    seeds = [
+    VOUCHER_PREFIX.as_ref(),
+    merkle_slab.key().as_ref(),
+    & nonce.to_le_bytes()
+    ],
+    payer = owner,
+    space = VOUCHER_SIZE,
+    bump
     )]
     pub voucher: Account<'info, Voucher>,
     pub system_program: Program<'info, System>,
@@ -162,8 +176,8 @@ pub struct Redeem<'info> {
 #[derive(Accounts)]
 pub struct CancelRedeem<'info> {
     #[account(
-        seeds = [merkle_slab.key().as_ref()],
-        bump,
+    seeds = [merkle_slab.key().as_ref()],
+    bump,
     )]
     /// CHECK: This account is neither written to nor read from.
     pub authority: Account<'info, Nonce>,
@@ -172,13 +186,14 @@ pub struct CancelRedeem<'info> {
     /// CHECK: unsafe
     pub merkle_slab: UncheckedAccount<'info>,
     #[account(
-        mut,
-        close = owner,
-        seeds = [
-            merkle_slab.key().as_ref(),
-            voucher.leaf_schema.nonce().to_le_bytes().as_ref()
-        ],
-        bump
+    mut,
+    close = owner,
+    seeds = [
+    VOUCHER_PREFIX.as_ref(),
+    merkle_slab.key().as_ref(),
+    & voucher.leaf_schema.nonce().to_le_bytes()
+    ],
+    bump
     )]
     pub voucher: Account<'info, Voucher>,
     #[account(mut)]
@@ -186,15 +201,16 @@ pub struct CancelRedeem<'info> {
 }
 
 #[derive(Accounts)]
-pub struct Decompress<'info> {
+pub struct DecompressV1<'info> {
     #[account(
-        mut,
-        close = owner,
-        seeds = [
-            voucher.merkle_slab.as_ref(),
-            voucher.leaf_schema.nonce().to_le_bytes().as_ref()
-        ],
-        bump
+    mut,
+    close = owner,
+    seeds = [
+    VOUCHER_PREFIX.as_ref(),
+    voucher.merkle_slab.as_ref(),
+    voucher.leaf_schema.nonce().to_le_bytes().as_ref()
+    ],
+    bump
     )]
     pub voucher: Box<Account<'info, Voucher>>,
     #[account(mut)]
@@ -204,18 +220,18 @@ pub struct Decompress<'info> {
     pub token_account: UncheckedAccount<'info>,
     /// CHECK: versioning is handled in the instruction
     #[account(
-        mut,
-        seeds = [
-            voucher.leaf_schema.id().as_ref(),
-            token_program.key().as_ref()
-        ],
-        bump
+    mut,
+    seeds = [
+    voucher.leaf_schema.id().as_ref(),
+    token_program.key().as_ref()
+    ],
+    bump
     )]
     pub mint: UncheckedAccount<'info>,
     /// CHECK:
     #[account(
-        seeds=[mint.key().as_ref()],
-        bump,
+    seeds = [mint.key().as_ref()],
+    bump,
     )]
     pub mint_authority: UncheckedAccount<'info>,
     /// CHECK:
@@ -237,8 +253,8 @@ pub struct Decompress<'info> {
 #[derive(Accounts)]
 pub struct Compress<'info> {
     #[account(
-        seeds = [merkle_slab.key().as_ref()],
-        bump,
+    seeds = [merkle_slab.key().as_ref()],
+    bump,
     )]
     /// CHECK: This account is neither written to nor read from.
     pub authority: UncheckedAccount<'info>,
@@ -274,12 +290,14 @@ pub fn hash_metadata(metadata: &MetadataArgs) -> Result<[u8; 32]> {
 
 pub enum InstructionName {
     Unknown,
-    Mint,
+    MintV1,
     Redeem,
     CancelRedeem,
     Transfer,
     Delegate,
-    Decompress,
+    DecompressV1,
+    Compress,
+    Burn,
 }
 
 pub fn get_instruction_type(full_bytes: &[u8]) -> InstructionName {
@@ -289,18 +307,22 @@ pub fn get_instruction_type(full_bytes: &[u8]) -> InstructionName {
         disc
     };
     match disc {
-        [51, 57, 225, 47, 182, 146, 137, 166] => InstructionName::Mint,
+        [145, 98, 192, 118, 184, 147, 118, 104] => InstructionName::MintV1,
         [111, 76, 232, 50, 39, 175, 48, 242] => InstructionName::CancelRedeem,
         [184, 12, 86, 149, 70, 196, 97, 225] => InstructionName::Redeem,
         [163, 52, 200, 231, 140, 3, 69, 186] => InstructionName::Transfer,
         [90, 147, 75, 178, 85, 88, 4, 137] => InstructionName::Delegate,
-        [74, 60, 49, 197, 18, 110, 93, 154] => InstructionName::Decompress,
+        [54, 85, 76, 70, 228, 250, 164, 81] => InstructionName::DecompressV1,
+        [116, 110, 29, 56, 107, 219, 42, 93] => InstructionName::Burn,
+        [82, 193, 176, 117, 176, 21, 115, 253] => InstructionName::Compress,
         _ => InstructionName::Unknown,
     }
 }
 
 #[program]
 pub mod bubblegum {
+    use crate::error::BubblegumError;
+    use crate::utils::assert_pubkey_equal;
     use super::*;
 
     pub fn create_tree(
@@ -324,7 +346,7 @@ pub mod bubblegum {
         gummyroll::cpi::init_empty_gummyroll(cpi_ctx, max_depth, max_buffer_size)
     }
 
-    pub fn mint(ctx: Context<Mint>, version: Version, message: MetadataArgs) -> Result<()> {
+    pub fn mint_v1(ctx: Context<MintV1>, message: MetadataArgs) -> Result<()> {
         // TODO -> Pass collection in check collection authority or collection delegate authority signer
         // TODO -> Separate V1 / V1 into seperate instructions
         //
@@ -336,6 +358,7 @@ pub mod bubblegum {
         let creator_data = message
             .creators
             .iter()
+            //TODO include verified
             .map(|c| [c.address.as_ref(), &[c.share]].concat())
             .collect::<Vec<_>>();
         let creator_hash = keccak::hashv(
@@ -345,8 +368,9 @@ pub mod bubblegum {
                 .collect::<Vec<&[u8]>>()
                 .as_ref(),
         );
+        let asset_id = get_asset_id(&merkle_slab.key(), nonce.count);
         let leaf = LeafSchema::new_v0(
-            get_asset_id(&merkle_slab.key(), nonce.count),
+            asset_id,
             owner,
             delegate,
             nonce.count,
@@ -354,7 +378,7 @@ pub mod bubblegum {
             creator_hash.to_bytes(),
         );
         emit!(NewNFTEvent {
-            version,
+            version: Version::V1,
             metadata: message,
             nonce: nonce.count
         });
@@ -379,6 +403,7 @@ pub mod bubblegum {
         nonce: u64,
         index: u32,
     ) -> Result<()> {
+        // TODO add back version to select hash schema
         let merkle_slab = ctx.accounts.merkle_slab.to_account_info();
         let owner = ctx.accounts.owner.to_account_info();
         let delegate = ctx.accounts.delegate.to_account_info();
@@ -439,14 +464,8 @@ pub mod bubblegum {
             data_hash,
             creator_hash,
         );
-        let new_leaf = LeafSchema::new_v0(
-            asset_id,
-            owner,
-            new_delegate,
-            nonce,
-            data_hash,
-            creator_hash,
-        );
+        let new_leaf =
+            LeafSchema::new_v0(asset_id, owner, new_delegate, nonce, data_hash, creator_hash);
         emit!(new_leaf.to_event());
         replace_leaf(
             &merkle_slab.key(),
@@ -540,8 +559,12 @@ pub mod bubblegum {
     ) -> Result<()> {
         let voucher = &ctx.accounts.voucher;
         match ctx.accounts.voucher.leaf_schema {
-            LeafSchema::V0 { owner, .. } => assert_eq!(ctx.accounts.owner.key(), owner),
-        };
+            LeafSchema::V1 { owner, .. } =>
+                assert_pubkey_equal(&ctx.accounts.owner.key(),
+                                    &owner,
+                                    Some(BubblegumError::AssetOwnerMismatch.into()),
+                ),
+        }?;
         let merkle_slab = ctx.accounts.merkle_slab.to_account_info();
         emit!(voucher.leaf_schema.to_event());
         insert_or_append_leaf(
@@ -557,7 +580,7 @@ pub mod bubblegum {
         )
     }
 
-    pub fn decompress(ctx: Context<Decompress>, metadata: MetadataArgs) -> Result<()> {
+    pub fn decompress_v1(ctx: Context<DecompressV1>, metadata: MetadataArgs) -> Result<()> {
         // Allocate and create mint
         let data_hash = hash_metadata(&metadata)?;
         assert_eq!(ctx.accounts.voucher.leaf_schema.data_hash(), data_hash);

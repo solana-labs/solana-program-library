@@ -13,7 +13,7 @@ import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import { Bubblegum } from "../../target/types/bubblegum";
 import {
   createCreateTreeInstruction,
-  createMintInstruction,
+  createMintV1Instruction,
   createTransferInstruction,
   TokenProgramVersion,
   Version,
@@ -127,7 +127,7 @@ async function main() {
     }
     if (Math.random() < 0.5) {
       let tx = new Transaction().add(
-        createMintInstruction(
+        createMintV1Instruction(
           {
             mintAuthority: payer.publicKey,
             authority: authority,
@@ -137,7 +137,6 @@ async function main() {
             delegate: wallets[i].publicKey,
           },
           {
-            version: Version.V0,
             message: {
               name: `BUBBLE #${numMints}`,
               symbol: "BUBBLE",
@@ -157,13 +156,9 @@ async function main() {
           }
         )
       );
-      await BubblegumCtx.provider.connection.sendTransaction(
-        tx,
-        [payer, wallets[i]],
-        {
-          skipPreflight: true,
-        }
-      );
+      await BubblegumCtx.provider.connection.sendTransaction(tx, [payer], {
+        skipPreflight: true,
+      });
       numMints++;
     } else {
       let response = await fetch(

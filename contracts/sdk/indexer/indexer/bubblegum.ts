@@ -31,10 +31,10 @@ function skipTx(sequenceNumber, startSeq, endSeq): boolean {
 
 export type BubblegumIx =
   | "Redeem"
-  | "Decompress"
+  | "DecompressV1"
   | "Transfer"
   | "CreateTree"
-  | "Mint"
+  | "MintV1"
   | "Burn"
   | "CancelRedeem"
   | "Delegate";
@@ -47,7 +47,7 @@ export type NewLeafEvent = {
 
 export type LeafSchemaEvent = {
   schema: {
-    v0: {
+    v1: {
       id: PublicKey;
       owner: PublicKey;
       delegate: PublicKey;
@@ -77,7 +77,7 @@ export async function parseBubblegum(
         optionalInfo
       );
       break;
-    case "Mint":
+    case "MintV1":
       await parseBubblegumMint(db, parsedLog.logs, slot, parser, optionalInfo);
       break;
     case "Redeem":
@@ -159,7 +159,7 @@ export async function parseBubblegumMint(
     return;
   }
   console.log(`Sequence Number: ${sequenceNumber}`);
-  await db.updateNFTMetadata(newLeafData, leafSchema.schema.v0.id.toBase58());
+  await db.updateNFTMetadata(newLeafData, leafSchema.schema.v1.id.toBase58());
   await db.updateLeafSchema(
     leafSchema,
     new PublicKey(changeLog.path[0].node),

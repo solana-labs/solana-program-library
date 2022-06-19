@@ -7,49 +7,46 @@
 
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
-import { Version, versionBeet } from '../types/Version'
 import { MetadataArgs, metadataArgsBeet } from '../types/MetadataArgs'
 
 /**
  * @category Instructions
- * @category Mint
+ * @category MintV1
  * @category generated
  */
-export type MintInstructionArgs = {
-  version: Version
+export type MintV1InstructionArgs = {
   message: MetadataArgs
 }
 /**
  * @category Instructions
- * @category Mint
+ * @category MintV1
  * @category generated
  */
-export const mintStruct = new beet.FixableBeetArgsStruct<
-  MintInstructionArgs & {
+export const mintV1Struct = new beet.FixableBeetArgsStruct<
+  MintV1InstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['version', versionBeet],
     ['message', metadataArgsBeet],
   ],
-  'MintInstructionArgs'
+  'MintV1InstructionArgs'
 )
 /**
- * Accounts required by the _mint_ instruction
+ * Accounts required by the _mintV1_ instruction
  *
  * @property [**signer**] mintAuthority
  * @property [_writable_] authority
  * @property [] gummyrollProgram
- * @property [**signer**] owner
+ * @property [] owner
  * @property [] delegate
  * @property [_writable_] merkleSlab
  * @category Instructions
- * @category Mint
+ * @category MintV1
  * @category generated
  */
-export type MintInstructionAccounts = {
+export type MintV1InstructionAccounts = {
   mintAuthority: web3.PublicKey
   authority: web3.PublicKey
   gummyrollProgram: web3.PublicKey
@@ -58,23 +55,23 @@ export type MintInstructionAccounts = {
   merkleSlab: web3.PublicKey
 }
 
-export const mintInstructionDiscriminator = [
-  51, 57, 225, 47, 182, 146, 137, 166,
+export const mintV1InstructionDiscriminator = [
+  145, 98, 192, 118, 184, 147, 118, 104,
 ]
 
 /**
- * Creates a _Mint_ instruction.
+ * Creates a _MintV1_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category Mint
+ * @category MintV1
  * @category generated
  */
-export function createMintInstruction(
-  accounts: MintInstructionAccounts,
-  args: MintInstructionArgs
+export function createMintV1Instruction(
+  accounts: MintV1InstructionAccounts,
+  args: MintV1InstructionArgs
 ) {
   const {
     mintAuthority,
@@ -85,8 +82,8 @@ export function createMintInstruction(
     merkleSlab,
   } = accounts
 
-  const [data] = mintStruct.serialize({
-    instructionDiscriminator: mintInstructionDiscriminator,
+  const [data] = mintV1Struct.serialize({
+    instructionDiscriminator: mintV1InstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
@@ -108,7 +105,7 @@ export function createMintInstruction(
     {
       pubkey: owner,
       isWritable: false,
-      isSigner: true,
+      isSigner: false,
     },
     {
       pubkey: delegate,
