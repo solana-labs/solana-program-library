@@ -12,11 +12,11 @@ test-bpf = []
 
 [dependencies]
 arrayref = "0.3.6"
-solana-program = "=1.10.19"
+solana-program = "=1.10.26"
 
 [dev-dependencies]
-solana-program-test = "=1.10.19"
-solana-sdk = "=1.10.19"
+solana-program-test = "=1.10.26"
+solana-sdk = "=1.10.26"
 
 [lib]
 crate-type = ["cdylib", "lib"]
