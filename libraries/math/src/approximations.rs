@@ -69,7 +69,7 @@ pub fn ln<T: Float + Clone>(input: T) -> Option<T> {
         sum += 2_f64 * y.powi(2*k + 1) / ((2*k + 1) as f64);
     }
 
-    T::from(sum + ( std::f64::consts::LN_10 * (n - 1) as f64 ))
+    T::from(sum + (std::f64::consts::LN_10 * (n - 1) as f64))
 }
 
 /// Calculate the normal cdf of the given number
@@ -154,13 +154,13 @@ mod tests {
 
     fn check_ln(input: f32) {
         if input <= 0_f32 {
-            assert!(ln(input).is_none() == true);
+            assert!(ln(input).is_none());
             return;
         }
 
         let approx_log = ln(input).unwrap();
         let std_log = input.ln();
-        let error = (approx_log - std_log).abs();
+        let error = (approx_log - std_log).abs() as f64;
         assert!(error <= 0.000_000_000_1);
     }
 
