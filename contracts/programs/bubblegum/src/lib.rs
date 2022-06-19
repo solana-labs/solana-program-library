@@ -12,10 +12,14 @@ use {
         NewNFTEvent,
     },
     gummyroll::{program::Gummyroll, Node},
+    crate::error::BubblegumError,
     crate::utils::{append_leaf,
                    insert_or_append_leaf,
                    replace_leaf,
                    get_asset_id,
+                   cmp_bytes,
+                   cmp_pubkeys,
+                   assert_pubkey_equal,
     },
     anchor_lang::{
         prelude::*,
@@ -321,8 +325,6 @@ pub fn get_instruction_type(full_bytes: &[u8]) -> InstructionName {
 
 #[program]
 pub mod bubblegum {
-    use crate::error::BubblegumError;
-    use crate::utils::assert_pubkey_equal;
     use super::*;
 
     pub fn create_tree(
@@ -582,8 +584,22 @@ pub mod bubblegum {
 
     pub fn decompress_v1(ctx: Context<DecompressV1>, metadata: MetadataArgs) -> Result<()> {
         // Allocate and create mint
-        let data_hash = hash_metadata(&metadata)?;
-        assert_eq!(ctx.accounts.voucher.leaf_schema.data_hash(), data_hash);
+        let incoming_data_hash = hash_metadata(&metadata)?;
+        match ctx.accounts.voucher.leaf_schema {
+            LeafSchema::V1 {
+                owner,
+                data_hash,
+                ..
+            } => {
+                if !cmp_bytes(&data_hash, &incoming_data_hash, 32) {
+                    return Err(BubblegumError::HashingMismatch.into());
+                }
+                if !cmp_pubkeys(&owner, ctx.accounts.owner.key) {
+                    return Err(BubblegumError::AssetOwnerMismatch.into());
+                }
+                Ok::<(), ProgramError>(())
+            }
+        }?;
         let voucher = &ctx.accounts.voucher;
         match metadata.token_program_version {
             TokenProgramVersion::Original => {

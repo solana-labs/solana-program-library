@@ -95,6 +95,7 @@ impl LeafSchema {
             LeafSchema::V1 { data_hash, .. } => *data_hash,
         }
     }
+    
 
     pub fn to_event(&self) -> LeafSchemaEvent {
         LeafSchemaEvent {

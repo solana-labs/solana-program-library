@@ -87,6 +87,10 @@ pub fn cmp_pubkeys(a: &Pubkey, b: &Pubkey) -> bool {
     sol_memcmp(a.as_ref(), b.as_ref(), PUBKEY_BYTES) == 0
 }
 
+pub fn cmp_bytes(a: &[u8], b: &[u8], size: usize) -> bool {
+    sol_memcmp(a.as_ref(), b.as_ref(), size) == 0
+}
+
 pub fn assert_pubkey_equal(a: &Pubkey, b: &Pubkey, error: Option<anchor_lang::error::Error>) -> Result<()>  {
     if !cmp_pubkeys(a, b) {
         if error.is_some() {

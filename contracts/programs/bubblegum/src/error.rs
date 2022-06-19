@@ -6,4 +6,8 @@ pub enum BubblegumError {
     AssetOwnerMismatch,
     #[msg("PublicKeyMismatch")]
     PublicKeyMismatch,
+    #[msg("Hashing Mismatch Within Leaf Schema")]
+    HashingMismatch,
+    #[msg("Unsupported Schema Version")]
+    UnsupportedSchemaVersion,
 }
