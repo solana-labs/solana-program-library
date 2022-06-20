@@ -10,6 +10,7 @@ use {
         Nonce, Voucher,
         metaplex_adapter::{MetadataArgs, TokenProgramVersion},
         NewNFTEvent,
+        NFTDecompressionEvent
     },
     gummyroll::{program::Gummyroll, Node},
     crate::error::BubblegumError,
@@ -585,10 +586,11 @@ pub mod bubblegum {
     pub fn decompress_v1(ctx: Context<DecompressV1>, metadata: MetadataArgs) -> Result<()> {
         // Allocate and create mint
         let incoming_data_hash = hash_metadata(&metadata)?;
-        match ctx.accounts.voucher.leaf_schema {
+        let event = match ctx.accounts.voucher.leaf_schema {
             LeafSchema::V1 {
                 owner,
                 data_hash,
+                nonce,
                 ..
             } => {
                 if !cmp_bytes(&data_hash, &incoming_data_hash, 32) {
@@ -597,8 +599,14 @@ pub mod bubblegum {
                 if !cmp_pubkeys(&owner, ctx.accounts.owner.key) {
                     return Err(BubblegumError::AssetOwnerMismatch.into());
                 }
-                Ok::<(), ProgramError>(())
+                Ok(NFTDecompressionEvent {
+                    version: Version::V1,
+                    tree_id: ctx.accounts.voucher.merkle_slab.key(),
+                    id: get_asset_id(&ctx.accounts.voucher.merkle_slab.key(), nonce),
+                    nonce: nonce
+                })
             }
+            _ => Err(BubblegumError::UnsupportedSchemaVersion)
         }?;
         let voucher = &ctx.accounts.voucher;
         match metadata.token_program_version {
@@ -756,6 +764,7 @@ pub mod bubblegum {
                 &[ctx.bumps["mint_authority"]],
             ]],
         )?;
+        emit!(event);
         Ok(())
     }
 
