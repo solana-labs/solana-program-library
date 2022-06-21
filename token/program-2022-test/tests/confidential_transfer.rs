@@ -1032,20 +1032,6 @@ async fn ct_transfer_with_fee() {
         )
         .await;
 
-    let state = token
-        .get_account_info(&alice_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-    assert_eq!(
-        alice_meta
-            .ae_key
-            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
-        Some(0),
-    );
-
     // Alice account cannot be closed since there are withheld fees from self-transfer
     token
         .confidential_transfer_empty_account(
@@ -1092,14 +1078,6 @@ async fn ct_transfer_with_fee() {
             bob_meta.ae_key.encrypt(97_u64),
         )
         .await
-        .unwrap();
-
-    let state = token
-        .get_account_info(&bob_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
         .unwrap();
 
     bob_meta
