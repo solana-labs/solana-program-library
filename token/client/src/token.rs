@@ -1400,7 +1400,7 @@ where
         let proof_data = confidential_transfer::instruction::WithdrawWithheldTokensData::new(
             withdraw_withheld_authority_elgamal_keypair,
             &destination_extension.encryption_pubkey.try_into().unwrap(),
-            &encrypted_aggregate_withheld_amount,
+            encrypted_aggregate_withheld_amount,
             amount,
         )
         .map_err(TokenError::Proof)?;
