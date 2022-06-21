@@ -1254,3 +1254,110 @@ async fn ct_withdraw_withheld_tokens_from_mint() {
         )
         .await;
 }
+
+#[tokio::test]
+async fn ct_withdraw_withheld_tokens_from_accounts() {
+    let ConfidentialTransferMintWithKeypairs {
+        ct_mint,
+        ct_mint_withdraw_withheld_authority_encryption_keypair,
+        ..
+    } = ConfidentialTransferMintWithKeypairs::new();
+
+    let ct_mint_withdraw_withheld_authority = Keypair::new();
+
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(Pubkey::new_unique()),
+                withdraw_withheld_authority: Some(ct_mint_withdraw_withheld_authority.pubkey()),
+                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+                maximum_fee: TEST_MAXIMUM_FEE,
+            },
+            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+        ])
+        .await
+        .unwrap();
+
+    let TokenContext {
+        token,
+        alice,
+        bob,
+        mint_authority,
+        decimals,
+        ..
+    } = context.token_context.unwrap();
+
+    let epoch_info = test_epoch_info();
+
+    let alice_meta =
+        ConfidentialTokenAccountMeta::with_tokens(&token, &alice, &mint_authority, 100, decimals)
+            .await;
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob).await;
+
+    // Test fee is 2.5% so the withheld fees should be 3
+    token
+        .confidential_transfer_transfer_with_fee(
+            &alice_meta.token_account,
+            &bob_meta.token_account,
+            &alice,
+            100,
+            100,
+            &alice_meta.elgamal_keypair,
+            alice_meta.ae_key.encrypt(0_u64),
+            &epoch_info,
+        )
+        .await
+        .unwrap();
+
+    let state = token
+        .get_account_info(&bob_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+
+    assert_eq!(
+        extension
+            .withheld_amount
+            .decrypt(&ct_mint_withdraw_withheld_authority_encryption_keypair.secret),
+        Some(3),
+    );
+
+    token
+        .confidential_transfer_withdraw_withheld_tokens_from_accounts(
+            &ct_mint_withdraw_withheld_authority,
+            &ct_mint_withdraw_withheld_authority_encryption_keypair,
+            &alice_meta.token_account,
+            3_u64,
+            &extension.withheld_amount.try_into().unwrap(),
+            &[&bob_meta.token_account],
+        )
+        .await
+        .unwrap();
+
+    bob_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance_lo: 97,
+                pending_balance_hi: 0,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
+
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance_lo: 3,
+                pending_balance_hi: 0,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
+}

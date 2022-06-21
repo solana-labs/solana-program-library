@@ -1386,14 +1386,9 @@ where
         withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
         destination_token_account: &Pubkey,
         amount: u64,
+        encrypted_aggregate_withheld_amount: &ElGamalCiphertext,
         sources: &[&Pubkey],
     ) -> TokenResult<T::Output> {
-        let mint_state = self.get_mint_info().await.unwrap();
-
-        let ct_mint = mint_state
-            .get_extension::<confidential_transfer::ConfidentialTransferMint>()
-            .unwrap();
-
         let destination_state = self
             .get_account_info(destination_token_account)
             .await
@@ -1405,7 +1400,7 @@ where
         let proof_data = confidential_transfer::instruction::WithdrawWithheldTokensData::new(
             withdraw_withheld_authority_elgamal_keypair,
             &destination_extension.encryption_pubkey.try_into().unwrap(),
-            &ct_mint.withheld_amount.try_into().unwrap(),
+            encrypted_aggregate_withheld_amount,
             amount,
         )
         .map_err(TokenError::Proof)?;
