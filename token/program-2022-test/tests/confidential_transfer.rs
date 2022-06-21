@@ -852,6 +852,7 @@ async fn ct_transfer() {
         )
         .await
         .unwrap_err();
+
     assert_eq!(
         err,
         TokenClientError::Client(Box::new(TransportError::TransactionError(
@@ -859,21 +860,17 @@ async fn ct_transfer() {
         )))
     );
 
-    let state = token
-        .get_account_info(&bob_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-
-    // TODO: verify bob_meta pending and available balance once syscall lands
-    assert_eq!(
-        bob_meta
-            .ae_key
-            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
-        Some(0),
-    );
+    bob_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance_lo: 42,
+                pending_balance_hi: 0,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
 
     token
         .confidential_transfer_apply_pending_balance(
@@ -885,21 +882,17 @@ async fn ct_transfer() {
         .await
         .unwrap();
 
-    let state = token
-        .get_account_info(&bob_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-
-    // TODO: verify bob_meta pending and available balance once syscall lands
-    assert_eq!(
-        bob_meta
-            .ae_key
-            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
-        Some(42),
-    );
+    bob_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance_lo: 0,
+                pending_balance_hi: 0,
+                available_balance: 42,
+                decryptable_available_balance: 42,
+            },
+        )
+        .await;
 }
 
 #[tokio::test]
@@ -1039,20 +1032,6 @@ async fn ct_transfer_with_fee() {
         )
         .await;
 
-    let state = token
-        .get_account_info(&alice_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-    assert_eq!(
-        alice_meta
-            .ae_key
-            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
-        Some(0),
-    );
-
     // Alice account cannot be closed since there are withheld fees from self-transfer
     token
         .confidential_transfer_empty_account(
@@ -1071,6 +1050,7 @@ async fn ct_transfer_with_fee() {
         )
         .await
         .unwrap_err();
+
     assert_eq!(
         err,
         TokenClientError::Client(Box::new(TransportError::TransactionError(
@@ -1078,47 +1058,39 @@ async fn ct_transfer_with_fee() {
         )))
     );
 
-    let state = token
-        .get_account_info(&bob_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-
-    // TODO: check pending and available balance once curve syscall lands
-    assert_eq!(
-        bob_meta
-            .ae_key
-            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
-        Some(0),
-    );
+    bob_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance_lo: 97,
+                pending_balance_hi: 0,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
 
     token
         .confidential_transfer_apply_pending_balance(
             &bob_meta.token_account,
             &bob,
             1,
-            bob_meta.ae_key.encrypt(94_u64),
+            bob_meta.ae_key.encrypt(97_u64),
         )
         .await
         .unwrap();
 
-    let state = token
-        .get_account_info(&bob_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-
-    // TODO: check pending and available balance once curve syscall lands
-    assert_eq!(
-        bob_meta
-            .ae_key
-            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
-        Some(94),
-    );
+    bob_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance_lo: 0,
+                pending_balance_hi: 0,
+                available_balance: 97,
+                decryptable_available_balance: 97,
+            },
+        )
+        .await;
 }
 
 #[tokio::test]
