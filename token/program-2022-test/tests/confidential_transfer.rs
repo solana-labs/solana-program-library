@@ -1310,7 +1310,6 @@ async fn ct_withdraw_withheld_tokens_from_accounts() {
         .await
         .unwrap();
 
-
     let state = token
         .get_account_info(&bob_meta.token_account)
         .await
@@ -1334,9 +1333,9 @@ async fn ct_withdraw_withheld_tokens_from_accounts() {
             3_u64,
             &extension.withheld_amount.try_into().unwrap(),
             &[&bob_meta.token_account],
-    )
-    .await
-    .unwrap();
+        )
+        .await
+        .unwrap();
 
     bob_meta
         .check_balances(
