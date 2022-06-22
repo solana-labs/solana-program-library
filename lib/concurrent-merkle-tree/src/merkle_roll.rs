@@ -126,48 +126,12 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         } else {
             let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
             fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
-
-            // It's important to identify the root index
-            // to remove possibility of incorrectly failing
-            // due to a leaf collision that happened before the
-            // root of the given proof
-            let mut updatable_leaf_node = leaf;
-            match self.find_root_in_changelog(current_root) {
-                Some(matching_changelog_index) => {
-                    if !self.fast_forward_proof(
-                        &mut updatable_leaf_node,
-                        &mut proof,
-                        leaf_index,
-                        matching_changelog_index,
-                        false,
-                    ) {
-                        solana_logging!(
-                            "Leaf was updated since proof was issued. Failing to verify"
-                        );
-                        return Err(CMTError::LeafContentsModified);
-                    }
-                }
-                None => {
-                    if !self.fast_forward_proof(
-                        &mut updatable_leaf_node,
-                        &mut proof,
-                        leaf_index,
-                        0,
-                        true,
-                    ) {
-                        solana_logging!(
-                            "Leaf was updated since proof was issued. Failing to verify"
-                        );
-                        return Err(CMTError::LeafContentsModified);
-                    }
-                }
-            }
-
-            if recompute(leaf, &proof, leaf_index) != self.get_change_log().root {
+            let valid_root =
+                self.check_valid_leaf(current_root, leaf, &mut proof, leaf_index, true)?;
+            if !valid_root {
                 solana_logging!("Proof failed to verify");
                 return Err(CMTError::InvalidProof);
             }
-
             Ok(Node::default())
         }
     }
@@ -285,7 +249,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
                 new_leaf,
                 &mut proof,
                 index,
-                false,
+                true,
             );
             log_compute!();
             root
@@ -310,7 +274,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     /// Returns false if the leaf was updated in the change log
     #[inline(always)]
     fn fast_forward_proof(
-        &mut self,
+        &self,
         leaf: &mut Node,
         proof: &mut [Node; MAX_DEPTH],
         leaf_index: u32,
@@ -358,33 +322,30 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         proof_leaf_unchanged
     }
 
-    /// Note: Enabling `use_full_buffer` will skip root matching and just fast forward the given proof
-    /// from the beginning of the buffer. This option significantly reduces security
     #[inline(always)]
-    fn try_apply_proof(
-        &mut self,
+    fn check_valid_leaf(
+        &self,
         current_root: Node,
         leaf: Node,
-        new_leaf: Node,
         proof: &mut [Node; MAX_DEPTH],
         leaf_index: u32,
-        use_full_buffer: bool,
-    ) -> Result<Node, CMTError> {
-        solana_logging!("Active Index: {}", self.active_index);
-        solana_logging!("Rightmost Index: {}", self.rightmost_proof.index);
-        solana_logging!("Buffer Size: {}", self.buffer_size);
-        solana_logging!("Leaf Index: {}", leaf_index);
-
+        allow_inferred_proof: bool,
+    ) -> Result<bool, CMTError> {
         let mask: usize = MAX_BUFFER_SIZE - 1;
-        let changelog_buffer_index: u64;
-        if use_full_buffer {
-            changelog_buffer_index = self.active_index.wrapping_sub(self.buffer_size) & mask as u64
-        } else {
-            match self.find_root_in_changelog(current_root) {
-                Some(matching_changelog_index) => {
-                    changelog_buffer_index = matching_changelog_index;
+        let (changelog_buffer_index, use_full_buffer) = match self
+            .find_root_in_changelog(current_root)
+        {
+            Some(matching_changelog_index) => (matching_changelog_index, false),
+            None => {
+                if allow_inferred_proof {
+                    solana_logging!("Failed to find root in change log -> replaying full buffer");
+                    (
+                        self.active_index.wrapping_sub(self.buffer_size - 1) & mask as u64,
+                        true,
+                    )
+                } else {
+                    return Err(CMTError::RootNotFound);
                 }
-                None => return Err(CMTError::RootNotFound),
             }
         };
 
@@ -396,16 +357,33 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             changelog_buffer_index,
             use_full_buffer,
         );
-        let valid_root =
-            recompute(updatable_leaf_node, proof, leaf_index) == self.get_change_log().root;
-        if !valid_root {
-            return Err(CMTError::InvalidProof);
-        }
-
         if !proof_leaf_unchanged {
             return Err(CMTError::LeafContentsModified);
         }
+        Ok(recompute(updatable_leaf_node, proof, leaf_index) == self.get_change_log().root)
+    }
 
+    /// Note: Enabling `allow_inferred_proof` will fast forward the given proof
+    /// from the beginning of the buffer in the case that the supplied root is not in the buffer.
+    #[inline(always)]
+    fn try_apply_proof(
+        &mut self,
+        current_root: Node,
+        leaf: Node,
+        new_leaf: Node,
+        proof: &mut [Node; MAX_DEPTH],
+        leaf_index: u32,
+        allow_inferred_proof: bool,
+    ) -> Result<Node, CMTError> {
+        solana_logging!("Active Index: {}", self.active_index);
+        solana_logging!("Rightmost Index: {}", self.rightmost_proof.index);
+        solana_logging!("Buffer Size: {}", self.buffer_size);
+        solana_logging!("Leaf Index: {}", leaf_index);
+        let valid_root =
+            self.check_valid_leaf(current_root, leaf, proof, leaf_index, allow_inferred_proof)?;
+        if !valid_root {
+            return Err(CMTError::InvalidProof);
+        }
         self.increment_active_index();
         self.sequence_number = self.sequence_number.saturating_add(1);
         Ok(self.update_buffers_from_proof(new_leaf, proof, leaf_index))
