@@ -28,7 +28,11 @@ use solana_program::{
 };
 use spl_token::solana_program::instruction::AccountMeta;
 use spl_token::state::{Account, Mint};
-use std::{convert::TryInto, result::Result};
+use std::{
+    cmp::{max, min},
+    convert::TryInto,
+    result::Result,
+};
 use switchboard_program::{
     get_aggregator, get_aggregator_result, AggregatorState, RoundResult, SwitchboardAccountType,
 };
@@ -897,8 +901,34 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
 
     obligation.deposited_value = deposited_value;
     obligation.borrowed_value = borrowed_value;
-    obligation.allowed_borrow_value = allowed_borrow_value;
-    obligation.unhealthy_borrow_value = unhealthy_borrow_value;
+
+    // Wednesday, June 22, 2022 12:00:00 PM GMT
+    let start_timestamp = 1655899200u64;
+    // Wednesday, June 28, 2022 8:00:00 AM GMT
+    let end_timestamp = 1656403200u64;
+    let current_timestamp = clock.unix_timestamp as u64;
+    let current_timestamp_in_range = min(max(start_timestamp, current_timestamp), end_timestamp);
+    let numerator = end_timestamp
+        .checked_sub(current_timestamp_in_range)
+        .ok_or(LendingError::MathOverflow)?;
+    let denominator = end_timestamp
+        .checked_sub(start_timestamp)
+        .ok_or(LendingError::MathOverflow)?;
+
+    let start_global_unhealthy_borrow_value = Decimal::from(120000000u64);
+    let end_global_unhealthy_borrow_value = Decimal::from(50000000u64);
+
+    let global_unhealthy_borrow_value = end_global_unhealthy_borrow_value.try_add(
+        start_global_unhealthy_borrow_value
+            .try_sub(end_global_unhealthy_borrow_value)?
+            .try_mul(numerator)?
+            .try_div(denominator)?,
+    )?;
+    let global_allowed_borrow_value =
+        global_unhealthy_borrow_value.try_sub(Decimal::from(5000000u64))?;
+
+    obligation.allowed_borrow_value = min(allowed_borrow_value, global_allowed_borrow_value);
+    obligation.unhealthy_borrow_value = min(unhealthy_borrow_value, global_unhealthy_borrow_value);
 
     obligation.last_update.update_slot(clock.slot);
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;

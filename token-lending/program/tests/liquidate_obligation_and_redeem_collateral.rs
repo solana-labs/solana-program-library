@@ -12,7 +12,7 @@ use solana_sdk::{
 use solend_program::{
     instruction::{liquidate_obligation_and_redeem_reserve_collateral, refresh_obligation},
     processor::process_instruction,
-    state::INITIAL_COLLATERAL_RATIO,
+    state::{INITIAL_COLLATERAL_RATIO, LIQUIDATION_CLOSE_FACTOR},
 };
 use std::cmp::max;
 
@@ -32,10 +32,11 @@ async fn test_success() {
     // 100 SOL * 80% LTV -> 80 SOL * 20 USDC -> 1600 USDC borrow
     const USDC_BORROW_AMOUNT_FRACTIONAL: u64 = 1_600 * FRACTIONAL_TO_USDC;
     // 1600 USDC * 20% -> 320 USDC liquidation
-    const USDC_LIQUIDATION_AMOUNT_FRACTIONAL: u64 = USDC_BORROW_AMOUNT_FRACTIONAL / 5;
+    const USDC_LIQUIDATION_AMOUNT_FRACTIONAL: u64 =
+        USDC_BORROW_AMOUNT_FRACTIONAL * (LIQUIDATION_CLOSE_FACTOR as u64) / 100;
     // 320 USDC / 20 USDC per SOL -> 16 SOL + 10% bonus -> 17.6 SOL (88/5)
     const SOL_LIQUIDATION_AMOUNT_LAMPORTS: u64 =
-        LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO * 88 / 5;
+        LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO * 88 * (LIQUIDATION_CLOSE_FACTOR as u64) / 100;
 
     const SOL_RESERVE_COLLATERAL_LAMPORTS: u64 = 2 * SOL_DEPOSIT_AMOUNT_LAMPORTS;
     const USDC_RESERVE_LIQUIDITY_FRACTIONAL: u64 = 2 * USDC_BORROW_AMOUNT_FRACTIONAL;
