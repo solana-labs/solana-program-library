@@ -40,7 +40,7 @@ async function main() {
   await BubblegumCtx.provider.connection.confirmTransaction(
     await BubblegumCtx.provider.connection.requestAirdrop(
       payer.publicKey,
-      1e10
+      2e10
     ),
     "confirmed"
   );
@@ -76,10 +76,16 @@ async function main() {
     );
   }
 
-  let maxDepth = 20;
-  let maxSize = 1024;
+  let maxDepth = 30;
+  let maxSize = 512;
+  let canopyDepth = 14;
   const merkleRollKeypair = Keypair.generate();
-  const requiredSpace = getMerkleRollAccountSize(maxDepth, maxSize);
+  console.log(merkleRollKeypair.publicKey.toBase58());
+  const requiredSpace = getMerkleRollAccountSize(
+    maxDepth,
+    maxSize,
+    canopyDepth
+  );
   const allocAccountIx = SystemProgram.createAccount({
     fromPubkey: payer.publicKey,
     newAccountPubkey: merkleRollKeypair.publicKey,
@@ -95,6 +101,7 @@ async function main() {
     [merkleRollKeypair.publicKey.toBuffer()],
     BubblegumCtx.programId
   );
+  console.log(authority.toBase58());
   let createTreeIx = createCreateTreeInstruction(
     {
       treeCreator: payer.publicKey,
@@ -167,6 +174,7 @@ async function main() {
       );
       const assets = await response.json();
       if (assets.length === 0) {
+        console.log("No assets found");
         continue;
       }
       let k = Math.floor(Math.random() * assets.length);
@@ -179,17 +187,21 @@ async function main() {
         console.log(proof);
         continue;
       }
-      const proofNodes: Array<AccountMeta> = proof.proofNodes.map((key) => {
-        return {
-          pubkey: new PublicKey(key),
-          isWritable: false,
-          isSigner: false,
-        };
-      });
+      const proofNodes: Array<AccountMeta> = proof.proofNodes
+        .map((key) => {
+          return {
+            pubkey: new PublicKey(key),
+            isWritable: false,
+            isSigner: false,
+          };
+        })
+        .slice(0, maxDepth - canopyDepth);
       let [merkleAuthority] = await PublicKey.findProgramAddress(
         [bs58.decode(assets[k].treeId)],
         BubblegumCtx.programId
       );
+      console.log(assets[k].treeId);
+      console.log(merkleAuthority.toBase58());
       let replaceIx = createTransferInstruction(
         {
           owner: wallets[i].publicKey,
