@@ -143,13 +143,18 @@ export function decodeMerkleRoll(buffer: Buffer): OnChainMerkleRoll {
 
 export function getMerkleRollAccountSize(
   maxDepth: number,
-  maxBufferSize: number
+  maxBufferSize: number,
+  canopyDepth?: number
 ): number {
   let headerSize = 8 + 32 + 32;
   let changeLogSize = (maxDepth * 32 + 32 + 4 + 4) * maxBufferSize;
   let rightMostPathSize = maxDepth * 32 + 32 + 4 + 4;
   let merkleRollSize = 8 + 8 + 16 + changeLogSize + rightMostPathSize;
-  return merkleRollSize + headerSize;
+  let canopySize = 0;
+  if (canopyDepth) {
+    canopySize = ((1 << canopyDepth + 1) - 2) * 32
+  }
+  return merkleRollSize + headerSize + canopySize;
 }
 
 export async function assertOnChainMerkleRollProperties(
