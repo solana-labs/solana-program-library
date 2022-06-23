@@ -15,7 +15,7 @@ use solana_clap_utils::{
         is_amount, is_amount_or_all, is_parsable, is_url_or_moniker, is_valid_pubkey,
         is_valid_signer, normalize_to_url_if_moniker,
     },
-    keypair::{signer_from_path, CliSignerInfo},
+    keypair::signer_from_path,
     memo::memo_arg,
     nonce::*,
     offline::{self, *},
@@ -66,6 +66,25 @@ use sort::sort_and_parse_token_accounts;
 
 mod bench;
 use bench::*;
+
+struct CliSignerInfo {
+    pub signers: Vec<Arc<dyn Signer>>,
+}
+
+impl CliSignerInfo {
+    pub fn signers_for_message(&self, message: &Message) -> Vec<&dyn Signer> {
+        self.signers
+            .iter()
+            .filter_map(|k| {
+                if message.signer_keys().contains(&&k.pubkey()) {
+                    Some(k.as_ref())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+}
 
 pub const OWNER_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
     name: "owner",

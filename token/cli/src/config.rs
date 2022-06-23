@@ -113,7 +113,7 @@ impl<'a> Config<'a> {
         let config = SignerFromPathConfig {
             allow_null_signer: !self.multisigner_pubkeys.is_empty(),
         };
-        let mut load_authority = move || {
+        let mut load_authority = move || -> Result<Arc<dyn Signer>, _> {
             // fallback handled in default_signer() for backward compatibility
             if authority_name != "owner" {
                 if let Some(keypair_path) = arg_matches.value_of(authority_name) {
@@ -129,6 +129,7 @@ impl<'a> Config<'a> {
             }
 
             self.default_signer(arg_matches, wallet_manager, &config)
+                .map(|boxed| Arc::from(boxed))
         };
 
         let authority = load_authority().unwrap_or_else(|e| {

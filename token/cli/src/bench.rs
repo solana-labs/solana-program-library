@@ -1,3 +1,5 @@
+use solana_sdk::signature::{Signature, SignerError};
+use solana_sdk::signers::Signers;
 /// The `bench` subcommand
 use {
     crate::{config::Config, owner_address_arg, CommandResult, Error},
@@ -18,6 +20,47 @@ use {
     spl_associated_token_account::*,
     std::{sync::Arc, time::Instant},
 };
+
+struct CustomSigner(Vec<Arc<dyn solana_sdk::signature::Signer>>);
+
+impl From<Vec<Arc<dyn solana_sdk::signature::Signer>>> for CustomSigner {
+    fn from(vec: Vec<Arc<dyn Signer>>) -> Self {
+        Self(vec)
+    }
+}
+
+impl Signers for CustomSigner {
+    fn pubkeys(&self) -> Vec<Pubkey> {
+        self.0.iter().map(|keypair| keypair.pubkey()).collect()
+    }
+
+    fn try_pubkeys(&self) -> Result<Vec<Pubkey>, SignerError> {
+        let mut pubkeys = Vec::new();
+        for keypair in self.0.iter() {
+            pubkeys.push(keypair.try_pubkey()?);
+        }
+        Ok(pubkeys)
+    }
+
+    fn sign_message(&self, message: &[u8]) -> Vec<Signature> {
+        self.0.iter()
+            .map(|keypair| keypair.sign_message(message))
+            .collect()
+    }
+
+    fn try_sign_message(&self, message: &[u8]) -> Result<Vec<Signature>, SignerError> {
+        let mut signatures = Vec::new();
+        for keypair in self.0.iter() {
+            signatures.push(keypair.try_sign_message(message)?);
+        }
+        Ok(signatures)
+
+    }
+
+    fn is_interactive(&self) -> bool {
+        self.0.iter().any(|s| s.is_interactive())
+    }
+}
 
 pub(crate) trait BenchSubCommand {
     fn bench_subcommand(self) -> Self;
@@ -465,7 +508,7 @@ fn send_messages(
         TpuClientConfig::default(),
     )?;
     let transaction_errors =
-        tpu_client.send_and_confirm_messages_with_spinner(messages, &signers)?;
+        tpu_client.send_and_confirm_messages_with_spinner::<CustomSigner>(messages, &signers.into())?;
 
     for (i, transaction_error) in transaction_errors.into_iter().enumerate() {
         if let Some(transaction_error) = transaction_error {
