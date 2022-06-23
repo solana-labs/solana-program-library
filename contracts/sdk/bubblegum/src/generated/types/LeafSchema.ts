@@ -49,6 +49,7 @@ export const isLeafSchemaV1 = (
  * @category userTypes
  * @category generated
  */
+// @ts-ignore
 export const leafSchemaBeet = beet.dataEnum<LeafSchemaRecord>([
   [
     'V1',
@@ -64,4 +65,4 @@ export const leafSchemaBeet = beet.dataEnum<LeafSchemaRecord>([
       'LeafSchemaRecord["V1"]'
     ),
   ],
-]) as beet.FixedSizeBeet<LeafSchema> | any
+]) as beet.FixedSizeBeet<LeafSchema>

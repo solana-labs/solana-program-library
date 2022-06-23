@@ -18,6 +18,8 @@ export enum InstructionName {
   Transfer,
   Delegate,
   DecompressV1,
+  Compress,
+  Burn,
 }
 
 /**

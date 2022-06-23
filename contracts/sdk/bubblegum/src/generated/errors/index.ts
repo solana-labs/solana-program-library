@@ -58,6 +58,52 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * HashingMismatch: 'Hashing Mismatch Within Leaf Schema'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class HashingMismatchError extends Error {
+  readonly code: number = 0x1772
+  readonly name: string = 'HashingMismatch'
+  constructor() {
+    super('Hashing Mismatch Within Leaf Schema')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, HashingMismatchError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1772, () => new HashingMismatchError())
+createErrorFromNameLookup.set(
+  'HashingMismatch',
+  () => new HashingMismatchError()
+)
+
+/**
+ * UnsupportedSchemaVersion: 'Unsupported Schema Version'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class UnsupportedSchemaVersionError extends Error {
+  readonly code: number = 0x1773
+  readonly name: string = 'UnsupportedSchemaVersion'
+  constructor() {
+    super('Unsupported Schema Version')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, UnsupportedSchemaVersionError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1773, () => new UnsupportedSchemaVersionError())
+createErrorFromNameLookup.set(
+  'UnsupportedSchemaVersion',
+  () => new UnsupportedSchemaVersionError()
+)
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated
