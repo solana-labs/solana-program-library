@@ -2602,6 +2602,19 @@ fn main() -> Result<(), Error> {
         );
         let websocket_url = solana_cli_config::Config::compute_websocket_url(&json_rpc_url);
 
+        let multisig_signers = signers_of(matches, MULTISIG_SIGNER_ARG.name, &mut wallet_manager)
+            .unwrap_or_else(|e| {
+                eprintln!("error: {}", e);
+                exit(1);
+            });
+        if let Some(mut multisig_signers) = multisig_signers {
+            multisig_signers.sort_by(|(_, lp), (_, rp)| lp.cmp(rp));
+            let (signers, pubkeys): (Vec<_>, Vec<_>) = multisig_signers.into_iter().unzip();
+            bulk_signers.extend(signers);
+            multisigner_ids = pubkeys;
+        }
+        let multisigner_pubkeys = multisigner_ids.iter().collect::<Vec<_>>();
+
         let (signer, fee_payer) = signer_from_path(
             matches,
             matches
@@ -2669,19 +2682,6 @@ fn main() -> Result<(), Error> {
         let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
         let dump_transaction_message = matches.is_present(DUMP_TRANSACTION_MESSAGE.name);
         let program_id = pubkey_of(matches, "program_id").unwrap();
-
-        let multisig_signers = signers_of(matches, MULTISIG_SIGNER_ARG.name, &mut wallet_manager)
-            .unwrap_or_else(|e| {
-                eprintln!("error: {}", e);
-                exit(1);
-            });
-        if let Some(mut multisig_signers) = multisig_signers {
-            multisig_signers.sort_by(|(_, lp), (_, rp)| lp.cmp(rp));
-            let (signers, pubkeys): (Vec<_>, Vec<_>) = multisig_signers.into_iter().unzip();
-            bulk_signers.extend(signers);
-            multisigner_ids = pubkeys;
-        }
-        let multisigner_pubkeys = multisigner_ids.iter().collect::<Vec<_>>();
 
         Config {
             rpc_client: Arc::new(RpcClient::new_with_commitment(
