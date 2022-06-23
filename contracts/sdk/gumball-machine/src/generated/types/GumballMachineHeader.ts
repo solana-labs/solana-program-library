@@ -15,7 +15,8 @@ export type GumballMachineHeader = {
   sellerFeeBasisPoints: number
   isMutable: number
   retainAuthority: number
-  padding: number[] /* size: 4 */
+  configLineEncodeMethod: number
+  padding: number[] /* size: 3 */
   price: beet.bignum
   goLiveDate: beet.bignum
   mint: web3.PublicKey
@@ -44,7 +45,8 @@ export const gumballMachineHeaderBeet =
       ['sellerFeeBasisPoints', beet.u16],
       ['isMutable', beet.u8],
       ['retainAuthority', beet.u8],
-      ['padding', beet.uniformFixedSizeArray(beet.u8, 4)],
+      ['configLineEncodeMethod', beet.u8],
+      ['padding', beet.uniformFixedSizeArray(beet.u8, 3)],
       ['price', beet.u64],
       ['goLiveDate', beet.i64],
       ['mint', beetSolana.publicKey],

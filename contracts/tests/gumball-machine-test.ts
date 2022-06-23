@@ -48,6 +48,7 @@ import {
 } from "../../deps/solana-program-library/token/js/src";
 import { NATIVE_MINT } from "@solana/spl-token";
 import { logTx, num32ToBuffer, arrayEquals } from "./utils";
+import { EncodeMethod } from "../sdk/gumball-machine/src/generated/types/EncodeMethod";
 
 // @ts-ignore
 let GumballMachine;
@@ -251,7 +252,8 @@ describe("gumball-machine", () => {
       sellerFeeBasisPoints: gumballMachineInitArgs.sellerFeeBasisPoints,
       isMutable: gumballMachineInitArgs.isMutable ? 1 : 0,
       retainAuthority: gumballMachineInitArgs.retainAuthority ? 1 : 0,
-      padding: [0, 0, 0, 0],
+      configLineEncodeMethod: 0,
+      padding: [0, 0, 0],
       price: gumballMachineInitArgs.price,
       goLiveDate: gumballMachineInitArgs.goLiveDate,
       mint,
@@ -406,7 +408,8 @@ describe("gumball-machine", () => {
     receiver: PublicKey,
     gumballMachineAcctKeypair: Keypair,
     merkleRollKeypair: Keypair,
-    noncePDAKey: PublicKey
+    noncePDAKey: PublicKey,
+    verbose?: boolean
   ) {
     const dispenseInstr = await createDispenseNFTForSolIx(
       numNFTs,
@@ -420,9 +423,12 @@ describe("gumball-machine", () => {
       GumballMachine
     );
     const tx = new Transaction().add(dispenseInstr);
-    await GumballMachine.provider.send(tx, [payer], {
+    let txId = await GumballMachine.provider.send(tx, [payer], {
       commitment: "confirmed",
     });
+    if (verbose) {
+      await logTx(GumballMachine.provider, txId);
+    }
   }
 
   async function dispenseCompressedNFTForTokens(
@@ -432,7 +438,8 @@ describe("gumball-machine", () => {
     receiver: PublicKey,
     gumballMachineAcctKeypair: Keypair,
     merkleRollKeypair: Keypair,
-    noncePDAKey: PublicKey
+    noncePDAKey: PublicKey,
+    verbose?: boolean
   ) {
     const dispenseInstr = await createDispenseNFTForTokensIx(
       numNFTs,
@@ -447,9 +454,12 @@ describe("gumball-machine", () => {
       GumballMachine
     );
     const tx = new Transaction().add(dispenseInstr);
-    await GumballMachine.provider.send(tx, [payer], {
+    let txId = await GumballMachine.provider.send(tx, [payer], {
       commitment: "confirmed",
     });
+    if (verbose) {
+      await logTx(GumballMachine.provider, txId);
+    }
   }
 
   async function destroyGumballMachine(
@@ -527,11 +537,10 @@ describe("gumball-machine", () => {
         baseGumballMachineInitProps = {
           maxDepth: 3,
           maxBufferSize: 8,
-          urlBase: strToByteArray(
-            "https://arweave.net/Rmg4pcIv-0FQ7M7X838p2r592Q4NU63Fj7o7XsvBHEEl"
-          ),
-          nameBase: strToByteArray("zfgfsxrwieciemyavrpkuqehkmhqmnim"),
-          symbol: strToByteArray("12345678"),
+          urlBase: strToByteArray("https://arweave.net", 64),
+          nameBase: strToByteArray("GUMBALL", 32),
+          symbol: strToByteArray("GUMBALL", 8),
+          encodeMethod: EncodeMethod.UTF8,
           sellerFeeBasisPoints: 100,
           isMutable: true,
           retainAuthority: true,
@@ -732,11 +741,10 @@ describe("gumball-machine", () => {
         });
         it("Can update gumball header", async () => {
           const newGumballMachineHeader: UpdateHeaderMetadataInstructionArgs = {
-            urlBase: strToByteArray(
-              "https://arweave.net/bzdjillretjcraaxawlnhqrhmexzbsixyajrlzhfcvcc"
-            ),
-            nameBase: strToByteArray("wmqeslreeondhmcmtfebrwqnqcoasbye"),
-            symbol: strToByteArray("abcdefgh"),
+            urlBase: strToByteArray("https://arweave.net", 64),
+            nameBase: strToByteArray("GUMBALL", 32),
+            symbol: strToByteArray("GUMBALL", 8),
+            encodeMethod: EncodeMethod.Base58Encode,
             sellerFeeBasisPoints: 50,
             isMutable: false,
             retainAuthority: false,
@@ -751,6 +759,7 @@ describe("gumball-machine", () => {
             urlBase: newGumballMachineHeader.urlBase,
             nameBase: newGumballMachineHeader.nameBase,
             symbol: newGumballMachineHeader.symbol,
+            configLineEncodeMethod: 1,
             sellerFeeBasisPoints: newGumballMachineHeader.sellerFeeBasisPoints,
             isMutable: newGumballMachineHeader.isMutable ? 1 : 0,
             retainAuthority: newGumballMachineHeader.retainAuthority ? 1 : 0,
@@ -828,14 +837,13 @@ describe("gumball-machine", () => {
         baseGumballMachineInitProps = {
           maxDepth: 3,
           maxBufferSize: 8,
-          urlBase: strToByteArray(
-            "https://arweave.net/Rmg4pcIv-0FQ7M7X838p2r592Q4NU63Fj7o7XsvBHEEl"
-          ),
-          nameBase: strToByteArray("zfgfsxrwieciemyavrpkuqehkmhqmnim"),
-          symbol: strToByteArray("12345678"),
+          urlBase: strToByteArray("https://arweave.net", 64),
+          nameBase: strToByteArray("GUMBALL", 32),
+          symbol: strToByteArray("GUMBALL", 8),
           sellerFeeBasisPoints: 100,
           isMutable: true,
           retainAuthority: true,
+          encodeMethod: EncodeMethod.Base58Encode,
           price: new BN(10),
           goLiveDate: new BN(1234.0),
           botWallet: botWallet.publicKey,
@@ -855,7 +863,7 @@ describe("gumball-machine", () => {
           MERKLE_ROLL_ACCT_SIZE,
           baseGumballMachineInitProps,
           someMint,
-          noncePDAKey,
+          noncePDAKey
         );
         await addConfigLines(
           creatorAddress,

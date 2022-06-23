@@ -87,7 +87,7 @@ export function createUpdateConfigLinesInstruction(
 
   const ix = new web3.TransactionInstruction({
     programId: new web3.PublicKey(
-      'BRKyVDRGT7SPBtMhjHN4PVSPVYoc3Wa3QTyuRVM4iZkt'
+      'GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW'
     ),
     keys,
     data,

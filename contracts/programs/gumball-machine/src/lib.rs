@@ -15,10 +15,10 @@ use spl_token::native_mint;
 pub mod state;
 pub mod utils;
 
-use crate::state::{GumballMachineHeader, ZeroCopy};
+use crate::state::{GumballMachineHeader, EncodeMethod, ZeroCopy};
 use crate::utils::get_metadata_args;
 
-declare_id!("BRKyVDRGT7SPBtMhjHN4PVSPVYoc3Wa3QTyuRVM4iZkt");
+declare_id!("GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW");
 
 #[derive(Accounts)]
 pub struct InitGumballMachine<'info> {
@@ -195,6 +195,8 @@ fn fisher_yates_shuffle_and_fetch_nft_metadata<'info>(
     let config_line =
         config_lines_data[random_config_index..random_config_index + line_size].to_vec();
 
+    let nft_index = (random_config_index / line_size) + 1;
+
     let message = get_metadata_args(
         gumball_header.url_base,
         gumball_header.name_base,
@@ -204,8 +206,9 @@ fn fisher_yates_shuffle_and_fetch_nft_metadata<'info>(
         gumball_header.collection_key,
         None,
         gumball_header.creator_address,
-        random_config_index,
+        nft_index,
         config_line,
+        EncodeMethod::from(gumball_header.config_line_encode_method)
     );
     return Ok(message);
 }
@@ -295,6 +298,7 @@ pub mod gumball_machine {
         url_base: [u8; 64],
         name_base: [u8; 32],
         symbol: [u8; 8],
+        encode_method: Option<EncodeMethod>,
         seller_fee_basis_points: u16,
         is_mutable: bool,
         retain_authority: bool,
@@ -320,7 +324,11 @@ pub mod gumball_machine {
             seller_fee_basis_points,
             is_mutable: is_mutable.into(),
             retain_authority: retain_authority.into(),
-            _padding: [0; 4],
+            config_line_encode_method: match encode_method {
+                Some(e) => e.to_u8(),
+                None => EncodeMethod::UTF8.to_u8()
+            },
+            _padding: [0; 3],
             price,
             go_live_date,
             bot_wallet,
@@ -424,6 +432,7 @@ pub mod gumball_machine {
         url_base: Option<[u8; 64]>,
         name_base: Option<[u8; 32]>,
         symbol: Option<[u8; 8]>,
+        encode_method: Option<EncodeMethod>,
         seller_fee_basis_points: Option<u16>,
         is_mutable: Option<bool>,
         retain_authority: Option<bool>,
@@ -449,6 +458,10 @@ pub mod gumball_machine {
         match symbol {
             Some(s) => gumball_machine.symbol = s,
             None => {}
+        }
+        match encode_method {
+            Some(e) => gumball_machine.config_line_encode_method = e.to_u8(),
+            None => {} 
         }
         match seller_fee_basis_points {
             Some(s) => gumball_machine.seller_fee_basis_points = s,

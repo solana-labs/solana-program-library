@@ -8,6 +8,7 @@
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
+import { EncodeMethod, encodeMethodBeet } from '../types/EncodeMethod'
 
 /**
  * @category Instructions
@@ -18,6 +19,7 @@ export type UpdateHeaderMetadataInstructionArgs = {
   urlBase: beet.COption<number[] /* size: 64 */>
   nameBase: beet.COption<number[] /* size: 32 */>
   symbol: beet.COption<number[] /* size: 8 */>
+  encodeMethod: beet.COption<EncodeMethod>
   sellerFeeBasisPoints: beet.COption<number>
   isMutable: beet.COption<boolean>
   retainAuthority: beet.COption<boolean>
@@ -42,6 +44,7 @@ export const updateHeaderMetadataStruct = new beet.FixableBeetArgsStruct<
     ['urlBase', beet.coption(beet.uniformFixedSizeArray(beet.u8, 64))],
     ['nameBase', beet.coption(beet.uniformFixedSizeArray(beet.u8, 32))],
     ['symbol', beet.coption(beet.uniformFixedSizeArray(beet.u8, 8))],
+    ['encodeMethod', beet.coption(encodeMethodBeet)],
     ['sellerFeeBasisPoints', beet.coption(beet.u16)],
     ['isMutable', beet.coption(beet.bool)],
     ['retainAuthority', beet.coption(beet.bool)],
@@ -106,7 +109,7 @@ export function createUpdateHeaderMetadataInstruction(
 
   const ix = new web3.TransactionInstruction({
     programId: new web3.PublicKey(
-      'BRKyVDRGT7SPBtMhjHN4PVSPVYoc3Wa3QTyuRVM4iZkt'
+      'GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW'
     ),
     keys,
     data,
