@@ -163,7 +163,7 @@ impl BenchSubCommand for App<'_, '_> {
 pub(crate) fn bench_process_command(
     matches: &ArgMatches<'_>,
     config: &Config,
-    mut signers: Vec<Box<dyn Signer>>,
+    mut signers: Vec<Arc<dyn Signer>>,
     wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
 ) -> CommandResult {
     assert!(!config.sign_only);
@@ -272,7 +272,7 @@ fn is_valid_token(rpc_client: &RpcClient, token: &Pubkey) -> Result<(), Error> {
 
 fn command_create_accounts(
     config: &Config,
-    signers: Vec<Box<dyn Signer>>,
+    signers: Vec<Arc<dyn Signer>>,
     token: &Pubkey,
     n: usize,
     owner: &Pubkey,
@@ -326,7 +326,7 @@ fn command_create_accounts(
 
 fn command_close_accounts(
     config: &Config,
-    signers: Vec<Box<dyn Signer>>,
+    signers: Vec<Arc<dyn Signer>>,
     token: &Pubkey,
     n: usize,
     owner: &Pubkey,
@@ -379,7 +379,7 @@ fn command_close_accounts(
 #[allow(clippy::too_many_arguments)]
 fn command_deposit_into_or_withdraw_from(
     config: &Config,
-    signers: Vec<Box<dyn Signer>>,
+    signers: Vec<Arc<dyn Signer>>,
     token: &Pubkey,
     n: usize,
     owner: &Pubkey,
@@ -433,7 +433,7 @@ fn send_messages(
     config: &Config,
     messages: &[Message],
     mut lamports_required: u64,
-    signers: Vec<Box<dyn Signer>>,
+    signers: Vec<Arc<dyn Signer>>,
 ) -> Result<(), Error> {
     if messages.is_empty() {
         println!("Nothing to do");

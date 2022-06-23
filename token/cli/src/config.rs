@@ -107,7 +107,7 @@ impl<'a> Config<'a> {
         arg_matches: &ArgMatches,
         authority_name: &str,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
-    ) -> (Box<dyn Signer>, Pubkey) {
+    ) -> (Arc<dyn Signer>, Pubkey) {
         // If there are `--multisig-signers` on the command line, allow `NullSigner`s to
         // be returned for multisig account addresses
         let config = SignerFromPathConfig {
@@ -123,7 +123,8 @@ impl<'a> Config<'a> {
                         authority_name,
                         wallet_manager,
                         &config,
-                    );
+                    )
+                        .map(|boxed| Arc::from(boxed))
                 }
             }
 

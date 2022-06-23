@@ -226,20 +226,20 @@ fn is_multisig_minimum_signers(string: String) -> Result<(), String> {
 
 pub(crate) type Error = Box<dyn std::error::Error>;
 
-type BulkSigners = Vec<Box<dyn Signer>>;
+type BulkSigners = Vec<Arc<dyn Signer>>;
 pub(crate) type CommandResult = Result<String, Error>;
 
-fn new_throwaway_signer() -> (Box<dyn Signer>, Pubkey) {
+fn new_throwaway_signer() -> (Arc<dyn Signer>, Pubkey) {
     let keypair = Keypair::new();
     let pubkey = keypair.pubkey();
-    (Box::new(keypair) as Box<dyn Signer>, pubkey)
+    (Arc::new(keypair) as Arc<dyn Signer>, pubkey)
 }
 
 fn get_signer(
     matches: &ArgMatches<'_>,
     keypair_name: &str,
     wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
-) -> Option<(Box<dyn Signer>, Pubkey)> {
+) -> Option<(Arc<dyn Signer>, Pubkey)> {
     matches.value_of(keypair_name).map(|path| {
         let signer =
             signer_from_path(matches, path, keypair_name, wallet_manager).unwrap_or_else(|e| {
@@ -247,7 +247,7 @@ fn get_signer(
                 exit(1);
             });
         let signer_pubkey = signer.pubkey();
-        (signer, signer_pubkey)
+        (Arc::from(signer), signer_pubkey)
     })
 }
 
@@ -285,7 +285,7 @@ fn check_wallet_balance(
     }
 }
 
-type SignersOf = Vec<(Box<dyn Signer>, Pubkey)>;
+type SignersOf = Vec<(Arc<dyn Signer>, Pubkey)>;
 pub fn signers_of(
     matches: &ArgMatches<'_>,
     name: &str,
@@ -297,7 +297,7 @@ pub fn signers_of(
             let name = format!("{}-{}", name, i + 1);
             let signer = signer_from_path(matches, value, &name, wallet_manager)?;
             let signer_pubkey = signer.pubkey();
-            results.push((signer, signer_pubkey));
+            results.push((Arc::from(signer), signer_pubkey));
         }
         Ok(Some(results))
     } else {
@@ -313,7 +313,7 @@ fn command_create_token(
     authority: Pubkey,
     enable_freeze: bool,
     memo: Option<String>,
-    bulk_signers: Vec<Box<dyn Signer>>,
+    bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     println_display(config, format!("Creating token {}", token));
 
@@ -377,7 +377,7 @@ fn command_create_account(
     token: Pubkey,
     owner: Pubkey,
     maybe_account: Option<Pubkey>,
-    bulk_signers: Vec<Box<dyn Signer>>,
+    bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     let minimum_balance_for_rent_exemption = if !config.sign_only {
         config
@@ -1683,7 +1683,7 @@ fn command_gc(
 
 fn command_sync_native(
     native_account_address: Pubkey,
-    bulk_signers: Vec<Box<dyn Signer>>,
+    bulk_signers: Vec<Arc<dyn Signer>>,
     config: &Config,
 ) -> CommandResult {
     let tx_return = handle_tx(
@@ -2560,7 +2560,7 @@ fn main() -> Result<(), Error> {
     .get_matches();
 
     let mut wallet_manager = None;
-    let mut bulk_signers: Vec<Box<dyn Signer>> = Vec::new();
+    let mut bulk_signers: Vec<Arc<dyn Signer>> = Vec::new();
     let mut multisigner_ids = Vec::new();
 
     let (sub_command, sub_matches) = app_matches.subcommand();
@@ -2591,7 +2591,8 @@ fn main() -> Result<(), Error> {
             "fee_payer",
             &mut wallet_manager,
         )
-        .map(|s| {
+        .map(|boxed| Arc::from(boxed))
+        .map(|s: Arc<dyn Signer>| {
             let p = s.pubkey();
             (s, p)
         })
@@ -2629,7 +2630,8 @@ fn main() -> Result<(), Error> {
                 NONCE_AUTHORITY_ARG.name,
                 &mut wallet_manager,
             )
-            .map(|s| {
+            .map(|boxed| Arc::from(boxed))
+            .map(|s: Arc<dyn Signer>| {
                 let p = s.pubkey();
                 (s, p)
             })
@@ -2693,7 +2695,7 @@ fn process_command(
     sub_matches: &ArgMatches<'_>,
     config: &Config,
     mut wallet_manager: Option<Arc<RemoteWalletManager>>,
-    mut bulk_signers: Vec<Box<dyn Signer>>,
+    mut bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     match (sub_command, sub_matches) {
         (CommandName::Bench, arg_matches) => bench_process_command(
@@ -3228,8 +3230,8 @@ mod tests {
     fn create_token(config: &Config, payer: &Keypair) -> Pubkey {
         let token = Keypair::new();
         let token_pubkey = token.pubkey();
-        let bulk_signers: Vec<Box<dyn Signer>> =
-            vec![Box::new(clone_keypair(payer)), Box::new(token)];
+        let bulk_signers: Vec<Arc<dyn Signer>> =
+            vec![Arc::new(clone_keypair(payer)), Arc::new(token)];
 
         command_create_token(
             config,
@@ -3247,14 +3249,14 @@ mod tests {
     fn create_auxiliary_account(config: &Config, payer: &Keypair, mint: Pubkey) -> Pubkey {
         let auxiliary = Keypair::new();
         let address = auxiliary.pubkey();
-        let bulk_signers: Vec<Box<dyn Signer>> =
-            vec![Box::new(clone_keypair(payer)), Box::new(auxiliary)];
+        let bulk_signers: Vec<Arc<dyn Signer>> =
+            vec![Arc::new(clone_keypair(payer)), Arc::new(auxiliary)];
         command_create_account(config, mint, payer.pubkey(), Some(address), bulk_signers).unwrap();
         address
     }
 
     fn create_associated_account(config: &Config, payer: &Keypair, mint: Pubkey) -> Pubkey {
-        let bulk_signers: Vec<Box<dyn Signer>> = vec![Box::new(clone_keypair(payer))];
+        let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(payer))];
         command_create_account(config, mint, payer.pubkey(), None, bulk_signers).unwrap();
         get_associated_token_address_with_program_id(&payer.pubkey(), &mint, &config.program_id)
     }
@@ -3266,7 +3268,7 @@ mod tests {
         ui_amount: f64,
         recipient: Pubkey,
     ) {
-        let bulk_signers: Vec<Box<dyn Signer>> = vec![Box::new(clone_keypair(payer))];
+        let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(payer))];
         command_mint(
             config,
             mint,
@@ -3298,7 +3300,7 @@ mod tests {
         let matches = sub_matches.unwrap();
 
         let wallet_manager = None;
-        let bulk_signers: Vec<Box<dyn Signer>> = vec![Box::new(clone_keypair(payer))];
+        let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(payer))];
         process_command(&sub_command, matches, config, wallet_manager, bulk_signers)
     }
 
@@ -3487,7 +3489,7 @@ mod tests {
     fn unwrap() {
         let (test_validator, payer) = validator_for_test();
         let config = test_config(&test_validator, &payer, &spl_token::id());
-        let bulk_signers: Vec<Box<dyn Signer>> = vec![Box::new(clone_keypair(&payer))];
+        let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(&payer))];
         command_wrap(&config, 0.5, payer.pubkey(), None, bulk_signers).unwrap();
         let account = get_associated_token_address_with_program_id(
             &payer.pubkey(),
