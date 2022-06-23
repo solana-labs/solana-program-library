@@ -15,7 +15,7 @@ use solana_clap_utils::{
         is_amount, is_amount_or_all, is_parsable, is_url_or_moniker, is_valid_pubkey,
         is_valid_signer, normalize_to_url_if_moniker,
     },
-    keypair::signer_from_path,
+    keypair::{signer_from_path, SignerFromPathConfig},
     memo::memo_arg,
     nonce::*,
     offline::{self, *},
@@ -2614,6 +2614,10 @@ fn main() -> Result<(), Error> {
             multisigner_ids = pubkeys;
         }
         let multisigner_pubkeys = multisigner_ids.iter().collect::<Vec<_>>();
+
+        let config = SignerFromPathConfig {
+            allow_null_signer: !multisigner_pubkeys.is_empty(),
+        };
 
         let (signer, fee_payer) = signer_from_path(
             matches,
