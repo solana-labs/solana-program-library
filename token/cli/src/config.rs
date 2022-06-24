@@ -106,7 +106,6 @@ impl<'a> Config<'a> {
             allow_null_signer: !self.multisigner_pubkeys.is_empty(),
         };
         let mut load_authority = move || -> Result<Arc<dyn Signer>, _> {
-            // fallback handled in default_signer() for backward compatibility
             if authority_name != "owner" {
                 if let Some(keypair_path) = arg_matches.value_of(authority_name) {
                     return signer_from_path_with_config(
@@ -120,8 +119,7 @@ impl<'a> Config<'a> {
                 }
             }
 
-            self.default_signer(arg_matches, wallet_manager, &config)
-                .map(|boxed| Arc::from(boxed))
+            Ok(self.default_signer.clone())
         };
 
         let authority = load_authority().unwrap_or_else(|e| {
@@ -131,34 +129,5 @@ impl<'a> Config<'a> {
 
         let authority_address = authority.pubkey();
         (authority, authority_address)
-    }
-
-    fn default_signer(
-        &self,
-        matches: &ArgMatches,
-        wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
-        config: &SignerFromPathConfig,
-    ) -> Result<Box<dyn Signer>, Box<dyn std::error::Error>> {
-        // for backwards compatibility, check owner before cli config default
-        if let Some(owner_path) = matches.value_of("owner") {
-            return signer_from_path_with_config(
-                matches,
-                owner_path,
-                "owner",
-                wallet_manager,
-                config,
-            );
-        }
-
-        match &self.default_keypair {
-            #[cfg(test)]
-            KeypairOrPath::Keypair(keypair) => {
-                let cloned = Keypair::from_bytes(&keypair.to_bytes()).unwrap();
-                Ok(Box::new(cloned))
-            }
-            KeypairOrPath::Path(path) => {
-                signer_from_path_with_config(matches, path, "default", wallet_manager, config)
-            }
-        }
     }
 }
