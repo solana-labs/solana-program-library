@@ -22,6 +22,8 @@ pub(crate) enum KeypairOrPath {
 }
 
 pub(crate) struct Config<'a> {
+    pub(crate) default_signer: Arc<dyn Signer>,
+    pub(crate) default_address: Pubkey,
     pub(crate) rpc_client: Arc<RpcClient>,
     pub(crate) websocket_url: String,
     pub(crate) output_format: OutputFormat,

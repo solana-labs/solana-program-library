@@ -2721,6 +2721,8 @@ fn main() -> Result<(), Error> {
         let program_id = pubkey_of(matches, "program_id").unwrap();
 
         Config {
+            default_signer,
+            default_address,
             rpc_client: Arc::new(RpcClient::new_with_commitment(
                 json_rpc_url,
                 CommitmentConfig::confirmed(),
@@ -3272,6 +3274,8 @@ mod tests {
             websocket_url,
             output_format: OutputFormat::JsonCompact,
             fee_payer: payer.pubkey(),
+            default_address: payer.pubkey(),
+            default_signer: Arc::new(clone_keypair(payer)),
             default_keypair: KeypairOrPath::Keypair(clone_keypair(payer)),
             nonce_account: None,
             nonce_authority: None,
