@@ -1,7 +1,7 @@
 use clap::ArgMatches;
 use solana_clap_utils::{
     input_parsers::pubkey_of_signer,
-    keypair::{pubkey_from_path, signer_from_path_with_config, SignerFromPathConfig},
+    keypair::{signer_from_path_with_config, SignerFromPathConfig},
 };
 use solana_cli_output::OutputFormat;
 use solana_client::{blockhash_query::BlockhashQuery, rpc_client::RpcClient};
@@ -71,12 +71,7 @@ impl<'a> Config<'a> {
         }
 
         let token = token.unwrap();
-        let owner = self
-            .default_address(arg_matches, wallet_manager)
-            .unwrap_or_else(|e| {
-                eprintln!("error: {}", e);
-                exit(1);
-            });
+        let owner = self.default_address;
         get_associated_token_address_with_program_id(&owner, &token, &self.program_id)
     }
 
@@ -95,12 +90,7 @@ impl<'a> Config<'a> {
             }
         }
 
-        return self
-            .default_address(arg_matches, wallet_manager)
-            .unwrap_or_else(|e| {
-                eprintln!("error: {}", e);
-                exit(1);
-            });
+        return self.default_address.clone()
     }
 
     // Checks if an explicit signer was provided, otherwise return the default signer.
@@ -141,23 +131,6 @@ impl<'a> Config<'a> {
 
         let authority_address = authority.pubkey();
         (authority, authority_address)
-    }
-
-    fn default_address(
-        &self,
-        matches: &ArgMatches,
-        wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
-    ) -> Result<Pubkey, Box<dyn std::error::Error>> {
-        // for backwards compatibility, check owner before cli config default
-        if let Some(address) = pubkey_of_signer(matches, "owner", wallet_manager).unwrap() {
-            return Ok(address);
-        }
-
-        match &self.default_keypair {
-            #[cfg(test)]
-            KeypairOrPath::Keypair(keypair) => Ok(keypair.pubkey()),
-            KeypairOrPath::Path(path) => pubkey_from_path(matches, path, "default", wallet_manager),
-        }
     }
 
     fn default_signer(
