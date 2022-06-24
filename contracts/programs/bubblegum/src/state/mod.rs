@@ -35,9 +35,18 @@ impl Voucher {
         }
     }
 }
+
 #[event]
 pub struct NewNFTEvent {
     pub version: Version,
     pub metadata: MetadataArgs,
+    pub nonce: u64,
+}
+
+#[event]
+pub struct NFTDecompressionEvent {
+    pub version: Version,
+    pub id: Pubkey,
+    pub tree_id: Pubkey,
     pub nonce: u64,
 }

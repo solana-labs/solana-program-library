@@ -171,6 +171,8 @@ export async function parseBubblegumMint(
   await db.updateChangeLogs(changeLog, optionalInfo.txId, slot, treeId);
 }
 
+
+
 export async function parseReplaceLeaf(
   db: NFTDatabaseConnection,
   logs: (string | ParsedLog)[],

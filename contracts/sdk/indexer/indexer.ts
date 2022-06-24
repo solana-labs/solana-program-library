@@ -40,12 +40,13 @@ async function main() {
     (logs, ctx) => handleLogsAtomic(db, logs, ctx, { Gummyroll, Bubblegum }),
     "confirmed"
   );
+  let maxSeq = 0;
   while (true) {
     try {
       const trees = await db.getTrees();
       for (const [treeId, depth] of trees) {
         console.log("Scanning for gaps");
-        let maxSeq = await fetchAndPlugGaps(connection, db, 0, treeId, {
+        maxSeq = await fetchAndPlugGaps(connection, db, maxSeq, treeId, {
           Gummyroll,
           Bubblegum,
         });
