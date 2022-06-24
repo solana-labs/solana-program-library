@@ -15,7 +15,7 @@ use solana_clap_utils::{
         is_amount, is_amount_or_all, is_parsable, is_url_or_moniker, is_valid_pubkey,
         is_valid_signer, normalize_to_url_if_moniker,
     },
-    keypair::{signer_from_path, SignerFromPathConfig},
+    keypair::{signer_from_path, signer_from_path_with_config, SignerFromPathConfig},
     memo::memo_arg,
     nonce::*,
     offline::{self, *},
@@ -2619,6 +2619,39 @@ fn main() -> Result<(), Error> {
             allow_null_signer: !multisigner_pubkeys.is_empty(),
         };
 
+        let default_keypair = KeypairOrPath::Path(cli_config.keypair_path.clone());
+
+        let (default_signer, default_address): (Arc<dyn Signer>, Pubkey) = {
+            if let Some(owner_path) = matches.value_of("owner") {
+                signer_from_path_with_config(
+                    matches,
+                    owner_path,
+                    "owner",
+                    &mut wallet_manager,
+                    &config,
+                )
+            } else {
+                match &default_keypair {
+                    #[cfg(test)]
+                    KeypairOrPath::Keypair(keypair) => {
+                        let cloned = Keypair::from_bytes(&keypair.to_bytes()).unwrap();
+                        Ok(Box::new(cloned) as Box<dyn Signer>)
+                    }
+                    KeypairOrPath::Path(path) => {
+                        signer_from_path_with_config(matches, path, "default", &mut wallet_manager, &config)
+                    }
+                }
+            }
+        }
+            .map(|signer| {
+                let signer: Arc<dyn Signer> = Arc::from(signer);
+                (signer.clone(), signer.pubkey())
+            })
+            .unwrap_or_else(|e| {
+                eprintln!("error: {}", e);
+                exit(1);
+            });
+
         let (signer, fee_payer) = signer_from_path(
             matches,
             matches
@@ -2695,7 +2728,7 @@ fn main() -> Result<(), Error> {
             websocket_url,
             output_format,
             fee_payer,
-            default_keypair: KeypairOrPath::Path(cli_config.keypair_path),
+            default_keypair,
             nonce_account,
             nonce_authority,
             blockhash_query,
