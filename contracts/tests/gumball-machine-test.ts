@@ -37,7 +37,7 @@ import {
   val,
   strToByteArray,
   strToByteUint8Array,
-  getBubblegumAuthorityPDAKey
+  logTx
 } from "../sdk/utils/index";
 import {
   GumballMachineHeader,
@@ -51,7 +51,7 @@ import {
   getAccount,
 } from "../../deps/solana-program-library/token/js/src";
 import { NATIVE_MINT } from "@solana/spl-token";
-import { logTx, num32ToBuffer, arrayEquals } from "./utils";
+import { num32ToBuffer, arrayEquals } from "./utils";
 import { EncodeMethod } from "../sdk/gumball-machine/src/generated/types/EncodeMethod";
 import { getBubblegumAuthorityPDA } from "../sdk/bubblegum/src/convenience";
 
@@ -211,6 +211,7 @@ describe("gumball-machine", () => {
         merkleRollAccountSize,
         gumballMachineInitArgs,
         mint,
+        payer.publicKey,
         GummyrollProgramId,
         BubblegumProgramId,
         GumballMachine
@@ -413,11 +414,11 @@ describe("gumball-machine", () => {
     verbose?: boolean
   ) {
     const dispenseInstr = await createDispenseNFTForSolIx(
-      numNFTs,
-      payer,
+      { numItems: numNFTs },
+      payer.publicKey,
       receiver,
-      gumballMachineAcctKeypair,
-      merkleRollKeypair,
+      gumballMachineAcctKeypair.publicKey,
+      merkleRollKeypair.publicKey,
       GummyrollProgramId,
       BubblegumProgramId,
       GumballMachine
@@ -441,12 +442,12 @@ describe("gumball-machine", () => {
     verbose?: boolean
   ) {
     const dispenseInstr = await createDispenseNFTForTokensIx(
-      numNFTs,
-      payer,
+      { numItems: numNFTs },
+      payer.publicKey,
       payerTokens,
       receiver,
-      gumballMachineAcctKeypair,
-      merkleRollKeypair,
+      gumballMachineAcctKeypair.publicKey,
+      merkleRollKeypair.publicKey,
       GummyrollProgramId,
       BubblegumProgramId,
       GumballMachine
@@ -542,7 +543,7 @@ describe("gumball-machine", () => {
           botWallet: Keypair.generate().publicKey,
           receiver: creatorPaymentWallet.publicKey,
           authority: creatorAddress.publicKey,
-          collectionKey: SystemProgram.programId, // 0x0 -> no collection key
+          collectionKey: SystemProgram.programId,
           extensionLen: new BN(28),
           maxMintSize: new BN(10),
           maxItems: new BN(250),
@@ -603,11 +604,11 @@ describe("gumball-machine", () => {
 
           beforeEach(async () => {
             dispenseNFTForSolInstr = await createDispenseNFTForSolIx(
-              new BN(1),
-              nftBuyer,
+              { numItems: new BN(1) },
+              nftBuyer.publicKey,
               baseGumballMachineInitProps.receiver,
-              gumballMachineAcctKeypair,
-              merkleRollKeypair,
+              gumballMachineAcctKeypair.publicKey,
+              merkleRollKeypair.publicKey,
               GummyrollProgramId,
               BubblegumProgramId,
               GumballMachine
@@ -887,12 +888,12 @@ describe("gumball-machine", () => {
 
         beforeEach(async () => {
           dispenseNFTForTokensInstr = await createDispenseNFTForTokensIx(
-            new BN(1),
-            nftBuyer,
+            { numItems: new BN(1) },
+            nftBuyer.publicKey,
             nftBuyerTokenAccount.address,
             creatorReceiverTokenAccount.address,
-            gumballMachineAcctKeypair,
-            merkleRollKeypair,
+            gumballMachineAcctKeypair.publicKey,
+            merkleRollKeypair.publicKey,
             GummyrollProgramId,
             BubblegumProgramId,
             GumballMachine

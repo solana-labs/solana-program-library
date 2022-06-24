@@ -1,9 +1,38 @@
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, TransactionInstruction, Transaction, Signer } from "@solana/web3.js";
 import * as borsh from "borsh";
 import { bignum } from "@metaplex-foundation/beet";
-import { BN } from "@project-serum/anchor";
+import { BN, Provider } from "@project-serum/anchor";
 
 export const CANDY_WRAPPER_PROGRAM_ID = new PublicKey("WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh");
+
+/// Wait for a transaction of a certain id to confirm and optionally log its messages
+export async function logTx(provider: Provider, txId: string, verbose: boolean = true) {
+  await provider.connection.confirmTransaction(txId, "confirmed");
+  if (verbose) {
+    console.log(
+      (await provider.connection.getConfirmedTransaction(txId, "confirmed")).meta
+        .logMessages
+    );
+  }
+};
+
+/// Execute a series of instructions in a txn
+export async function execute(
+  provider: Provider,
+  instructions: TransactionInstruction[],
+  signers: Signer[],
+  skipPreflight: boolean = false,
+  verbose: boolean = false,
+): Promise<String> {
+  let tx = new Transaction();
+  instructions.map((ix) => { tx = tx.add(ix) });
+  const txid = await provider.send(tx, signers, {
+    commitment: "confirmed",
+    skipPreflight,
+  });
+  await logTx(provider, txid, verbose);
+  return txid;
+}
 
 export function readPublicKey(reader: borsh.BinaryReader): PublicKey {
   return new PublicKey(reader.readFixedArray(32));
@@ -30,12 +59,4 @@ export function strToByteUint8Array(str: string): Uint8Array {
   return Uint8Array.from(
     [...str].reduce((acc, c, ind) => acc.concat([str.charCodeAt(ind)]), [])
   );
-}
-
-export async function getBubblegumAuthorityPDAKey(merkleRollPubKey: PublicKey, bubblegumProgramId: PublicKey) {
-    const [bubblegumAuthorityPDAKey] = await PublicKey.findProgramAddress(
-      [merkleRollPubKey.toBuffer()],
-      bubblegumProgramId
-    );
-    return bubblegumAuthorityPDAKey;
 }

@@ -15,6 +15,8 @@ import {
   createInitializeGumballMachineInstruction,
   createDispenseNftSolInstruction,
   createDispenseNftTokenInstruction,
+  DispenseNftSolInstructionArgs,
+  DispenseNftTokenInstructionArgs
 } from "../src/generated";
 import { getWillyWonkaPDAKey } from "../utils";
 import { CANDY_WRAPPER_PROGRAM_ID } from "../../utils";
@@ -31,6 +33,7 @@ export async function createInitializeGumballMachineIxs(
   merkleRollAccountSize: number,
   gumballMachineInitArgs: InitializeGumballMachineInstructionArgs,
   mint: PublicKey,
+  creator: PublicKey,
   gummyrollProgramId: PublicKey,
   bubblegumProgramId: PublicKey,
   gumballMachine: Program<GumballMachine>
@@ -68,7 +71,7 @@ export async function createInitializeGumballMachineIxs(
   const initGumballMachineInstr = createInitializeGumballMachineInstruction(
     {
       gumballMachine: gumballMachineAcctKeypair.publicKey,
-      creator: payer.publicKey,
+      creator,
       mint,
       willyWonka: willyWonkaPDAKey,
       bubblegumAuthority: bubblegumAuthorityPDAKey,
@@ -90,26 +93,26 @@ export async function createInitializeGumballMachineIxs(
  * Wrapper on top of Solita's createDispenseNftSolInstruction. Automatically fetches necessary PDA keys for instruction
  * */
 export async function createDispenseNFTForSolIx(
-  numNFTs: BN,
-  payer: Keypair,
+  args: DispenseNftSolInstructionArgs,
+  payer: PublicKey,
   receiver: PublicKey,
-  gumballMachineAcctKeypair: Keypair,
-  merkleRollKeypair: Keypair,
+  gumballMachinePubkey: PublicKey,
+  merkleRollPubkey: PublicKey,
   gummyrollProgramId: PublicKey,
   bubblegumProgramId: PublicKey,
   gumballMachine: Program<GumballMachine>
 ): Promise<TransactionInstruction> {
   const willyWonkaPDAKey = await getWillyWonkaPDAKey(
-    gumballMachineAcctKeypair.publicKey,
+    gumballMachinePubkey,
     gumballMachine.programId
   );
   const bubblegumAuthorityPDAKey = await getBubblegumAuthorityPDA(
-    merkleRollKeypair.publicKey,
+    merkleRollPubkey,
   );
   const dispenseInstr = createDispenseNftSolInstruction(
     {
-      gumballMachine: gumballMachineAcctKeypair.publicKey,
-      payer: payer.publicKey,
+      gumballMachine: gumballMachinePubkey,
+      payer,
       receiver: receiver,
       willyWonka: willyWonkaPDAKey,
       recentBlockhashes: SYSVAR_SLOT_HASHES_PUBKEY,
@@ -117,12 +120,10 @@ export async function createDispenseNFTForSolIx(
       bubblegumAuthority: bubblegumAuthorityPDAKey,
       candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
       gummyroll: gummyrollProgramId,
-      merkleSlab: merkleRollKeypair.publicKey,
+      merkleSlab: merkleRollPubkey,
       bubblegum: bubblegumProgramId,
     },
-    {
-      numItems: numNFTs,
-    }
+    args
   );
   return dispenseInstr;
 }
@@ -131,27 +132,27 @@ export async function createDispenseNFTForSolIx(
  * Wrapper on top of Solita's createDispenseNftTokenInstruction. Automatically fetches necessary PDA keys for instruction
  * */
 export async function createDispenseNFTForTokensIx(
-  numNFTs: BN,
-  payer: Keypair,
+  args: DispenseNftTokenInstructionArgs,
+  payer: PublicKey,
   payerTokens: PublicKey,
   receiver: PublicKey,
-  gumballMachineAcctKeypair: Keypair,
-  merkleRollKeypair: Keypair,
+  gumballMachinePubkey: PublicKey,
+  merkleRollPubkey: PublicKey,
   gummyrollProgramId: PublicKey,
   bubblegumProgramId: PublicKey,
   gumballMachine: Program<GumballMachine>,
 ): Promise<TransactionInstruction> {
   const willyWonkaPDAKey = await getWillyWonkaPDAKey(
-    gumballMachineAcctKeypair.publicKey,
+    gumballMachinePubkey,
     gumballMachine.programId
   );
   const bubblegumAuthorityPDAKey = await getBubblegumAuthorityPDA(
-    merkleRollKeypair.publicKey,
+    merkleRollPubkey,
   );
   const dispenseInstr = createDispenseNftTokenInstruction(
     {
-      gumballMachine: gumballMachineAcctKeypair.publicKey,
-      payer: payer.publicKey,
+      gumballMachine: gumballMachinePubkey,
+      payer,
       payerTokens,
       receiver,
       willyWonka: willyWonkaPDAKey,
@@ -160,12 +161,10 @@ export async function createDispenseNFTForTokensIx(
       bubblegumAuthority: bubblegumAuthorityPDAKey,
       candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
       gummyroll: gummyrollProgramId,
-      merkleSlab: merkleRollKeypair.publicKey,
+      merkleSlab: merkleRollPubkey,
       bubblegum: bubblegumProgramId,
     },
-    {
-      numItems: numNFTs,
-    }
+    args
   );
   return dispenseInstr;
 }

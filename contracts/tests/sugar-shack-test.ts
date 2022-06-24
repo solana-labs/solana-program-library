@@ -30,8 +30,7 @@ import {
   getListingPDAKeyForPrice
 } from "../sdk/sugar-shack";
 import {
-  CANDY_WRAPPER_PROGRAM_ID,
-  getBubblegumAuthorityPDAKey
+  CANDY_WRAPPER_PROGRAM_ID
 } from "../sdk/utils/index";
 import {
   MetadataArgs,
@@ -52,9 +51,10 @@ import {
   TreeNode,
 } from "./merkle-tree";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
-import { execute, logTx, bufferToArray } from "./utils";
+import { bufferToArray } from "./utils";
 import { TokenProgramVersion, Version } from "../sdk/bubblegum/src/generated";
 import { SugarShack } from "../target/types/sugar_shack";
+import { getBubblegumAuthorityPDA } from "../sdk/bubblegum/src/convenience";
 
 // @ts-ignore
 let BubblegumProgramId;
@@ -296,7 +296,7 @@ describe("sugar-shack", () => {
           payer.publicKey,
           merkleRollKeypair.publicKey,
         )
-        bubblegumAuthority = await getBubblegumAuthorityPDAKey(merkleRollKeypair.publicKey, BubblegumProgramId);
+        bubblegumAuthority = await getBubblegumAuthorityPDA(merkleRollKeypair.publicKey);
 
         // Instruction to create merkle tree for compressed NFTs through Bubblegum
         const createCompressedNFTTreeIx = createCreateTreeInstruction(
