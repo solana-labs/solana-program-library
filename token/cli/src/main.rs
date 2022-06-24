@@ -2652,23 +2652,24 @@ fn main() -> Result<(), Error> {
                 exit(1);
             });
 
-        let (signer, fee_payer) = signer_from_path(
-            matches,
-            matches
-                .value_of("fee_payer")
-                .unwrap_or(&cli_config.keypair_path),
-            "fee_payer",
-            &mut wallet_manager,
-        )
-        .map(|boxed| Arc::from(boxed))
-        .map(|s: Arc<dyn Signer>| {
-            let p = s.pubkey();
-            (s, p)
-        })
-        .unwrap_or_else(|e| {
-            eprintln!("error: {}", e);
-            exit(1);
-        });
+        let (signer, fee_payer) = matches.value_of("fee_payer")
+            .map_or(Ok(default_signer.clone()), |path| {
+                signer_from_path(
+                    matches,
+                    path,
+                    "fee_payer",
+                    &mut wallet_manager,
+                )
+                .map(|boxed| Arc::from(boxed))
+            })
+            .map(|s: Arc<dyn Signer>| {
+                let p = s.pubkey();
+                (s, p)
+            })
+            .unwrap_or_else(|e| {
+                eprintln!("error: {}", e);
+                exit(1);
+            });
         bulk_signers.push(signer);
 
         let verbose = matches.is_present("verbose");
