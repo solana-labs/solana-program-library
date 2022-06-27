@@ -3,6 +3,7 @@ gummyroll = "GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD"
 gummyroll_crud = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 bubblegum = "BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY"
 gumball_machine = "GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW"
+sugar_shack = "9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK"
 
 [[test.genesis]]
 address = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
@@ -28,4 +29,4 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "yarn run ts-mocha -t 1000000 tests/**/gumball-machine-test.ts"
+test = "yarn run ts-mocha -t 1000000 tests/**/*-test.ts"

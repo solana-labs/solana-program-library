@@ -21,7 +21,7 @@ export type VoucherArgs = {
   merkleSlab: web3.PublicKey
 }
 
-export const voucherDiscriminator = [191, 204, 149, 234, 213, 165, 13, 65]
+const voucherDiscriminator = [191, 204, 149, 234, 213, 165, 13, 65]
 /**
  * Holds the data for the {@link Voucher} Account and provides de/serialization
  * functionality for that data
@@ -128,7 +128,7 @@ export class Voucher implements VoucherArgs {
    */
   pretty() {
     return {
-      leafSchema: this.leafSchema.__kind,
+      leafSchema: 'LeafSchema.' + LeafSchema[this.leafSchema],
       index: this.index,
       merkleSlab: this.merkleSlab.toBase58(),
     }

@@ -23,8 +23,7 @@ import {
   createDispenseNFTForSolIx,
   createDispenseNFTForTokensIx,
   createInitializeGumballMachineIxs,
-  getBubblegumAuthorityPDAKey,
-} from "../sdk/gumball-machine";
+} from '../sdk/gumball-machine';
 import {
   InitializeGumballMachineInstructionArgs,
   createAddConfigLinesInstruction,
@@ -34,7 +33,12 @@ import {
   createUpdateHeaderMetadataInstruction,
   createDestroyInstruction,
 } from "../sdk/gumball-machine/src/generated/instructions";
-import { val, strToByteArray, strToByteUint8Array } from "../sdk/utils/index";
+import {
+  val,
+  strToByteArray,
+  strToByteUint8Array,
+  getBubblegumAuthorityPDAKey
+} from "../sdk/utils/index";
 import {
   GumballMachineHeader,
   gumballMachineHeaderBeet,
@@ -192,8 +196,7 @@ describe("gumball-machine", () => {
     merkleRollKeypair: Keypair,
     merkleRollAccountSize: number,
     gumballMachineInitArgs: InitializeGumballMachineInstructionArgs,
-    mint: PublicKey,
-    nonce: PublicKey
+    mint: PublicKey
   ) {
     const bubblegumAuthorityPDAKey = await getBubblegumAuthorityPDAKey(
       merkleRollKeypair.publicKey,
@@ -208,7 +211,6 @@ describe("gumball-machine", () => {
         merkleRollAccountSize,
         gumballMachineInitArgs,
         mint,
-        nonce,
         GummyrollProgramId,
         BubblegumProgramId,
         GumballMachine
@@ -260,7 +262,7 @@ describe("gumball-machine", () => {
       botWallet: gumballMachineInitArgs.botWallet,
       receiver: gumballMachineInitArgs.receiver,
       authority: gumballMachineInitArgs.authority,
-      collectionKey: gumballMachineInitArgs.collectionKey, // 0x0 -> no collection key
+      collectionKey: gumballMachineInitArgs.collectionKey,
       creatorAddress: payer.publicKey,
       extensionLen: gumballMachineInitArgs.extensionLen,
       maxMintSize: gumballMachineInitArgs.maxMintSize,
@@ -408,7 +410,6 @@ describe("gumball-machine", () => {
     receiver: PublicKey,
     gumballMachineAcctKeypair: Keypair,
     merkleRollKeypair: Keypair,
-    noncePDAKey: PublicKey,
     verbose?: boolean
   ) {
     const dispenseInstr = await createDispenseNFTForSolIx(
@@ -417,7 +418,6 @@ describe("gumball-machine", () => {
       receiver,
       gumballMachineAcctKeypair,
       merkleRollKeypair,
-      noncePDAKey,
       GummyrollProgramId,
       BubblegumProgramId,
       GumballMachine
@@ -438,7 +438,6 @@ describe("gumball-machine", () => {
     receiver: PublicKey,
     gumballMachineAcctKeypair: Keypair,
     merkleRollKeypair: Keypair,
-    noncePDAKey: PublicKey,
     verbose?: boolean
   ) {
     const dispenseInstr = await createDispenseNFTForTokensIx(
@@ -448,7 +447,6 @@ describe("gumball-machine", () => {
       receiver,
       gumballMachineAcctKeypair,
       merkleRollKeypair,
-      noncePDAKey,
       GummyrollProgramId,
       BubblegumProgramId,
       GumballMachine
@@ -500,7 +498,6 @@ describe("gumball-machine", () => {
     let creatorAddress: Keypair;
     let gumballMachineAcctKeypair: Keypair;
     let merkleRollKeypair: Keypair;
-    let noncePDAKey: PublicKey;
     let nftBuyer: Keypair;
     const GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE = 1000;
     const GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE = 7000;
@@ -530,10 +527,6 @@ describe("gumball-machine", () => {
         gumballMachineAcctKeypair = Keypair.generate();
         merkleRollKeypair = Keypair.generate();
 
-        [noncePDAKey] = await PublicKey.findProgramAddress(
-          [Buffer.from("bubblegum"), merkleRollKeypair.publicKey.toBuffer()],
-          BubblegumProgramId
-        );
         baseGumballMachineInitProps = {
           maxDepth: 3,
           maxBufferSize: 8,
@@ -571,8 +564,7 @@ describe("gumball-machine", () => {
           merkleRollKeypair,
           MERKLE_ROLL_ACCT_SIZE,
           baseGumballMachineInitProps,
-          NATIVE_MINT,
-          noncePDAKey
+          NATIVE_MINT
         );
         await addConfigLines(
           creatorAddress,
@@ -616,7 +608,6 @@ describe("gumball-machine", () => {
               baseGumballMachineInitProps.receiver,
               gumballMachineAcctKeypair,
               merkleRollKeypair,
-              noncePDAKey,
               GummyrollProgramId,
               BubblegumProgramId,
               GumballMachine
@@ -699,8 +690,7 @@ describe("gumball-machine", () => {
             nftBuyer,
             baseGumballMachineInitProps.receiver,
             gumballMachineAcctKeypair,
-            merkleRollKeypair,
-            noncePDAKey
+            merkleRollKeypair
           );
           const nftBuyerBalanceAfterPurchase = await connection.getBalance(
             nftBuyer.publicKey
@@ -807,10 +797,6 @@ describe("gumball-machine", () => {
         nftBuyer = Keypair.generate();
         botWallet = Keypair.generate();
 
-        [noncePDAKey] = await PublicKey.findProgramAddress(
-          [Buffer.from("bubblegum"), merkleRollKeypair.publicKey.toBuffer()],
-          BubblegumProgramId
-        );
         // Give creator enough funds to produce accounts for gumball-machine
         await GumballMachine.provider.connection.confirmTransaction(
           await GumballMachine.provider.connection.requestAirdrop(
@@ -862,8 +848,7 @@ describe("gumball-machine", () => {
           merkleRollKeypair,
           MERKLE_ROLL_ACCT_SIZE,
           baseGumballMachineInitProps,
-          someMint,
-          noncePDAKey
+          someMint
         );
         await addConfigLines(
           creatorAddress,
@@ -908,7 +893,6 @@ describe("gumball-machine", () => {
             creatorReceiverTokenAccount.address,
             gumballMachineAcctKeypair,
             merkleRollKeypair,
-            noncePDAKey,
             GummyrollProgramId,
             BubblegumProgramId,
             GumballMachine
@@ -970,8 +954,7 @@ describe("gumball-machine", () => {
           nftBuyerTokenAccount.address,
           creatorReceiverTokenAccount.address,
           gumballMachineAcctKeypair,
-          merkleRollKeypair,
-          noncePDAKey
+          merkleRollKeypair
         );
 
         let newCreatorTokenAccount = await getAccount(
@@ -1003,8 +986,7 @@ describe("gumball-machine", () => {
           nftBuyerTokenAccount.address,
           creatorReceiverTokenAccount.address,
           gumballMachineAcctKeypair,
-          merkleRollKeypair,
-          noncePDAKey
+          merkleRollKeypair
         );
 
         creatorReceiverTokenAccount = newCreatorTokenAccount;

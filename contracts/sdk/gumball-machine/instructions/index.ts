@@ -15,11 +15,13 @@ import {
   InitializeGumballMachineInstructionArgs,
   createInitializeGumballMachineInstruction,
   createDispenseNftSolInstruction,
-  createDispenseNftTokenInstruction
+  createDispenseNftTokenInstruction,
 } from "../src/generated";
 import {
+  getBubblegumAuthorityPDAKey
+} from "../../utils/index";
+import {
     getWillyWonkaPDAKey,
-    getBubblegumAuthorityPDAKey
 } from '../utils';
 
 /**
@@ -34,7 +36,6 @@ export async function createInitializeGumballMachineIxs(
   merkleRollAccountSize: number,
   gumballMachineInitArgs: InitializeGumballMachineInstructionArgs,
   mint: PublicKey,
-  noncePDAKey: PublicKey,
   gummyrollProgramId: PublicKey,
   bubblegumProgramId: PublicKey,
   gumballMachine: Program<GumballMachine>
@@ -89,7 +90,6 @@ export async function createDispenseNFTForSolIx(
     receiver: PublicKey,
     gumballMachineAcctKeypair: Keypair,
     merkleRollKeypair: Keypair,
-    noncePDAKey: PublicKey,
     gummyrollProgramId: PublicKey,
     bubblegumProgramId: PublicKey,
     gumballMachine: Program<GumballMachine>,
@@ -126,7 +126,6 @@ export async function createDispenseNFTForTokensIx(
     receiver: PublicKey,
     gumballMachineAcctKeypair: Keypair,
     merkleRollKeypair: Keypair,
-    noncePDAKey: PublicKey,
     gummyrollProgramId: PublicKey,
     bubblegumProgramId: PublicKey,
     gumballMachine: Program<GumballMachine>,

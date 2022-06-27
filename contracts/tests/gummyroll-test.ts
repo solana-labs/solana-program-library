@@ -30,7 +30,6 @@ import {
   assertOnChainMerkleRollProperties,
 } from "../sdk/gummyroll";
 import { execute, logTx } from "./utils";
-import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 
 // @ts-ignore
 let Gummyroll;

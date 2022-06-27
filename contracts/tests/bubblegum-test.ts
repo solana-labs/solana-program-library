@@ -27,6 +27,7 @@ import {buildTree, Tree} from "./merkle-tree";
 import {
   decodeMerkleRoll,
   getMerkleRollAccountSize,
+  getRootOfOnChainMerkleRoot,
   assertOnChainMerkleRollProperties,
   createTransferAuthorityIx,
 } from "../sdk/gummyroll";
@@ -36,22 +37,13 @@ import {
   TOKEN_PROGRAM_ID,
   Token,
 } from "@solana/spl-token";
-import {execute, logTx} from "./utils";
-import {TokenProgramVersion, Version} from "../sdk/bubblegum/src/generated";
+import { execute, logTx, bufferToArray } from "./utils";
+import { TokenProgramVersion, Version } from "../sdk/bubblegum/src/generated";
 
 // @ts-ignore
 let Bubblegum;
 // @ts-ignore
 let GummyrollProgramId;
-
-/// Converts to Uint8Array
-function bufferToArray(buffer: Buffer): number[] {
-  const nums = [];
-  for (let i = 0; i < buffer.length; i++) {
-    nums.push(buffer.at(i));
-  }
-  return nums;
-}
 
 describe("bubblegum", () => {
   // Configure the client to use the local cluster.
@@ -202,15 +194,9 @@ describe("bubblegum", () => {
         Buffer.from(keccak_256.digest(mintIx.data.slice(8)))
       );
       const creatorHash = bufferToArray(Buffer.from(keccak_256.digest([])));
-      let merkleRollAccount =
-        await Bubblegum.provider.connection.getAccountInfo(
-          merkleRollKeypair.publicKey
-        );
-      let merkleRoll = decodeMerkleRoll(merkleRollAccount.data);
-      let onChainRoot =
-        merkleRoll.roll.changeLogs[merkleRoll.roll.activeIndex].root.toBuffer();
-
-      console.log(" - Transferring Ownership");
+      let onChainRoot = await getRootOfOnChainMerkleRoot(connection, merkleRollKeypair.publicKey);
+      
+        console.log(" - Transferring Ownership");
       const nonceInfo = await (
         Bubblegum.provider.connection as web3Connection
       ).getAccountInfo(treeAuthority);
@@ -236,12 +222,7 @@ describe("bubblegum", () => {
       );
       await execute(Bubblegum.provider, [transferIx], [payer]);
 
-      merkleRollAccount = await Bubblegum.provider.connection.getAccountInfo(
-        merkleRollKeypair.publicKey
-      );
-      merkleRoll = decodeMerkleRoll(merkleRollAccount.data);
-      onChainRoot =
-        merkleRoll.roll.changeLogs[merkleRoll.roll.activeIndex].root.toBuffer();
+      onChainRoot = await getRootOfOnChainMerkleRoot(connection, merkleRollKeypair.publicKey);
 
       console.log(" - Delegating Ownership");
       let delegateIx = await createDelegateInstruction(
@@ -263,12 +244,7 @@ describe("bubblegum", () => {
       );
       await execute(Bubblegum.provider, [delegateIx], [destination]);
 
-      merkleRollAccount = await Bubblegum.provider.connection.getAccountInfo(
-        merkleRollKeypair.publicKey
-      );
-      merkleRoll = decodeMerkleRoll(merkleRollAccount.data);
-      onChainRoot =
-        merkleRoll.roll.changeLogs[merkleRoll.roll.activeIndex].root.toBuffer();
+      onChainRoot = await getRootOfOnChainMerkleRoot(connection, merkleRollKeypair.publicKey);
 
       console.log(" - Transferring Ownership (through delegate)");
       let delTransferIx = createTransferInstruction(
@@ -298,12 +274,7 @@ describe("bubblegum", () => {
         }
       );
 
-      merkleRollAccount = await Bubblegum.provider.connection.getAccountInfo(
-        merkleRollKeypair.publicKey
-      );
-      merkleRoll = decodeMerkleRoll(merkleRollAccount.data);
-      onChainRoot =
-        merkleRoll.roll.changeLogs[merkleRoll.roll.activeIndex].root.toBuffer();
+      onChainRoot = await getRootOfOnChainMerkleRoot(connection, merkleRollKeypair.publicKey);
 
       let [voucher] = await PublicKey.findProgramAddress(
         [
