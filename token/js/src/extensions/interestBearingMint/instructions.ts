@@ -88,7 +88,7 @@ export function createUpdateRateInterestBearingMintInstruction(
     const keys = addSigners(
         [
             { pubkey: mint, isSigner: false, isWritable: true },
-            { pubkey: rateAuthority, isSigner: true, isWritable: false },
+            { pubkey: rateAuthority, isSigner: !multiSigners.length, isWritable: false },
         ],
         rateAuthority,
         multiSigners

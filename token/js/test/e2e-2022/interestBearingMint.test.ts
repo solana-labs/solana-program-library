@@ -52,7 +52,7 @@ describe('interestBearingMint', () => {
         expect(interestBearingMintConfigState).to.not.be.null;
         if (interestBearingMintConfigState !== null) {
             expect(interestBearingMintConfigState.rateAuthority).to.eql(rateAuthority.publicKey);
-            expect(interestBearingMintConfigState.preUpdateAverageRate).to.eql(10);
+            expect(interestBearingMintConfigState.preUpdateAverageRate).to.eql(TEST_RATE);
             expect(interestBearingMintConfigState.currentRate).to.eql(TEST_RATE);
             expect(interestBearingMintConfigState.lastUpdateTimestamp).to.be.greaterThan(0);
             expect(interestBearingMintConfigState.initializationTimestamp).to.be.greaterThan(0);
