@@ -4,5 +4,6 @@ export * from './extensionType';
 export * from './memoTransfer/index';
 export * from './mintCloseAuthority';
 export * from './immutableOwner';
+export * from './interestBearingMint';
 export * from './nonTransferable';
 export * from './transferFee/index';
