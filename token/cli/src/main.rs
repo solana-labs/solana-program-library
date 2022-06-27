@@ -944,7 +944,7 @@ fn command_burn(
 }
 
 
-fn check_mint(
+fn check_if_amount_overflows_supply(  
     config: &Config,
     token: Pubkey,
     ui_amount : f64,
@@ -2900,7 +2900,7 @@ fn process_command(
             );
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
-            if check_mint(config, token, amount) {
+            if check_if_amount_overflows_supply(config, token, amount) {
                 return Err("Supply requested to be minted is greater than the u64 token supply limit".to_string().into());
             }
             else {
