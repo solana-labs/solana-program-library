@@ -737,6 +737,7 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "bs58 0.4.0",
  "bubblegum",
  "bytemuck",
  "gummyroll",
@@ -1543,6 +1544,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "solana-safe-math"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ccd6612e507fc0c6e17c51e3dfbed7b724f7c33cd4f5eb452d7dc4688ddaa888"
+dependencies = [
+ "solana-program",
+ "thiserror",
+]
+
+[[package]]
 name = "solana-sdk"
 version = "1.10.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1695,6 +1706,19 @@ name = "subtle"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
+
+[[package]]
+name = "sugar-shack"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "bubblegum",
+ "bytemuck",
+ "gummyroll",
+ "mpl-token-metadata",
+ "solana-safe-math",
+]
 
 [[package]]
 name = "syn"

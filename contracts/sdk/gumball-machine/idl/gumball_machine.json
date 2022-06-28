@@ -88,6 +88,14 @@
           }
         },
         {
+          "name": "encodeMethod",
+          "type": {
+            "option": {
+              "defined": "EncodeMethod"
+            }
+          }
+        },
+        {
           "name": "sellerFeeBasisPoints",
           "type": "u16"
         },
@@ -234,6 +242,14 @@
                 "u8",
                 8
               ]
+            }
+          }
+        },
+        {
+          "name": "encodeMethod",
+          "type": {
+            "option": {
+              "defined": "EncodeMethod"
             }
           }
         },
@@ -508,11 +524,15 @@
             "type": "u8"
           },
           {
+            "name": "configLineEncodeMethod",
+            "type": "u8"
+          },
+          {
             "name": "padding",
             "type": {
               "array": [
                 "u8",
-                4
+                3
               ]
             }
           },
@@ -570,9 +590,23 @@
           }
         ]
       }
+    },
+    {
+      "name": "EncodeMethod",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "UTF8"
+          },
+          {
+            "name": "Base58Encode"
+          }
+        ]
+      }
     }
   ],
   "metadata": {
-    "address": "BRKyVDRGT7SPBtMhjHN4PVSPVYoc3Wa3QTyuRVM4iZkt"
+    "address": "GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW"
   }
 }

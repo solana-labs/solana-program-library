@@ -893,6 +893,12 @@
           },
           {
             "name": "DecompressV1"
+          },
+          {
+            "name": "Compress"
+          },
+          {
+            "name": "Burn"
           }
         ]
       }
@@ -951,6 +957,33 @@
           "index": false
         }
       ]
+    },
+    {
+      "name": "NFTDecompressionEvent",
+      "fields": [
+        {
+          "name": "version",
+          "type": {
+            "defined": "Version"
+          },
+          "index": false
+        },
+        {
+          "name": "id",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "treeId",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "nonce",
+          "type": "u64",
+          "index": false
+        }
+      ]
     }
   ],
   "errors": [
@@ -963,6 +996,16 @@
       "code": 6001,
       "name": "PublicKeyMismatch",
       "msg": "PublicKeyMismatch"
+    },
+    {
+      "code": 6002,
+      "name": "HashingMismatch",
+      "msg": "Hashing Mismatch Within Leaf Schema"
+    },
+    {
+      "code": 6003,
+      "name": "UnsupportedSchemaVersion",
+      "msg": "Unsupported Schema Version"
     }
   ],
   "metadata": {

@@ -11,8 +11,8 @@ pub enum GummyrollError {
     ZeroCopyError,
     #[msg("An unsupported max depth or max buffer size constant was provided")]
     MerkleRollConstantsError,
-    #[msg("Expected a different byte length for the merkle roll")]
-    MerkleRollByteLengthMismatch,
+    #[msg("Expected a different byte length for the merkle roll canopy")]
+    CanopyLengthMismatch,
 }
 
 impl From<&CMTError> for GummyrollError {

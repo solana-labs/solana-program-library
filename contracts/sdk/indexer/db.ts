@@ -609,6 +609,17 @@ export class NFTDatabaseConnection {
     return inferredProof;
   }
 
+  async getMinSeqForCompleteTree(treeId: string): Promise<number> {
+    /// Check if tree in the db
+    const seqNumbers = await this.connection.all(`
+      SELECT * from merkle
+      where treeId = ?
+      `,
+      treeId
+    )
+    return 0;
+  }
+
   generateRoot(proof: Proof) {
     let node = bs58.decode(proof.leaf);
     let index = proof.index;
@@ -629,9 +640,25 @@ export class NFTDatabaseConnection {
     return rehashed === received;
   }
 
-  async getAssetsForOwner(owner: string) {
-    let rawNftMetadata = await this.connection.all(
+  async getTxIdForSlot(treeId: string, slot: number): Promise<string | null> {
+    const transactionId = await this.connection.all(
       `
+      SELECT DISTINCT transaction_id
+      FROM merkle
+      WHERE
+        tree_id = ?
+      AND slot = ?
+      GROUP BY tree_id
+      `,
+      treeId,
+      slot
+    )
+    console.log(transactionId);
+    return transactionId.length ? transactionId[0].transaction_id as string : null;
+  }
+
+  async getAssetsForOwner(owner: string, treeId?: string) {
+    const query = `
       SELECT
         ls.tree_id as treeId,
         ls.nonce as nonce,
@@ -657,14 +684,28 @@ export class NFTDatabaseConnection {
         n.verified3 as verified3,
         n.creator4 as creator4,
         n.share4 as share4,
-        n.verified4 as verified4
+        n.verified4 as verified4,
+        ls.transaction_id as transaction_id,
+        ls.compressed as compressed
       FROM leaf_schema ls
-      JOIN nft n
+      JOIN nft n   
       ON ls.asset_id = n.asset_id
       WHERE owner = ?
-      `,
-      owner
-    );
+      `;
+
+    let rawNftMetadata;
+    if (!treeId) {
+      rawNftMetadata = await this.connection.all(query,
+        owner
+      );
+    } else {
+      rawNftMetadata = await this.connection.all(
+        query + ` AND tree_id = ?`,
+        owner,
+        treeId,
+      );
+    }
+
     let assets = [];
     for (const metadata of rawNftMetadata) {
       let creators: Creator[] = [];
@@ -715,6 +756,8 @@ export class NFTDatabaseConnection {
         delegate: metadata.delegate,
         leafHash: metadata.leafHash,
         creators: creators,
+        txId: metadata.transaction_id,
+        isCompressed: metadata.compressed,
       });
     }
     return assets;

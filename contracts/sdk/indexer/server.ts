@@ -1,8 +1,10 @@
 import express from "express";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 import { bootstrap, NFTDatabaseConnection, Proof } from "./db";
+import cors from 'cors';
 
 const app = express();
+app.use(cors())
 app.use(express.json());
 
 let nftDb: NFTDatabaseConnection;
@@ -55,7 +57,7 @@ app.get("/proof", async (req, res) => {
 
 app.get("/assets", async (req, res) => {
   const owner = req.query.owner;
-  const assets = await nftDb.getAssetsForOwner(owner);
+  const assets = await nftDb.getAssetsForOwner(owner, req.query.treeId);
   res.send(JSON.stringify(assets));
 });
 

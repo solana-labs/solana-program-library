@@ -3,6 +3,31 @@ use anchor_lang::prelude::*;
 use bytemuck::{Pod, Zeroable};
 use std::mem::size_of;
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
+pub enum EncodeMethod {
+    UTF8,
+    Base58Encode,
+}
+
+impl From<u8> for EncodeMethod {
+    fn from(v: u8) -> Self {
+        match v {
+            0 => Self::UTF8,
+            1 => Self::Base58Encode,
+            _ => panic!("Unsupported value for EncodeMethod"),
+        }
+    }
+}
+
+impl EncodeMethod {
+    pub fn to_u8(&self) -> u8 {
+        match self {
+            Self::UTF8 => 0,
+            Self::Base58Encode => 1,
+        }
+    }
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Zeroable, Pod)]
 #[repr(C)]
 pub struct GumballMachineHeader {
@@ -18,8 +43,10 @@ pub struct GumballMachineHeader {
     pub seller_fee_basis_points: u16,
     pub is_mutable: u8,
     pub retain_authority: u8,
+    // 0 for whitespace trimming, 1 for base58 encode
+    pub config_line_encode_method: u8,
     // Used for 8-byte aligning zero copy structs
-    pub _padding: [u8; 4],
+    pub _padding: [u8; 3],
     pub price: u64,
     pub go_live_date: i64,
     // Mint of the Token used to purchase NFTs

@@ -8,6 +8,7 @@
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
+import { EncodeMethod, encodeMethodBeet } from '../types/EncodeMethod'
 
 /**
  * @category Instructions
@@ -20,6 +21,7 @@ export type InitializeGumballMachineInstructionArgs = {
   urlBase: number[] /* size: 64 */
   nameBase: number[] /* size: 32 */
   symbol: number[] /* size: 8 */
+  encodeMethod: beet.COption<EncodeMethod>
   sellerFeeBasisPoints: number
   isMutable: boolean
   retainAuthority: boolean
@@ -38,7 +40,7 @@ export type InitializeGumballMachineInstructionArgs = {
  * @category InitializeGumballMachine
  * @category generated
  */
-export const initializeGumballMachineStruct = new beet.BeetArgsStruct<
+export const initializeGumballMachineStruct = new beet.FixableBeetArgsStruct<
   InitializeGumballMachineInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
@@ -50,6 +52,7 @@ export const initializeGumballMachineStruct = new beet.BeetArgsStruct<
     ['urlBase', beet.uniformFixedSizeArray(beet.u8, 64)],
     ['nameBase', beet.uniformFixedSizeArray(beet.u8, 32)],
     ['symbol', beet.uniformFixedSizeArray(beet.u8, 8)],
+    ['encodeMethod', beet.coption(encodeMethodBeet)],
     ['sellerFeeBasisPoints', beet.u16],
     ['isMutable', beet.bool],
     ['retainAuthority', beet.bool],
@@ -174,7 +177,7 @@ export function createInitializeGumballMachineInstruction(
 
   const ix = new web3.TransactionInstruction({
     programId: new web3.PublicKey(
-      'BRKyVDRGT7SPBtMhjHN4PVSPVYoc3Wa3QTyuRVM4iZkt'
+      'GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW'
     ),
     keys,
     data,

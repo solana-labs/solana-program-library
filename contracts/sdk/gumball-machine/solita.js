@@ -9,7 +9,7 @@ const { writeFile } = require('fs/promises');
 const { fstat, existsSync, realpath, realpathSync } = require('fs');
 
 const PROGRAM_NAME = 'gumball-machine';
-const PROGRAM_ID = 'BRKyVDRGT7SPBtMhjHN4PVSPVYoc3Wa3QTyuRVM4iZkt';
+const PROGRAM_ID = 'GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW';
 
 const programDir = path.join(__dirname, '..', '..', 'programs', 'gumball-machine');
 const cargoToml = path.join(programDir, 'Cargo.toml')
