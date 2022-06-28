@@ -14,7 +14,7 @@ test-bpf = []
 # Remove these features once the underlying syscalls are released on all networks
 default = ["zk-ops"]
 zk-ops = []
-serde = ["dep:serde", "dep:serde_with"]
+serde-feature = ["serde", "serde_with"]
 
 [dependencies]
 arrayref = "0.3.6"
