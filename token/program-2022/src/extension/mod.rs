@@ -28,6 +28,11 @@ use {
     },
 };
 
+#[cfg(feature = "serde")]
+use {
+    serde::{Deserialize, Serialize},
+};
+
 /// Confidential Transfer extension
 pub mod confidential_transfer;
 /// Default Account State extension
@@ -601,6 +606,7 @@ impl Default for AccountType {
 /// applied to mint accounts, and account extensions must only be applied to token holding
 /// accounts.
 #[repr(u16)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, TryFromPrimitive, IntoPrimitive)]
 pub enum ExtensionType {
     /// Used as padding if the account size would otherwise be 355, same as a multisig

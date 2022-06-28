@@ -21,6 +21,13 @@ use {
     },
 };
 
+#[cfg(feature = "serde")]
+use {
+    crate::serialization::coption_serde,
+    serde::{Deserialize, Serialize},
+    serde_with::{As, DisplayFromStr},
+};
+
 /// Minimum number of multisignature signers (min N)
 pub const MIN_SIGNERS: usize = 1;
 /// Maximum number of multisignature signers (max N)
@@ -32,6 +39,7 @@ const U64_BYTES: usize = 8;
 
 /// Instructions supported by the token program.
 #[repr(C)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, PartialEq)]
 pub enum TokenInstruction<'a> {
     /// Initializes a new mint and optionally deposits all the newly minted
@@ -54,8 +62,10 @@ pub enum TokenInstruction<'a> {
         /// Number of base 10 digits to the right of the decimal place.
         decimals: u8,
         /// The authority/multisignature to mint tokens.
+        #[cfg_attr(feature = "serde", serde(with = "As::<DisplayFromStr>"))]
         mint_authority: Pubkey,
         /// The freeze authority/multisignature of the mint.
+        #[cfg_attr(feature = "serde", serde(with = "coption_serde"))]
         freeze_authority: COption<Pubkey>,
     },
     /// Initializes a new account to hold tokens.  If this account is associated
@@ -180,6 +190,7 @@ pub enum TokenInstruction<'a> {
         /// The type of authority to update.
         authority_type: AuthorityType,
         /// The new authority
+        #[cfg_attr(feature = "serde", serde(with = "coption_serde"))]
         new_authority: COption<Pubkey>,
     },
     /// Mints new tokens to an account.  The native mint does not support
@@ -444,8 +455,10 @@ pub enum TokenInstruction<'a> {
         /// Number of base 10 digits to the right of the decimal place.
         decimals: u8,
         /// The authority/multisignature to mint tokens.
+        #[cfg_attr(feature = "serde", serde(with = "As::<DisplayFromStr>"))]
         mint_authority: Pubkey,
         /// The freeze authority/multisignature of the mint.
+        #[cfg_attr(feature = "serde", serde(with = "coption_serde"))]
         freeze_authority: COption<Pubkey>,
     },
     /// Gets the required size of an account for the given mint as a little-endian
@@ -514,6 +527,7 @@ pub enum TokenInstruction<'a> {
     ///   0. `[writable]` The mint to initialize.
     InitializeMintCloseAuthority {
         /// Authority that must sign the `CloseAccount` instruction on a mint
+        #[cfg_attr(feature = "serde", serde(with = "coption_serde"))]
         close_authority: COption<Pubkey>,
     },
     /// The common instruction prefix for Transfer Fee extension instructions.
@@ -933,6 +947,7 @@ impl<'a> TokenInstruction<'a> {
 
 /// Specifies the authority type for SetAuthority instructions
 #[repr(u8)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, PartialEq)]
 pub enum AuthorityType {
     /// Authority to mint new tokens
