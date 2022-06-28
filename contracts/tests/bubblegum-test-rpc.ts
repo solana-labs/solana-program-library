@@ -40,6 +40,8 @@ import {
 import {execute, logTx} from "./utils";
 import {TokenProgramVersion, Version} from "../sdk/bubblegum/src/generated";
 import {sleep} from "@metaplex-foundation/amman/dist/utils";
+import {verbose} from "sqlite3";
+import {bs58} from "@project-serum/anchor/dist/cjs/utils/bytes";
 
 // @ts-ignore
 let Bubblegum;
@@ -53,6 +55,33 @@ function bufferToArray(buffer: Buffer): number[] {
     nums.push(buffer.at(i));
   }
   return nums;
+}
+
+interface TreeProof  {
+  root: string,
+  proof: AccountMeta[]
+}
+
+async function getProof(asset: PublicKey): Promise<TreeProof> {
+  let resp = await fetch("http://localhost:9090", {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      jsonrpc: "2.0", id: "stupid", method: "get_asset_proof", params: [asset.toBase58()]
+    })
+  });
+  let js = await resp.json();
+  const proofNodes: Array<AccountMeta> = js.result.proof.map((key) => {
+    return {
+      pubkey: new PublicKey(key),
+      isWritable: false,
+      isSigner: false,
+    };
+  });
+  return {
+    root: js.result.root,
+    proof: proofNodes
+  };
 }
 
 describe("bubblegum", () => {
@@ -88,20 +117,20 @@ describe("bubblegum", () => {
     const merkleRollKeypair = Keypair.generate();
 
     await Bubblegum.provider.connection.confirmTransaction(
-      await Bubblegum.provider.connection.requestAirdrop(payer.publicKey, 2e9),
+      await Bubblegum.provider.connection.requestAirdrop(payer.publicKey, 10e9),
       "confirmed"
     );
     await Bubblegum.provider.connection.confirmTransaction(
       await Bubblegum.provider.connection.requestAirdrop(
         destination.publicKey,
-        2e9
+        10e9
       ),
       "confirmed"
     );
     await Bubblegum.provider.connection.confirmTransaction(
       await Bubblegum.provider.connection.requestAirdrop(
         delegate.publicKey,
-        2e9
+        10e9
       ),
       "confirmed"
     );
@@ -178,7 +207,7 @@ describe("bubblegum", () => {
           name: "OH " + i,
           symbol: "OH" + i,
           uri: `https://onlyhands.s3.amazonaws.com/assets/${rngf(300, i)}.json`,
-          sellerFeeBasisPoints: 0,
+          sellerFeeBasisPoints: 10000,
           primarySaleHappened: false,
           isMutable: false,
           editionNonce: null,
@@ -212,13 +241,6 @@ describe("bubblegum", () => {
           Buffer.from(keccak_256.digest(mintIx.data.slice(8)))
         );
         const creatorHash = bufferToArray(Buffer.from(keccak_256.digest([])));
-        let merkleRollAccount =
-          await Bubblegum.provider.connection.getAccountInfo(
-            merkleRollKeypair.publicKey
-          );
-        let merkleRoll = decodeMerkleRoll(merkleRollAccount.data);
-        let onChainRoot =
-          merkleRoll.roll.changeLogs[merkleRoll.roll.activeIndex].root.toBuffer();
 
         console.log(" - Transferring Ownership");
         const nonceInfo = await (
@@ -227,206 +249,200 @@ describe("bubblegum", () => {
         const leafNonce = new BN(nonceInfo.data.slice(8, 16), "le").sub(
           new BN(1)
         );
-        let transferIx = createTransferInstruction(
-          {
-            authority: treeAuthority,
-            owner: payer.publicKey,
-            delegate: payer.publicKey,
-            newOwner: destination.publicKey,
-            gummyrollProgram: GummyrollProgramId,
-            merkleSlab: merkleRollKeypair.publicKey,
-          },
-          {
-            root: bufferToArray(onChainRoot),
-            dataHash,
-            creatorHash,
-            nonce: leafNonce,
-            index: 0,
-          }
-        );
         let [asset] = await PublicKey.findProgramAddress(
           [Buffer.from("asset", "utf8"), merkleRollKeypair.publicKey.toBuffer(), leafNonce.toBuffer("le", 8)],
           Bubblegum.programId
         );
-        sleep(1000);
-        let prood = await fetch("http://localhost:9090", {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({
-            jsonrpc: "2.0", id: "stupid", method: "get_asset_proof", params: [asset.toBase58()]
-          })
-        });
-        console.log(asset.toBase58())
-        let resp = await prood.json();
-        const proofNodes: Array<AccountMeta> = resp.result.proof.map((key) => {
-          return {
-            pubkey: new PublicKey(key),
-            isWritable: false,
-            isSigner: false,
-          };
-        });
-        transferIx.keys[1].isSigner = true;
-        transferIx.keys = [...transferIx.keys, ...proofNodes];
-
-        await execute(Bubblegum.provider, [transferIx], [payer]);
-
-        merkleRollAccount = await Bubblegum.provider.connection.getAccountInfo(
-          merkleRollKeypair.publicKey
-        );
-        merkleRoll = decodeMerkleRoll(merkleRollAccount.data);
-        onChainRoot =
-          merkleRoll.roll.changeLogs[merkleRoll.roll.activeIndex].root.toBuffer();
-
-        console.log(" - Delegating Ownership");
-        let delegateIx = await createDelegateInstruction(
-          {
-            authority: treeAuthority,
-            owner: destination.publicKey,
-            previousDelegate: destination.publicKey,
-            newDelegate: delegateKey.publicKey,
-            gummyrollProgram: GummyrollProgramId,
-            merkleSlab: merkleRollKeypair.publicKey,
-          },
-          {
-            root: bufferToArray(onChainRoot),
-            dataHash,
-            creatorHash,
-            nonce: leafNonce,
-            index: 0,
-          }
-        );
-        await execute(Bubblegum.provider, [delegateIx], [destination]);
-
-        merkleRollAccount = await Bubblegum.provider.connection.getAccountInfo(
-          merkleRollKeypair.publicKey
-        );
-        merkleRoll = decodeMerkleRoll(merkleRollAccount.data);
-        onChainRoot =
-          merkleRoll.roll.changeLogs[merkleRoll.roll.activeIndex].root.toBuffer();
-
-        console.log(" - Transferring Ownership (through delegate)");
-        let delTransferIx = createTransferInstruction(
-          {
-            authority: treeAuthority,
-            owner: destination.publicKey,
-            delegate: delegateKey.publicKey,
-            newOwner: payer.publicKey,
-            gummyrollProgram: GummyrollProgramId,
-            merkleSlab: merkleRollKeypair.publicKey,
-          },
-          {
-            root: bufferToArray(onChainRoot),
-            dataHash,
-            creatorHash,
-            nonce: leafNonce,
-            index: 0,
-          }
-        );
-        delTransferIx.keys[2].isSigner = true;
-        let delTransferTx = await Bubblegum.provider.send(
-          new Transaction().add(delTransferIx),
-          [delegateKey],
-          {
-            skipPreflight: true,
-            commitment: "confirmed",
-          }
-        );
-
-        merkleRollAccount = await Bubblegum.provider.connection.getAccountInfo(
-          merkleRollKeypair.publicKey
-        );
-        merkleRoll = decodeMerkleRoll(merkleRollAccount.data);
-        onChainRoot =
-          merkleRoll.roll.changeLogs[merkleRoll.roll.activeIndex].root.toBuffer();
-
-        let [voucher] = await PublicKey.findProgramAddress(
-          [
-            Buffer.from("voucher", "utf8"),
-            merkleRollKeypair.publicKey.toBuffer(),
-            new BN(0).toBuffer("le", 8)
-          ],
-          Bubblegum.programId
-        );
-        if (i % 2 == 0) {
-          console.log(" - Redeeming Leaf", voucher.toBase58());
-          let redeemIx = createRedeemInstruction(
+        {
+          let {root, proof} = await getProof(asset);
+          let transferIx = createTransferInstruction(
             {
               authority: treeAuthority,
               owner: payer.publicKey,
               delegate: payer.publicKey,
+              newOwner: destination.publicKey,
               gummyrollProgram: GummyrollProgramId,
               merkleSlab: merkleRollKeypair.publicKey,
-              voucher: voucher,
             },
             {
-              root: bufferToArray(onChainRoot),
+              root: bufferToArray(bs58.decode(root)),
               dataHash,
               creatorHash,
-              nonce: new BN(0),
-              index: 0,
+              nonce: leafNonce,
+              index: i,
             }
           );
-          let redeemTx = await Bubblegum.provider.send(
-            new Transaction().add(redeemIx),
-            [payer],
+          transferIx.keys[1].isSigner = true;
+          transferIx.keys = [...transferIx.keys, ...proof];
+
+          await execute(Bubblegum.provider, [transferIx], [payer]);
+        }
+
+        console.log(" - Delegating Ownership");
+        {
+          let {root, proof} = await getProof(asset);
+          let delegateIx = await createDelegateInstruction(
+            {
+              authority: treeAuthority,
+              owner: destination.publicKey,
+              previousDelegate: destination.publicKey,
+              newDelegate: delegateKey.publicKey,
+              gummyrollProgram: GummyrollProgramId,
+              merkleSlab: merkleRollKeypair.publicKey,
+            },
+            {
+              root: bufferToArray(bs58.decode(root)),
+              dataHash,
+              creatorHash,
+              nonce: leafNonce,
+              index: i,
+            }
+          );
+          delegateIx.keys = [...delegateIx.keys, ...proof];
+          await execute(Bubblegum.provider, [delegateIx], [destination]);
+        }
+
+        console.log(" - Transferring Ownership (through delegate)");
+        {
+          let {root, proof} = await getProof(asset);
+          let delTransferIx = createTransferInstruction(
+            {
+              authority: treeAuthority,
+              owner: destination.publicKey,
+              delegate: delegateKey.publicKey,
+              newOwner: payer.publicKey,
+              gummyrollProgram: GummyrollProgramId,
+              merkleSlab: merkleRollKeypair.publicKey,
+            },
+            {
+              root: bufferToArray(bs58.decode(root)),
+              dataHash,
+              creatorHash,
+              nonce: leafNonce,
+              index: i,
+            }
+          );
+          delTransferIx.keys[2].isSigner = true;
+          delTransferIx.keys = [...delTransferIx.keys, ...proof];
+          let delTransferTx = await Bubblegum.provider.send(
+            new Transaction().add(delTransferIx),
+            [delegateKey],
             {
               skipPreflight: true,
               commitment: "confirmed",
             }
           );
-          console.log(" - Cancelling redeem (reinserting to tree)");
 
-          const cancelRedeemIx = createCancelRedeemInstruction(
-            {
-              authority: treeAuthority,
-              owner: payer.publicKey,
-              gummyrollProgram: GummyrollProgramId,
-              merkleSlab: merkleRollKeypair.publicKey,
-              voucher: voucher,
-            },
-            {
-              root: bufferToArray(onChainRoot),
-            }
-          );
-          let cancelRedeemTx = await Bubblegum.provider.send(
-            new Transaction().add(cancelRedeemIx),
-            [payer],
-            {
-              commitment: "confirmed",
-            }
-          );
+        }
+
+        let [voucher] = await PublicKey.findProgramAddress(
+          [
+            Buffer.from("voucher", "utf8"),
+            merkleRollKeypair.publicKey.toBuffer(),
+            leafNonce.toBuffer("le", 8)
+          ],
+          Bubblegum.programId
+        );
+        if (i % 2 == 0) {
+          console.log(" - Redeeming Leaf", voucher.toBase58());
+          {
+            let {root, proof} = await getProof(asset);
+            let redeemIx = createRedeemInstruction(
+              {
+                authority: treeAuthority,
+                owner: payer.publicKey,
+                delegate: payer.publicKey,
+                gummyrollProgram: GummyrollProgramId,
+                merkleSlab: merkleRollKeypair.publicKey,
+                voucher: voucher,
+              },
+              {
+                root: bufferToArray(bs58.decode(root)),
+                dataHash,
+                creatorHash,
+                nonce: leafNonce,
+                index: i,
+              }
+            );
+            redeemIx.keys = [...redeemIx.keys, ...proof];
+            let redeemTx = await Bubblegum.provider.send(
+              new Transaction().add(redeemIx),
+              [payer],
+              {
+                skipPreflight: true,
+                commitment: "confirmed",
+              }
+            );
+          }
+          console.log(" - Cancelling redeem (reinserting to tree)");
+          {
+            let merkleRollAccount =
+              await Bubblegum.provider.connection.getAccountInfo(
+                merkleRollKeypair.publicKey
+              );
+            let merkleRoll = decodeMerkleRoll(merkleRollAccount.data);
+            let {root, proof} = await getProof(asset);
+           console.log("rpc root ", root);
+
+
+            console.log("on chain roots ")
+            merkleRoll.roll.changeLogs.map(cl => console.log(cl.root.toBase58()))
+
+            const cancelRedeemIx = createCancelRedeemInstruction(
+              {
+                authority: treeAuthority,
+                owner: payer.publicKey,
+                gummyrollProgram: GummyrollProgramId,
+                merkleSlab: merkleRollKeypair.publicKey,
+                voucher: voucher,
+              },
+              {
+                root: bufferToArray(bs58.decode(root)),
+              }
+            );
+            cancelRedeemIx.keys = [...cancelRedeemIx.keys, ...proof];
+            let cancelRedeemTx = await Bubblegum.provider.send(
+              new Transaction().add(cancelRedeemIx),
+              [payer],
+              {
+                commitment: "confirmed",
+              }
+            );
+          }
 
           console.log(" - Decompressing leaf");
+          {
+            let {root, proof} = await getProof(asset);
+            let redeemIx = createRedeemInstruction(
+              {
+                authority: treeAuthority,
+                owner: payer.publicKey,
+                delegate: payer.publicKey,
+                gummyrollProgram: GummyrollProgramId,
+                merkleSlab: merkleRollKeypair.publicKey,
+                voucher: voucher,
+              },
+              {
+                root: bufferToArray(bs58.decode(root)),
+                dataHash,
+                creatorHash,
+                nonce: leafNonce,
+                index: i,
+              }
+            );
+            redeemIx.keys = [...redeemIx.keys, ...proof];
+            let redeemTX = await Bubblegum.provider.send(
+              new Transaction().add(redeemIx),
+              [payer],
+              {
+                commitment: "confirmed",
+              }
+            );
+          }
 
-          redeemIx = createRedeemInstruction(
-            {
-              authority: treeAuthority,
-              owner: payer.publicKey,
-              delegate: payer.publicKey,
-              gummyrollProgram: GummyrollProgramId,
-              merkleSlab: merkleRollKeypair.publicKey,
-              voucher: voucher,
-            },
-            {
-              root: bufferToArray(onChainRoot),
-              dataHash,
-              creatorHash,
-              nonce: leafNonce,
-              index: 0,
-            }
-          );
-          let redeemTx2 = await Bubblegum.provider.send(
-            new Transaction().add(redeemIx),
-            [payer],
-            {
-              commitment: "confirmed",
-            }
-          );
-
-          let voucherData = await Bubblegum.account.voucher.fetch(voucher);
 
 
-          console.log(asset.toBase58())
+          console.log("Decompressing - ", asset.toBase58())
 
           let [mintAuthority] = await PublicKey.findProgramAddress(
             [asset.toBuffer()],
