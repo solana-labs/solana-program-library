@@ -294,11 +294,11 @@ export function checkProof(index: number, root: string, leaf: string, proof: str
         } else {
             node = hash(new PublicKey(proof[i]).toBuffer(), node);
         }
-        if (verbose) console.log(`${new PublicKey(node).toString()}`)
+        if (verbose) console.log(`node ${i} ${new PublicKey(node).toString()}`)
     }
     const rehashed = new PublicKey(node).toString()
     const received = new PublicKey(root).toString();
-    if (verbose) console.log(`\n${rehashed}\n${received}`)
+    if (verbose) console.log(`hashed ${rehashed} got ${received}`)
     if (rehashed !== received) {
         throw new Error("Roots don't match!!!")
     }
