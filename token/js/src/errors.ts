@@ -59,3 +59,8 @@ export class TokenInvalidInstructionDataError extends TokenError {
 export class TokenInvalidInstructionTypeError extends TokenError {
     name = 'TokenInvalidInstructionTypeError';
 }
+
+/** Thrown if the program does not support the desired instruction */
+export class TokenUnsupportedInstructionError extends TokenError {
+    name = 'TokenUnsupportedInstructionError';
+}

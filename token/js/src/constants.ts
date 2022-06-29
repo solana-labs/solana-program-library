@@ -14,3 +14,12 @@ export const NATIVE_MINT = new PublicKey('So111111111111111111111111111111111111
 
 /** Address of the special mint for wrapped native SOL in spl-token-2022 */
 export const NATIVE_MINT_2022 = new PublicKey('9pan9bMn5HatX4EJdBwg9VgCa7Uz5HL8N1m5D3NdXejP');
+
+/** Check that the token program provided is not `Tokenkeg...`, useful when using extensions */
+export function programSupportsExtensions(programId: PublicKey): boolean {
+    if (programId === TOKEN_PROGRAM_ID) {
+        return false;
+    } else {
+        return true;
+    }
+}
