@@ -39,7 +39,7 @@ use solana_sdk::{
     pubkey::Pubkey,
     signature::{Keypair, Signer},
     system_instruction, system_program,
-    transaction::Transaction
+    transaction::Transaction,
 };
 use spl_associated_token_account::{
     get_associated_token_address_with_program_id, instruction::create_associated_token_account,
@@ -1351,6 +1351,7 @@ fn command_close(
     recipient: Pubkey,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
+    let mut is_recipient_wrapped = false;
     if !config.sign_only {
         let source_account = config
             .rpc_client
@@ -1375,6 +1376,9 @@ fn command_close(
             )
             .into());
         }
+
+        let recipient_account = config.rpc_client.get_token_account(&recipient)?;
+        is_recipient_wrapped = recipient_account.is_some() && recipient_account.unwrap().is_native;
     }
 
     let mut instructions = vec![close_account(
@@ -1385,11 +1389,7 @@ fn command_close(
         &config.multisigner_pubkeys,
     )?];
 
-    let recipient_account = config
-        .rpc_client
-        .get_token_account(&recipient)?;
-
-    if !recipient_account.is_none() && recipient_account.unwrap().is_native {
+    if is_recipient_wrapped {
         instructions.push(sync_native(&config.program_id, &recipient)?);
     }
 
