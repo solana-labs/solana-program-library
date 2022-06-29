@@ -305,6 +305,18 @@ pub fn signers_of(
     }
 }
 
+fn check_decimals(  
+    config: &Config,
+    token: Pubkey,
+    decimals: u8,
+) -> bool {
+    let d = decimals;
+    if d> 20 {
+    return true;
+    };
+    return false;
+}
+
 #[allow(clippy::too_many_arguments)]
 fn command_create_token(
     config: &Config,
@@ -947,11 +959,28 @@ fn command_burn(
 fn check_if_amount_overflows_supply(  
     config: &Config,
     token: Pubkey,
-    ui_amount : f64,
+    ui_amount : u64,
 ) -> bool {
     let supply = config.rpc_client.get_token_supply(&token).unwrap();
     let amount = ui_amount;
-    if amount + supply.ui_amount.unwrap()> 18446744073709551615.0 {
+    //println!("{}", supply.ui_amount.unwrap());
+    //println!("{}", amount);
+    //let sum1 = supply.ui_amount.unwrap()+amount;
+    //println!("{}", sum1);
+    println!("{}", amount);
+    if amount > u64::MAX {
+        return true;
+    };
+//18446744073709551615
+    println!("{}", supply.amount);
+    let s = supply.amount;
+    let my_int: u64 = s.parse().unwrap();
+
+    if amount.checked_add(my_int).is_none() {
+        return true;
+    };
+
+    if amount + my_int > u64::MAX {
     return true;
     };
     return false;
@@ -962,7 +991,7 @@ fn check_if_amount_overflows_supply(
 fn command_mint(
     config: &Config,
     token: Pubkey,
-    ui_amount: f64,
+    ui_amount: u64,
     recipient: Pubkey,
     mint_decimals: Option<u8>,
     mint_authority: Pubkey,
@@ -978,8 +1007,24 @@ fn command_mint(
     );
 
     let (_, decimals) = resolve_mint_info(config, &recipient, None, mint_decimals)?;
-    let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
+    let amount = 0;
+    let amount = if decimals==0 {
+        ui_amount
+        //println!("{}", decimals);
+        //println!("{}", amount);
+    }
+    else {
+        spl_token::ui_amount_to_amount(ui_amount as f64, decimals)
+        //println!("Hello");
+        //println!("{}", decimals);
+        //println!("{}", amount);
+    };
+    //The issue happens here!
 
+    // println!("{}", decimals);
+    // let amount = ui_amount;
+    // println!("{}", amount);
+    println!("{}", amount);
     let instructions = if use_unchecked_instruction {
         vec![mint_to(
             &config.program_id,
@@ -2727,16 +2772,20 @@ fn process_command(
                 get_signer(arg_matches, "token_keypair", &mut wallet_manager)
                     .unwrap_or_else(new_throwaway_signer);
             bulk_signers.push(token_signer);
-
-            command_create_token(
-                config,
-                decimals,
-                token,
-                mint_authority,
-                arg_matches.is_present("enable_freeze"),
-                memo,
-                bulk_signers,
-            )
+            if check_decimals(config, token, decimals) {
+                return Err("Error in decimals function".to_string().into());
+            }
+            else {
+                command_create_token(
+                    config,
+                    decimals,
+                    token,
+                    mint_authority,
+                    arg_matches.is_present("enable_freeze"),
+                    memo,
+                    bulk_signers,
+                )
+            }
         }
         (CommandName::CreateAccount, arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
@@ -2892,7 +2941,7 @@ fn process_command(
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let amount = value_t_or_exit!(arg_matches, "amount", f64);
+            let amount = value_t_or_exit!(arg_matches, "amount", u64);
             let recipient = config.associated_token_address_or_override(
                 arg_matches,
                 "recipient",
@@ -2900,6 +2949,7 @@ fn process_command(
             );
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
+
             if check_if_amount_overflows_supply(config, token, amount) {
                 return Err("Supply requested to be minted is greater than the u64 token supply limit".to_string().into());
             }
