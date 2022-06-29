@@ -963,6 +963,8 @@ fn check_if_amount_overflows_supply(
 ) -> bool {
     let supply = config.rpc_client.get_token_supply(&token).unwrap();
     let amount = ui_amount;
+    //let max = u64::MAX;
+    //println!("{}", max);
     //println!("{}", supply.ui_amount.unwrap());
     //println!("{}", amount);
     //let sum1 = supply.ui_amount.unwrap()+amount;
@@ -975,7 +977,12 @@ fn check_if_amount_overflows_supply(
     println!("{}", supply.amount);
     let s = supply.amount;
     let my_int: u64 = s.parse().unwrap();
-
+    let aaa = 18446744073709551615 as u64;
+    let b = aaa as f64;
+    let ss: String = aaa.to_string();
+    let testint = ss.parse::<f64>().unwrap();
+    println!("Check {}", testint);
+    
     if amount.checked_add(my_int).is_none() {
         return true;
     };
@@ -984,6 +991,7 @@ fn check_if_amount_overflows_supply(
     return true;
     };
     return false;
+
 }
     
 
@@ -1018,25 +1026,26 @@ fn command_mint(
     let amount = 0;
     let amount = if decimals==0 {
         ui_amount
+        //spl_token::ui_amount_to_amount(ui_amount as f64, decimals)
         //println!("{}", decimals);
         //println!("{}", amount);
     }
     else {
-        spl_token::ui_amount_to_amount(ui_amount as f64, decimals)
+        spl_token::ui_amount_to_amount2(ui_amount, decimals)
         //println!("Hello");
         //println!("{}", decimals);
         //println!("{}", amount);
+
+        //Do everything in fixed point
+
     };
-
-
-
 
     //The issue happens here!
 
     // println!("{}", decimals);
     // let amount = ui_amount;
     // println!("{}", amount);
-    println!("{}", amount);
+    println!("STRANGE FUNCTION {}", amount);
     let instructions = if use_unchecked_instruction {
         vec![mint_to(
             &config.program_id,
