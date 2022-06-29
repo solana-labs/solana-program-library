@@ -1007,6 +1007,14 @@ fn command_mint(
     );
 
     let (_, decimals) = resolve_mint_info(config, &recipient, None, mint_decimals)?;
+    
+    let a =10;
+    let a = u64::pow(a, decimals.into());
+    let maxsupply = u64::MAX/a;
+    if ui_amount>maxsupply {
+        println!("WARNING: Max supply will be limited to {}",maxsupply);
+    };
+    //Code is not production level ready yet
     let amount = 0;
     let amount = if decimals==0 {
         ui_amount
@@ -1019,6 +1027,10 @@ fn command_mint(
         //println!("{}", decimals);
         //println!("{}", amount);
     };
+
+
+
+
     //The issue happens here!
 
     // println!("{}", decimals);
