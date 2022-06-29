@@ -1,6 +1,8 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { TokenInstruction } from './types';
+import { TokenUnsupportedInstructionError } from '../errors';
+import { programSupportsExtensions } from '../constants';
 
 /** Deserialized instruction for the initiation of an immutable owner account */
 export interface InitializeNonTransferableMintInstructionData {
@@ -24,6 +26,9 @@ export function createInitializeNonTransferableMintInstruction(
     mint: PublicKey,
     programId: PublicKey
 ): TransactionInstruction {
+    if (!programSupportsExtensions(programId)) {
+        throw new TokenUnsupportedInstructionError();
+    }
     const keys = [{ pubkey: mint, isSigner: false, isWritable: true }];
 
     const data = Buffer.alloc(initializeNonTransferableMintInstructionData.span);

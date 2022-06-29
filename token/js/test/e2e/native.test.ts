@@ -38,7 +38,7 @@ describe('native', () => {
             nativeMint = NATIVE_MINT;
         } else {
             nativeMint = NATIVE_MINT_2022;
-            await createNativeMint(connection, payer, undefined, TEST_PROGRAM_ID, nativeMint);
+            await createNativeMint(connection, payer, undefined, nativeMint, TEST_PROGRAM_ID);
         }
     });
     beforeEach(async () => {

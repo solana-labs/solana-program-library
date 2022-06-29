@@ -1,7 +1,8 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import { TokenInstruction } from '../../instructions/types';
-import { TOKEN_2022_PROGRAM_ID } from '../../constants';
+import { programSupportsExtensions, TOKEN_2022_PROGRAM_ID } from '../../constants';
+import { TokenUnsupportedInstructionError } from '../../errors';
 
 export enum MemoTransferInstruction {
     Enable = 0,
@@ -65,6 +66,9 @@ function createMemoTransferInstruction(
     multiSigners: Signer[],
     programId: PublicKey
 ): TransactionInstruction {
+    if (!programSupportsExtensions(programId)) {
+        throw new TokenUnsupportedInstructionError();
+    }
     const keys = [{ pubkey: account, isSigner: false, isWritable: true }];
     keys.push({ pubkey: authority, isSigner: !multiSigners.length, isWritable: false });
     for (const signer of multiSigners) {
