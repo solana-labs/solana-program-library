@@ -40,6 +40,7 @@ export const createTreeStruct = new beet.BeetArgsStruct<
  * @property [_writable_] authority
  * @property [_writable_, **signer**] payer
  * @property [**signer**] treeCreator
+ * @property [] candyWrapper
  * @property [] gummyrollProgram
  * @property [_writable_] merkleSlab
  * @category Instructions
@@ -50,6 +51,7 @@ export type CreateTreeInstructionAccounts = {
   authority: web3.PublicKey
   payer: web3.PublicKey
   treeCreator: web3.PublicKey
+  candyWrapper: web3.PublicKey
   gummyrollProgram: web3.PublicKey
   merkleSlab: web3.PublicKey
 }
@@ -72,8 +74,14 @@ export function createCreateTreeInstruction(
   accounts: CreateTreeInstructionAccounts,
   args: CreateTreeInstructionArgs
 ) {
-  const { authority, payer, treeCreator, gummyrollProgram, merkleSlab } =
-    accounts
+  const {
+    authority,
+    payer,
+    treeCreator,
+    candyWrapper,
+    gummyrollProgram,
+    merkleSlab,
+  } = accounts
 
   const [data] = createTreeStruct.serialize({
     instructionDiscriminator: createTreeInstructionDiscriminator,
@@ -94,6 +102,11 @@ export function createCreateTreeInstruction(
       pubkey: treeCreator,
       isWritable: false,
       isSigner: true,
+    },
+    {
+      pubkey: candyWrapper,
+      isWritable: false,
+      isSigner: false,
     },
     {
       pubkey: web3.SystemProgram.programId,

@@ -50,6 +50,7 @@ export const removeListingStruct = new beet.BeetArgsStruct<
  * @property [] gummyroll
  * @property [_writable_] merkleSlab
  * @property [] bubblegum
+ * @property [] candyWrapper
  * @category Instructions
  * @category RemoveListing
  * @category generated
@@ -62,6 +63,7 @@ export type RemoveListingInstructionAccounts = {
   gummyroll: web3.PublicKey
   merkleSlab: web3.PublicKey
   bubblegum: web3.PublicKey
+  candyWrapper: web3.PublicKey
 }
 
 export const removeListingInstructionDiscriminator = [
@@ -90,6 +92,7 @@ export function createRemoveListingInstruction(
     gummyroll,
     merkleSlab,
     bubblegum,
+    candyWrapper,
   } = accounts
 
   const [data] = removeListingStruct.serialize({
@@ -129,6 +132,11 @@ export function createRemoveListingInstruction(
     },
     {
       pubkey: bubblegum,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: candyWrapper,
       isWritable: false,
       isSigner: false,
     },

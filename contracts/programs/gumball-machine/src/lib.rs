@@ -10,7 +10,9 @@ use bubblegum::program::Bubblegum;
 
 use bubblegum::state::metaplex_adapter::MetadataArgs;
 use bytemuck::cast_slice_mut;
-use gummyroll::program::Gummyroll;
+use gummyroll::{
+    program::Gummyroll, state::CandyWrapper,
+};
 use spl_token::native_mint;
 pub mod state;
 pub mod utils;
@@ -37,6 +39,7 @@ pub struct InitGumballMachine<'info> {
     /// CHECK: Tree authority to the merkle slab, PDA owned by BubbleGum
     #[account(mut)]
     bubblegum_authority: AccountInfo<'info>,
+    candy_wrapper: Program<'info, CandyWrapper>,
     gummyroll: Program<'info, Gummyroll>,
     /// CHECK: Empty merkle slab
     #[account(zero)]
@@ -91,6 +94,7 @@ pub struct DispenseSol<'info> {
     /// This key must sign for all write operations to the NFT Metadata stored in the Merkle slab
     #[account(mut)]
     bubblegum_authority: AccountInfo<'info>,
+    candy_wrapper: Program<'info, CandyWrapper>,
     gummyroll: Program<'info, Gummyroll>,
     /// CHECK: Validation occurs in Gummyroll
     #[account(mut)]
@@ -129,6 +133,7 @@ pub struct DispenseToken<'info> {
     /// This key must sign for all write operations to the NFT Metadata stored in the Merkle slab
     #[account(mut)]
     bubblegum_authority: AccountInfo<'info>,
+    candy_wrapper: Program<'info, CandyWrapper>,
     gummyroll: Program<'info, Gummyroll>,
     /// CHECK: Validation occurs in Gummyroll
     #[account(mut)]
@@ -228,6 +233,7 @@ fn find_and_mint_compressed_nft<'info>(
     gummyroll: &Program<'info, Gummyroll>,
     merkle_slab: &AccountInfo<'info>,
     bubblegum: &Program<'info, Bubblegum>,
+    candy_wrapper_program: &Program<'info, CandyWrapper>,
     num_items: u64,
 ) -> Result<GumballMachineHeader> {
     // Prevent atomic transaction exploit attacks
@@ -272,6 +278,7 @@ fn find_and_mint_compressed_nft<'info>(
             bubblegum::cpi::accounts::MintV1 {
                 mint_authority: willy_wonka.to_account_info(),
                 authority: bubblegum_authority.to_account_info(),
+                candy_wrapper: candy_wrapper_program.to_account_info(),
                 gummyroll_program: gummyroll.to_account_info(),
                 owner: payer.to_account_info(),
                 delegate: payer.to_account_info(),
@@ -360,6 +367,7 @@ pub mod gumball_machine {
             bubblegum::cpi::accounts::CreateTree {
                 tree_creator: ctx.accounts.willy_wonka.to_account_info(),
                 authority: ctx.accounts.bubblegum_authority.to_account_info(),
+                candy_wrapper: ctx.accounts.candy_wrapper.to_account_info(),
                 gummyroll_program: ctx.accounts.gummyroll.to_account_info(),
                 merkle_slab: ctx.accounts.merkle_slab.to_account_info(),
                 payer: ctx.accounts.creator.to_account_info(),
@@ -515,6 +523,7 @@ pub mod gumball_machine {
             &ctx.accounts.gummyroll,
             &ctx.accounts.merkle_slab,
             &ctx.accounts.bubblegum,
+            &ctx.accounts.candy_wrapper,
             num_items,
         )?;
 
@@ -557,6 +566,7 @@ pub mod gumball_machine {
             &ctx.accounts.gummyroll,
             &ctx.accounts.merkle_slab,
             &ctx.accounts.bubblegum,
+            &ctx.accounts.candy_wrapper,
             num_items,
         )?;
 

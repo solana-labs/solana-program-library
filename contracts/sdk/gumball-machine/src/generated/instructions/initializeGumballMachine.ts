@@ -76,6 +76,7 @@ export const initializeGumballMachineStruct = new beet.FixableBeetArgsStruct<
  * @property [] mint
  * @property [] willyWonka
  * @property [_writable_] bubblegumAuthority
+ * @property [] candyWrapper
  * @property [] gummyroll
  * @property [_writable_] merkleSlab
  * @property [] bubblegum
@@ -89,6 +90,7 @@ export type InitializeGumballMachineInstructionAccounts = {
   mint: web3.PublicKey
   willyWonka: web3.PublicKey
   bubblegumAuthority: web3.PublicKey
+  candyWrapper: web3.PublicKey
   gummyroll: web3.PublicKey
   merkleSlab: web3.PublicKey
   bubblegum: web3.PublicKey
@@ -118,6 +120,7 @@ export function createInitializeGumballMachineInstruction(
     mint,
     willyWonka,
     bubblegumAuthority,
+    candyWrapper,
     gummyroll,
     merkleSlab,
     bubblegum,
@@ -151,6 +154,11 @@ export function createInitializeGumballMachineInstruction(
     {
       pubkey: bubblegumAuthority,
       isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: candyWrapper,
+      isWritable: false,
       isSigner: false,
     },
     {

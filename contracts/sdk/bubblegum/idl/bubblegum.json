@@ -21,6 +21,11 @@
           "isSigner": true
         },
         {
+          "name": "candyWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
@@ -58,6 +63,11 @@
         {
           "name": "authority",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "candyWrapper",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -110,6 +120,11 @@
         },
         {
           "name": "newOwner",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "candyWrapper",
           "isMut": false,
           "isSigner": false
         },
@@ -186,6 +201,11 @@
           "isSigner": false
         },
         {
+          "name": "candyWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "gummyrollProgram",
           "isMut": false,
           "isSigner": false
@@ -239,6 +259,11 @@
       "accounts": [
         {
           "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "candyWrapper",
           "isMut": false,
           "isSigner": false
         },
@@ -306,6 +331,11 @@
       "accounts": [
         {
           "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "candyWrapper",
           "isMut": false,
           "isSigner": false
         },
@@ -383,6 +413,11 @@
       "accounts": [
         {
           "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "candyWrapper",
           "isMut": false,
           "isSigner": false
         },
@@ -552,6 +587,11 @@
         },
         {
           "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "candyWrapper",
           "isMut": false,
           "isSigner": false
         },

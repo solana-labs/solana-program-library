@@ -31,6 +31,11 @@
           "isSigner": false
         },
         {
+          "name": "candyWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "gummyroll",
           "isMut": false,
           "isSigner": false
@@ -356,6 +361,11 @@
           ]
         },
         {
+          "name": "candyWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "gummyroll",
           "isMut": false,
           "isSigner": false
@@ -434,6 +444,11 @@
           "docs": [
             "This key must sign for all write operations to the NFT Metadata stored in the Merkle slab"
           ]
+        },
+        {
+          "name": "candyWrapper",
+          "isMut": false,
+          "isSigner": false
         },
         {
           "name": "gummyroll",

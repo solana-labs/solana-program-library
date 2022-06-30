@@ -36,6 +36,7 @@ export const cancelRedeemStruct = new beet.BeetArgsStruct<
  * Accounts required by the _cancelRedeem_ instruction
  *
  * @property [] authority
+ * @property [] candyWrapper
  * @property [] gummyrollProgram
  * @property [_writable_] merkleSlab
  * @property [_writable_] voucher
@@ -46,6 +47,7 @@ export const cancelRedeemStruct = new beet.BeetArgsStruct<
  */
 export type CancelRedeemInstructionAccounts = {
   authority: web3.PublicKey
+  candyWrapper: web3.PublicKey
   gummyrollProgram: web3.PublicKey
   merkleSlab: web3.PublicKey
   voucher: web3.PublicKey
@@ -70,7 +72,14 @@ export function createCancelRedeemInstruction(
   accounts: CancelRedeemInstructionAccounts,
   args: CancelRedeemInstructionArgs
 ) {
-  const { authority, gummyrollProgram, merkleSlab, voucher, owner } = accounts
+  const {
+    authority,
+    candyWrapper,
+    gummyrollProgram,
+    merkleSlab,
+    voucher,
+    owner,
+  } = accounts
 
   const [data] = cancelRedeemStruct.serialize({
     instructionDiscriminator: cancelRedeemInstructionDiscriminator,
@@ -79,6 +88,11 @@ export function createCancelRedeemInstruction(
   const keys: web3.AccountMeta[] = [
     {
       pubkey: authority,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: candyWrapper,
       isWritable: false,
       isSigner: false,
     },

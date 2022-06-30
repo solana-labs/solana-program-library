@@ -33,6 +33,7 @@ export const compressStruct = new beet.BeetArgsStruct<{
  * @property [_writable_] masterEdition
  * @property [_writable_, **signer**] payer
  * @property [] tokenMetadataProgram
+ * @property [] candyWrapper
  * @property [] gummyrollProgram
  * @category Instructions
  * @category Compress
@@ -49,6 +50,7 @@ export type CompressInstructionAccounts = {
   masterEdition: web3.PublicKey
   payer: web3.PublicKey
   tokenMetadataProgram: web3.PublicKey
+  candyWrapper: web3.PublicKey
   gummyrollProgram: web3.PublicKey
 }
 
@@ -78,6 +80,7 @@ export function createCompressInstruction(
     masterEdition,
     payer,
     tokenMetadataProgram,
+    candyWrapper,
     gummyrollProgram,
   } = accounts
 
@@ -142,6 +145,11 @@ export function createCompressInstruction(
     },
     {
       pubkey: splToken.TOKEN_PROGRAM_ID,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: candyWrapper,
       isWritable: false,
       isSigner: false,
     },

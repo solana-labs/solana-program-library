@@ -1,4 +1,4 @@
-# Bubblegum
+# Sugar Shack
 
 This SDK uses MPL's `Solita` to generate typescript SDK for `anchor` smart-contract.
 
@@ -11,4 +11,4 @@ Solita is particularly helpful:
 
 1. `yarn`
 2. `node solita.js`
-3. `import { ... } from '../sdk/bubblegum'` 
+3. `import { ... } from '../sdk/sugar-shack'` 

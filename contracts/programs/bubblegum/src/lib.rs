@@ -12,7 +12,12 @@ use {
         NewNFTEvent,
         NFTDecompressionEvent,
     },
-    gummyroll::{program::Gummyroll, Node},
+    gummyroll::{
+        program::Gummyroll,
+        Node,
+        state::CandyWrapper,
+        utils::wrap_event,
+    },
     crate::error::BubblegumError,
     crate::utils::{append_leaf,
                    replace_leaf,
@@ -54,6 +59,7 @@ pub struct CreateTree<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     pub tree_creator: Signer<'info>,
+    pub candy_wrapper: Program<'info, CandyWrapper>,
     pub system_program: Program<'info, System>,
     pub gummyroll_program: Program<'info, Gummyroll>,
     #[account(zero)]
@@ -72,6 +78,7 @@ pub struct MintV1<'info> {
     /// CHECK: This account is neither written to nor read from.
     #[account(mut)]
     pub authority: Account<'info, Nonce>,
+    pub candy_wrapper: Program<'info, CandyWrapper>,
     pub gummyroll_program: Program<'info, Gummyroll>,
     /// CHECK: This account is neither written to nor read from.
     pub owner: AccountInfo<'info>,
@@ -90,6 +97,7 @@ pub struct Burn<'info> {
     )]
     /// CHECK: This account is neither written to nor read from.
     pub authority: Account<'info, Nonce>,
+    pub candy_wrapper: Program<'info, CandyWrapper>,
     pub gummyroll_program: Program<'info, Gummyroll>,
     /// CHECK: This account is checked in the instruction
     pub owner: UncheckedAccount<'info>,
@@ -114,6 +122,7 @@ pub struct Transfer<'info> {
     pub delegate: UncheckedAccount<'info>,
     /// CHECK: This account is neither written to nor read from.
     pub new_owner: UncheckedAccount<'info>,
+    pub candy_wrapper: Program<'info, CandyWrapper>,
     pub gummyroll_program: Program<'info, Gummyroll>,
     #[account(mut)]
     /// CHECK: This account is modified in the downstream program
@@ -133,6 +142,7 @@ pub struct Delegate<'info> {
     pub previous_delegate: UncheckedAccount<'info>,
     /// CHECK: This account is neither written to nor read from.
     pub new_delegate: UncheckedAccount<'info>,
+    pub candy_wrapper: Program<'info, CandyWrapper>,
     pub gummyroll_program: Program<'info, Gummyroll>,
     #[account(mut)]
     /// CHECK: This account is modified in the downstream program
@@ -154,6 +164,7 @@ pub struct Redeem<'info> {
     )]
     /// CHECK: This account is neither written to nor read from.
     pub authority: Account<'info, Nonce>,
+    pub candy_wrapper: Program<'info, CandyWrapper>,
     pub gummyroll_program: Program<'info, Gummyroll>,
     #[account(mut)]
     pub owner: Signer<'info>,
@@ -185,6 +196,7 @@ pub struct CancelRedeem<'info> {
     )]
     /// CHECK: This account is neither written to nor read from.
     pub authority: Account<'info, Nonce>,
+    pub candy_wrapper: Program<'info, CandyWrapper>,
     pub gummyroll_program: Program<'info, Gummyroll>,
     #[account(mut)]
     /// CHECK: unsafe
@@ -286,6 +298,7 @@ pub struct Compress<'info> {
     pub token_metadata_program: UncheckedAccount<'info>,
     /// CHECK:
     pub token_program: UncheckedAccount<'info>,
+    pub candy_wrapper: Program<'info, CandyWrapper>,
     pub gummyroll_program: Program<'info, Gummyroll>,
 }
 
@@ -343,6 +356,7 @@ pub mod bubblegum {
                 authority: ctx.accounts.authority.to_account_info(),
                 append_authority: ctx.accounts.tree_creator.to_account_info(),
                 merkle_roll: merkle_slab,
+                candy_wrapper: ctx.accounts.candy_wrapper.to_account_info(),
             },
             authority_pda_signer,
         );
@@ -380,11 +394,13 @@ pub mod bubblegum {
             data_hash.to_bytes(),
             creator_hash.to_bytes(),
         );
-        emit!(NewNFTEvent {
+        let new_nft = NewNFTEvent {
             version: Version::V1,
             metadata: message,
             nonce: nonce.count
-        });
+        };
+        emit!(new_nft);
+        wrap_event(new_nft.try_to_vec()?, &ctx.accounts.candy_wrapper)?;
         emit!(leaf.to_event());
         nonce.count = nonce.count.saturating_add(1);
         append_leaf(
@@ -394,6 +410,7 @@ pub mod bubblegum {
             &ctx.accounts.authority.to_account_info(),
             &ctx.accounts.mint_authority.to_account_info(),
             &ctx.accounts.merkle_slab.to_account_info(),
+            &ctx.accounts.candy_wrapper.to_account_info(),
             leaf.to_node(),
         )
     }
@@ -438,6 +455,7 @@ pub mod bubblegum {
             &ctx.accounts.gummyroll_program.to_account_info(),
             &ctx.accounts.authority.to_account_info(),
             &ctx.accounts.merkle_slab.to_account_info(),
+            &ctx.accounts.candy_wrapper.to_account_info(),
             ctx.remaining_accounts,
             root,
             previous_leaf.to_node(),
@@ -476,6 +494,7 @@ pub mod bubblegum {
             &ctx.accounts.gummyroll_program.to_account_info(),
             &ctx.accounts.authority.to_account_info(),
             &ctx.accounts.merkle_slab.to_account_info(),
+            &ctx.accounts.candy_wrapper.to_account_info(),
             ctx.remaining_accounts,
             root,
             previous_leaf.to_node(),
@@ -513,6 +532,7 @@ pub mod bubblegum {
             &ctx.accounts.gummyroll_program.to_account_info(),
             &ctx.accounts.authority.to_account_info(),
             &ctx.accounts.merkle_slab.to_account_info(),
+            &ctx.accounts.candy_wrapper.to_account_info(),
             ctx.remaining_accounts,
             root,
             previous_leaf.to_node(),
@@ -543,6 +563,7 @@ pub mod bubblegum {
             &ctx.accounts.gummyroll_program.to_account_info(),
             &ctx.accounts.authority.to_account_info(),
             &ctx.accounts.merkle_slab.to_account_info(),
+            &ctx.accounts.candy_wrapper.to_account_info(),
             ctx.remaining_accounts,
             root,
             previous_leaf.to_node(),
@@ -576,6 +597,7 @@ pub mod bubblegum {
             &ctx.accounts.gummyroll_program.to_account_info(),
             &ctx.accounts.authority.to_account_info(),
             &ctx.accounts.merkle_slab.to_account_info(),
+            &ctx.accounts.candy_wrapper.to_account_info(),
             ctx.remaining_accounts,
             root,
             [0; 32], 

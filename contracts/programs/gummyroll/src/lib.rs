@@ -13,8 +13,8 @@ pub mod state;
 pub mod utils;
 
 use crate::error::GummyrollError;
-use crate::state::{ChangeLogEvent, MerkleRollHeader};
-use crate::utils::ZeroCopy;
+use crate::state::{CandyWrapper, ChangeLogEvent, MerkleRollHeader};
+use crate::utils::{wrap_event, ZeroCopy};
 pub use concurrent_merkle_tree::{error::CMTError, merkle_roll::MerkleRoll, state::Node};
 
 declare_id!("GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD");
@@ -27,6 +27,7 @@ pub struct Initialize<'info> {
     pub authority: Signer<'info>,
     /// CHECK: unsafe
     pub append_authority: UncheckedAccount<'info>,
+    pub candy_wrapper: Program<'info, CandyWrapper>,
 }
 
 #[derive(Accounts)]
@@ -35,6 +36,7 @@ pub struct Modify<'info> {
     /// CHECK: This account is validated in the instruction
     pub merkle_roll: UncheckedAccount<'info>,
     pub authority: Signer<'info>,
+    pub candy_wrapper: Program<'info, CandyWrapper>,
 }
 
 #[derive(Accounts)]
@@ -44,6 +46,7 @@ pub struct Append<'info> {
     pub merkle_roll: UncheckedAccount<'info>,
     pub authority: Signer<'info>,
     pub append_authority: Signer<'info>,
+    pub candy_wrapper: Program<'info, CandyWrapper>,
 }
 
 #[derive(Accounts)]
@@ -296,6 +299,7 @@ pub mod gummyroll {
         let (roll_bytes, canopy_bytes) = rest.split_at_mut(merkle_roll_size);
         let id = ctx.accounts.merkle_roll.key();
         let change_log = merkle_roll_apply_fn!(header, id, roll_bytes, initialize,)?;
+        wrap_event(change_log.try_to_vec()?, &ctx.accounts.candy_wrapper)?;
         emit!(*change_log);
         update_canopy(canopy_bytes, header.max_depth, None)
     }
@@ -353,6 +357,7 @@ pub mod gummyroll {
             &proof,
             index
         )?;
+        wrap_event(change_log.try_to_vec()?, &ctx.accounts.candy_wrapper)?;
         emit!(*change_log);
         update_canopy(canopy_bytes, header.max_depth, Some(change_log))
     }
@@ -393,6 +398,7 @@ pub mod gummyroll {
             &proof,
             index,
         )?;
+        wrap_event(change_log.try_to_vec()?, &ctx.accounts.candy_wrapper)?;
         emit!(*change_log);
         update_canopy(canopy_bytes, header.max_depth, Some(change_log))
     }
@@ -473,6 +479,7 @@ pub mod gummyroll {
         let merkle_roll_size = merkle_roll_get_size!(header)?;
         let (roll_bytes, canopy_bytes) = rest.split_at_mut(merkle_roll_size);
         let change_log = merkle_roll_apply_fn!(header, id, roll_bytes, append, leaf)?;
+        wrap_event(change_log.try_to_vec()?, &ctx.accounts.candy_wrapper)?;
         emit!(*change_log);
         update_canopy(canopy_bytes, header.max_depth, Some(change_log))
     }
@@ -511,6 +518,7 @@ pub mod gummyroll {
             &proof,
             index,
         )?;
+        wrap_event(change_log.try_to_vec()?, &ctx.accounts.candy_wrapper)?;
         emit!(*change_log);
         update_canopy(canopy_bytes, header.max_depth, Some(change_log))
     }

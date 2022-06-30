@@ -10,8 +10,8 @@ import { loadProgram, handleLogs, handleLogsAtomic } from "./indexer/utils";
 import { bootstrap } from "./db";
 import { fetchAndPlugGaps, validateTree } from "./backfiller";
 
-const url = "http://api.internal.mainnet-beta.solana.com";
-// const url = "http://127.0.0.1:8899";
+// const url = "http://api.internal.mainnet-beta.solana.com";
+const url = "http://127.0.0.1:8899";
 let Bubblegum: anchor.Program<Bubblegum>;
 let Gummyroll: anchor.Program<Gummyroll>;
 
@@ -40,13 +40,12 @@ async function main() {
     (logs, ctx) => handleLogsAtomic(db, logs, ctx, { Gummyroll, Bubblegum }),
     "confirmed"
   );
-  let maxSeq = 0;
   while (true) {
     try {
       const trees = await db.getTrees();
       for (const [treeId, depth] of trees) {
         console.log("Scanning for gaps");
-        maxSeq = await fetchAndPlugGaps(connection, db, maxSeq, treeId, {
+        await fetchAndPlugGaps(connection, db, 0, treeId, {
           Gummyroll,
           Bubblegum,
         });
@@ -55,8 +54,8 @@ async function main() {
           `    Off-chain tree ${treeId} is consistent: ${await validateTree(
             db,
             depth,
-            maxSeq,
-            treeId
+            treeId,
+            0,
           )}`
         );
         console.log("Moving to next tree");

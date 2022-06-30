@@ -44,6 +44,7 @@ export const burnStruct = new beet.BeetArgsStruct<
  * Accounts required by the _burn_ instruction
  *
  * @property [] authority
+ * @property [] candyWrapper
  * @property [] gummyrollProgram
  * @property [] owner
  * @property [] delegate
@@ -54,6 +55,7 @@ export const burnStruct = new beet.BeetArgsStruct<
  */
 export type BurnInstructionAccounts = {
   authority: web3.PublicKey
+  candyWrapper: web3.PublicKey
   gummyrollProgram: web3.PublicKey
   owner: web3.PublicKey
   delegate: web3.PublicKey
@@ -76,7 +78,14 @@ export function createBurnInstruction(
   accounts: BurnInstructionAccounts,
   args: BurnInstructionArgs
 ) {
-  const { authority, gummyrollProgram, owner, delegate, merkleSlab } = accounts
+  const {
+    authority,
+    candyWrapper,
+    gummyrollProgram,
+    owner,
+    delegate,
+    merkleSlab,
+  } = accounts
 
   const [data] = burnStruct.serialize({
     instructionDiscriminator: burnInstructionDiscriminator,
@@ -85,6 +94,11 @@ export function createBurnInstruction(
   const keys: web3.AccountMeta[] = [
     {
       pubkey: authority,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: candyWrapper,
       isWritable: false,
       isSigner: false,
     },

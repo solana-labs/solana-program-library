@@ -20,6 +20,7 @@ import {
 } from "../bubblegum/src/generated";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 import { logTx } from "../../tests/utils";
+import { CANDY_WRAPPER_PROGRAM_ID } from "../utils";
 
 async function main() {
   const connection = new web3.Connection("http://127.0.0.1:8899", {
@@ -109,6 +110,7 @@ async function main() {
       authority: authority,
       gummyrollProgram: GummyrollCtx.programId,
       merkleSlab: merkleRollKeypair.publicKey,
+      candyWrapper: CANDY_WRAPPER_PROGRAM_ID
     },
     {
       maxDepth,
@@ -142,6 +144,7 @@ async function main() {
             gummyrollProgram: GummyrollCtx.programId,
             owner: wallets[i].publicKey,
             delegate: wallets[i].publicKey,
+            candyWrapper: CANDY_WRAPPER_PROGRAM_ID
           },
           {
             message: {
@@ -210,6 +213,7 @@ async function main() {
           authority: merkleAuthority,
           merkleSlab: new PublicKey(assets[k].treeId),
           gummyrollProgram: GummyrollCtx.programId,
+          candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
         },
         {
           dataHash: [...bs58.decode(proof.dataHash)],
@@ -235,8 +239,7 @@ async function main() {
         let txSize = tx.serialize().length;
         console.log("Transaction Size", txSize);
         console.log(
-          `Successfully transferred asset (${assets[k].leafHash} from tree: ${
-            assets[k].treeId
+          `Successfully transferred asset (${assets[k].leafHash} from tree: ${assets[k].treeId
           }) - ${wallets[i].publicKey.toBase58()} -> ${wallets[
             j
           ].publicKey.toBase58()}`

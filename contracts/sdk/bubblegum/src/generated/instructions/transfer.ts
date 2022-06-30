@@ -47,6 +47,7 @@ export const transferStruct = new beet.BeetArgsStruct<
  * @property [] owner
  * @property [] delegate
  * @property [] newOwner
+ * @property [] candyWrapper
  * @property [] gummyrollProgram
  * @property [_writable_] merkleSlab
  * @category Instructions
@@ -58,6 +59,7 @@ export type TransferInstructionAccounts = {
   owner: web3.PublicKey
   delegate: web3.PublicKey
   newOwner: web3.PublicKey
+  candyWrapper: web3.PublicKey
   gummyrollProgram: web3.PublicKey
   merkleSlab: web3.PublicKey
 }
@@ -80,8 +82,15 @@ export function createTransferInstruction(
   accounts: TransferInstructionAccounts,
   args: TransferInstructionArgs
 ) {
-  const { authority, owner, delegate, newOwner, gummyrollProgram, merkleSlab } =
-    accounts
+  const {
+    authority,
+    owner,
+    delegate,
+    newOwner,
+    candyWrapper,
+    gummyrollProgram,
+    merkleSlab,
+  } = accounts
 
   const [data] = transferStruct.serialize({
     instructionDiscriminator: transferInstructionDiscriminator,
@@ -105,6 +114,11 @@ export function createTransferInstruction(
     },
     {
       pubkey: newOwner,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: candyWrapper,
       isWritable: false,
       isSigner: false,
     },

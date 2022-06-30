@@ -3,6 +3,8 @@ import * as borsh from "borsh";
 import { bignum } from "@metaplex-foundation/beet";
 import { BN } from "@project-serum/anchor";
 
+export const CANDY_WRAPPER_PROGRAM_ID = new PublicKey("WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh");
+
 export function readPublicKey(reader: borsh.BinaryReader): PublicKey {
   return new PublicKey(reader.readFixedArray(32));
 }

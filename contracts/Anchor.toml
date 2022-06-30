@@ -21,6 +21,10 @@ program = "../deps/solana-program-library/target/deploy/spl_token.so"
 address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 program = "../deps/metaplex-program-library/token-metadata/target/deploy/mpl_token_metadata.so"
 
+[[test.genesis]]
+address = "WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh"
+program = "./target/deploy/candy_wrapper.so"
+
 [registry]
 url = "https://anchor.projectserum.com"
 

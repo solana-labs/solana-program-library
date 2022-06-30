@@ -53,6 +53,7 @@ export const purchaseStruct = new beet.FixableBeetArgsStruct<
  * @property [_writable_] merkleSlab
  * @property [] bubblegum
  * @property [_writable_] marketplaceProps
+ * @property [] candyWrapper
  * @category Instructions
  * @category Purchase
  * @category generated
@@ -66,6 +67,7 @@ export type PurchaseInstructionAccounts = {
   merkleSlab: web3.PublicKey
   bubblegum: web3.PublicKey
   marketplaceProps: web3.PublicKey
+  candyWrapper: web3.PublicKey
 }
 
 export const purchaseInstructionDiscriminator = [
@@ -95,6 +97,7 @@ export function createPurchaseInstruction(
     merkleSlab,
     bubblegum,
     marketplaceProps,
+    candyWrapper,
   } = accounts
 
   const [data] = purchaseStruct.serialize({
@@ -144,6 +147,11 @@ export function createPurchaseInstruction(
     },
     {
       pubkey: web3.SystemProgram.programId,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: candyWrapper,
       isWritable: false,
       isSigner: false,
     },

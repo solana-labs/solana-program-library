@@ -15,6 +15,7 @@ pub fn replace_leaf<'info>(
     gummyroll_program: &AccountInfo<'info>,
     authority: &AccountInfo<'info>,
     merkle_roll: &AccountInfo<'info>,
+    candy_wrapper: &AccountInfo<'info>,
     remaining_accounts: &[AccountInfo<'info>],
     root_node: Node,
     previous_leaf: Node,
@@ -28,6 +29,7 @@ pub fn replace_leaf<'info>(
         gummyroll::cpi::accounts::Modify {
             authority: authority.clone(),
             merkle_roll: merkle_roll.clone(),
+            candy_wrapper: candy_wrapper.clone(),
         },
         authority_pda_signer,
     )
@@ -42,6 +44,7 @@ pub fn append_leaf<'info>(
     authority: &AccountInfo<'info>,
     append_authority: &AccountInfo<'info>,
     merkle_roll: &AccountInfo<'info>,
+    candy_wrapper: &AccountInfo<'info>,
     leaf_node: Node,
 ) -> Result<()> {
     let seeds = &[seed.as_ref(), &[bump]];
@@ -52,6 +55,7 @@ pub fn append_leaf<'info>(
             authority: authority.clone(),
             append_authority: append_authority.clone(),
             merkle_roll: merkle_roll.clone(),
+            candy_wrapper: candy_wrapper.clone(),
         },
         authority_pda_signer,
     );

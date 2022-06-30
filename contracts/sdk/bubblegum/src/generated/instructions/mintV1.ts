@@ -38,6 +38,7 @@ export const mintV1Struct = new beet.FixableBeetArgsStruct<
  *
  * @property [**signer**] mintAuthority
  * @property [_writable_] authority
+ * @property [] candyWrapper
  * @property [] gummyrollProgram
  * @property [] owner
  * @property [] delegate
@@ -49,6 +50,7 @@ export const mintV1Struct = new beet.FixableBeetArgsStruct<
 export type MintV1InstructionAccounts = {
   mintAuthority: web3.PublicKey
   authority: web3.PublicKey
+  candyWrapper: web3.PublicKey
   gummyrollProgram: web3.PublicKey
   owner: web3.PublicKey
   delegate: web3.PublicKey
@@ -76,6 +78,7 @@ export function createMintV1Instruction(
   const {
     mintAuthority,
     authority,
+    candyWrapper,
     gummyrollProgram,
     owner,
     delegate,
@@ -95,6 +98,11 @@ export function createMintV1Instruction(
     {
       pubkey: authority,
       isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: candyWrapper,
+      isWritable: false,
       isSigner: false,
     },
     {

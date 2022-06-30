@@ -1,0 +1,20 @@
+[package]
+name = "candy-wrapper"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "candy_wrapper"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+
+[dependencies]
+solana-program = "1.10.1"

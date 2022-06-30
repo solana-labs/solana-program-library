@@ -42,6 +42,7 @@ export const dispenseNftSolStruct = new beet.BeetArgsStruct<
  * @property [] recentBlockhashes
  * @property [] instructionSysvarAccount
  * @property [_writable_] bubblegumAuthority
+ * @property [] candyWrapper
  * @property [] gummyroll
  * @property [_writable_] merkleSlab
  * @property [] bubblegum
@@ -57,6 +58,7 @@ export type DispenseNftSolInstructionAccounts = {
   recentBlockhashes: web3.PublicKey
   instructionSysvarAccount: web3.PublicKey
   bubblegumAuthority: web3.PublicKey
+  candyWrapper: web3.PublicKey
   gummyroll: web3.PublicKey
   merkleSlab: web3.PublicKey
   bubblegum: web3.PublicKey
@@ -88,6 +90,7 @@ export function createDispenseNftSolInstruction(
     recentBlockhashes,
     instructionSysvarAccount,
     bubblegumAuthority,
+    candyWrapper,
     gummyroll,
     merkleSlab,
     bubblegum,
@@ -136,6 +139,11 @@ export function createDispenseNftSolInstruction(
     {
       pubkey: bubblegumAuthority,
       isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: candyWrapper,
+      isWritable: false,
       isSigner: false,
     },
     {

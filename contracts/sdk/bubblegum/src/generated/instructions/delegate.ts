@@ -47,6 +47,7 @@ export const delegateStruct = new beet.BeetArgsStruct<
  * @property [**signer**] owner
  * @property [] previousDelegate
  * @property [] newDelegate
+ * @property [] candyWrapper
  * @property [] gummyrollProgram
  * @property [_writable_] merkleSlab
  * @category Instructions
@@ -58,6 +59,7 @@ export type DelegateInstructionAccounts = {
   owner: web3.PublicKey
   previousDelegate: web3.PublicKey
   newDelegate: web3.PublicKey
+  candyWrapper: web3.PublicKey
   gummyrollProgram: web3.PublicKey
   merkleSlab: web3.PublicKey
 }
@@ -85,6 +87,7 @@ export function createDelegateInstruction(
     owner,
     previousDelegate,
     newDelegate,
+    candyWrapper,
     gummyrollProgram,
     merkleSlab,
   } = accounts
@@ -111,6 +114,11 @@ export function createDelegateInstruction(
     },
     {
       pubkey: newDelegate,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: candyWrapper,
       isWritable: false,
       isSigner: false,
     },

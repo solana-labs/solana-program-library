@@ -19,6 +19,7 @@ default = []
 anchor-lang = { path="../../../deps/anchor/lang" }
 bytemuck = "1.8.0"
 concurrent-merkle-tree = { path="../../../lib/concurrent-merkle-tree", features = [ "sol-log" ]}
+candy-wrapper = { path="../candy-wrapper", features = [ "no-entrypoint" ]}
 
 [profile.release]
 overflow-checks = true

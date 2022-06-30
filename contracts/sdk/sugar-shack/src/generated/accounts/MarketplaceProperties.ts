@@ -20,7 +20,9 @@ export type MarketplacePropertiesArgs = {
   bump: number
 }
 
-const marketplacePropertiesDiscriminator = [31, 68, 0, 130, 46, 137, 61, 24]
+export const marketplacePropertiesDiscriminator = [
+  31, 68, 0, 130, 46, 137, 61, 24,
+]
 /**
  * Holds the data for the {@link MarketplaceProperties} Account and provides de/serialization
  * functionality for that data

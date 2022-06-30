@@ -52,6 +52,7 @@ export const createOrModifyListingStruct = new beet.BeetArgsStruct<
  * @property [] gummyroll
  * @property [_writable_] merkleSlab
  * @property [] bubblegum
+ * @property [] candyWrapper
  * @category Instructions
  * @category CreateOrModifyListing
  * @category generated
@@ -64,6 +65,7 @@ export type CreateOrModifyListingInstructionAccounts = {
   gummyroll: web3.PublicKey
   merkleSlab: web3.PublicKey
   bubblegum: web3.PublicKey
+  candyWrapper: web3.PublicKey
 }
 
 export const createOrModifyListingInstructionDiscriminator = [
@@ -92,6 +94,7 @@ export function createCreateOrModifyListingInstruction(
     gummyroll,
     merkleSlab,
     bubblegum,
+    candyWrapper,
   } = accounts
 
   const [data] = createOrModifyListingStruct.serialize({
@@ -131,6 +134,11 @@ export function createCreateOrModifyListingInstruction(
     },
     {
       pubkey: bubblegum,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: candyWrapper,
       isWritable: false,
       isSigner: false,
     },

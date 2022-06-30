@@ -44,6 +44,7 @@ export const redeemStruct = new beet.BeetArgsStruct<
  * Accounts required by the _redeem_ instruction
  *
  * @property [] authority
+ * @property [] candyWrapper
  * @property [] gummyrollProgram
  * @property [_writable_, **signer**] owner
  * @property [] delegate
@@ -55,6 +56,7 @@ export const redeemStruct = new beet.BeetArgsStruct<
  */
 export type RedeemInstructionAccounts = {
   authority: web3.PublicKey
+  candyWrapper: web3.PublicKey
   gummyrollProgram: web3.PublicKey
   owner: web3.PublicKey
   delegate: web3.PublicKey
@@ -80,8 +82,15 @@ export function createRedeemInstruction(
   accounts: RedeemInstructionAccounts,
   args: RedeemInstructionArgs
 ) {
-  const { authority, gummyrollProgram, owner, delegate, merkleSlab, voucher } =
-    accounts
+  const {
+    authority,
+    candyWrapper,
+    gummyrollProgram,
+    owner,
+    delegate,
+    merkleSlab,
+    voucher,
+  } = accounts
 
   const [data] = redeemStruct.serialize({
     instructionDiscriminator: redeemInstructionDiscriminator,
@@ -90,6 +99,11 @@ export function createRedeemInstruction(
   const keys: web3.AccountMeta[] = [
     {
       pubkey: authority,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: candyWrapper,
       isWritable: false,
       isSigner: false,
     },

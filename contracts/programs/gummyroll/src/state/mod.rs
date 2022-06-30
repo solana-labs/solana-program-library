@@ -91,3 +91,12 @@ impl MerkleRollHeader {
         self.creation_slot = creation_slot;
     }
 }
+
+#[derive(Clone)]
+pub struct CandyWrapper;
+
+impl anchor_lang::Id for CandyWrapper {
+    fn id() -> Pubkey {
+        candy_wrapper::id()
+    }
+}
