@@ -1,5 +1,9 @@
 //! Defines PreciseNumber, a U256 wrapper with float-like operations
 
+use std::fmt::Display;
+
+use num_traits::{Float};
+
 use crate::uint::U256;
 
 // Allows for easy swapping between different internal representations
@@ -73,12 +77,28 @@ impl PreciseNumber {
         Some(Self { value })
     }
 
+    /// Figure out a way to put an f64 into U256, DOES NOT WORK YET
+    pub fn from<T: Float>(value: T) -> Option<Self> {
+        let value = InnerUint::from(value.floor().to_u128()?).checked_mul(one())?;
+        Some(Self { value })
+    }
+
     /// Convert a precise number back to u128
     pub fn to_imprecise(&self) -> Option<u128> {
         self.value
             .checked_add(Self::rounding_correction())?
             .checked_div(one())
             .map(|v| v.as_u128())
+    }
+
+    /// Get fractional part of the precise number as U256
+    pub fn fract(&self) -> Option<InnerUint> {
+        let whole = self.floor().unwrap().to_imprecise().unwrap();
+        let mut fract = self.value;
+        for _ in 0..whole {
+            fract -= one();
+        }
+        Some(fract)
     }
 
     /// Checks that two PreciseNumbers are equal within some tolerance
@@ -360,6 +380,14 @@ impl PreciseNumber {
         // input number.  For all numbers, that will be between 1 and the given number.
         let guess = self.checked_add(&one)?.checked_div(&two)?;
         self.newtonian_root_approximation(&two, guess, Self::MAX_APPROXIMATION_ITERATIONS)
+    }
+}
+
+impl Display for PreciseNumber {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let whole = self.floor().unwrap().to_imprecise().unwrap();
+        let fract = self.fract().unwrap();
+        write!(f, "{}.{}", whole, fract)
     }
 }
 

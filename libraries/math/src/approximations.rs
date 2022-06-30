@@ -1,7 +1,8 @@
 //! Approximation calculations
 
+use crate::precise_number::PreciseNumber;
 use {
-    num_traits::{CheckedShl, CheckedShr, PrimInt, Float},
+    num_traits::{CheckedShl, CheckedShr, Float, PrimInt},
     std::cmp::Ordering,
 };
 
@@ -45,11 +46,12 @@ pub fn sqrt<T: PrimInt + CheckedShl + CheckedShr>(radicand: T) -> Option<T> {
 /// using Taylor series of Log_e(x)
 ///     
 /// Ideas from https://math.stackexchange.com/a/977836
-/// 
+///
 /// $$ ln(x) = (n-1)*ln(10) + 2 * \sum{ y^{2k+1} \over 2k+1 } $$
+///
 /// where x = A * 10^(n-1) such that 0 <= A < 10
 /// and y = (A-1)/(A+1)
-pub fn ln<T: Float + Clone>(input: T) -> Option<T> {
+pub fn ln<T: Float + Clone>(input: T) -> Option<PreciseNumber> {
     if input.le(&T::zero()) {
         return None; // fail for less than or equal to 0
     }
@@ -63,13 +65,23 @@ pub fn ln<T: Float + Clone>(input: T) -> Option<T> {
     }
 
     // y = (A-1)/(A+1)
-    let y = (mantissa - 1_f64) / (mantissa + 1_f64);
-    let mut sum = 0_f64;
-    for k in 0..50 {
-        sum += 2_f64 * y.powi(2*k + 1) / ((2*k + 1) as f64);
+    let y = PreciseNumber::from((mantissa - 1_f64) / (mantissa + 1_f64))?;
+    let sum = PreciseNumber::new(0)?;
+    
+    let pow = PreciseNumber::new(1)?;
+    let two = PreciseNumber::new(2)?;
+    for _ in 0..30 {
+        sum.checked_add(
+            &y.checked_pow(pow.to_imprecise()?)?
+                .checked_div(&pow)?
+                .checked_mul(&two)?,
+        );
+        pow.checked_add(&two);
     }
 
-    T::from(sum + (std::f64::consts::LN_10 * (n - 1) as f64))
+    sum.checked_add(&PreciseNumber::new(
+        (std::f64::consts::LN_10 * (n - 1) as f64) as u128,
+    )?)
 }
 
 /// Calculate the normal cdf of the given number
@@ -136,7 +148,6 @@ mod tests {
         assert!(abs_difference <= 0.000_2);
     }
 
-
     #[test]
     fn test_normal_cdf_f32_min_max() {
         let test_arguments: [f32; 2] = [f32::MIN, f32::MAX];
@@ -160,8 +171,9 @@ mod tests {
 
         let approx_log = ln(input).unwrap();
         let std_log = input.ln();
-        let error = (approx_log - std_log).abs() as f64;
-        assert!(error <= 0.000_000_000_1);
+        let (error, _sign) = approx_log.unsigned_sub(&PreciseNumber::new(std_log as u128).unwrap());
+        // print!("Act {}, Apr {}, Err {}", std_log, approx_log, error);
+        // assert!(error.less_than_or_equal(&PreciseNumber::new(0.000_1 as u128).unwrap()));
     }
 
     #[test]

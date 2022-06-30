@@ -190,7 +190,7 @@ async fn test_approx_natural_log() {
     let mut transaction = Transaction::new_with_payer(
         &[instruction::f32_approx_natural_log(1_f32.exp())],
         Some(&payer.pubkey()),
-    ); 
+    );
     transaction.sign(&[&payer], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 }

@@ -51,7 +51,7 @@ fn f32_natural_log(argument: f32) -> f32 {
 
 /// f32_approx_natural_log
 #[inline(never)]
-fn f32_approx_natural_log(argument: f32) -> f32 {
+fn f32_approx_natural_log(argument: f32) -> PreciseNumber {
     ln(argument).unwrap()
 }
 
@@ -147,7 +147,7 @@ pub fn process_instruction(
             sol_log_compute_units();
             let result = f32_approx_natural_log(argument);
             sol_log_compute_units();
-            msg!("{}", result as u64);
+            msg!("{}", result);
             Ok(())
         }
         MathInstruction::F32NormalCDF { argument } => {
