@@ -42,6 +42,7 @@ import {TokenProgramVersion, Version} from "../sdk/bubblegum/src/generated";
 import {sleep} from "@metaplex-foundation/amman/dist/utils";
 import {verbose} from "sqlite3";
 import {bs58} from "@project-serum/anchor/dist/cjs/utils/bytes";
+import {CANDY_WRAPPER_PROGRAM_ID} from "../sdk/utils";
 
 // @ts-ignore
 let Bubblegum;
@@ -157,6 +158,7 @@ describe("bubblegum", () => {
     const initGummyrollIx = createCreateTreeInstruction(
       {
         treeCreator: payer.publicKey,
+        candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
         payer: payer.publicKey,
         authority: authority,
         gummyrollProgram: GummyrollProgramId,
@@ -221,6 +223,7 @@ describe("bubblegum", () => {
           {
             mintAuthority: payer.publicKey,
             authority: treeAuthority,
+            candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
             gummyrollProgram: GummyrollProgramId,
             owner: payer.publicKey,
             delegate: payer.publicKey,
@@ -258,6 +261,7 @@ describe("bubblegum", () => {
           let transferIx = createTransferInstruction(
             {
               authority: treeAuthority,
+              candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
               owner: payer.publicKey,
               delegate: payer.publicKey,
               newOwner: destination.publicKey,
@@ -284,6 +288,7 @@ describe("bubblegum", () => {
           let delegateIx = await createDelegateInstruction(
             {
               authority: treeAuthority,
+              candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
               owner: destination.publicKey,
               previousDelegate: destination.publicKey,
               newDelegate: delegateKey.publicKey,
@@ -308,6 +313,7 @@ describe("bubblegum", () => {
           let delTransferIx = createTransferInstruction(
             {
               authority: treeAuthority,
+              candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
               owner: destination.publicKey,
               delegate: delegateKey.publicKey,
               newOwner: payer.publicKey,
@@ -332,7 +338,6 @@ describe("bubblegum", () => {
               commitment: "confirmed",
             }
           );
-
         }
 
         let [voucher] = await PublicKey.findProgramAddress(
@@ -350,6 +355,7 @@ describe("bubblegum", () => {
             let redeemIx = createRedeemInstruction(
               {
                 authority: treeAuthority,
+                candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
                 owner: payer.publicKey,
                 delegate: payer.publicKey,
                 gummyrollProgram: GummyrollProgramId,
@@ -391,6 +397,7 @@ describe("bubblegum", () => {
             const cancelRedeemIx = createCancelRedeemInstruction(
               {
                 authority: treeAuthority,
+                candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
                 owner: payer.publicKey,
                 gummyrollProgram: GummyrollProgramId,
                 merkleSlab: merkleRollKeypair.publicKey,
@@ -417,6 +424,7 @@ describe("bubblegum", () => {
               {
                 authority: treeAuthority,
                 owner: payer.publicKey,
+                candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
                 delegate: payer.publicKey,
                 gummyrollProgram: GummyrollProgramId,
                 merkleSlab: merkleRollKeypair.publicKey,
@@ -439,8 +447,6 @@ describe("bubblegum", () => {
               }
             );
           }
-
-
 
           console.log("Decompressing - ", asset.toBase58())
 

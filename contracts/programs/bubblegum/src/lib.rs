@@ -69,14 +69,12 @@ pub struct CreateTree<'info> {
 
 #[derive(Accounts)]
 pub struct MintV1<'info> {
-    /// CHECK: This account is neither written to nor read from.
     pub mint_authority: Signer<'info>,
     #[account(
+    mut,
     seeds = [merkle_slab.key().as_ref()],
     bump,
     )]
-    /// CHECK: This account is neither written to nor read from.
-    #[account(mut)]
     pub authority: Account<'info, Nonce>,
     pub candy_wrapper: Program<'info, CandyWrapper>,
     pub gummyroll_program: Program<'info, Gummyroll>,
@@ -95,7 +93,6 @@ pub struct Burn<'info> {
     seeds = [merkle_slab.key().as_ref()],
     bump,
     )]
-    /// CHECK: This account is neither written to nor read from.
     pub authority: Account<'info, Nonce>,
     pub candy_wrapper: Program<'info, CandyWrapper>,
     pub gummyroll_program: Program<'info, Gummyroll>,
@@ -103,8 +100,8 @@ pub struct Burn<'info> {
     pub owner: UncheckedAccount<'info>,
     /// CHECK: This account is chekced in the instruction
     pub delegate: UncheckedAccount<'info>,
+
     #[account(mut)]
-    /// CHECK: unsafe
     pub merkle_slab: UncheckedAccount<'info>,
 }
 

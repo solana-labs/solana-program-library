@@ -348,13 +348,8 @@ describe("bubblegum", () => {
         Bubblegum.programId
       );
 
-      let [tokenMint] = await PublicKey.findProgramAddress(
-        [asset.toBuffer(), TOKEN_PROGRAM_ID.toBuffer()],
-        Bubblegum.programId
-      ); //TODO -> change this for v1 id must be the mint
-
       let [mintAuthority] = await PublicKey.findProgramAddress(
-        [tokenMint.toBuffer()],
+        [asset.toBuffer()],
         Bubblegum.programId
       );
 
@@ -392,13 +387,13 @@ describe("bubblegum", () => {
           tokenAccount: await Token.getAssociatedTokenAddress(
             ASSOCIATED_TOKEN_PROGRAM_ID,
             TOKEN_PROGRAM_ID,
-            tokenMint,
+            asset,
             payer.publicKey
           ),
-          mint: tokenMint,
+          mint: asset,
           mintAuthority: mintAuthority,
-          metadata: await getMetadata(tokenMint),
-          masterEdition: await getMasterEdition(tokenMint),
+          metadata: await getMetadata(asset),
+          masterEdition: await getMasterEdition(asset),
           sysvarRent: SYSVAR_RENT_PUBKEY,
           tokenMetadataProgram: PROGRAM_ID,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
