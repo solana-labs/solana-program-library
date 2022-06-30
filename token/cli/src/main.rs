@@ -1351,8 +1351,9 @@ fn command_close(
     recipient: Pubkey,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let mut is_recipient_wrapped = false;
-    if !config.sign_only {
+    let is_recipient_wrapped = if config.sign_only {
+        false
+    } else {
         let source_account = config
             .rpc_client
             .get_token_account(&account)?
@@ -1378,8 +1379,9 @@ fn command_close(
         }
 
         let recipient_account = config.rpc_client.get_token_account(&recipient)?;
-        is_recipient_wrapped = recipient_account.is_some() && recipient_account.unwrap().is_native;
-    }
+
+        recipient_account.map(|x| x.is_native).unwrap_or(false)
+    };
 
     let mut instructions = vec![close_account(
         &config.program_id,
