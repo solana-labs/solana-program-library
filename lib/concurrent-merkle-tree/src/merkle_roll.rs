@@ -49,6 +49,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     }
 
     pub fn initialize(&mut self) -> Result<Node, CMTError> {
+        assert!(MAX_DEPTH < 31);
+        // This will return true if MAX_BUFFER_SIZE is a power of 2 or if it is 0
+        assert!(MAX_BUFFER_SIZE & (MAX_BUFFER_SIZE - 1) == 0);
         let mut rightmost_proof = Path::default();
         for (i, node) in rightmost_proof.proof.iter_mut().enumerate() {
             *node = empty_node(i as u32);
@@ -73,6 +76,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         proof_vec: &Vec<Node>,
         index: u32,
     ) -> Result<Node, CMTError> {
+        assert!(MAX_DEPTH < 31);
+        // This will return true if MAX_BUFFER_SIZE is a power of 2 or if it is 0
+        assert!(MAX_BUFFER_SIZE & (MAX_BUFFER_SIZE - 1) == 0);
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
         proof.copy_from_slice(&proof_vec[..]);
         let rightmost_proof = Path {
@@ -116,6 +122,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         proof_vec: &Vec<Node>,
         leaf_index: u32,
     ) -> Result<Node, CMTError> {
+        assert!(MAX_DEPTH < 31);
+        // This will return true if MAX_BUFFER_SIZE is a power of 2 or if it is 0
+        assert!(MAX_BUFFER_SIZE & (MAX_BUFFER_SIZE - 1) == 0);
         if leaf_index > self.rightmost_proof.index {
             solana_logging!(
                 "Received an index larger than the rightmost index {} > {}",
@@ -138,6 +147,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
 
     /// Basic operation that always succeeds
     pub fn append(&mut self, mut node: Node) -> Result<Node, CMTError> {
+        assert!(MAX_DEPTH < 31);
+        // This will return true if MAX_BUFFER_SIZE is a power of 2 or if it is 0
+        assert!(MAX_BUFFER_SIZE & (MAX_BUFFER_SIZE - 1) == 0);
         if node == EMPTY {
             return Err(CMTError::CannotAppendEmptyNode);
         }
@@ -212,6 +224,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         proof_vec: &Vec<Node>,
         index: u32,
     ) -> Result<Node, CMTError> {
+        assert!(MAX_DEPTH < 31);
+        // This will return true if MAX_BUFFER_SIZE is a power of 2 or if it is 0
+        assert!(MAX_BUFFER_SIZE & (MAX_BUFFER_SIZE - 1) == 0);
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
         fill_in_proof::<MAX_DEPTH>(&proof_vec, &mut proof);
         log_compute!();
@@ -236,6 +251,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         proof_vec: &Vec<Node>,
         index: u32,
     ) -> Result<Node, CMTError> {
+        assert!(MAX_DEPTH < 31);
+        // This will return true if MAX_BUFFER_SIZE is a power of 2 or if it is 0
+        assert!(MAX_BUFFER_SIZE & (MAX_BUFFER_SIZE - 1) == 0);
         if index > self.rightmost_proof.index {
             return Err(CMTError::LeafIndexOutOfBounds);
         } else {
