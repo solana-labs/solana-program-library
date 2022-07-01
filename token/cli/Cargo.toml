@@ -32,6 +32,7 @@ spl-associated-token-account = { version = "1.0.5", path="../../associated-token
 spl-memo = { version = "3.0.1", path="../../memo/program", features = ["no-entrypoint"] }
 strum = "0.24"
 strum_macros = "0.24"
+tokio = "1.14"
 
 [dev-dependencies]
 solana-test-validator = "=1.10.29"

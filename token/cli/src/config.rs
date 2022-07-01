@@ -1,13 +1,15 @@
+use crate::{Error, FALLBACK_PROGRAM_ID};
 use clap::ArgMatches;
 use solana_clap_utils::{
     input_parsers::pubkey_of_signer,
     keypair::{pubkey_from_path, signer_from_path_with_config, SignerFromPathConfig},
 };
 use solana_cli_output::OutputFormat;
-use solana_client::{blockhash_query::BlockhashQuery, rpc_client::RpcClient};
+use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_remote_wallet::remote_wallet::RemoteWalletManager;
-use solana_sdk::{pubkey::Pubkey, signature::Signer};
+use solana_sdk::{program_pack::Pack, pubkey::Pubkey, signature::Signer};
 use spl_associated_token_account::*;
+use spl_token::state::{Account, Mint};
 use std::{process::exit, sync::Arc};
 
 #[cfg(test)]
@@ -21,6 +23,12 @@ pub(crate) enum KeypairOrPath {
     Path(String),
 }
 
+pub(crate) struct MintInfo {
+    pub program_id: Pubkey,
+    pub address: Pubkey,
+    pub decimals: u8,
+}
+
 pub(crate) struct Config<'a> {
     pub(crate) rpc_client: Arc<RpcClient>,
     pub(crate) websocket_url: String,
@@ -29,53 +37,64 @@ pub(crate) struct Config<'a> {
     pub(crate) default_keypair: KeypairOrPath,
     pub(crate) nonce_account: Option<Pubkey>,
     pub(crate) nonce_authority: Option<Pubkey>,
-    pub(crate) blockhash_query: BlockhashQuery,
     pub(crate) sign_only: bool,
     pub(crate) dump_transaction_message: bool,
     pub(crate) multisigner_pubkeys: Vec<&'a Pubkey>,
-    pub(crate) program_id: Pubkey,
+    pub(crate) program_id: Option<Pubkey>,
 }
 
 impl<'a> Config<'a> {
     // Check if an explicit token account address was provided, otherwise
     // return the associated token address for the default address.
-    pub(crate) fn associated_token_address_or_override(
+    pub(crate) async fn associated_token_address_or_override(
         &self,
-        arg_matches: &ArgMatches,
+        arg_matches: &ArgMatches<'_>,
         override_name: &str,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
-    ) -> Pubkey {
+    ) -> Result<Pubkey, Error> {
         let token = pubkey_of_signer(arg_matches, "token", wallet_manager).unwrap();
         self.associated_token_address_for_token_or_override(
             arg_matches,
             override_name,
             wallet_manager,
             token,
+            None,
         )
+        .await
     }
 
     // Check if an explicit token account address was provided, otherwise
     // return the associated token address for the default address.
-    pub(crate) fn associated_token_address_for_token_or_override(
+    pub(crate) async fn associated_token_address_for_token_or_override(
         &self,
-        arg_matches: &ArgMatches,
+        arg_matches: &ArgMatches<'_>,
         override_name: &str,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
         token: Option<Pubkey>,
-    ) -> Pubkey {
+        known_program_id: Option<Pubkey>,
+    ) -> Result<Pubkey, Error> {
         if let Some(address) = pubkey_of_signer(arg_matches, override_name, wallet_manager).unwrap()
         {
-            return address;
+            return Ok(address);
         }
 
         let token = token.unwrap();
+        let program_id = if let Some(known_program_id) = known_program_id {
+            known_program_id
+        } else {
+            self.get_mint_info(&token, None).await.unwrap().program_id
+        };
         let owner = self
             .default_address(arg_matches, wallet_manager)
             .unwrap_or_else(|e| {
                 eprintln!("error: {}", e);
                 exit(1);
             });
-        get_associated_token_address_with_program_id(&owner, &token, &self.program_id)
+        Ok(get_associated_token_address_with_program_id(
+            &owner,
+            &token,
+            &program_id,
+        ))
     }
 
     // Checks if an explicit address was provided, otherwise return the default address.
@@ -182,6 +201,78 @@ impl<'a> Config<'a> {
             KeypairOrPath::Path(path) => {
                 signer_from_path_with_config(matches, path, "default", wallet_manager, config)
             }
+        }
+    }
+
+    pub(crate) async fn get_mint_info(
+        &self,
+        mint: &Pubkey,
+        mint_decimals: Option<u8>,
+    ) -> Result<MintInfo, Error> {
+        if self.sign_only {
+            Ok(MintInfo {
+                program_id: self.program_id.unwrap_or(FALLBACK_PROGRAM_ID),
+                address: *mint,
+                decimals: mint_decimals.unwrap_or_default(),
+            })
+        } else {
+            let account = self.rpc_client.get_account(mint).await?;
+            self.check_owner(mint, &account.owner)?;
+            let mint_account = Mint::unpack(&account.data)
+                .map_err(|_| format!("Could not find mint account {}", mint))?;
+            if let Some(decimals) = mint_decimals {
+                if decimals != mint_account.decimals {
+                    return Err(format!(
+                        "Mint {:?} has decimals {}, not configured decimals {}",
+                        mint, mint_account.decimals, decimals
+                    )
+                    .into());
+                }
+            }
+            Ok(MintInfo {
+                program_id: account.owner,
+                address: *mint,
+                decimals: mint_account.decimals,
+            })
+        }
+    }
+
+    pub(crate) fn check_owner(&self, account: &Pubkey, owner: &Pubkey) -> Result<(), Error> {
+        if let Some(program_id) = &self.program_id {
+            if program_id != owner {
+                return Err(format!(
+                    "Account {:?} is owned by {}, not configured program id {}",
+                    account, owner, program_id
+                )
+                .into());
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) async fn check_account(
+        &self,
+        token_account: &Pubkey,
+        mint_address: Option<Pubkey>,
+    ) -> Result<Pubkey, Error> {
+        if !self.sign_only {
+            let account = self.rpc_client.get_account(token_account).await?;
+            let source_account = Account::unpack(&account.data)
+                .map_err(|_| format!("Could not find token account {}", token_account))?;
+            let source_mint = source_account.mint;
+            if let Some(mint) = mint_address {
+                if source_mint != mint {
+                    return Err(format!(
+                        "Source {:?} does not contain {:?} tokens",
+                        token_account, mint
+                    )
+                    .into());
+                }
+            }
+            self.check_owner(token_account, &account.owner)?;
+            Ok(source_mint)
+        } else {
+            Ok(mint_address.unwrap_or_default())
         }
     }
 }
