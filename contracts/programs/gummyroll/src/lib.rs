@@ -83,8 +83,7 @@ fn get_cached_path_length(canopy: &mut [Node], max_depth: u32) -> Result<u32> {
     // Size: (2^n - 2) -> Size + 2 must be a power of 2
     let closest_power_of_2 = (canopy.len() + 2) as u32;
     // This expression will return true if `closest_power_of_2` is actually a power of 2
-    // A 32-bit number is a power of 2 iff all bits except for 1 (i.e. 31 bits) are 0
-    if closest_power_of_2.leading_zeros() + closest_power_of_2.trailing_zeros() == 31 {
+    if closest_power_of_2 & (closest_power_of_2 - 1) == 0 {
         // (1 << max_depth) returns the number of leaves in the full merkle tree
         // (1 << (max_depth + 1)) - 1 returns the number of nodes in the full tree
         // The canopy size cannot exceed the size of the tree
@@ -132,7 +131,7 @@ fn fill_in_proof_from_canopy(
     proof: &mut Vec<Node>,
 ) -> Result<()> {
     // 26 is hard coded as it is the current max depth that Gummyroll supports
-    let mut empty_node_cache = Box::new([EMPTY; 26]);
+    let mut empty_node_cache = Box::new([EMPTY; 30]);
     check_canopy_bytes(canopy_bytes)?;
     let canopy = cast_slice_mut::<u8, Node>(canopy_bytes);
     let path_len = get_cached_path_length(canopy, max_depth)?;
@@ -150,7 +149,7 @@ fn fill_in_proof_from_canopy(
         };
         if canopy[cached_idx] == EMPTY {
             let level = max_depth - (31 - node_idx.leading_zeros());
-            let empty_node = empty_node_cached::<26>(level, &mut empty_node_cache);
+            let empty_node = empty_node_cached::<30>(level, &mut empty_node_cache);
             canopy[cached_idx] = empty_node;
             inferred_nodes.push(empty_node);
         } else {
