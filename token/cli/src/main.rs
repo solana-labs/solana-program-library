@@ -3648,6 +3648,48 @@ mod tests {
     }
 
     #[test]
+    fn close_wrapped_sol_account() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+        let bulk_signers: Vec<Box<dyn Signer>> = vec![Box::new(clone_keypair(&payer))];
+
+        let token = create_token(&config, &payer);
+        let source = create_associated_account(&config, &payer, token);
+        let ui_amount = 10.0;
+        command_wrap(
+            &config,
+            ui_amount,
+            payer.pubkey(),
+            Some(source),
+            bulk_signers,
+        )
+        .unwrap();
+
+        let recipient = get_associated_token_address_with_program_id(
+            &payer.pubkey(),
+            &native_mint::id(),
+            &config.program_id,
+        );
+        let _result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Close.into(),
+                &source.to_string(),
+                &recipient.to_string(),
+            ],
+        );
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&recipient)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.token_amount.amount, "10");
+    }
+
+    #[test]
     fn disable_mint_authority() {
         let (test_validator, payer) = validator_for_test();
         let config = test_config(&test_validator, &payer, &spl_token::id());
