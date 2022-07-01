@@ -102,6 +102,7 @@ pub struct Burn<'info> {
     pub delegate: UncheckedAccount<'info>,
 
     #[account(mut)]
+    /// CHECK: This account is chekced in the instruction
     pub merkle_slab: UncheckedAccount<'info>,
 }
 
