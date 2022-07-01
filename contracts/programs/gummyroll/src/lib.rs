@@ -13,11 +13,13 @@ pub mod state;
 pub mod utils;
 
 use crate::error::GummyrollError;
-use crate::state::{CandyWrapper, ChangeLogEvent, MerkleRollHeader};
-use crate::utils::{wrap_event, ZeroCopy};
+use crate::state::{ChangeLogEvent, MerkleRollHeader};
+use crate::utils::ZeroCopy;
 pub use concurrent_merkle_tree::{error::CMTError, merkle_roll::MerkleRoll, state::Node};
 
 declare_id!("GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD");
+
+const MAX_TREE_DEPTH: usize = 30;
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
@@ -27,7 +29,6 @@ pub struct Initialize<'info> {
     pub authority: Signer<'info>,
     /// CHECK: unsafe
     pub append_authority: UncheckedAccount<'info>,
-    pub candy_wrapper: Program<'info, CandyWrapper>,
 }
 
 #[derive(Accounts)]
@@ -36,7 +37,6 @@ pub struct Modify<'info> {
     /// CHECK: This account is validated in the instruction
     pub merkle_roll: UncheckedAccount<'info>,
     pub authority: Signer<'info>,
-    pub candy_wrapper: Program<'info, CandyWrapper>,
 }
 
 #[derive(Accounts)]
@@ -46,7 +46,6 @@ pub struct Append<'info> {
     pub merkle_roll: UncheckedAccount<'info>,
     pub authority: Signer<'info>,
     pub append_authority: Signer<'info>,
-    pub candy_wrapper: Program<'info, CandyWrapper>,
 }
 
 #[derive(Accounts)]
@@ -131,7 +130,7 @@ fn fill_in_proof_from_canopy(
     proof: &mut Vec<Node>,
 ) -> Result<()> {
     // 26 is hard coded as it is the current max depth that Gummyroll supports
-    let mut empty_node_cache = Box::new([EMPTY; 30]);
+    let mut empty_node_cache = Box::new([EMPTY; MAX_TREE_DEPTH]);
     check_canopy_bytes(canopy_bytes)?;
     let canopy = cast_slice_mut::<u8, Node>(canopy_bytes);
     let path_len = get_cached_path_length(canopy, max_depth)?;
@@ -149,7 +148,7 @@ fn fill_in_proof_from_canopy(
         };
         if canopy[cached_idx] == EMPTY {
             let level = max_depth - (31 - node_idx.leading_zeros());
-            let empty_node = empty_node_cached::<30>(level, &mut empty_node_cache);
+            let empty_node = empty_node_cached::<MAX_TREE_DEPTH>(level, &mut empty_node_cache);
             canopy[cached_idx] = empty_node;
             inferred_nodes.push(empty_node);
         } else {
@@ -298,7 +297,6 @@ pub mod gummyroll {
         let (roll_bytes, canopy_bytes) = rest.split_at_mut(merkle_roll_size);
         let id = ctx.accounts.merkle_roll.key();
         let change_log = merkle_roll_apply_fn!(header, id, roll_bytes, initialize,)?;
-        wrap_event(change_log.try_to_vec()?, &ctx.accounts.candy_wrapper)?;
         emit!(*change_log);
         update_canopy(canopy_bytes, header.max_depth, None)
     }
@@ -356,7 +354,6 @@ pub mod gummyroll {
             &proof,
             index
         )?;
-        wrap_event(change_log.try_to_vec()?, &ctx.accounts.candy_wrapper)?;
         emit!(*change_log);
         update_canopy(canopy_bytes, header.max_depth, Some(change_log))
     }
@@ -397,7 +394,6 @@ pub mod gummyroll {
             &proof,
             index,
         )?;
-        wrap_event(change_log.try_to_vec()?, &ctx.accounts.candy_wrapper)?;
         emit!(*change_log);
         update_canopy(canopy_bytes, header.max_depth, Some(change_log))
     }
@@ -478,7 +474,6 @@ pub mod gummyroll {
         let merkle_roll_size = merkle_roll_get_size!(header)?;
         let (roll_bytes, canopy_bytes) = rest.split_at_mut(merkle_roll_size);
         let change_log = merkle_roll_apply_fn!(header, id, roll_bytes, append, leaf)?;
-        wrap_event(change_log.try_to_vec()?, &ctx.accounts.candy_wrapper)?;
         emit!(*change_log);
         update_canopy(canopy_bytes, header.max_depth, Some(change_log))
     }
@@ -517,7 +512,6 @@ pub mod gummyroll {
             &proof,
             index,
         )?;
-        wrap_event(change_log.try_to_vec()?, &ctx.accounts.candy_wrapper)?;
         emit!(*change_log);
         update_canopy(canopy_bytes, header.max_depth, Some(change_log))
     }
