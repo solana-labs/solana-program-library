@@ -102,14 +102,16 @@ impl ConfidentialTokenAccountMeta {
             .await
             .unwrap();
 
-        let (elgamal_keypair, ae_key) = token
-            .confidential_transfer_configure_token_account_and_keypairs(
-                &token_account,
-                owner,
-                TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER,
-            )
-            .await
-            .unwrap();
+        let elgamal_keypair = ElGamalKeypair::new(owner, &token_account).unwrap();
+        let ae_key = AeKey::new(owner, &token_account).unwrap();
+
+        token.confidential_transfer_configure_token_account(
+            &token_account,
+            owner,
+            TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER,
+        )
+        .await
+        .unwrap();
 
         Self {
             token_account,
@@ -351,8 +353,6 @@ async fn ct_configure_token_account() {
         .confidential_transfer_configure_token_account(
             &alice_meta.token_account,
             &alice,
-            alice_meta.elgamal_keypair.public,
-            alice_meta.ae_key.encrypt(0_u64),
             TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER,
         )
         .await
@@ -430,7 +430,6 @@ async fn ct_new_account_is_empty() {
         .confidential_transfer_empty_account(
             &alice_meta.token_account,
             &alice,
-            &alice_meta.elgamal_keypair,
         )
         .await
         .unwrap();
@@ -619,9 +618,6 @@ async fn ct_withdraw() {
             &alice,
             21,
             decimals,
-            42,
-            &alice_meta.elgamal_keypair,
-            alice_meta.ae_key.encrypt(42_u64 - 21),
         )
         .await
         .unwrap();
@@ -651,9 +647,6 @@ async fn ct_withdraw() {
             &alice,
             21,
             decimals,
-            21,
-            &alice_meta.elgamal_keypair,
-            alice_meta.ae_key.encrypt(0u64),
         )
         .await
         .unwrap();
@@ -680,7 +673,6 @@ async fn ct_withdraw() {
         .confidential_transfer_empty_account(
             &alice_meta.token_account,
             &alice,
-            &alice_meta.elgamal_keypair,
         )
         .await
         .unwrap();
@@ -718,9 +710,6 @@ async fn ct_transfer() {
             &alice_meta.token_account,
             &alice,
             0,  // amount
-            42, // available balance
-            &alice_meta.elgamal_keypair,
-            alice_meta.ae_key.encrypt(42_u64),
         )
         .await
         .unwrap();
@@ -744,9 +733,6 @@ async fn ct_transfer() {
             &alice_meta.token_account,
             &alice,
             42, // amount
-            42, // available balance
-            &alice_meta.elgamal_keypair,
-            alice_meta.ae_key.encrypt(0_u64),
         )
         .await
         .unwrap();
@@ -769,9 +755,6 @@ async fn ct_transfer() {
             &alice_meta.token_account,
             &alice,
             0, // amount
-            0, // available balance
-            &alice_meta.elgamal_keypair,
-            alice_meta.ae_key.encrypt(0_u64),
         )
         .await
         .unwrap_err();
@@ -816,9 +799,6 @@ async fn ct_transfer() {
             &bob_meta.token_account,
             &alice,
             42, // amount
-            42, // available balance
-            &alice_meta.elgamal_keypair,
-            alice_meta.ae_key.encrypt(0_u64),
         )
         .await
         .unwrap();
@@ -839,7 +819,6 @@ async fn ct_transfer() {
         .confidential_transfer_empty_account(
             &alice_meta.token_account,
             &alice,
-            &alice_meta.elgamal_keypair,
         )
         .await
         .unwrap();
@@ -848,7 +827,6 @@ async fn ct_transfer() {
         .confidential_transfer_empty_account(
             &bob_meta.token_account,
             &bob,
-            &bob_meta.elgamal_keypair,
         )
         .await
         .unwrap_err();
@@ -1037,7 +1015,6 @@ async fn ct_transfer_with_fee() {
         .confidential_transfer_empty_account(
             &alice_meta.token_account,
             &alice,
-            &alice_meta.elgamal_keypair,
         )
         .await
         .unwrap();
@@ -1046,7 +1023,6 @@ async fn ct_transfer_with_fee() {
         .confidential_transfer_empty_account(
             &bob_meta.token_account,
             &bob,
-            &bob_meta.elgamal_keypair,
         )
         .await
         .unwrap_err();
