@@ -23,7 +23,7 @@ pub fn ui_amount_to_amount(ui_amount: f64, decimals: u8) -> u64 {
 }
 
 /// test
-pub fn ui_amount_to_amount2(ui_amount: u64, decimals: u8) -> u64 {
+pub fn ui_amount_to_amountmint(ui_amount: u64, decimals: u8) -> u64 {
     (ui_amount * 10_usize.pow(decimals as u32) as u64) as u64
 }
 

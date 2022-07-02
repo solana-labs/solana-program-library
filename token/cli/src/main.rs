@@ -306,8 +306,6 @@ pub fn signers_of(
 }
 
 fn check_decimals(  
-    config: &Config,
-    token: Pubkey,
     decimals: u8,
 ) -> bool {
     let d = decimals;
@@ -963,35 +961,18 @@ fn check_if_amount_overflows_supply(
 ) -> bool {
     let supply = config.rpc_client.get_token_supply(&token).unwrap();
     let amount = ui_amount;
-    //let max = u64::MAX;
-    //println!("{}", max);
-    //println!("{}", supply.ui_amount.unwrap());
-    //println!("{}", amount);
-    //let sum1 = supply.ui_amount.unwrap()+amount;
-    //println!("{}", sum1);
-    println!("{}", amount);
     if amount > u64::MAX {
         return true;
     };
-//18446744073709551615
-    println!("{}", supply.amount);
-    let s = supply.amount;
-    let my_int: u64 = s.parse().unwrap();
-    let aaa = 18446744073709551615 as u64;
-    let b = aaa as f64;
-    let ss: String = aaa.to_string();
-    let testint = ss.parse::<f64>().unwrap();
-    println!("Check {}", testint);
-    
-    if amount.checked_add(my_int).is_none() {
+    let supply_val = supply.amount;
+    let supply_u64: u64 = supply_val.parse().unwrap();
+    if amount.checked_add(supply_u64).is_none() {
         return true;
     };
-
-    if amount + my_int > u64::MAX {
+    if amount + supply_u64 > u64::MAX {
     return true;
     };
     return false;
-
 }
     
 
@@ -1013,39 +994,19 @@ fn command_mint(
             ui_amount, token, recipient
         ),
     );
-
     let (_, decimals) = resolve_mint_info(config, &recipient, None, mint_decimals)?;
-    
-    let a =10;
-    let a = u64::pow(a, decimals.into());
-    let maxsupply = u64::MAX/a;
-    if ui_amount>maxsupply {
-        println!("WARNING: Max supply will be limited to {}",maxsupply);
+    let max_denom =10;
+    let max_denom = u64::pow(max_denom, decimals.into());
+    let max_supply = u64::MAX/max_denom;
+    if ui_amount>max_supply {
+        println!("WARNING: Max supply will be limited to {}",max_supply);
     };
-    //Code is not production level ready yet
-    let amount = 0;
     let amount = if decimals==0 {
         ui_amount
-        //spl_token::ui_amount_to_amount(ui_amount as f64, decimals)
-        //println!("{}", decimals);
-        //println!("{}", amount);
     }
     else {
-        spl_token::ui_amount_to_amount2(ui_amount, decimals)
-        //println!("Hello");
-        //println!("{}", decimals);
-        //println!("{}", amount);
-
-        //Do everything in fixed point
-
+        spl_token::ui_amount_to_amountmint(ui_amount, decimals)
     };
-
-    //The issue happens here!
-
-    // println!("{}", decimals);
-    // let amount = ui_amount;
-    // println!("{}", amount);
-    println!("STRANGE FUNCTION {}", amount);
     let instructions = if use_unchecked_instruction {
         vec![mint_to(
             &config.program_id,
@@ -2793,7 +2754,7 @@ fn process_command(
                 get_signer(arg_matches, "token_keypair", &mut wallet_manager)
                     .unwrap_or_else(new_throwaway_signer);
             bulk_signers.push(token_signer);
-            if check_decimals(config, token, decimals) {
+            if check_decimals(decimals) {
                 return Err("Error in decimals function".to_string().into());
             }
             else {
