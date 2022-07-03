@@ -983,6 +983,23 @@ where
         token_account: &Pubkey,
         authority: &S2,
     ) -> TokenResult<T::Output> {
+        let maximum_pending_balance_credit_counter =
+            2 << confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH;
+
+        self.confidential_transfer_configure_token_account_with_pending_counter(
+            token_account,
+            authority,
+            maximum_pending_balance_credit_counter,
+        )
+        .await
+    }
+
+    pub async fn confidential_transfer_configure_token_account_with_pending_counter<S2: Signer>(
+        &self,
+        token_account: &Pubkey,
+        authority: &S2,
+        maximum_pending_balance_credit_counter: u64,
+    ) -> TokenResult<T::Output> {
         let elgamal_pubkey = ElGamalKeypair::new(authority, token_account)
             .map_err(TokenError::Key)?
             .public;
@@ -990,26 +1007,25 @@ where
             .map_err(TokenError::Key)?
             .encrypt(0);
 
-        let maximum_pending_balance_credit_counter =
-            2 << confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH;
-
-        self.confidential_transfer_configure_token_account_with_keypair(
+        self.confidential_transfer_configure_token_account_with_pending_counter_and_keypair(
             token_account,
             authority,
+            maximum_pending_balance_credit_counter,
             elgamal_pubkey,
             decryptable_zero_balance,
-            maximum_pending_balance_credit_counter,
         )
         .await
     }
 
-    pub async fn confidential_transfer_configure_token_account_with_keypair<S2: Signer>(
+    pub async fn confidential_transfer_configure_token_account_with_pending_counter_and_keypair<
+        S2: Signer,
+    >(
         &self,
         token_account: &Pubkey,
         authority: &S2,
+        maximum_pending_balance_credit_counter: u64,
         elgamal_pubkey: ElGamalPubkey,
         decryptable_zero_balance: AeCiphertext,
-        maximum_pending_balance_credit_counter: u64,
     ) -> TokenResult<T::Output> {
         self.process_ixs(
             &[confidential_transfer::instruction::configure_account(
