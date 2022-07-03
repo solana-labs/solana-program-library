@@ -106,7 +106,7 @@ impl ConfidentialTokenAccountMeta {
         let ae_key = AeKey::new(owner, &token_account).unwrap();
 
         token
-            .confidential_transfer_configure_token_account(
+            .confidential_transfer_configure_token_account_with_pending_counter(
                 &token_account,
                 owner,
                 TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER,
@@ -150,12 +150,7 @@ impl ConfidentialTokenAccountMeta {
             .unwrap();
 
         token
-            .confidential_transfer_apply_pending_balance(
-                &meta.token_account,
-                owner,
-                1,
-                meta.ae_key.encrypt(amount),
-            )
+            .confidential_transfer_apply_pending_balance(&meta.token_account, owner, 1)
             .await
             .unwrap();
         meta
@@ -351,7 +346,7 @@ async fn ct_configure_token_account() {
 
     // Configuring an already initialized account should produce an error
     let err = token
-        .confidential_transfer_configure_token_account(
+        .confidential_transfer_configure_token_account_with_pending_counter(
             &alice_meta.token_account,
             &alice,
             TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER,
@@ -552,14 +547,8 @@ async fn ct_deposit() {
         )))
     );
 
-    let new_decryptable_available_balance = alice_meta.ae_key.encrypt(65537_u64);
     token
-        .confidential_transfer_apply_pending_balance(
-            &alice_meta.token_account,
-            &alice,
-            2,
-            new_decryptable_available_balance.clone(),
-        )
+        .confidential_transfer_apply_pending_balance(&alice_meta.token_account, &alice, 2)
         .await
         .unwrap();
 
@@ -570,10 +559,6 @@ async fn ct_deposit() {
     let extension = state
         .get_extension::<ConfidentialTransferAccount>()
         .unwrap();
-    assert_eq!(
-        extension.decryptable_available_balance,
-        new_decryptable_available_balance.into(),
-    );
     assert_eq!(extension.pending_balance_credit_counter, 0.into());
     assert_eq!(extension.expected_pending_balance_credit_counter, 2.into());
     assert_eq!(extension.actual_pending_balance_credit_counter, 2.into());
@@ -767,12 +752,7 @@ async fn ct_transfer() {
     );
 
     token
-        .confidential_transfer_apply_pending_balance(
-            &alice_meta.token_account,
-            &alice,
-            2,
-            alice_meta.ae_key.encrypt(42_u64),
-        )
+        .confidential_transfer_apply_pending_balance(&alice_meta.token_account, &alice, 2)
         .await
         .unwrap();
 
@@ -840,12 +820,7 @@ async fn ct_transfer() {
         .await;
 
     token
-        .confidential_transfer_apply_pending_balance(
-            &bob_meta.token_account,
-            &bob,
-            1,
-            bob_meta.ae_key.encrypt(42_u64),
-        )
+        .confidential_transfer_apply_pending_balance(&bob_meta.token_account, &bob, 1)
         .await
         .unwrap();
 
@@ -952,12 +927,7 @@ async fn ct_transfer_with_fee() {
         .await;
 
     token
-        .confidential_transfer_apply_pending_balance(
-            &alice_meta.token_account,
-            &alice,
-            2,
-            alice_meta.ae_key.encrypt(100_u64),
-        )
+        .confidential_transfer_apply_pending_balance(&alice_meta.token_account, &alice, 2)
         .await
         .unwrap();
 
@@ -1030,12 +1000,7 @@ async fn ct_transfer_with_fee() {
         .await;
 
     token
-        .confidential_transfer_apply_pending_balance(
-            &bob_meta.token_account,
-            &bob,
-            1,
-            bob_meta.ae_key.encrypt(97_u64),
-        )
+        .confidential_transfer_apply_pending_balance(&bob_meta.token_account, &bob, 1)
         .await
         .unwrap();
 
