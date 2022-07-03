@@ -1,11 +1,13 @@
 //! Program entrypoint
 
-#![cfg(all(target_arch = "bpf", not(feature = "no-entrypoint")))]
+#![cfg(all(target_os = "solana", not(feature = "no-entrypoint")))]
 
-use crate::{error::StakePoolError, processor::Processor};
-use solana_program::{
-    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult,
-    program_error::PrintProgramError, pubkey::Pubkey,
+use {
+    crate::{error::StakePoolError, processor::Processor},
+    solana_program::{
+        account_info::AccountInfo, entrypoint, entrypoint::ProgramResult,
+        program_error::PrintProgramError, pubkey::Pubkey,
+    },
 };
 
 entrypoint!(process_instruction);

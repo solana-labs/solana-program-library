@@ -5,13 +5,23 @@ title: Token Swap Program
 A Uniswap-like exchange for the Token program on the Solana blockchain,
 implementing multiple automated market maker (AMM) curves.
 
-Here is some important developer information regarding the program deployed on devnet,
-testnet, and mainnet-beta:
+## Available Deployments
 
-| Information | Account Address |
-| --- | --- |
-| Token Swap Program | `SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8` |
-| Fee Owner | `HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN` |
+
+| Network | Version | Program Address | Fee Owner Address |
+| --- | --- | --- |
+| Devnet, Testnet | 3.0.0 | `SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw` | Any |
+| All | 2.0.0 | `SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8` | `HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN` |
+
+The Token Swap Program was deployed to all networks by the Serum team at
+`SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8`, requiring a fee owner of
+`HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN`, but that version was deprecated
+in the middle of 2021.  Though that program still exists, it is not actively
+maintained.
+
+For devnet and testnet, please use the maintainted deployment at
+`SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw`, and for mainnet, please use any
+other AMM project on Solana. Almost all of these were based on Token Swap!
 
 Check out
 [program repository](https://github.com/solana-labs/solana-program-library/tree/master/token-swap)
@@ -52,7 +62,7 @@ The Token Swap Program's source is available on
 ## Interface
 
 [JavaScript
-bindings](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/js/client/token-swap.js)
+bindings](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/js/src/index.ts)
 are available that support loading the Token Swap Program on to a chain and
 issuing instructions.
 
@@ -63,7 +73,7 @@ Example user interface built and maintained by Serum team is available
 
 The following explains the instructions available in the Token Swap Program.
 Note that each instruction has a simple code example that can be found in the
-[end-to-end tests](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/js/cli/token-swap-test.js).
+[end-to-end tests](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/js/cli/token-swap-test.ts).
 
 ### Creating a new token swap pool
 

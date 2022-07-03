@@ -5,7 +5,6 @@ use {
     solana_program::{
         feature::{self, Feature},
         program_option::COption,
-        pubkey::Pubkey,
         system_program,
     },
     solana_program_test::*,
@@ -133,10 +132,9 @@ async fn test_basic() {
     // Fetch a new blockhash to avoid the second Tally transaction having the same signature as the
     // first Tally transaction
     let recent_blockhash = banks_client
-        .get_new_blockhash(&recent_blockhash)
+        .get_new_latest_blockhash(&recent_blockhash)
         .await
-        .unwrap()
-        .0;
+        .unwrap();
 
     // Tally #2: the acceptance criteria is now met
     let mut transaction =

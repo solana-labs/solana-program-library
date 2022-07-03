@@ -12,7 +12,7 @@ which makes it difficult for other users to know which account they should send
 tokens to and introduces friction into many other aspects of token management.
 This program introduces a way to _deterministically_ derive a token account key
 from a user's main System account address and a token mint address, allowing the
-user to create a main token account for each token he owns. We call these
+user to create a main token account for each token they own. We call these
 accounts _Associated Token Accounts_.
 
 - In addition, it allows a user to send tokens to another user even if the
@@ -24,7 +24,7 @@ campaigns difficult and just generally increases the friction of token
 transfers. AToken allows the sender to create the associated token account for
 the receiver, so the token transfer just works.
 
-See the [SPL Token](token.md) program for more information about tokens in
+See the [SPL Token](token.mdx) program for more information about tokens in
 general.
 
 ## Background
@@ -55,7 +55,7 @@ The [get_associated_token_address](https://docs.rs/spl-associated-token-account/
 Rust function may be used by clients to derive the wallet's associated token address.
 
 
-The associated account address can be derived in Javascript with:
+The associated account address can be derived in TypeScript with:
 ```ts
 import { PublicKey } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';

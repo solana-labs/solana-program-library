@@ -126,7 +126,7 @@ pub fn process_instruction(
                     mint_info.clone(),
                     system_program_info.clone(),
                 ],
-                &[&mint_signer_seeds],
+                &[mint_signer_seeds],
             )?;
 
             msg!("Initializing mint");
@@ -159,7 +159,7 @@ pub fn process_instruction(
                     distributor_token_info.clone(),
                     system_program_info.clone(),
                 ],
-                &[&distributor_token_signer_seeds],
+                &[distributor_token_signer_seeds],
             )?;
 
             msg!("Initializing distributor token account");
@@ -193,7 +193,7 @@ pub fn process_instruction(
                     acceptance_token_info.clone(),
                     system_program_info.clone(),
                 ],
-                &[&acceptance_token_signer_seeds],
+                &[acceptance_token_signer_seeds],
             )?;
 
             msg!("Initializing acceptance token account");
@@ -216,7 +216,7 @@ pub fn process_instruction(
                 &spl_token::instruction::set_authority(
                     &spl_token::id(),
                     acceptance_token_info.key,
-                    Some(&feature_proposal_info.key),
+                    Some(feature_proposal_info.key),
                     spl_token::instruction::AuthorityType::CloseAccount,
                     feature_proposal_info.key,
                     &[],
@@ -231,7 +231,7 @@ pub fn process_instruction(
                 &spl_token::instruction::set_authority(
                     &spl_token::id(),
                     acceptance_token_info.key,
-                    Some(&program_id),
+                    Some(program_id),
                     spl_token::instruction::AuthorityType::AccountOwner,
                     feature_proposal_info.key,
                     &[],
@@ -260,7 +260,7 @@ pub fn process_instruction(
                     distributor_token_info.clone(),
                     spl_token_program_info.clone(),
                 ],
-                &[&mint_signer_seeds],
+                &[mint_signer_seeds],
             )?;
 
             // Fully fund the feature id account so the `Tally` instruction will not require any
@@ -283,7 +283,7 @@ pub fn process_instruction(
             invoke_signed(
                 &system_instruction::allocate(feature_id_info.key, Feature::size_of() as u64),
                 &[feature_id_info.clone(), system_program_info.clone()],
-                &[&feature_id_signer_seeds],
+                &[feature_id_signer_seeds],
             )?;
         }
 
@@ -348,7 +348,7 @@ pub fn process_instruction(
                     invoke_signed(
                         &system_instruction::assign(feature_id_info.key, &feature::id()),
                         &[feature_id_info.clone(), system_program_info.clone()],
-                        &[&feature_id_signer_seeds],
+                        &[feature_id_signer_seeds],
                     )?;
 
                     msg!("Feature proposal accepted");

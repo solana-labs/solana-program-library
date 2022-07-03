@@ -19,7 +19,7 @@ pub const MAX_SIGNERS: usize = 11;
 /// Instructions supported by the token program.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
-pub enum TokenInstruction {
+pub enum TokenInstruction<'a> {
     /// Initializes a new mint and optionally deposits all the newly minted
     /// tokens in an account.
     ///
@@ -363,10 +363,112 @@ pub enum TokenInstruction {
         /// The new account's owner/multisignature.
         owner: Pubkey,
     },
+    /// Given a wrapped / native token account (a token account containing SOL)
+    /// updates its amount field based on the account's underlying `lamports`.
+    /// This is useful if a non-wrapped SOL account uses `system_instruction::transfer`
+    /// to move lamports to a wrapped token account, and needs to have its token
+    /// `amount` field updated.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]`  The native token account to sync with its underlying lamports.
+    SyncNative,
+    /// Like InitializeAccount2, but does not require the Rent sysvar to be provided
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]`  The account to initialize.
+    ///   1. `[]` The mint this account will be associated with.
+    InitializeAccount3 {
+        /// The new account's owner/multisignature.
+        owner: Pubkey,
+    },
+    /// Like InitializeMultisig, but does not require the Rent sysvar to be provided
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` The multisignature account to initialize.
+    ///   1. ..1+N. `[]` The signer accounts, must equal to N where 1 <= N <=
+    ///      11.
+    InitializeMultisig2 {
+        /// The number of signers (M) required to validate this multisignature
+        /// account.
+        m: u8,
+    },
+    /// Like InitializeMint, but does not require the Rent sysvar to be provided
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` The mint to initialize.
+    ///
+    InitializeMint2 {
+        /// Number of base 10 digits to the right of the decimal place.
+        decimals: u8,
+        /// The authority/multisignature to mint tokens.
+        mint_authority: Pubkey,
+        /// The freeze authority/multisignature of the mint.
+        freeze_authority: COption<Pubkey>,
+    },
+    /// Gets the required size of an account for the given mint as a little-endian
+    /// `u64`.
+    ///
+    /// Return data can be fetched using `sol_get_return_data` and deserializing
+    /// the return data as a little-endian `u64`.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[]` The mint to calculate for
+    GetAccountDataSize, // typically, there's also data, but this program ignores it
+    /// Initialize the Immutable Owner extension for the given token account
+    ///
+    /// Fails if the account has already been initialized, so must be called before
+    /// `InitializeAccount`.
+    ///
+    /// No-ops in this version of the program, but is included for compatibility
+    /// with the Associated Token Account program.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]`  The account to initialize.
+    ///
+    /// Data expected by this instruction:
+    ///   None
+    InitializeImmutableOwner,
+    /// Convert an Amount of tokens to a UiAmount `string`, using the given mint.
+    /// In this version of the program, the mint can only specify the number of decimals.
+    ///
+    /// Fails on an invalid mint.
+    ///
+    /// Return data can be fetched using `sol_get_return_data` and deserialized with
+    /// `String::from_utf8`.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[]` The mint to calculate for
+    AmountToUiAmount {
+        /// The amount of tokens to reformat.
+        amount: u64,
+    },
+    /// Convert a UiAmount of tokens to a little-endian `u64` raw Amount, using the given mint.
+    /// In this version of the program, the mint can only specify the number of decimals.
+    ///
+    /// Return data can be fetched using `sol_get_return_data` and deserializing
+    /// the return data as a little-endian `u64`.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[]` The mint to calculate for
+    UiAmountToAmount {
+        /// The ui_amount of tokens to reformat.
+        ui_amount: &'a str,
+    },
+    // Any new variants also need to be added to program-2022 `TokenInstruction`, so that the
+    // latter remains a superset of this instruction set. New variants also need to be added to
+    // token/js/src/instructions/types.ts to maintain @solana/spl-token compatability
 }
-impl TokenInstruction {
+impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
-    pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
+    pub fn unpack(input: &'a [u8]) -> Result<Self, ProgramError> {
         use TokenError::InvalidInstruction;
 
         let (&tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
@@ -464,7 +566,40 @@ impl TokenInstruction {
                 let (owner, _rest) = Self::unpack_pubkey(rest)?;
                 Self::InitializeAccount2 { owner }
             }
-
+            17 => Self::SyncNative,
+            18 => {
+                let (owner, _rest) = Self::unpack_pubkey(rest)?;
+                Self::InitializeAccount3 { owner }
+            }
+            19 => {
+                let &m = rest.get(0).ok_or(InvalidInstruction)?;
+                Self::InitializeMultisig2 { m }
+            }
+            20 => {
+                let (&decimals, rest) = rest.split_first().ok_or(InvalidInstruction)?;
+                let (mint_authority, rest) = Self::unpack_pubkey(rest)?;
+                let (freeze_authority, _rest) = Self::unpack_pubkey_option(rest)?;
+                Self::InitializeMint2 {
+                    mint_authority,
+                    freeze_authority,
+                    decimals,
+                }
+            }
+            21 => Self::GetAccountDataSize,
+            22 => Self::InitializeImmutableOwner,
+            23 => {
+                let (amount, _rest) = rest.split_at(8);
+                let amount = amount
+                    .try_into()
+                    .ok()
+                    .map(u64::from_le_bytes)
+                    .ok_or(InvalidInstruction)?;
+                Self::AmountToUiAmount { amount }
+            }
+            24 => {
+                let ui_amount = std::str::from_utf8(rest).map_err(|_| InvalidInstruction)?;
+                Self::UiAmountToAmount { ui_amount }
+            }
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -539,6 +674,41 @@ impl TokenInstruction {
             &Self::InitializeAccount2 { owner } => {
                 buf.push(16);
                 buf.extend_from_slice(owner.as_ref());
+            }
+            &Self::SyncNative => {
+                buf.push(17);
+            }
+            &Self::InitializeAccount3 { owner } => {
+                buf.push(18);
+                buf.extend_from_slice(owner.as_ref());
+            }
+            &Self::InitializeMultisig2 { m } => {
+                buf.push(19);
+                buf.push(m);
+            }
+            &Self::InitializeMint2 {
+                ref mint_authority,
+                ref freeze_authority,
+                decimals,
+            } => {
+                buf.push(20);
+                buf.push(decimals);
+                buf.extend_from_slice(mint_authority.as_ref());
+                Self::pack_pubkey_option(freeze_authority, &mut buf);
+            }
+            &Self::GetAccountDataSize => {
+                buf.push(21);
+            }
+            &Self::InitializeImmutableOwner => {
+                buf.push(22);
+            }
+            &Self::AmountToUiAmount { amount } => {
+                buf.push(23);
+                buf.extend_from_slice(&amount.to_le_bytes());
+            }
+            Self::UiAmountToAmount { ui_amount } => {
+                buf.push(24);
+                buf.extend_from_slice(ui_amount.as_bytes());
             }
         };
         buf
@@ -641,6 +811,32 @@ pub fn initialize_mint(
     })
 }
 
+/// Creates a `InitializeMint2` instruction.
+pub fn initialize_mint2(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+    mint_authority_pubkey: &Pubkey,
+    freeze_authority_pubkey: Option<&Pubkey>,
+    decimals: u8,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    let freeze_authority = freeze_authority_pubkey.cloned().into();
+    let data = TokenInstruction::InitializeMint2 {
+        mint_authority: *mint_authority_pubkey,
+        freeze_authority,
+        decimals,
+    }
+    .pack();
+
+    let accounts = vec![AccountMeta::new(*mint_pubkey, false)];
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
 /// Creates a `InitializeAccount` instruction.
 pub fn initialize_account(
     token_program_id: &Pubkey,
@@ -691,6 +887,31 @@ pub fn initialize_account2(
     })
 }
 
+/// Creates a `InitializeAccount3` instruction.
+pub fn initialize_account3(
+    token_program_id: &Pubkey,
+    account_pubkey: &Pubkey,
+    mint_pubkey: &Pubkey,
+    owner_pubkey: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    let data = TokenInstruction::InitializeAccount3 {
+        owner: *owner_pubkey,
+    }
+    .pack();
+
+    let accounts = vec![
+        AccountMeta::new(*account_pubkey, false),
+        AccountMeta::new_readonly(*mint_pubkey, false),
+    ];
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
 /// Creates a `InitializeMultisig` instruction.
 pub fn initialize_multisig(
     token_program_id: &Pubkey,
@@ -710,6 +931,35 @@ pub fn initialize_multisig(
     let mut accounts = Vec::with_capacity(1 + 1 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*multisig_pubkey, false));
     accounts.push(AccountMeta::new_readonly(sysvar::rent::id(), false));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, false));
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a `InitializeMultisig2` instruction.
+pub fn initialize_multisig2(
+    token_program_id: &Pubkey,
+    multisig_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
+    m: u8,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    if !is_valid_signer_index(m as usize)
+        || !is_valid_signer_index(signer_pubkeys.len())
+        || m as usize > signer_pubkeys.len()
+    {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+    let data = TokenInstruction::InitializeMultisig2 { m }.pack();
+
+    let mut accounts = Vec::with_capacity(1 + 1 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new(*multisig_pubkey, false));
     for signer_pubkey in signer_pubkeys.iter() {
         accounts.push(AccountMeta::new_readonly(**signer_pubkey, false));
     }
@@ -1119,6 +1369,77 @@ pub fn burn_checked(
     })
 }
 
+/// Creates a `SyncNative` instruction
+pub fn sync_native(
+    token_program_id: &Pubkey,
+    account_pubkey: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new(*account_pubkey, false)],
+        data: TokenInstruction::SyncNative.pack(),
+    })
+}
+
+/// Creates a `GetAccountDataSize` instruction
+pub fn get_account_data_size(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new_readonly(*mint_pubkey, false)],
+        data: TokenInstruction::GetAccountDataSize.pack(),
+    })
+}
+
+/// Creates a `InitializeImmutableOwner` instruction
+pub fn initialize_immutable_owner(
+    token_program_id: &Pubkey,
+    account_pubkey: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new(*account_pubkey, false)],
+        data: TokenInstruction::InitializeImmutableOwner.pack(),
+    })
+}
+
+/// Creates an `AmountToUiAmount` instruction
+pub fn amount_to_ui_amount(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+    amount: u64,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new_readonly(*mint_pubkey, false)],
+        data: TokenInstruction::AmountToUiAmount { amount }.pack(),
+    })
+}
+
+/// Creates a `UiAmountToAmount` instruction
+pub fn ui_amount_to_amount(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+    ui_amount: &str,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new_readonly(*mint_pubkey, false)],
+        data: TokenInstruction::UiAmountToAmount { ui_amount }.pack(),
+    })
+}
+
 /// Utility function that checks index is between MIN_SIGNERS and MAX_SIGNERS
 pub fn is_valid_signer_index(index: usize) -> bool {
     (MIN_SIGNERS..=MAX_SIGNERS).contains(&index)
@@ -1285,6 +1606,85 @@ mod test {
         let packed = check.pack();
         let mut expect = vec![16u8];
         expect.extend_from_slice(&[2u8; 32]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::SyncNative;
+        let packed = check.pack();
+        let expect = vec![17u8];
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializeAccount3 {
+            owner: Pubkey::new(&[2u8; 32]),
+        };
+        let packed = check.pack();
+        let mut expect = vec![18u8];
+        expect.extend_from_slice(&[2u8; 32]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializeMultisig2 { m: 1 };
+        let packed = check.pack();
+        let expect = Vec::from([19u8, 1]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializeMint2 {
+            decimals: 2,
+            mint_authority: Pubkey::new(&[1u8; 32]),
+            freeze_authority: COption::None,
+        };
+        let packed = check.pack();
+        let mut expect = Vec::from([20u8, 2]);
+        expect.extend_from_slice(&[1u8; 32]);
+        expect.extend_from_slice(&[0]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializeMint2 {
+            decimals: 2,
+            mint_authority: Pubkey::new(&[2u8; 32]),
+            freeze_authority: COption::Some(Pubkey::new(&[3u8; 32])),
+        };
+        let packed = check.pack();
+        let mut expect = vec![20u8, 2];
+        expect.extend_from_slice(&[2u8; 32]);
+        expect.extend_from_slice(&[1]);
+        expect.extend_from_slice(&[3u8; 32]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::GetAccountDataSize;
+        let packed = check.pack();
+        let expect = vec![21u8];
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializeImmutableOwner;
+        let packed = check.pack();
+        let expect = vec![22u8];
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::AmountToUiAmount { amount: 42 };
+        let packed = check.pack();
+        let expect = vec![23u8, 42, 0, 0, 0, 0, 0, 0, 0];
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::UiAmountToAmount { ui_amount: "0.42" };
+        let packed = check.pack();
+        let expect = vec![24u8, 48, 46, 52, 50];
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
