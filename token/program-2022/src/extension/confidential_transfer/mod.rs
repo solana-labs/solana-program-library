@@ -14,8 +14,10 @@ use {
 /// Any deposit or transfer amount must be less than 2^48
 pub const MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH: usize = 48;
 
-const PENDING_BALANCE_LO_BIT_LENGTH: usize = 16;
-const PENDING_BALANCE_HI_BIT_LENGTH: usize = 48;
+/// Bit length of the low bits of pending balance plaintext
+pub const PENDING_BALANCE_LO_BIT_LENGTH: usize = 16;
+/// Bit length of the high bits of pending balance plaintext
+pub const PENDING_BALANCE_HI_BIT_LENGTH: usize = 48;
 
 /// Confidential Transfer Extension instructions
 pub mod instruction;

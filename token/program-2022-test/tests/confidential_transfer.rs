@@ -105,13 +105,14 @@ impl ConfidentialTokenAccountMeta {
         let elgamal_keypair = ElGamalKeypair::new(owner, &token_account).unwrap();
         let ae_key = AeKey::new(owner, &token_account).unwrap();
 
-        token.confidential_transfer_configure_token_account(
-            &token_account,
-            owner,
-            TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER,
-        )
-        .await
-        .unwrap();
+        token
+            .confidential_transfer_configure_token_account(
+                &token_account,
+                owner,
+                TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER,
+            )
+            .await
+            .unwrap();
 
         Self {
             token_account,
@@ -427,10 +428,7 @@ async fn ct_new_account_is_empty() {
 
     let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice).await;
     token
-        .confidential_transfer_empty_account(
-            &alice_meta.token_account,
-            &alice,
-        )
+        .confidential_transfer_empty_account(&alice_meta.token_account, &alice)
         .await
         .unwrap();
 }
@@ -670,10 +668,7 @@ async fn ct_withdraw() {
         .await;
 
     token
-        .confidential_transfer_empty_account(
-            &alice_meta.token_account,
-            &alice,
-        )
+        .confidential_transfer_empty_account(&alice_meta.token_account, &alice)
         .await
         .unwrap();
 }
@@ -709,7 +704,7 @@ async fn ct_transfer() {
             &alice_meta.token_account,
             &alice_meta.token_account,
             &alice,
-            0,  // amount
+            0, // amount
         )
         .await
         .unwrap();
@@ -816,18 +811,12 @@ async fn ct_transfer() {
         .await;
 
     token
-        .confidential_transfer_empty_account(
-            &alice_meta.token_account,
-            &alice,
-        )
+        .confidential_transfer_empty_account(&alice_meta.token_account, &alice)
         .await
         .unwrap();
 
     let err = token
-        .confidential_transfer_empty_account(
-            &bob_meta.token_account,
-            &bob,
-        )
+        .confidential_transfer_empty_account(&bob_meta.token_account, &bob)
         .await
         .unwrap_err();
 
@@ -1012,18 +1001,12 @@ async fn ct_transfer_with_fee() {
 
     // Alice account cannot be closed since there are withheld fees from self-transfer
     token
-        .confidential_transfer_empty_account(
-            &alice_meta.token_account,
-            &alice,
-        )
+        .confidential_transfer_empty_account(&alice_meta.token_account, &alice)
         .await
         .unwrap();
 
     let err = token
-        .confidential_transfer_empty_account(
-            &bob_meta.token_account,
-            &bob,
-        )
+        .confidential_transfer_empty_account(&bob_meta.token_account, &bob)
         .await
         .unwrap_err();
 

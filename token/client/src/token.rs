@@ -982,7 +982,6 @@ where
         &self,
         token_account: &Pubkey,
         authority: &S2,
-        maximum_pending_balance_credit_counter: u64,
     ) -> TokenResult<T::Output> {
         let elgamal_pubkey = ElGamalKeypair::new(authority, token_account)
             .map_err(TokenError::Key)?
@@ -990,6 +989,9 @@ where
         let decryptable_zero_balance = AeKey::new(authority, token_account)
             .map_err(TokenError::Key)?
             .encrypt(0);
+
+        let maximum_pending_balance_credit_counter =
+            2 << confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH;
 
         self.confidential_transfer_configure_token_account_with_keypair(
             token_account,
@@ -1228,25 +1230,25 @@ where
         let source_authenticated_encryption_key =
             AeKey::new(source_token_authority, source_token_account).map_err(TokenError::Key)?;
 
-        let source_decryptable_balance_ciphertext: AeCiphertext = source_extension
+        let source_decryptable_available_balance_ciphertext: AeCiphertext = source_extension
             .decryptable_available_balance
             .try_into()
             .map_err(TokenError::Proof)?;
-        let source_decryptable_balance = source_decryptable_balance_ciphertext
+        let source_decryptable_available_balance = source_decryptable_available_balance_ciphertext
             .decrypt(&source_authenticated_encryption_key)
             .ok_or(TokenError::AccountDecryption)?;
-        let source_remaining_balance = source_decryptable_balance
+        let source_remaining_available_balance = source_decryptable_available_balance
             .checked_sub(amount)
             .ok_or(TokenError::NotEnoughFunds)?;
         let new_source_decryptable_available_balance =
-            source_authenticated_encryption_key.encrypt(source_remaining_balance);
+            source_authenticated_encryption_key.encrypt(source_remaining_available_balance);
 
         self.confidential_transfer_transfer_with_key(
             source_token_account,
             destination_token_account,
             source_token_authority,
             amount,
-            source_decryptable_balance,
+            source_decryptable_available_balance,
             &source_elgamal_keypair,
             new_source_decryptable_available_balance,
         )
@@ -1396,6 +1398,57 @@ where
 
     /// Applies the confidential transfer pending balance to the available balance
     pub async fn confidential_transfer_apply_pending_balance<S2: Signer>(
+        &self,
+        token_account: &Pubkey,
+        authority: &S2,
+        expected_pending_balance_credit_counter: u64,
+    ) -> TokenResult<T::Output> {
+        let state = self.get_account_info(token_account).await.unwrap();
+        let extension =
+            state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;
+
+        let elgamal_keypair =
+            ElGamalKeypair::new(authority, token_account).map_err(TokenError::Key)?;
+        let authenticated_encryption_key =
+            AeKey::new(authority, token_account).map_err(TokenError::Key)?;
+
+        // decrypt current decryptable balance
+        let decryptable_available_balance_ciphertext: AeCiphertext = extension
+            .decryptable_available_balance
+            .try_into()
+            .map_err(TokenError::Proof)?;
+        let decryptable_balance = decryptable_available_balance_ciphertext
+            .decrypt(&authenticated_encryption_key)
+            .ok_or(TokenError::AccountDecryption)?;
+
+        // decrypt pending balance
+        let pending_balance_lo = extension
+            .pending_balance_lo
+            .decrypt(&elgamal_keypair.secret)
+            .ok_or(TokenError::AccountDecryption)?;
+        let pending_balance_hi = extension
+            .pending_balance_hi
+            .decrypt(&elgamal_keypair.secret)
+            .ok_or(TokenError::AccountDecryption)?;
+
+        // add decryptable balance with pending balance and re-encrypt
+        let new_decryptable_available_balance = decryptable_balance
+            .checked_add(pending_balance_hi << confidential_transfer::PENDING_BALANCE_HI_BIT_LENGTH)
+            .and_then(|sum| sum.checked_add(pending_balance_lo))
+            .ok_or(TokenError::AccountDecryption)?;
+        let new_decryptable_available_balance_ciphertext =
+            authenticated_encryption_key.encrypt(new_decryptable_available_balance);
+
+        self.confidential_transfer_apply_pending_balance_with_key(
+            token_account,
+            authority,
+            expected_pending_balance_credit_counter,
+            new_decryptable_available_balance_ciphertext,
+        )
+        .await
+    }
+
+    pub async fn confidential_transfer_apply_pending_balance_with_key<S2: Signer>(
         &self,
         token_account: &Pubkey,
         authority: &S2,
