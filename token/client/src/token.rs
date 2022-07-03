@@ -1342,6 +1342,54 @@ where
         destination_token_account: &Pubkey,
         source_token_authority: &S2,
         amount: u64,
+        epoch_info: &EpochInfo,
+    ) -> TokenResult<T::Output> {
+        if amount >> confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH != 0 {
+            return Err(TokenError::MaximumDepositTransferAmountExceeded);
+        }
+
+        let source_state = self.get_account_info(source_token_account).await.unwrap();
+        let source_extension =
+            source_state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;
+
+        let source_elgamal_keypair =
+            ElGamalKeypair::new(source_token_authority, source_token_account)
+                .map_err(TokenError::Key)?;
+        let source_authenticated_encryption_key =
+            AeKey::new(source_token_authority, source_token_account).map_err(TokenError::Key)?;
+
+        let source_decryptable_available_balance_ciphertext: AeCiphertext = source_extension
+            .decryptable_available_balance
+            .try_into()
+            .map_err(TokenError::Proof)?;
+        let source_decryptable_available_balance = source_decryptable_available_balance_ciphertext
+            .decrypt(&source_authenticated_encryption_key)
+            .ok_or(TokenError::AccountDecryption)?;
+        let source_remaining_available_balance = source_decryptable_available_balance
+            .checked_sub(amount)
+            .ok_or(TokenError::NotEnoughFunds)?;
+        let new_source_decryptable_available_balance =
+            source_authenticated_encryption_key.encrypt(source_remaining_available_balance);
+
+        self.confidential_transfer_transfer_with_fee_with_key(
+            source_token_account,
+             destination_token_account,
+             source_token_authority, amount,
+             source_decryptable_available_balance,
+             &source_elgamal_keypair,
+             new_source_decryptable_available_balance,
+             epoch_info
+            )
+        .await
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn confidential_transfer_transfer_with_fee_with_key<S2: Signer>(
+        &self,
+        source_token_account: &Pubkey,
+        destination_token_account: &Pubkey,
+        source_token_authority: &S2,
+        amount: u64,
         source_available_balance: u64,
         source_elgamal_keypair: &ElGamalKeypair,
         new_source_decryptable_available_balance: AeCiphertext,
