@@ -878,10 +878,7 @@ async fn ct_transfer_with_fee() {
             &alice_meta.token_account,
             &alice_meta.token_account,
             &alice,
-            0,   // amount
-            100, // available balance
-            &alice_meta.elgamal_keypair,
-            alice_meta.ae_key.encrypt(100_u64),
+            0,
             &epoch_info,
         )
         .await
@@ -905,10 +902,7 @@ async fn ct_transfer_with_fee() {
             &alice_meta.token_account,
             &alice_meta.token_account,
             &alice,
-            100, // amount
-            100, // available balance
-            &alice_meta.elgamal_keypair,
-            alice_meta.ae_key.encrypt(0_u64),
+            100,
             &epoch_info,
         )
         .await
@@ -948,10 +942,7 @@ async fn ct_transfer_with_fee() {
             &alice_meta.token_account,
             &bob_meta.token_account,
             &alice,
-            100, // amount
-            100, // available balance
-            &alice_meta.elgamal_keypair,
-            alice_meta.ae_key.encrypt(0_u64),
+            100,
             &epoch_info,
         )
         .await
@@ -1093,9 +1084,6 @@ async fn ct_withdraw_withheld_tokens_from_mint() {
             &bob_meta.token_account,
             &alice,
             100,
-            100,
-            &alice_meta.elgamal_keypair,
-            alice_meta.ae_key.encrypt(0_u64),
             &epoch_info,
         )
         .await
@@ -1198,9 +1186,6 @@ async fn ct_withdraw_withheld_tokens_from_accounts() {
             &bob_meta.token_account,
             &alice,
             100,
-            100,
-            &alice_meta.elgamal_keypair,
-            alice_meta.ae_key.encrypt(0_u64),
             &epoch_info,
         )
         .await
