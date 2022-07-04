@@ -33,7 +33,6 @@ export async function createInitializeGumballMachineIxs(
   merkleRollAccountSize: number,
   gumballMachineInitArgs: InitializeGumballMachineInstructionArgs,
   mint: PublicKey,
-  creator: PublicKey,
   gummyrollProgramId: PublicKey,
   bubblegumProgramId: PublicKey,
   gumballMachine: Program<GumballMachine>
@@ -71,7 +70,7 @@ export async function createInitializeGumballMachineIxs(
   const initGumballMachineInstr = createInitializeGumballMachineInstruction(
     {
       gumballMachine: gumballMachineAcctKeypair.publicKey,
-      creator,
+      payer: payer.publicKey,
       mint,
       willyWonka: willyWonkaPDAKey,
       bubblegumAuthority: bubblegumAuthorityPDAKey,
