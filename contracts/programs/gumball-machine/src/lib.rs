@@ -222,7 +222,9 @@ fn fisher_yates_shuffle_and_fetch_nft_metadata<'info>(
 // For efficiency, this returns the GumballMachineHeader because it's required to validate
 // payment parameters. But the main purpose of this function is to determine which config
 // line to mint to the user, and CPI to bubblegum to actually execute the mint
-fn find_and_mint_compressed_nft<'info>(
+// Also returns the number of nfts successfully minted, so that the purchaser is charged 
+// appropriately
+fn find_and_mint_compressed_nfts<'info>(
     gumball_machine: &AccountInfo<'info>,
     payer: &Signer<'info>,
     willy_wonka: &AccountInfo<'info>,
@@ -235,7 +237,7 @@ fn find_and_mint_compressed_nft<'info>(
     bubblegum: &Program<'info, Bubblegum>,
     candy_wrapper_program: &Program<'info, CandyWrapper>,
     num_items: u64,
-) -> Result<GumballMachineHeader> {
+) -> Result<(GumballMachineHeader, u64)> {
     // Prevent atomic transaction exploit attacks
     // TODO: potentially record information about botting now as pretains to payments to bot_wallet
     assert_valid_single_instruction_transaction(instruction_sysvar_account)?;
@@ -258,9 +260,9 @@ fn find_and_mint_compressed_nft<'info>(
     // TODO: Validate data
 
     let indices = cast_slice_mut::<u8, u32>(indices_data);
-    for _ in 0..(num_items as usize)
-        .max(1)
-        .min(gumball_header.remaining as usize)
+    let num_nfts_to_mint: u64 = (num_items).max(1).min(gumball_header.remaining);
+    assert!(num_nfts_to_mint > 0, "There are no remaining NFTs to dispense!");
+    for _ in 0..num_nfts_to_mint
     {
         let message = fisher_yates_shuffle_and_fetch_nft_metadata(
             recent_blockhashes,
@@ -288,7 +290,7 @@ fn find_and_mint_compressed_nft<'info>(
         );
         bubblegum::cpi::mint_v1(cpi_ctx, message)?;
     }
-    Ok(*gumball_header)
+    Ok((*gumball_header, num_nfts_to_mint))
 }
 
 #[program]
@@ -512,7 +514,7 @@ pub mod gumball_machine {
     ///          in its GumballMachineHeader for this method to succeed. If mint is anything
     ///          else dispense_nft_token should be used.
     pub fn dispense_nft_sol(ctx: Context<DispenseSol>, num_items: u64) -> Result<()> {
-        let gumball_header = find_and_mint_compressed_nft(
+        let (gumball_header, num_nfts_minted) = find_and_mint_compressed_nfts(
             &ctx.accounts.gumball_machine,
             &ctx.accounts.payer,
             &ctx.accounts.willy_wonka,
@@ -538,7 +540,7 @@ pub mod gumball_machine {
             &system_instruction::transfer(
                 &ctx.accounts.payer.key(),
                 &ctx.accounts.receiver.key(),
-                gumball_header.price,
+                gumball_header.price * num_nfts_minted,
             ),
             &[
                 ctx.accounts.payer.to_account_info(),
@@ -546,7 +548,6 @@ pub mod gumball_machine {
                 ctx.accounts.system_program.to_account_info(),
             ],
         )?;
-
         Ok(())
     }
 
@@ -555,7 +556,7 @@ pub mod gumball_machine {
     ///          if the mint is Wrapped SOL then dispense_token_sol should be used, as the
     ///          project is seeking native SOL as payment.
     pub fn dispense_nft_token(ctx: Context<DispenseToken>, num_items: u64) -> Result<()> {
-        let gumball_header = find_and_mint_compressed_nft(
+        let (gumball_header, num_nfts_minted) = find_and_mint_compressed_nfts(
             &ctx.accounts.gumball_machine,
             &ctx.accounts.payer,
             &ctx.accounts.willy_wonka,
@@ -582,9 +583,8 @@ pub mod gumball_machine {
                     authority: ctx.accounts.payer.to_account_info(),
                 },
             ),
-            gumball_header.price,
+            gumball_header.price * num_nfts_minted,
         )?;
-
         Ok(())
     }
 

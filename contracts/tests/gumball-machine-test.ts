@@ -944,13 +944,13 @@ describe("gumball-machine", () => {
           } catch (e) { }
         });
       });
-      it("Can dispense multiple NFTs paid in token", async () => {
+      it("Can dispense multiple NFTs paid in token, but not more than remaining, unminted config lines", async () => {
         let buyerTokenAccount = await getAccount(
           connection,
           nftBuyerTokenAccount.address
         );
         await dispenseCompressedNFTForTokens(
-          new BN(1),
+          new BN(3),
           nftBuyer,
           nftBuyerTokenAccount.address,
           creatorReceiverTokenAccount.address,
@@ -967,53 +967,33 @@ describe("gumball-machine", () => {
           nftBuyerTokenAccount.address
         );
 
+        // Since there were only two config lines added, we should have only successfully minted (and paid for) two NFTs
+        const newExpectedCreatorTokenBalance = Number(creatorReceiverTokenAccount.amount) 
+                                                + (val(baseGumballMachineInitProps.price).toNumber() * 2);
         assert(
-          Number(newCreatorTokenAccount.amount) ===
-          Number(creatorReceiverTokenAccount.amount) +
-          val(baseGumballMachineInitProps.price).toNumber(),
+          Number(newCreatorTokenAccount.amount) === newExpectedCreatorTokenBalance,
           "The creator did not receive their payment as expected"
         );
 
+        const newExpectedBuyerTokenBalance = Number(buyerTokenAccount.amount) 
+                                              - (val(baseGumballMachineInitProps.price).toNumber() * 2);
         assert(
-          Number(newBuyerTokenAccount.amount) ===
-          Number(buyerTokenAccount.amount) -
-          val(baseGumballMachineInitProps.price).toNumber(),
+          Number(newBuyerTokenAccount.amount) === newExpectedBuyerTokenBalance,
           "The nft buyer did not pay for the nft as expected"
         );
 
-        await dispenseCompressedNFTForTokens(
-          new BN(1),
-          nftBuyer,
-          nftBuyerTokenAccount.address,
-          creatorReceiverTokenAccount.address,
-          gumballMachineAcctKeypair,
-          merkleRollKeypair
-        );
-
-        creatorReceiverTokenAccount = newCreatorTokenAccount;
-        buyerTokenAccount = newBuyerTokenAccount;
-        newCreatorTokenAccount = await getAccount(
-          connection,
-          creatorReceiverTokenAccount.address
-        );
-        newBuyerTokenAccount = await getAccount(
-          connection,
-          nftBuyerTokenAccount.address
-        );
-
-        assert(
-          Number(newCreatorTokenAccount.amount) ===
-          Number(creatorReceiverTokenAccount.amount) +
-          val(baseGumballMachineInitProps.price).toNumber(),
-          "The creator did not receive their payment as expected"
-        );
-
-        assert(
-          Number(newBuyerTokenAccount.amount) ===
-          Number(buyerTokenAccount.amount) -
-          val(baseGumballMachineInitProps.price).toNumber(),
-          "The nft buyer did not pay for the nft as expected"
-        );
+        // Should not be able to dispense without any NFTs remaining
+        try {
+          await dispenseCompressedNFTForTokens(
+            new BN(1),
+            nftBuyer,
+            nftBuyerTokenAccount.address,
+            creatorReceiverTokenAccount.address,
+            gumballMachineAcctKeypair,
+            merkleRollKeypair
+          );
+          assert(false, "Dispense unexpectedly succeeded with no NFTs remaining");
+        } catch(e) {}
       });
     });
   });
