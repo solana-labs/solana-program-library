@@ -1049,7 +1049,7 @@ async fn ct_withdraw_withheld_tokens_from_mint() {
     let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob).await;
 
     token
-        .confidential_transfer_withdraw_withheld_tokens_from_mint(
+        .confidential_transfer_withdraw_withheld_tokens_from_mint_with_key(
             &ct_mint_withdraw_withheld_authority,
             &ct_mint_withdraw_withheld_authority_encryption_keypair,
             &alice_meta.token_account,
@@ -1117,7 +1117,7 @@ async fn ct_withdraw_withheld_tokens_from_mint() {
     .await;
 
     token
-        .confidential_transfer_withdraw_withheld_tokens_from_mint(
+        .confidential_transfer_withdraw_withheld_tokens_from_mint_with_key(
             &ct_mint_withdraw_withheld_authority,
             &ct_mint_withdraw_withheld_authority_encryption_keypair,
             &alice_meta.token_account,
@@ -1207,12 +1207,12 @@ async fn ct_withdraw_withheld_tokens_from_accounts() {
     );
 
     token
-        .confidential_transfer_withdraw_withheld_tokens_from_accounts(
+        .confidential_transfer_withdraw_withheld_tokens_from_accounts_with_key(
             &ct_mint_withdraw_withheld_authority,
             &ct_mint_withdraw_withheld_authority_encryption_keypair,
             &alice_meta.token_account,
-            3_u64,
             &extension.withheld_amount.try_into().unwrap(),
+            3_u64,
             &[&bob_meta.token_account],
         )
         .await
