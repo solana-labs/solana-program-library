@@ -36,6 +36,7 @@ strum_macros = "0.24"
 [dev-dependencies]
 solana-test-validator = "=1.10.29"
 assert_cmd = "2.0.4"
+tempfile = "3.3.0"
 
 [[bin]]
 name = "spl-token"
