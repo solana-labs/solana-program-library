@@ -17,6 +17,7 @@ export * from './approveChecked.js';
 export * from './mintToChecked.js';
 export * from './burnChecked.js';
 export * from './syncNative.js';
-
+export * from './amountToUiAmount';
+export * from './uiAmountToAmount';
 export * from './createAssociatedTokenAccount.js';
 export * from './getOrCreateAssociatedTokenAccount.js';

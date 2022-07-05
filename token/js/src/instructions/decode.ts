@@ -40,6 +40,7 @@ import type { DecodedTransferInstruction } from './transfer.js';
 import { decodeTransferInstruction } from './transfer.js';
 import type { DecodedTransferCheckedInstruction } from './transferChecked.js';
 import { decodeTransferCheckedInstruction } from './transferChecked.js';
+import { DecodedAmountToUiAmountInstruction, decodeAmountToUiAmountInstruction } from './amountToUiAmount';
 import { TokenInstruction } from './types.js';
 
 /** TODO: docs */
@@ -63,6 +64,7 @@ export type DecodedInstruction =
     | DecodedInitializeAccount2Instruction
     | DecodedSyncNativeInstruction
     | DecodedInitializeAccount3Instruction
+    | DecodedAmountToUiAmountInstruction
     // | DecodedInitializeMultisig2Instruction
     // | DecodedInitializeMint2Instruction
     // TODO: implement ^ and remove `never`
@@ -96,6 +98,7 @@ export function decodeInstruction(
     if (type === TokenInstruction.InitializeAccount2)
         return decodeInitializeAccount2Instruction(instruction, programId);
     if (type === TokenInstruction.SyncNative) return decodeSyncNativeInstruction(instruction, programId);
+    if (type === TokenInstruction.AmountToUiAmount) return decodeAmountToUiAmountInstruction(instruction, programId);
     // TODO: implement
     if (type === TokenInstruction.InitializeAccount3)
         return decodeInitializeAccount3Instruction(instruction, programId);
@@ -210,6 +213,13 @@ export function isInitializeAccount3Instruction(
     decoded: DecodedInstruction
 ): decoded is DecodedInitializeAccount3Instruction {
     return decoded.data.instruction === TokenInstruction.InitializeAccount3;
+}
+
+/** TODO: docs */
+export function isAmountToUiAmountInstruction(
+    decoded: DecodedInstruction
+): decoded is DecodedAmountToUiAmountInstruction {
+    return decoded.data.instruction === TokenInstruction.AmountToUiAmount;
 }
 
 /** TODO: docs, implement */

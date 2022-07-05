@@ -24,7 +24,8 @@ export * from './initializeAccount3.js'; //            18
 export * from './initializeMultisig2.js'; //           19
 export * from './initializeMint2.js'; //               20
 export * from './initializeImmutableOwner.js'; //      22
-export * from './initializeMintCloseAuthority.js'; //  23
+export * from './amountToUiAmount'; //                 23
+export * from './initializeMintCloseAuthority.js'; //  25
 export * from './reallocate.js'; //                    29
 export * from './createNativeMint.js'; //              31
 export * from './initializeNonTransferableMint.js'; // 32

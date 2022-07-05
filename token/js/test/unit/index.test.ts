@@ -18,6 +18,7 @@ import {
     getAssociatedTokenAddressSync,
     createInitializeAccount2Instruction,
     createInitializeAccount3Instruction,
+    createAmountToUiAmountInstruction
 } from '../../src';
 
 chai.use(chaiAsPromised);
@@ -113,6 +114,12 @@ describe('spl-token-2022 instructions', () => {
         expect(ix.data[0]).to.eql(TokenInstruction.Reallocate);
         expect(ix.data[1]).to.eql(extensionTypes[0]);
         expect(ix.data[3]).to.eql(extensionTypes[1]);
+    });
+    
+    it('AmountToUiAmount', () => {
+        const ix = createAmountToUiAmountInstruction(Keypair.generate().publicKey, 22 ,TOKEN_2022_PROGRAM_ID);
+        expect(ix.programId).to.eql(TOKEN_2022_PROGRAM_ID);
+        expect(ix.keys).to.have.length(1);
     });
 });
 
