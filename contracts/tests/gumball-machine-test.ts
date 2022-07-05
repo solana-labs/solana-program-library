@@ -8,6 +8,7 @@ import {
   Transaction,
   Connection as web3Connection,
   LAMPORTS_PER_SOL,
+  ComputeBudgetProgram,
 } from "@solana/web3.js";
 import { assert } from "chai";
 
@@ -37,7 +38,6 @@ import {
   val,
   strToByteArray,
   strToByteUint8Array,
-  logTx
 } from "../sdk/utils/index";
 import {
   GumballMachineHeader,
@@ -51,7 +51,7 @@ import {
   getAccount,
 } from "../../deps/solana-program-library/token/js/src";
 import { NATIVE_MINT } from "@solana/spl-token";
-import { num32ToBuffer, arrayEquals } from "./utils";
+import { num32ToBuffer, arrayEquals, execute, logTx } from "./utils";
 import { EncodeMethod } from "../sdk/gumball-machine/src/generated/types/EncodeMethod";
 import { getBubblegumAuthorityPDA } from "../sdk/bubblegum/src/convenience";
 
@@ -423,13 +423,12 @@ describe("gumball-machine", () => {
       BubblegumProgramId,
       GumballMachine
     );
-    const tx = new Transaction().add(dispenseInstr);
-    let txId = await GumballMachine.provider.send(tx, [payer], {
-      commitment: "confirmed",
-    });
-    if (verbose) {
-      await logTx(GumballMachine.provider, txId);
-    }
+    const txId = await execute(
+      GumballMachine.provider,
+      [dispenseInstr],
+      [payer],
+      true
+    );
   }
 
   async function dispenseCompressedNFTForTokens(
@@ -543,7 +542,7 @@ describe("gumball-machine", () => {
           botWallet: Keypair.generate().publicKey,
           receiver: creatorPaymentWallet.publicKey,
           authority: creatorAddress.publicKey,
-          collectionKey: SystemProgram.programId,
+          collectionKey: SystemProgram.programId, // 0x0 -> no collection key
           extensionLen: new BN(28),
           maxMintSize: new BN(10),
           maxItems: new BN(250),
@@ -567,6 +566,7 @@ describe("gumball-machine", () => {
           baseGumballMachineInitProps,
           NATIVE_MINT
         );
+
         await addConfigLines(
           creatorAddress,
           gumballMachineAcctKeypair.publicKey,
@@ -626,37 +626,43 @@ describe("gumball-machine", () => {
             const tx = new Transaction()
               .add(dispenseNFTForSolInstr)
               .add(dummyInstr);
+            let confirmedTxId: string;
             try {
-              await GumballMachine.provider.send(
+              confirmedTxId = await GumballMachine.provider.send(
                 tx,
                 [nftBuyer, payer, dummyNewAcctKeypair],
                 {
                   commitment: "confirmed",
                 }
               );
+            } catch (e) { }
+
+            if (confirmedTxId)
               assert(
                 false,
                 "Dispense should fail when part of transaction with multiple instructions, but it succeeded"
               );
-            } catch (e) { }
           });
           it("Cannot dispense NFT for SOL with prior instructions in transaction", async () => {
             const tx = new Transaction()
               .add(dummyInstr)
               .add(dispenseNFTForSolInstr);
+            let confirmedTxId: string;
             try {
-              await GumballMachine.provider.send(
+              confirmedTxId = await GumballMachine.provider.send(
                 tx,
                 [nftBuyer, payer, dummyNewAcctKeypair],
                 {
                   commitment: "confirmed",
                 }
               );
+            } catch (e) { }
+
+            if (confirmedTxId)
               assert(
                 false,
                 "Dispense should fail when part of transaction with multiple instructions, but it succeeded"
               );
-            } catch (e) { }
           });
         });
         it("Can dispense single NFT paid in sol", async () => {
@@ -968,15 +974,15 @@ describe("gumball-machine", () => {
         );
 
         // Since there were only two config lines added, we should have only successfully minted (and paid for) two NFTs
-        const newExpectedCreatorTokenBalance = Number(creatorReceiverTokenAccount.amount) 
-                                                + (val(baseGumballMachineInitProps.price).toNumber() * 2);
+        const newExpectedCreatorTokenBalance = Number(creatorReceiverTokenAccount.amount)
+          + (val(baseGumballMachineInitProps.price).toNumber() * 2);
         assert(
           Number(newCreatorTokenAccount.amount) === newExpectedCreatorTokenBalance,
           "The creator did not receive their payment as expected"
         );
 
-        const newExpectedBuyerTokenBalance = Number(buyerTokenAccount.amount) 
-                                              - (val(baseGumballMachineInitProps.price).toNumber() * 2);
+        const newExpectedBuyerTokenBalance = Number(buyerTokenAccount.amount)
+          - (val(baseGumballMachineInitProps.price).toNumber() * 2);
         assert(
           Number(newBuyerTokenAccount.amount) === newExpectedBuyerTokenBalance,
           "The nft buyer did not pay for the nft as expected"
@@ -993,7 +999,7 @@ describe("gumball-machine", () => {
             merkleRollKeypair
           );
           assert(false, "Dispense unexpectedly succeeded with no NFTs remaining");
-        } catch(e) {}
+        } catch (e) { }
       });
     });
   });

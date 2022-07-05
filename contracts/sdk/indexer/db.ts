@@ -1,14 +1,11 @@
 import sqlite3 from "sqlite3";
 import { open, Database, Statement } from "sqlite";
-import { PathNode } from "../gummyroll";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { keccak_256 } from "js-sha3";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
-import { LeafSchemaEvent, NewLeafEvent } from "./indexer/bubblegum";
 import { BN } from "@project-serum/anchor";
-import { bignum } from "@metaplex-foundation/beet";
 import { Creator } from "../bubblegum/src/generated";
-import { ChangeLogEvent } from "./indexer/gummyroll";
+import { LeafSchemaEvent, NewLeafEvent, ChangeLogEvent } from "./indexer/ingester";
 let fs = require("fs");
 
 /**
@@ -24,6 +21,23 @@ export type GapInfo = {
   prevSlot: number;
   currSlot: number;
 };
+
+export type GapTxInfo = GapInfo & {
+  prevTxId: string,
+  currTxId: string,
+}
+
+export type AssetInfo = {
+  treeId: string,
+  assetId: string,
+  owner: string,
+  nonce: BN,
+  dataHash: string,
+  leafHash: string,
+  creatorHash: string,
+  compressed: number,
+}
+
 export class NFTDatabaseConnection {
   connection: Database<sqlite3.Database, sqlite3.Statement>;
   emptyNodeCache: Map<number, Buffer>;
@@ -83,6 +97,7 @@ export class NFTDatabaseConnection {
     }
   }
 
+
   async updateLeafSchema(
     leafSchemaRecord: LeafSchemaEvent,
     leafHash: PublicKey,
@@ -122,6 +137,7 @@ export class NFTDatabaseConnection {
           creator_hash = excluded.creator_hash,
           leaf_hash = excluded.leaf_hash,
           compressed = excluded.compressed
+        WHERE seq <= excluded.seq
       `,
       leafSchema.id.toBase58(),
       (leafSchema.nonce.valueOf() as BN).toNumber(),
@@ -277,6 +293,42 @@ export class NFTDatabaseConnection {
     }
     return res;
   }
+
+  async getMissingDataWithTx(minSeq: number, treeId: string) {
+    let gaps: Array<GapTxInfo> = [];
+    let res = await this.connection
+      .all(
+        `
+        SELECT DISTINCT seq, slot, transaction_id
+        FROM merkle
+        where tree_id = ? and seq >= ?
+        order by seq
+      `,
+        treeId,
+        minSeq
+      )
+      .catch((e) => {
+        console.log("Failed to make query", e);
+        return [gaps, null, null];
+      });
+    for (let i = 0; i < res.length - 1; ++i) {
+      let [prevSeq, prevSlot, prevTxId] = [res[i].seq, res[i].slot, res[i].transaction_id];
+      let [currSeq, currSlot, currTxId] = [res[i + 1].seq, res[i + 1].slot, res[i + 1].transaction_id];
+      if (currSeq === prevSeq) {
+        throw new Error(
+          `Error in DB, encountered identical sequence numbers with different slots: ${prevSlot} ${currSlot}`
+        );
+      }
+      if (currSeq - prevSeq > 1) {
+        gaps.push({ prevSeq, currSeq, prevSlot, currSlot, prevTxId, currTxId });
+      }
+    }
+    if (res.length > 0) {
+      return [gaps, res[res.length - 1].seq, res[res.length - 1].slot];
+    }
+    return [gaps, null, null];
+  }
+
 
   async getMissingData(minSeq: number, treeId: string) {
     let gaps: Array<GapInfo> = [];
@@ -655,6 +707,38 @@ export class NFTDatabaseConnection {
     )
     console.log(transactionId);
     return transactionId.length ? transactionId[0].transaction_id as string : null;
+  }
+
+  async getAssetInfo(assetId: string): Promise<AssetInfo> {
+    const query = `
+      SELECT 
+        tree_id,
+        asset_id,
+        nonce,
+        owner,
+        data_hash,
+        leaf_hash,
+        creator_hash,
+        compressed
+      FROM leaf_schema
+      WHERE asset_id = ?
+    `;
+    const rawAssetInfo = await this.connection.all(query, assetId);
+    if (rawAssetInfo.length) {
+      const rawAsset = rawAssetInfo[0];
+      return {
+        treeId: rawAsset.tree_id,
+        assetId: rawAsset.asset_id,
+        owner: rawAsset.owner,
+        nonce: new BN(rawAsset.nonce),
+        dataHash: rawAsset.data_hash,
+        creatorHash: rawAsset.creator_hash,
+        leafHash: rawAsset.leaf_hash,
+        compressed: rawAsset.compressed
+      }
+    } else {
+      return null
+    }
   }
 
   async getAssetsForOwner(owner: string, treeId?: string) {

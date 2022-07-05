@@ -38,9 +38,9 @@ import {
   TOKEN_PROGRAM_ID,
   Token,
 } from "@solana/spl-token";
-import { bufferToArray } from "./utils";
+import { bufferToArray, execute } from "./utils";
 import { TokenProgramVersion, Version } from "../sdk/bubblegum/src/generated";
-import { CANDY_WRAPPER_PROGRAM_ID, execute, logTx } from "../sdk/utils";
+import { CANDY_WRAPPER_PROGRAM_ID } from "../sdk/utils";
 import { getBubblegumAuthorityPDA, getCreateTreeIxs, getNonceCount, getVoucherPDA } from "../sdk/bubblegum/src/convenience";
 
 // @ts-ignore

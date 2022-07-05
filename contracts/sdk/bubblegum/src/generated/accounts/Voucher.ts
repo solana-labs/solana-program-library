@@ -21,7 +21,7 @@ export type VoucherArgs = {
   merkleSlab: web3.PublicKey
 }
 
-const voucherDiscriminator = [191, 204, 149, 234, 213, 165, 13, 65]
+export const voucherDiscriminator = [191, 204, 149, 234, 213, 165, 13, 65]
 /**
  * Holds the data for the {@link Voucher} Account and provides de/serialization
  * functionality for that data
@@ -34,7 +34,7 @@ export class Voucher implements VoucherArgs {
     readonly leafSchema: LeafSchema,
     readonly index: number,
     readonly merkleSlab: web3.PublicKey
-  ) {}
+  ) { }
 
   /**
    * Creates a {@link Voucher} instance from the provided args.
@@ -128,7 +128,7 @@ export class Voucher implements VoucherArgs {
    */
   pretty() {
     return {
-      leafSchema: 'LeafSchema.' + LeafSchema[this.leafSchema],
+      leafSchema: this.leafSchema.__kind,
       index: this.index,
       merkleSlab: this.merkleSlab.toBase58(),
     }
@@ -147,6 +147,7 @@ export const voucherBeet = new beet.BeetStruct<
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+    // @ts-ignore
     ['leafSchema', leafSchemaBeet],
     ['index', beet.u32],
     ['merkleSlab', beetSolana.publicKey],

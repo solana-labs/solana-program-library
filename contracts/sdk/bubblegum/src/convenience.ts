@@ -30,6 +30,18 @@ export async function getVoucherPDA(connection: Connection, tree: PublicKey, lea
     return voucher;
 }
 
+export async function getLeafAssetId(tree: PublicKey, leafIndex: BN): Promise<PublicKey> {
+    let [assetId] = await PublicKey.findProgramAddress(
+        [
+            Buffer.from("asset", "utf8"),
+            tree.toBuffer(),
+            leafIndex.toBuffer("le", 8),
+        ],
+        PROGRAM_ID
+    );
+    return assetId
+}
+
 export async function getCreateTreeIxs(
     connection: Connection,
     maxDepth: number,

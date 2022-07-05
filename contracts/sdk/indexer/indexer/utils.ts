@@ -1,105 +1,43 @@
 import * as anchor from "@project-serum/anchor";
-import { PROGRAM_ID as BUBBLEGUM_PROGRAM_ID } from "../../bubblegum/src/generated";
-import { Context, Logs, PublicKey } from "@solana/web3.js";
+import { CompiledInnerInstruction, CompiledInstruction, Context, Logs, PublicKey } from "@solana/web3.js";
 import { readFileSync } from "fs";
 import { Bubblegum } from "../../../target/types/bubblegum";
 import { Gummyroll } from "../../../target/types/gummyroll";
 import { NFTDatabaseConnection } from "../db";
-import { parseBubblegum } from "./bubblegum";
+import { parseBubblegumInstruction } from "./instruction/bubblegum";
+import { parseBubblegumInnerInstructions } from "./innerInstruction/bubblegum";
+import { Idl, IdlTypeDef } from '@project-serum/anchor/dist/cjs/idl';
+import { IdlCoder } from '@project-serum/anchor/dist/cjs/coder/borsh/idl';
+import { Layout } from "buffer-layout";
+import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
+import {
+  Creator,
+  MetadataArgs,
+  metadataArgsBeet,
+  TokenProgramVersion,
+  TokenStandard,
+} from "../../bubblegum/src/generated";
+import { NewLeafEvent, LeafSchemaEvent } from "./ingester";
+import { keccak_256 } from "js-sha3";
+import { getLeafAssetId } from "../../bubblegum/src/convenience";
+import * as beetSolana from '@metaplex-foundation/beet-solana'
+import * as beet from '@metaplex-foundation/beet'
 
-const startRegEx = /Program (\w*) invoke \[(\d)\]/;
-const endRegEx = /Program (\w*) success/;
-export const dataRegEx =
-  /Program data: ((?:[A-Za-z\d+/]{4})*(?:[A-Za-z\d+/]{3}=|[A-Za-z\d+/]{2}==)?$)/;
-export const ixRegEx = /Program log: Instruction: (\w+)/;
+import { PROGRAM_ID as GUMMYROLL_PROGRAM_ID } from "../../gummyroll";
+import { PROGRAM_ID as BUBBLEGUM_PROGRAM_ID } from "../../bubblegum/src/generated";
+import { GumballMachine, PROGRAM_ID as GUMBALL_MACHINE_ID } from "../../gumball-machine";
+import { CANDY_WRAPPER_PROGRAM_ID } from "../../utils";
 
 export type ParserState = {
   Gummyroll: anchor.Program<Gummyroll>;
   Bubblegum: anchor.Program<Bubblegum>;
 };
 
-export type ParsedLog = {
-  programId: PublicKey;
-  logs: (string | ParsedLog)[];
-  depth: number;
-};
-
 export type OptionalInfo = {
   txId: string;
-
   startSeq: number | null;
   endSeq: number | null;
 };
-
-/**
- * Recursively parses the logs of a program instruction execution
- * @param programId
- * @param depth
- * @param logs
- * @returns
- */
-function parseInstructionLog(
-  programId: PublicKey,
-  depth: number,
-  logs: string[]
-) {
-  const parsedLog: ParsedLog = {
-    programId,
-    depth,
-    logs: [],
-  };
-  let instructionComplete = false;
-  while (!instructionComplete) {
-    const logLine = logs[0];
-    logs = logs.slice(1);
-    let result = logLine.match(endRegEx);
-    if (result) {
-      if (result[1] != programId.toString()) {
-        throw Error(`Unexpected program id finished: ${result[1]}`);
-      }
-      instructionComplete = true;
-    } else {
-      result = logLine.match(startRegEx);
-      if (result) {
-        const programId = new PublicKey(result[1]);
-        const depth = Number(result[2]) - 1;
-        const parsedInfo = parseInstructionLog(programId, depth, logs);
-        parsedLog.logs.push(parsedInfo.parsedLog);
-        logs = parsedInfo.logs;
-      } else {
-        parsedLog.logs.push(logLine);
-      }
-    }
-  }
-  return { parsedLog, logs };
-}
-
-/**
- * Parses logs so that emitted event data can be tied to its execution context
- * @param logs
- * @returns
- */
-export function parseLogs(logs: string[]): ParsedLog[] {
-  let parsedLogs: ParsedLog[] = [];
-  while (logs && logs.length) {
-    const logLine = logs[0];
-    logs = logs.slice(1);
-    const result = logLine.match(startRegEx);
-    const programId = new PublicKey(result[1]);
-    const depth = Number(result[2]) - 1;
-    const parsedInfo = parseInstructionLog(programId, depth, logs);
-    parsedLogs.push(parsedInfo.parsedLog);
-    logs = parsedInfo.logs;
-  }
-  return parsedLogs;
-}
-
-export function parseEventFromLog(
-  log: string,
-  idl: anchor.Idl
-): anchor.Event | null {
-  return decodeEvent(log.match(dataRegEx)[1], idl);
-}
 
 /**
  * Example:
@@ -124,97 +62,268 @@ export function loadProgram(
   return new anchor.Program(IDL, programId, provider);
 }
 
-/**
- * Performs a depth-first traversal of the ParsedLog data structure
- * @param db
- * @param optionalInfo
- * @param slot
- * @param parsedState
- * @param parsedLog
- * @returns
- */
-async function indexParsedLog(
+export enum ParseResult {
+  Success,
+  LogTruncated,
+  TransactionError
+};
+
+function indexZippedInstruction(
   db: NFTDatabaseConnection,
-  optionalInfo: OptionalInfo,
+  context: { txId: string, startSeq: number, endSeq: number },
   slot: number,
   parserState: ParserState,
-  parsedLog: ParsedLog | string
+  accountKeys: PublicKey[],
+  zippedInstruction: ZippedInstruction,
 ) {
-  if (typeof parsedLog === "string") {
-    return;
-  }
-  if (parsedLog.programId.equals(BUBBLEGUM_PROGRAM_ID)) {
-    return await parseBubblegum(db, parsedLog, slot, parserState, optionalInfo);
-  } else {
-    for (const log of parsedLog.logs) {
-      await indexParsedLog(db, optionalInfo, slot, parserState, log);
-    }
-  }
-}
-
-export function handleLogsAtomic(
-  db: NFTDatabaseConnection,
-  logs: Logs,
-  context: Context,
-  parsedState: ParserState,
-  startSeq: number | null = null,
-  endSeq: number | null = null
-) {
-  if (logs.err) {
-    return;
-  }
-  const parsedLogs = parseLogs(logs.logs);
-  if (parsedLogs.length == 0) {
-    return;
-  }
-  db.connection.db.serialize(() => {
-    db.beginTransaction();
-    for (const parsedLog of parsedLogs) {
-      indexParsedLog(
-        db,
-        { txId: logs.signature, startSeq, endSeq },
-        context.slot,
-        parsedState,
-        parsedLog
-      );
-    }
-    db.commit();
-  });
-}
-
-/**
- * Processes the logs from a new transaction and searches for the programs
- * specified in the ParserState
- * @param db
- * @param logs
- * @param context
- * @param parsedState
- * @param startSeq
- * @param endSeq
- * @returns
- */
-export async function handleLogs(
-  db: NFTDatabaseConnection,
-  logs: Logs,
-  context: Context,
-  parsedState: ParserState,
-  startSeq: number | null = null,
-  endSeq: number | null = null
-) {
-  if (logs.err) {
-    return;
-  }
-  const parsedLogs = parseLogs(logs.logs);
-  if (parsedLogs.length == 0) {
-    return;
-  }
-  for (const parsedLog of parsedLogs) {
-    await indexParsedLog(
+  const { instruction, innerInstructions } = zippedInstruction;
+  const programId = accountKeys[instruction.programIdIndex];
+  if (programId.equals(BUBBLEGUM_PROGRAM_ID)) {
+    console.log("Found bubblegum");
+    parseBubblegumInstruction(
       db,
-      { txId: logs.signature, startSeq, endSeq },
+      slot,
+      parserState,
+      context,
+      accountKeys,
+      instruction,
+      innerInstructions
+    );
+  } else {
+    if (innerInstructions.length) {
+      parseBubblegumInnerInstructions(
+        db,
+        slot,
+        parserState,
+        context,
+        accountKeys,
+        innerInstructions[0].instructions,
+      )
+    }
+  }
+}
+
+export function decodeEventInstructionData(
+  idl: Idl,
+  eventName: string,
+  base58String: string,
+) {
+  const rawLayouts: [string, Layout<any>][] = idl.events.map((event) => {
+    let eventTypeDef: IdlTypeDef = {
+      name: event.name,
+      type: {
+        kind: "struct",
+        fields: event.fields.map((f) => {
+          return { name: f.name, type: f.type };
+        }),
+      },
+    };
+    return [event.name, IdlCoder.typeDefLayout(eventTypeDef, idl.types)];
+  });
+  const layouts = new Map(rawLayouts);
+  const buffer = bs58.decode(base58String);
+  const layout = layouts.get(eventName);
+  if (!layout) {
+    console.error("Could not find corresponding layout for event:", eventName);
+  }
+  const data = layout.decode(buffer);
+  return { data, name: eventName };
+}
+
+export function destructureBubblegumMintAccounts(
+  accountKeys: PublicKey[],
+  instruction: CompiledInstruction
+) {
+  return {
+    owner: accountKeys[instruction.accounts[4]],
+    delegate: accountKeys[instruction.accounts[5]],
+    merkleSlab: accountKeys[instruction.accounts[6]],
+  }
+}
+
+
+type ZippedInstruction = {
+  instructionIndex: number,
+  instruction: CompiledInstruction,
+  innerInstructions: CompiledInnerInstruction[],
+}
+
+/// Similar to `order_instructions` in `/nft_ingester/src/utils/instructions.rs`
+function zipInstructions(
+  instructions: CompiledInstruction[],
+  innerInstructions: CompiledInnerInstruction[],
+): ZippedInstruction[] {
+  const zippedIxs: ZippedInstruction[] = [];
+  let innerIxIndex = 0;
+  const innerIxMap: Map<number, CompiledInnerInstruction> = new Map();
+  for (const innerIx of innerInstructions) {
+    innerIxMap.set(innerIx.index, innerIx);
+  }
+  for (const [instructionIndex, instruction] of instructions.entries()) {
+    zippedIxs.push({
+      instructionIndex,
+      instruction,
+      innerInstructions: innerIxMap.has(instructionIndex) ? [innerIxMap.get(instructionIndex)] : []
+    })
+  }
+  return zippedIxs;
+}
+
+export function handleInstructionsAtomic(
+  db: NFTDatabaseConnection,
+  instructionInfo: {
+    accountKeys: PublicKey[],
+    instructions: CompiledInstruction[],
+    innerInstructions: CompiledInnerInstruction[],
+  },
+  txId: string,
+  context: Context,
+  parsedState: ParserState,
+  startSeq: number | null = null,
+  endSeq: number | null = null
+) {
+  const { accountKeys, instructions, innerInstructions } = instructionInfo;
+
+  const zippedInstructions = zipInstructions(instructions, innerInstructions);
+  for (const zippedInstruction of zippedInstructions) {
+    indexZippedInstruction(
+      db,
+      { txId, startSeq, endSeq },
       context.slot,
       parsedState,
-      parsedLog
-    );
+      accountKeys,
+      zippedInstruction,
+    )
   }
+}
+
+export function loadPrograms(provider: anchor.Provider) {
+  const Gummyroll = loadProgram(
+    provider,
+    GUMMYROLL_PROGRAM_ID,
+    "target/idl/gummyroll.json"
+  ) as anchor.Program<Gummyroll>;
+  const Bubblegum = loadProgram(
+    provider,
+    BUBBLEGUM_PROGRAM_ID,
+    "target/idl/bubblegum.json"
+  ) as anchor.Program<Bubblegum>;
+  const GumballMachine = loadProgram(
+    provider,
+    GUMBALL_MACHINE_ID,
+    "target/idl/gumball_machine.json"
+  ) as anchor.Program<GumballMachine>;
+  return { Gummyroll, Bubblegum, GumballMachine };
+}
+
+export function hashMetadata(message: MetadataArgs) {
+  // Todo: fix Solita - This is an issue with beet serializing complex enums
+  message.tokenStandard = getTokenStandard(message.tokenStandard);
+  message.tokenProgramVersion = getTokenProgramVersion(message.tokenProgramVersion);
+
+  const [serialized, byteSize] = metadataArgsBeet.serialize(message);
+  if (byteSize < 20) {
+    console.log(serialized.length);
+    console.error("Unable to serialize metadata args properly")
+  }
+  return digest(serialized)
+}
+
+type UnverifiedCreator = {
+  address: PublicKey,
+  share: number
+};
+
+export const unverifiedCreatorBeet = new beet.BeetArgsStruct<UnverifiedCreator>(
+  [
+    ['address', beetSolana.publicKey],
+    ['share', beet.u8],
+  ],
+  'UnverifiedCreator'
+)
+
+export function hashCreators(creators: Creator[]) {
+  const bytes = [];
+  for (const creator of creators) {
+    const unverifiedCreator = {
+      address: creator.address,
+      share: creator.share
+    }
+    const [buffer, _byteSize] = unverifiedCreatorBeet.serialize(unverifiedCreator);
+    bytes.push(buffer);
+  }
+  return digest(Buffer.concat(bytes));
+}
+
+export async function leafSchemaFromLeafData(
+  owner: PublicKey,
+  delegate: PublicKey,
+  treeId: PublicKey,
+  newLeafData: NewLeafEvent
+): Promise<LeafSchemaEvent> {
+  const id = await getLeafAssetId(treeId, newLeafData.nonce);
+  return {
+    schema: {
+      v1: {
+        id,
+        owner,
+        delegate,
+        dataHash: [...hashMetadata(newLeafData.metadata)],
+        creatorHash: [...hashCreators(newLeafData.metadata.creators)],
+        nonce: newLeafData.nonce,
+      }
+    }
+  }
+}
+
+export function digest(input: Buffer): Buffer {
+  return Buffer.from(keccak_256.digest(input))
+}
+
+
+function getTokenProgramVersion(object: Object): TokenProgramVersion {
+  if (Object.keys(object).includes("original")) {
+    return TokenProgramVersion.Original
+  } else if (Object.keys(object).includes("token2022")) {
+    return TokenProgramVersion.Token2022
+  } else {
+    return object as TokenProgramVersion;
+  }
+}
+
+function getTokenStandard(object: Object): TokenStandard {
+  if (!object) { return null };
+  const keys = Object.keys(object);
+  if (keys.includes("nonFungible")) {
+    return TokenStandard.NonFungible
+  } else if (keys.includes("fungible")) {
+    return TokenStandard.Fungible
+  } else if (keys.includes("fungibleAsset")) {
+    return TokenStandard.FungibleAsset
+  } else if (keys.includes("nonFungibleEdition")) {
+    return TokenStandard.NonFungibleEdition
+  } else {
+    return object as TokenStandard;
+  }
+}
+
+/// Returns number of instructions read through
+export function findWrapInstructions(
+  accountKeys: PublicKey[],
+  instructions: CompiledInstruction[],
+  amount: number,
+): [CompiledInstruction[], number] {
+  let count = 0;
+  let found: CompiledInstruction[] = [];
+  while (found.length < amount && count < instructions.length) {
+    const ix = instructions[count];
+    if (accountKeys[ix.programIdIndex].equals(CANDY_WRAPPER_PROGRAM_ID)) {
+      found.push(ix);
+    }
+    count += 1;
+  }
+  if (found.length < amount) {
+    throw new Error(`Unable to find ${amount} wrap instructions: found ${found.length}`)
+  }
+  return [found, count];
 }

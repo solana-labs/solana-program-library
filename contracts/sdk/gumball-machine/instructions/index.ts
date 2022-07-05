@@ -100,12 +100,9 @@ export async function createDispenseNFTForSolIx(
   merkleRollPubkey: PublicKey,
   gummyrollProgramId: PublicKey,
   bubblegumProgramId: PublicKey,
-  gumballMachine: Program<GumballMachine>
+  gumballMachine: Program<GumballMachine>,
 ): Promise<TransactionInstruction> {
-  const willyWonkaPDAKey = await getWillyWonkaPDAKey(
-    gumballMachinePubkey,
-    gumballMachine.programId
-  );
+  const willyWonkaPDAKey = await getWillyWonkaPDAKey(gumballMachinePubkey, gumballMachine.programId);
   const bubblegumAuthorityPDAKey = await getBubblegumAuthorityPDA(
     merkleRollPubkey,
   );
