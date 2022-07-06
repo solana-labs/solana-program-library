@@ -233,10 +233,10 @@ describe("gumball-machine", () => {
     );
     const initializeGumballMachineInstrs =
       await createInitializeGumballMachineIxs(
-        payer,
-        gumballMachineAcctKeypair,
+        payer.publicKey,
+        gumballMachineAcctKeypair.publicKey,
         gumballMachineAcctSize,
-        merkleRollKeypair,
+        merkleRollKeypair.publicKey,
         merkleRollAccountSize,
         gumballMachineInitArgs,
         mint,
