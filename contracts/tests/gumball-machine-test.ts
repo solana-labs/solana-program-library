@@ -538,7 +538,7 @@ describe("gumball-machine", () => {
     let gumballMachineAcctKeypair: Keypair;
     let merkleRollKeypair: Keypair;
     let nftBuyer: Keypair;
-    let creatorKeys: [PublicKey];
+    let creatorKeys: PublicKey[];
     let creatorShares: Uint8Array;
     const GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE = 1000;
     const GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE = 7000;
