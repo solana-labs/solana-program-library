@@ -30,10 +30,12 @@ export type GumballMachineHeader = {
   authority: web3.PublicKey
   collectionKey: web3.PublicKey
   extensionLen: beet.bignum
-  maxMintSize: beet.bignum
-  remaining: beet.bignum
-  maxItems: beet.bignum
-  totalItemsAdded: beet.bignum
+  maxMintSize: number
+  remaining: number
+  maxItems: number
+  totalItemsAdded: number
+  smallestUninitializedIndex: number
+  padding2: number[] /* size: 4 */
 }
 
 /**
@@ -60,10 +62,12 @@ export const gumballMachineHeaderBeet =
       ['authority', beetSolana.publicKey],
       ['collectionKey', beetSolana.publicKey],
       ['extensionLen', beet.u64],
-      ['maxMintSize', beet.u64],
-      ['remaining', beet.u64],
-      ['maxItems', beet.u64],
-      ['totalItemsAdded', beet.u64],
+      ['maxMintSize', beet.u32],
+      ['remaining', beet.u32],
+      ['maxItems', beet.u32],
+      ['totalItemsAdded', beet.u32],
+      ['smallestUninitializedIndex', beet.u32],
+      ['padding2', beet.uniformFixedSizeArray(beet.u8, 4)],
     ],
     'GumballMachineHeader'
   )

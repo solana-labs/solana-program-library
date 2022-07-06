@@ -97,10 +97,13 @@ pub struct GumballMachineHeader {
     // TokenMetadata collection pointer
     pub collection_key: Pubkey,
     pub extension_len: u64,
-    pub max_mint_size: u64,
-    pub remaining: u64,
-    pub max_items: u64,
-    pub total_items_added: u64,
+    pub max_mint_size: u32,
+    pub remaining: u32,
+    pub max_items: u32,
+    pub total_items_added: u32,
+    pub smallest_uninitialized_index: u32,
+    // 8-byte align struct
+    pub _padding_2: [u8; 4],
 }
 
 impl ZeroCopy for GumballMachineHeader {}
