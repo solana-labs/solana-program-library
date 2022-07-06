@@ -11,7 +11,7 @@
           "isSigner": false
         },
         {
-          "name": "creator",
+          "name": "payer",
           "isMut": true,
           "isSigner": true
         },
@@ -147,6 +147,16 @@
         {
           "name": "maxItems",
           "type": "u64"
+        },
+        {
+          "name": "creatorKeys",
+          "type": {
+            "vec": "publicKey"
+          }
+        },
+        {
+          "name": "creatorShares",
+          "type": "bytes"
         }
       ]
     },
@@ -495,6 +505,26 @@
   ],
   "types": [
     {
+      "name": "GumballCreatorAdapter",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "address",
+            "type": "publicKey"
+          },
+          {
+            "name": "verified",
+            "type": "u8"
+          },
+          {
+            "name": "share",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "GumballMachineHeader",
       "type": {
         "kind": "struct",
@@ -543,11 +573,22 @@
             "type": "u8"
           },
           {
+            "name": "creators",
+            "type": {
+              "array": [
+                {
+                  "defined": "GumballCreatorAdapter"
+                },
+                5
+              ]
+            }
+          },
+          {
             "name": "padding",
             "type": {
               "array": [
                 "u8",
-                3
+                1
               ]
             }
           },
@@ -577,10 +618,6 @@
           },
           {
             "name": "collectionKey",
-            "type": "publicKey"
-          },
-          {
-            "name": "creatorAddress",
             "type": "publicKey"
           },
           {

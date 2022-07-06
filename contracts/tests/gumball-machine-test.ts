@@ -42,6 +42,7 @@ import {
 import {
   GumballMachineHeader,
   gumballMachineHeaderBeet,
+  GumballCreatorAdapter
 } from "../sdk/gumball-machine/src/generated/types/index";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import {
@@ -141,10 +142,6 @@ describe("gumball-machine", () => {
       "Gumball Machine set with incorrect collectionKey"
     );
     assert(
-      gm.header.creatorAddress.equals(expectedHeader.creatorAddress),
-      "Gumball Machine set with incorrect creatorAddress"
-    );
-    assert(
       gm.header.mint.equals(expectedHeader.mint),
       "Gumball Machine set with incorrect mint"
     );
@@ -160,6 +157,38 @@ describe("gumball-machine", () => {
       val(gm.header.maxItems).eq(val(expectedHeader.maxItems)),
       "Gumball Machine has incorrect max items"
     );
+    for (let i = 0; i < gm.header.creators.length; i++) {
+      // Check that creator matches user specification
+      if (i < expectedHeader.creators.length) {
+        assert(
+          gm.header.creators[i].address.equals(gm.header.creators[i].address),
+          "Gumball Machine creator has mismatching address"
+        );
+        assert(
+          gm.header.creators[i].share === expectedHeader.creators[i].share,
+          "Gumball Machine creator has mismatching share"
+        );
+        assert(
+          gm.header.creators[i].verified === expectedHeader.creators[i].verified,
+          "Gumball Machine creator has mismatching verified field"
+        );
+      }
+      // Check that non-user specified creators are default 
+      else {
+        assert(
+          gm.header.creators[i].address.equals(new PublicKey("11111111111111111111111111111111")),
+          "Gumball Machine creator has mismatching address"
+        );
+        assert(
+          gm.header.creators[i].share === 0,
+          "Gumball Machine creator has mismatching share"
+        );
+        assert(
+          gm.header.creators[i].verified === 0,
+          "Gumball Machine creator has mismatching verified field"
+        );
+      }
+    }
   }
 
   function assertGumballMachineConfigProperties(
@@ -211,7 +240,6 @@ describe("gumball-machine", () => {
         merkleRollAccountSize,
         gumballMachineInitArgs,
         mint,
-        payer.publicKey,
         GummyrollProgramId,
         BubblegumProgramId,
         GumballMachine
@@ -248,6 +276,17 @@ describe("gumball-machine", () => {
       gumballMachineAcctSize
     );
 
+    let expectedCreators = [];
+    for (let i = 0; i < gumballMachineInitArgs.creatorKeys.length; i++) {
+      let c: GumballCreatorAdapter = {
+        address: gumballMachineInitArgs.creatorKeys[i],
+        share: gumballMachineInitArgs.creatorShares[i],
+        verified: 1
+      }
+      expectedCreators.push(c);
+    }
+    gumballMachineInitArgs.creatorKeys
+    let c: GumballCreatorAdapter = { address: Keypair.generate().publicKey, verified: 1, share: 1 };
     let expectedOnChainHeader: GumballMachineHeader = {
       urlBase: gumballMachineInitArgs.urlBase,
       nameBase: gumballMachineInitArgs.nameBase,
@@ -256,7 +295,8 @@ describe("gumball-machine", () => {
       isMutable: gumballMachineInitArgs.isMutable ? 1 : 0,
       retainAuthority: gumballMachineInitArgs.retainAuthority ? 1 : 0,
       configLineEncodeMethod: 0,
-      padding: [0, 0, 0],
+      creators: expectedCreators,
+      padding: [0],
       price: gumballMachineInitArgs.price,
       goLiveDate: gumballMachineInitArgs.goLiveDate,
       mint,
@@ -264,12 +304,11 @@ describe("gumball-machine", () => {
       receiver: gumballMachineInitArgs.receiver,
       authority: gumballMachineInitArgs.authority,
       collectionKey: gumballMachineInitArgs.collectionKey,
-      creatorAddress: payer.publicKey,
       extensionLen: gumballMachineInitArgs.extensionLen,
       maxMintSize: gumballMachineInitArgs.maxMintSize,
       remaining: new BN(0),
       maxItems: gumballMachineInitArgs.maxItems,
-      totalItemsAdded: new BN(0),
+      totalItemsAdded: new BN(0)
     };
     assertGumballMachineHeaderProperties(gumballMachine, expectedOnChainHeader);
   }
@@ -499,6 +538,8 @@ describe("gumball-machine", () => {
     let gumballMachineAcctKeypair: Keypair;
     let merkleRollKeypair: Keypair;
     let nftBuyer: Keypair;
+    let creatorKeys: [PublicKey];
+    let creatorShares: Uint8Array;
     const GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE = 1000;
     const GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE = 7000;
     const GUMBALL_MACHINE_ACCT_SIZE =
@@ -520,12 +561,16 @@ describe("gumball-machine", () => {
 
     describe("native sol projects", async () => {
       let creatorPaymentWallet: Keypair;
+      let exampleAdditionalSecondarySaleRoyaltyRecipient: Keypair;
       beforeEach(async () => {
         creatorAddress = Keypair.generate();
         creatorPaymentWallet = Keypair.generate();
         nftBuyer = Keypair.generate();
         gumballMachineAcctKeypair = Keypair.generate();
         merkleRollKeypair = Keypair.generate();
+        exampleAdditionalSecondarySaleRoyaltyRecipient = Keypair.generate();
+        creatorKeys = [creatorPaymentWallet.publicKey, exampleAdditionalSecondarySaleRoyaltyRecipient.publicKey];
+        creatorShares = Uint8Array.from([1, 5]);
 
         baseGumballMachineInitProps = {
           maxDepth: 3,
@@ -546,6 +591,8 @@ describe("gumball-machine", () => {
           extensionLen: new BN(28),
           maxMintSize: new BN(10),
           maxItems: new BN(250),
+          creatorKeys,
+          creatorShares,
         };
 
         // Give creator enough funds to produce accounts for NFT
@@ -752,6 +799,15 @@ describe("gumball-machine", () => {
             maxMintSize: new BN(15),
           };
 
+          let expectedCreators = [];
+          for (let i = 0; i < creatorKeys.length; i++) {
+            let c: GumballCreatorAdapter = {
+              address: creatorKeys[i],
+              share: creatorShares[i],
+              verified: 1
+            }
+            expectedCreators.push(c);
+          }
           const expectedOnChainHeader: GumballMachineHeader = {
             urlBase: newGumballMachineHeader.urlBase,
             nameBase: newGumballMachineHeader.nameBase,
@@ -760,7 +816,8 @@ describe("gumball-machine", () => {
             sellerFeeBasisPoints: newGumballMachineHeader.sellerFeeBasisPoints,
             isMutable: newGumballMachineHeader.isMutable ? 1 : 0,
             retainAuthority: newGumballMachineHeader.retainAuthority ? 1 : 0,
-            padding: [0, 0, 0, 0],
+            creators: expectedCreators,
+            padding: [0],
             price: newGumballMachineHeader.price,
             goLiveDate: newGumballMachineHeader.goLiveDate,
             mint: NATIVE_MINT,
@@ -768,12 +825,11 @@ describe("gumball-machine", () => {
             receiver: baseGumballMachineInitProps.receiver,
             authority: newGumballMachineHeader.authority,
             collectionKey: baseGumballMachineInitProps.collectionKey,
-            creatorAddress: creatorAddress.publicKey,
             extensionLen: baseGumballMachineInitProps.extensionLen,
             maxMintSize: newGumballMachineHeader.maxMintSize,
             remaining: new BN(0),
             maxItems: baseGumballMachineInitProps.maxItems,
-            totalItemsAdded: new BN(0),
+            totalItemsAdded: new BN(0)
           };
           await updateHeaderMetadata(
             creatorAddress,
@@ -827,6 +883,9 @@ describe("gumball-machine", () => {
           creatorAddress.publicKey
         );
 
+        creatorKeys = [creatorReceiverTokenAccount.address];
+        creatorShares = Uint8Array.from([1]);
+
         baseGumballMachineInitProps = {
           maxDepth: 3,
           maxBufferSize: 8,
@@ -846,6 +905,8 @@ describe("gumball-machine", () => {
           extensionLen: new BN(28),
           maxMintSize: new BN(10),
           maxItems: new BN(250),
+          creatorKeys,
+          creatorShares
         };
 
         await initializeGumballMachine(

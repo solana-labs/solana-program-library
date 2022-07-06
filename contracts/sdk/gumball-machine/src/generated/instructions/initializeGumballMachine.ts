@@ -34,6 +34,8 @@ export type InitializeGumballMachineInstructionArgs = {
   extensionLen: beet.bignum
   maxMintSize: beet.bignum
   maxItems: beet.bignum
+  creatorKeys: web3.PublicKey[]
+  creatorShares: Uint8Array
 }
 /**
  * @category Instructions
@@ -65,6 +67,8 @@ export const initializeGumballMachineStruct = new beet.FixableBeetArgsStruct<
     ['extensionLen', beet.u64],
     ['maxMintSize', beet.u64],
     ['maxItems', beet.u64],
+    ['creatorKeys', beet.array(beetSolana.publicKey)],
+    ['creatorShares', beet.bytes],
   ],
   'InitializeGumballMachineInstructionArgs'
 )
@@ -72,7 +76,7 @@ export const initializeGumballMachineStruct = new beet.FixableBeetArgsStruct<
  * Accounts required by the _initializeGumballMachine_ instruction
  *
  * @property [_writable_] gumballMachine
- * @property [_writable_, **signer**] creator
+ * @property [_writable_, **signer**] payer
  * @property [] mint
  * @property [] willyWonka
  * @property [_writable_] bubblegumAuthority
@@ -86,7 +90,7 @@ export const initializeGumballMachineStruct = new beet.FixableBeetArgsStruct<
  */
 export type InitializeGumballMachineInstructionAccounts = {
   gumballMachine: web3.PublicKey
-  creator: web3.PublicKey
+  payer: web3.PublicKey
   mint: web3.PublicKey
   willyWonka: web3.PublicKey
   bubblegumAuthority: web3.PublicKey
@@ -116,7 +120,7 @@ export function createInitializeGumballMachineInstruction(
 ) {
   const {
     gumballMachine,
-    creator,
+    payer,
     mint,
     willyWonka,
     bubblegumAuthority,
@@ -137,7 +141,7 @@ export function createInitializeGumballMachineInstruction(
       isSigner: false,
     },
     {
-      pubkey: creator,
+      pubkey: payer,
       isWritable: true,
       isSigner: true,
     },

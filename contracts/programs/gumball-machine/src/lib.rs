@@ -12,7 +12,10 @@ use bubblegum::state::metaplex_adapter::MetadataArgs;
 use bytemuck::cast_slice_mut;
 use gummyroll::{program::Gummyroll, state::CandyWrapper};
 use spl_token::native_mint;
+
 pub mod state;
+use crate::state::{GumballCreatorAdapter, NUM_CREATORS};
+
 pub mod utils;
 
 use crate::state::{EncodeMethod, GumballMachineHeader, ZeroCopy};
@@ -28,7 +31,7 @@ pub struct InitGumballMachine<'info> {
     #[account(zero)]
     gumball_machine: AccountInfo<'info>,
     #[account(mut)]
-    creator: Signer<'info>,
+    payer: Signer<'info>,
     mint: Account<'info, Mint>,
     /// CHECK: Mint/append authority to the merkle slab
     #[account(
@@ -224,7 +227,7 @@ fn fisher_yates_shuffle_and_fetch_nft_metadata<'info>(
         gumball_header.is_mutable != 0,
         gumball_header.collection_key,
         None,
-        gumball_header.creator_address,
+        gumball_header.creators,
         nft_index,
         config_line,
         EncodeMethod::from(gumball_header.config_line_encode_method),
@@ -313,9 +316,6 @@ fn find_and_mint_compressed_nfts<'info>(
 pub mod gumball_machine {
     use super::*;
 
-    // TODO(sorend): consider validating receiver in here. I.e. forcing the receiver to be the
-    // associated token account of creator_address and mint. This restricts payment reciept options,
-    // but it allows validation that all initialized gumball machines can receive payment
     pub fn initialize_gumball_machine(
         ctx: Context<InitGumballMachine>,
         max_depth: u32,
@@ -336,12 +336,42 @@ pub mod gumball_machine {
         extension_len: u64,
         max_mint_size: u64,
         max_items: u64,
+        creator_keys: Vec<Pubkey>,
+        creator_shares: Vec<u8>,
     ) -> Result<()> {
         let mut gumball_machine_data = ctx.accounts.gumball_machine.try_borrow_mut_data()?;
         let (mut header_bytes, config_data) =
             gumball_machine_data.split_at_mut(std::mem::size_of::<GumballMachineHeader>());
         let gumball_header = GumballMachineHeader::load_mut_bytes(&mut header_bytes)?;
         let size = max_items as usize;
+
+        // Construct creators array
+        let mut creators: [GumballCreatorAdapter; NUM_CREATORS] = [
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        ];
+        assert_eq!(creator_keys.len(), creator_shares.len());
+        assert!(
+            creator_keys.len() < NUM_CREATORS,
+            "Cannot set more than {} creators",
+            NUM_CREATORS
+        );
+        assert!(
+            creator_shares.iter().sum::<u8>() <= 100,
+            "Cannot have creator royalty percentages total more than 100% of the sale price"
+        );
+        for i in 0..creator_keys.len() {
+            let creator_to_add = GumballCreatorAdapter {
+                address: creator_keys[i],
+                // TODO: this should be set accurately, user provided array, something authority must update later?
+                verified: (1 as u8),
+                share: creator_shares[i],
+            };
+            creators[i] = creator_to_add;
+        }
         *gumball_header = GumballMachineHeader {
             url_base: url_base,
             name_base: name_base,
@@ -353,7 +383,8 @@ pub mod gumball_machine {
                 Some(e) => e.to_u8(),
                 None => EncodeMethod::UTF8.to_u8(),
             },
-            _padding: [0; 3],
+            creators,
+            _padding: [0; 1],
             price,
             go_live_date,
             bot_wallet,
@@ -361,7 +392,6 @@ pub mod gumball_machine {
             authority,
             mint: ctx.accounts.mint.key(),
             collection_key,
-            creator_address: ctx.accounts.creator.key(),
             extension_len: extension_len,
             max_mint_size: max_mint_size.max(1).min(max_items),
             remaining: 0,
@@ -388,7 +418,7 @@ pub mod gumball_machine {
                 candy_wrapper: ctx.accounts.candy_wrapper.to_account_info(),
                 gummyroll_program: ctx.accounts.gummyroll.to_account_info(),
                 merkle_slab: ctx.accounts.merkle_slab.to_account_info(),
-                payer: ctx.accounts.creator.to_account_info(),
+                payer: ctx.accounts.payer.to_account_info(),
                 system_program: ctx.accounts.system_program.to_account_info(),
             },
             authority_pda_signer,
@@ -522,6 +552,7 @@ pub mod gumball_machine {
             Some(mms) => gumball_machine.max_mint_size = mms.max(1).min(gumball_machine.max_items),
             None => {}
         }
+        // TODO(sorend): consider allowing updates to the creators array
         Ok(())
     }
 

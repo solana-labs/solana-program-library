@@ -8,6 +8,10 @@
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
+import {
+  GumballCreatorAdapter,
+  gumballCreatorAdapterBeet,
+} from './GumballCreatorAdapter'
 export type GumballMachineHeader = {
   urlBase: number[] /* size: 64 */
   nameBase: number[] /* size: 32 */
@@ -16,7 +20,8 @@ export type GumballMachineHeader = {
   isMutable: number
   retainAuthority: number
   configLineEncodeMethod: number
-  padding: number[] /* size: 3 */
+  creators: GumballCreatorAdapter[] /* size: 5 */
+  padding: number[] /* size: 1 */
   price: beet.bignum
   goLiveDate: beet.bignum
   mint: web3.PublicKey
@@ -24,7 +29,6 @@ export type GumballMachineHeader = {
   receiver: web3.PublicKey
   authority: web3.PublicKey
   collectionKey: web3.PublicKey
-  creatorAddress: web3.PublicKey
   extensionLen: beet.bignum
   maxMintSize: beet.bignum
   remaining: beet.bignum
@@ -46,7 +50,8 @@ export const gumballMachineHeaderBeet =
       ['isMutable', beet.u8],
       ['retainAuthority', beet.u8],
       ['configLineEncodeMethod', beet.u8],
-      ['padding', beet.uniformFixedSizeArray(beet.u8, 3)],
+      ['creators', beet.uniformFixedSizeArray(gumballCreatorAdapterBeet, 5)],
+      ['padding', beet.uniformFixedSizeArray(beet.u8, 1)],
       ['price', beet.u64],
       ['goLiveDate', beet.i64],
       ['mint', beetSolana.publicKey],
@@ -54,7 +59,6 @@ export const gumballMachineHeaderBeet =
       ['receiver', beetSolana.publicKey],
       ['authority', beetSolana.publicKey],
       ['collectionKey', beetSolana.publicKey],
-      ['creatorAddress', beetSolana.publicKey],
       ['extensionLen', beet.u64],
       ['maxMintSize', beet.u64],
       ['remaining', beet.u64],
