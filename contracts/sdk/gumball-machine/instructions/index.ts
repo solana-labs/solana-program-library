@@ -26,10 +26,10 @@ import { CANDY_WRAPPER_PROGRAM_ID } from "../../utils";
  * Produces a series of instructions to create the merkle roll + gumball machine accounts and initialize gumball machine
  * */
 export async function createInitializeGumballMachineIxs(
-  payer: Keypair,
-  gumballMachineAcctKeypair: Keypair,
+  payerPublicKey: PublicKey,
+  gumballMachinePublicKey: PublicKey,
   gumballMachineAcctSize: number,
-  merkleRollKeypair: Keypair,
+  merkleRollPublicKey: PublicKey,
   merkleRollAccountSize: number,
   gumballMachineInitArgs: InitializeGumballMachineInstructionArgs,
   mint: PublicKey,
@@ -38,8 +38,8 @@ export async function createInitializeGumballMachineIxs(
   gumballMachine: Program<GumballMachine>
 ): Promise<TransactionInstruction[]> {
   const allocGumballMachineAcctInstr = SystemProgram.createAccount({
-    fromPubkey: payer.publicKey,
-    newAccountPubkey: gumballMachineAcctKeypair.publicKey,
+    fromPubkey: payerPublicKey,
+    newAccountPubkey: gumballMachinePublicKey,
     lamports:
       await gumballMachine.provider.connection.getMinimumBalanceForRentExemption(
         gumballMachineAcctSize
@@ -49,8 +49,8 @@ export async function createInitializeGumballMachineIxs(
   });
 
   const allocMerkleRollAcctInstr = SystemProgram.createAccount({
-    fromPubkey: payer.publicKey,
-    newAccountPubkey: merkleRollKeypair.publicKey,
+    fromPubkey: payerPublicKey,
+    newAccountPubkey: merkleRollPublicKey,
     lamports:
       await gumballMachine.provider.connection.getMinimumBalanceForRentExemption(
         merkleRollAccountSize
@@ -60,23 +60,23 @@ export async function createInitializeGumballMachineIxs(
   });
 
   const willyWonkaPDAKey = await getWillyWonkaPDAKey(
-    gumballMachineAcctKeypair.publicKey,
+    gumballMachinePublicKey,
     gumballMachine.programId
   );
   const bubblegumAuthorityPDAKey = await getBubblegumAuthorityPDA(
-    merkleRollKeypair.publicKey,
+    merkleRollPublicKey,
   );
 
   const initGumballMachineInstr = createInitializeGumballMachineInstruction(
     {
-      gumballMachine: gumballMachineAcctKeypair.publicKey,
-      payer: payer.publicKey,
+      gumballMachine: gumballMachinePublicKey,
+      payer: payerPublicKey,
       mint,
       willyWonka: willyWonkaPDAKey,
       bubblegumAuthority: bubblegumAuthorityPDAKey,
       candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
       gummyroll: gummyrollProgramId,
-      merkleSlab: merkleRollKeypair.publicKey,
+      merkleSlab: merkleRollPublicKey,
       bubblegum: bubblegumProgramId,
     },
     gumballMachineInitArgs
