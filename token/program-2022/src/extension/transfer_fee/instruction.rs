@@ -11,8 +11,8 @@ use {
 
 #[cfg(feature = "serde")]
 use {
-    serde::{Deserialize, Serialize},
     crate::serialization::coption_serde,
+    serde::{Deserialize, Serialize},
 };
 
 /// Transfer Fee extension instructions

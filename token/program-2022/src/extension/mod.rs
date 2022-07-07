@@ -29,9 +29,7 @@ use {
 };
 
 #[cfg(feature = "serde")]
-use {
-    serde::{Deserialize, Serialize},
-};
+use serde::{Deserialize, Serialize};
 
 /// Confidential Transfer extension
 pub mod confidential_transfer;
