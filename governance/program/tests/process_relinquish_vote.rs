@@ -5,8 +5,10 @@ mod program_test;
 use solana_program::{instruction::AccountMeta, pubkey::Pubkey};
 use solana_program_test::tokio;
 
+use program_test::args::PluginSetupArgs;
 use program_test::*;
 use spl_governance::{error::GovernanceError, state::enums::ProposalState};
+use spl_governance_addin_api::voter_weight::VoterWeightAction;
 
 #[tokio::test]
 async fn test_relinquish_voted_proposal() {
@@ -506,4 +508,184 @@ async fn test_relinquish_proposal_with_cannot_relinquish_in_finalizing_state_err
         err,
         GovernanceError::CannotRelinquishInFinalizingState.into()
     );
+}
+
+#[tokio::test]
+async fn test_relinquish_voted_proposal_with_record_partial() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
+
+    let realm_cookie = governance_test
+        .with_realm_using_addins(PluginSetupArgs::COMMUNITY_VOTER_WEIGHT)
+        .await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let mut token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+    governance_test
+        .with_voter_weight_addin_record(&mut token_owner_record_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_cookie = governance_test
+        .with_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    let _cast_record_cookie = governance_test
+        .with_voter_weight_addin_record_impl(
+            &mut token_owner_record_cookie,
+            10,
+            None,
+            Some(VoterWeightAction::CastVote),
+            Some(proposal_cookie.address),
+        )
+        .await
+        .unwrap();
+
+    let mut vote_record_cookie = governance_test
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .await
+        .unwrap();
+
+    let _revoke_record_cookie = governance_test
+        .with_voter_weight_addin_record_impl(
+            &mut token_owner_record_cookie,
+            5,
+            None,
+            Some(VoterWeightAction::RevokeVote),
+            Some(vote_record_cookie.address),
+        )
+        .await
+        .unwrap();
+
+    // Act
+    governance_test
+        .relinquish_vote(&proposal_cookie, &token_owner_record_cookie)
+        .await
+        .unwrap();
+
+    // Assert
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    assert_eq!(5, proposal_account.options[0].vote_weight);
+    assert_eq!(ProposalState::Voting, proposal_account.state);
+
+    let token_owner_record = governance_test
+        .get_token_owner_record_account(&token_owner_record_cookie.address)
+        .await;
+
+    assert_eq!(1, token_owner_record.unrelinquished_votes_count);
+    assert_eq!(1, token_owner_record.total_votes_count);
+
+    let vote_record_account = governance_test
+        .get_vote_record_account(&vote_record_cookie.address)
+        .await;
+
+    vote_record_cookie.account.is_relinquished = false;
+    vote_record_cookie.account.voter_weight -= 5;
+
+    assert_eq!(vote_record_cookie.account, vote_record_account);
+}
+
+#[tokio::test]
+async fn test_relinquish_voted_proposal_with_record_all() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
+
+    let realm_cookie = governance_test
+        .with_realm_using_addins(PluginSetupArgs::COMMUNITY_VOTER_WEIGHT)
+        .await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let mut token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+    governance_test
+        .with_voter_weight_addin_record(&mut token_owner_record_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_cookie = governance_test
+        .with_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    let _cast_record_cookie = governance_test
+        .with_voter_weight_addin_record_impl(
+            &mut token_owner_record_cookie,
+            10,
+            None,
+            Some(VoterWeightAction::CastVote),
+            Some(proposal_cookie.address),
+        )
+        .await
+        .unwrap();
+
+    let vote_record_cookie = governance_test
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .await
+        .unwrap();
+
+    let _revoke_record_cookie = governance_test
+        .with_voter_weight_addin_record_impl(
+            &mut token_owner_record_cookie,
+            10,
+            None,
+            Some(VoterWeightAction::RevokeVote),
+            Some(vote_record_cookie.address),
+        )
+        .await
+        .unwrap();
+
+    // Act
+    governance_test
+        .relinquish_vote(&proposal_cookie, &token_owner_record_cookie)
+        .await
+        .unwrap();
+
+    // Assert
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    assert_eq!(0, proposal_account.options[0].vote_weight);
+    assert_eq!(ProposalState::Voting, proposal_account.state);
+
+    let token_owner_record = governance_test
+        .get_token_owner_record_account(&token_owner_record_cookie.address)
+        .await;
+
+    assert_eq!(0, token_owner_record.unrelinquished_votes_count);
+    assert_eq!(0, token_owner_record.total_votes_count);
+
+    let vote_record_account = governance_test
+        .bench
+        .get_account(&vote_record_cookie.address)
+        .await;
+
+    assert_eq!(vote_record_account, None);
 }

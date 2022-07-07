@@ -2279,6 +2279,12 @@ impl GovernanceProgramTest {
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         instruction_override: F,
     ) -> Result<(), ProgramError> {
+        let revoke_record = token_owner_record_cookie
+            .voter_weight_record
+            .as_ref()
+            .filter(|cookie| cookie.account.weight_action == Some(VoterWeightAction::RevokeVote))
+            .map(|cookie| cookie.address);
+
         let mut relinquish_vote_ix = relinquish_vote(
             &self.program_id,
             &token_owner_record_cookie.account.realm,
@@ -2288,6 +2294,7 @@ impl GovernanceProgramTest {
             &token_owner_record_cookie.account.governing_token_mint,
             Some(token_owner_record_cookie.token_owner.pubkey()),
             Some(self.bench.payer.pubkey()),
+            revoke_record,
         );
 
         instruction_override(&mut relinquish_vote_ix);
@@ -2371,10 +2378,12 @@ impl GovernanceProgramTest {
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<VoteRecordCookie, ProgramError> {
-        let voter_weight_record = token_owner_record_cookie
-            .voter_weight_record
-            .as_ref()
-            .map(|voter_weight_record| voter_weight_record.address);
+        let (voter_weight_record, vote_amount) =
+            if let Some(voter_weight_record) = &token_owner_record_cookie.voter_weight_record {
+                (Some(voter_weight_record.address), voter_weight_record.account.voter_weight)
+            } else {
+                (None, token_owner_record_cookie.account.governing_token_deposit_amount)
+            };
 
         let max_voter_weight_record = token_owner_record_cookie
             .max_voter_weight_record
@@ -2404,10 +2413,6 @@ impl GovernanceProgramTest {
         self.bench
             .process_transaction(&[cast_vote_ix], Some(signers))
             .await?;
-
-        let vote_amount = token_owner_record_cookie
-            .account
-            .governing_token_deposit_amount;
 
         let account = VoteRecordV2 {
             account_type: GovernanceAccountType::VoteRecordV2,

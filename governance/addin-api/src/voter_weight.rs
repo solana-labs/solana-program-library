@@ -22,6 +22,9 @@ pub enum VoterWeightAction {
     /// Signs off a proposal for a governance. Target: Proposal
     /// Note: SignOffProposal is not supported in the current version
     SignOffProposal,
+
+    /// Revoke vote. Target: VoteRecord
+    RevokeVote,
 }
 
 /// VoterWeightRecord account

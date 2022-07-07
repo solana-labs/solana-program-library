@@ -64,7 +64,7 @@ pub enum GovernanceInstruction {
         name: String,
 
         #[allow(dead_code)]
-        /// Realm config args     
+        /// Realm config args
         config_args: RealmConfigArgs,
     },
 
@@ -121,7 +121,7 @@ pub enum GovernanceInstruction {
     ///   0. `[]` Realm account the created Governance belongs to
     ///   1. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
     ///   2. `[]` Account governed by this Governance
-    ///       Note: The account doesn't have to exist and can be only used as a unique identifier for the Governance account  
+    ///       Note: The account doesn't have to exist and can be only used as a unique identifier for the Governance account
     ///   3. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)
     ///   4. `[signer]` Payer
     ///   5. `[]` System program
@@ -316,10 +316,10 @@ pub enum GovernanceInstruction {
 
     /// Finalizes vote in case the Vote was not automatically tipped within max_voting_time period
     ///
-    ///   0. `[writable]` Realm account    
+    ///   0. `[writable]` Realm account
     ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
-    ///   3. `[writable]` TokenOwnerRecord of the Proposal owner        
+    ///   3. `[writable]` TokenOwnerRecord of the Proposal owner
     ///   4. `[]` Governing Token Mint
     ///   5. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///   6. `[]` Optional Max Voter Weight Record
@@ -340,6 +340,8 @@ pub enum GovernanceInstruction {
     ///       It's required only when Proposal is still being voted on
     ///   7. `[writable]` Optional Beneficiary account which would receive lamports when VoteRecord Account is disposed
     ///       It's required only when Proposal is still being voted on
+    ///   8. `[] Optional VoterWeightRecord if a partial revocation is being requested.
+    ///   9. `[] Optional RealmConfig. Required if 8. is provided.`
     RelinquishVote,
 
     /// Executes a Transaction in the Proposal
@@ -355,11 +357,11 @@ pub enum GovernanceInstruction {
 
     /// Creates Mint Governance account which governs a mint
     ///
-    ///   0. `[]` Realm account the created Governance belongs to    
+    ///   0. `[]` Realm account the created Governance belongs to
     ///   1. `[writable]` Mint Governance account. PDA seeds: ['mint-governance', realm, governed_mint]
     ///   2. `[writable]` Mint governed by this Governance account
     ///   3. `[signer]` Current Mint authority (MintTokens and optionally FreezeAccount)
-    ///   4. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)   
+    ///   4. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)
     ///   5. `[signer]` Payer
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
@@ -381,18 +383,18 @@ pub enum GovernanceInstruction {
 
     /// Creates Token Governance account which governs a token account
     ///
-    ///   0. `[]` Realm account the created Governance belongs to    
+    ///   0. `[]` Realm account the created Governance belongs to
     ///   1. `[writable]` Token Governance account. PDA seeds: ['token-governance', realm, governed_token]
     ///   2. `[writable]` Token account governed by this Governance account
     ///   3. `[signer]` Current token account authority (AccountOwner and optionally CloseAccount)
-    ///   4. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)       
+    ///   4. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)
     ///   5. `[signer]` Payer
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
     ///   8. `[]` Sysvar Rent
     ///   9. `[signer]` Governance authority
     ///   10. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
-    ///   11. `[]` Optional Voter Weight Record   
+    ///   11. `[]` Optional Voter Weight Record
     CreateTokenGovernance {
         #[allow(dead_code)]
         /// Governance config
@@ -407,7 +409,7 @@ pub enum GovernanceInstruction {
 
     /// Sets GovernanceConfig for a Governance
     ///
-    ///   0. `[]` Realm account the Governance account belongs to    
+    ///   0. `[]` Realm account the Governance account belongs to
     ///   1. `[writable, signer]` The Governance account the config is for
     SetGovernanceConfig {
         #[allow(dead_code)]
@@ -422,14 +424,14 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[writable]` Proposal account
     ///   1. `[]` TokenOwnerRecord account of the Proposal owner
-    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)    
+    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     ///   3. `[writable]` ProposalTransaction account to flag
     FlagTransactionError,
 
     /// Sets new Realm authority
     ///
     ///   0. `[writable]` Realm account
-    ///   1. `[signer]` Current Realm authority    
+    ///   1. `[signer]` Current Realm authority
     ///   2. `[]` New realm authority. Must be one of the realm governances when set
     SetRealmAuthority {
         #[allow(dead_code)]
@@ -439,7 +441,7 @@ pub enum GovernanceInstruction {
 
     /// Sets realm config
     ///   0. `[writable]` Realm account
-    ///   1. `[signer]`  Realm authority    
+    ///   1. `[signer]`  Realm authority
     ///   2. `[]` Council Token Mint - optional
     ///       Note: In the current version it's only possible to remove council mint (set it to None)
     ///       After setting council to None it won't be possible to withdraw the tokens from the Realm any longer
@@ -449,11 +451,11 @@ pub enum GovernanceInstruction {
     ///   4. `[]` System
     ///   5. `[writable]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///
-    ///   6. `[]` Optional Community Voter Weight Addin Program Id    
-    ///   7. `[]` Optional Max Community Voter Weight Addin Program Id    
+    ///   6. `[]` Optional Community Voter Weight Addin Program Id
+    ///   7. `[]` Optional Max Community Voter Weight Addin Program Id
     ///
-    ///   8. `[]` Optional Council Voter Weight Addin Program Id    
-    ///   9. `[]` Optional Max Council Voter Weight Addin Program Id    
+    ///   8. `[]` Optional Council Voter Weight Addin Program Id
+    ///   9. `[]` Optional Max Council Voter Weight Addin Program Id
     ///
     ///   10. `[signer]` Optional Payer. Required if RealmConfig doesn't exist and needs to be created
     SetRealmConfig {
@@ -468,7 +470,7 @@ pub enum GovernanceInstruction {
     ///   0. `[]` Realm account
     ///   1. `[]` Governing Token Owner account
     ///   2. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
-    ///   3. `[]` Governing Token Mint   
+    ///   3. `[]` Governing Token Mint
     ///   4. `[signer]` Payer
     ///   5. `[]` System
     CreateTokenOwnerRecord {},
@@ -1131,6 +1133,7 @@ pub fn relinquish_vote(
     vote_governing_token_mint: &Pubkey,
     governance_authority: Option<Pubkey>,
     beneficiary: Option<Pubkey>,
+    revoke_record: Option<Pubkey>,
 ) -> Instruction {
     let vote_record_address = get_vote_record_address(program_id, proposal, token_owner_record);
 
@@ -1146,6 +1149,14 @@ pub fn relinquish_vote(
     if let Some(governance_authority) = governance_authority {
         accounts.push(AccountMeta::new_readonly(governance_authority, true));
         accounts.push(AccountMeta::new(beneficiary.unwrap(), false));
+    }
+
+    if let Some(revoke_record) = revoke_record {
+        accounts.push(AccountMeta::new_readonly(revoke_record, false));
+        accounts.push(AccountMeta::new_readonly(
+            get_realm_config_address(program_id, realm),
+            false,
+        ));
     }
 
     let instruction = GovernanceInstruction::RelinquishVote {};

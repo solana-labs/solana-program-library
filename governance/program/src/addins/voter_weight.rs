@@ -72,3 +72,34 @@ pub fn get_voter_weight_record_data_for_token_owner_record(
 
     Ok(voter_weight_record_data)
 }
+
+/// Deserializes VoterWeightRecord account, checks owner program and asserts it's for the same realm, mint and token owner as the provided TokenOwnerRecord
+pub fn get_revoke_delegated_voter_weight_record_data_for_token_owner_record(
+    program_id: &Pubkey,
+    voter_weight_record_info: &AccountInfo,
+    delegate_token_owner_record: &TokenOwnerRecordV2,
+    delegator: &AccountInfo,
+) -> Result<VoterWeightRecord, ProgramError> {
+    let voter_weight_record_data =
+        get_voter_weight_record_data(program_id, voter_weight_record_info)?;
+
+    if voter_weight_record_data.realm != delegate_token_owner_record.realm {
+        return Err(GovernanceError::InvalidVoterWeightRecordForRealm.into());
+    }
+
+    if voter_weight_record_data.governing_token_mint
+        != delegate_token_owner_record.governing_token_mint
+    {
+        return Err(GovernanceError::InvalidVoterWeightRecordForGoverningTokenMint.into());
+    }
+
+    if !delegator.is_signer {
+        return Err(GovernanceError::GoverningTokenOwnerMustSign.into());
+    }
+
+    if voter_weight_record_data.governing_token_owner != *delegator.key {
+        return Err(GovernanceError::InvalidVoterWeightRecordForTokenOwner.into());
+    }
+
+    Ok(voter_weight_record_data)
+}
