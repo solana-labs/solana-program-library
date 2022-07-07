@@ -3660,7 +3660,7 @@ mod tests {
             &config,
             ui_amount,
             payer.pubkey(),
-            Some(source),
+            None,
             bulk_signers,
         )
         .unwrap();
