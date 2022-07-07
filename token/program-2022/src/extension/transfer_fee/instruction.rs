@@ -9,7 +9,14 @@ use {
     std::convert::TryFrom,
 };
 
+#[cfg(feature = "serde-traits")]
+use {
+    crate::serialization::coption_fromstr,
+    serde::{Deserialize, Serialize},
+};
+
 /// Transfer Fee extension instructions
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum TransferFeeInstruction {
@@ -27,8 +34,10 @@ pub enum TransferFeeInstruction {
     ///   0. `[writable]` The mint to initialize.
     InitializeTransferFeeConfig {
         /// Pubkey that may update the fees
+        #[cfg_attr(feature = "serde-traits", serde(with = "coption_fromstr"))]
         transfer_fee_config_authority: COption<Pubkey>,
         /// Withdraw instructions must be signed by this key
+        #[cfg_attr(feature = "serde-traits", serde(with = "coption_fromstr"))]
         withdraw_withheld_authority: COption<Pubkey>,
         /// Amount of transfer collected as fees, expressed as basis points of the
         /// transfer amount
