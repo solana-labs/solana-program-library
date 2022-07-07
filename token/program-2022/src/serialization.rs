@@ -52,7 +52,7 @@ pub mod coption_fromstr {
         where
             E: Error,
         {
-            T::from_str(&v)
+            T::from_str(v)
                 .map(|r| COption::Some(r))
                 .map_err(|_| E::invalid_value(Unexpected::Str(v), &"value string"))
         }
