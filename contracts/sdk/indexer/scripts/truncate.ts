@@ -40,7 +40,8 @@ import { strToByteArray } from "../../utils";
 import { NATIVE_MINT } from "@solana/spl-token";
 
 // const url = "http://api.explorer.mainnet-beta.solana.com";
-const url = "http://127.0.0.1:8899";
+// const url = "http://127.0.0.1:8899";
+const url = "http://34.82.112.99:8899"
 
 function keypairFromString(seed: string) {
     const spaces = "                                         ";
@@ -289,15 +290,15 @@ async function initializeGumballMachine(
             merkleRollAccountSize,
             gumballMachineInitArgs,
             mint,
-            creator.publicKey,
             GUMMYROLL_PROGRAM_ID,
             BUBBLEGUM_PROGRAM_ID,
             gumballMachine
         );
+    console.log(`${creator.publicKey.toString()}`);
     await execute(
         gumballMachine.provider,
         initializeGumballMachineInstrs,
-        [payer, gumballMachineAcctKeypair, merkleRollKeypair, creator],
+        [payer, gumballMachineAcctKeypair, merkleRollKeypair],
         true
     );
 }
@@ -391,7 +392,7 @@ async function truncateWithGumball(
     );
     console.log("airdrop successfull")
 
-    const baseGumballMachineInitProps = {
+    const baseGumballMachineInitProps: InitializeGumballMachineInstructionArgs = {
         maxDepth: 3,
         maxBufferSize: 8,
         urlBase: strToByteArray("https://arweave.net", 64),
@@ -404,13 +405,14 @@ async function truncateWithGumball(
         price: new BN(0.1),
         goLiveDate: new BN(1234.0),
         botWallet: botWallet.publicKey,
-        // receiver: creatorReceiverTokenAccount.address,
         receiver: creatorAddress.publicKey,
         authority: creatorAddress.publicKey,
         collectionKey: SystemProgram.programId, // 0x0 -> no collection key
         extensionLen: new BN(EXTENSION_LEN),
         maxMintSize: new BN(MAX_MINT_SIZE),
         maxItems: new BN(250),
+        creatorKeys: [creatorAddress.publicKey],
+        creatorShares: Uint8Array.from([100]),
     };
 
     await initializeGumballMachine(
