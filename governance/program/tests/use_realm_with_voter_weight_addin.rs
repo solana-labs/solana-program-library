@@ -255,27 +255,6 @@ async fn test_create_program_governance_with_voter_weight_addin() {
 }
 
 #[tokio::test]
-async fn test_realm_with_voter_weight_addin_with_deposits_not_allowed() {
-    // Arrange
-    let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
-    let realm_cookie = governance_test.with_realm().await;
-
-    // Act
-
-    let err = governance_test
-        .with_community_token_deposit(&realm_cookie)
-        .await
-        .err()
-        .unwrap();
-
-    // Assert
-    assert_eq!(
-        err,
-        GovernanceError::GoverningTokenDepositsNotAllowed.into()
-    );
-}
-
-#[tokio::test]
 async fn test_create_governance_with_voter_weight_action_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
