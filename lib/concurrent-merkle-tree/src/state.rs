@@ -1,4 +1,4 @@
-use solana_program::keccak::hashv;
+use crate::utils::hash_to_parent;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 /// Stores proof for a given Merkle root update
@@ -23,27 +23,46 @@ impl<const MAX_DEPTH: usize> ChangeLog<MAX_DEPTH> {
         }
     }
 
+    pub fn new(root: Node, path: [Node; MAX_DEPTH], index: u32) -> Self {
+        Self {
+            root,
+            path,
+            index,
+            _padding: 0,
+        }
+    }
+
     pub fn get_leaf(&self) -> Node {
         self.path[0]
     }
 
     /// Sets all change log values from a leaf and valid proof
-    pub fn recompute_path(&mut self, mut start: Node, proof: &[Node]) -> Node {
-        self.path[0] = start;
-        for (ix, s) in proof.iter().enumerate() {
-            if self.index >> ix & 1 == 0 {
-                let res = hashv(&[start.as_ref(), s.as_ref()]);
-                start.copy_from_slice(res.as_ref());
-            } else {
-                let res = hashv(&[s.as_ref(), start.as_ref()]);
-                start.copy_from_slice(res.as_ref());
-            }
-            if ix < MAX_DEPTH - 1 {
-                self.path[ix + 1] = start;
-            }
+    pub fn replace_and_recompute_path(&mut self, index: u32, mut node: Node, proof: &[Node]) -> Node {
+        self.index = index;
+        for (i, sibling) in proof.iter().enumerate() {
+            self.path[i] = node;
+            hash_to_parent(&mut node, sibling, self.index >> i & 1 == 0);
         }
-        self.root = start;
-        start
+        self.root = node;
+        node
+    }
+
+    pub fn update_proof_or_leaf(
+        &self,
+        leaf_index: u32,
+        proof: &mut [Node; MAX_DEPTH],
+        leaf: &mut Node,
+    ) {
+        let padding: usize = 32 - MAX_DEPTH;
+        if leaf_index != self.index {
+            // This bit math is used to identify which node in the proof
+            // we need to swap for a corresponding node in a saved change log
+            let common_path_len = ((leaf_index ^ self.index) << padding).leading_zeros() as usize;
+            let critbit_index = (MAX_DEPTH - 1) - common_path_len;
+            proof[critbit_index] = self.path[critbit_index];
+        } else {
+            *leaf = self.get_leaf();
+        }
     }
 }
 
@@ -68,4 +87,4 @@ impl<const MAX_DEPTH: usize> Default for Path<MAX_DEPTH> {
 }
 
 pub type Node = [u8; 32];
-pub const EMPTY: Node = [0 as u8; 32];
+pub const EMPTY: Node = [0_u8; 32];

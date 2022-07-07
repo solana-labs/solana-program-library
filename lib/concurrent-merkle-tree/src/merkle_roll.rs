@@ -1,17 +1,16 @@
 use crate::{
     error::CMTError,
     state::{ChangeLog, Node, Path, EMPTY},
-    utils::{empty_node, fill_in_proof, recompute},
+    utils::{empty_node, empty_node_cached, fill_in_proof, recompute, hash_to_parent},
 };
 use bytemuck::{Pod, Zeroable};
 pub(crate) use log_compute;
 pub(crate) use solana_logging;
 
-use solana_program::keccak::hashv;
-
 #[cfg(feature = "sol-log")]
 use solana_program::{log::sol_log_compute_units, msg};
 
+#[inline(always)]
 fn check_bounds(max_depth: usize, max_buffer_size: usize) {
     assert!(max_depth < 31);
     // This will return true if MAX_BUFFER_SIZE is a power of 2 or if it is 0
@@ -56,12 +55,13 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     pub fn initialize(&mut self) -> Result<Node, CMTError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
         let mut rightmost_proof = Path::default();
+        let mut empty_node_cache = Box::new([Node::default(); MAX_DEPTH]);
         for (i, node) in rightmost_proof.proof.iter_mut().enumerate() {
-            *node = empty_node(i as u32);
+            *node = empty_node_cached::<MAX_DEPTH>(i as u32, &mut empty_node_cache);
         }
         let mut path = [Node::default(); MAX_DEPTH];
         for (i, node) in path.iter_mut().enumerate() {
-            *node = empty_node(i as u32);
+            *node = empty_node_cached::<MAX_DEPTH>(i as u32, &mut empty_node_cache);
         }
         self.change_logs[0].root = empty_node(MAX_DEPTH as u32);
         self.change_logs[0].path = path;
@@ -101,21 +101,6 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         Box::new(self.change_logs[self.active_index as usize])
     }
 
-    /// Only used to initialize right most path for a completely empty tree
-    #[inline(always)]
-    fn initialize_tree(
-        &mut self,
-        leaf: Node,
-        mut proof: [Node; MAX_DEPTH],
-    ) -> Result<Node, CMTError> {
-        let old_root = recompute(EMPTY, &proof, 0);
-        if old_root == empty_node(MAX_DEPTH as u32) {
-            self.try_apply_proof(old_root, EMPTY, leaf, &mut proof, 0, false)
-        } else {
-            return Err(CMTError::TreeAlreadyInitialized);
-        }
-    }
-
     pub fn prove_leaf(
         &mut self,
         current_root: Node,
@@ -144,6 +129,21 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         }
     }
 
+    /// Only used to initialize right most path for a completely empty tree
+    #[inline(always)]
+    fn initialize_tree_from_append(
+        &mut self,
+        leaf: Node,
+        mut proof: [Node; MAX_DEPTH],
+    ) -> Result<Node, CMTError> {
+        let old_root = recompute(EMPTY, &proof, 0);
+        if old_root == empty_node(MAX_DEPTH as u32) {
+            self.try_apply_proof(old_root, EMPTY, leaf, &mut proof, 0, false)
+        } else {
+            return Err(CMTError::TreeAlreadyInitialized);
+        }
+    }
+
     /// Basic operation that always succeeds
     pub fn append(&mut self, mut node: Node) -> Result<Node, CMTError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
@@ -154,60 +154,45 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             return Err(CMTError::TreeFull);
         }
         if self.rightmost_proof.index == 0 {
-            return self.initialize_tree(node, self.rightmost_proof.proof);
+            return self.initialize_tree_from_append(node, self.rightmost_proof.proof);
         }
         let leaf = node.clone();
         let intersection = self.rightmost_proof.index.trailing_zeros() as usize;
         let mut change_list = [EMPTY; MAX_DEPTH];
         let mut intersection_node = self.rightmost_proof.leaf;
+        let mut empty_node_cache = Box::new([Node::default(); MAX_DEPTH]);
 
-        // Compute proof to the appended node from empty nodes
-        for i in 0..intersection {
+        for i in 0..MAX_DEPTH {
             change_list[i] = node;
-            let hash = hashv(&[node.as_ref(), empty_node(i as u32).as_ref()]);
-            node.copy_from_slice(hash.as_ref());
-            let rightmost_hash = if ((self.rightmost_proof.index - 1) >> i) & 1 == 1 {
-                hashv(&[
-                    self.rightmost_proof.proof[i].as_ref(),
-                    intersection_node.as_ref(),
-                ])
+            if i < intersection {
+                // Compute proof to the appended node from empty nodes
+                let sibling = empty_node_cached::<MAX_DEPTH>(i as u32, &mut empty_node_cache);
+                hash_to_parent(
+                    &mut intersection_node,
+                    &self.rightmost_proof.proof[i],
+                    ((self.rightmost_proof.index - 1) >> i) & 1 == 0,
+                );
+                hash_to_parent(&mut node, &sibling, true);
+                self.rightmost_proof.proof[i] = sibling;
+            } else if i == intersection {
+                // Compute the where the new node intersects the main tree
+                hash_to_parent(&mut node, &intersection_node, false);
+                self.rightmost_proof.proof[intersection] = intersection_node;
             } else {
-                hashv(&[
-                    intersection_node.as_ref(),
-                    self.rightmost_proof.proof[i].as_ref(),
-                ])
-            };
-            intersection_node.copy_from_slice(rightmost_hash.as_ref());
-            self.rightmost_proof.proof[i] = empty_node(i as u32);
+                // Update the change list path up to the root
+                hash_to_parent(
+                    &mut node,
+                    &self.rightmost_proof.proof[i],
+                    ((self.rightmost_proof.index - 1) >> i) & 1 == 0,
+                );
+            }
         }
 
-        // Compute the where the new node intersects the main tree
-        change_list[intersection] = node;
-        let hash = hashv(&[intersection_node.as_ref(), node.as_ref()]);
-        node.copy_from_slice(hash.as_ref());
-        self.rightmost_proof.proof[intersection] = intersection_node;
-
-        // Update the change list path up to the root
-        for i in intersection + 1..MAX_DEPTH {
-            change_list[i] = node;
-            let hash = if (self.rightmost_proof.index >> i) & 1 == 1 {
-                hashv(&[self.rightmost_proof.proof[i].as_ref(), node.as_ref()])
-            } else {
-                hashv(&[node.as_ref(), self.rightmost_proof.proof[i].as_ref()])
-            };
-            node.copy_from_slice(hash.as_ref());
-        }
-
-        self.increment_active_index();
-        self.change_logs[self.active_index as usize] = ChangeLog::<MAX_DEPTH> {
-            root: node,
-            path: change_list,
-            index: self.rightmost_proof.index,
-            _padding: 0,
-        };
+        self.update_internal_counters();
+        self.change_logs[self.active_index as usize] =
+            ChangeLog::<MAX_DEPTH>::new(node, change_list, self.rightmost_proof.index);
         self.rightmost_proof.index = self.rightmost_proof.index + 1;
         self.rightmost_proof.leaf = leaf;
-        self.sequence_number = self.sequence_number.saturating_add(1);
         Ok(node)
     }
 
@@ -252,7 +237,6 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         } else {
             let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
             fill_in_proof::<MAX_DEPTH>(&proof_vec, &mut proof);
-
             log_compute!();
             let root = self.try_apply_proof(
                 current_root,
@@ -265,18 +249,6 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             log_compute!();
             root
         }
-    }
-
-    #[inline(always)]
-    fn find_root_in_changelog(&self, current_root: Node) -> Option<u64> {
-        let mask: usize = MAX_BUFFER_SIZE - 1;
-        for i in 0..self.buffer_size {
-            let j = self.active_index.wrapping_sub(i) & mask as u64;
-            if self.change_logs[j as usize].root == current_root {
-                return Some(j);
-            }
-        }
-        None
     }
 
     /// Modifies the `proof` for leaf at `leaf_index`
@@ -297,7 +269,6 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             changelog_buffer_index
         );
         let mask: usize = MAX_BUFFER_SIZE - 1;
-        let padding: usize = 32 - MAX_DEPTH;
 
         let mut updated_leaf = *leaf;
         log_compute!();
@@ -307,21 +278,12 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             if !use_full_buffer && changelog_buffer_index == self.active_index {
                 break;
             }
-            changelog_buffer_index += 1;
-            changelog_buffer_index &= mask as u64;
-            if leaf_index != self.change_logs[changelog_buffer_index as usize].index {
-                // This bit math is used to identify which node in the proof
-                // we need to swap for a corresponding node in a saved change log
-                let common_path_len = ((leaf_index
-                    ^ self.change_logs[changelog_buffer_index as usize].index)
-                    << padding)
-                    .leading_zeros() as usize;
-                let critbit_index = (MAX_DEPTH - 1) - common_path_len;
-                proof[critbit_index] =
-                    self.change_logs[changelog_buffer_index as usize].path[critbit_index];
-            } else {
-                updated_leaf = self.change_logs[changelog_buffer_index as usize].get_leaf();
-            }
+            changelog_buffer_index = (changelog_buffer_index + 1) & mask as u64;
+            self.change_logs[changelog_buffer_index as usize].update_proof_or_leaf(
+                leaf_index,
+                proof,
+                &mut updated_leaf,
+            );
             // If use_full_buffer is true, this loop will do 1 full pass of the change logs
             if use_full_buffer && changelog_buffer_index == self.active_index {
                 break;
@@ -334,6 +296,18 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     }
 
     #[inline(always)]
+    fn find_root_in_changelog(&self, current_root: Node) -> Option<u64> {
+        let mask: usize = MAX_BUFFER_SIZE - 1;
+        for i in 0..self.buffer_size {
+            let j = self.active_index.wrapping_sub(i) & mask as u64;
+            if self.change_logs[j as usize].root == current_root {
+                return Some(j);
+            }
+        }
+        None
+    }
+
+    #[inline(always)]
     fn check_valid_leaf(
         &self,
         current_root: Node,
@@ -343,9 +317,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         allow_inferred_proof: bool,
     ) -> Result<bool, CMTError> {
         let mask: usize = MAX_BUFFER_SIZE - 1;
-        let (changelog_buffer_index, use_full_buffer) = match self
-            .find_root_in_changelog(current_root)
-        {
+        let (changelog_index, use_full_buffer) = match self.find_root_in_changelog(current_root) {
             Some(matching_changelog_index) => (matching_changelog_index, false),
             None => {
                 if allow_inferred_proof {
@@ -359,13 +331,12 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
                 }
             }
         };
-
         let mut updatable_leaf_node = leaf;
         let proof_leaf_unchanged = self.fast_forward_proof(
             &mut updatable_leaf_node,
             proof,
             leaf_index,
-            changelog_buffer_index,
+            changelog_index,
             use_full_buffer,
         );
         if !proof_leaf_unchanged {
@@ -395,43 +366,34 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         if !valid_root {
             return Err(CMTError::InvalidProof);
         }
-        self.increment_active_index();
-        self.sequence_number = self.sequence_number.saturating_add(1);
+        self.update_internal_counters();
         Ok(self.update_buffers_from_proof(new_leaf, proof, leaf_index))
     }
 
     /// Implements circular addition for changelog buffer index
-    fn increment_active_index(&mut self) {
+    fn update_internal_counters(&mut self) {
         let mask: usize = MAX_BUFFER_SIZE - 1;
-
         self.active_index += 1;
         self.active_index &= mask as u64;
         if self.buffer_size < MAX_BUFFER_SIZE as u64 {
             self.buffer_size += 1;
         }
+        self.sequence_number = self.sequence_number.saturating_add(1);
     }
 
     /// Creates a new root from a proof that is valid for the root at `self.active_index`
     fn update_buffers_from_proof(&mut self, start: Node, proof: &[Node], index: u32) -> Node {
-        let padding: usize = 32 - MAX_DEPTH;
         let change_log = &mut self.change_logs[self.active_index as usize];
-        change_log.index = index;
-
         // Also updates change_log's current root
-        let root = change_log.recompute_path(start, proof);
-
+        let root = change_log.replace_and_recompute_path(index, start, proof);
         // Update rightmost path if possible
         if self.rightmost_proof.index < (1 << MAX_DEPTH) {
             if index < self.rightmost_proof.index as u32 {
-                if index != self.rightmost_proof.index - 1 {
-                    let common_path_len = ((index ^ (self.rightmost_proof.index - 1) as u32)
-                        << padding)
-                        .leading_zeros() as usize;
-                    let critbit_index = (MAX_DEPTH - 1) - common_path_len;
-                    self.rightmost_proof.proof[critbit_index] = change_log.path[critbit_index];
-                } else {
-                    self.rightmost_proof.leaf = change_log.get_leaf();
-                }
+                change_log.update_proof_or_leaf(
+                    self.rightmost_proof.index - 1,
+                    &mut self.rightmost_proof.proof,
+                    &mut self.rightmost_proof.leaf,
+                );
             } else {
                 assert!(index == self.rightmost_proof.index);
                 solana_logging!("Appending rightmost leaf");
