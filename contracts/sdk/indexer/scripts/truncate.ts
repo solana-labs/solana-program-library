@@ -40,8 +40,7 @@ import { strToByteArray } from "../../utils";
 import { NATIVE_MINT } from "@solana/spl-token";
 
 // const url = "http://api.explorer.mainnet-beta.solana.com";
-// const url = "http://127.0.0.1:8899";
-const url = "http://34.82.112.99:8899"
+const url = "http://127.0.0.1:8899";
 
 function keypairFromString(seed: string) {
     const spaces = "                                         ";
@@ -415,23 +414,25 @@ async function truncateWithGumball(
         creatorShares: Uint8Array.from([100]),
     };
 
-    await initializeGumballMachine(
-        payer,
-        creatorAddress,
-        gumballMachineAcctKeypair,
-        GUMBALL_MACHINE_ACCT_SIZE,
-        merkleRollKeypair,
-        MERKLE_ROLL_ACCT_SIZE,
-        baseGumballMachineInitProps,
-        NATIVE_MINT,
-        gumballMachine
-    );
-    console.log('init`d');
+    if (!(await connection.getAccountInfo(merkleRollKeypair.publicKey, "confirmed"))) {
+        await initializeGumballMachine(
+            payer,
+            creatorAddress,
+            gumballMachineAcctKeypair,
+            GUMBALL_MACHINE_ACCT_SIZE,
+            merkleRollKeypair,
+            MERKLE_ROLL_ACCT_SIZE,
+            baseGumballMachineInitProps,
+            NATIVE_MINT,
+            gumballMachine
+        );
+        console.log('init`d');
+    }
 
     // add 10 config lines
     let arr: number[] = [];
     const buffers = [];
-    for (let i = 0; i < MAX_MINT_SIZE + 1; i++) {
+    for (let i = 0; i < 6; i++) {
         const str = `url-${i}                                         `.slice(0, EXTENSION_LEN);
         arr = arr.concat(strToByteArray(str));
         buffers.push(Buffer.from(str));
