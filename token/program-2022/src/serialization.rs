@@ -1,19 +1,19 @@
 //! serialization module
 
 /// helper function to ser/deser COption wrapped values
-#[cfg(feature = "serde")]
-pub mod coption_serde {
-    use std::{
-        fmt::{self, Display},
-        marker::PhantomData,
-        str::FromStr,
+pub mod coption_fromstr {
+    use {
+        serde::{
+            de::{Error, Unexpected, Visitor},
+            Deserializer, Serializer,
+        },
+        solana_program::program_option::COption,
+        std::{
+            fmt::{self, Display},
+            marker::PhantomData,
+            str::FromStr,
+        },
     };
-
-    use serde::{
-        de::{Error, Unexpected, Visitor},
-        Deserializer, Serializer,
-    };
-    use solana_program::{program_option::COption, pubkey::Pubkey};
 
     /// serialize values supporting Display trait wrapped in COption
     pub fn serialize<S, T>(x: &COption<T>, s: S) -> Result<S::Ok, S::Error>
@@ -54,7 +54,7 @@ pub mod coption_serde {
         {
             T::from_str(&v)
                 .map(|r| COption::Some(r))
-                .map_err(|_| E::invalid_value(Unexpected::Str(v), &"pubkey string"))
+                .map_err(|_| E::invalid_value(Unexpected::Str(v), &"value string"))
         }
 
         fn visit_none<E>(self) -> Result<Self::Value, E>
@@ -66,9 +66,10 @@ pub mod coption_serde {
     }
 
     /// deserialize values supporting Display trait wrapped in COption
-    pub fn deserialize<'de, D>(d: D) -> Result<COption<Pubkey>, D::Error>
+    pub fn deserialize<'de, D, T>(d: D) -> Result<COption<T>, D::Error>
     where
         D: Deserializer<'de>,
+        T: FromStr,
     {
         d.deserialize_option(COptionVisitor {
             s: PhantomData::default(),

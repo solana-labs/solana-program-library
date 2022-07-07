@@ -11,10 +11,10 @@ exclude = ["js/**"]
 [features]
 no-entrypoint = []
 test-bpf = []
+serde-traits = ["serde", "serde_with"]
 # Remove these features once the underlying syscalls are released on all networks
 default = ["zk-ops"]
 zk-ops = []
-serde-feature = ["serde", "serde_with"]
 
 [dependencies]
 arrayref = "0.3.6"

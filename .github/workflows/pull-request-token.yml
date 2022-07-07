@@ -69,9 +69,9 @@ jobs:
 
       - name: Build and test token-2022 with "serde" activated
         run: |
-          cargo +"$RUST_STABLE" test-bpf \
+          cargo +"${{ env.RUST_STABLE }}" test \
             --manifest-path=token/program-2022/Cargo.toml \
-            --features serde,serde_with \
+            --features serde-traits \
             -- --nocapture
           exit 0
 

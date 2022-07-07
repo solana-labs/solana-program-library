@@ -10,7 +10,7 @@ pub mod instruction;
 pub mod native_mint;
 pub mod pod;
 pub mod processor;
-#[cfg(feature = "serde")]
+#[cfg(feature = "serde-traits")]
 pub mod serialization;
 pub mod state;
 
