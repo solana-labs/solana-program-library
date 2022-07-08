@@ -5649,7 +5649,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-token 3.3.0",
- "spl-token-2022 0.4.0",
+ "spl-token-2022 0.4.1",
  "thiserror",
 ]
 
@@ -6039,7 +6039,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-2022"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "arrayref",
  "bytemuck",
@@ -6071,7 +6071,7 @@ dependencies = [
  "solana-sdk",
  "spl-associated-token-account 1.0.5",
  "spl-memo 3.0.1",
- "spl-token-2022 0.4.0",
+ "spl-token-2022 0.4.1",
  "spl-token-client",
  "walkdir",
 ]
@@ -6115,7 +6115,7 @@ dependencies = [
  "solana-sdk",
  "spl-associated-token-account 1.0.5",
  "spl-memo 3.0.1",
- "spl-token-2022 0.4.0",
+ "spl-token-2022 0.4.1",
  "thiserror",
 ]
 
