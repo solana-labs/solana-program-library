@@ -32,8 +32,8 @@ export type InitializeGumballMachineInstructionArgs = {
   authority: web3.PublicKey
   collectionKey: web3.PublicKey
   extensionLen: beet.bignum
-  maxMintSize: beet.bignum
-  maxItems: beet.bignum
+  maxMintSize: number
+  maxItems: number
   creatorKeys: web3.PublicKey[]
   creatorShares: Uint8Array
 }
@@ -65,8 +65,8 @@ export const initializeGumballMachineStruct = new beet.FixableBeetArgsStruct<
     ['authority', beetSolana.publicKey],
     ['collectionKey', beetSolana.publicKey],
     ['extensionLen', beet.u64],
-    ['maxMintSize', beet.u64],
-    ['maxItems', beet.u64],
+    ['maxMintSize', beet.u32],
+    ['maxItems', beet.u32],
     ['creatorKeys', beet.array(beetSolana.publicKey)],
     ['creatorShares', beet.bytes],
   ],

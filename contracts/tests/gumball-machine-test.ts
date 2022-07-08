@@ -24,6 +24,7 @@ import {
   createDispenseNFTForSolIx,
   createDispenseNFTForTokensIx,
   createInitializeGumballMachineIxs,
+  initializeGumballMachineIndices
 } from "../sdk/gumball-machine";
 import {
   InitializeGumballMachineInstructionArgs,
@@ -52,9 +53,12 @@ import {
   getAccount,
 } from "../../deps/solana-program-library/token/js/src";
 import { NATIVE_MINT } from "@solana/spl-token";
-import { num32ToBuffer, arrayEquals, execute, logTx } from "./utils";
+import { num32ToBuffer, arrayEquals, logTx } from "./utils";
 import { EncodeMethod } from "../sdk/gumball-machine/src/generated/types/EncodeMethod";
 import { getBubblegumAuthorityPDA } from "../sdk/bubblegum/src/convenience";
+import {
+  execute
+} from "../../contracts/sdk/utils";
 
 // @ts-ignore
 let GumballMachine;
@@ -150,11 +154,11 @@ describe("gumball-machine", () => {
       "Gumball Machine has incorrect extensionLen"
     );
     assert(
-      val(gm.header.maxMintSize).eq(val(expectedHeader.maxMintSize)),
+      gm.header.maxMintSize === expectedHeader.maxMintSize,
       "Gumball Machine has incorrect maxMintSize"
     );
     assert(
-      val(gm.header.maxItems).eq(val(expectedHeader.maxItems)),
+      gm.header.maxItems === expectedHeader.maxItems,
       "Gumball Machine has incorrect max items"
     );
     for (let i = 0; i < gm.header.creators.length; i++) {
@@ -194,29 +198,31 @@ describe("gumball-machine", () => {
   function assertGumballMachineConfigProperties(
     gm: OnChainGumballMachine,
     expectedIndexArray: Buffer,
-    expectedConfigLines: Buffer,
-    onChainConfigLinesNumBytes: number
+    expectedConfigLines: Buffer = null,
+    onChainConfigLinesNumBytes: number = null
   ) {
     assert(
       gm.configData.indexArray.equals(expectedIndexArray),
       "Onchain index array doesn't match expectation"
     );
 
-    // Calculate full-sized on-chain config bytes buffer, we must null pad the buffer up to the end of the account size
-    const numExpectedInitializedBytesInConfig = expectedConfigLines.byteLength;
-    const bufferOfNonInitializedConfigLineBytes = Buffer.from(
-      "\0".repeat(
-        onChainConfigLinesNumBytes - numExpectedInitializedBytesInConfig
-      )
-    );
-    const actualExpectedConfigLinesBuffer = Buffer.concat([
-      expectedConfigLines,
-      bufferOfNonInitializedConfigLineBytes,
-    ]);
-    assert(
-      gm.configData.configLines.equals(actualExpectedConfigLinesBuffer),
-      "Config lines on gumball machine do not match expectation"
-    );
+    if (expectedConfigLines && onChainConfigLinesNumBytes) {
+      // Calculate full-sized on-chain config bytes buffer, we must null pad the buffer up to the end of the account size
+      const numExpectedInitializedBytesInConfig = expectedConfigLines.byteLength;
+      const bufferOfNonInitializedConfigLineBytes = Buffer.from(
+        "\0".repeat(
+          onChainConfigLinesNumBytes - numExpectedInitializedBytesInConfig
+        )
+      );
+      const actualExpectedConfigLinesBuffer = Buffer.concat([
+        expectedConfigLines,
+        bufferOfNonInitializedConfigLineBytes,
+      ]);
+      assert(
+        gm.configData.configLines.equals(actualExpectedConfigLinesBuffer),
+        "Config lines on gumball machine do not match expectation"
+      );
+    }
   }
 
   async function initializeGumballMachine(
@@ -306,11 +312,45 @@ describe("gumball-machine", () => {
       collectionKey: gumballMachineInitArgs.collectionKey,
       extensionLen: gumballMachineInitArgs.extensionLen,
       maxMintSize: gumballMachineInitArgs.maxMintSize,
-      remaining: new BN(0),
+      remaining: 0,
       maxItems: gumballMachineInitArgs.maxItems,
-      totalItemsAdded: new BN(0)
+      totalItemsAdded: 0,
+      smallestUninitializedIndex: 0,
+      padding2: [0, 0, 0, 0]
     };
     assertGumballMachineHeaderProperties(gumballMachine, expectedOnChainHeader);
+  }
+
+  async function initializeIndicesAndAssert(
+    maxItems: number,
+    authority: Keypair,
+    gumballMachine: PublicKey,
+    gumballMachineAcctSize: number
+  ) {
+    // Initialize all indices
+    await initializeGumballMachineIndices(GumballMachine.provider, maxItems, authority, gumballMachine);
+    const onChainGumballMachineAccount =
+      await GumballMachine.provider.connection.getAccountInfo(
+        gumballMachine
+      );
+    const onChainGumballMachine = decodeGumballMachine(
+      onChainGumballMachineAccount.data,
+      gumballMachineAcctSize
+    );
+
+    // Create the expected buffer for the indices of the account
+    const expectedIndexArrBuffer = [
+      ...Array(maxItems).keys(),
+    ].reduce(
+      (prevVal, curVal) =>
+        Buffer.concat([prevVal, Buffer.from(num32ToBuffer(curVal))]),
+      Buffer.from([])
+    );
+
+    assertGumballMachineConfigProperties(
+      onChainGumballMachine,
+      expectedIndexArrBuffer
+    );
   }
 
   async function addConfigLines(
@@ -445,7 +485,7 @@ describe("gumball-machine", () => {
   }
 
   async function dispenseCompressedNFTForSol(
-    numNFTs: BN,
+    numNFTs: number,
     payer: Keypair,
     receiver: PublicKey,
     gumballMachineAcctKeypair: Keypair,
@@ -471,7 +511,7 @@ describe("gumball-machine", () => {
   }
 
   async function dispenseCompressedNFTForTokens(
-    numNFTs: BN,
+    numNFTs: number,
     payer: Keypair,
     payerTokens: PublicKey,
     receiver: PublicKey,
@@ -540,26 +580,24 @@ describe("gumball-machine", () => {
     let nftBuyer: Keypair;
     let creatorKeys: PublicKey[];
     let creatorShares: Uint8Array;
-    const GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE = 1000;
-    const GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE = 7000;
-    const GUMBALL_MACHINE_ACCT_SIZE =
-      gumballMachineHeaderBeet.byteSize +
-      GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE +
-      GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE;
-    const MERKLE_ROLL_ACCT_SIZE = getMerkleRollAccountSize(3, 8);
 
     before(async () => {
       // Give funds to the payer for the whole suite
       await GumballMachine.provider.connection.confirmTransaction(
         await GumballMachine.provider.connection.requestAirdrop(
           payer.publicKey,
-          25e9
+          200e9
         ),
         "confirmed"
       );
     });
 
-    describe("native sol projects", async () => {
+    describe("native sol project with config lines", async () => {
+      let GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE;
+      let GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE;
+      let GUMBALL_MACHINE_ACCT_SIZE;
+      let MERKLE_ROLL_ACCT_SIZE;
+
       let creatorPaymentWallet: Keypair;
       let exampleAdditionalSecondarySaleRoyaltyRecipient: Keypair;
       beforeEach(async () => {
@@ -589,11 +627,19 @@ describe("gumball-machine", () => {
           authority: creatorAddress.publicKey,
           collectionKey: SystemProgram.programId, // 0x0 -> no collection key
           extensionLen: new BN(28),
-          maxMintSize: new BN(10),
-          maxItems: new BN(250),
+          maxMintSize: 10,
+          maxItems: 250,
           creatorKeys,
           creatorShares,
         };
+
+        GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE = baseGumballMachineInitProps.maxItems * 4;
+        GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE = baseGumballMachineInitProps.maxItems * val(baseGumballMachineInitProps.extensionLen).toNumber();
+        GUMBALL_MACHINE_ACCT_SIZE =
+          gumballMachineHeaderBeet.byteSize +
+          GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE +
+          GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE;
+        MERKLE_ROLL_ACCT_SIZE = getMerkleRollAccountSize(baseGumballMachineInitProps.maxDepth, baseGumballMachineInitProps.maxBufferSize);
 
         // Give creator enough funds to produce accounts for NFT
         await GumballMachine.provider.connection.confirmTransaction(
@@ -612,6 +658,13 @@ describe("gumball-machine", () => {
           MERKLE_ROLL_ACCT_SIZE,
           baseGumballMachineInitProps,
           NATIVE_MINT
+        );
+
+        await initializeIndicesAndAssert(
+          baseGumballMachineInitProps.maxItems,
+          creatorAddress,
+          gumballMachineAcctKeypair.publicKey,
+          GUMBALL_MACHINE_ACCT_SIZE
         );
 
         await addConfigLines(
@@ -651,7 +704,7 @@ describe("gumball-machine", () => {
 
           beforeEach(async () => {
             dispenseNFTForSolInstr = await createDispenseNFTForSolIx(
-              { numItems: new BN(1) },
+              { numItems: 1 },
               nftBuyer.publicKey,
               baseGumballMachineInitProps.receiver,
               gumballMachineAcctKeypair.publicKey,
@@ -740,7 +793,7 @@ describe("gumball-machine", () => {
 
           // Purchase the compressed NFT with SOL
           await dispenseCompressedNFTForSol(
-            new BN(1),
+            1,
             nftBuyer,
             baseGumballMachineInitProps.receiver,
             gumballMachineAcctKeypair,
@@ -796,7 +849,7 @@ describe("gumball-machine", () => {
             goLiveDate: new BN(5678.0),
             botWallet: Keypair.generate().publicKey,
             authority: Keypair.generate().publicKey,
-            maxMintSize: new BN(15),
+            maxMintSize: 15,
           };
 
           let expectedCreators = [];
@@ -827,9 +880,11 @@ describe("gumball-machine", () => {
             collectionKey: baseGumballMachineInitProps.collectionKey,
             extensionLen: baseGumballMachineInitProps.extensionLen,
             maxMintSize: newGumballMachineHeader.maxMintSize,
-            remaining: new BN(0),
+            remaining: 0,
             maxItems: baseGumballMachineInitProps.maxItems,
-            totalItemsAdded: new BN(0)
+            totalItemsAdded: 0,
+            smallestUninitializedIndex: baseGumballMachineInitProps.maxItems,
+            padding2: [0, 0, 0, 0]
           };
           await updateHeaderMetadata(
             creatorAddress,
@@ -847,7 +902,12 @@ describe("gumball-machine", () => {
         });
       });
     });
-    describe("spl token projects", async () => {
+    describe("spl token projects with config lines", async () => {
+      let GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE;
+      let GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE;
+      let GUMBALL_MACHINE_ACCT_SIZE;
+      let MERKLE_ROLL_ACCT_SIZE;
+
       let someMint: PublicKey;
       let creatorReceiverTokenAccount;
       let botWallet;
@@ -903,11 +963,19 @@ describe("gumball-machine", () => {
           authority: creatorAddress.publicKey,
           collectionKey: SystemProgram.programId, // 0x0 -> no collection key
           extensionLen: new BN(28),
-          maxMintSize: new BN(10),
-          maxItems: new BN(250),
+          maxMintSize: 10,
+          maxItems: 250,
           creatorKeys,
           creatorShares
         };
+
+        GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE = baseGumballMachineInitProps.maxItems * 4;
+        GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE = baseGumballMachineInitProps.maxItems * val(baseGumballMachineInitProps.extensionLen).toNumber();
+        GUMBALL_MACHINE_ACCT_SIZE =
+          gumballMachineHeaderBeet.byteSize +
+          GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE +
+          GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE;
+        MERKLE_ROLL_ACCT_SIZE = getMerkleRollAccountSize(baseGumballMachineInitProps.maxDepth, baseGumballMachineInitProps.maxBufferSize);
 
         await initializeGumballMachine(
           creatorAddress,
@@ -918,6 +986,14 @@ describe("gumball-machine", () => {
           baseGumballMachineInitProps,
           someMint
         );
+
+        await initializeIndicesAndAssert(
+          baseGumballMachineInitProps.maxItems,
+          creatorAddress,
+          gumballMachineAcctKeypair.publicKey,
+          GUMBALL_MACHINE_ACCT_SIZE
+        );
+
         await addConfigLines(
           creatorAddress,
           gumballMachineAcctKeypair.publicKey,
@@ -1017,7 +1093,7 @@ describe("gumball-machine", () => {
           nftBuyerTokenAccount.address
         );
         await dispenseCompressedNFTForTokens(
-          new BN(3),
+          3,
           nftBuyer,
           nftBuyerTokenAccount.address,
           creatorReceiverTokenAccount.address,
@@ -1052,7 +1128,7 @@ describe("gumball-machine", () => {
         // Should not be able to dispense without any NFTs remaining
         try {
           await dispenseCompressedNFTForTokens(
-            new BN(1),
+            1,
             nftBuyer,
             nftBuyerTokenAccount.address,
             creatorReceiverTokenAccount.address,
@@ -1061,6 +1137,196 @@ describe("gumball-machine", () => {
           );
           assert(false, "Dispense unexpectedly succeeded with no NFTs remaining");
         } catch (e) { }
+      });
+    });
+    describe("native sol project without config lines", async () => {
+      let GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE;
+      let GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE;
+      let GUMBALL_MACHINE_ACCT_SIZE;
+      let MERKLE_ROLL_ACCT_SIZE;
+      let creatorPaymentWallet: Keypair;
+      let exampleAdditionalSecondarySaleRoyaltyRecipient: Keypair;
+      beforeEach(async () => {
+        creatorAddress = Keypair.generate();
+        creatorPaymentWallet = Keypair.generate();
+        nftBuyer = Keypair.generate();
+        gumballMachineAcctKeypair = Keypair.generate();
+        merkleRollKeypair = Keypair.generate();
+        exampleAdditionalSecondarySaleRoyaltyRecipient = Keypair.generate();
+        creatorKeys = [creatorPaymentWallet.publicKey, exampleAdditionalSecondarySaleRoyaltyRecipient.publicKey];
+        creatorShares = Uint8Array.from([1, 5]);
+
+        baseGumballMachineInitProps = {
+          maxDepth: 5,
+          maxBufferSize: 8,
+          urlBase: strToByteArray("https://arweave.net", 64),
+          nameBase: strToByteArray("GUMBALL", 32),
+          symbol: strToByteArray("GUMBALL", 8),
+          encodeMethod: EncodeMethod.UTF8,
+          sellerFeeBasisPoints: 100,
+          isMutable: true,
+          retainAuthority: true,
+          price: new BN(10),
+          goLiveDate: new BN(1234.0),
+          botWallet: Keypair.generate().publicKey,
+          receiver: creatorPaymentWallet.publicKey,
+          authority: creatorAddress.publicKey,
+          collectionKey: SystemProgram.programId, // 0x0 -> no collection key
+          extensionLen: new BN(0),
+          maxMintSize: 10,
+          maxItems: 32,
+          creatorKeys,
+          creatorShares,
+        };
+
+        GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE = baseGumballMachineInitProps.maxItems * 4;
+        GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE = 0;
+        GUMBALL_MACHINE_ACCT_SIZE =
+          gumballMachineHeaderBeet.byteSize +
+          GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE +
+          GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE;
+        MERKLE_ROLL_ACCT_SIZE = getMerkleRollAccountSize(5, 8, 2);
+
+        // Give creator enough funds to produce accounts for NFT
+        await GumballMachine.provider.connection.confirmTransaction(
+          await GumballMachine.provider.connection.requestAirdrop(
+            creatorAddress.publicKey,
+            50 * LAMPORTS_PER_SOL
+          ),
+          "confirmed"
+        );
+
+        await initializeGumballMachine(
+          creatorAddress,
+          gumballMachineAcctKeypair,
+          GUMBALL_MACHINE_ACCT_SIZE,
+          merkleRollKeypair,
+          MERKLE_ROLL_ACCT_SIZE,
+          baseGumballMachineInitProps,
+          NATIVE_MINT
+        );
+
+        await initializeIndicesAndAssert(
+          baseGumballMachineInitProps.maxItems,
+          creatorAddress,
+          gumballMachineAcctKeypair.publicKey,
+          GUMBALL_MACHINE_ACCT_SIZE
+        );
+      });
+      describe("dispense nft sol instruction", async () => {
+        beforeEach(async () => {
+          // Give the recipient address enough money to not get rent exempt
+          await GumballMachine.provider.connection.confirmTransaction(
+            await GumballMachine.provider.connection.requestAirdrop(
+              baseGumballMachineInitProps.receiver,
+              LAMPORTS_PER_SOL
+            ),
+            "confirmed"
+          );
+
+          // Fund the NFT Buyer
+          await GumballMachine.provider.connection.confirmTransaction(
+            await GumballMachine.provider.connection.requestAirdrop(
+              nftBuyer.publicKey,
+              LAMPORTS_PER_SOL
+            ),
+            "confirmed"
+          );
+        });
+        it("Can dispense NFTs paid in sol", async () => {
+          // Give the recipient address enough money to not get rent exempt
+          await GumballMachine.provider.connection.confirmTransaction(
+            await GumballMachine.provider.connection.requestAirdrop(
+              baseGumballMachineInitProps.receiver,
+              LAMPORTS_PER_SOL
+            ),
+            "confirmed"
+          );
+
+          // Fund the NFT Buyer
+          await GumballMachine.provider.connection.confirmTransaction(
+            await GumballMachine.provider.connection.requestAirdrop(
+              nftBuyer.publicKey,
+              LAMPORTS_PER_SOL
+            ),
+            "confirmed"
+          );
+
+          // Purchase compressed NFT with SOL
+          await dispenseCompressedNFTForSol(
+            4,
+            nftBuyer,
+            baseGumballMachineInitProps.receiver,
+            gumballMachineAcctKeypair,
+            merkleRollKeypair
+          );
+        });
+      });
+      describe("admin instructions", async () => {
+        it("Can update gumball header", async () => {
+          const newGumballMachineHeader: UpdateHeaderMetadataInstructionArgs = {
+            urlBase: strToByteArray("https://arweave.net", 64),
+            nameBase: strToByteArray("GUMBALL", 32),
+            symbol: strToByteArray("GUMBALL", 8),
+            encodeMethod: EncodeMethod.Base58Encode,
+            sellerFeeBasisPoints: 50,
+            isMutable: false,
+            retainAuthority: false,
+            price: new BN(100),
+            goLiveDate: new BN(5678.0),
+            botWallet: Keypair.generate().publicKey,
+            authority: Keypair.generate().publicKey,
+            maxMintSize: 15,
+          };
+
+          let expectedCreators = [];
+          for (let i = 0; i < creatorKeys.length; i++) {
+            let c: GumballCreatorAdapter = {
+              address: creatorKeys[i],
+              share: creatorShares[i],
+              verified: 1
+            }
+            expectedCreators.push(c);
+          }
+          const expectedOnChainHeader: GumballMachineHeader = {
+            urlBase: newGumballMachineHeader.urlBase,
+            nameBase: newGumballMachineHeader.nameBase,
+            symbol: newGumballMachineHeader.symbol,
+            configLineEncodeMethod: 1,
+            sellerFeeBasisPoints: newGumballMachineHeader.sellerFeeBasisPoints,
+            isMutable: newGumballMachineHeader.isMutable ? 1 : 0,
+            retainAuthority: newGumballMachineHeader.retainAuthority ? 1 : 0,
+            creators: expectedCreators,
+            padding: [0],
+            price: newGumballMachineHeader.price,
+            goLiveDate: newGumballMachineHeader.goLiveDate,
+            mint: NATIVE_MINT,
+            botWallet: newGumballMachineHeader.botWallet,
+            receiver: baseGumballMachineInitProps.receiver,
+            authority: newGumballMachineHeader.authority,
+            collectionKey: baseGumballMachineInitProps.collectionKey,
+            extensionLen: baseGumballMachineInitProps.extensionLen,
+            maxMintSize: newGumballMachineHeader.maxMintSize,
+            remaining: 0,
+            maxItems: baseGumballMachineInitProps.maxItems,
+            totalItemsAdded: 0,
+            smallestUninitializedIndex: baseGumballMachineInitProps.maxItems,
+            padding2: [0, 0, 0, 0]
+          };
+          await updateHeaderMetadata(
+            creatorAddress,
+            gumballMachineAcctKeypair.publicKey,
+            GUMBALL_MACHINE_ACCT_SIZE,
+            newGumballMachineHeader,
+            expectedOnChainHeader
+          );
+        });
+        it("Can destroy gumball machine and reclaim lamports", async () => {
+          await destroyGumballMachine(
+            gumballMachineAcctKeypair,
+            creatorAddress
+          );
+        });
       });
     });
   });

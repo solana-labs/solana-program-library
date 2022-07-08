@@ -4,6 +4,9 @@
   "instructions": [
     {
       "name": "initializeGumballMachine",
+      "docs": [
+        "Initialize Gumball Machine header properties, and initialize downstream data structures (Gummyroll tree)"
+      ],
       "accounts": [
         {
           "name": "gumballMachine",
@@ -142,11 +145,11 @@
         },
         {
           "name": "maxMintSize",
-          "type": "u64"
+          "type": "u32"
         },
         {
           "name": "maxItems",
-          "type": "u64"
+          "type": "u32"
         },
         {
           "name": "creatorKeys",
@@ -159,6 +162,25 @@
           "type": "bytes"
         }
       ]
+    },
+    {
+      "name": "initializeIndicesChunk",
+      "docs": [
+        "Initialize chunk of NFT indices (as many as possible within the compute budget of a single transaction). All indices must be initialized before the tree can dispense."
+      ],
+      "accounts": [
+        {
+          "name": "gumballMachine",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": []
     },
     {
       "name": "addConfigLines",
@@ -313,7 +335,7 @@
         {
           "name": "maxMintSize",
           "type": {
-            "option": "u64"
+            "option": "u32"
           }
         }
       ]
@@ -394,7 +416,7 @@
       "args": [
         {
           "name": "numItems",
-          "type": "u64"
+          "type": "u32"
         }
       ]
     },
@@ -479,7 +501,7 @@
       "args": [
         {
           "name": "numItems",
-          "type": "u64"
+          "type": "u32"
         }
       ]
     },
@@ -626,19 +648,32 @@
           },
           {
             "name": "maxMintSize",
-            "type": "u64"
+            "type": "u32"
           },
           {
             "name": "remaining",
-            "type": "u64"
+            "type": "u32"
           },
           {
             "name": "maxItems",
-            "type": "u64"
+            "type": "u32"
           },
           {
             "name": "totalItemsAdded",
-            "type": "u64"
+            "type": "u32"
+          },
+          {
+            "name": "smallestUninitializedIndex",
+            "type": "u32"
+          },
+          {
+            "name": "padding2",
+            "type": {
+              "array": [
+                "u8",
+                4
+              ]
+            }
           }
         ]
       }

@@ -16,7 +16,8 @@ import {
   createDispenseNftSolInstruction,
   createDispenseNftTokenInstruction,
   DispenseNftSolInstructionArgs,
-  DispenseNftTokenInstructionArgs
+  DispenseNftTokenInstructionArgs,
+  createInitializeIndicesChunkInstruction
 } from "../src/generated";
 import { getWillyWonkaPDAKey } from "../utils";
 import { CANDY_WRAPPER_PROGRAM_ID } from "../../utils";
@@ -86,6 +87,30 @@ export async function createInitializeGumballMachineIxs(
     allocMerkleRollAcctInstr,
     initGumballMachineInstr,
   ];
+}
+
+/**
+ * Wrapper to generate all instructions needed to initialize a gumball machine's indices. 
+ * @notice Each instruction should be executed in its transaction to stay within Solana's compute limit
+ */
+export function createInitializeIndicesInstructions(
+  maxItems: number,
+  authority: PublicKey,
+  gumballMachine: PublicKey
+): TransactionInstruction[] {
+  let smallestUnintializedInd = 0;
+  let indexInitInstrs: TransactionInstruction[] = [];
+  while(smallestUnintializedInd < maxItems) {
+    let initIndexChunkInstr = createInitializeIndicesChunkInstruction(
+      {
+        authority,
+        gumballMachine,
+      }
+    )
+    indexInitInstrs.push(initIndexChunkInstr);
+    smallestUnintializedInd = Math.min(smallestUnintializedInd + 250000, maxItems);
+  }
+  return indexInitInstrs;
 }
 
 /**

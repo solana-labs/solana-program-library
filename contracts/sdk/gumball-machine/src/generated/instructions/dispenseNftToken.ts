@@ -15,7 +15,7 @@ import * as web3 from '@solana/web3.js'
  * @category generated
  */
 export type DispenseNftTokenInstructionArgs = {
-  numItems: beet.bignum
+  numItems: number
 }
 /**
  * @category Instructions
@@ -29,7 +29,7 @@ export const dispenseNftTokenStruct = new beet.BeetArgsStruct<
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['numItems', beet.u64],
+    ['numItems', beet.u32],
   ],
   'DispenseNftTokenInstructionArgs'
 )
