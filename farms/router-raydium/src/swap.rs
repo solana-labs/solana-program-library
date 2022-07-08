@@ -65,6 +65,10 @@ pub fn swap(
         if min_token_amount_out > min_amount_out {
             min_amount_out = min_token_amount_out;
         }
+        if amount_in == 0 || min_amount_out == 0 {
+            msg!("Nothing to do: Not enough tokens to swap");
+            return Ok(());
+        }
 
         let initial_balance_in = if token_a_amount_in == 0 {
             account::get_token_balance(user_token_b_account)?
@@ -76,6 +80,12 @@ pub fn swap(
         } else {
             account::get_token_balance(user_token_b_account)?
         };
+
+        msg!(
+            "Swap tokens in the pool. amount_in: {}, min_amount_out: {}",
+            amount_in,
+            min_amount_out
+        );
 
         let mut raydium_accounts = Vec::with_capacity(18);
         raydium_accounts.push(AccountMeta::new_readonly(*spl_token_id.key, false));
@@ -94,9 +104,15 @@ pub fn swap(
         raydium_accounts.push(AccountMeta::new(*serum_pc_vault_account.key, false));
         raydium_accounts.push(AccountMeta::new_readonly(*serum_vault_signer.key, false));
         if token_a_amount_in == 0 {
+            if !account::check_token_account_owner(user_token_a_account, user_account.key)? {
+                return Err(ProgramError::IllegalOwner);
+            }
             raydium_accounts.push(AccountMeta::new(*user_token_b_account.key, false));
             raydium_accounts.push(AccountMeta::new(*user_token_a_account.key, false));
         } else {
+            if !account::check_token_account_owner(user_token_b_account, user_account.key)? {
+                return Err(ProgramError::IllegalOwner);
+            }
             raydium_accounts.push(AccountMeta::new(*user_token_a_account.key, false));
             raydium_accounts.push(AccountMeta::new(*user_token_b_account.key, false));
         }

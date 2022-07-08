@@ -4,12 +4,35 @@ use {
     crate::string::ArrayString64,
     arrayref::{array_refs, mut_array_refs},
     serde::{
-        de::{Error, Visitor},
+        de::{Error, SeqAccess, Visitor},
+        ser::SerializeSeq,
         Deserialize, Deserializer, Serializer,
     },
     solana_program::{program_error::ProgramError, pubkey::Pubkey},
     std::{fmt, str::FromStr},
 };
+
+struct PubkeyArrayDeserializer;
+
+impl<'de> Visitor<'de> for PubkeyArrayDeserializer {
+    type Value = Vec<Pubkey>;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("Pubkey array")
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let mut obj = vec![];
+        while let Some(key) = seq.next_element::<String>()? {
+            obj.push(Pubkey::from_str(&key).map_err(A::Error::custom)?);
+        }
+
+        Ok(obj)
+    }
+}
 
 /// Checks if the slice has at least min_len size
 pub fn check_data_len(data: &[u8], min_len: usize) -> Result<(), ProgramError> {
@@ -80,8 +103,12 @@ pub fn unpack_option_u32(input: &[u8; 5]) -> Result<Option<u32>, ProgramError> {
 }
 
 pub fn pack_array_string64(input: &ArrayString64, output: &mut [u8; 64]) {
-    for (dst, src) in output.iter_mut().zip(input.as_bytes()) {
-        *dst = *src
+    if !input.is_empty() {
+        for (dst, src) in output.iter_mut().zip(input.as_bytes()) {
+            *dst = *src
+        }
+    } else {
+        output[0] = 0;
     }
 }
 
@@ -108,6 +135,26 @@ where
     S: Serializer,
 {
     s.serialize_str(x.to_string().as_str())
+}
+
+/// Custom Pubkey slice deserializer to use with Serde
+pub fn pubkey_slice_deserialize<'de, D>(deserializer: D) -> Result<Vec<Pubkey>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserializer.deserialize_seq(PubkeyArrayDeserializer)
+}
+
+/// Custom Pubkey slice serializer to use with Serde
+pub fn pubkey_slice_serialize<S>(x: &[Pubkey], s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let mut seq = s.serialize_seq(Some(x.len()))?;
+    for e in x {
+        seq.serialize_element(e.to_string().as_str())?;
+    }
+    seq.end()
 }
 
 /// Custom Option<Pubkey> deserializer to use with Serde

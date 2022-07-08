@@ -25,16 +25,19 @@ pub fn check_or_init_refdb<'a, 'b>(
 
     // check address
     let type_name = storage_type.to_string();
-    let (derived_address, bump_seed) = pda::find_refdb_pda(&type_name);
+    let (derived_address, bump_seed) = refdb::find_refdb_pda(&type_name);
 
     if derived_address != *refdb_account.key {
-        return Err(ProgramError::IncorrectProgramId);
+        msg!("Error: Invalid RefDB account");
+        return Err(ProgramError::InvalidArgument);
     }
     let seeds = &[type_name.as_bytes(), &[bump_seed]];
 
     // check if account is initialized
     let data_size = if storage_size > 0 {
         storage_size
+    } else if !refdb_account.data_is_empty() {
+        refdb_account.data_len()
     } else {
         refdb::StorageType::get_storage_size_for_max_records(
             storage_type,
@@ -86,10 +89,11 @@ pub fn check_or_init_refdb_target<'a, 'b>(
 
     // check address
     let type_name = storage_type.to_string();
-    let (derived_address, bump_seed) = pda::find_target_pda(storage_type, data_name);
+    let (derived_address, bump_seed) = refdb::find_target_pda(storage_type, data_name);
 
     if derived_address != *target_account.key {
-        return Err(ProgramError::IncorrectProgramId);
+        msg!("Error: Invalid target RefDB account");
+        return Err(ProgramError::InvalidArgument);
     }
     let seeds = &[type_name.as_bytes(), data_name.as_bytes(), &[bump_seed]];
 

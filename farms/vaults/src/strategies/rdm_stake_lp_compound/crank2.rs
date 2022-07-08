@@ -1,9 +1,10 @@
 //! Crank step 2 instruction handler
 
 use {
-    crate::{clock::check_min_crank_interval, vault_info::VaultInfo},
+    crate::{strategies::common, vault_info::VaultInfo},
     solana_farm_sdk::{
         id::zero,
+        program,
         program::{account, pda, protocol::raydium},
         vault::{Vault, VaultStrategy},
     },
@@ -39,7 +40,8 @@ pub fn crank2(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
         serum_vault_signer,
         serum_bids,
         serum_asks,
-        serum_event_queue
+        serum_event_queue,
+        sysvar_account
         ] = accounts
     {
         // validate accounts
@@ -48,6 +50,7 @@ pub fn crank2(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
             return Err(ProgramError::InvalidArgument);
         }
         if let VaultStrategy::StakeLpCompoundRewards {
+            pool_id: pool_id_key,
             token_a_custody: token_a_custody_key,
             token_b_custody: token_b_custody_key,
             token_a_reward_custody: token_a_reward_custody_key,
@@ -64,13 +67,22 @@ pub fn crank2(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
                 msg!("Error: Invalid custody accounts");
                 return Err(ProgramError::InvalidArgument);
             }
+            if &pool_id_key != amm_id.key {
+                msg!("Error: Invalid pool id");
+                return Err(ProgramError::InvalidArgument);
+            }
         } else {
             msg!("Error: Vault strategy mismatch");
             return Err(ProgramError::InvalidArgument);
         }
 
+        if !program::is_last_instruction(sysvar_account)? {
+            msg!("Error: Crank2 must be the last instruction in the transaction");
+            return Err(ProgramError::InvalidArgument);
+        }
+
         let mut vault_info = VaultInfo::new(vault_info_account);
-        check_min_crank_interval(&vault_info)?;
+        common::check_min_crank_interval(&vault_info)?;
         vault_info.update_crank_time()?;
         vault_info.set_crank_step(2)?;
 

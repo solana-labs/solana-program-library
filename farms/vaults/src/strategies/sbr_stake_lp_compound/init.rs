@@ -5,8 +5,9 @@ use {
     solana_farm_sdk::{
         id::zero,
         instruction::vault::VaultInstruction,
-        program::{pda, protocol::saber},
+        program::{account, pda, protocol::saber},
         token::Token,
+        traits::Packed,
         vault::Vault,
     },
     solana_program::{
@@ -22,6 +23,7 @@ impl Init for VaultInstruction {
             admin_account,
             _vault_metadata,
             vault_info_account,
+            _multisig_account,
             vault_authority,
             vault_program,
             _system_program,
@@ -111,7 +113,7 @@ impl Init for VaultInstruction {
                     rent_program,
                 )?;
 
-                if vault_stake_info.data_is_empty() {
+                if account::is_empty(vault_stake_info)? {
                     msg!("Init stake info");
                     let seeds: &[&[&[u8]]] = &[&[
                         b"vault_authority",

@@ -15,6 +15,7 @@ pub enum VaultType {
     AmmStake,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum VaultStrategy {
     StakeLpCompoundRewards {
@@ -22,12 +23,32 @@ pub enum VaultStrategy {
             deserialize_with = "pubkey_deserialize",
             serialize_with = "pubkey_serialize"
         )]
-        pool_id_ref: Pubkey,
+        pool_router_id: Pubkey,
         #[serde(
             deserialize_with = "pubkey_deserialize",
             serialize_with = "pubkey_serialize"
         )]
-        farm_id_ref: Pubkey,
+        pool_id: Pubkey,
+        #[serde(
+            deserialize_with = "pubkey_deserialize",
+            serialize_with = "pubkey_serialize"
+        )]
+        pool_ref: Pubkey,
+        #[serde(
+            deserialize_with = "pubkey_deserialize",
+            serialize_with = "pubkey_serialize"
+        )]
+        farm_router_id: Pubkey,
+        #[serde(
+            deserialize_with = "pubkey_deserialize",
+            serialize_with = "pubkey_serialize"
+        )]
+        farm_id: Pubkey,
+        #[serde(
+            deserialize_with = "pubkey_deserialize",
+            serialize_with = "pubkey_serialize"
+        )]
+        farm_ref: Pubkey,
         #[serde(
             deserialize_with = "pubkey_deserialize",
             serialize_with = "pubkey_serialize"
@@ -58,6 +79,21 @@ pub enum VaultStrategy {
             serialize_with = "pubkey_serialize"
         )]
         vault_stake_info: Pubkey,
+        #[serde(
+            deserialize_with = "optional_pubkey_deserialize",
+            serialize_with = "optional_pubkey_serialize"
+        )]
+        vault_stake_custody: Option<Pubkey>,
+        #[serde(
+            deserialize_with = "optional_pubkey_deserialize",
+            serialize_with = "optional_pubkey_serialize"
+        )]
+        reward_exchange_pool_id: Option<Pubkey>,
+        #[serde(
+            deserialize_with = "optional_pubkey_deserialize",
+            serialize_with = "optional_pubkey_serialize"
+        )]
+        reward_exchange_pool_ref: Option<Pubkey>,
     },
     DynamicHedge,
 }
@@ -112,7 +148,7 @@ pub struct Vault {
         deserialize_with = "pubkey_deserialize",
         serialize_with = "pubkey_serialize"
     )]
-    pub admin_account: Pubkey,
+    pub multisig_account: Pubkey,
     #[serde(
         deserialize_with = "optional_pubkey_deserialize",
         serialize_with = "optional_pubkey_serialize"
@@ -127,7 +163,7 @@ pub struct Vault {
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub struct UserInfo {
+pub struct VaultUserInfo {
     pub last_deposit_time: UnixTimestamp,
     pub last_withdrawal_time: UnixTimestamp,
     pub tokens_a_added: u64,
@@ -168,59 +204,29 @@ impl Versioned for Vault {
 }
 
 impl Vault {
-    pub const MAX_LEN: usize = 565;
-    pub const STAKE_LP_COMPOUND_REWARDS_LEN: usize = 565;
+    pub const MAX_LEN: usize = 792;
+    pub const STAKE_LP_COMPOUND_REWARDS_LEN: usize = 792;
     pub const DYNAMIC_HEDGE_LEN: usize = 1;
-
-    pub fn get_size(&self) -> usize {
-        match self.strategy {
-            VaultStrategy::StakeLpCompoundRewards { .. } => Vault::STAKE_LP_COMPOUND_REWARDS_LEN,
-            VaultStrategy::DynamicHedge { .. } => Vault::DYNAMIC_HEDGE_LEN,
-        }
-    }
-
-    pub fn pack(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
-        match self.strategy {
-            VaultStrategy::StakeLpCompoundRewards { .. } => {
-                self.pack_stake_lp_compound_rewards(output)
-            }
-            VaultStrategy::DynamicHedge { .. } => Err(ProgramError::UnsupportedSysvar),
-        }
-    }
-
-    pub fn to_vec(&self) -> Result<Vec<u8>, ProgramError> {
-        let mut output: [u8; Vault::MAX_LEN] = [0; Vault::MAX_LEN];
-        if let Ok(len) = self.pack(&mut output[..]) {
-            Ok(output[..len].to_vec())
-        } else {
-            Err(ProgramError::InvalidAccountData)
-        }
-    }
-
-    pub fn unpack(input: &[u8]) -> Result<Vault, ProgramError> {
-        check_data_len(input, 1)?;
-        let strategy_type = VaultStrategyType::try_from_primitive(input[0])
-            .or(Err(ProgramError::InvalidAccountData))?;
-        match strategy_type {
-            VaultStrategyType::StakeLpCompoundRewards => {
-                Vault::unpack_stake_lp_compound_rewards(input)
-            }
-            VaultStrategyType::DynamicHedge { .. } => Err(ProgramError::UnsupportedSysvar),
-        }
-    }
 
     fn pack_stake_lp_compound_rewards(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
         check_data_len(output, Vault::STAKE_LP_COMPOUND_REWARDS_LEN)?;
 
         if let VaultStrategy::StakeLpCompoundRewards {
-            pool_id_ref,
-            farm_id_ref,
+            pool_router_id,
+            pool_id,
+            pool_ref,
+            farm_router_id,
+            farm_id,
+            farm_ref,
             lp_token_custody,
             token_a_custody,
             token_b_custody,
             token_a_reward_custody,
             token_b_reward_custody,
             vault_stake_info,
+            vault_stake_custody,
+            reward_exchange_pool_id,
+            reward_exchange_pool_ref,
         } = self.strategy
         {
             let output = array_mut_ref![output, 0, Vault::STAKE_LP_COMPOUND_REWARDS_LEN];
@@ -242,20 +248,27 @@ impl Vault {
                 vault_authority_out,
                 vault_token_ref_out,
                 vault_info_account_out,
-                admin_account_out,
+                multisig_account_out,
                 fees_account_a_out,
                 fees_account_b_out,
-                pool_id_ref_out,
-                farm_id_ref_out,
+                pool_router_id_out,
+                pool_id_out,
+                pool_ref_out,
+                farm_router_id_out,
+                farm_id_out,
+                farm_ref_out,
                 lp_token_custody_out,
                 token_a_custody_out,
                 token_b_custody_out,
                 token_a_reward_custody_out,
                 token_b_reward_custody_out,
                 vault_stake_info_out,
+                vault_stake_custody_out,
+                reward_exchange_pool_id_out,
+                reward_exchange_pool_ref_out,
             ) = mut_array_refs![
                 output, 1, 64, 2, 1, 1, 5, 2, 1, 1, 1, 1, 1, 32, 32, 32, 32, 32, 33, 33, 32, 32,
-                32, 32, 33, 32, 33, 32
+                32, 32, 32, 32, 32, 32, 33, 32, 33, 32, 33, 33, 33
             ];
 
             strategy_type_out[0] = VaultStrategyType::StakeLpCompoundRewards as u8;
@@ -275,17 +288,24 @@ impl Vault {
             vault_authority_out.copy_from_slice(self.vault_authority.as_ref());
             vault_token_ref_out.copy_from_slice(self.vault_token_ref.as_ref());
             vault_info_account_out.copy_from_slice(self.info_account.as_ref());
-            admin_account_out.copy_from_slice(self.admin_account.as_ref());
+            multisig_account_out.copy_from_slice(self.multisig_account.as_ref());
             pack_option_key(&self.fees_account_a, fees_account_a_out);
             pack_option_key(&self.fees_account_b, fees_account_b_out);
-            pool_id_ref_out.copy_from_slice(pool_id_ref.as_ref());
-            farm_id_ref_out.copy_from_slice(farm_id_ref.as_ref());
+            pool_router_id_out.copy_from_slice(pool_router_id.as_ref());
+            pool_id_out.copy_from_slice(pool_id.as_ref());
+            pool_ref_out.copy_from_slice(pool_ref.as_ref());
+            farm_router_id_out.copy_from_slice(farm_router_id.as_ref());
+            farm_id_out.copy_from_slice(farm_id.as_ref());
+            farm_ref_out.copy_from_slice(farm_ref.as_ref());
             lp_token_custody_out.copy_from_slice(lp_token_custody.as_ref());
             token_a_custody_out.copy_from_slice(token_a_custody.as_ref());
             pack_option_key(&token_b_custody, token_b_custody_out);
             token_a_reward_custody_out.copy_from_slice(token_a_reward_custody.as_ref());
             pack_option_key(&token_b_reward_custody, token_b_reward_custody_out);
             vault_stake_info_out.copy_from_slice(vault_stake_info.as_ref());
+            pack_option_key(&vault_stake_custody, vault_stake_custody_out);
+            pack_option_key(&reward_exchange_pool_id, reward_exchange_pool_id_out);
+            pack_option_key(&reward_exchange_pool_ref, reward_exchange_pool_ref_out);
 
             Ok(Vault::STAKE_LP_COMPOUND_REWARDS_LEN)
         } else {
@@ -314,20 +334,27 @@ impl Vault {
             vault_authority,
             vault_token_ref,
             info_account,
-            admin_account,
+            multisig_account,
             fees_account_a,
             fees_account_b,
-            pool_id_ref,
-            farm_id_ref,
+            pool_router_id,
+            pool_id,
+            pool_ref,
+            farm_router_id,
+            farm_id,
+            farm_ref,
             lp_token_custody,
             token_a_custody,
             token_b_custody,
             token_a_reward_custody,
             token_b_reward_custody,
             vault_stake_info,
+            vault_stake_custody,
+            reward_exchange_pool_id,
+            reward_exchange_pool_ref,
         ) = array_refs![
             input, 64, 2, 1, 1, 5, 2, 1, 1, 1, 1, 1, 32, 32, 32, 32, 32, 33, 33, 32, 32, 32, 32,
-            33, 32, 33, 32
+            32, 32, 32, 32, 33, 32, 33, 32, 33, 33, 33
         ];
 
         Ok(Self {
@@ -347,20 +374,66 @@ impl Vault {
             vault_authority: Pubkey::new_from_array(*vault_authority),
             vault_token_ref: Pubkey::new_from_array(*vault_token_ref),
             info_account: Pubkey::new_from_array(*info_account),
-            admin_account: Pubkey::new_from_array(*admin_account),
+            multisig_account: Pubkey::new_from_array(*multisig_account),
             fees_account_a: unpack_option_key(fees_account_a)?,
             fees_account_b: unpack_option_key(fees_account_b)?,
             strategy: VaultStrategy::StakeLpCompoundRewards {
-                pool_id_ref: Pubkey::new_from_array(*pool_id_ref),
-                farm_id_ref: Pubkey::new_from_array(*farm_id_ref),
+                pool_router_id: Pubkey::new_from_array(*pool_router_id),
+                pool_id: Pubkey::new_from_array(*pool_id),
+                pool_ref: Pubkey::new_from_array(*pool_ref),
+                farm_router_id: Pubkey::new_from_array(*farm_router_id),
+                farm_id: Pubkey::new_from_array(*farm_id),
+                farm_ref: Pubkey::new_from_array(*farm_ref),
                 lp_token_custody: Pubkey::new_from_array(*lp_token_custody),
                 token_a_custody: Pubkey::new_from_array(*token_a_custody),
                 token_b_custody: unpack_option_key(token_b_custody)?,
                 token_a_reward_custody: Pubkey::new_from_array(*token_a_reward_custody),
                 token_b_reward_custody: unpack_option_key(token_b_reward_custody)?,
                 vault_stake_info: Pubkey::new_from_array(*vault_stake_info),
+                vault_stake_custody: unpack_option_key(vault_stake_custody)?,
+                reward_exchange_pool_id: unpack_option_key(reward_exchange_pool_id)?,
+                reward_exchange_pool_ref: unpack_option_key(reward_exchange_pool_ref)?,
             },
         })
+    }
+}
+
+impl Packed for Vault {
+    fn get_size(&self) -> usize {
+        match self.strategy {
+            VaultStrategy::StakeLpCompoundRewards { .. } => Vault::STAKE_LP_COMPOUND_REWARDS_LEN,
+            VaultStrategy::DynamicHedge { .. } => Vault::DYNAMIC_HEDGE_LEN,
+        }
+    }
+
+    fn pack(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        match self.strategy {
+            VaultStrategy::StakeLpCompoundRewards { .. } => {
+                self.pack_stake_lp_compound_rewards(output)
+            }
+            VaultStrategy::DynamicHedge { .. } => Err(ProgramError::UnsupportedSysvar),
+        }
+    }
+
+    fn to_vec(&self) -> Result<Vec<u8>, ProgramError> {
+        let mut output: [u8; Vault::MAX_LEN] = [0; Vault::MAX_LEN];
+        if let Ok(len) = self.pack(&mut output[..]) {
+            Ok(output[..len].to_vec())
+        } else {
+            Err(ProgramError::InvalidAccountData)
+        }
+    }
+
+    fn unpack(input: &[u8]) -> Result<Vault, ProgramError> {
+        check_data_len(input, 1)?;
+        let strategy_type = VaultStrategyType::try_from_primitive(input[0])
+            .or(Err(ProgramError::InvalidAccountData))?;
+        match strategy_type {
+            VaultStrategyType::StakeLpCompoundRewards => {
+                Vault::unpack_stake_lp_compound_rewards(input)
+            }
+            VaultStrategyType::DynamicHedge { .. } => Err(ProgramError::UnsupportedSysvar),
+        }
     }
 }
 
@@ -387,7 +460,7 @@ impl std::fmt::Display for Vault {
     }
 }
 
-impl std::fmt::Display for UserInfo {
+impl std::fmt::Display for VaultUserInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", to_string(&self).unwrap())
     }

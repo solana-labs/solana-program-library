@@ -42,6 +42,7 @@ exclude = [
   "farms/farm-ctrl",
   "farms/farm-rpc",
   "farms/farm-sdk",
+  "farms/fund",
   "farms/router-main",
   "farms/router-raydium",
   "farms/router-saber",

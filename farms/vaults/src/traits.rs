@@ -59,25 +59,25 @@ pub trait Features {
         external_fee: f64,
     ) -> ProgramResult;
 
-    fn enable_deposit(
+    fn enable_deposits(
         vault: &Vault,
         vault_info: &mut VaultInfo,
         accounts: &[AccountInfo],
     ) -> ProgramResult;
 
-    fn disable_deposit(
+    fn disable_deposits(
         vault: &Vault,
         vault_info: &mut VaultInfo,
         accounts: &[AccountInfo],
     ) -> ProgramResult;
 
-    fn enable_withdrawal(
+    fn enable_withdrawals(
         vault: &Vault,
         vault_info: &mut VaultInfo,
         accounts: &[AccountInfo],
     ) -> ProgramResult;
 
-    fn disable_withdrawal(
+    fn disable_withdrawals(
         vault: &Vault,
         vault_info: &mut VaultInfo,
         accounts: &[AccountInfo],
@@ -98,4 +98,16 @@ pub trait Shutdown {
 
 pub trait WithdrawFees {
     fn withdraw_fees(vault: &Vault, accounts: &[AccountInfo], amount: u64) -> ProgramResult;
+}
+
+pub trait SetAdminSigners {
+    fn set_admin_signers(
+        vault: &Vault,
+        accounts: &[AccountInfo],
+        min_signatures: u8,
+    ) -> ProgramResult;
+}
+
+pub trait RemoveMultisig {
+    fn remove_multisig(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult;
 }

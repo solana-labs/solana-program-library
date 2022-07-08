@@ -33,6 +33,5 @@ pub fn sol_log_params_short(accounts: &[AccountInfo], data: &[u8]) {
     for account in accounts.iter() {
         account.key.log();
     }
-    msg!("Instruction data length:");
-    msg!(0, 0, 0, 0, data.len());
+    msg!("Instruction data length: {}", data.len());
 }

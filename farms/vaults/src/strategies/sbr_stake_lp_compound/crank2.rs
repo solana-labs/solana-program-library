@@ -1,9 +1,10 @@
 //! Crank step 2 instruction handler
 
 use {
-    crate::{clock::check_min_crank_interval, vault_info::VaultInfo},
+    crate::{strategies::common, vault_info::VaultInfo},
     solana_farm_sdk::{
         id::zero,
+        math,
         program::{account, pda, protocol::saber},
         vault::{Vault, VaultStrategy},
     },
@@ -64,7 +65,7 @@ pub fn crank2(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
         }
 
         let mut vault_info = VaultInfo::new(vault_info_account);
-        check_min_crank_interval(&vault_info)?;
+        common::check_min_crank_interval(&vault_info)?;
 
         // redeem rewards
         let seeds: &[&[&[u8]]] = &[&[
@@ -111,7 +112,10 @@ pub fn crank2(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult {
             msg!("Error: Invalid fee. fee: {}", fee);
             return Err(ProgramError::Custom(260));
         }
-        let sbr_fees = account::to_token_amount(iou_tokens_balance as f64 * fee, 0)?;
+        let mut sbr_fees = math::checked_as_u64(iou_tokens_balance as f64 * fee)?;
+        if sbr_fees == 0 && iou_tokens_balance > 0 {
+            sbr_fees = 1;
+        }
 
         msg!("Apply fees. fee: {}, sbr_fees: {}", fee, sbr_fees);
         pda::transfer_tokens_with_seeds(

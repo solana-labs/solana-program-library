@@ -17,6 +17,13 @@ pub fn get(client: &FarmClient, config: &Config, target: StorageType, object: &s
         StorageType::Program => {
             println!("{}: {}", object, client.get_program_id(object).unwrap());
         }
+        StorageType::Fund => {
+            print_object(
+                config,
+                &client.get_fund_ref(&object.to_uppercase()).unwrap(),
+                &client.get_fund(&object.to_uppercase()).unwrap(),
+            );
+        }
         StorageType::Vault => {
             print_object(
                 config,
@@ -62,6 +69,9 @@ pub fn get_ref(client: &FarmClient, config: &Config, target: StorageType, object
         StorageType::Program => {
             println!("{}: {}", client.get_program_name(&pubkey).unwrap(), object);
         }
+        StorageType::Fund => {
+            print_object(config, &pubkey, &client.get_fund_by_ref(&pubkey).unwrap());
+        }
         StorageType::Vault => {
             print_object(config, &pubkey, &client.get_vault_by_ref(&pubkey).unwrap());
         }
@@ -90,6 +100,12 @@ pub fn get_all(client: &FarmClient, config: &Config, target: StorageType) {
             let storage = client.get_program_ids().unwrap();
             for (name, key) in storage.iter() {
                 println!("{}: {}", name, key);
+            }
+        }
+        StorageType::Fund => {
+            let storage = client.get_funds().unwrap();
+            for (name, key) in storage.iter() {
+                print_object(config, &client.get_fund_ref(name).unwrap(), key);
             }
         }
         StorageType::Vault => {
@@ -130,6 +146,12 @@ pub fn list_all(client: &FarmClient, _config: &Config, target: StorageType) {
     match target {
         StorageType::Program => {
             let storage = client.get_program_ids().unwrap();
+            for (name, key) in storage.iter() {
+                println!("{}: {}", name, key);
+            }
+        }
+        StorageType::Fund => {
+            let storage = client.get_fund_refs().unwrap();
             for (name, key) in storage.iter() {
                 println!("{}: {}", name, key);
             }

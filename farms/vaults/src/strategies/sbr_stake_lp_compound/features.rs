@@ -47,39 +47,39 @@ impl Features for VaultInstruction {
         vault_info.set_external_fee(external_fee)
     }
 
-    fn enable_deposit(
+    fn enable_deposits(
         _vault: &Vault,
         vault_info: &mut VaultInfo,
         _accounts: &[AccountInfo],
     ) -> ProgramResult {
-        msg!("enable_deposit");
-        vault_info.enable_deposit()
+        msg!("enable_deposits");
+        vault_info.enable_deposits()
     }
 
-    fn disable_deposit(
+    fn disable_deposits(
         _vault: &Vault,
         vault_info: &mut VaultInfo,
         _accounts: &[AccountInfo],
     ) -> ProgramResult {
-        msg!("disable_deposit");
-        vault_info.disable_deposit()
+        msg!("disable_deposits");
+        vault_info.disable_deposits()
     }
 
-    fn enable_withdrawal(
+    fn enable_withdrawals(
         _vault: &Vault,
         vault_info: &mut VaultInfo,
         _accounts: &[AccountInfo],
     ) -> ProgramResult {
-        msg!("enable_withdrawal");
-        vault_info.enable_withdrawal()
+        msg!("enable_withdrawals");
+        vault_info.enable_withdrawals()
     }
 
-    fn disable_withdrawal(
+    fn disable_withdrawals(
         _vault: &Vault,
         vault_info: &mut VaultInfo,
         _accounts: &[AccountInfo],
     ) -> ProgramResult {
-        msg!("disable_withdrawal");
-        vault_info.disable_withdrawal()
+        msg!("disable_withdrawals");
+        vault_info.disable_withdrawals()
     }
 }

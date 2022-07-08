@@ -31,11 +31,11 @@ pub fn load(client: &FarmClient, config: &Config, data: &str, remove_mode: bool)
                 json_vault.name
             );
             client
-                .remove_vault(config.keypair.as_ref(), &json_vault.name.to_string())
+                .remove_vault(config.keypair.as_ref(), &json_vault.name)
                 .unwrap();
             continue;
         }
-        let (index, counter) = if let Ok(vault) = client.get_vault(&json_vault.name.to_string()) {
+        let (index, counter) = if let Ok(vault) = client.get_vault(&json_vault.name) {
             (vault.refdb_index, vault.refdb_counter)
         } else {
             last_index += 1;
@@ -57,7 +57,7 @@ pub fn load(client: &FarmClient, config: &Config, data: &str, remove_mode: bool)
             vault_authority: json_vault.vault_authority,
             vault_token_ref: json_vault.vault_token_ref,
             info_account: json_vault.info_account,
-            admin_account: json_vault.admin_account,
+            multisig_account: json_vault.multisig_account,
             fees_account_a: json_vault.fees_account_a,
             fees_account_b: json_vault.fees_account_b,
             strategy: json_vault.strategy,

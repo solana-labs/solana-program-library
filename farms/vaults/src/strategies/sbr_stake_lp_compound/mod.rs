@@ -10,6 +10,8 @@ pub mod init;
 pub mod lock_liquidity;
 pub mod params;
 pub mod remove_liquidity;
+pub mod remove_multisig;
+pub mod set_admin_signers;
 pub mod shutdown;
 pub mod unlock_liquidity;
 pub mod user_init;

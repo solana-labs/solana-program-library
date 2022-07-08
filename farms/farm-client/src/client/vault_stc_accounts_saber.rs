@@ -28,9 +28,10 @@ impl FarmClient {
         // fill in accounts and instruction data
         let data = VaultInstruction::UserInit.to_vec()?;
         let accounts = vec![
-            AccountMeta::new_readonly(*wallet_address, true),
+            AccountMeta::new(*wallet_address, true),
             AccountMeta::new_readonly(vault_ref, false),
             AccountMeta::new(vault.info_account, false),
+            AccountMeta::new_readonly(*wallet_address, false),
             AccountMeta::new(
                 self.get_vault_user_info_account(wallet_address, vault_name)?,
                 false,
@@ -53,7 +54,6 @@ impl FarmClient {
         let vault_ref = self.get_vault_ref(vault_name)?;
 
         // fill in accounts and instruction data
-        let data;
         let mut accounts = vec![AccountMeta::new_readonly(*wallet_address, true)];
 
         // general accounts
@@ -66,15 +66,15 @@ impl FarmClient {
         ));
 
         // strategy related accounts
-        match vault.strategy {
+        let data = match vault.strategy {
             VaultStrategy::StakeLpCompoundRewards {
-                pool_id_ref,
-                farm_id_ref,
+                pool_ref,
+                farm_ref,
                 lp_token_custody,
                 ..
             } => {
-                let pool = self.get_pool_by_ref(&pool_id_ref)?;
-                let farm = self.get_farm_by_ref(&farm_id_ref)?;
+                let pool = self.get_pool_by_ref(&pool_ref)?;
+                let farm = self.get_farm_by_ref(&farm_ref)?;
 
                 // get tokens info
                 let token_a = self.get_token_by_ref_from_cache(&pool.token_a_ref)?;
@@ -148,18 +148,18 @@ impl FarmClient {
                     }
                 }
 
-                data = VaultInstruction::AddLiquidity {
+                VaultInstruction::AddLiquidity {
                     max_token_a_amount: self
                         .to_token_amount_option(max_token_a_ui_amount, &token_a)?,
                     max_token_b_amount: self
                         .to_token_amount_option(max_token_b_ui_amount, &token_b)?,
                 }
-                .to_vec()?;
+                .to_vec()?
             }
             VaultStrategy::DynamicHedge { .. } => {
                 unreachable!();
             }
-        }
+        };
         Ok((accounts, data))
     }
 
@@ -176,7 +176,6 @@ impl FarmClient {
         let vault_token = self.get_token_by_ref_from_cache(&Some(vault.vault_token_ref))?;
 
         // fill in accounts and instruction data
-        let data;
         let mut accounts = vec![AccountMeta::new_readonly(*wallet_address, true)];
 
         // general accounts
@@ -191,19 +190,16 @@ impl FarmClient {
         ));
 
         // strategy related accounts
-        match vault.strategy {
+        let data = match vault.strategy {
             VaultStrategy::StakeLpCompoundRewards {
-                pool_id_ref,
-                farm_id_ref,
+                pool_ref,
+                farm_ref,
                 lp_token_custody,
-                token_a_custody: _,
-                token_b_custody: _,
-                token_a_reward_custody: _,
-                token_b_reward_custody: _,
                 vault_stake_info,
+                ..
             } => {
-                let pool = self.get_pool_by_ref(&pool_id_ref)?;
-                let farm = self.get_farm_by_ref(&farm_id_ref)?;
+                let pool = self.get_pool_by_ref(&pool_ref)?;
+                let farm = self.get_farm_by_ref(&farm_ref)?;
 
                 // get tokens info
                 let lp_token = self.get_token_by_ref_from_cache(&pool.lp_token_ref)?;
@@ -237,15 +233,15 @@ impl FarmClient {
                     }
                 }
 
-                data = VaultInstruction::LockLiquidity {
+                VaultInstruction::LockLiquidity {
                     amount: self.to_token_amount_option(ui_amount, &lp_token)?,
                 }
-                .to_vec()?;
+                .to_vec()?
             }
             VaultStrategy::DynamicHedge { .. } => {
                 unreachable!();
             }
-        }
+        };
         Ok((accounts, data))
     }
 
@@ -262,7 +258,6 @@ impl FarmClient {
         let vault_token = self.get_token_by_ref_from_cache(&Some(vault.vault_token_ref))?;
 
         // fill in accounts and instruction data
-        let data;
         let mut accounts = vec![AccountMeta::new_readonly(*wallet_address, true)];
 
         // general accounts
@@ -277,19 +272,16 @@ impl FarmClient {
         ));
 
         // strategy related accounts
-        match vault.strategy {
+        let data = match vault.strategy {
             VaultStrategy::StakeLpCompoundRewards {
-                pool_id_ref,
-                farm_id_ref,
+                pool_ref,
+                farm_ref,
                 lp_token_custody,
-                token_a_custody: _,
-                token_b_custody: _,
-                token_a_reward_custody: _,
-                token_b_reward_custody: _,
                 vault_stake_info,
+                ..
             } => {
-                let pool = self.get_pool_by_ref(&pool_id_ref)?;
-                let farm = self.get_farm_by_ref(&farm_id_ref)?;
+                let pool = self.get_pool_by_ref(&pool_ref)?;
+                let farm = self.get_farm_by_ref(&farm_ref)?;
 
                 // get tokens info
                 let lp_token = self.get_token_by_ref_from_cache(&pool.lp_token_ref)?;
@@ -385,15 +377,15 @@ impl FarmClient {
                     }
                 }
 
-                data = VaultInstruction::RemoveLiquidity {
+                VaultInstruction::RemoveLiquidity {
                     amount: self.to_token_amount_option(ui_amount, &lp_token)?,
                 }
-                .to_vec()?;
+                .to_vec()?
             }
             VaultStrategy::DynamicHedge { .. } => {
                 unreachable!();
             }
-        }
+        };
         Ok((accounts, data))
     }
 
@@ -418,6 +410,10 @@ impl FarmClient {
         // general accounts
         accounts.push(AccountMeta::new_readonly(vault_ref, false));
         accounts.push(AccountMeta::new(vault.info_account, false));
+        accounts.push(AccountMeta::new(
+            self.get_vault_active_multisig_account(vault_name)?,
+            false,
+        ));
         accounts.push(AccountMeta::new(vault.vault_authority, false));
         accounts.push(AccountMeta::new_readonly(vault.vault_program_id, false));
         accounts.push(AccountMeta::new_readonly(system_program::id(), false));
@@ -430,18 +426,19 @@ impl FarmClient {
 
         match vault.strategy {
             VaultStrategy::StakeLpCompoundRewards {
-                pool_id_ref,
-                farm_id_ref,
+                pool_ref,
+                farm_ref,
                 lp_token_custody,
                 token_a_custody,
                 token_b_custody,
                 token_a_reward_custody,
                 token_b_reward_custody,
                 vault_stake_info,
+                ..
             } => {
                 // get pools
-                let pool = self.get_pool_by_ref(&pool_id_ref)?;
-                let farm = self.get_farm_by_ref(&farm_id_ref)?;
+                let pool = self.get_pool_by_ref(&pool_ref)?;
+                let farm = self.get_farm_by_ref(&farm_ref)?;
                 // get tokens info
                 let token_a = self
                     .get_token_by_ref_from_cache(&pool.token_a_ref)?
@@ -463,9 +460,10 @@ impl FarmClient {
                     .get_token_by_ref_from_cache(&pool.lp_token_ref)?
                     .unwrap();
                 let token_a_reward = self
-                    .get_token_by_ref_from_cache(&farm.reward_token_a_ref)?
+                    .get_token_by_ref_from_cache(&farm.first_reward_token_ref)?
                     .unwrap();
-                let token_b_reward = self.get_token_by_ref_from_cache(&farm.reward_token_b_ref)?;
+                let token_b_reward =
+                    self.get_token_by_ref_from_cache(&farm.second_reward_token_ref)?;
                 let wrapped_token_mint = match pool.route {
                     PoolRoute::Saber {
                         wrapped_token_a_ref,
@@ -572,6 +570,7 @@ impl FarmClient {
             AccountMeta::new_readonly(*admin_address, true),
             AccountMeta::new_readonly(vault_ref, false),
             AccountMeta::new(vault.info_account, false),
+            AccountMeta::new(self.get_vault_active_multisig_account(vault_name)?, false),
         ];
 
         Ok((accounts, data))
@@ -601,21 +600,22 @@ impl FarmClient {
         // strategy related accounts
         match vault.strategy {
             VaultStrategy::StakeLpCompoundRewards {
-                pool_id_ref,
-                farm_id_ref,
+                pool_ref,
+                farm_ref,
                 lp_token_custody,
                 token_a_custody,
                 token_b_custody,
                 token_a_reward_custody,
                 token_b_reward_custody,
                 vault_stake_info,
+                ..
             } => {
-                let pool = self.get_pool_by_ref(&pool_id_ref)?;
-                let farm = self.get_farm_by_ref(&farm_id_ref)?;
+                let pool = self.get_pool_by_ref(&pool_ref)?;
+                let farm = self.get_farm_by_ref(&farm_ref)?;
 
                 // get tokens info
-                let sbr_token = self.get_token_by_ref_from_cache(&farm.reward_token_a_ref)?;
-                let iou_token = self.get_token_by_ref_from_cache(&farm.reward_token_b_ref)?;
+                let sbr_token = self.get_token_by_ref_from_cache(&farm.first_reward_token_ref)?;
+                let iou_token = self.get_token_by_ref_from_cache(&farm.second_reward_token_ref)?;
                 let token_a = self.get_token_by_ref_from_cache(&pool.token_a_ref)?;
                 let lp_token = self.get_token_by_ref_from_cache(&pool.lp_token_ref)?;
                 let farm_token = self.get_token_by_ref_from_cache(&farm.lp_token_ref)?;
@@ -811,6 +811,10 @@ impl FarmClient {
                                     accounts.push(AccountMeta::new(
                                         serum_event_queue
                                             .ok_or(ProgramError::UninitializedAccount)?,
+                                        false,
+                                    ));
+                                    accounts.push(AccountMeta::new_readonly(
+                                        sysvar::instructions::id(),
                                         false,
                                     ));
                                 }

@@ -59,6 +59,10 @@ pub fn swap(
         };
 
         let instruction = if token_a_amount_in > 0 {
+            if !account::check_token_account_owner(user_token_b_account, user_account.key)? {
+                return Err(ProgramError::IllegalOwner);
+            }
+
             instruction::swap(
                 &spl_token::id(),
                 swap_account.key,
@@ -73,6 +77,10 @@ pub fn swap(
                 min_token_amount_out,
             )?
         } else {
+            if !account::check_token_account_owner(user_token_a_account, user_account.key)? {
+                return Err(ProgramError::IllegalOwner);
+            }
+            
             instruction::swap(
                 &spl_token::id(),
                 swap_account.key,

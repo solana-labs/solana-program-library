@@ -17,6 +17,7 @@ pub fn remove_pool(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     name: &ArrayString64,
+    refdb_index: Option<u32>,
 ) -> ProgramResult {
     msg!("Processing MainInstruction::RemovePool");
 
@@ -24,6 +25,7 @@ pub fn remove_pool(
     let accounts_iter = &mut accounts.iter();
 
     let signer_account = next_account_info(accounts_iter)?;
+    let _multisig_account = next_account_info(accounts_iter)?;
     let refdb_account = next_account_info(accounts_iter)?;
     let target_account = next_account_info(accounts_iter)?;
 
@@ -47,7 +49,7 @@ pub fn remove_pool(
 
     // update ref storage
     msg!("Updating refdb storage");
-    let _ = RefDB::delete_with_name(*refdb_account.try_borrow_mut_data()?, name);
+    let _ = RefDB::delete_with_name(*refdb_account.try_borrow_mut_data()?, name, refdb_index);
 
     // close metadata account
     msg!("Closing metadata account");
