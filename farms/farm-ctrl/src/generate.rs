@@ -291,6 +291,9 @@ pub fn generate_sbr_stc_vault(
         .unwrap();
     let token_a = client.get_token_by_ref(&pool.token_a_ref.unwrap()).unwrap();
     let token_b = client.get_token_by_ref(&pool.token_b_ref.unwrap()).unwrap();
+    if &token_a.name == "SECRET" || &token_b.name == "SECRET" {
+        panic!("Vaults with secret token pools are not supported");
+    }
     let usdc_token = client.get_token("USDC").unwrap();
     if token_a.mint != usdc_token.mint && token_b.mint != usdc_token.mint {
         panic!("Only USDC pools are supported",);

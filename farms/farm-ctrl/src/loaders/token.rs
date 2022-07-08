@@ -73,8 +73,8 @@ fn check_token(client: &FarmClient, config: &Config, name: &str, mint: &Pubkey) 
     if let Ok(existing_token) = client.get_token(name) {
         if existing_token.mint != *mint {
             error!(
-                "Existing mint for token \"{}\" doesn't match new one: {}",
-                name, mint
+                "New mint for token \"{}\" doesn't match the old one: {}",
+                name, existing_token.mint
             )
         }
         if config.skip_existing {

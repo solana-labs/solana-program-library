@@ -5,7 +5,7 @@ mod vault_actions;
 #[ignore]
 fn test_vault_chicks_usdc() {
     vault_actions::run_test(
-        "ORC.STC.CHICKS-USDC-V1",
+        "ORC.STC.CHICKS-USDC-AQ-V1",
         vec![
             utils::Swap {
                 protocol: "ORC",
@@ -33,7 +33,7 @@ fn test_vault_chicks_usdc() {
 #[ignore]
 fn test_vault_chicks_usdc_latest() {
     vault_actions::run_test(
-        "ORC.STC.CHICKS-USDC",
+        "ORC.STC.CHICKS-USDC-AQ",
         vec![
             utils::Swap {
                 protocol: "ORC",

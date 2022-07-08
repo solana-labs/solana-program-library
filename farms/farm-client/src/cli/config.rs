@@ -545,26 +545,26 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
         )
         .subcommand(
             SubCommand::with_name("cancel-deposit-fund")
-                .about("Request a new deposit to the fund")
+                .about("Cancel pending deposit to the Fund")
                 .arg(get_arg("fund_name"))
                 .arg(tokenname.clone())
         )
         .subcommand(
             SubCommand::with_name("request-withdrawal-fund")
-                .about("Request a new deposit to the fund")
+                .about("Request a new withdrawal from the fund")
                 .arg(get_arg("fund_name"))
                 .arg(tokenname.clone())
                 .arg(amount.clone())
         )
         .subcommand(
             SubCommand::with_name("cancel-withdrawal-fund")
-                .about("Request a new deposit to the fund")
+                .about("Cancel pending withdrawal from the Fund")
                 .arg(get_arg("fund_name"))
                 .arg(tokenname.clone())
         )
         .subcommand(
             SubCommand::with_name("start-liquidation-fund")
-                .about("Request a new deposit to the fund")
+                .about("Start the Fund liquidation")
                 .arg(get_arg("fund_name"))
         )
         .subcommand(

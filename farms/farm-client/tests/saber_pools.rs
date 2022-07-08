@@ -10,7 +10,7 @@ fn test_pool_xsol_sol_v1() {
             protocol: "SBR",
             from_token: "SOL",
             to_token: "XSOL",
-            amount: 0.111,
+            amount: 0.222,
         }],
         vec![utils::Swap {
             protocol: "SBR",
@@ -31,7 +31,7 @@ fn test_pool_xsol_sol_latest() {
             protocol: "SBR",
             from_token: "SOL",
             to_token: "XSOL",
-            amount: 0.111,
+            amount: 0.222,
         }],
         vec![utils::Swap {
             protocol: "SBR",
@@ -53,7 +53,7 @@ fn test_pool_renbtc_btc_latest() {
                 protocol: "RDM",
                 from_token: "SOL",
                 to_token: "USDC",
-                amount: 0.111,
+                amount: 0.222,
             },
             utils::Swap {
                 protocol: "RDM",
@@ -96,7 +96,7 @@ fn test_pool_usdc_wust_v1_latest() {
                 protocol: "RDM",
                 from_token: "SOL",
                 to_token: "USDC",
-                amount: 0.111,
+                amount: 0.222,
             },
             utils::Swap {
                 protocol: "SBR",
@@ -125,7 +125,7 @@ fn test_pool_wust_usdc_latest() {
                 protocol: "RDM",
                 from_token: "SOL",
                 to_token: "USDC",
-                amount: 0.111,
+                amount: 0.222,
             },
             utils::Swap {
                 protocol: "SBR",
@@ -154,7 +154,7 @@ fn test_pool_whusd_v1_usdc_latest() {
                 protocol: "RDM",
                 from_token: "SOL",
                 to_token: "USDC",
-                amount: 0.111,
+                amount: 0.222,
             },
             utils::Swap {
                 protocol: "SBR",

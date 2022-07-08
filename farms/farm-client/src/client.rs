@@ -1745,6 +1745,17 @@ impl FarmClient {
         Ok(vault_info)
     }
 
+    /// Returns Vault stats for all Vaults
+    pub fn get_all_vault_infos(&self) -> Result<Vec<VaultInfo>, FarmClientError> {
+        let mut vault_infos = vec![];
+        let vaults = self.get_vaults()?;
+        for vault in vaults.keys() {
+            vault_infos.push(self.get_vault_info(vault)?);
+        }
+
+        Ok(vault_infos)
+    }
+
     /// Returns User's stacked balance
     pub fn get_user_stake_balance(
         &self,
@@ -3165,6 +3176,17 @@ impl FarmClient {
         Ok(fund_info)
     }
 
+    /// Returns Fund info and config for all Funds
+    pub fn get_all_fund_infos(&self) -> Result<Vec<FundInfo>, FarmClientError> {
+        let mut fund_infos = vec![];
+        let funds = self.get_funds()?;
+        for fund in funds.keys() {
+            fund_infos.push(self.get_fund_info(fund)?);
+        }
+
+        Ok(fund_infos)
+    }
+
     /// Returns the account address where Fund assets info is stored
     pub fn get_fund_assets_account(
         &self,
@@ -3330,7 +3352,7 @@ impl FarmClient {
         })
     }
 
-    /// Returns all custodies extended info
+    /// Returns all custodies belonging to the Fund with extended info
     pub fn get_fund_custodies_with_balance(
         &self,
         fund_name: &str,

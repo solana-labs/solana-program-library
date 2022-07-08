@@ -304,6 +304,7 @@ fn load_raydium_pool(
         let token_a = client.get_token_with_mint(&json_pool.base_mint).unwrap();
         let token_b = client.get_token_with_mint(&json_pool.quote_mint).unwrap();
         let lp_token = client.get_token_with_mint(&json_pool.lp_mint).unwrap();
+        let pool_type = get_raydium_pool_type(&json_pool);
         let name = format!(
             "RDM.{}-{}-V{}",
             token_a.name, token_b.name, json_pool.version
@@ -311,6 +312,9 @@ fn load_raydium_pool(
         if !remove_mode {
             if config.skip_existing && client.get_pool(&name).is_ok() {
                 info!("Skipping existing Pool \"{}\"...", name);
+                continue;
+            } else if pool_type == PoolType::AmmStable {
+                info!("Skipping stablecoin Pool \"{}\"...", name);
                 continue;
             }
             info!("Writing Pool \"{}\" to on-chain RefDB...", name);
@@ -504,10 +508,14 @@ fn load_orca_pool(
         let token_b = client
             .get_token_with_mint(&convert_pubkey(&json_pool.token_ids[1]))
             .unwrap();
+        let pool_type = get_orca_pool_type(&json_pool);
         let name = format!("ORC.{}-{}-V1", token_a.name, token_b.name);
         if !remove_mode {
             if config.skip_existing && client.get_pool(&name).is_ok() {
                 info!("Skipping existing Pool \"{}\"...", name);
+                continue;
+            } else if pool_type == PoolType::AmmStable {
+                info!("Skipping stablecoin Pool \"{}\"...", name);
                 continue;
             }
             info!("Writing Pool \"{}\" to on-chain RefDB...", name);
@@ -554,6 +562,22 @@ fn load_orca_pool(
         };
 
         client.add_pool(config.keypair.as_ref(), pool).unwrap();
+    }
+}
+
+fn get_raydium_pool_type(pool: &JsonRaydiumPool) -> PoolType {
+    match pool.version {
+        0..=4 => PoolType::Amm,
+        5 => PoolType::AmmStable,
+        _ => panic!("Unrecognized Raydium pool type: {}", pool.version),
+    }
+}
+
+fn get_orca_pool_type(pool: &JsonOrcaPool) -> PoolType {
+    match pool.curve_type {
+        0 => PoolType::Amm,
+        2 => PoolType::AmmStable,
+        _ => panic!("Unrecognized Orca pool type: {}", pool.curve_type),
     }
 }
 

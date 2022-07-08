@@ -6,7 +6,7 @@ extern crate lazy_static;
 extern crate rocket;
 
 mod config;
-mod json_rpc;
+mod http_rpc;
 
 #[path = "../stats/fund_stats.rs"]
 mod fund_stats;
@@ -55,13 +55,13 @@ async fn main() {
                 }),
         )
         .arg(
-            Arg::with_name("json_rpc_url")
+            Arg::with_name("http_rpc_url")
                 .short("u")
-                .long("json-rpc-url")
+                .long("http-rpc-url")
                 .value_name("STR")
                 .takes_value(true)
                 .validator(is_url)
-                .help("URL for JSON RPC service"),
+                .help("URL for HTTP RPC service"),
         )
         .arg(
             Arg::with_name("websocket_url")
@@ -132,8 +132,8 @@ async fn main() {
         let _ = config.load(config_file);
     }
     // override loaded or default params with explicit cmd line arguments
-    if let Some(json_rpc_url) = matches.value_of("json_rpc_url") {
-        config.json_rpc_url = json_rpc_url.to_string();
+    if let Some(http_rpc_url) = matches.value_of("http_rpc_url") {
+        config.http_rpc_url = http_rpc_url.to_string();
     }
     if let Some(websocket_url) = matches.value_of("websocket_url") {
         config.websocket_url = websocket_url.to_string();
@@ -156,24 +156,24 @@ async fn main() {
         info!("Configuration saved to: {}", config_file);
     }
 
-    debug!("json_rpc_url: {}", config.json_rpc_url);
+    debug!("http_rpc_url: {}", config.http_rpc_url);
     debug!("websocket_url: {}", config.websocket_url);
     debug!("farm_client_url: {}", config.farm_client_url);
     debug!("sqlite_db_path: {}", config.sqlite_db_path);
     debug!("max_threads: {}", config.max_threads);
 
-    info!("Starting JSON RPC on {}", config.json_rpc_url);
-    let parsed_url: Url = config.json_rpc_url.parse().unwrap();
+    info!("Starting HTTP RPC on {}", config.http_rpc_url);
+    let parsed_url: Url = config.http_rpc_url.parse().unwrap();
     let figment = rocket::Config::figment()
         .merge(("port", parsed_url.port().unwrap()))
         .merge(("address", parsed_url.host_str().unwrap()))
         .merge(("workers", config.max_threads))
-        .merge(("ident", "Farms JSON RPC"));
+        .merge(("ident", "Farms HTTP RPC"));
 
-    let json_rpc = rocket::custom(figment)
-        .attach(json_rpc::stage(&config).await)
+    let http_rpc = rocket::custom(figment)
+        .attach(http_rpc::stage(&config).await)
         .launch();
-    let _ = json_rpc.await.unwrap();
+    let _ = http_rpc.await.unwrap();
 
     info!("Shutting down...");
 }

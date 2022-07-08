@@ -8,7 +8,7 @@ use {
     log::error,
     num_enum::TryFromPrimitive,
     solana_farm_client::client::FarmClient,
-    solana_farm_sdk::{id::DAO_CUSTODY_NAME, token::TokenSelector},
+    solana_farm_sdk::{fund::FundVaultType, id::DAO_CUSTODY_NAME, token::TokenSelector},
     solana_sdk::{bpf_loader_upgradeable, instruction::Instruction, pubkey::Pubkey},
     spl_associated_token_account::create_associated_token_account,
     std::str::FromStr,
@@ -277,7 +277,9 @@ fn main() {
         ("fund-custodies", Some(subcommand_matches)) => {
             let object = config::get_str_val(subcommand_matches, "fund_name");
             let custodies = client.get_fund_custodies_with_balance(&object).unwrap();
-            printer::print_objects(&config, &custodies);
+            for custody in &custodies {
+                printer::print_object(&config, &custody.token_name, &custody);
+            }
         }
         ("fund-vault", Some(subcommand_matches)) => {
             let object = config::get_str_val(subcommand_matches, "fund_name");
@@ -294,7 +296,14 @@ fn main() {
         ("fund-vaults", Some(subcommand_matches)) => {
             let object = config::get_str_val(subcommand_matches, "fund_name");
             let vaults = client.get_fund_vaults(&object).unwrap();
-            printer::print_objects(&config, &vaults);
+            for vault in &vaults {
+                let vault_name = match vault.vault_type {
+                    FundVaultType::Vault => client.get_vault_by_ref(&vault.vault_ref).unwrap().name,
+                    FundVaultType::Farm => client.get_farm_by_ref(&vault.vault_ref).unwrap().name,
+                    FundVaultType::Pool => client.get_pool_by_ref(&vault.vault_ref).unwrap().name,
+                };
+                printer::print_object(&config, &vault_name, &vault);
+            }
         }
         ("find-funds", Some(subcommand_matches)) => {
             let vault_name_pattern = config::get_str_val(subcommand_matches, "vault_name_pattern");

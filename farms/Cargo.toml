@@ -12,5 +12,8 @@ members = [
   "vaults"
 ]
 
+[profile.release]
+overflow-checks = true
+
 [profile.dev]
 split-debuginfo = "unpacked"

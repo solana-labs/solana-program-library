@@ -27,8 +27,8 @@ use {
     solana_farm_sdk::{
         farm::Farm,
         fund::{
-            Fund, FundAssets, FundCustody, FundInfo, FundSchedule, FundUserInfo, FundUserRequests,
-            FundVault,
+            Fund, FundAssets, FundCustody, FundCustodyWithBalance, FundInfo, FundSchedule,
+            FundUserInfo, FundUserRequests, FundVault,
         },
         pool::Pool,
         program::multisig::Multisig,
@@ -52,6 +52,7 @@ use {
 type Result<T, E = String> = std::result::Result<T, E>;
 type GitTokens = HashMap<String, GitToken>;
 type FarmClientArc = Arc<Mutex<FarmClient>>;
+type Signature = String;
 
 pub struct Cors;
 
@@ -697,7 +698,7 @@ async fn find_pools_with_lp(
 async fn get_pool_price(
     name: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<Json<f64>, NotFound<String>> {
+) -> Result<String, NotFound<String>> {
     let farm_client = farm_client
         .inner()
         .lock()
@@ -706,7 +707,7 @@ async fn get_pool_price(
         .get_pool_price(name)
         .map_err(|e| NotFound(e.to_string()))?;
 
-    Ok(Json(pool_price))
+    Ok(pool_price.to_string())
 }
 
 /// Returns oracle address for the given token
@@ -735,7 +736,7 @@ async fn get_oracle_price(
     max_price_age_sec: u64,
     max_price_error: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<Json<f64>, NotFound<String>> {
+) -> Result<String, NotFound<String>> {
     let farm_client = farm_client
         .inner()
         .lock()
@@ -744,7 +745,7 @@ async fn get_oracle_price(
         .get_oracle_price(symbol, max_price_age_sec, max_price_error)
         .map_err(|e| NotFound(e.to_string()))?;
 
-    Ok(Json(oracle_price))
+    Ok(oracle_price.to_string())
 }
 
 /// Returns the Farm struct for the given name
@@ -1120,7 +1121,7 @@ async fn create_system_account(
     space: usize,
     owner: Option<PubkeyParam>,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let new_account_keypair = check_unwrap_keypair(new_account_keypair, "new_account_keypair")?;
     let owner = check_unwrap_pubkey(owner, "owner")?;
@@ -1151,7 +1152,7 @@ async fn create_system_account_with_seed(
     space: usize,
     owner: Option<PubkeyParam>,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let base_address = check_unwrap_pubkey(base_address, "base_address")?;
     let owner = check_unwrap_pubkey(owner, "owner")?;
@@ -1179,7 +1180,7 @@ async fn assign_system_account(
     wallet_keypair: Option<KeypairParam>,
     program_address: Option<PubkeyParam>,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let program_address = check_unwrap_pubkey(program_address, "program_address")?;
     let farm_client = farm_client
@@ -1199,7 +1200,7 @@ async fn close_system_account(
     wallet_keypair: Option<KeypairParam>,
     target_account_keypair: Option<KeypairParam>,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let target_account_keypair =
         check_unwrap_keypair(target_account_keypair, "target_account_keypair")?;
@@ -1221,7 +1222,7 @@ async fn transfer(
     destination_wallet: Option<PubkeyParam>,
     sol_ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let destination_wallet = check_unwrap_pubkey(destination_wallet, "destination_wallet")?;
     let farm_client = farm_client
@@ -1243,7 +1244,7 @@ async fn token_transfer(
     destination_wallet: Option<PubkeyParam>,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let destination_wallet = check_unwrap_pubkey(destination_wallet, "destination_wallet")?;
     let farm_client = farm_client
@@ -1263,7 +1264,7 @@ async fn wrap_sol(
     wallet_keypair: Option<KeypairParam>,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -1281,7 +1282,7 @@ async fn wrap_sol(
 async fn unwrap_sol(
     wallet_keypair: Option<KeypairParam>,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -1300,7 +1301,7 @@ async fn sync_token_balance(
     wallet_keypair: Option<KeypairParam>,
     token_name: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -1319,7 +1320,7 @@ async fn get_or_create_token_account(
     wallet_keypair: Option<KeypairParam>,
     token_name: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -1338,7 +1339,7 @@ async fn close_token_account(
     wallet_keypair: Option<KeypairParam>,
     token_name: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -1604,6 +1605,22 @@ async fn get_fund_info(
     Ok(Json(fund_info))
 }
 
+/// Returns Fund info and config for all Funds
+#[get("/all_fund_infos")]
+async fn get_all_fund_infos(
+    farm_client: &State<FarmClientArc>,
+) -> Result<Json<Vec<FundInfo>>, NotFound<String>> {
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let fund_infos = farm_client
+        .get_all_fund_infos()
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(Json(fund_infos))
+}
+
 /// Returns the Fund assets info
 #[get("/fund_assets?<fund_name>&<asset_type>")]
 async fn get_fund_assets(
@@ -1647,6 +1664,28 @@ async fn get_fund_custody(
     Ok(Json(fund_custody))
 }
 
+/// Returns the Fund custody extended info
+#[get("/fund_custody_with_balance?<fund_name>&<token_name>&<custody_type>")]
+async fn get_fund_custody_with_balance(
+    fund_name: &str,
+    token_name: &str,
+    custody_type: &str,
+    farm_client: &State<FarmClientArc>,
+) -> Result<Json<FundCustodyWithBalance>, NotFound<String>> {
+    let custody_type = custody_type
+        .parse()
+        .map_err(|_| NotFound("Invalid custody_type argument".to_string()))?;
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let fund_custody = farm_client
+        .get_fund_custody_with_balance(fund_name, token_name, custody_type)
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(Json(fund_custody))
+}
+
 /// Returns all custodies belonging to the Fund sorted by custody_id
 #[get("/fund_custodies?<fund_name>")]
 async fn get_fund_custodies(
@@ -1659,6 +1698,23 @@ async fn get_fund_custodies(
         .map_err(|e| NotFound(e.to_string()))?;
     let fund_custodies = farm_client
         .get_fund_custodies(fund_name)
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(Json(fund_custodies))
+}
+
+/// Returns all custodies belonging to the Fund with extended info
+#[get("/fund_custodies_with_balance?<fund_name>")]
+async fn get_fund_custodies_with_balance(
+    fund_name: &str,
+    farm_client: &State<FarmClientArc>,
+) -> Result<Json<Vec<FundCustodyWithBalance>>, NotFound<String>> {
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let fund_custodies = farm_client
+        .get_fund_custodies_with_balance(fund_name)
         .map_err(|e| NotFound(e.to_string()))?;
 
     Ok(Json(fund_custodies))
@@ -1815,6 +1871,22 @@ async fn get_vault_info(
     Ok(Json(vault_info))
 }
 
+/// Returns Vault stats for all Vaults
+#[get("/all_vault_infos")]
+async fn get_all_vault_infos(
+    farm_client: &State<FarmClientArc>,
+) -> Result<Json<Vec<VaultInfo>>, NotFound<String>> {
+    let farm_client = farm_client
+        .inner()
+        .lock()
+        .map_err(|e| NotFound(e.to_string()))?;
+    let vault_infos = farm_client
+        .get_all_vault_infos()
+        .map_err(|e| NotFound(e.to_string()))?;
+
+    Ok(Json(vault_infos))
+}
+
 /// Returns number of decimal digits of the Vault token
 #[get("/vault_token_decimals?<vault_name>")]
 async fn get_vault_token_decimals(
@@ -1855,7 +1927,7 @@ async fn user_init_vault(
     wallet_keypair: Option<KeypairParam>,
     vault_name: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -1876,7 +1948,7 @@ async fn add_liquidity_vault(
     max_token_a_ui_amount: f64,
     max_token_b_ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -1901,7 +1973,7 @@ async fn add_locked_liquidity_vault(
     vault_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -1921,7 +1993,7 @@ async fn remove_liquidity_vault(
     vault_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -1941,7 +2013,7 @@ async fn remove_unlocked_liquidity_vault(
     vault_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -1962,7 +2034,7 @@ async fn add_liquidity_pool(
     max_token_a_ui_amount: f64,
     max_token_b_ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -1987,7 +2059,7 @@ async fn remove_liquidity_pool(
     pool_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2012,7 +2084,7 @@ async fn swap(
     ui_amount_in: f64,
     min_ui_amount_out: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let protocol = protocol
         .parse()
@@ -2041,7 +2113,7 @@ async fn user_init(
     wallet_keypair: Option<KeypairParam>,
     farm_name: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2061,7 +2133,7 @@ async fn stake(
     farm_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2081,7 +2153,7 @@ async fn unstake(
     farm_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2100,7 +2172,7 @@ async fn harvest(
     wallet_keypair: Option<KeypairParam>,
     farm_name: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2120,7 +2192,7 @@ async fn crank_vault(
     vault_name: &str,
     step: u64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2171,7 +2243,7 @@ async fn user_init_fund(
     fund_name: &str,
     token_name: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2192,7 +2264,7 @@ async fn request_deposit_fund(
     token_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2212,7 +2284,7 @@ async fn cancel_deposit_fund(
     fund_name: &str,
     token_name: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2233,7 +2305,7 @@ async fn request_withdrawal_fund(
     token_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2253,7 +2325,7 @@ async fn cancel_withdrawal_fund(
     fund_name: &str,
     token_name: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2272,7 +2344,7 @@ async fn start_liquidation_fund(
     wallet_keypair: Option<KeypairParam>,
     fund_name: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2298,7 +2370,7 @@ async fn set_fund_deposit_schedule(
     max_amount_usd: f64,
     fee: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2328,7 +2400,7 @@ async fn disable_deposits_fund(
     wallet_keypair: Option<KeypairParam>,
     fund_name: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2352,7 +2424,7 @@ async fn approve_deposit_fund(
     token_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let user_address = check_unwrap_pubkey(user_address, "user_address")?;
     let farm_client = farm_client
@@ -2381,7 +2453,7 @@ async fn deny_deposit_fund(
     token_name: &str,
     deny_reason: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let user_address = check_unwrap_pubkey(user_address, "user_address")?;
     let farm_client = farm_client
@@ -2414,7 +2486,7 @@ async fn set_fund_withdrawal_schedule(
     max_amount_usd: f64,
     fee: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2444,7 +2516,7 @@ async fn disable_withdrawals_fund(
     wallet_keypair: Option<KeypairParam>,
     fund_name: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2468,7 +2540,7 @@ async fn approve_withdrawal_fund(
     token_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let user_address = check_unwrap_pubkey(user_address, "user_address")?;
     let farm_client = farm_client
@@ -2499,7 +2571,7 @@ async fn deny_withdrawal_fund(
     token_name: &str,
     deny_reason: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let user_address = check_unwrap_pubkey(user_address, "user_address")?;
     let farm_client = farm_client
@@ -2527,7 +2599,7 @@ async fn lock_assets_fund(
     token_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2548,7 +2620,7 @@ async fn unlock_assets_fund(
     token_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2568,7 +2640,7 @@ async fn update_fund_assets_with_custody(
     fund_name: &str,
     custody_id: u32,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2607,7 +2679,7 @@ async fn update_fund_assets_with_vault(
     fund_name: &str,
     vault_id: u32,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2653,7 +2725,7 @@ async fn fund_swap(
     ui_amount_in: f64,
     min_ui_amount_out: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let protocol = protocol
         .parse()
@@ -2686,7 +2758,7 @@ async fn fund_add_liquidity_pool(
     max_token_a_ui_amount: f64,
     max_token_b_ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2713,7 +2785,7 @@ async fn fund_remove_liquidity_pool(
     pool_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2733,7 +2805,7 @@ async fn fund_user_init_farm(
     fund_name: &str,
     farm_name: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2754,7 +2826,7 @@ async fn fund_stake(
     farm_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2775,7 +2847,7 @@ async fn fund_unstake(
     farm_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2795,7 +2867,7 @@ async fn fund_harvest(
     fund_name: &str,
     farm_name: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2815,7 +2887,7 @@ async fn fund_user_init_vault(
     fund_name: &str,
     vault_name: &str,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2837,7 +2909,7 @@ async fn fund_add_liquidity_vault(
     max_token_a_ui_amount: f64,
     max_token_b_ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2864,7 +2936,7 @@ async fn fund_add_locked_liquidity_vault(
     vault_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2885,7 +2957,7 @@ async fn fund_remove_liquidity_vault(
     vault_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -2908,7 +2980,7 @@ async fn fund_remove_unlocked_liquidity_vault(
     vault_name: &str,
     ui_amount: f64,
     farm_client: &State<FarmClientArc>,
-) -> Result<String, NotFound<String>> {
+) -> Result<Signature, NotFound<String>> {
     let wallet_keypair = check_unwrap_keypair(wallet_keypair, "wallet_keypair")?;
     let farm_client = farm_client
         .inner()
@@ -4908,15 +4980,19 @@ pub async fn stage(config: &Config) -> AdHoc {
                     get_vault_admins,
                     get_vault_user_info,
                     get_vault_info,
+                    get_all_vault_infos,
                     get_fund_admins,
                     get_fund_user_info,
                     get_all_fund_user_infos,
                     get_fund_user_requests,
                     get_all_fund_user_requests,
                     get_fund_info,
+                    get_all_fund_infos,
                     get_fund_assets,
                     get_fund_custody,
                     get_fund_custodies,
+                    get_fund_custody_with_balance,
+                    get_fund_custodies_with_balance,
                     get_fund_vault,
                     get_fund_vaults,
                     get_fund_stats,

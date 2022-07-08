@@ -21,6 +21,7 @@ use {
 };
 
 #[test]
+#[ignore]
 // Runs all integration tests. Default config should have rpc url set to
 // localhost or devnet and kepair_path should point to the admin keypair.
 fn run_tests() -> Result<(), FarmClientError> {

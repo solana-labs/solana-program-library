@@ -193,26 +193,14 @@ pub fn list_all(client: &FarmClient, _config: &Config, target: &str) {
     info!("Done.")
 }
 
-pub fn print_object<T>(config: &Config, key: &Pubkey, object: &T)
+pub fn print_object<T, K>(config: &Config, key: &K, object: &T)
 where
     T: ?Sized + Serialize + std::fmt::Display,
+    K: std::fmt::Display,
 {
     if config.no_pretty_print {
         println!("{}: {}", key, object);
     } else {
         println!("{}: {}", key, to_pretty_json(object).unwrap());
-    }
-}
-
-pub fn print_objects<T>(config: &Config, objects: &[T])
-where
-    T: Sized + Serialize + std::fmt::Display,
-{
-    for object in objects {
-        if config.no_pretty_print {
-            println!("{}", object);
-        } else {
-            println!("{}", to_pretty_json(object).unwrap());
-        }
     }
 }

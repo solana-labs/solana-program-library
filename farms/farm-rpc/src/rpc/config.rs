@@ -20,7 +20,7 @@ lazy_static! {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Config {
-    pub json_rpc_url: String,
+    pub http_rpc_url: String,
     pub websocket_url: String,
     pub max_threads: u32,
     pub token_list_url: String,
@@ -30,7 +30,7 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        let json_rpc_url = "http://127.0.0.1:9000".to_string();
+        let http_rpc_url = "http://127.0.0.1:9000".to_string();
         let websocket_url = "wss://127.0.0.1:9001".to_string();
         let token_list_url = "https://raw.githubusercontent.com/solana-labs/token-list/main/src/tokens/solana.tokenlist.json".to_string();
         let farm_client_url = "http://127.0.0.1:8899".to_string();
@@ -38,7 +38,7 @@ impl Default for Config {
         let max_threads = 4;
 
         Self {
-            json_rpc_url,
+            http_rpc_url,
             websocket_url,
             max_threads,
             token_list_url,
@@ -76,7 +76,7 @@ mod test {
     #[test]
     fn test_default() {
         let config: Config = Default::default();
-        assert_eq!(config.json_rpc_url, "http://127.0.0.1:9000");
+        assert_eq!(config.http_rpc_url, "http://127.0.0.1:9000");
         assert_eq!(config.websocket_url, "wss://127.0.0.1:9001");
         assert_eq!(config.farm_client_url, "http://127.0.0.1:8899");
         assert_eq!(config.sqlite_db_path, "fund_stats.db");
@@ -86,7 +86,7 @@ mod test {
     #[test]
     fn test_load_save() {
         let config = Config {
-            json_rpc_url: "http://test:9000".to_string(),
+            http_rpc_url: "http://test:9000".to_string(),
             websocket_url: "wss://test:9001".to_string(),
             max_threads: 99,
             token_list_url: "none".to_string(),
@@ -98,7 +98,7 @@ mod test {
         let mut config2: Config = Default::default();
         let _ = config2.load("_test_config.yml");
 
-        assert_eq!(config.json_rpc_url, config2.json_rpc_url);
+        assert_eq!(config.http_rpc_url, config2.http_rpc_url);
         assert_eq!(config.websocket_url, config2.websocket_url);
         assert_eq!(config.max_threads, config2.max_threads);
         assert_eq!(config.farm_client_url, config2.farm_client_url);

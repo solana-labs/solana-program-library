@@ -16,7 +16,7 @@ pub fn do_swap(client: &FarmClient, keypair: &Keypair, swap: &Swap) {
     } else {
         swap.amount
     };
-    if amount < 0.0002 {
+    if amount < 0.0003 {
         return;
     }
     println!(

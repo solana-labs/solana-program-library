@@ -7,7 +7,8 @@ solana_security_txt::security_txt! {
     project_url: "https://github.com/solana-labs/solana-program-library/tree/master/farms",
     contacts: "email:solana.farms@protonmail.com",
     policy: "",
-    preferred_languages: "en"
+    preferred_languages: "en",
+    auditors: "Halborn"
 }
 
 use solana_program::{

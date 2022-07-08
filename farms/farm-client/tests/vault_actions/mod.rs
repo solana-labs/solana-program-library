@@ -6,7 +6,7 @@ use {
 };
 
 const MAX_SOL_BALANCE_TO_USE: f64 = 0.1;
-const INITIAL_CRANK_DELAY: u64 = 400;
+const INITIAL_CRANK_DELAY: u64 = 600;
 const CRANK_INTERVAL: u64 = 100;
 
 pub fn do_swap(client: &FarmClient, keypair: &Keypair, swap: &Swap) {
@@ -18,7 +18,7 @@ pub fn do_swap(client: &FarmClient, keypair: &Keypair, swap: &Swap) {
     } else {
         swap.amount
     };
-    if amount < 0.0002 {
+    if amount < 0.0003 {
         return;
     }
     println!(

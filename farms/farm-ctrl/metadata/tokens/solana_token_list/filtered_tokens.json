@@ -3668,13 +3668,14 @@
       "tags": ["saber-mkt-btc", "wormhole-v2"]
     },
     {
-      "chainId": 101,
-      "address": "AUL7w7AwMEWRemqUP2Z14aEkPPAT8NDpnRoAPCUS2k5Q",
       "symbol": "IOU",
-      "name": "IOweYou",
-      "decimals": 0,
-      "logoURI": "https://raw.githubusercontent.com/xMaxix/Crypto/main/logo.png",
-      "tags": ["social-token"]
+      "name": "IOU Coin",
+      "logoURI": "",
+      "address": "iouQcQBAiEXe6cKLS85zmZxUqaCqBdeHFpqKoSz615u",
+      "decimals": 6,
+      "chainId": 101,
+      "tags": [],
+      "extensions": {}
     },
     {
       "address": "Ez2zVjw85tZan1ycnJ5PywNNxR6Gm4jbXQtZKyQNu3Lv",
