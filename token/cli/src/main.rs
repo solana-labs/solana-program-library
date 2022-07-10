@@ -305,15 +305,6 @@ pub fn signers_of(
     }
 }
 
-fn check_decimals(  
-    decimals: u8,
-) -> bool {
-    let d = decimals;
-    if d> 20 {
-    return true;
-    };
-    return false;
-}
 
 #[allow(clippy::too_many_arguments)]
 fn command_create_token(
@@ -957,20 +948,13 @@ fn command_burn(
 fn check_if_amount_overflows_supply(  
     config: &Config,
     token: Pubkey,
-    ui_amount : u64,
+    amount : u64,
 ) -> bool {
     let supply = config.rpc_client.get_token_supply(&token).unwrap();
-    let amount = ui_amount;
-    if amount > u64::MAX {
+    let amount = amount;
+    let supply: u64 = supply.amount.parse().unwrap();
+    if amount.checked_add(supply).is_none() {
         return true;
-    };
-    let supply_val = supply.amount;
-    let supply_u64: u64 = supply_val.parse().unwrap();
-    if amount.checked_add(supply_u64).is_none() {
-        return true;
-    };
-    if amount + supply_u64 > u64::MAX {
-    return true;
     };
     return false;
 }
@@ -1001,12 +985,8 @@ fn command_mint(
     if ui_amount>max_supply {
         println!("WARNING: Max supply will be limited to {}",max_supply);
     };
-    let amount = if decimals==0 {
-        ui_amount
-    }
-    else {
-        spl_token::ui_amount_to_amountmint(ui_amount, decimals)
-    };
+    let amount = spl_token::ui_amount_to_amountmint(ui_amount, decimals);
+
     let instructions = if use_unchecked_instruction {
         vec![mint_to(
             &config.program_id,
@@ -2754,11 +2734,7 @@ fn process_command(
                 get_signer(arg_matches, "token_keypair", &mut wallet_manager)
                     .unwrap_or_else(new_throwaway_signer);
             bulk_signers.push(token_signer);
-            if check_decimals(decimals) {
-                return Err("Error in decimals function".to_string().into());
-            }
-            else {
-                command_create_token(
+            command_create_token(
                     config,
                     decimals,
                     token,
@@ -2766,8 +2742,8 @@ fn process_command(
                     arg_matches.is_present("enable_freeze"),
                     memo,
                     bulk_signers,
-                )
-            }
+            )
+            
         }
         (CommandName::CreateAccount, arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
