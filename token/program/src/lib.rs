@@ -22,7 +22,8 @@ pub fn ui_amount_to_amount(ui_amount: f64, decimals: u8) -> u64 {
     (ui_amount * 10_usize.pow(decimals as u32) as f64) as u64
 }
 
-/// test
+/// Convert the UI representation of a token amount (using the decimals field defined in its mint)
+/// to the raw amount. Used for ui_amount as u64 to have precision upto 20 digits
 pub fn ui_amount_to_amountmint(ui_amount: u64, decimals: u8) -> u64 {
     (ui_amount * 10_usize.pow(decimals as u32) as u64) as u64
 }
