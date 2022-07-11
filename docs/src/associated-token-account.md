@@ -21,7 +21,7 @@ transfer, for a token transfer to succeed the recipient must have a token
 account with the compatible mint already, and somebody needs to fund that token
 account. If the recipient must fund it first, it makes things like airdrop
 campaigns difficult and just generally increases the friction of token
-transfers. AToken allows the sender to create the associated token account for
+transfers. The Associated Token Account program allows the sender to create the associated token account for
 the receiver, so the token transfer just works.
 
 See the [SPL Token](token.mdx) program for more information about tokens in
