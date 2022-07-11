@@ -1,8 +1,10 @@
+//! Various utilities for Gummyroll trees
+//!
+use crate::state::CandyWrapper;
 use anchor_lang::{
     prelude::*,
     solana_program::{msg, program::invoke, program_error::ProgramError},
 };
-use crate::state::CandyWrapper;
 use bytemuck::{Pod, PodCastError};
 use concurrent_merkle_tree::merkle_roll::MerkleRoll;
 use std::any::type_name;

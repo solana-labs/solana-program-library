@@ -1,3 +1,21 @@
+//! Gummyroll is an on-chain Merkle tree that supports concurrent writes.
+//!
+//! A buffer of proof-like changelogs is stored on-chain that allow multiple proof-based writes to succeed within the same slot.
+//! This is accomplished by fast-forwarding out-of-date (or possibly invalid) proofs based on information stored in the changelogs.
+//! See a copy of the whitepaper [here](https://google.com)
+//!
+//! While Gummyroll trees can generically store arbitrary information,
+//! one exemplified use-case is the [Bubblegum](https://google.com) contract,
+//! which uses Gummyroll trees to store encoded information about NFTs.
+//! The use of Gummyroll within Bubblegum allows for:
+//! - up to 1 billion NFTs to be stored in a single account on-chain (10,000x decrease in on-chain cost)
+//! - (by default) up to 1024 concurrent updates per slot (this number is not correct)
+//!
+//! Operationally, Gummyroll trees **must** be supplemented by off-chain indexers to cache information
+//! about leafs and to power an API that can supply up-to-date proofs to allow updates to the tree.
+//! All modifications to Gummyroll trees are settled on the Solana ledger via instructions against the Gummyroll contract.
+//! A production-ready indexer (Plerkle) can be found in the [Metaplex program library](https://google.com)
+
 use anchor_lang::{
     emit,
     prelude::*,
@@ -19,47 +37,78 @@ pub use concurrent_merkle_tree::{error::CMTError, merkle_roll::MerkleRoll, state
 
 declare_id!("GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD");
 
+/// Context for initializing a new Merkle tere
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(zero)]
     /// CHECK: This account will be zeroed out, and the size will be validated
     pub merkle_roll: UncheckedAccount<'info>,
+
+    /// Authority that validates the content of the trees.
+    /// Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs.
     pub authority: Signer<'info>,
+
+    /// Authority that is responsible for signing for new additions to the tree.
     /// CHECK: unsafe
     pub append_authority: UncheckedAccount<'info>,
+
+    /// Program used to emit changelogs as instruction data.
+    /// See `WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh`
     pub candy_wrapper: Program<'info, CandyWrapper>,
 }
 
+/// Context for inserting, appending, or replacing a leaf in the tree
 #[derive(Accounts)]
 pub struct Modify<'info> {
     #[account(mut)]
     /// CHECK: This account is validated in the instruction
     pub merkle_roll: UncheckedAccount<'info>,
+
+    /// Authority that validates the content of the trees.
+    /// Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs.
     pub authority: Signer<'info>,
+
+    /// Program used to emit changelogs as instruction data.
+    /// See `WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh`
     pub candy_wrapper: Program<'info, CandyWrapper>,
 }
 
+/// Context for appending a new leaf to the tree
 #[derive(Accounts)]
 pub struct Append<'info> {
     #[account(mut)]
     /// CHECK: This account is validated in the instruction
     pub merkle_roll: UncheckedAccount<'info>,
+
+    /// Authority that validates the content of the trees.
+    /// Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs.
     pub authority: Signer<'info>,
+
+    /// Authority that is responsible for signing for new additions to the tree.
     pub append_authority: Signer<'info>,
+
+    /// Program used to emit changelogs as instruction data.
+    /// See `WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh`
     pub candy_wrapper: Program<'info, CandyWrapper>,
 }
 
+/// Context for validating a provided proof against the Merkle tree.
+/// Throws an error if provided proof is invalid.
 #[derive(Accounts)]
 pub struct VerifyLeaf<'info> {
     /// CHECK: This account is validated in the instruction
     pub merkle_roll: UncheckedAccount<'info>,
 }
 
+/// Context for transferring `authority` or `append_authority`
 #[derive(Accounts)]
 pub struct TransferAuthority<'info> {
     #[account(mut)]
     /// CHECK: This account is validated in the instruction
     pub merkle_roll: UncheckedAccount<'info>,
+
+    /// Authority that validates the content of the trees.
+    /// Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs.
     pub authority: Signer<'info>,
 }
 
@@ -265,8 +314,8 @@ macro_rules! merkle_roll_apply_fn {
 pub mod gummyroll {
     use super::*;
 
-    /// Creates a new merkle tree with maximum leaf capacity of power(2, max_depth)
-    /// and a minimum concurrency limit of max_buffer_size.
+    /// Creates a new merkle tree with maximum leaf capacity of `power(2, max_depth)`
+    /// and a minimum concurrency limit of `max_buffer_size`.
     ///
     /// Concurrency limit represents the # of replace instructions that can be successfully
     /// executed with proofs dated for the same root. For example, a maximum buffer size of 1024
@@ -402,8 +451,8 @@ pub mod gummyroll {
         update_canopy(canopy_bytes, header.max_depth, Some(change_log))
     }
 
-    /// Transfers authority or append authority
-    /// requires `authority` to sign
+    /// Transfers `authority` or `append_authority`.
+    /// Requires `authority` to sign
     pub fn transfer_authority(
         ctx: Context<TransferAuthority>,
         new_authority: Option<Pubkey>,
@@ -437,7 +486,8 @@ pub mod gummyroll {
         Ok(())
     }
 
-    /// If proof is invalid, error is thrown
+    /// Verifies a provided proof and leaf.
+    /// If invalid, throws an error.
     pub fn verify_leaf(
         ctx: Context<VerifyLeaf>,
         root: [u8; 32],
@@ -461,7 +511,7 @@ pub mod gummyroll {
         Ok(())
     }
 
-    /// This instruction allows the tree's mint_authority to append a new leaf to the tree
+    /// This instruction allows the tree's `append_authority` to append a new leaf to the tree
     /// without having to supply a valid proof.
     ///
     /// This is accomplished by using the rightmost_proof of the merkle roll to construct a
