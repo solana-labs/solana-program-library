@@ -59,8 +59,10 @@ export type DecompressV1InstructionAccounts = {
   mintAuthority: web3.PublicKey
   metadata: web3.PublicKey
   masterEdition: web3.PublicKey
+  systemProgram?: web3.PublicKey
   sysvarRent: web3.PublicKey
   tokenMetadataProgram: web3.PublicKey
+  tokenProgram?: web3.PublicKey
   associatedTokenProgram: web3.PublicKey
 }
 
@@ -80,92 +82,78 @@ export const decompressV1InstructionDiscriminator = [
  */
 export function createDecompressV1Instruction(
   accounts: DecompressV1InstructionAccounts,
-  args: DecompressV1InstructionArgs
+  args: DecompressV1InstructionArgs,
+  programId = new web3.PublicKey('BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY')
 ) {
-  const {
-    voucher,
-    owner,
-    tokenAccount,
-    mint,
-    mintAuthority,
-    metadata,
-    masterEdition,
-    sysvarRent,
-    tokenMetadataProgram,
-    associatedTokenProgram,
-  } = accounts
-
   const [data] = decompressV1Struct.serialize({
     instructionDiscriminator: decompressV1InstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: voucher,
+      pubkey: accounts.voucher,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: owner,
+      pubkey: accounts.owner,
       isWritable: true,
       isSigner: true,
     },
     {
-      pubkey: tokenAccount,
+      pubkey: accounts.tokenAccount,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: mint,
+      pubkey: accounts.mint,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: mintAuthority,
+      pubkey: accounts.mintAuthority,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: metadata,
+      pubkey: accounts.metadata,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: masterEdition,
+      pubkey: accounts.masterEdition,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: web3.SystemProgram.programId,
+      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: sysvarRent,
+      pubkey: accounts.sysvarRent,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: tokenMetadataProgram,
+      pubkey: accounts.tokenMetadataProgram,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: splToken.TOKEN_PROGRAM_ID,
+      pubkey: accounts.tokenProgram ?? splToken.TOKEN_PROGRAM_ID,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: associatedTokenProgram,
+      pubkey: accounts.associatedTokenProgram,
       isWritable: false,
       isSigner: false,
     },
   ]
 
   const ix = new web3.TransactionInstruction({
-    programId: new web3.PublicKey(
-      'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY'
-    ),
+    programId,
     keys,
     data,
   })

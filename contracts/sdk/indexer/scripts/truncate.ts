@@ -32,7 +32,7 @@ import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 import fetch from "node-fetch";
 import { keccak_256 } from 'js-sha3';
 import { BinaryWriter } from 'borsh';
-import { createAddConfigLinesInstruction, createInitializeGumballMachineIxs, decodeGumballMachine, EncodeMethod, GumballMachine, gumballMachineHeaderBeet, InitializeGumballMachineInstructionArgs } from "../../gumball-machine";
+import { createAddConfigLinesInstruction, createInitializeGumballMachineIxs, decodeGumballMachine, EncodeMethod, GumballMachine, gumballMachineHeaderBeet, InitializeGumballMachineInstructionArgs, initializeGumballMachineIndices } from "../../gumball-machine";
 import { getWillyWonkaPDAKey } from "../../gumball-machine";
 import { createDispenseNFTForSolIx } from "../../gumball-machine";
 import { loadPrograms } from "../indexer/utils";
@@ -271,6 +271,7 @@ async function testWithBubblegumTransfers(
 
 async function initializeGumballMachine(
     payer: Keypair,
+    authority: Keypair,
     gumballMachineAcctKeypair: Keypair,
     gumballMachineAcctSize: number,
     merkleRollKeypair: Keypair,
@@ -297,6 +298,7 @@ async function initializeGumballMachine(
         [payer, gumballMachineAcctKeypair, merkleRollKeypair],
         true
     );
+    await initializeGumballMachineIndices(gumballMachine.provider, gumballMachineInitArgs.maxItems, authority, gumballMachineAcctKeypair.publicKey);
 }
 
 async function addConfigLines(
@@ -410,6 +412,7 @@ async function truncateWithGumball(
 
     if (!(await connection.getAccountInfo(merkleRollKeypair.publicKey, "confirmed"))) {
         await initializeGumballMachine(
+            creatorAddress,
             creatorAddress,
             gumballMachineAcctKeypair,
             GUMBALL_MACHINE_ACCT_SIZE,

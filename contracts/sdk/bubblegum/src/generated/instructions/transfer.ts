@@ -80,64 +80,53 @@ export const transferInstructionDiscriminator = [
  */
 export function createTransferInstruction(
   accounts: TransferInstructionAccounts,
-  args: TransferInstructionArgs
+  args: TransferInstructionArgs,
+  programId = new web3.PublicKey('BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY')
 ) {
-  const {
-    authority,
-    owner,
-    delegate,
-    newOwner,
-    candyWrapper,
-    gummyrollProgram,
-    merkleSlab,
-  } = accounts
-
   const [data] = transferStruct.serialize({
     instructionDiscriminator: transferInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: authority,
+      pubkey: accounts.authority,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: owner,
+      pubkey: accounts.owner,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: delegate,
+      pubkey: accounts.delegate,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: newOwner,
+      pubkey: accounts.newOwner,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: candyWrapper,
+      pubkey: accounts.candyWrapper,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: gummyrollProgram,
+      pubkey: accounts.gummyrollProgram,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: merkleSlab,
+      pubkey: accounts.merkleSlab,
       isWritable: true,
       isSigner: false,
     },
   ]
 
   const ix = new web3.TransactionInstruction({
-    programId: new web3.PublicKey(
-      'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY'
-    ),
+    programId,
     keys,
     data,
   })

@@ -80,64 +80,53 @@ export const delegateInstructionDiscriminator = [
  */
 export function createDelegateInstruction(
   accounts: DelegateInstructionAccounts,
-  args: DelegateInstructionArgs
+  args: DelegateInstructionArgs,
+  programId = new web3.PublicKey('BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY')
 ) {
-  const {
-    authority,
-    owner,
-    previousDelegate,
-    newDelegate,
-    candyWrapper,
-    gummyrollProgram,
-    merkleSlab,
-  } = accounts
-
   const [data] = delegateStruct.serialize({
     instructionDiscriminator: delegateInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: authority,
+      pubkey: accounts.authority,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: owner,
+      pubkey: accounts.owner,
       isWritable: false,
       isSigner: true,
     },
     {
-      pubkey: previousDelegate,
+      pubkey: accounts.previousDelegate,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: newDelegate,
+      pubkey: accounts.newDelegate,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: candyWrapper,
+      pubkey: accounts.candyWrapper,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: gummyrollProgram,
+      pubkey: accounts.gummyrollProgram,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: merkleSlab,
+      pubkey: accounts.merkleSlab,
       isWritable: true,
       isSigner: false,
     },
   ]
 
   const ix = new web3.TransactionInstruction({
-    programId: new web3.PublicKey(
-      'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY'
-    ),
+    programId,
     keys,
     data,
   })
