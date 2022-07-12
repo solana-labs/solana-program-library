@@ -382,11 +382,15 @@ pub enum StakePoolInstruction {
 
     /// Create token metadata for the stake-pool token in the
     /// metaplex-token program
-    ///
-    /// 0. `[w]` Stake pool
-    /// 1. `[]` Stake pool withdraw authority
-    /// 2. `[w]` Pool token mint account
-    /// 3. `[w]` Payer account
+    /// 0. `[]` Stake pool
+    /// 1. `[]` Manager
+    /// 2. `[]` Stake pool withdraw authority
+    /// 3. `[]` Pool token mint account
+    /// 4. `[]` Payer for creation of token metadata account
+    /// 5. `[w]` Token metadata account
+    /// 6. `[]` Metadata program id
+    /// 7. `[]` System program id
+    /// 8. `[]` Rent sysvar
     CreateTokenMetadata {
         #[allow(dead_code)]
         /// Token name
@@ -401,10 +405,11 @@ pub enum StakePoolInstruction {
     /// Update token metadata for the stake-pool token in the
     /// metaplex-token program
     ///
-    /// 0. `[w]` Stake pool
-    /// 1. `[]` Stake pool withdraw authority
-    /// 2. `[w]` Pool token mint account
-    /// 3. `[w]` Payer account
+    /// 0. `[]` Stake pool
+    /// 1. `[]` Manager
+    /// 2. `[]` Stake pool withdraw authority
+    /// 3. `[w]` Token metadata account
+    /// 4. `[]` Metadata program id
     UpdateTokenMetadata {
         #[allow(dead_code)]
         /// Token name
