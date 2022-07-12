@@ -3835,7 +3835,8 @@ mod tests {
                 "10",
                 &delegate.pubkey().to_string(),
             ],
-        ).unwrap();
+        )
+        .unwrap();
 
         let ui_account = config
             .rpc_client
