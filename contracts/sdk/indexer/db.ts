@@ -741,7 +741,9 @@ export class NFTDatabaseConnection {
     }
   }
 
-  async getAssetsForOwner(owner: string, treeId?: string) {
+  async getAssetsForOwner(owner: string, treeId?: string, limit?: number, offset?: number) {
+    const limitClause = limit ? `LIMIT ${limit}` : "";
+    const offsetClause = offset ? `OFFSET ${offset}` : "";
     const query = `
       SELECT
         ls.tree_id as treeId,
@@ -775,6 +777,9 @@ export class NFTDatabaseConnection {
       JOIN nft n   
       ON ls.asset_id = n.asset_id
       WHERE owner = ?
+      ORDER BY n.name
+      ${limitClause}
+      ${offsetClause}
       `;
 
     let rawNftMetadata;

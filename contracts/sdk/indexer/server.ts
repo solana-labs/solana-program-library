@@ -57,7 +57,7 @@ app.get("/proof", async (req, res) => {
 
 app.get("/assets", async (req, res) => {
   const owner = req.query.owner;
-  const assets = await nftDb.getAssetsForOwner(owner, req.query.treeId);
+  const assets = await nftDb.getAssetsForOwner(owner, req.query.treeId, req.query.limit, req.query.offset);
   res.send(JSON.stringify(assets));
 });
 
