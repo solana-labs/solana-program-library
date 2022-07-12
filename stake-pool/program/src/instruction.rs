@@ -1,6 +1,11 @@
 //! Instruction types
 
 #![allow(clippy::too_many_arguments)]
+
+use crate::AUTHORITY_WITHDRAW;
+use mpl_token_metadata::state::PREFIX;
+use solana_program::info;
+use std::str::FromStr;
 use {
     crate::{
         find_deposit_authority_program_address, find_stake_program_address,
@@ -374,6 +379,43 @@ pub enum StakePoolInstruction {
     ///  11. `[]` Token program id
     ///  12. `[s]` (Optional) Stake pool sol withdraw authority
     WithdrawSol(u64),
+
+    /// Create token metadata for the stake-pool token in the
+    /// metaplex-token program
+    ///
+    /// 0. `[w]` Stake pool
+    /// 1. `[]` Stake pool withdraw authority
+    /// 2. `[w]` Pool token mint account
+    /// 3. `[w]` Payer account
+    CreateTokenMetadata {
+        #[allow(dead_code)]
+        /// Token name
+        name: String,
+        #[allow(dead_code)]
+        /// Token symbol e.g. stkSOL
+        symbol: String,
+        /// URI of the uploaded metadata of the spl-token
+        #[allow(dead_code)]
+        uri: String,
+    },
+    /// Update token metadata for the stake-pool token in the
+    /// metaplex-token program
+    ///
+    /// 0. `[w]` Stake pool
+    /// 1. `[]` Stake pool withdraw authority
+    /// 2. `[w]` Pool token mint account
+    /// 3. `[w]` Payer account
+    UpdateTokenMetadata {
+        #[allow(dead_code)]
+        /// Token name
+        name: String,
+        #[allow(dead_code)]
+        /// Token symbol e.g. stkSOL
+        symbol: String,
+        /// URI of the uploaded metadata of the spl-token
+        #[allow(dead_code)]
+        uri: String,
+    },
 }
 
 /// Creates an 'initialize' instruction.
@@ -1272,6 +1314,91 @@ pub fn set_funding_authority(
         program_id: *program_id,
         accounts,
         data: StakePoolInstruction::SetFundingAuthority(funding_type)
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+/// Creates an instruction to update metadata in the mpl token metadata program account for
+/// the pool token
+pub fn update_token_metadata(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    pool_mint: &Pubkey,
+    name: String,
+    symbol: String,
+    uri: String,
+) -> Instruction {
+    let (stake_pool_withdraw_authority, _) =
+        Pubkey::find_program_address(&[&stake_pool.to_bytes(), AUTHORITY_WITHDRAW], &program_id);
+
+    let mpl_token_metadata_program_id = mpl_token_metadata::id();
+    let metadata_seeds = &[
+        PREFIX.as_bytes(),
+        mpl_token_metadata_program_id.as_ref(),
+        pool_mint.as_ref(),
+    ];
+    let (token_metadata, _) =
+        Pubkey::find_program_address(metadata_seeds, &mpl_token_metadata_program_id);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new_readonly(*manager, true),
+        AccountMeta::new_readonly(stake_pool_withdraw_authority, false),
+        AccountMeta::new(token_metadata, false),
+        AccountMeta::new_readonly(mpl_token_metadata_program_id, false),
+    ];
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::UpdateTokenMetadata { name, symbol, uri }
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+/// Creates an instruction to create metadata using the mpl token metadata program for
+/// the pool token
+pub fn create_token_metadata(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    pool_mint: &Pubkey,
+    payer: &Pubkey,
+    name: String,
+    symbol: String,
+    uri: String,
+) -> Instruction {
+    let (stake_pool_withdraw_authority, _) =
+        Pubkey::find_program_address(&[&stake_pool.to_bytes(), AUTHORITY_WITHDRAW], &program_id);
+
+    let mpl_token_metadata_program_id = mpl_token_metadata::id();
+    let metadata_seeds = &[
+        PREFIX.as_bytes(),
+        mpl_token_metadata_program_id.as_ref(),
+        pool_mint.as_ref(),
+    ];
+    let (token_metadata, _) =
+        Pubkey::find_program_address(metadata_seeds, &mpl_token_metadata_program_id);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new_readonly(*manager, true),
+        AccountMeta::new_readonly(stake_pool_withdraw_authority, false),
+        AccountMeta::new_readonly(*pool_mint, false),
+        AccountMeta::new_readonly(*payer, false),
+        AccountMeta::new(token_metadata, false),
+        AccountMeta::new_readonly(mpl_token_metadata_program_id, false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+    ];
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::CreateTokenMetadata { name, symbol, uri }
             .try_to_vec()
             .unwrap(),
     }
