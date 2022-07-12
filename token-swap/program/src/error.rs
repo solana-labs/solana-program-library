@@ -1,7 +1,9 @@
 //! Error types
 
 use num_derive::FromPrimitive;
-use solana_program::{decode_error::DecodeError, program_error::ProgramError};
+use solana_program::{
+    decode_error::DecodeError, program_error::ProgramError, program_error::ProgramError::Custom,
+};
 use thiserror::Error;
 
 /// Errors that may be returned by the TokenSwap program.
@@ -102,6 +104,47 @@ pub enum SwapError {
     /// The operation cannot be performed on the given curve
     #[error("The operation cannot be performed on the given curve")]
     UnsupportedCurveOperation,
+    /// The invocation to token program resulted in: Insufficient funds for the operation requested
+    #[error("Token Program Error: Insufficent funds")]
+    TokenProgramErrorInsufficientFunds,
+    /// The invocation to token program resulted in: Account not associated with this Mint
+    #[error("Token Program Error: Account not associated with this Mint")]
+    TokenProgramErrorMintMismatch,
+
+    // 30.
+    /// The invocation to token program resulted in: Owner does not match
+    #[error("Token Program Error: Owner does not match")]
+    TokenProgramErrorOwnerMismatch,
+    /// The invocation to token program resulted in: This token's supply is fixed and new tokens cannot be minted
+    #[error("Token Program Error: Fixed supply")]
+    TokenProgramErrorFixedSupply,
+    /// The invocation to token program resulted in: Instruction does not support native tokens
+    #[error("Token Program Error: Instruction does not support native tokens")]
+    TokenProgramErrorNativeNotSupported,
+    /// The invocation to token program resulted in: State is invalid for requested operation
+    #[error("Token Program Error: State is invalid for requested operation")]
+    TokenProgramErrorInvalidState,
+    /// The invocation to token program resulted in: Account is frozen; all account operations will fail
+    #[error("Token Program Error: Account is frozen")]
+    TokenProgramErrorAccountFrozen,
+
+    // 35.
+    /// The invocation to token program resulted in: Mint decimals mismatch between the client and mint
+    #[error("Token Program Error: The provided decimals value different from the Mint decimals")]
+    TokenProgramErrorMintDecimalsMismatch,
+    /// The invocation to token program resulted in:
+    /// Mint required for this account to transfer tokens, use `transfer_checked` or `transfer_checked_with_fee`
+    #[error("Token Program Error: Mint required for this account to transfer tokens, use `transfer_checked` or `transfer_checked_with_fee`")]
+    TokenProgramErrorMintRequiredForTransfer,
+    /// The invocation to token program resulted in: Calculated fee does not match expected fee
+    #[error("Token Program Error: Calculated fee does not match expected fee")]
+    TokenProgramErrorFeeMismatch,
+    /// The invocation to token program resulted in: Transfer is disabled for this mint
+    #[error("Token Program Error: Transfer is disabled for this mint")]
+    TokenProgramErrorNonTransferable,
+    /// The invocation to token program resulted in: Non-transferable tokens can't be minted to an account without immutable ownership
+    #[error("Token Program Error: Non-transferable tokens can't be minted to an account without immutable ownership")]
+    TokenProgramErrorNonTransferableNeedsImmutableOwnership,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {
@@ -111,5 +154,26 @@ impl From<SwapError> for ProgramError {
 impl<T> DecodeError<T> for SwapError {
     fn type_of() -> &'static str {
         "Swap Error"
+    }
+}
+
+/// Convert the custom errors returned by calls to the token program into SwapErrors,
+/// so that transparent error information can be displayed to the caller
+/// Warning: Use only on calls to the token program!
+pub fn convert_token_error_to_swap_error(e: ProgramError) -> SwapError {
+    match e {
+        Custom(1) => SwapError::TokenProgramErrorInsufficientFunds,
+        Custom(3) => SwapError::TokenProgramErrorMintMismatch,
+        Custom(4) => SwapError::TokenProgramErrorOwnerMismatch,
+        Custom(5) => SwapError::TokenProgramErrorFixedSupply,
+        Custom(10) => SwapError::TokenProgramErrorNativeNotSupported,
+        Custom(13) => SwapError::TokenProgramErrorInvalidState,
+        Custom(17) => SwapError::TokenProgramErrorAccountFrozen,
+        Custom(18) => SwapError::TokenProgramErrorMintDecimalsMismatch,
+        Custom(31) => SwapError::TokenProgramErrorMintRequiredForTransfer,
+        Custom(32) => SwapError::TokenProgramErrorFeeMismatch,
+        Custom(37) => SwapError::TokenProgramErrorNonTransferable,
+        Custom(38) => SwapError::TokenProgramErrorNonTransferableNeedsImmutableOwnership,
+        _ => SwapError::InvalidInstruction, // Note: This should be unreachable provided Token Program Transfer/Burn/Mint does not change. Could also make a new genreal CPI SwapError variant
     }
 }

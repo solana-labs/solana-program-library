@@ -7,7 +7,7 @@ use crate::{
         calculator::{RoundDirection, TradeDirection},
         fees::Fees,
     },
-    error::SwapError,
+    error::{convert_token_error_to_swap_error, SwapError},
     instruction::{
         DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Initialize, Swap,
         SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
@@ -95,6 +95,10 @@ impl Processor {
             &[burn_account, mint, authority, token_program],
             signers,
         )
+        .map_err(|e| {
+            msg!("Error from Token Program Invocation: {}", format!("{}", &e));
+            convert_token_error_to_swap_error(e).into()
+        })
     }
 
     /// Issue a spl_token `MintTo` instruction.
@@ -119,7 +123,10 @@ impl Processor {
             amount,
         )?;
 
-        invoke_signed(&ix, &[mint, destination, authority, token_program], signers)
+        invoke_signed(&ix, &[mint, destination, authority, token_program], signers).map_err(|e| {
+            msg!("Error from Token Program Invocation: {}", format!("{}", &e));
+            convert_token_error_to_swap_error(e).into()
+        })
     }
 
     /// Issue a spl_token `Transfer` instruction.
@@ -148,6 +155,10 @@ impl Processor {
             &[source, destination, authority, token_program],
             signers,
         )
+        .map_err(|e| {
+            msg!("Error from Token Program Invocation: {}", format!("{}", &e));
+            convert_token_error_to_swap_error(e).into()
+        })
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1133,6 +1144,42 @@ impl PrintProgramError for SwapError {
             SwapError::UnsupportedCurveOperation => {
                 msg!("Error: The operation cannot be performed on the given curve")
             }
+            SwapError::TokenProgramErrorInsufficientFunds => {
+                msg!("Error: Call to Token Program resulted in Token Program Error: Insufficient Funds")
+            }
+            SwapError::TokenProgramErrorMintMismatch => {
+                msg!("Error: Call to Token Program resulted in Token Program Error: Account not associated with this Mint")
+            }
+            SwapError::TokenProgramErrorOwnerMismatch => {
+                msg!("Error: Call to Token Program resulted in Token Program Error: Owner does not match")
+            }
+            SwapError::TokenProgramErrorFixedSupply => {
+                msg!("Error: Call to Token Program resulted in Token Program Error: Fixed supply")
+            }
+            SwapError::TokenProgramErrorNativeNotSupported => {
+                msg!("Error: Call to Token Program resulted in Token Program Error: Instruction does not support native tokens")
+            }
+            SwapError::TokenProgramErrorInvalidState => {
+                msg!("Error: Call to Token Program resulted in Token Program Error: State is invalid for requested operation")
+            }
+            SwapError::TokenProgramErrorAccountFrozen => {
+                msg!("Error: Call to Token Program resulted in Token Program Error: Account is frozen")
+            }
+            SwapError::TokenProgramErrorMintDecimalsMismatch => {
+                msg!("Error: Call to Token Program resulted in Token Program Error: The provided decimals value different from the Mint decimals")
+            }
+            SwapError::TokenProgramErrorMintRequiredForTransfer => {
+                msg!("Error: Call to Token Program resulted in Token Program Error: Mint required for this account to transfer tokens, use `transfer_checked` or `transfer_checked_with_fee`")
+            }
+            SwapError::TokenProgramErrorFeeMismatch => {
+                msg!("Error: Call to Token Program resulted in Token Program Error: Calculated fee does not match expected fee")
+            }
+            SwapError::TokenProgramErrorNonTransferable => {
+                msg!("Error: Call to Token Program resulted in Token Program Error: Transfer is disabled for this mint")
+            }
+            SwapError::TokenProgramErrorNonTransferableNeedsImmutableOwnership => {
+                msg!("Error: Call to Token Program resulted in Token Program Error: Non-transferable tokens can't be minted to an account without immutable ownership")
+            }
         }
     }
 }
@@ -1161,12 +1208,8 @@ mod tests {
     };
     use solana_program::{instruction::Instruction, program_stubs, rent::Rent};
     use solana_sdk::account::{create_account_for_test, create_is_signer_account_infos, Account};
-    use spl_token::{
-        error::TokenError,
-        instruction::{
-            approve, initialize_account, initialize_mint, mint_to, revoke, set_authority,
-            AuthorityType,
-        },
+    use spl_token::instruction::{
+        approve, initialize_account, initialize_mint, mint_to, revoke, set_authority, AuthorityType,
     };
     use std::sync::Arc;
 
@@ -2943,7 +2986,7 @@ mod tests {
                 0,
             );
             assert_eq!(
-                Err(TokenError::InsufficientFunds.into()),
+                Err(SwapError::TokenProgramErrorInsufficientFunds.into()),
                 accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_a_key,
@@ -2976,7 +3019,7 @@ mod tests {
                 0,
             );
             assert_eq!(
-                Err(TokenError::InsufficientFunds.into()),
+                Err(SwapError::TokenProgramErrorInsufficientFunds.into()),
                 accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_a_key,
@@ -3003,7 +3046,7 @@ mod tests {
                 mut pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             assert_eq!(
-                Err(TokenError::MintMismatch.into()),
+                Err(SwapError::TokenProgramErrorMintMismatch.into()),
                 accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_b_key,
@@ -3038,7 +3081,7 @@ mod tests {
                 mut _pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             assert_eq!(
-                Err(TokenError::MintMismatch.into()),
+                Err(SwapError::TokenProgramErrorMintMismatch.into()),
                 accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_a_key,
@@ -3066,7 +3109,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             let user_transfer_authority_key = Pubkey::new_unique();
             assert_eq!(
-                Err(TokenError::OwnerMismatch.into()),
+                Err(SwapError::TokenProgramErrorOwnerMismatch.into()),
                 do_process_instruction(
                     deposit_all_token_types(
                         &SWAP_PROGRAM_ID,
@@ -3557,7 +3600,7 @@ mod tests {
                 to_u64(withdraw_amount).unwrap() / 2u64,
             );
             assert_eq!(
-                Err(TokenError::InsufficientFunds.into()),
+                Err(SwapError::TokenProgramErrorInsufficientFunds.into()),
                 accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
@@ -3590,7 +3633,7 @@ mod tests {
                 withdraw_amount.try_into().unwrap(),
             );
             assert_eq!(
-                Err(TokenError::MintMismatch.into()),
+                Err(SwapError::TokenProgramErrorMintMismatch.into()),
                 accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
@@ -3637,7 +3680,7 @@ mod tests {
                 withdraw_amount.try_into().unwrap(),
             );
             assert_eq!(
-                Err(TokenError::MintMismatch.into()),
+                Err(SwapError::TokenProgramErrorMintMismatch.into()),
                 accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &wrong_token_a_key,
@@ -3724,7 +3767,7 @@ mod tests {
             );
             let user_transfer_authority_key = Pubkey::new_unique();
             assert_eq!(
-                Err(TokenError::OwnerMismatch.into()),
+                Err(SwapError::TokenProgramErrorOwnerMismatch.into()),
                 do_process_instruction(
                     withdraw_all_token_types(
                         &SWAP_PROGRAM_ID,
@@ -4352,7 +4395,7 @@ mod tests {
                 0,
             );
             assert_eq!(
-                Err(TokenError::InsufficientFunds.into()),
+                Err(SwapError::TokenProgramErrorInsufficientFunds.into()),
                 accounts.deposit_single_token_type_exact_amount_in(
                     &depositor_key,
                     &token_a_key,
@@ -4364,7 +4407,7 @@ mod tests {
                 )
             );
             assert_eq!(
-                Err(TokenError::InsufficientFunds.into()),
+                Err(SwapError::TokenProgramErrorInsufficientFunds.into()),
                 accounts.deposit_single_token_type_exact_amount_in(
                     &depositor_key,
                     &token_b_key,
@@ -4388,7 +4431,7 @@ mod tests {
                 mut _pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             assert_eq!(
-                Err(TokenError::MintMismatch.into()),
+                Err(SwapError::TokenProgramErrorMintMismatch.into()),
                 accounts.deposit_single_token_type_exact_amount_in(
                     &depositor_key,
                     &token_a_key,
@@ -4413,7 +4456,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             let user_transfer_authority_key = Pubkey::new_unique();
             assert_eq!(
-                Err(TokenError::OwnerMismatch.into()),
+                Err(SwapError::TokenProgramErrorOwnerMismatch.into()),
                 do_process_instruction(
                     deposit_single_token_type_exact_amount_in(
                         &SWAP_PROGRAM_ID,
@@ -4868,7 +4911,7 @@ mod tests {
                 maximum_pool_token_amount / 1000,
             );
             assert_eq!(
-                Err(TokenError::InsufficientFunds.into()),
+                Err(SwapError::TokenProgramErrorInsufficientFunds.into()),
                 accounts.withdraw_single_token_type_exact_amount_out(
                     &withdrawer_key,
                     &pool_key,
@@ -4898,7 +4941,7 @@ mod tests {
                 maximum_pool_token_amount,
             );
             assert_eq!(
-                Err(TokenError::MintMismatch.into()),
+                Err(SwapError::TokenProgramErrorMintMismatch.into()),
                 accounts.withdraw_single_token_type_exact_amount_out(
                     &withdrawer_key,
                     &token_a_key,
@@ -4979,7 +5022,7 @@ mod tests {
             );
             let user_transfer_authority_key = Pubkey::new_unique();
             assert_eq!(
-                Err(TokenError::OwnerMismatch.into()),
+                Err(SwapError::TokenProgramErrorOwnerMismatch.into()),
                 do_process_instruction(
                     withdraw_single_token_type_exact_amount_out(
                         &SWAP_PROGRAM_ID,
@@ -5990,7 +6033,7 @@ mod tests {
                 _pool_account,
             ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
             assert_eq!(
-                Err(TokenError::InsufficientFunds.into()),
+                Err(SwapError::TokenProgramErrorInsufficientFunds.into()),
                 accounts.swap(
                     &swapper_key,
                     &token_a_key,
@@ -6065,7 +6108,7 @@ mod tests {
                 _pool_account,
             ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
             assert_eq!(
-                Err(TokenError::MintMismatch.into()),
+                Err(SwapError::TokenProgramErrorMintMismatch.into()),
                 accounts.swap(
                     &swapper_key,
                     &token_b_key,
@@ -6186,7 +6229,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
             let user_transfer_key = Pubkey::new_unique();
             assert_eq!(
-                Err(TokenError::OwnerMismatch.into()),
+                Err(SwapError::TokenProgramErrorOwnerMismatch.into()),
                 do_process_instruction(
                     swap(
                         &SWAP_PROGRAM_ID,
