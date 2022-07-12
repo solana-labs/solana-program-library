@@ -76,58 +76,48 @@ export const burnInstructionDiscriminator = [116, 110, 29, 56, 107, 219, 42, 93]
  */
 export function createBurnInstruction(
   accounts: BurnInstructionAccounts,
-  args: BurnInstructionArgs
+  args: BurnInstructionArgs,
+  programId = new web3.PublicKey('BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY')
 ) {
-  const {
-    authority,
-    candyWrapper,
-    gummyrollProgram,
-    owner,
-    delegate,
-    merkleSlab,
-  } = accounts
-
   const [data] = burnStruct.serialize({
     instructionDiscriminator: burnInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: authority,
+      pubkey: accounts.authority,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: candyWrapper,
+      pubkey: accounts.candyWrapper,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: gummyrollProgram,
+      pubkey: accounts.gummyrollProgram,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: owner,
+      pubkey: accounts.owner,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: delegate,
+      pubkey: accounts.delegate,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: merkleSlab,
+      pubkey: accounts.merkleSlab,
       isWritable: true,
       isSigner: false,
     },
   ]
 
   const ix = new web3.TransactionInstruction({
-    programId: new web3.PublicKey(
-      'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY'
-    ),
+    programId,
     keys,
     data,
   })

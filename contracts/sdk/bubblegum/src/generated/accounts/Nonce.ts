@@ -7,6 +7,7 @@
 
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
+import * as beetSolana from '@metaplex-foundation/beet-solana'
 
 /**
  * Arguments used to create {@link Nonce}
@@ -17,7 +18,7 @@ export type NonceArgs = {
   count: beet.bignum
 }
 
-const nonceDiscriminator = [143, 197, 147, 95, 106, 165, 50, 43]
+export const nonceDiscriminator = [143, 197, 147, 95, 106, 165, 50, 43]
 /**
  * Holds the data for the {@link Nonce} Account and provides de/serialization
  * functionality for that data
@@ -61,6 +62,20 @@ export class Nonce implements NonceArgs {
       throw new Error(`Unable to find Nonce account at ${address}`)
     }
     return Nonce.fromAccountInfo(accountInfo, 0)[0]
+  }
+
+  /**
+   * Provides a {@link web3.Connection.getProgramAccounts} config builder,
+   * to fetch accounts matching filters that can be specified via that builder.
+   *
+   * @param programId - the program that owns the accounts we are filtering
+   */
+  static gpaBuilder(
+    programId: web3.PublicKey = new web3.PublicKey(
+      'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY'
+    )
+  ) {
+    return beetSolana.GpaBuilder.fromStruct(programId, nonceBeet)
   }
 
   /**

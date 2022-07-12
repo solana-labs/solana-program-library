@@ -32,7 +32,7 @@ import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 import fetch from "node-fetch";
 import { keccak_256 } from 'js-sha3';
 import { BinaryWriter } from 'borsh';
-import { createAddConfigLinesInstruction, createInitializeGumballMachineIxs, decodeGumballMachine, EncodeMethod, GumballMachine, gumballMachineHeaderBeet, InitializeGumballMachineInstructionArgs } from "../../gumball-machine";
+import { createAddConfigLinesInstruction, createInitializeGumballMachineIxs, decodeGumballMachine, EncodeMethod, GumballMachine, gumballMachineHeaderBeet, InitializeGumballMachineInstructionArgs, initializeGumballMachineIndices } from "../../gumball-machine";
 import { getWillyWonkaPDAKey } from "../../gumball-machine";
 import { createDispenseNFTForSolIx } from "../../gumball-machine";
 import { loadPrograms } from "../indexer/utils";
@@ -271,7 +271,7 @@ async function testWithBubblegumTransfers(
 
 async function initializeGumballMachine(
     payer: Keypair,
-    creator: Keypair,
+    authority: Keypair,
     gumballMachineAcctKeypair: Keypair,
     gumballMachineAcctSize: number,
     merkleRollKeypair: Keypair,
@@ -282,24 +282,23 @@ async function initializeGumballMachine(
 ) {
     const initializeGumballMachineInstrs =
         await createInitializeGumballMachineIxs(
-            payer,
-            gumballMachineAcctKeypair,
+            payer.publicKey,
+            gumballMachineAcctKeypair.publicKey,
             gumballMachineAcctSize,
-            merkleRollKeypair,
+            merkleRollKeypair.publicKey,
             merkleRollAccountSize,
             gumballMachineInitArgs,
             mint,
-            GUMMYROLL_PROGRAM_ID,
-            BUBBLEGUM_PROGRAM_ID,
-            gumballMachine
+            gumballMachine.provider.connection
         );
-    console.log(`${creator.publicKey.toString()}`);
+    console.log(`${payer.publicKey.toString()}`);
     await execute(
         gumballMachine.provider,
         initializeGumballMachineInstrs,
         [payer, gumballMachineAcctKeypair, merkleRollKeypair],
         true
     );
+    await initializeGumballMachineIndices(gumballMachine.provider, gumballMachineInitArgs.maxItems, authority, gumballMachineAcctKeypair.publicKey);
 }
 
 async function addConfigLines(
@@ -325,7 +324,7 @@ async function addConfigLines(
 }
 
 async function dispenseCompressedNFTForSol(
-    numNFTs: BN,
+    numNFTs: number,
     payer: Keypair,
     receiver: PublicKey,
     gumballMachineAcctKeypair: Keypair,
@@ -341,10 +340,7 @@ async function dispenseCompressedNFTForSol(
         payer.publicKey,
         receiver,
         gumballMachineAcctKeypair.publicKey,
-        merkleRollKeypair.publicKey,
-        GUMMYROLL_PROGRAM_ID,
-        BUBBLEGUM_PROGRAM_ID,
-        gumballMachine
+        merkleRollKeypair.publicKey
     );
     const txId = await execute(
         gumballMachine.provider,
@@ -408,15 +404,15 @@ async function truncateWithGumball(
         authority: creatorAddress.publicKey,
         collectionKey: SystemProgram.programId, // 0x0 -> no collection key
         extensionLen: new BN(EXTENSION_LEN),
-        maxMintSize: new BN(MAX_MINT_SIZE),
-        maxItems: new BN(250),
+        maxMintSize: MAX_MINT_SIZE,
+        maxItems: 250,
         creatorKeys: [creatorAddress.publicKey],
         creatorShares: Uint8Array.from([100]),
     };
 
     if (!(await connection.getAccountInfo(merkleRollKeypair.publicKey, "confirmed"))) {
         await initializeGumballMachine(
-            payer,
+            creatorAddress,
             creatorAddress,
             gumballMachineAcctKeypair,
             GUMBALL_MACHINE_ACCT_SIZE,
@@ -445,7 +441,7 @@ async function truncateWithGumball(
     );
 
     await dispenseCompressedNFTForSol(
-        new BN(6),
+        6,
         nftBuyer,
         creatorAddress.publicKey,
         gumballMachineAcctKeypair,

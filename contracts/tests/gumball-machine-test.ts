@@ -246,9 +246,7 @@ describe("gumball-machine", () => {
         merkleRollAccountSize,
         gumballMachineInitArgs,
         mint,
-        GummyrollProgramId,
-        BubblegumProgramId,
-        GumballMachine
+        GumballMachine.provider.connection
       );
     const tx = new Transaction();
     initializeGumballMachineInstrs.forEach((instr) => tx.add(instr));
@@ -497,10 +495,7 @@ describe("gumball-machine", () => {
       payer.publicKey,
       receiver,
       gumballMachineAcctKeypair.publicKey,
-      merkleRollKeypair.publicKey,
-      GummyrollProgramId,
-      BubblegumProgramId,
-      GumballMachine
+      merkleRollKeypair.publicKey
     );
     const txId = await execute(
       GumballMachine.provider,
@@ -525,10 +520,7 @@ describe("gumball-machine", () => {
       payerTokens,
       receiver,
       gumballMachineAcctKeypair.publicKey,
-      merkleRollKeypair.publicKey,
-      GummyrollProgramId,
-      BubblegumProgramId,
-      GumballMachine
+      merkleRollKeypair.publicKey
     );
     const tx = new Transaction().add(dispenseInstr);
     let txId = await GumballMachine.provider.send(tx, [payer], {
@@ -708,10 +700,7 @@ describe("gumball-machine", () => {
               nftBuyer.publicKey,
               baseGumballMachineInitProps.receiver,
               gumballMachineAcctKeypair.publicKey,
-              merkleRollKeypair.publicKey,
-              GummyrollProgramId,
-              BubblegumProgramId,
-              GumballMachine
+              merkleRollKeypair.publicKey
             );
             dummyNewAcctKeypair = Keypair.generate();
             dummyInstr = SystemProgram.createAccount({
@@ -1036,10 +1025,7 @@ describe("gumball-machine", () => {
             nftBuyerTokenAccount.address,
             creatorReceiverTokenAccount.address,
             gumballMachineAcctKeypair.publicKey,
-            merkleRollKeypair.publicKey,
-            GummyrollProgramId,
-            BubblegumProgramId,
-            GumballMachine
+            merkleRollKeypair.publicKey
           );
           dummyNewAcctKeypair = Keypair.generate();
           dummyInstr = SystemProgram.createAccount({
