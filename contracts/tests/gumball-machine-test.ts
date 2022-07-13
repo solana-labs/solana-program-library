@@ -165,7 +165,7 @@ describe("gumball-machine", () => {
       // Check that creator matches user specification
       if (i < expectedHeader.creators.length) {
         assert(
-          gm.header.creators[i].address.equals(gm.header.creators[i].address),
+          gm.header.creators[i].address.equals(expectedHeader.creators[i].address),
           "Gumball Machine creator has mismatching address"
         );
         assert(
@@ -285,12 +285,11 @@ describe("gumball-machine", () => {
       let c: GumballCreatorAdapter = {
         address: gumballMachineInitArgs.creatorKeys[i],
         share: gumballMachineInitArgs.creatorShares[i],
-        verified: 1
+        verified: 0
       }
       expectedCreators.push(c);
     }
     gumballMachineInitArgs.creatorKeys
-    let c: GumballCreatorAdapter = { address: Keypair.generate().publicKey, verified: 1, share: 1 };
     let expectedOnChainHeader: GumballMachineHeader = {
       urlBase: gumballMachineInitArgs.urlBase,
       nameBase: gumballMachineInitArgs.nameBase,
@@ -600,7 +599,7 @@ describe("gumball-machine", () => {
         merkleRollKeypair = Keypair.generate();
         exampleAdditionalSecondarySaleRoyaltyRecipient = Keypair.generate();
         creatorKeys = [creatorPaymentWallet.publicKey, exampleAdditionalSecondarySaleRoyaltyRecipient.publicKey];
-        creatorShares = Uint8Array.from([1, 5]);
+        creatorShares = Uint8Array.from([10, 90]);
 
         baseGumballMachineInitProps = {
           maxDepth: 3,
@@ -838,18 +837,11 @@ describe("gumball-machine", () => {
             goLiveDate: new BN(5678.0),
             botWallet: Keypair.generate().publicKey,
             authority: Keypair.generate().publicKey,
+            receiver: Keypair.generate().publicKey,
             maxMintSize: 15,
+            creatorKeys: [],
+            creatorShares: Uint8Array.from([])
           };
-
-          let expectedCreators = [];
-          for (let i = 0; i < creatorKeys.length; i++) {
-            let c: GumballCreatorAdapter = {
-              address: creatorKeys[i],
-              share: creatorShares[i],
-              verified: 1
-            }
-            expectedCreators.push(c);
-          }
           const expectedOnChainHeader: GumballMachineHeader = {
             urlBase: newGumballMachineHeader.urlBase,
             nameBase: newGumballMachineHeader.nameBase,
@@ -858,13 +850,13 @@ describe("gumball-machine", () => {
             sellerFeeBasisPoints: newGumballMachineHeader.sellerFeeBasisPoints,
             isMutable: newGumballMachineHeader.isMutable ? 1 : 0,
             retainAuthority: newGumballMachineHeader.retainAuthority ? 1 : 0,
-            creators: expectedCreators,
+            creators: [],
             padding: [0],
             price: newGumballMachineHeader.price,
             goLiveDate: newGumballMachineHeader.goLiveDate,
             mint: NATIVE_MINT,
             botWallet: newGumballMachineHeader.botWallet,
-            receiver: baseGumballMachineInitProps.receiver,
+            receiver: newGumballMachineHeader.receiver,
             authority: newGumballMachineHeader.authority,
             collectionKey: baseGumballMachineInitProps.collectionKey,
             extensionLen: baseGumballMachineInitProps.extensionLen,
@@ -933,7 +925,7 @@ describe("gumball-machine", () => {
         );
 
         creatorKeys = [creatorReceiverTokenAccount.address];
-        creatorShares = Uint8Array.from([1]);
+        creatorShares = Uint8Array.from([100]);
 
         baseGumballMachineInitProps = {
           maxDepth: 3,
@@ -1140,7 +1132,7 @@ describe("gumball-machine", () => {
         merkleRollKeypair = Keypair.generate();
         exampleAdditionalSecondarySaleRoyaltyRecipient = Keypair.generate();
         creatorKeys = [creatorPaymentWallet.publicKey, exampleAdditionalSecondarySaleRoyaltyRecipient.publicKey];
-        creatorShares = Uint8Array.from([1, 5]);
+        creatorShares = Uint8Array.from([10, 90]);
 
         baseGumballMachineInitProps = {
           maxDepth: 5,
@@ -1250,6 +1242,9 @@ describe("gumball-machine", () => {
       });
       describe("admin instructions", async () => {
         it("Can update gumball header", async () => {
+          const newCreatorKeys = [Keypair.generate().publicKey, Keypair.generate().publicKey, Keypair.generate().publicKey];
+          const newCreatorShares = Uint8Array.from([50, 25, 25]);
+
           const newGumballMachineHeader: UpdateHeaderMetadataInstructionArgs = {
             urlBase: strToByteArray("https://arweave.net", 64),
             nameBase: strToByteArray("GUMBALL", 32),
@@ -1262,15 +1257,18 @@ describe("gumball-machine", () => {
             goLiveDate: new BN(5678.0),
             botWallet: Keypair.generate().publicKey,
             authority: Keypair.generate().publicKey,
+            receiver: Keypair.generate().publicKey,
             maxMintSize: 15,
+            creatorKeys: newCreatorKeys,
+            creatorShares: newCreatorShares
           };
 
           let expectedCreators = [];
-          for (let i = 0; i < creatorKeys.length; i++) {
+          for (let i = 0; i < newCreatorKeys.length; i++) {
             let c: GumballCreatorAdapter = {
-              address: creatorKeys[i],
-              share: creatorShares[i],
-              verified: 1
+              address: newCreatorKeys[i],
+              share: newCreatorShares[i],
+              verified: 0
             }
             expectedCreators.push(c);
           }
@@ -1288,7 +1286,7 @@ describe("gumball-machine", () => {
             goLiveDate: newGumballMachineHeader.goLiveDate,
             mint: NATIVE_MINT,
             botWallet: newGumballMachineHeader.botWallet,
-            receiver: baseGumballMachineInitProps.receiver,
+            receiver: newGumballMachineHeader.receiver,
             authority: newGumballMachineHeader.authority,
             collectionKey: baseGumballMachineInitProps.collectionKey,
             extensionLen: baseGumballMachineInitProps.extensionLen,

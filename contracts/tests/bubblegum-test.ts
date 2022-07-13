@@ -38,7 +38,7 @@ import {
   TOKEN_PROGRAM_ID,
   Token,
 } from "@solana/spl-token";
-import { bufferToArray, execute } from "./utils";
+import { bufferToArray, execute, num16ToBuffer } from "./utils";
 import { TokenProgramVersion, Version } from "../sdk/bubblegum/src/generated";
 import { CANDY_WRAPPER_PROGRAM_ID } from "../sdk/utils";
 import { getBubblegumAuthorityPDA, getCreateTreeIxs, getNonceCount, getVoucherPDA } from "../sdk/bubblegum/src/convenience";
@@ -168,8 +168,12 @@ describe("bubblegum", () => {
           commitment: "confirmed",
         }
       );
+      const metadataArgsBuffer = mintIx.data.slice(8)
+      const metadataArgsHash = keccak_256.digest(metadataArgsBuffer);
+      const sellerFeeBasisPointsNumberArray = bufferToArray(num16ToBuffer(metadata.sellerFeeBasisPoints))
+      const allDataToHash = metadataArgsHash.concat(sellerFeeBasisPointsNumberArray)
       const dataHash = bufferToArray(
-        Buffer.from(keccak_256.digest(mintIx.data.slice(8)))
+        Buffer.from(keccak_256.digest(allDataToHash))
       );
       const creatorHash = bufferToArray(Buffer.from(keccak_256.digest([])));
       let onChainRoot = await getRootOfOnChainMerkleRoot(connection, merkleRollKeypair.publicKey);
