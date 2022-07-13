@@ -2,10 +2,6 @@
 
 #![allow(clippy::too_many_arguments)]
 
-use crate::AUTHORITY_WITHDRAW;
-use mpl_token_metadata::state::PREFIX;
-use solana_program::info;
-use std::str::FromStr;
 use {
     crate::{
         find_deposit_authority_program_address, find_stake_program_address,
@@ -14,6 +10,7 @@ use {
         MAX_VALIDATORS_TO_UPDATE,
     },
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
+    mpl_token_metadata::pda::find_metadata_account,
     solana_program::{
         instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,
@@ -383,10 +380,10 @@ pub enum StakePoolInstruction {
     /// Create token metadata for the stake-pool token in the
     /// metaplex-token program
     /// 0. `[]` Stake pool
-    /// 1. `[]` Manager
+    /// 1. `[s]` Manager
     /// 2. `[]` Stake pool withdraw authority
     /// 3. `[]` Pool token mint account
-    /// 4. `[]` Payer for creation of token metadata account
+    /// 4. `[s, w]` Payer for creation of token metadata account
     /// 5. `[w]` Token metadata account
     /// 6. `[]` Metadata program id
     /// 7. `[]` System program id
@@ -406,7 +403,7 @@ pub enum StakePoolInstruction {
     /// metaplex-token program
     ///
     /// 0. `[]` Stake pool
-    /// 1. `[]` Manager
+    /// 1. `[s]` Manager
     /// 2. `[]` Stake pool withdraw authority
     /// 3. `[w]` Token metadata account
     /// 4. `[]` Metadata program id
@@ -1336,23 +1333,15 @@ pub fn update_token_metadata(
     uri: String,
 ) -> Instruction {
     let (stake_pool_withdraw_authority, _) =
-        Pubkey::find_program_address(&[&stake_pool.to_bytes(), AUTHORITY_WITHDRAW], &program_id);
-
-    let mpl_token_metadata_program_id = mpl_token_metadata::id();
-    let metadata_seeds = &[
-        PREFIX.as_bytes(),
-        mpl_token_metadata_program_id.as_ref(),
-        pool_mint.as_ref(),
-    ];
-    let (token_metadata, _) =
-        Pubkey::find_program_address(metadata_seeds, &mpl_token_metadata_program_id);
+        find_withdraw_authority_program_address(program_id, stake_pool);
+    let (token_metadata, _) = find_metadata_account(pool_mint);
 
     let accounts = vec![
         AccountMeta::new_readonly(*stake_pool, false),
         AccountMeta::new_readonly(*manager, true),
         AccountMeta::new_readonly(stake_pool_withdraw_authority, false),
         AccountMeta::new(token_metadata, false),
-        AccountMeta::new_readonly(mpl_token_metadata_program_id, false),
+        AccountMeta::new_readonly(mpl_token_metadata::id(), false),
     ];
 
     Instruction {
@@ -1377,25 +1366,17 @@ pub fn create_token_metadata(
     uri: String,
 ) -> Instruction {
     let (stake_pool_withdraw_authority, _) =
-        Pubkey::find_program_address(&[&stake_pool.to_bytes(), AUTHORITY_WITHDRAW], &program_id);
-
-    let mpl_token_metadata_program_id = mpl_token_metadata::id();
-    let metadata_seeds = &[
-        PREFIX.as_bytes(),
-        mpl_token_metadata_program_id.as_ref(),
-        pool_mint.as_ref(),
-    ];
-    let (token_metadata, _) =
-        Pubkey::find_program_address(metadata_seeds, &mpl_token_metadata_program_id);
+        find_withdraw_authority_program_address(program_id, stake_pool);
+    let (token_metadata, _) = find_metadata_account(pool_mint);
 
     let accounts = vec![
         AccountMeta::new_readonly(*stake_pool, false),
         AccountMeta::new_readonly(*manager, true),
         AccountMeta::new_readonly(stake_pool_withdraw_authority, false),
         AccountMeta::new_readonly(*pool_mint, false),
-        AccountMeta::new_readonly(*payer, false),
+        AccountMeta::new(*payer, true),
         AccountMeta::new(token_metadata, false),
-        AccountMeta::new_readonly(mpl_token_metadata_program_id, false),
+        AccountMeta::new_readonly(mpl_token_metadata::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];

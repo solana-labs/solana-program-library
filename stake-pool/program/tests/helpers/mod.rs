@@ -1,10 +1,8 @@
 #![allow(dead_code)]
 
-use mpl_token_metadata::state::{Metadata, PREFIX};
-use solana_program::account_info::AccountInfo;
-use solana_program::entrypoint::ProgramResult;
 use {
     borsh::BorshSerialize,
+    mpl_token_metadata::{pda::find_metadata_account, state::Metadata},
     solana_program::{
         borsh::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
         hash::Hash,
@@ -304,21 +302,13 @@ pub async fn get_token_balance(banks_client: &mut BanksClient, token: &Pubkey) -
 }
 
 pub async fn get_metadata_account(banks_client: &mut BanksClient, token_mint: &Pubkey) -> Metadata {
-    let mpl_token_metadata_program_id = mpl_token_metadata::id();
-    let metadata_seeds = &[
-        PREFIX.as_bytes(),
-        mpl_token_metadata_program_id.as_ref(),
-        token_mint.as_ref(),
-    ];
-    let (token_metadata, _) =
-        Pubkey::find_program_address(metadata_seeds, &mpl_token_metadata_program_id);
+    let (token_metadata, _) = find_metadata_account(token_mint);
     let token_metadata_account = banks_client
         .get_account(token_metadata)
         .await
         .unwrap()
         .unwrap();
-    let metadata = try_from_slice_unchecked(token_metadata_account.data.as_slice()).unwrap();
-    metadata
+    try_from_slice_unchecked(token_metadata_account.data.as_slice()).unwrap()
 }
 
 pub async fn get_token_supply(banks_client: &mut BanksClient, mint: &Pubkey) -> u64 {

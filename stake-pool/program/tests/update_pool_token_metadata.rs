@@ -1,19 +1,19 @@
 #![cfg(feature = "test-bpf")]
 mod helpers;
 
-use borsh::BorshDeserialize;
-use helpers::*;
-use mpl_token_metadata::state::{
-    Metadata, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH, PREFIX,
+use {
+    helpers::*,
+    mpl_token_metadata::{
+        state::{MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH},
+        utils::puffed_out_string,
+    },
+    solana_program_test::*,
+    solana_sdk::{
+        signature::Signer,
+        transaction::Transaction,
+    },
+    spl_stake_pool::{instruction, MINIMUM_RESERVE_LAMPORTS},
 };
-use mpl_token_metadata::utils::puffed_out_string;
-use solana_program::borsh::try_from_slice_unchecked;
-use solana_program::pubkey::Pubkey;
-use solana_program_test::*;
-use solana_sdk::signature::Signer;
-use solana_sdk::transaction::Transaction;
-use spl_stake_pool::instruction;
-use spl_stake_pool::MINIMUM_RESERVE_LAMPORTS;
 
 async fn setup() -> (ProgramTestContext, StakePoolAccounts) {
     let mut context = program_test_with_metadata_program()
