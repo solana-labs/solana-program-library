@@ -60,7 +60,7 @@ describe("bubblegum", () => {
   let payer = Keypair.generate();
   let destination = Keypair.generate();
   let delegateKey = Keypair.generate();
-  let connection = new web3Connection(" https://liquid.testnet.rpcpool.com/5ebea512d12be102f53d319dafc8", {
+  let connection = new web3Connection("https://liquid.testnet.rpcpool.com/5ebea512d12be102f53d319dafc8", {
     commitment: "confirmed",
   });
   let wallet = new NodeWallet(payer);
@@ -79,25 +79,26 @@ describe("bubblegum", () => {
     delegate: Keypair
   ): Promise<[Keypair, Tree, PublicKey]> {
     const merkleRollKeypair = Keypair.generate();
-
+    console.log(payer.publicKey.toBase58())
     await Bubblegum.provider.connection.confirmTransaction(
-      await Bubblegum.provider.connection.requestAirdrop(payer.publicKey, 2e9),
+      await Bubblegum.provider.connection.requestAirdrop(payer.publicKey, 1e9),
       "confirmed"
     );
     await Bubblegum.provider.connection.confirmTransaction(
       await Bubblegum.provider.connection.requestAirdrop(
         destination.publicKey,
-        2e9
+        1e9
       ),
       "confirmed"
     );
     await Bubblegum.provider.connection.confirmTransaction(
       await Bubblegum.provider.connection.requestAirdrop(
         delegate.publicKey,
-        2e9
+        1e9
       ),
       "confirmed"
     );
+    console.log(":airdrop done");
     const leaves = Array(2 ** MAX_DEPTH).fill(Buffer.alloc(32));
     const tree = buildTree(leaves);
 

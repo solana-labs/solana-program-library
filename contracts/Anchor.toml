@@ -34,7 +34,7 @@ program = "./target/deploy/candy_wrapper.so"
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "localnet"
+cluster = "testnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
