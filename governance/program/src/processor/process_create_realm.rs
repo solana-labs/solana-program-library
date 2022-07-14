@@ -17,7 +17,7 @@ use crate::{
             assert_valid_realm_config_args, get_governing_token_holding_address_seeds,
             get_realm_address_seeds, RealmConfig, RealmConfigArgs, RealmV2,
         },
-        realm_config::{get_realm_config_address_seeds, RealmConfigAccount},
+        realm_config::{get_realm_config_address_seeds, GoverningTokenConfig, RealmConfigAccount},
     },
     tools::spl_token::create_spl_token_account_signed,
 };
@@ -107,8 +107,10 @@ pub fn process_create_realm(
         let realm_config_data = RealmConfigAccount {
             account_type: GovernanceAccountType::RealmConfig,
             realm: *realm_info.key,
-            community_voter_weight_addin,
-            max_community_voter_weight_addin,
+            community_token_config: GoverningTokenConfig {
+                voter_weight_addin: community_voter_weight_addin,
+                max_voter_weight_addin: max_community_voter_weight_addin,
+            },
             council_voter_weight_addin: None,
             council_max_vote_weight_addin: None,
             reserved: [0; 128],

@@ -495,7 +495,10 @@ impl ProposalV2 {
 
             let max_voter_weight_record_data =
                 get_max_voter_weight_record_data_for_realm_and_governing_token_mint(
-                    &realm_config_data.max_community_voter_weight_addin.unwrap(),
+                    &realm_config_data
+                        .community_token_config
+                        .max_voter_weight_addin
+                        .unwrap(),
                     max_voter_weight_record_info,
                     realm,
                     vote_governing_token_mint_info.key,

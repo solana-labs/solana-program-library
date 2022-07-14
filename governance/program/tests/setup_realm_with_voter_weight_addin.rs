@@ -157,7 +157,7 @@ async fn test_set_realm_voter_weight_addin_for_realm_with_existing_voter_weight_
 
     assert_eq!(realm_config_cookie.account, realm_config_data);
     assert_eq!(
-        realm_config_data.community_voter_weight_addin,
+        realm_config_data.community_token_config.voter_weight_addin,
         Some(community_voter_weight_addin_address)
     );
 }
@@ -226,5 +226,8 @@ async fn test_set_realm_config_with_no_voter_weight_addin_for_realm_with_existin
         .get_realm_config_data(&realm_cookie.realm_config.unwrap().address)
         .await;
 
-    assert!(realm_config_data.community_voter_weight_addin.is_none());
+    assert!(realm_config_data
+        .community_token_config
+        .voter_weight_addin
+        .is_none());
 }

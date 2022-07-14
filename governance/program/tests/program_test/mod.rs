@@ -44,7 +44,7 @@ use spl_governance::{
             get_governing_token_holding_address, get_realm_address, RealmConfig, RealmConfigArgs,
             RealmV2, SetRealmAuthorityAction,
         },
-        realm_config::{get_realm_config_address, RealmConfigAccount},
+        realm_config::{get_realm_config_address, GoverningTokenConfig, RealmConfigAccount},
         signatory_record::{get_signatory_record_address, SignatoryRecordV2},
         token_owner_record::{get_token_owner_record_address, TokenOwnerRecordV2},
         vote_record::{get_vote_record_address, Vote, VoteChoice, VoteRecordV2},
@@ -333,13 +333,14 @@ impl GovernanceProgramTest {
                 account: RealmConfigAccount {
                     account_type: GovernanceAccountType::RealmConfig,
                     realm: realm_address,
-                    community_voter_weight_addin: set_realm_config_args
-                        .community_voter_weight_addin,
-                    max_community_voter_weight_addin: set_realm_config_args
-                        .max_community_voter_weight_addin,
                     council_voter_weight_addin: None,
                     council_max_vote_weight_addin: None,
                     reserved: [0; 128],
+                    community_token_config: GoverningTokenConfig {
+                        voter_weight_addin: set_realm_config_args.community_voter_weight_addin,
+                        max_voter_weight_addin: set_realm_config_args
+                            .max_community_voter_weight_addin,
+                    },
                 },
             })
         } else {
@@ -1060,11 +1061,13 @@ impl GovernanceProgramTest {
                 account: RealmConfigAccount {
                     account_type: GovernanceAccountType::RealmConfig,
                     realm: realm_cookie.address,
-                    community_voter_weight_addin,
-                    max_community_voter_weight_addin,
                     council_voter_weight_addin: None,
                     council_max_vote_weight_addin: None,
                     reserved: [0; 128],
+                    community_token_config: GoverningTokenConfig {
+                        voter_weight_addin: community_voter_weight_addin,
+                        max_voter_weight_addin: max_community_voter_weight_addin,
+                    },
                 },
             })
         }

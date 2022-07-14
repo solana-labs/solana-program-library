@@ -209,11 +209,13 @@ async fn test_set_all_realm_addins_for_realm_with_all_addins() {
 
     assert_eq!(realm_config_cookie.account, realm_config_data);
     assert_eq!(
-        realm_config_data.max_community_voter_weight_addin,
+        realm_config_data
+            .community_token_config
+            .max_voter_weight_addin,
         Some(max_community_voter_weight_addin_address)
     );
     assert_eq!(
-        realm_config_data.community_voter_weight_addin,
+        realm_config_data.community_token_config.voter_weight_addin,
         Some(community_voter_weight_addin_address)
     );
 }
@@ -302,6 +304,12 @@ async fn test_set_realm_config_without_any_addins_for_realm_with_existing_addins
         .get_realm_config_data(&realm_cookie.realm_config.unwrap().address)
         .await;
 
-    assert!(realm_config_data.max_community_voter_weight_addin.is_none());
-    assert!(realm_config_data.community_voter_weight_addin.is_none());
+    assert!(realm_config_data
+        .community_token_config
+        .max_voter_weight_addin
+        .is_none());
+    assert!(realm_config_data
+        .community_token_config
+        .voter_weight_addin
+        .is_none());
 }

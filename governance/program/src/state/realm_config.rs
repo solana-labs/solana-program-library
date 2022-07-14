@@ -10,6 +10,16 @@ use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
 use crate::{error::GovernanceError, state::enums::GovernanceAccountType};
 
+/// GoverningTokenConfig specifies configuration for Realm governing token (Community or Council)
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct GoverningTokenConfig {
+    /// Plugin providing voter weights for the governing token
+    pub voter_weight_addin: Option<Pubkey>,
+
+    /// Plugin providing max voter weight for the governing token
+    pub max_voter_weight_addin: Option<Pubkey>,
+}
+
 /// RealmConfig account
 /// The account is an optional extension to RealmConfig stored on Realm account
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -20,12 +30,8 @@ pub struct RealmConfigAccount {
     /// The realm the config belong to
     pub realm: Pubkey,
 
-    /// Addin providing voter weights for community token
-    pub community_voter_weight_addin: Option<Pubkey>,
-
-    /// Addin providing max vote weight for community token
-    /// Note: This field is not implemented in the current version
-    pub max_community_voter_weight_addin: Option<Pubkey>,
+    /// Community token config
+    pub community_token_config: GoverningTokenConfig,
 
     /// Addin providing voter weights for council token
     /// Note: This field is not implemented in the current version
@@ -94,8 +100,10 @@ mod test {
         let realm_config = RealmConfigAccount {
             account_type: GovernanceAccountType::RealmV2,
             realm: Pubkey::new_unique(),
-            community_voter_weight_addin: Some(Pubkey::new_unique()),
-            max_community_voter_weight_addin: Some(Pubkey::new_unique()),
+            community_token_config: GoverningTokenConfig {
+                voter_weight_addin: Some(Pubkey::new_unique()),
+                max_voter_weight_addin: Some(Pubkey::new_unique()),
+            },
             council_voter_weight_addin: Some(Pubkey::new_unique()),
             council_max_vote_weight_addin: Some(Pubkey::new_unique()),
             reserved: [0; 128],

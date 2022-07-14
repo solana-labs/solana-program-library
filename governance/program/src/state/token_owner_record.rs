@@ -207,7 +207,10 @@ impl TokenOwnerRecordV2 {
                 get_realm_config_data_for_realm(program_id, realm_config_info, realm)?;
 
             let voter_weight_record_data = get_voter_weight_record_data_for_token_owner_record(
-                &realm_config_data.community_voter_weight_addin.unwrap(),
+                &realm_config_data
+                    .community_token_config
+                    .voter_weight_addin
+                    .unwrap(),
                 voter_weight_record_info,
                 self,
             )?;
