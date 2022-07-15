@@ -2,7 +2,16 @@ import { PublicKey, Logs, Context } from "@solana/web3.js";
 import * as anchor from '@project-serum/anchor';
 import { NFTDatabaseConnection } from "../../db";
 import { ParserState, ParseResult, OptionalInfo, decodeEvent } from "../utils";
-import { BubblegumIx, LeafSchemaEvent, NewLeafEvent, ingestBubblegumCreateTree, ingestBubblegumMint, ingestBubblegumReplaceLeaf } from "../ingester";
+import {
+    BubblegumIx,
+    LeafSchemaEvent,
+    NewLeafEvent,
+    ingestBubblegumCreateTree,
+    ingestBubblegumMint,
+    ingestBubblegumReplaceLeaf,
+    ingestBubblegumDecompressLeaf,
+    NFTDecompressionEvent
+} from "../ingester";
 import { ParsedLog, endRegEx, startRegEx, ixRegEx, dataRegEx } from './utils';
 import { PROGRAM_ID as BUBBLEGUM_PROGRAM_ID } from "../../../bubblegum/src/generated";
 import { findGummyrollEvent } from './gummyroll';
@@ -226,6 +235,15 @@ export async function parseBubblegumLog(
         case "MintV1":
             await parseBubblegumMint(db, parsedLog.logs, slot, parser, optionalInfo);
             break;
+        case "DecompressV1":
+            await parseBubblegumDecompressLeaf(
+                db,
+                parsedLog.logs,
+                slot,
+                parser,
+                optionalInfo,
+            )
+            break;
         case "Redeem":
             await parseBubblegumReplaceLeaf(
                 db,
@@ -233,11 +251,12 @@ export async function parseBubblegumLog(
                 slot,
                 parser,
                 optionalInfo,
-                false
+                true,
+                true
             );
             break;
         case "CancelRedeem":
-            await parseBubblegumReplaceLeaf(db, parsedLog.logs, slot, parser, optionalInfo);
+            await parseBubblegumReplaceLeaf(db, parsedLog.logs, slot, parser, optionalInfo, false, true);
             break;
         case "Burn":
             await parseBubblegumReplaceLeaf(db, parsedLog.logs, slot, parser, optionalInfo);
@@ -293,6 +312,7 @@ async function parseBubblegumReplaceLeaf(
     slot: number,
     parser: ParserState,
     optionalInfo: OptionalInfo,
+    redeemed: boolean = false,
     compressed: boolean = true
 ) {
     const changeLog = findGummyrollEvent(logs, parser);
@@ -308,6 +328,29 @@ async function parseBubblegumReplaceLeaf(
         optionalInfo,
         changeLog,
         leafSchema,
+        redeemed,
         compressed
+    )
+}
+
+async function parseBubblegumDecompressLeaf(
+    db: NFTDatabaseConnection,
+    logs: (string | ParsedLog)[],
+    slot: number,
+    parser: ParserState,
+    optionalInfo: OptionalInfo,
+    redeemed: boolean = false,
+    compressed: boolean = true
+) {
+    const events = findBubblegumEvents(logs, parser);
+    if (events.length !== 1) {
+        console.error("Could not find leafSchema event for Bubblegum decompress");
+        return;
+    }
+    const decompressionEvent = events[0].data as NFTDecompressionEvent;
+    console.log(decompressionEvent)
+    await ingestBubblegumDecompressLeaf(
+        db,
+        decompressionEvent
     )
 }

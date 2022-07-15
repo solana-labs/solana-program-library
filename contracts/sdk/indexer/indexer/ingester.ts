@@ -1,7 +1,6 @@
 import {
   ParserState,
   OptionalInfo,
-  decodeEvent,
 } from "./utils";
 import { ParsedLog } from "./log/utils";
 import { PROGRAM_ID as GUMMYROLL_PROGRAM_ID, PathNode } from "../../gummyroll";
@@ -56,6 +55,12 @@ export type LeafSchemaEvent = {
   };
 };
 
+export type NFTDecompressionEvent = {
+  version: number,
+  id: PublicKey,
+  treeId: PublicKey,
+  nonce: BN
+};
 
 export async function ingestBubblegumMint(
   db: NFTDatabaseConnection,
@@ -96,12 +101,20 @@ export async function ingestBubblegumMint(
   await db.updateChangeLogs(changeLog, optionalInfo.txId, slot, treeId);
 }
 
+export async function ingestBubblegumDecompressLeaf(
+  db: NFTDatabaseConnection,
+  decompressionEvent: NFTDecompressionEvent,
+) {
+  await db.setDecompressed(decompressionEvent.id.toString())
+}
+
 export async function ingestBubblegumReplaceLeaf(
   db: NFTDatabaseConnection,
   slot: number,
   optionalInfo: OptionalInfo,
   changeLog: ChangeLogEvent,
   leafSchema: LeafSchemaEvent,
+  redeemed: boolean = false,
   compressed: boolean = true
 ) {
   let treeId = changeLog.id.toBase58();
@@ -118,6 +131,7 @@ export async function ingestBubblegumReplaceLeaf(
     slot,
     sequenceNumber,
     treeId,
+    redeemed,
     compressed
   );
   await db.updateChangeLogs(changeLog, optionalInfo.txId, slot, treeId);
@@ -138,10 +152,3 @@ export async function ingestBubblegumCreateTree(
   let treeId = changeLog.id.toBase58();
   await db.updateChangeLogs(changeLog, optionalInfo.txId, slot, treeId);
 }
-
-export async function ingestBubblegumDecompress(
-  db: NFTDatabaseConnection,
-  logs: (string | ParsedLog)[],
-  parser: ParserState,
-  optionalInfo: OptionalInfo
-) { }

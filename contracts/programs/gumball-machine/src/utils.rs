@@ -72,7 +72,7 @@ pub fn get_metadata_args(
             })
         },
         uses,
-        token_program_version: TokenProgramVersion::Token2022,
+        token_program_version: TokenProgramVersion::Original,
         creators: creators_vec,
     }
 }

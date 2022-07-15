@@ -395,7 +395,7 @@ pub mod gumball_machine {
             let creator_to_add = GumballCreatorAdapter {
                 address: creator_keys[i],
                 // TODO: this should be set accurately, user provided array, something authority must update later?
-                verified: (1 as u8),
+                verified: (0 as u8),
                 share: creator_shares[i],
             };
             creators[i] = creator_to_add;
