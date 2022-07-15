@@ -60,7 +60,7 @@ describe("bubblegum", () => {
   let payer = Keypair.generate();
   let destination = Keypair.generate();
   let delegateKey = Keypair.generate();
-  let connection = new web3Connection("https://liquid.testnet.rpcpool.com/5ebea512d12be102f53d319dafc8", {
+  let connection = new web3Connection("https://liquid.testnet.rpcpool.com/{token}", {
     commitment: "confirmed",
   });
   let wallet = new NodeWallet(payer);

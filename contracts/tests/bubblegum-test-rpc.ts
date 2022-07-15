@@ -37,12 +37,11 @@ import {
   TOKEN_PROGRAM_ID,
   Token,
 } from "@solana/spl-token";
-import {execute, logTx} from "./utils";
+import { CANDY_WRAPPER_PROGRAM_ID, execute, logTx } from "../sdk/utils";
 import {TokenProgramVersion, Version} from "../sdk/bubblegum/src/generated";
 import {sleep} from "@metaplex-foundation/amman/dist/utils";
 import {verbose} from "sqlite3";
 import {bs58} from "@project-serum/anchor/dist/cjs/utils/bytes";
-import {CANDY_WRAPPER_PROGRAM_ID} from "../sdk/utils";
 
 // @ts-ignore
 let Bubblegum;
@@ -64,7 +63,7 @@ interface TreeProof  {
 }
 
 async function getProof(asset: PublicKey): Promise<TreeProof> {
-  let resp = await fetch("http://localhost:9090", {
+  let resp = await fetch("http://rpc.aws.metaplex.com", {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
@@ -85,6 +84,7 @@ async function getProof(asset: PublicKey): Promise<TreeProof> {
   };
 }
 
+
 describe("bubblegum", () => {
   // Configure the client to use the local cluster.
   let offChainTree: Tree;
@@ -97,7 +97,7 @@ describe("bubblegum", () => {
   let payer = Keypair.generate();
   let destination = Keypair.generate();
   let delegateKey = Keypair.generate();
-  let connection = new web3Connection("http://localhost:8899", {
+  let connection = new web3Connection("https://liquid.testnet.rpcpool.com/{token}", {
     commitment: "confirmed",
   });
   let wallet = new NodeWallet(payer);
@@ -118,20 +118,20 @@ describe("bubblegum", () => {
     const merkleRollKeypair = Keypair.generate();
 
     await Bubblegum.provider.connection.confirmTransaction(
-      await Bubblegum.provider.connection.requestAirdrop(payer.publicKey, 10e9),
+      await Bubblegum.provider.connection.requestAirdrop(payer.publicKey, 1e9),
       "confirmed"
     );
     await Bubblegum.provider.connection.confirmTransaction(
       await Bubblegum.provider.connection.requestAirdrop(
         destination.publicKey,
-        10e9
+        1e9
       ),
       "confirmed"
     );
     await Bubblegum.provider.connection.confirmTransaction(
       await Bubblegum.provider.connection.requestAirdrop(
         delegate.publicKey,
-        10e9
+        1e9
       ),
       "confirmed"
     );
@@ -205,6 +205,10 @@ describe("bubblegum", () => {
       }
 
       for (let i = 0; i < 10000; i++) {
+        await Bubblegum.provider.connection.confirmTransaction(
+          await Bubblegum.provider.connection.requestAirdrop(payer.publicKey, 1e9),
+          "confirmed"
+        );
         const metadata = {
           name: "OH " + i,
           symbol: "OH" + i,

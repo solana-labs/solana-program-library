@@ -10,6 +10,7 @@
     "collections": "^5.1.13",
     "cors": "^2.8.5",
     "express": "^4.18.1",
+    "p-retry": "^5.1.1",
     "pg-promise": "^10.11.1",
     "react": "^18.1.0",
     "sqlite": "^4.1.1",
