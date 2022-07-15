@@ -11,9 +11,9 @@ use crate::{
         program_metadata::get_program_metadata_address,
         proposal::{get_proposal_address, VoteType},
         proposal_transaction::{get_proposal_transaction_address, InstructionData},
-        realm::SetRealmAuthorityAction,
         realm::{get_governing_token_holding_address, get_realm_address, RealmConfigArgs},
-        realm_config::get_realm_config_address,
+        realm::{GoverningTokenConfigArgs, SetRealmAuthorityAction},
+        realm_config::{get_realm_config_address, GoverningTokenType},
         signatory_record::get_signatory_record_address,
         token_owner_record::get_token_owner_record_address,
         vote_record::{get_vote_record_address, Vote},
@@ -551,8 +551,12 @@ pub fn create_realm(
             use_council_mint,
             min_community_weight_to_create_governance,
             community_mint_max_vote_weight_source,
-            use_community_voter_weight_addin,
-            use_max_community_voter_weight_addin,
+            community_token_config_args: GoverningTokenConfigArgs {
+                use_voter_weight_addin: use_community_voter_weight_addin,
+                use_max_voter_weight_addin: use_max_community_voter_weight_addin,
+                token_type: GoverningTokenType::Liquid,
+            },
+            council_token_config_args: GoverningTokenConfigArgs::default(),
         },
         name,
     };
@@ -1415,8 +1419,12 @@ pub fn set_realm_config(
             use_council_mint,
             min_community_weight_to_create_governance,
             community_mint_max_vote_weight_source,
-            use_community_voter_weight_addin,
-            use_max_community_voter_weight_addin,
+            community_token_config_args: GoverningTokenConfigArgs {
+                use_voter_weight_addin: use_community_voter_weight_addin,
+                use_max_voter_weight_addin: use_max_community_voter_weight_addin,
+                token_type: GoverningTokenType::Liquid,
+            },
+            council_token_config_args: GoverningTokenConfigArgs::default(),
         },
     };
 

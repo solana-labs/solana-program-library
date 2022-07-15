@@ -21,6 +21,7 @@ use crate::{
     state::{
         enums::{GovernanceAccountType, MintMaxVoteWeightSource},
         legacy::RealmV1,
+        realm_config::GoverningTokenType,
         token_owner_record::get_token_owner_record_data_for_realm,
         vote_record::VoteKind,
     },
@@ -40,13 +41,36 @@ pub struct RealmConfigArgs {
     /// The source used for community mint max vote weight source
     pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
 
-    /// Indicates whether an external addin program should be used to provide community voters weights
-    /// If yes then the voters weight program account must be passed to the instruction
-    pub use_community_voter_weight_addin: bool,
+    /// Community token config args
+    pub community_token_config_args: GoverningTokenConfigArgs,
 
-    /// Indicates whether an external addin program should be used to provide max voters weight for the community mint
+    /// Council token config args
+    pub council_token_config_args: GoverningTokenConfigArgs,
+}
+
+/// Realm Config instruction args
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct GoverningTokenConfigArgs {
+    /// Indicates whether an external addin program should be used to provide voters weights
+    /// If yes then the voters weight program account must be passed to the instruction
+    pub use_voter_weight_addin: bool,
+
+    /// Indicates whether an external addin program should be used to provide max voters weight for the token
     /// If yes then the max voter weight program account must be passed to the instruction
-    pub use_max_community_voter_weight_addin: bool,
+    pub use_max_voter_weight_addin: bool,
+
+    /// Governing token type defines how the token is used for governance
+    pub token_type: GoverningTokenType,
+}
+
+impl Default for GoverningTokenConfigArgs {
+    fn default() -> Self {
+        Self {
+            use_voter_weight_addin: false,
+            use_max_voter_weight_addin: false,
+            token_type: GoverningTokenType::Liquid,
+        }
+    }
 }
 
 /// SetRealmAuthority instruction action
@@ -495,8 +519,8 @@ mod test {
                 min_community_weight_to_create_governance: 100,
                 community_mint_max_vote_weight_source:
                     MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
-                use_community_voter_weight_addin: false,
-                use_max_community_voter_weight_addin: false,
+                community_token_config_args: GoverningTokenConfigArgs::default(),
+                council_token_config_args: GoverningTokenConfigArgs::default(),
             },
         };
 

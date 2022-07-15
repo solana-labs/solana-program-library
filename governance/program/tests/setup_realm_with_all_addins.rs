@@ -48,11 +48,13 @@ async fn test_set_all_addins_for_realm_without_addins() {
 
     set_realm_config_args
         .realm_config_args
-        .use_max_community_voter_weight_addin = false;
+        .community_token_config_args
+        .use_max_voter_weight_addin = false;
 
     set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = false;
+        .community_token_config_args
+        .use_voter_weight_addin = false;
 
     let mut realm_cookie = governance_test
         .with_realm_using_config_args(&set_realm_config_args)
@@ -60,11 +62,13 @@ async fn test_set_all_addins_for_realm_without_addins() {
 
     set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = true;
+        .community_token_config_args
+        .use_voter_weight_addin = true;
 
     set_realm_config_args
         .realm_config_args
-        .use_max_community_voter_weight_addin = true;
+        .community_token_config_args
+        .use_max_voter_weight_addin = true;
 
     // Act
 
@@ -105,11 +109,13 @@ async fn test_set_all_addin_for_realm_without_council_and_addins() {
 
     set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = false;
+        .community_token_config_args
+        .use_voter_weight_addin = false;
 
     set_realm_config_args
         .realm_config_args
-        .use_max_community_voter_weight_addin = false;
+        .community_token_config_args
+        .use_max_voter_weight_addin = false;
 
     set_realm_config_args.realm_config_args.use_council_mint = false;
 
@@ -119,11 +125,13 @@ async fn test_set_all_addin_for_realm_without_council_and_addins() {
 
     set_realm_config_args
         .realm_config_args
-        .use_max_community_voter_weight_addin = true;
+        .community_token_config_args
+        .use_max_voter_weight_addin = true;
 
     set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = true;
+        .community_token_config_args
+        .use_voter_weight_addin = true;
 
     // Act
 
@@ -166,11 +174,13 @@ async fn test_set_all_realm_addins_for_realm_with_all_addins() {
 
     set_realm_config_args
         .realm_config_args
-        .use_max_community_voter_weight_addin = true;
+        .community_token_config_args
+        .use_max_voter_weight_addin = true;
 
     set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = true;
+        .community_token_config_args
+        .use_voter_weight_addin = true;
 
     let max_community_voter_weight_addin_address = Pubkey::new_unique();
 
@@ -229,11 +239,13 @@ async fn test_set_realm_config_without_addins_for_realm_without_addins() {
 
     set_realm_config_args
         .realm_config_args
-        .use_max_community_voter_weight_addin = false;
+        .community_token_config_args
+        .use_max_voter_weight_addin = false;
 
     set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = false;
+        .community_token_config_args
+        .use_voter_weight_addin = false;
 
     let mut realm_cookie = governance_test
         .with_realm_using_config_args(&set_realm_config_args)
@@ -241,11 +253,13 @@ async fn test_set_realm_config_without_addins_for_realm_without_addins() {
 
     set_realm_config_args
         .realm_config_args
-        .use_max_community_voter_weight_addin = false;
+        .community_token_config_args
+        .use_max_voter_weight_addin = false;
 
     set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = false;
+        .community_token_config_args
+        .use_voter_weight_addin = false;
 
     // Act
 
@@ -279,11 +293,13 @@ async fn test_set_realm_config_without_any_addins_for_realm_with_existing_addins
 
     set_realm_config_args
         .realm_config_args
-        .use_max_community_voter_weight_addin = false;
+        .community_token_config_args
+        .use_max_voter_weight_addin = false;
 
     set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = false;
+        .community_token_config_args
+        .use_voter_weight_addin = false;
 
     // Act
 

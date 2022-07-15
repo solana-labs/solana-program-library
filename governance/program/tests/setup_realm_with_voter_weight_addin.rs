@@ -41,7 +41,8 @@ async fn test_set_realm_voter_weight_addin_for_realm_without_addins() {
     let mut set_realm_config_args = governance_test.get_default_set_realm_config_args();
     set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = false;
+        .community_token_config_args
+        .use_voter_weight_addin = false;
 
     let mut realm_cookie = governance_test
         .with_realm_using_config_args(&set_realm_config_args)
@@ -49,7 +50,8 @@ async fn test_set_realm_voter_weight_addin_for_realm_without_addins() {
 
     set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = true;
+        .community_token_config_args
+        .use_voter_weight_addin = true;
 
     // Act
 
@@ -83,7 +85,8 @@ async fn test_set_realm_voter_weight_addin_for_realm_without_council_and_addins(
     let mut set_realm_config_args = governance_test.get_default_set_realm_config_args();
     set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = false;
+        .community_token_config_args
+        .use_voter_weight_addin = false;
     set_realm_config_args.realm_config_args.use_council_mint = false;
 
     let mut realm_cookie = governance_test
@@ -92,7 +95,8 @@ async fn test_set_realm_voter_weight_addin_for_realm_without_council_and_addins(
 
     set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = true;
+        .community_token_config_args
+        .use_voter_weight_addin = true;
 
     // Act
 
@@ -129,7 +133,8 @@ async fn test_set_realm_voter_weight_addin_for_realm_with_existing_voter_weight_
 
     set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = true;
+        .community_token_config_args
+        .use_voter_weight_addin = true;
 
     let community_voter_weight_addin_address = Pubkey::new_unique();
     set_realm_config_args.community_voter_weight_addin = Some(community_voter_weight_addin_address);
@@ -170,7 +175,8 @@ async fn test_set_realm_config_with_no_voter_weight_addin_for_realm_without_addi
     let mut realm_config_args = governance_test.get_default_set_realm_config_args();
     realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = false;
+        .community_token_config_args
+        .use_voter_weight_addin = false;
 
     let mut realm_cookie = governance_test
         .with_realm_using_config_args(&realm_config_args)
@@ -178,7 +184,8 @@ async fn test_set_realm_config_with_no_voter_weight_addin_for_realm_without_addi
 
     realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = false;
+        .community_token_config_args
+        .use_voter_weight_addin = false;
 
     // Act
 
@@ -205,7 +212,8 @@ async fn test_set_realm_config_with_no_voter_weight_addin_for_realm_with_existin
     let mut realm_config_args = governance_test.get_default_set_realm_config_args();
     realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = false;
+        .community_token_config_args
+        .use_voter_weight_addin = false;
 
     // Act
 

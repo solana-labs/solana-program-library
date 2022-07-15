@@ -80,14 +80,19 @@ pub fn process_set_realm_config(
 
     // Setup config for addins
 
-    let community_voter_weight_addin = if realm_config_args.use_community_voter_weight_addin {
+    let community_voter_weight_addin = if realm_config_args
+        .community_token_config_args
+        .use_voter_weight_addin
+    {
         let community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 6
         Some(*community_voter_weight_addin_info.key)
     } else {
         None
     };
 
-    let max_community_voter_weight_addin = if realm_config_args.use_max_community_voter_weight_addin
+    let max_community_voter_weight_addin = if realm_config_args
+        .community_token_config_args
+        .use_max_voter_weight_addin
     {
         let max_community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 7
         Some(*max_community_voter_weight_addin_info.key)
@@ -96,8 +101,12 @@ pub fn process_set_realm_config(
     };
 
     // If any of the addins is needed then update or create (if doesn't exist yet)  RealmConfigAccount
-    let update_realm_config = if realm_config_args.use_community_voter_weight_addin
-        || realm_config_args.use_max_community_voter_weight_addin
+    let update_realm_config = if realm_config_args
+        .community_token_config_args
+        .use_voter_weight_addin
+        || realm_config_args
+            .community_token_config_args
+            .use_max_voter_weight_addin
     {
         // We need the payer to pay for the new account if it's created
         let payer_info = next_account_info(account_info_iter)?; // 8
@@ -157,11 +166,13 @@ pub fn process_set_realm_config(
     realm_data.config.min_community_weight_to_create_governance =
         realm_config_args.min_community_weight_to_create_governance;
 
-    realm_data.config.use_community_voter_weight_addin =
-        realm_config_args.use_community_voter_weight_addin;
+    realm_data.config.use_community_voter_weight_addin = realm_config_args
+        .community_token_config_args
+        .use_voter_weight_addin;
 
-    realm_data.config.use_max_community_voter_weight_addin =
-        realm_config_args.use_max_community_voter_weight_addin;
+    realm_data.config.use_max_community_voter_weight_addin = realm_config_args
+        .community_token_config_args
+        .use_max_voter_weight_addin;
 
     realm_data.serialize(&mut *realm_info.data.borrow_mut())?;
 

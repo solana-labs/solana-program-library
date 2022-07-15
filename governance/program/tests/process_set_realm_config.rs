@@ -8,7 +8,10 @@ mod program_test;
 use program_test::*;
 use spl_governance::{
     error::GovernanceError,
-    state::{enums::MintMaxVoteWeightSource, realm::RealmConfigArgs},
+    state::{
+        enums::MintMaxVoteWeightSource,
+        realm::{GoverningTokenConfigArgs, RealmConfigArgs},
+    },
 };
 
 use self::args::SetRealmConfigArgs;
@@ -25,8 +28,8 @@ async fn test_set_realm_config() {
 
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
         min_community_weight_to_create_governance: 10,
-        use_community_voter_weight_addin: false,
-        use_max_community_voter_weight_addin: false,
+        community_token_config_args: GoverningTokenConfigArgs::default(),
+        council_token_config_args: GoverningTokenConfigArgs::default(),
     };
 
     let set_realm_config_args = SetRealmConfigArgs {
@@ -62,8 +65,8 @@ async fn test_set_realm_config_with_authority_must_sign_error() {
 
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
         min_community_weight_to_create_governance: 10,
-        use_community_voter_weight_addin: false,
-        use_max_community_voter_weight_addin: false,
+        community_token_config_args: GoverningTokenConfigArgs::default(),
+        council_token_config_args: GoverningTokenConfigArgs::default(),
     };
 
     let set_realm_config_args = SetRealmConfigArgs {
@@ -101,8 +104,8 @@ async fn test_set_realm_config_with_no_authority_error() {
 
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
         min_community_weight_to_create_governance: 10,
-        use_community_voter_weight_addin: false,
-        use_max_community_voter_weight_addin: false,
+        community_token_config_args: GoverningTokenConfigArgs::default(),
+        council_token_config_args: GoverningTokenConfigArgs::default(),
     };
 
     let set_realm_config_args = SetRealmConfigArgs {
@@ -145,8 +148,8 @@ async fn test_set_realm_config_with_invalid_authority_error() {
 
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
         min_community_weight_to_create_governance: 10,
-        use_community_voter_weight_addin: false,
-        use_max_community_voter_weight_addin: false,
+        community_token_config_args: GoverningTokenConfigArgs::default(),
+        council_token_config_args: GoverningTokenConfigArgs::default(),
     };
 
     let set_realm_config_args = SetRealmConfigArgs {
@@ -184,8 +187,8 @@ async fn test_set_realm_config_with_remove_council() {
 
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
         min_community_weight_to_create_governance: 10,
-        use_community_voter_weight_addin: false,
-        use_max_community_voter_weight_addin: false,
+        community_token_config_args: GoverningTokenConfigArgs::default(),
+        council_token_config_args: GoverningTokenConfigArgs::default(),
     };
 
     let set_realm_config_args = SetRealmConfigArgs {
@@ -221,8 +224,8 @@ async fn test_set_realm_config_with_council_change_error() {
 
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
         min_community_weight_to_create_governance: 10,
-        use_community_voter_weight_addin: false,
-        use_max_community_voter_weight_addin: false,
+        community_token_config_args: GoverningTokenConfigArgs::default(),
+        council_token_config_args: GoverningTokenConfigArgs::default(),
     };
 
     let set_realm_config_args = SetRealmConfigArgs {
@@ -260,8 +263,8 @@ async fn test_set_realm_config_with_council_restore_error() {
 
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
         min_community_weight_to_create_governance: 10,
-        use_community_voter_weight_addin: false,
-        use_max_community_voter_weight_addin: false,
+        community_token_config_args: GoverningTokenConfigArgs::default(),
+        council_token_config_args: GoverningTokenConfigArgs::default(),
     };
 
     let mut set_realm_config_args = SetRealmConfigArgs {
