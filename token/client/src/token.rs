@@ -1730,8 +1730,8 @@ where
         withdraw_withheld_authority: &S2,
         destination_token_account: &Pubkey,
         destination_elgamal_pubkey: &ElGamalPubkey,
-        aggregate_withheld_amount_ciphertext: &ElGamalCiphertext,
         aggregate_withheld_amount: u64,
+        aggregate_withheld_amount_ciphertext: &ElGamalCiphertext,
         sources: &[&Pubkey],
     ) -> TokenResult<T::Output> {
         let withdraw_withheld_authority_elgamal_keypair =
@@ -1742,8 +1742,8 @@ where
             withdraw_withheld_authority,
             destination_token_account,
             destination_elgamal_pubkey,
-            aggregate_withheld_amount_ciphertext,
             aggregate_withheld_amount,
+            aggregate_withheld_amount_ciphertext,
             &withdraw_withheld_authority_elgamal_keypair,
             sources,
         )
@@ -1759,8 +1759,8 @@ where
         withdraw_withheld_authority: &S2,
         destination_token_account: &Pubkey,
         destination_elgamal_pubkey: &ElGamalPubkey,
-        aggregate_withheld_amount_ciphertext: &ElGamalCiphertext,
         aggregate_withheld_amount: u64,
+        aggregate_withheld_amount_ciphertext: &ElGamalCiphertext,
         withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
         sources: &[&Pubkey],
     ) -> TokenResult<T::Output> {
