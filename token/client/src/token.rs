@@ -1139,7 +1139,7 @@ where
             .try_into()
             .map_err(TokenError::Proof)?;
         let decryptable_balance = decryptable_balance_ciphertext
-            .decrypt(&authenticated_encryption_key)
+            .decrypt(authenticated_encryption_key)
             .ok_or(TokenError::AccountDecryption)?;
 
         Ok(decryptable_balance)
@@ -1751,6 +1751,7 @@ where
     }
 
     /// Withdraw withheld confidential tokens from accounts using a custom decryption key
+    #[allow(clippy::too_many_arguments)]
     pub async fn confidential_transfer_withdraw_withheld_tokens_from_accounts_with_key<
         S2: Signer,
     >(
