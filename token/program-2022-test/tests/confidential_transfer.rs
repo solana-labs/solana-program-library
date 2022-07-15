@@ -150,7 +150,7 @@ impl ConfidentialTokenAccountMeta {
             .unwrap();
 
         token
-            .confidential_transfer_apply_pending_balance(&meta.token_account, owner, 1)
+            .confidential_transfer_apply_pending_balance(&meta.token_account, owner, 0, amount, 1)
             .await
             .unwrap();
         meta
@@ -548,7 +548,7 @@ async fn ct_deposit() {
     );
 
     token
-        .confidential_transfer_apply_pending_balance(&alice_meta.token_account, &alice, 2)
+        .confidential_transfer_apply_pending_balance(&alice_meta.token_account, &alice, 0, 65537, 2)
         .await
         .unwrap();
 
@@ -592,6 +592,7 @@ async fn ct_withdraw() {
         .get_account_info(&alice_meta.token_account)
         .await
         .unwrap();
+    let extension = state.get_extension::<ConfidentialTransferAccount>().unwrap();
     assert_eq!(state.base.amount, 0);
 
     token
@@ -600,6 +601,8 @@ async fn ct_withdraw() {
             &alice_meta.token_account,
             &alice,
             21,
+            42,
+            &extension.available_balance.try_into().unwrap(),
             decimals,
         )
         .await
@@ -609,6 +612,7 @@ async fn ct_withdraw() {
         .get_account_info(&alice_meta.token_account)
         .await
         .unwrap();
+    let extension = state.get_extension::<ConfidentialTransferAccount>().unwrap();
     assert_eq!(state.base.amount, 21);
 
     alice_meta
@@ -629,6 +633,8 @@ async fn ct_withdraw() {
             &alice_meta.token_account,
             &alice,
             21,
+            21,
+            &extension.available_balance.try_into().unwrap(),
             decimals,
         )
         .await
@@ -683,6 +689,12 @@ async fn ct_transfer() {
             .await;
     let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob).await;
 
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state.get_extension::<ConfidentialTransferAccount>().unwrap();
+
     // Self-transfer of 0 tokens
     token
         .confidential_transfer_transfer(
@@ -690,6 +702,10 @@ async fn ct_transfer() {
             &alice_meta.token_account,
             &alice,
             0, // amount
+            42,
+            &extension.available_balance.try_into().unwrap(),
+            &alice_meta.elgamal_keypair.public,
+            &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
         )
         .await
         .unwrap();
@@ -706,6 +722,12 @@ async fn ct_transfer() {
         )
         .await;
 
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state.get_extension::<ConfidentialTransferAccount>().unwrap();
+
     // Self-transfer of N tokens
     token
         .confidential_transfer_transfer(
@@ -713,6 +735,10 @@ async fn ct_transfer() {
             &alice_meta.token_account,
             &alice,
             42, // amount
+            42,
+            &extension.available_balance.try_into().unwrap(),
+            &alice_meta.elgamal_keypair.public,
+            &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
         )
         .await
         .unwrap();
@@ -729,12 +755,22 @@ async fn ct_transfer() {
         )
         .await;
 
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state.get_extension::<ConfidentialTransferAccount>().unwrap();
+
     let err = token
         .confidential_transfer_transfer(
             &alice_meta.token_account,
             &alice_meta.token_account,
             &alice,
             0, // amount
+            0,
+            &extension.available_balance.try_into().unwrap(),
+            &alice_meta.elgamal_keypair.public,
+            &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
         )
         .await
         .unwrap_err();
@@ -752,7 +788,7 @@ async fn ct_transfer() {
     );
 
     token
-        .confidential_transfer_apply_pending_balance(&alice_meta.token_account, &alice, 2)
+        .confidential_transfer_apply_pending_balance(&alice_meta.token_account, &alice, 0, 42, 2)
         .await
         .unwrap();
 
@@ -768,12 +804,22 @@ async fn ct_transfer() {
         )
         .await;
 
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state.get_extension::<ConfidentialTransferAccount>().unwrap();
+
     token
         .confidential_transfer_transfer(
             &alice_meta.token_account,
             &bob_meta.token_account,
             &alice,
             42, // amount
+            42,
+            &extension.available_balance.try_into().unwrap(),
+            &bob_meta.elgamal_keypair.public,
+            &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
         )
         .await
         .unwrap();
@@ -820,7 +866,7 @@ async fn ct_transfer() {
         .await;
 
     token
-        .confidential_transfer_apply_pending_balance(&bob_meta.token_account, &bob, 1)
+        .confidential_transfer_apply_pending_balance(&bob_meta.token_account, &bob, 0, 42, 1)
         .await
         .unwrap();
 
@@ -872,6 +918,12 @@ async fn ct_transfer_with_fee() {
             .await;
     let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob).await;
 
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state.get_extension::<ConfidentialTransferAccount>().unwrap();
+
     // Self-transfer of 0 tokens
     token
         .confidential_transfer_transfer_with_fee(
@@ -879,6 +931,11 @@ async fn ct_transfer_with_fee() {
             &alice_meta.token_account,
             &alice,
             0,
+            100,
+            &extension.available_balance.try_into().unwrap(),
+            &alice_meta.elgamal_keypair.public,
+            &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
+            &ct_mint.withdraw_withheld_authority_encryption_pubkey.try_into().unwrap(),
             &epoch_info,
         )
         .await
@@ -903,6 +960,11 @@ async fn ct_transfer_with_fee() {
             &alice_meta.token_account,
             &alice,
             100,
+            100,
+            &extension.available_balance.try_into().unwrap(),
+            &alice_meta.elgamal_keypair.public,
+            &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
+            &ct_mint.withdraw_withheld_authority_encryption_pubkey.try_into().unwrap(),
             &epoch_info,
         )
         .await
@@ -921,7 +983,7 @@ async fn ct_transfer_with_fee() {
         .await;
 
     token
-        .confidential_transfer_apply_pending_balance(&alice_meta.token_account, &alice, 2)
+        .confidential_transfer_apply_pending_balance(&alice_meta.token_account, &alice, 0, 100, 2)
         .await
         .unwrap();
 
@@ -943,6 +1005,11 @@ async fn ct_transfer_with_fee() {
             &bob_meta.token_account,
             &alice,
             100,
+            100,
+            &extension.available_balance.try_into().unwrap(),
+            &bob_meta.elgamal_keypair.public,
+            &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
+            &ct_mint.withdraw_withheld_authority_encryption_pubkey.try_into().unwrap(),
             &epoch_info,
         )
         .await
@@ -991,7 +1058,7 @@ async fn ct_transfer_with_fee() {
         .await;
 
     token
-        .confidential_transfer_apply_pending_balance(&bob_meta.token_account, &bob, 1)
+        .confidential_transfer_apply_pending_balance(&bob_meta.token_account, &bob, 0, 97, 1)
         .await
         .unwrap();
 
@@ -1051,9 +1118,11 @@ async fn ct_withdraw_withheld_tokens_from_mint() {
     token
         .confidential_transfer_withdraw_withheld_tokens_from_mint_with_key(
             &ct_mint_withdraw_withheld_authority,
-            &ct_mint_withdraw_withheld_authority_encryption_keypair,
             &alice_meta.token_account,
+            &alice_meta.elgamal_keypair.public,
             0_u64,
+            &ct_mint.withheld_amount.try_into().unwrap(),
+            &ct_mint_withdraw_withheld_authority_encryption_keypair,
         )
         .await
         .unwrap();
@@ -1077,6 +1146,12 @@ async fn ct_withdraw_withheld_tokens_from_mint() {
     )
     .await;
 
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state.get_extension::<ConfidentialTransferAccount>().unwrap();
+
     // Test fee is 2.5% so the withheld fees should be 3
     token
         .confidential_transfer_transfer_with_fee(
@@ -1084,6 +1159,11 @@ async fn ct_withdraw_withheld_tokens_from_mint() {
             &bob_meta.token_account,
             &alice,
             100,
+            100,
+            &extension.available_balance.try_into().unwrap(),
+            &bob_meta.elgamal_keypair.public,
+            &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
+            &ct_mint.withdraw_withheld_authority_encryption_pubkey.try_into().unwrap(),
             &epoch_info,
         )
         .await
@@ -1116,12 +1196,17 @@ async fn ct_withdraw_withheld_tokens_from_mint() {
     )
     .await;
 
+    let state = token.get_mint_info().await.unwrap();
+    let ct_mint = state.get_extension::<ConfidentialTransferMint>().unwrap();
+
     token
         .confidential_transfer_withdraw_withheld_tokens_from_mint_with_key(
             &ct_mint_withdraw_withheld_authority,
-            &ct_mint_withdraw_withheld_authority_encryption_keypair,
             &alice_meta.token_account,
+            &alice_meta.elgamal_keypair.public,
             3_u64,
+            &ct_mint.withheld_amount.try_into().unwrap(),
+            &ct_mint_withdraw_withheld_authority_encryption_keypair,
         )
         .await
         .unwrap();
@@ -1143,6 +1228,7 @@ async fn ct_withdraw_withheld_tokens_from_mint() {
 async fn ct_withdraw_withheld_tokens_from_accounts() {
     let ConfidentialTransferMintWithKeypairs {
         ct_mint,
+        ct_mint_transfer_auditor_encryption_keypair,
         ct_mint_withdraw_withheld_authority_encryption_keypair,
         ..
     } = ConfidentialTransferMintWithKeypairs::new();
@@ -1179,6 +1265,9 @@ async fn ct_withdraw_withheld_tokens_from_accounts() {
             .await;
     let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob).await;
 
+    let state = token.get_account_info(&alice_meta.token_account).await.unwrap();
+    let extension = state.get_extension::<ConfidentialTransferAccount>().unwrap();
+
     // Test fee is 2.5% so the withheld fees should be 3
     token
         .confidential_transfer_transfer_with_fee(
@@ -1186,6 +1275,11 @@ async fn ct_withdraw_withheld_tokens_from_accounts() {
             &bob_meta.token_account,
             &alice,
             100,
+            100,
+            &extension.available_balance.try_into().unwrap(),
+            &bob_meta.elgamal_keypair.public,
+            &ct_mint_transfer_auditor_encryption_keypair.public,
+            &ct_mint_withdraw_withheld_authority_encryption_keypair.public,
             &epoch_info,
         )
         .await
@@ -1209,10 +1303,11 @@ async fn ct_withdraw_withheld_tokens_from_accounts() {
     token
         .confidential_transfer_withdraw_withheld_tokens_from_accounts_with_key(
             &ct_mint_withdraw_withheld_authority,
-            &ct_mint_withdraw_withheld_authority_encryption_keypair,
             &alice_meta.token_account,
-            &extension.withheld_amount.try_into().unwrap(),
+            &alice_meta.elgamal_keypair.public,
             3_u64,
+            &extension.withheld_amount.try_into().unwrap(),
+            &ct_mint_withdraw_withheld_authority_encryption_keypair,
             &[&bob_meta.token_account],
         )
         .await
