@@ -308,6 +308,19 @@ pub enum LendingInstruction {
         /// The amount that is to be borrowed - u64::MAX for up to 100% of available liquidity
         amount: u64,
     },
+
+    // 14
+    /// Modify the ReserveConfig parameters of an already initialized Reserve account
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` Reserve account
+    ///   1. `[]` Lending market account
+    ///   2. `[signer]` Lending market owner
+    ModifyReserveConfig {
+        /// Reserve configuration updated values
+        new_config: ReserveConfig,
+    },
 }
 
 impl LendingInstruction {
@@ -393,6 +406,34 @@ impl LendingInstruction {
             13 => {
                 let (amount, _rest) = Self::unpack_u64(rest)?;
                 Self::FlashLoan { amount }
+            }
+            14 => {
+                let (optimal_utilization_rate, rest) = Self::unpack_u8(rest)?;
+                let (loan_to_value_ratio, rest) = Self::unpack_u8(rest)?;
+                let (liquidation_bonus, rest) = Self::unpack_u8(rest)?;
+                let (liquidation_threshold, rest) = Self::unpack_u8(rest)?;
+                let (min_borrow_rate, rest) = Self::unpack_u8(rest)?;
+                let (optimal_borrow_rate, rest) = Self::unpack_u8(rest)?;
+                let (max_borrow_rate, rest) = Self::unpack_u8(rest)?;
+                let (borrow_fee_wad, rest) = Self::unpack_u64(rest)?;
+                let (flash_loan_fee_wad, rest) = Self::unpack_u64(rest)?;
+                let (host_fee_percentage, _rest) = Self::unpack_u8(rest)?;
+                Self::ModifyReserveConfig {
+                    new_config: ReserveConfig {
+                        optimal_utilization_rate,
+                        loan_to_value_ratio,
+                        liquidation_bonus,
+                        liquidation_threshold,
+                        min_borrow_rate,
+                        optimal_borrow_rate,
+                        max_borrow_rate,
+                        fees: ReserveFees {
+                            borrow_fee_wad,
+                            flash_loan_fee_wad,
+                            host_fee_percentage,
+                        },
+                    },
+                }
             }
             _ => {
                 msg!("Instruction cannot be unpacked");
@@ -541,6 +582,36 @@ impl LendingInstruction {
             Self::FlashLoan { amount } => {
                 buf.push(13);
                 buf.extend_from_slice(&amount.to_le_bytes());
+            }
+            Self::ModifyReserveConfig {
+                new_config:
+                    ReserveConfig {
+                        optimal_utilization_rate,
+                        loan_to_value_ratio,
+                        liquidation_bonus,
+                        liquidation_threshold,
+                        min_borrow_rate,
+                        optimal_borrow_rate,
+                        max_borrow_rate,
+                        fees:
+                            ReserveFees {
+                                borrow_fee_wad,
+                                flash_loan_fee_wad,
+                                host_fee_percentage,
+                            },
+                    },
+            } => {
+                buf.push(14);
+                buf.extend_from_slice(&optimal_utilization_rate.to_le_bytes());
+                buf.extend_from_slice(&loan_to_value_ratio.to_le_bytes());
+                buf.extend_from_slice(&liquidation_bonus.to_le_bytes());
+                buf.extend_from_slice(&liquidation_threshold.to_le_bytes());
+                buf.extend_from_slice(&min_borrow_rate.to_le_bytes());
+                buf.extend_from_slice(&optimal_borrow_rate.to_le_bytes());
+                buf.extend_from_slice(&max_borrow_rate.to_le_bytes());
+                buf.extend_from_slice(&borrow_fee_wad.to_le_bytes());
+                buf.extend_from_slice(&flash_loan_fee_wad.to_le_bytes());
+                buf.extend_from_slice(&host_fee_percentage.to_le_bytes());
             }
         }
         buf
@@ -982,6 +1053,27 @@ pub fn flash_loan(
     }
 }
 
+/// Creates a 'ModifyReserveConfig` instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn modify_reserve_config(
+    program_id: Pubkey,
+    config: ReserveConfig,
+    reserve_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    lending_market_owner_pubkey: Pubkey,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(reserve_pubkey, false),
+        AccountMeta::new(lending_market_pubkey, false),
+        AccountMeta::new(lending_market_owner_pubkey, true),
+    ];
+    Instruction {
+        program_id,
+        accounts,
+        data: LendingInstruction::ModifyReserveConfig { new_config: config }.pack(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1384,6 +1476,41 @@ mod tests {
         assert_eq!(
             instruction.data,
             LendingInstruction::FlashLoan { amount }.pack()
+        );
+    }
+
+    #[test]
+    fn test_modify_reserve_config() {
+        let program_id = Pubkey::new_unique();
+        let config = ReserveConfig {
+            optimal_utilization_rate: 60,
+            loan_to_value_ratio: 1,
+            liquidation_bonus: 10,
+            liquidation_threshold: 5,
+            min_borrow_rate: 2,
+            optimal_borrow_rate: 4,
+            max_borrow_rate: 10,
+            fees: ReserveFees {
+                borrow_fee_wad: 1,
+                flash_loan_fee_wad: 3,
+                host_fee_percentage: 1,
+            },
+        };
+        let reserve_pubkey = Pubkey::new_unique();
+        let lending_market_pubkey = Pubkey::new_unique();
+        let lending_market_owner_pubkey = Pubkey::new_unique();
+        let instruction = modify_reserve_config(
+            program_id,
+            config,
+            reserve_pubkey,
+            lending_market_pubkey,
+            lending_market_owner_pubkey,
+        );
+        assert_eq!(instruction.program_id, program_id);
+        assert_eq!(instruction.accounts.len(), 3);
+        assert_eq!(
+            instruction.data,
+            LendingInstruction::ModifyReserveConfig { new_config: config }.pack()
         );
     }
 }
