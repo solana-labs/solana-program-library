@@ -29,7 +29,7 @@ pub enum GoverningTokenType {
 
     /// Proxy token is token which is not deposited into Realm and is controlled externally (via plugins)
     /// Deposit - no, proxy tokens can't be deposited into the Realm
-    /// Withdraw - yes, tokens can still be withdrawn from Realm to support scenario where the config change is executed while some tokens are still deposited
+    /// Withdraw - yes, tokens can still be withdrawn from Realm to support scenario where the config is changed while some tokens are still deposited
     /// Revoke - no, Realm authority cannot revoke proxy tokens
     Proxy,
 }
