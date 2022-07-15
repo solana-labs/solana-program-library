@@ -10,6 +10,30 @@ use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
 use crate::{error::GovernanceError, state::enums::GovernanceAccountType};
 
+/// The type of the governing token defines:
+/// 1) Who retains authority over deposited tokens
+/// 2) Which token instructions Deposit, Withdraw and Revoke (burn) are allowed
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum GoverningTokenType {
+    /// Liquid token is a token which is fully liquid and the token owner retains full authority over it
+    /// Deposit - yes
+    /// Withdraw - yes  
+    /// Revoke - no, Realm authority cannot revoke liquid tokens
+    Liquid,
+
+    /// Membership token is a token controlled by Realm authority
+    /// Deposit - yes, membership tokens can be deposited to gain governance power
+    /// Withdraw - no, after membership tokens are deposited they are no longer transferable and can't be withdrawn
+    /// Revoke - yes, Realm authority can Revoke (burn) membership tokens
+    Membership,
+
+    /// Proxy token is token which is not deposited into Realm and is controlled externally (via plugins)
+    /// Deposit - no, proxy tokens can't be deposited into the Realm
+    /// Withdraw - yes, tokens can still be withdrawn from Realm to support scenario where the config change is executed while some tokens are still deposited
+    /// Revoke - no, Realm authority cannot revoke proxy tokens
+    Proxy,
+}
+
 /// GoverningTokenConfig specifies configuration for Realm governing token (Community or Council)
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GoverningTokenConfig {
@@ -18,6 +42,44 @@ pub struct GoverningTokenConfig {
 
     /// Plugin providing max voter weight for the governing token
     pub max_voter_weight_addin: Option<Pubkey>,
+
+    /// Governing token type
+    pub token_type: GoverningTokenType,
+
+    /// Reserved space for future versions
+    pub reserved: [u8; 8],
+}
+
+impl Default for GoverningTokenConfig {
+    fn default() -> Self {
+        Self {
+            voter_weight_addin: None,
+            max_voter_weight_addin: None,
+            token_type: GoverningTokenType::Liquid,
+            reserved: [0; 8],
+        }
+    }
+}
+
+/// Reserved 110 bytes
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct Reserved110 {
+    /// Reserved 64 bytes
+    pub reserved64: [u8; 64],
+    /// Reserved 32 bytes
+    pub reserved32: [u8; 32],
+    /// Reserved 4 bytes
+    pub reserved14: [u8; 14],
+}
+
+impl Default for Reserved110 {
+    fn default() -> Self {
+        Self {
+            reserved64: [0; 64],
+            reserved32: [0; 32],
+            reserved14: [0; 14],
+        }
+    }
 }
 
 /// RealmConfig account
@@ -33,16 +95,12 @@ pub struct RealmConfigAccount {
     /// Community token config
     pub community_token_config: GoverningTokenConfig,
 
-    /// Addin providing voter weights for council token
+    /// Council token config
     /// Note: This field is not implemented in the current version
-    pub council_voter_weight_addin: Option<Pubkey>,
-
-    /// Addin providing max vote weight for council token
-    /// Note: This field is not implemented in the current version
-    pub council_max_vote_weight_addin: Option<Pubkey>,
+    pub council_token_config: GoverningTokenConfig,
 
     /// Reserved
-    pub reserved: [u8; 128],
+    pub reserved: Reserved110,
 }
 
 impl AccountMaxSize for RealmConfigAccount {
@@ -103,10 +161,16 @@ mod test {
             community_token_config: GoverningTokenConfig {
                 voter_weight_addin: Some(Pubkey::new_unique()),
                 max_voter_weight_addin: Some(Pubkey::new_unique()),
+                token_type: GoverningTokenType::Liquid,
+                reserved: [0; 8],
             },
-            council_voter_weight_addin: Some(Pubkey::new_unique()),
-            council_max_vote_weight_addin: Some(Pubkey::new_unique()),
-            reserved: [0; 128],
+            council_token_config: GoverningTokenConfig {
+                voter_weight_addin: Some(Pubkey::new_unique()),
+                max_voter_weight_addin: Some(Pubkey::new_unique()),
+                token_type: GoverningTokenType::Liquid,
+                reserved: [0; 8],
+            },
+            reserved: Reserved110::default(),
         };
 
         let size = realm_config.try_to_vec().unwrap().len();

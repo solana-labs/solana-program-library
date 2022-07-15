@@ -17,7 +17,7 @@ use crate::{
         realm::{assert_valid_realm_config_args, get_realm_data_for_authority, RealmConfigArgs},
         realm_config::{
             get_realm_config_address_seeds, get_realm_config_data_for_realm, GoverningTokenConfig,
-            RealmConfigAccount,
+            GoverningTokenType, RealmConfigAccount, Reserved110,
         },
     },
 };
@@ -110,10 +110,11 @@ pub fn process_set_realm_config(
                 community_token_config: GoverningTokenConfig {
                     voter_weight_addin: community_voter_weight_addin,
                     max_voter_weight_addin: max_community_voter_weight_addin,
+                    token_type: GoverningTokenType::Liquid,
+                    reserved: [0; 8],
                 },
-                council_voter_weight_addin: None,
-                council_max_vote_weight_addin: None,
-                reserved: [0; 128],
+                council_token_config: GoverningTokenConfig::default(),
+                reserved: Reserved110::default(),
             };
 
             let rent = Rent::get()?;

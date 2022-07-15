@@ -17,7 +17,10 @@ use crate::{
             assert_valid_realm_config_args, get_governing_token_holding_address_seeds,
             get_realm_address_seeds, RealmConfig, RealmConfigArgs, RealmV2,
         },
-        realm_config::{get_realm_config_address_seeds, GoverningTokenConfig, RealmConfigAccount},
+        realm_config::{
+            get_realm_config_address_seeds, GoverningTokenConfig, GoverningTokenType,
+            RealmConfigAccount, Reserved110,
+        },
     },
     tools::spl_token::create_spl_token_account_signed,
 };
@@ -110,10 +113,11 @@ pub fn process_create_realm(
             community_token_config: GoverningTokenConfig {
                 voter_weight_addin: community_voter_weight_addin,
                 max_voter_weight_addin: max_community_voter_weight_addin,
+                token_type: GoverningTokenType::Liquid,
+                reserved: [0; 8],
             },
-            council_voter_weight_addin: None,
-            council_max_vote_weight_addin: None,
-            reserved: [0; 128],
+            council_token_config: GoverningTokenConfig::default(),
+            reserved: Reserved110::default(),
         };
 
         create_and_serialize_account_signed::<RealmConfigAccount>(
