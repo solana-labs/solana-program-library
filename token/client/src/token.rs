@@ -1119,7 +1119,8 @@ where
         self.confidential_transfer_get_available_balance_with_key(
             token_account,
             &authenticated_encryption_key,
-        ).await
+        )
+        .await
     }
 
     /// Fetch and decrypt the available balance of a confidential token account using a custom
@@ -1152,14 +1153,10 @@ where
         authority: &S2,
     ) -> TokenResult<u64> {
         let elgamal_keypair =
-            ElGamalKeypair::new(authority, token_account)
-                .map_err(TokenError::Key)?;
+            ElGamalKeypair::new(authority, token_account).map_err(TokenError::Key)?;
 
-        self.confidential_transfer_get_pending_balance_with_key(
-            token_account,
-            &elgamal_keypair,
-        )
-        .await
+        self.confidential_transfer_get_pending_balance_with_key(token_account, &elgamal_keypair)
+            .await
     }
 
     /// Fetch and decrypt the pending balance of a confidential token account using a custom
@@ -1183,9 +1180,8 @@ where
             .decrypt(&elgamal_keypair.secret)
             .ok_or(TokenError::AccountDecryption)?;
 
-        let pending_balance = pending_balance_lo.checked_add(
-            pending_balance_hi << confidential_transfer::PENDING_BALANCE_HI_BIT_LENGTH,
-            )
+        let pending_balance = pending_balance_lo
+            .checked_add(pending_balance_hi << confidential_transfer::PENDING_BALANCE_HI_BIT_LENGTH)
             .ok_or(TokenError::AccountDecryption)?;
 
         Ok(pending_balance)
@@ -1240,7 +1236,10 @@ where
         let state = self.get_account_info(token_account).await.unwrap();
         let extension =
             state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;
-        let encryption_pubkey = extension.encryption_pubkey.try_into().map_err(TokenError::Proof)?;
+        let encryption_pubkey = extension
+            .encryption_pubkey
+            .try_into()
+            .map_err(TokenError::Proof)?;
 
         Ok(encryption_pubkey)
     }
@@ -1252,21 +1251,28 @@ where
         let mint_state = self.get_mint_info().await.unwrap();
         let ct_mint =
             mint_state.get_extension::<confidential_transfer::ConfidentialTransferMint>()?;
-        let auditor_pubkey = ct_mint.auditor_encryption_pubkey.try_into().map_err(TokenError::Proof)?;
+        let auditor_pubkey = ct_mint
+            .auditor_encryption_pubkey
+            .try_into()
+            .map_err(TokenError::Proof)?;
 
         Ok(auditor_pubkey)
     }
 
     /// Fetch the ElGamal pubkey key of the withdraw withheld authority associated with a
     /// confidential token mint
-    pub async fn confidential_transfer_get_withdraw_withheld_authority_encryption_pubkey<S2: Signer>(
+    pub async fn confidential_transfer_get_withdraw_withheld_authority_encryption_pubkey<
+        S2: Signer,
+    >(
         &self,
     ) -> TokenResult<ElGamalPubkey> {
         let mint_state = self.get_mint_info().await.unwrap();
         let ct_mint =
             mint_state.get_extension::<confidential_transfer::ConfidentialTransferMint>()?;
-        let auditor_pubkey =
-            ct_mint.withdraw_withheld_authority_encryption_pubkey.try_into().map_err(TokenError::Proof)?;
+        let auditor_pubkey = ct_mint
+            .withdraw_withheld_authority_encryption_pubkey
+            .try_into()
+            .map_err(TokenError::Proof)?;
 
         Ok(auditor_pubkey)
     }
@@ -1440,10 +1446,7 @@ where
                 source_available_balance_ciphertext,
             ),
             source_elgamal_keypair,
-            (
-                destination_elgamal_pubkey,
-                auditor_elgamal_pubkey,
-            ),
+            (destination_elgamal_pubkey, auditor_elgamal_pubkey),
         )
         .map_err(TokenError::Proof)?;
 
@@ -1543,10 +1546,7 @@ where
                 source_available_balance_ciphertext,
             ),
             source_elgamal_keypair,
-            (
-                destination_elgamal_pubkey,
-                auditor_elgamal_pubkey,
-            ),
+            (destination_elgamal_pubkey, auditor_elgamal_pubkey),
             FeeParameters {
                 fee_rate_basis_points: u16::from(fee_parameters.transfer_fee_basis_points),
                 maximum_fee: u64::from(fee_parameters.maximum_fee),
