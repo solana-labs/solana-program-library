@@ -1191,6 +1191,47 @@ where
         Ok(pending_balance)
     }
 
+    pub async fn confidential_transfer_get_withheld_amount<S2: Signer>(
+        &self,
+        withdraw_withheld_authority: &S2,
+        sources: &[&Pubkey],
+    ) -> TokenResult<u64> {
+        let withdraw_withheld_authority_elgamal_keypair =
+            ElGamalKeypair::new(withdraw_withheld_authority, &self.pubkey)
+                .map_err(TokenError::Key)?;
+
+        self.confidential_transfer_get_withheld_amount_with_key(
+            &withdraw_withheld_authority_elgamal_keypair,
+            sources,
+        )
+        .await
+    }
+
+    pub async fn confidential_transfer_get_withheld_amount_with_key(
+        &self,
+        withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
+        sources: &[&Pubkey],
+    ) -> TokenResult<u64> {
+        let mut aggregate_withheld_amount_ciphertext = ElGamalCiphertext::default();
+        for &source in sources {
+            let state = self.get_account_info(source).await.unwrap();
+            let extension =
+                state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;
+
+            let withheld_amount_ciphertext: ElGamalCiphertext =
+                extension.withheld_amount.try_into().unwrap();
+
+            aggregate_withheld_amount_ciphertext =
+                aggregate_withheld_amount_ciphertext + withheld_amount_ciphertext;
+        }
+
+        let aggregate_withheld_amount = aggregate_withheld_amount_ciphertext
+            .decrypt_u32(&withdraw_withheld_authority_elgamal_keypair.secret)
+            .ok_or(TokenError::AccountDecryption)?;
+
+        Ok(aggregate_withheld_amount)
+    }
+
     /// Fetch the ElGamal public key associated with a confidential token account
     pub async fn confidential_transfer_get_encryption_pubkey<S2: Signer>(
         &self,
@@ -1207,8 +1248,6 @@ where
     /// Fetch the ElGamal pubkey key of the auditor associated with a confidential token mint
     pub async fn confidential_transfer_get_auditor_encryption_pubkey<S2: Signer>(
         &self,
-        token_account: &Pubkey,
-        authority: &S2,
     ) -> TokenResult<ElGamalPubkey> {
         let mint_state = self.get_mint_info().await.unwrap();
         let ct_mint =
@@ -1222,8 +1261,6 @@ where
     /// confidential token mint
     pub async fn confidential_transfer_get_withdraw_withheld_authority_encryption_pubkey<S2: Signer>(
         &self,
-        token_account: &Pubkey,
-        authority: &S2,
     ) -> TokenResult<ElGamalPubkey> {
         let mint_state = self.get_mint_info().await.unwrap();
         let ct_mint =
@@ -1629,64 +1666,46 @@ where
         .await
     }
 
-    /// Withdraw withheld confidential tokens from mint
+    /// Withdraw withheld confidential tokens from mint using the uniquely derived decryption key
     pub async fn confidential_transfer_withdraw_withheld_tokens_from_mint<S2: Signer>(
         &self,
         withdraw_withheld_authority: &S2,
         destination_token_account: &Pubkey,
+        destination_elgamal_pubkey: &ElGamalPubkey,
+        withheld_amount: u64,
+        withheld_amount_ciphertext: &ElGamalCiphertext,
     ) -> TokenResult<T::Output> {
-        let mint_state = self.get_mint_info().await.unwrap();
-
-        let ct_mint = mint_state
-            .get_extension::<confidential_transfer::ConfidentialTransferMint>()
-            .unwrap();
-
         // derive withheld authority elgamal key
         let withdraw_withheld_authority_elgamal_keypair =
             ElGamalKeypair::new(withdraw_withheld_authority, &self.pubkey)
                 .map_err(TokenError::Key)?;
 
-        // decrypt withheld ciphertext in mint
-        let withheld_amount = ct_mint
-            .withheld_amount
-            .decrypt(&withdraw_withheld_authority_elgamal_keypair.secret)
-            .ok_or(TokenError::AccountDecryption)?;
-
         self.confidential_transfer_withdraw_withheld_tokens_from_mint_with_key(
             withdraw_withheld_authority,
-            &withdraw_withheld_authority_elgamal_keypair,
             destination_token_account,
+            destination_elgamal_pubkey,
             withheld_amount,
+            withheld_amount_ciphertext,
+            &withdraw_withheld_authority_elgamal_keypair,
         )
         .await
     }
 
+    /// Withdraw withheld confidential tokens from mint using a custom decryption key
     pub async fn confidential_transfer_withdraw_withheld_tokens_from_mint_with_key<S2: Signer>(
         &self,
         withdraw_withheld_authority: &S2,
-        withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
         destination_token_account: &Pubkey,
-        amount: u64,
+        destination_elgamal_pubkey: &ElGamalPubkey,
+        withheld_amount: u64,
+        withheld_amount_ciphertext: &ElGamalCiphertext,
+        withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
     ) -> TokenResult<T::Output> {
-        let mint_state = self.get_mint_info().await.unwrap();
-
-        let ct_mint = mint_state
-            .get_extension::<confidential_transfer::ConfidentialTransferMint>()
-            .unwrap();
-
-        let destination_state = self
-            .get_account_info(destination_token_account)
-            .await
-            .unwrap();
-        let destination_extension = destination_state
-            .get_extension::<confidential_transfer::ConfidentialTransferAccount>(
-        )?;
-
         let proof_data = confidential_transfer::instruction::WithdrawWithheldTokensData::new(
             withdraw_withheld_authority_elgamal_keypair,
-            &destination_extension.encryption_pubkey.try_into().unwrap(),
-            &ct_mint.withheld_amount.try_into().unwrap(),
-            amount,
+            destination_elgamal_pubkey,
+            withheld_amount_ciphertext,
+            withheld_amount,
         )
         .map_err(TokenError::Proof)?;
 
@@ -1704,68 +1723,49 @@ where
         .await
     }
 
-    /// Withdraw withheld confidential tokens from accounts
+    /// Withdraw withheld confidential tokens from accounts using the uniquely derived decryption
+    /// key
     pub async fn confidential_transfer_withdraw_withheld_tokens_from_accounts<S2: Signer>(
         &self,
         withdraw_withheld_authority: &S2,
         destination_token_account: &Pubkey,
+        destination_elgamal_pubkey: &ElGamalPubkey,
+        aggregate_withheld_amount_ciphertext: &ElGamalCiphertext,
+        aggregate_withheld_amount: u64,
         sources: &[&Pubkey],
     ) -> TokenResult<T::Output> {
         let withdraw_withheld_authority_elgamal_keypair =
             ElGamalKeypair::new(withdraw_withheld_authority, &self.pubkey)
                 .map_err(TokenError::Key)?;
 
-        // decrypt source ciphertexts and aggregate the sum
-        // TODO: optimize asynchronous call to get account info
-        let mut aggregate_withheld_amount_ciphertext = ElGamalCiphertext::default();
-        for &source in sources {
-            let state = self.get_account_info(source).await.unwrap();
-            let extension =
-                state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;
-
-            let withheld_amount_ciphertext: ElGamalCiphertext =
-                extension.withheld_amount.try_into().unwrap();
-
-            aggregate_withheld_amount_ciphertext =
-                aggregate_withheld_amount_ciphertext + withheld_amount_ciphertext;
-        }
-
-        let aggregate_withheld_amount = aggregate_withheld_amount_ciphertext
-            .decrypt_u32(&withdraw_withheld_authority_elgamal_keypair.secret)
-            .ok_or(TokenError::AccountDecryption)?;
-
         self.confidential_transfer_withdraw_withheld_tokens_from_accounts_with_key(
             withdraw_withheld_authority,
-            &withdraw_withheld_authority_elgamal_keypair,
             destination_token_account,
-            &aggregate_withheld_amount_ciphertext,
+            destination_elgamal_pubkey,
+            aggregate_withheld_amount_ciphertext,
             aggregate_withheld_amount,
+            &withdraw_withheld_authority_elgamal_keypair,
             sources,
         )
         .await
     }
 
+    /// Withdraw withheld confidential tokens from accounts using a custom decryption key
     pub async fn confidential_transfer_withdraw_withheld_tokens_from_accounts_with_key<
         S2: Signer,
     >(
         &self,
         withdraw_withheld_authority: &S2,
-        withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
         destination_token_account: &Pubkey,
+        destination_elgamal_pubkey: &ElGamalPubkey,
         aggregate_withheld_amount_ciphertext: &ElGamalCiphertext,
         aggregate_withheld_amount: u64,
+        withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
         sources: &[&Pubkey],
     ) -> TokenResult<T::Output> {
-        let destination_state = self
-            .get_account_info(destination_token_account)
-            .await
-            .unwrap();
-        let destination_extension = destination_state
-            .get_extension::<confidential_transfer::ConfidentialTransferAccount>(
-        )?;
         let proof_data = confidential_transfer::instruction::WithdrawWithheldTokensData::new(
             withdraw_withheld_authority_elgamal_keypair,
-            &destination_extension.encryption_pubkey.try_into().unwrap(),
+            destination_elgamal_pubkey,
             aggregate_withheld_amount_ciphertext,
             aggregate_withheld_amount,
         )
