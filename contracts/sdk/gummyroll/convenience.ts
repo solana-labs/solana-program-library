@@ -54,7 +54,7 @@ export async function getCreateTreeIxs(
         {
             accounts: {
                 merkleRoll,
-                authority,
+                authority: authority.publicKey,
                 appendAuthority,
                 candyWrapper: CANDY_WRAPPER_PROGRAM_ID
             },
