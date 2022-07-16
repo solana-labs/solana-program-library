@@ -40,9 +40,8 @@ import {
 import {CANDY_WRAPPER_PROGRAM_ID, execute, logTx} from "../sdk/utils";
 import {TokenProgramVersion, Version} from "../sdk/bubblegum/src/generated";
 import {sleep} from "@metaplex-foundation/amman/dist/utils";
-import {verbose} from "sqlite3";
 import {bs58} from "@project-serum/anchor/dist/cjs/utils/bytes";
-
+import  retry from "retry-as-promised";
 // @ts-ignore
 let Bubblegum;
 // @ts-ignore
@@ -63,7 +62,7 @@ interface TreeProof {
 }
 
 async function getProof(asset: PublicKey): Promise<TreeProof> {
-  let resp = await fetch("http://rpc.aws.metaplex.com", {
+  let resp = await fetch("https://rpc.aws.metaplex.com", {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
@@ -292,7 +291,7 @@ async function main() {
       let tx = async function() {
         await transfer(i, treeAuthority, mintIx.data, payer, destination, merkleRollKeypair)
       }
-      await pRetry.default(tx, {retries: 100})
+      await retry(tx, {max: 100})
 
     }
   }

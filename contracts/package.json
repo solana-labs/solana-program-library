@@ -10,9 +10,9 @@
     "collections": "^5.1.13",
     "cors": "^2.8.5",
     "express": "^4.18.1",
-    "p-retry": "^5.1.1",
     "pg-promise": "^10.11.1",
     "react": "^18.1.0",
+    "retry-as-promised": "^6.0.0",
     "sqlite": "^4.1.1",
     "sqlite3": "^5.0.8",
     "typescript-collections": "^1.3.3"
@@ -22,10 +22,12 @@
     "@metaplex-foundation/solita": "^0.10.0",
     "@types/chai": "^4.3.0",
     "@types/mocha": "^9.0.0",
+    "@types/node": "^18.0.5",
     "chai": "^4.3.4",
     "mocha": "^9.0.3",
     "ts-mocha": "^10.0.0",
-    "typescript": "^4.3.5"
+    "ts-node": "^10.9.1",
+    "typescript": "^4.7.4"
   },
   "scripts": {
     "update-deps": "cd deps/metaplex-program-library; git fetch; git checkout 7e2810a; cd ../solana-program-library; git fetch; cd ../..",
