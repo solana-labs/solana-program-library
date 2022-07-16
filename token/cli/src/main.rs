@@ -3656,14 +3656,7 @@ mod tests {
         let token = create_token(&config, &payer);
         let source = create_associated_account(&config, &payer, token);
         let ui_amount = 10.0;
-        command_wrap(
-            &config,
-            ui_amount,
-            payer.pubkey(),
-            None,
-            bulk_signers,
-        )
-        .unwrap();
+        command_wrap(&config, ui_amount, payer.pubkey(), None, bulk_signers).unwrap();
 
         let recipient = get_associated_token_address_with_program_id(
             &payer.pubkey(),
@@ -3676,7 +3669,9 @@ mod tests {
             &[
                 "spl-token",
                 CommandName::Close.into(),
+                "--address",
                 &source.to_string(),
+                "--recipient",
                 &recipient.to_string(),
             ],
         );
@@ -3686,7 +3681,7 @@ mod tests {
             .get_token_account(&recipient)
             .unwrap()
             .unwrap();
-        assert_eq!(ui_account.token_amount.amount, "10");
+        assert_eq!(ui_account.token_amount.amount, "10000000000");
     }
 
     #[test]
