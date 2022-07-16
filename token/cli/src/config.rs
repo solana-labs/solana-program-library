@@ -4,7 +4,7 @@ use solana_clap_utils::{
     keypair::{pubkey_from_path, signer_from_path_with_config, SignerFromPathConfig},
 };
 use solana_cli_output::OutputFormat;
-use solana_client::{blockhash_query::BlockhashQuery, rpc_client::RpcClient};
+use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_remote_wallet::remote_wallet::RemoteWalletManager;
 use solana_sdk::{pubkey::Pubkey, signature::Signer};
 use spl_associated_token_account::*;
@@ -29,7 +29,6 @@ pub(crate) struct Config<'a> {
     pub(crate) default_keypair: KeypairOrPath,
     pub(crate) nonce_account: Option<Pubkey>,
     pub(crate) nonce_authority: Option<Pubkey>,
-    pub(crate) blockhash_query: BlockhashQuery,
     pub(crate) sign_only: bool,
     pub(crate) dump_transaction_message: bool,
     pub(crate) multisigner_pubkeys: Vec<&'a Pubkey>,
@@ -39,9 +38,9 @@ pub(crate) struct Config<'a> {
 impl<'a> Config<'a> {
     // Check if an explicit token account address was provided, otherwise
     // return the associated token address for the default address.
-    pub(crate) fn associated_token_address_or_override(
+    pub(crate) async fn associated_token_address_or_override(
         &self,
-        arg_matches: &ArgMatches,
+        arg_matches: &ArgMatches<'_>,
         override_name: &str,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
     ) -> Pubkey {
@@ -52,13 +51,14 @@ impl<'a> Config<'a> {
             wallet_manager,
             token,
         )
+        .await
     }
 
     // Check if an explicit token account address was provided, otherwise
     // return the associated token address for the default address.
-    pub(crate) fn associated_token_address_for_token_or_override(
+    pub(crate) async fn associated_token_address_for_token_or_override(
         &self,
-        arg_matches: &ArgMatches,
+        arg_matches: &ArgMatches<'_>,
         override_name: &str,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
         token: Option<Pubkey>,
