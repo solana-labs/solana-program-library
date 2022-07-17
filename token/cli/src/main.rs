@@ -1351,7 +1351,9 @@ fn command_close(
     recipient: Pubkey,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    if !config.sign_only {
+    let is_recipient_wrapped = if config.sign_only {
+        false
+    } else {
         let source_account = config
             .rpc_client
             .get_token_account(&account)?
@@ -1375,15 +1377,24 @@ fn command_close(
             )
             .into());
         }
-    }
 
-    let instructions = vec![close_account(
+        let recipient_account = config.rpc_client.get_token_account(&recipient)?;
+
+        recipient_account.map(|x| x.is_native).unwrap_or(false)
+    };
+
+    let mut instructions = vec![close_account(
         &config.program_id,
         &account,
         &recipient,
         &close_authority,
         &config.multisigner_pubkeys,
     )?];
+
+    if is_recipient_wrapped {
+        instructions.push(sync_native(&config.program_id, &recipient)?);
+    }
+
     let tx_return = handle_tx(
         &CliSignerInfo {
             signers: bulk_signers,
@@ -3633,6 +3644,43 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(ui_account.token_amount.amount, "90");
+    }
+
+    #[test]
+    fn close_wrapped_sol_account() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+        let bulk_signers: Vec<Box<dyn Signer>> = vec![Box::new(clone_keypair(&payer))];
+
+        let token = create_token(&config, &payer);
+        let source = create_associated_account(&config, &payer, token);
+        let ui_amount = 10.0;
+        command_wrap(&config, ui_amount, payer.pubkey(), None, bulk_signers).unwrap();
+
+        let recipient = get_associated_token_address_with_program_id(
+            &payer.pubkey(),
+            &native_mint::id(),
+            &config.program_id,
+        );
+        let _result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Close.into(),
+                "--address",
+                &source.to_string(),
+                "--recipient",
+                &recipient.to_string(),
+            ],
+        );
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&recipient)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.token_amount.amount, "10000000000");
     }
 
     #[test]
