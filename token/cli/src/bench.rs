@@ -266,15 +266,15 @@ fn get_token_addresses_with_seed(
         .collect()
 }
 
-async fn is_valid_token(rpc_client: &RpcClient, token: &Pubkey) -> Result<(), Error> {
+async fn is_valid_token(rpc_client: &RpcClient, token: &Pubkey) -> Result<Pubkey, Error> {
     let mint_account = rpc_client
-        .get_account_data(token)
+        .get_account(token)
         .await
         .map_err(|err| format!("Token mint {} does not exist: {}", token, err))?;
 
-    Mint::unpack(&mint_account)
-        .map(|_| ())
-        .map_err(|err| format!("Invalid token mint {}: {}", token, err).into())
+    Mint::unpack(&mint_account.data)
+        .map_err(|err| format!("Invalid token mint {}: {}", token, err))?;
+    Ok(mint_account.owner)
 }
 
 async fn command_create_accounts(
@@ -287,7 +287,7 @@ async fn command_create_accounts(
     let rpc_client = &config.rpc_client;
 
     println!("Scanning accounts...");
-    is_valid_token(rpc_client, token).await?;
+    let program_id = is_valid_token(rpc_client, token).await?;
 
     let minimum_balance_for_rent_exemption = rpc_client
         .get_minimum_balance_for_rent_exemption(Account::get_packed_len())
@@ -295,8 +295,7 @@ async fn command_create_accounts(
 
     let mut lamports_required = 0;
 
-    let token_addresses_with_seed =
-        get_token_addresses_with_seed(&config.program_id, token, owner, n);
+    let token_addresses_with_seed = get_token_addresses_with_seed(&program_id, token, owner, n);
     let mut messages = vec![];
     for address_chunk in token_addresses_with_seed.chunks(100) {
         let accounts_chunk = rpc_client
@@ -315,9 +314,9 @@ async fn command_create_accounts(
                             seed,
                             minimum_balance_for_rent_exemption,
                             Account::get_packed_len() as u64,
-                            &config.program_id,
+                            &program_id,
                         ),
-                        instruction::initialize_account(&config.program_id, address, token, owner)?,
+                        instruction::initialize_account(&program_id, address, token, owner)?,
                     ],
                     Some(&config.fee_payer),
                 ));
@@ -338,10 +337,9 @@ async fn command_close_accounts(
     let rpc_client = &config.rpc_client;
 
     println!("Scanning accounts...");
-    is_valid_token(rpc_client, token).await?;
+    let program_id = is_valid_token(rpc_client, token).await?;
 
-    let token_addresses_with_seed =
-        get_token_addresses_with_seed(&config.program_id, token, owner, n);
+    let token_addresses_with_seed = get_token_addresses_with_seed(&program_id, token, owner, n);
     let mut messages = vec![];
     for address_chunk in token_addresses_with_seed.chunks(100) {
         let accounts_chunk = rpc_client
@@ -360,7 +358,7 @@ async fn command_close_accounts(
                         } else {
                             messages.push(Message::new(
                                 &[instruction::close_account(
-                                    &config.program_id,
+                                    &program_id,
                                     address,
                                     owner,
                                     owner,
@@ -395,17 +393,14 @@ async fn command_deposit_into_or_withdraw_from(
     let rpc_client = &config.rpc_client;
 
     println!("Scanning accounts...");
-    is_valid_token(rpc_client, token).await?;
+    let program_id = is_valid_token(rpc_client, token).await?;
+    let mint_info = config.get_mint_info(token, None).await?;
+    config
+        .check_account(from_or_to, Some(mint_info.address))
+        .await?;
+    let amount = spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals);
 
-    let (mint_pubkey, decimals) =
-        crate::resolve_mint_info(config, from_or_to, Some(*token), None).await?;
-    if mint_pubkey != *token {
-        return Err(format!("Source account {} is not a {} token", from_or_to, token).into());
-    }
-    let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
-
-    let token_addresses_with_seed =
-        get_token_addresses_with_seed(&config.program_id, token, owner, n);
+    let token_addresses_with_seed = get_token_addresses_with_seed(&program_id, token, owner, n);
     let mut messages = vec![];
     for address_chunk in token_addresses_with_seed.chunks(100) {
         let accounts_chunk = rpc_client
@@ -416,14 +411,14 @@ async fn command_deposit_into_or_withdraw_from(
             if account.is_some() {
                 messages.push(Message::new(
                     &[instruction::transfer_checked(
-                        &config.program_id,
+                        &program_id,
                         if deposit_into { from_or_to } else { address },
                         token,
                         if deposit_into { address } else { from_or_to },
                         owner,
                         &[],
                         amount,
-                        decimals,
+                        mint_info.decimals,
                     )?],
                     Some(&config.fee_payer),
                 ));
