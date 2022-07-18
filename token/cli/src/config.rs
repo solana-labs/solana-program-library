@@ -77,13 +77,29 @@ impl<'a> Config<'a> {
         }
 
         let token = token.unwrap();
+        let program_id = self.get_mint_info(&token, None).await.unwrap().program_id;
+        self.associated_token_address_for_token_and_program(
+            arg_matches,
+            wallet_manager,
+            &token,
+            &program_id,
+        )
+    }
+
+    pub(crate) fn associated_token_address_for_token_and_program(
+        &self,
+        arg_matches: &ArgMatches<'_>,
+        wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+        token: &Pubkey,
+        program_id: &Pubkey,
+    ) -> Pubkey {
         let owner = self
             .default_address(arg_matches, wallet_manager)
             .unwrap_or_else(|e| {
                 eprintln!("error: {}", e);
                 exit(1);
             });
-        get_associated_token_address_with_program_id(&owner, &token, &self.program_id)
+        get_associated_token_address_with_program_id(&owner, token, program_id)
     }
 
     // Checks if an explicit address was provided, otherwise return the default address.
@@ -228,13 +244,14 @@ impl<'a> Config<'a> {
 
     pub(crate) fn check_owner(&self, account: &Pubkey, owner: &Pubkey) -> Result<(), Error> {
         if self.program_id != *owner {
-            return Err(format!(
+            Err(format!(
                 "Account {:?} is owned by {}, not configured program id {}",
                 account, owner, self.program_id
             )
-            .into());
+            .into())
+        } else {
+            Ok(())
         }
-        Ok(())
     }
 
     pub(crate) async fn check_account(

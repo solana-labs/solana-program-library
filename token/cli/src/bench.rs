@@ -205,14 +205,9 @@ pub(crate) async fn bench_process_command(
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", wallet_manager);
             signers.push(owner_signer);
-            let from = pubkey_of_signer(arg_matches, "from", wallet_manager)
-                .unwrap()
-                .unwrap_or_else(|| {
-                    get_associated_token_address_with_program_id(&owner, &token, &config.program_id)
-                });
-
+            let from = pubkey_of_signer(arg_matches, "from", wallet_manager).unwrap();
             command_deposit_into_or_withdraw_from(
-                config, signers, &token, n, &owner, ui_amount, &from, true,
+                config, signers, &token, n, &owner, ui_amount, from, true,
             )
             .await?;
         }
@@ -225,14 +220,9 @@ pub(crate) async fn bench_process_command(
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", wallet_manager);
             signers.push(owner_signer);
-            let to = pubkey_of_signer(arg_matches, "to", wallet_manager)
-                .unwrap()
-                .unwrap_or_else(|| {
-                    get_associated_token_address_with_program_id(&owner, &token, &config.program_id)
-                });
-
+            let to = pubkey_of_signer(arg_matches, "to", wallet_manager).unwrap();
             command_deposit_into_or_withdraw_from(
-                config, signers, &token, n, &owner, ui_amount, &to, false,
+                config, signers, &token, n, &owner, ui_amount, to, false,
             )
             .await?;
         }
@@ -387,17 +377,18 @@ async fn command_deposit_into_or_withdraw_from(
     n: usize,
     owner: &Pubkey,
     ui_amount: f64,
-    from_or_to: &Pubkey,
+    from_or_to: Option<Pubkey>,
     deposit_into: bool,
 ) -> Result<(), Error> {
     let rpc_client = &config.rpc_client;
 
     println!("Scanning accounts...");
     let program_id = is_valid_token(rpc_client, token).await?;
+
     let mint_info = config.get_mint_info(token, None).await?;
-    config
-        .check_account(from_or_to, Some(mint_info.address))
-        .await?;
+    let from_or_to = from_or_to
+        .unwrap_or_else(|| get_associated_token_address_with_program_id(owner, token, &program_id));
+    config.check_account(&from_or_to, Some(*token)).await?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals);
 
     let token_addresses_with_seed = get_token_addresses_with_seed(&program_id, token, owner, n);
@@ -412,9 +403,9 @@ async fn command_deposit_into_or_withdraw_from(
                 messages.push(Message::new(
                     &[instruction::transfer_checked(
                         &program_id,
-                        if deposit_into { from_or_to } else { address },
+                        if deposit_into { &from_or_to } else { address },
                         token,
-                        if deposit_into { address } else { from_or_to },
+                        if deposit_into { address } else { &from_or_to },
                         owner,
                         &[],
                         amount,

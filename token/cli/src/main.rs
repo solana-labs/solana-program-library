@@ -1500,8 +1500,9 @@ async fn command_account_info(config: &Config<'_>, address: Pubkey) -> CommandRe
         .unwrap();
     let mint = Pubkey::from_str(&account.mint).unwrap();
     let owner = Pubkey::from_str(&account.owner).unwrap();
+    let program_id = config.rpc_client.get_account(&address).await?.owner;
     let is_associated =
-        get_associated_token_address_with_program_id(&owner, &mint, &config.program_id) == address;
+        get_associated_token_address_with_program_id(&owner, &mint, &program_id) == address;
     let cli_token_account = CliTokenAccount {
         address: address.to_string(),
         is_associated,
@@ -1716,6 +1717,21 @@ async fn command_sync_native(
     bulk_signers: Vec<Box<dyn Signer>>,
     config: &Config<'_>,
 ) -> CommandResult {
+    let program_id = if config.sign_only {
+        config.program_id
+    } else {
+        config
+            .rpc_client
+            .get_account(&native_account_address)
+            .await
+            .map_err(|err| {
+                format!(
+                    "Token account {} does not exist: {}",
+                    native_account_address, err
+                )
+            })?
+            .owner
+    };
     let tx_return = handle_tx(
         &CliSignerInfo {
             signers: bulk_signers,
@@ -1723,7 +1739,7 @@ async fn command_sync_native(
         config,
         false,
         0,
-        vec![sync_native(&config.program_id, &native_account_address)?],
+        vec![sync_native(&program_id, &native_account_address)?],
     )
     .await?;
     Ok(match tx_return {
@@ -2919,11 +2935,20 @@ async fn process_command<'a>(
                 .unwrap()
                 .unwrap();
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
-            let recipient = config
-                .associated_token_address_or_override(arg_matches, "recipient", &mut wallet_manager)
-                .await;
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
             let mint_info = config.get_mint_info(&token, mint_decimals).await?;
+            let recipient = if let Some(address) =
+                pubkey_of_signer(arg_matches, "recipient", &mut wallet_manager).unwrap()
+            {
+                address
+            } else {
+                config.associated_token_address_for_token_and_program(
+                    arg_matches,
+                    &mut wallet_manager,
+                    &mint_info.address,
+                    &mint_info.program_id,
+                )
+            };
             config.check_account(&recipient, Some(token)).await?;
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             command_mint(
