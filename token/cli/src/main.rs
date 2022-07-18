@@ -674,7 +674,7 @@ fn command_transfer(
     allow_unfunded_recipient: bool,
     fund_recipient: bool,
     mint_decimals: Option<u8>,
-    recipient_is_ata_owner: bool,
+    no_recipient_is_ata_owner: bool,
     use_unchecked_instruction: bool,
     memo: Option<String>,
     bulk_signers: BulkSigners,
@@ -766,7 +766,7 @@ fn command_transfer(
             .map(|(recipient_is_token_account, _)| recipient_is_token_account)
             .unwrap_or(false)
     } else {
-        !recipient_is_ata_owner
+        no_recipient_is_ata_owner
     };
 
     if !recipient_is_token_account {
@@ -2097,8 +2097,8 @@ fn app<'a, 'b>(
                         .help("Send tokens to the recipient even if the recipient is not a wallet owned by System Program."),
                 )
                 .arg(
-                    Arg::with_name("recipient_is_ata_owner")
-                        .long("recipient-is-ata-owner")
+                    Arg::with_name("no_recipient_is_ata_owner")
+                        .long("no-recipient-is-ata-owner")
                         .takes_value(false)
                         .requires("sign_only")
                         .help("In sign-only mode, specifies that the recipient is the owner of the associated token account rather than an actual token account"),
@@ -2842,7 +2842,7 @@ fn process_command(
             let allow_unfunded_recipient = arg_matches.is_present("allow_empty_recipient")
                 || arg_matches.is_present("allow_unfunded_recipient");
 
-            let recipient_is_ata_owner = arg_matches.is_present("recipient_is_ata_owner");
+            let no_recipient_is_ata_owner = arg_matches.is_present("no_recipient_is_ata_owner");
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             let memo = value_t!(arg_matches, "memo", String).ok();
 
@@ -2856,7 +2856,7 @@ fn process_command(
                 allow_unfunded_recipient,
                 fund_recipient,
                 mint_decimals,
-                recipient_is_ata_owner,
+                no_recipient_is_ata_owner,
                 use_unchecked_instruction,
                 memo,
                 bulk_signers,
