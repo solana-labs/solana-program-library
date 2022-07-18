@@ -1865,7 +1865,7 @@ fn process_liquidate_obligation_and_redeem_reserve_collateral(
     let token_program_id = next_account_info(account_info_iter)?;
     let clock = &Clock::get()?;
 
-    let withdraw_collateral_amount = _liquidate_obligation(
+    let withdrawn_collateral_amount = _liquidate_obligation(
         program_id,
         liquidity_amount,
         source_liquidity_info,
@@ -1883,36 +1883,45 @@ fn process_liquidate_obligation_and_redeem_reserve_collateral(
     )?;
 
     _refresh_reserve_interest(program_id, withdraw_reserve_info, clock)?;
-    let withdraw_liquidity_amount = _redeem_reserve_collateral(
-        program_id,
-        withdraw_collateral_amount,
-        destination_collateral_info,
-        destination_liquidity_info,
-        withdraw_reserve_info,
-        withdraw_reserve_collateral_mint_info,
-        withdraw_reserve_liquidity_supply_info,
-        lending_market_info,
-        lending_market_authority_info,
-        user_transfer_authority_info,
-        clock,
-        token_program_id,
-    )?;
     let withdraw_reserve = Reserve::unpack(&withdraw_reserve_info.data.borrow())?;
-    if &withdraw_reserve.config.fee_receiver != withdraw_reserve_liquidity_fee_receiver_info.key {
-        msg!("Withdraw reserve liquidity fee receiver does not match the reserve liquidity fee receiver provided");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    let protocol_fee =
-        withdraw_reserve.calculate_protocol_liquidation_fee(withdraw_liquidity_amount)?;
+    let collateral_exchange_rate = withdraw_reserve.collateral_exchange_rate()?;
+    let max_redeemable_collateral = collateral_exchange_rate
+        .liquidity_to_collateral(withdraw_reserve.liquidity.available_amount)?;
+    let withdraw_collateral_amount = min(withdrawn_collateral_amount, max_redeemable_collateral);
+    // if there is liquidity redeem it
+    if withdraw_collateral_amount != 0 {
+        let withdraw_liquidity_amount = _redeem_reserve_collateral(
+            program_id,
+            withdraw_collateral_amount,
+            destination_collateral_info,
+            destination_liquidity_info,
+            withdraw_reserve_info,
+            withdraw_reserve_collateral_mint_info,
+            withdraw_reserve_liquidity_supply_info,
+            lending_market_info,
+            lending_market_authority_info,
+            user_transfer_authority_info,
+            clock,
+            token_program_id,
+        )?;
+        let withdraw_reserve = Reserve::unpack(&withdraw_reserve_info.data.borrow())?;
+        if &withdraw_reserve.config.fee_receiver != withdraw_reserve_liquidity_fee_receiver_info.key
+        {
+            msg!("Withdraw reserve liquidity fee receiver does not match the reserve liquidity fee receiver provided");
+            return Err(LendingError::InvalidAccountInput.into());
+        }
+        let protocol_fee =
+            withdraw_reserve.calculate_protocol_liquidation_fee(withdraw_liquidity_amount)?;
 
-    spl_token_transfer(TokenTransferParams {
-        source: destination_liquidity_info.clone(),
-        destination: withdraw_reserve_liquidity_fee_receiver_info.clone(),
-        amount: protocol_fee,
-        authority: user_transfer_authority_info.clone(),
-        authority_signer_seeds: &[],
-        token_program: token_program_id.clone(),
-    })?;
+        spl_token_transfer(TokenTransferParams {
+            source: destination_liquidity_info.clone(),
+            destination: withdraw_reserve_liquidity_fee_receiver_info.clone(),
+            amount: protocol_fee,
+            authority: user_transfer_authority_info.clone(),
+            authority_signer_seeds: &[],
+            token_program: token_program_id.clone(),
+        })?;
+    }
 
     Ok(())
 }
