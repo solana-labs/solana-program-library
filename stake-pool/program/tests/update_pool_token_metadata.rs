@@ -7,12 +7,16 @@ use {
         state::{MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH},
         utils::puffed_out_string,
     },
+    solana_program::instruction::InstructionError,
     solana_program_test::*,
     solana_sdk::{
-        signature::Signer,
-        transaction::Transaction,
+        signature::{Keypair, Signer},
+        transaction::{Transaction, TransactionError},
     },
-    spl_stake_pool::{instruction, MINIMUM_RESERVE_LAMPORTS},
+    spl_stake_pool::{
+        error::StakePoolError::{SignatureMissing, WrongManager},
+        instruction, MINIMUM_RESERVE_LAMPORTS,
+    },
 };
 
 async fn setup() -> (ProgramTestContext, StakePoolAccounts) {
@@ -105,4 +109,90 @@ async fn success_update_pool_token_metadata() {
     assert_eq!(metadata.data.name.to_string(), puffed_name);
     assert_eq!(metadata.data.symbol.to_string(), puffed_symbol);
     assert_eq!(metadata.data.uri.to_string(), puffed_uri);
+}
+
+#[tokio::test]
+async fn fail_manager_did_not_sign() {
+    let (mut context, stake_pool_accounts) = setup().await;
+
+    let updated_name = "updated_name";
+    let updated_symbol = "USYM";
+    let updated_uri = "updated_uri";
+
+    let mut ix = instruction::update_token_metadata(
+        &spl_stake_pool::id(),
+        &stake_pool_accounts.stake_pool.pubkey(),
+        &stake_pool_accounts.manager.pubkey(),
+        &stake_pool_accounts.pool_mint.pubkey(),
+        updated_name.to_string(),
+        updated_symbol.to_string(),
+        updated_uri.to_string(),
+    );
+    ix.accounts[1].is_signer = false;
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[ix],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
+
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err()
+        .unwrap()
+        .unwrap();
+
+    match error {
+        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
+            let program_error = SignatureMissing as u32;
+            assert_eq!(error_index, program_error);
+        }
+        _ => panic!("Wrong error occurs while manager signature missing"),
+    }
+}
+
+#[tokio::test]
+async fn fail_wrong_manager_signed() {
+    let (mut context, stake_pool_accounts) = setup().await;
+
+    let updated_name = "updated_name";
+    let updated_symbol = "USYM";
+    let updated_uri = "updated_uri";
+
+    let random_keypair = Keypair::new();
+    let ix = instruction::update_token_metadata(
+        &spl_stake_pool::id(),
+        &stake_pool_accounts.stake_pool.pubkey(),
+        &random_keypair.pubkey(),
+        &stake_pool_accounts.pool_mint.pubkey(),
+        updated_name.to_string(),
+        updated_symbol.to_string(),
+        updated_uri.to_string(),
+    );
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[ix],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &random_keypair],
+        context.last_blockhash,
+    );
+
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err()
+        .unwrap()
+        .unwrap();
+
+    match error {
+        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
+            let program_error = WrongManager as u32;
+            assert_eq!(error_index, program_error);
+        }
+        _ => panic!("Wrong error occurs while signing with the wrong manager"),
+    }
 }
