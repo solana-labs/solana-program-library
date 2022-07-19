@@ -2155,6 +2155,7 @@ fn app<'a, 'b>(
                         .required(true)
                         .help("The token to mint"),
                 )
+                
                 .arg(
                     Arg::with_name("amount")
                         .validator(is_amount)
@@ -2185,6 +2186,16 @@ fn app<'a, 'b>(
                              Defaults to the client keypair."
                         ),
                 )
+                .arg(
+                    Arg::with_name("overmint")
+                        .long("overmint-tokens")
+                        .value_name("FORMAT")
+                        .global(false)
+                        .takes_value(false)
+                        //.possible_values(&["true", "json-compact"])
+                        .help("Overmint tokens and bypass check"),
+                )
+
                 .arg(mint_decimals_arg())
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
@@ -2907,6 +2918,22 @@ fn process_command(
             );
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
+            let overmint_flag = arg_matches.is_present("overmint");
+            //Disable overflow check - change flag name.
+
+            if overmint_flag {
+                command_mint(
+                    config,
+                    token,
+                    amount,
+                    recipient,
+                    mint_decimals,
+                    mint_authority,
+                    use_unchecked_instruction,
+                    bulk_signers,
+                )
+            }
+            else {
 
             if check_if_amount_overflows_supply(config, token, amount) {
                 return Err("Supply requested to be minted is greater than the u64 token supply limit".to_string().into());
@@ -2921,7 +2948,8 @@ fn process_command(
                 mint_authority,
                 use_unchecked_instruction,
                 bulk_signers,
-            )
+                )
+            }
         }
 
         }
