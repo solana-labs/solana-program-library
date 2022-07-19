@@ -10,6 +10,8 @@ pub mod instruction;
 pub mod native_mint;
 pub mod pod;
 pub mod processor;
+#[cfg(feature = "serde-traits")]
+pub mod serialization;
 pub mod state;
 
 #[cfg(not(feature = "no-entrypoint"))]

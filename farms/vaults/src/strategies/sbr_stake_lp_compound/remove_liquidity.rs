@@ -4,6 +4,7 @@ use {
     crate::{traits::RemoveLiquidity, user_info::UserInfo, vault_info::VaultInfo},
     solana_farm_sdk::{
         instruction::vault::VaultInstruction,
+        math,
         program::{account, protocol::saber},
         vault::{Vault, VaultStrategy},
     },
@@ -46,7 +47,7 @@ impl RemoveLiquidity for VaultInstruction {
         {
             // validate accounts
             if vault_authority.key != &vault.vault_authority
-                || &account::get_token_account_owner(vault_miner_account)? != vault_stake_info.key
+                || !account::check_token_account_owner(vault_miner_account, vault_stake_info.key)?
             {
                 msg!("Error: Invalid Vault accounts");
                 return Err(ProgramError::InvalidArgument);
@@ -54,19 +55,29 @@ impl RemoveLiquidity for VaultInstruction {
             if !user_account.is_signer {
                 return Err(ProgramError::MissingRequiredSignature);
             }
-            if &account::get_token_account_owner(user_token_a_account)? != user_account.key
-                || &account::get_token_account_owner(user_token_b_account)? != user_account.key
-                || &account::get_token_account_owner(user_vt_token_account)? != user_account.key
+            if !account::check_token_account_owner(user_token_a_account, user_account.key)?
+                || !account::check_token_account_owner(user_token_b_account, user_account.key)?
+                || !account::check_token_account_owner(user_vt_token_account, user_account.key)?
             {
                 msg!("Error: Invalid token account owner");
                 return Err(ProgramError::IllegalOwner);
             }
             if let VaultStrategy::StakeLpCompoundRewards {
+                pool_id: pool_id_key,
+                farm_id: farm_id_key,
                 lp_token_custody: lp_token_custody_key,
                 vault_stake_info: vault_stake_info_key,
                 ..
             } = vault.strategy
             {
+                if &pool_id_key != swap_account.key {
+                    msg!("Error: Invalid pool id");
+                    return Err(ProgramError::InvalidArgument);
+                }
+                if &farm_id_key != quarry.key {
+                    msg!("Error: Invalid farm id");
+                    return Err(ProgramError::InvalidArgument);
+                }
                 if &vault_stake_info_key != vault_stake_info.key {
                     msg!("Error: Invalid Vault Stake Info account");
                     return Err(ProgramError::InvalidArgument);
@@ -109,10 +120,10 @@ impl RemoveLiquidity for VaultInstruction {
                 msg!("Error: Zero balance");
                 return Err(ProgramError::InsufficientFunds);
             }
-            let lp_remove_amount = account::to_token_amount(
-                stake_balance as f64 * (vt_remove_amount as f64 / vt_supply_amount as f64),
-                0,
-            )?;
+            let lp_remove_amount = math::checked_as_u64(math::checked_div(
+                math::checked_mul(stake_balance as u128, vt_remove_amount as u128)?,
+                vt_supply_amount as u128,
+            )?)?;
 
             // unstake
             let seeds: &[&[&[u8]]] = &[&[
@@ -148,7 +159,7 @@ impl RemoveLiquidity for VaultInstruction {
                 lp_remove_amount,
             )?;
 
-            // brun vault tokens
+            // burn vault tokens
             msg!(
                 "Burn Vault tokens from the user. vt_remove_amount: {}",
                 vt_remove_amount

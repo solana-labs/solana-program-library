@@ -33,63 +33,73 @@ pub enum VaultInstruction {
     UnlockLiquidity { amount: u64 },
 
     /// Remove liquidity from the Vault
-    /// # Account references are protocol specific,
-    ///   see particular Router instructions handlers for more info
+    /// # Account references are strategy specific,
+    ///   see particular Vault instructions handlers for more info
     RemoveLiquidity { amount: u64 },
 
+    /// Initialize multisig with a new set of admin signatures
+    /// # Account references are strategy specific,
+    ///   see particular Vault instructions handlers for more info
+    SetAdminSigners { min_signatures: u8 },
+
+    /// Remove Fund specific multisig, Main Router's default auth will be used
+    /// # Account references are strategy specific,
+    ///   see particular Vault instructions handlers for more info
+    RemoveMultisig,
+
     /// Set minimum crank interval for the Vault
-    /// # Account references are protocol specific,
-    ///   see particular Router instructions handlers for more info
+    /// # Account references are strategy specific,
+    ///   see particular Vault instructions handlers for more info
     SetMinCrankInterval { min_crank_interval: u32 },
 
     /// Set fee for the Vault
-    /// # Account references are protocol specific,
-    ///   see particular Router instructions handlers for more info
+    /// # Account references are strategy specific,
+    ///   see particular Vault instructions handlers for more info
     SetFee { fee: f32 },
 
     /// Set underlying protocol fee for the Vault
-    /// # Account references are protocol specific,
-    ///   see particular Router instructions handlers for more info
+    /// # Account references are strategy specific,
+    ///   see particular Vault instructions handlers for more info
     SetExternalFee { external_fee: f32 },
 
     /// Disable new deposits to the Vault
-    /// # Account references are protocol specific,
-    ///   see particular Router instructions handlers for more info
-    DisableDeposit,
+    /// # Account references are strategy specific,
+    ///   see particular Vault instructions handlers for more info
+    DisableDeposits,
 
     /// Allow new deposits to the Vault
-    /// # Account references are protocol specific,
-    ///   see particular Router instructions handlers for more info
-    EnableDeposit,
+    /// # Account references are strategy specific,
+    ///   see particular Vault instructions handlers for more info
+    EnableDeposits,
 
     /// Disable withdrawals from the Vault
-    /// # Account references are protocol specific,
-    ///   see particular Router instructions handlers for more info
-    DisableWithdrawal,
+    /// # Account references are strategy specific,
+    ///   see particular Vault instructions handlers for more info
+    DisableWithdrawals,
 
     /// Allow withdrawals from the Vault
-    /// # Account references are protocol specific,
-    ///   see particular Router instructions handlers for more info
-    EnableWithdrawal,
+    /// # Account references are strategy specific,
+    ///   see particular Vault instructions handlers for more info
+    EnableWithdrawals,
 
     /// Run crank operation on the Vault
-    /// # Account references are protocol specific,
-    ///   see particular Router instructions handlers for more info
+    /// # Account references are strategy specific,
+    ///   see particular Vault instructions handlers for more info
     Crank { step: u64 },
 
     /// Initialize the Vault
-    /// # Account references are protocol specific,
-    ///   see particular Router instructions handlers for more info
+    /// # Account references are strategy specific,
+    ///   see particular Vault instructions handlers for more info
     Init { step: u64 },
 
     /// Shutdown the Vault
-    /// # Account references are protocol specific,
-    ///   see particular Router instructions handlers for more info
+    /// # Account references are strategy specific,
+    ///   see particular Vault instructions handlers for more info
     Shutdown,
 
     /// Withdraw collected fees
-    /// # Account references are protocol specific,
-    ///   see particular Router instructions handlers for more info
+    /// # Account references are strategy specific,
+    ///   see particular Vault instructions handlers for more info
     WithdrawFees { amount: u64 },
 }
 
@@ -101,13 +111,15 @@ pub enum VaultInstructionType {
     LockLiquidity,
     UnlockLiquidity,
     RemoveLiquidity,
+    SetAdminSigners,
+    RemoveMultisig,
     SetMinCrankInterval,
     SetFee,
     SetExternalFee,
-    DisableDeposit,
-    EnableDeposit,
-    DisableWithdrawal,
-    EnableWithdrawal,
+    DisableDeposits,
+    EnableDeposits,
+    DisableWithdrawals,
+    EnableWithdrawals,
     Crank,
     Init,
     Shutdown,
@@ -121,13 +133,15 @@ impl VaultInstruction {
     pub const LOCK_LIQUIDITY_LEN: usize = 9;
     pub const UNLOCK_LIQUIDITY_LEN: usize = 9;
     pub const REMOVE_LIQUIDITY_LEN: usize = 9;
+    pub const SET_ADMIN_SIGNERS_LEN: usize = 2;
+    pub const REMOVE_MULTISIG_LEN: usize = 1;
     pub const SET_MIN_CRANK_INTERVAL_LEN: usize = 5;
     pub const SET_FEE_LEN: usize = 5;
     pub const SET_EXTERNAL_FEE_LEN: usize = 5;
-    pub const DISABLE_DEPOSIT_LEN: usize = 1;
-    pub const ENABLE_DEPOSIT_LEN: usize = 1;
-    pub const DISABLE_WITHDRAWAL_LEN: usize = 1;
-    pub const ENABLE_WITHDRAWAL_LEN: usize = 1;
+    pub const DISABLE_DEPOSITS_LEN: usize = 1;
+    pub const ENABLE_DEPOSITS_LEN: usize = 1;
+    pub const DISABLE_WITHDRAWALS_LEN: usize = 1;
+    pub const ENABLE_WITHDRAWALS_LEN: usize = 1;
     pub const CRANK_LEN: usize = 9;
     pub const INIT_LEN: usize = 9;
     pub const SHUTDOWN_LEN: usize = 1;
@@ -140,13 +154,15 @@ impl VaultInstruction {
             Self::RemoveLiquidity { .. } => self.pack_remove_liquidity(output),
             Self::LockLiquidity { .. } => self.pack_lock_liquidity(output),
             Self::UnlockLiquidity { .. } => self.pack_unlock_liquidity(output),
+            Self::SetAdminSigners { .. } => self.pack_set_admin_signers(output),
+            Self::RemoveMultisig { .. } => self.pack_remove_multisig(output),
             Self::SetMinCrankInterval { .. } => self.pack_set_min_crank_interval(output),
             Self::SetFee { .. } => self.pack_set_fee(output),
             Self::SetExternalFee { .. } => self.pack_set_external_fee(output),
-            Self::DisableDeposit { .. } => self.pack_disable_deposit(output),
-            Self::EnableDeposit { .. } => self.pack_enable_deposit(output),
-            Self::DisableWithdrawal { .. } => self.pack_disable_withdrawal(output),
-            Self::EnableWithdrawal { .. } => self.pack_enable_withdrawal(output),
+            Self::DisableDeposits { .. } => self.pack_disable_deposits(output),
+            Self::EnableDeposits { .. } => self.pack_enable_deposits(output),
+            Self::DisableWithdrawals { .. } => self.pack_disable_withdrawals(output),
+            Self::EnableWithdrawals { .. } => self.pack_enable_withdrawals(output),
             Self::Crank { .. } => self.pack_crank(output),
             Self::Init { .. } => self.pack_init(output),
             Self::Shutdown { .. } => self.pack_shutdown(output),
@@ -177,6 +193,10 @@ impl VaultInstruction {
             VaultInstructionType::RemoveLiquidity => {
                 VaultInstruction::unpack_remove_liquidity(input)
             }
+            VaultInstructionType::SetAdminSigners => {
+                VaultInstruction::unpack_set_admin_signers(input)
+            }
+            VaultInstructionType::RemoveMultisig => VaultInstruction::unpack_remove_multisig(input),
             VaultInstructionType::SetMinCrankInterval => {
                 VaultInstruction::unpack_set_min_crank_interval(input)
             }
@@ -184,13 +204,15 @@ impl VaultInstruction {
             VaultInstructionType::SetExternalFee => {
                 VaultInstruction::unpack_set_external_fee(input)
             }
-            VaultInstructionType::DisableDeposit => VaultInstruction::unpack_disable_deposit(input),
-            VaultInstructionType::EnableDeposit => VaultInstruction::unpack_enable_deposit(input),
-            VaultInstructionType::DisableWithdrawal => {
-                VaultInstruction::unpack_disable_withdrawal(input)
+            VaultInstructionType::DisableDeposits => {
+                VaultInstruction::unpack_disable_deposits(input)
             }
-            VaultInstructionType::EnableWithdrawal => {
-                VaultInstruction::unpack_enable_withdrawal(input)
+            VaultInstructionType::EnableDeposits => VaultInstruction::unpack_enable_deposits(input),
+            VaultInstructionType::DisableWithdrawals => {
+                VaultInstruction::unpack_disable_withdrawals(input)
+            }
+            VaultInstructionType::EnableWithdrawals => {
+                VaultInstruction::unpack_enable_withdrawals(input)
             }
             VaultInstructionType::Crank => VaultInstruction::unpack_crank(input),
             VaultInstructionType::Init => VaultInstruction::unpack_init(input),
@@ -287,6 +309,36 @@ impl VaultInstruction {
         }
     }
 
+    fn pack_set_admin_signers(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        check_data_len(output, VaultInstruction::SET_ADMIN_SIGNERS_LEN)?;
+
+        if let VaultInstruction::SetAdminSigners { min_signatures } = self {
+            let output = array_mut_ref![output, 0, VaultInstruction::SET_ADMIN_SIGNERS_LEN];
+            let (instruction_type_out, min_signatures_out) = mut_array_refs![output, 1, 1];
+
+            instruction_type_out[0] = VaultInstructionType::SetAdminSigners as u8;
+            min_signatures_out[0] = *min_signatures;
+
+            Ok(VaultInstruction::SET_ADMIN_SIGNERS_LEN)
+        } else {
+            Err(ProgramError::InvalidInstructionData)
+        }
+    }
+
+    fn pack_remove_multisig(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        check_data_len(output, VaultInstruction::REMOVE_MULTISIG_LEN)?;
+
+        if let VaultInstruction::RemoveMultisig = self {
+            let instruction_type_out = array_mut_ref![output, 0, 1];
+
+            instruction_type_out[0] = VaultInstructionType::RemoveMultisig as u8;
+
+            Ok(VaultInstruction::REMOVE_MULTISIG_LEN)
+        } else {
+            Err(ProgramError::InvalidInstructionData)
+        }
+    }
+
     fn pack_set_min_crank_interval(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
         check_data_len(output, VaultInstruction::SET_MIN_CRANK_INTERVAL_LEN)?;
 
@@ -338,57 +390,57 @@ impl VaultInstruction {
         }
     }
 
-    fn pack_disable_deposit(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
-        check_data_len(output, VaultInstruction::DISABLE_DEPOSIT_LEN)?;
+    fn pack_disable_deposits(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        check_data_len(output, VaultInstruction::DISABLE_DEPOSITS_LEN)?;
 
-        if let VaultInstruction::DisableDeposit = self {
+        if let VaultInstruction::DisableDeposits = self {
             let instruction_type_out = array_mut_ref![output, 0, 1];
 
-            instruction_type_out[0] = VaultInstructionType::DisableDeposit as u8;
+            instruction_type_out[0] = VaultInstructionType::DisableDeposits as u8;
 
-            Ok(VaultInstruction::DISABLE_DEPOSIT_LEN)
+            Ok(VaultInstruction::DISABLE_DEPOSITS_LEN)
         } else {
             Err(ProgramError::InvalidInstructionData)
         }
     }
 
-    fn pack_enable_deposit(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
-        check_data_len(output, VaultInstruction::ENABLE_DEPOSIT_LEN)?;
+    fn pack_enable_deposits(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        check_data_len(output, VaultInstruction::ENABLE_DEPOSITS_LEN)?;
 
-        if let VaultInstruction::EnableDeposit = self {
+        if let VaultInstruction::EnableDeposits = self {
             let instruction_type_out = array_mut_ref![output, 0, 1];
 
-            instruction_type_out[0] = VaultInstructionType::EnableDeposit as u8;
+            instruction_type_out[0] = VaultInstructionType::EnableDeposits as u8;
 
-            Ok(VaultInstruction::ENABLE_DEPOSIT_LEN)
+            Ok(VaultInstruction::ENABLE_DEPOSITS_LEN)
         } else {
             Err(ProgramError::InvalidInstructionData)
         }
     }
 
-    fn pack_disable_withdrawal(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
-        check_data_len(output, VaultInstruction::DISABLE_WITHDRAWAL_LEN)?;
+    fn pack_disable_withdrawals(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        check_data_len(output, VaultInstruction::DISABLE_WITHDRAWALS_LEN)?;
 
-        if let VaultInstruction::DisableWithdrawal = self {
+        if let VaultInstruction::DisableWithdrawals = self {
             let instruction_type_out = array_mut_ref![output, 0, 1];
 
-            instruction_type_out[0] = VaultInstructionType::DisableWithdrawal as u8;
+            instruction_type_out[0] = VaultInstructionType::DisableWithdrawals as u8;
 
-            Ok(VaultInstruction::DISABLE_WITHDRAWAL_LEN)
+            Ok(VaultInstruction::DISABLE_WITHDRAWALS_LEN)
         } else {
             Err(ProgramError::InvalidInstructionData)
         }
     }
 
-    fn pack_enable_withdrawal(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
-        check_data_len(output, VaultInstruction::ENABLE_WITHDRAWAL_LEN)?;
+    fn pack_enable_withdrawals(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        check_data_len(output, VaultInstruction::ENABLE_WITHDRAWALS_LEN)?;
 
-        if let VaultInstruction::EnableWithdrawal = self {
+        if let VaultInstruction::EnableWithdrawals = self {
             let instruction_type_out = array_mut_ref![output, 0, 1];
 
-            instruction_type_out[0] = VaultInstructionType::EnableWithdrawal as u8;
+            instruction_type_out[0] = VaultInstructionType::EnableWithdrawals as u8;
 
-            Ok(VaultInstruction::ENABLE_WITHDRAWAL_LEN)
+            Ok(VaultInstruction::ENABLE_WITHDRAWALS_LEN)
         } else {
             Err(ProgramError::InvalidInstructionData)
         }
@@ -498,6 +550,21 @@ impl VaultInstruction {
         })
     }
 
+    fn unpack_set_admin_signers(input: &[u8]) -> Result<VaultInstruction, ProgramError> {
+        check_data_len(input, VaultInstruction::SET_ADMIN_SIGNERS_LEN)?;
+
+        let input = array_ref![input, 1, VaultInstruction::SET_ADMIN_SIGNERS_LEN - 1];
+
+        Ok(Self::SetAdminSigners {
+            min_signatures: input[0],
+        })
+    }
+
+    fn unpack_remove_multisig(input: &[u8]) -> Result<VaultInstruction, ProgramError> {
+        check_data_len(input, VaultInstruction::REMOVE_MULTISIG_LEN)?;
+        Ok(Self::RemoveMultisig)
+    }
+
     fn unpack_set_min_crank_interval(input: &[u8]) -> Result<VaultInstruction, ProgramError> {
         check_data_len(input, VaultInstruction::SET_MIN_CRANK_INTERVAL_LEN)?;
         Ok(Self::SetMinCrankInterval {
@@ -519,24 +586,24 @@ impl VaultInstruction {
         })
     }
 
-    fn unpack_disable_deposit(input: &[u8]) -> Result<VaultInstruction, ProgramError> {
-        check_data_len(input, VaultInstruction::DISABLE_DEPOSIT_LEN)?;
-        Ok(Self::DisableDeposit)
+    fn unpack_disable_deposits(input: &[u8]) -> Result<VaultInstruction, ProgramError> {
+        check_data_len(input, VaultInstruction::DISABLE_DEPOSITS_LEN)?;
+        Ok(Self::DisableDeposits)
     }
 
-    fn unpack_enable_deposit(input: &[u8]) -> Result<VaultInstruction, ProgramError> {
-        check_data_len(input, VaultInstruction::ENABLE_DEPOSIT_LEN)?;
-        Ok(Self::EnableDeposit)
+    fn unpack_enable_deposits(input: &[u8]) -> Result<VaultInstruction, ProgramError> {
+        check_data_len(input, VaultInstruction::ENABLE_DEPOSITS_LEN)?;
+        Ok(Self::EnableDeposits)
     }
 
-    fn unpack_disable_withdrawal(input: &[u8]) -> Result<VaultInstruction, ProgramError> {
-        check_data_len(input, VaultInstruction::DISABLE_WITHDRAWAL_LEN)?;
-        Ok(Self::DisableWithdrawal)
+    fn unpack_disable_withdrawals(input: &[u8]) -> Result<VaultInstruction, ProgramError> {
+        check_data_len(input, VaultInstruction::DISABLE_WITHDRAWALS_LEN)?;
+        Ok(Self::DisableWithdrawals)
     }
 
-    fn unpack_enable_withdrawal(input: &[u8]) -> Result<VaultInstruction, ProgramError> {
-        check_data_len(input, VaultInstruction::ENABLE_WITHDRAWAL_LEN)?;
-        Ok(Self::EnableWithdrawal)
+    fn unpack_enable_withdrawals(input: &[u8]) -> Result<VaultInstruction, ProgramError> {
+        check_data_len(input, VaultInstruction::ENABLE_WITHDRAWALS_LEN)?;
+        Ok(Self::EnableWithdrawals)
     }
 
     fn unpack_crank(input: &[u8]) -> Result<VaultInstruction, ProgramError> {
@@ -574,13 +641,15 @@ impl std::fmt::Display for VaultInstructionType {
             VaultInstructionType::LockLiquidity => write!(f, "LockLiquidity"),
             VaultInstructionType::UnlockLiquidity => write!(f, "UnlockLiquidity"),
             VaultInstructionType::RemoveLiquidity => write!(f, "RemoveLiquidity"),
+            VaultInstructionType::SetAdminSigners => write!(f, "SetAdminSigners"),
+            VaultInstructionType::RemoveMultisig => write!(f, "RemoveMultisig"),
             VaultInstructionType::SetMinCrankInterval => write!(f, "SetMinCrankInterval"),
             VaultInstructionType::SetFee => write!(f, "SetFee"),
             VaultInstructionType::SetExternalFee => write!(f, "SetExternalFee"),
-            VaultInstructionType::DisableDeposit => write!(f, "DisableDeposit"),
-            VaultInstructionType::EnableDeposit => write!(f, "EnableDeposit"),
-            VaultInstructionType::DisableWithdrawal => write!(f, "DisableWithdrawal"),
-            VaultInstructionType::EnableWithdrawal => write!(f, "EnableWithdrawal"),
+            VaultInstructionType::DisableDeposits => write!(f, "DisableDeposits"),
+            VaultInstructionType::EnableDeposits => write!(f, "EnableDeposits"),
+            VaultInstructionType::DisableWithdrawals => write!(f, "DisableWithdrawals"),
+            VaultInstructionType::EnableWithdrawals => write!(f, "EnableWithdrawals"),
             VaultInstructionType::Crank => write!(f, "Crank"),
             VaultInstructionType::Init => write!(f, "Init"),
             VaultInstructionType::Shutdown => write!(f, "Shutdown"),

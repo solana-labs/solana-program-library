@@ -3,13 +3,51 @@
 use {
     crate::error::FarmClientError,
     solana_farm_sdk::farm::FarmRoute,
-    solana_sdk::{instruction::AccountMeta, program_error::ProgramError, pubkey::Pubkey},
+    solana_sdk::{
+        instruction::AccountMeta, program_error::ProgramError, pubkey::Pubkey, system_program,
+    },
     std::vec::Vec,
 };
 
 use super::FarmClient;
 
 impl FarmClient {
+    /// Returns instruction accounts for initializing a new User in an Orca farm
+    pub fn get_user_init_accounts_orca(
+        &self,
+        wallet_address: &Pubkey,
+        farm_name: &str,
+    ) -> Result<Vec<AccountMeta>, FarmClientError> {
+        // get farm info
+        let farm = self.get_farm(farm_name)?;
+
+        let farm_id = match farm.route {
+            FarmRoute::Orca { farm_id, .. } => farm_id,
+            _ => unreachable!(),
+        };
+
+        let farmer = Pubkey::find_program_address(
+            &[
+                &farm_id.to_bytes(),
+                &wallet_address.to_bytes(),
+                &spl_token::id().to_bytes(),
+            ],
+            &farm.farm_program_id,
+        )
+        .0;
+
+        let accounts = vec![
+            AccountMeta::new(*wallet_address, true),
+            AccountMeta::new_readonly(*wallet_address, false),
+            AccountMeta::new(farmer, false),
+            AccountMeta::new_readonly(farm_id, false),
+            AccountMeta::new_readonly(farm.farm_program_id, false),
+            AccountMeta::new_readonly(system_program::id(), false),
+        ];
+
+        Ok(accounts)
+    }
+
     /// Returns instruction accounts for tokens staking in an Orca farm
     pub fn get_stake_accounts_orca(
         &self,
@@ -20,7 +58,7 @@ impl FarmClient {
         let farm = self.get_farm(farm_name)?;
 
         // get tokens info
-        let token_a = self.get_token_by_ref_from_cache(&farm.reward_token_a_ref)?;
+        let token_a = self.get_token_by_ref_from_cache(&farm.first_reward_token_ref)?;
         let lp_token = self.get_token_by_ref_from_cache(&farm.lp_token_ref)?;
 
         // get user accounts info
@@ -42,10 +80,7 @@ impl FarmClient {
             let user_farm_lp_token_account = self.get_token_account(wallet_address, &farm_lp_token);
 
             accounts.push(AccountMeta::new_readonly(*wallet_address, true));
-            accounts.push(AccountMeta::new(
-                user_info_account.ok_or(ProgramError::UninitializedAccount)?,
-                false,
-            ));
+            accounts.push(AccountMeta::new(user_info_account, false));
             accounts.push(AccountMeta::new(
                 user_lp_token_account.ok_or(ProgramError::UninitializedAccount)?,
                 false,
@@ -85,7 +120,7 @@ impl FarmClient {
         let farm = self.get_farm(farm_name)?;
 
         // get tokens info
-        let token_a = self.get_token_by_ref_from_cache(&farm.reward_token_a_ref)?;
+        let token_a = self.get_token_by_ref_from_cache(&farm.first_reward_token_ref)?;
         let lp_token = self.get_token_by_ref_from_cache(&farm.lp_token_ref)?;
 
         // get user accounts info
@@ -107,10 +142,7 @@ impl FarmClient {
             let user_farm_lp_token_account = self.get_token_account(wallet_address, &farm_lp_token);
 
             accounts.push(AccountMeta::new_readonly(*wallet_address, true));
-            accounts.push(AccountMeta::new(
-                user_info_account.ok_or(ProgramError::UninitializedAccount)?,
-                false,
-            ));
+            accounts.push(AccountMeta::new(user_info_account, false));
             accounts.push(AccountMeta::new(
                 user_lp_token_account.ok_or(ProgramError::UninitializedAccount)?,
                 false,
@@ -150,7 +182,7 @@ impl FarmClient {
         let farm = self.get_farm(farm_name)?;
 
         // get tokens info
-        let token_a = self.get_token_by_ref_from_cache(&farm.reward_token_a_ref)?;
+        let token_a = self.get_token_by_ref_from_cache(&farm.first_reward_token_ref)?;
 
         // get user accounts info
         let user_reward_token_account = self.get_token_account(wallet_address, &token_a);
@@ -168,10 +200,7 @@ impl FarmClient {
             let user_info_account = self.get_stake_account(wallet_address, farm_name)?;
 
             accounts.push(AccountMeta::new_readonly(*wallet_address, true));
-            accounts.push(AccountMeta::new(
-                user_info_account.ok_or(ProgramError::UninitializedAccount)?,
-                false,
-            ));
+            accounts.push(AccountMeta::new(user_info_account, false));
             accounts.push(AccountMeta::new(
                 user_reward_token_account.ok_or(ProgramError::UninitializedAccount)?,
                 false,

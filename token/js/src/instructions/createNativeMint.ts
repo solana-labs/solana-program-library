@@ -1,7 +1,9 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { PublicKey, TransactionInstruction, SystemProgram } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, NATIVE_MINT } from '../constants';
+import { TOKEN_2022_PROGRAM_ID, NATIVE_MINT_2022 } from '../constants';
 import { TokenInstruction } from './types';
+import { TokenUnsupportedInstructionError } from '../errors';
+import { programSupportsExtensions } from '../constants';
 
 /** TODO: docs */
 export interface CreateNativeMintInstructionData {
@@ -23,9 +25,12 @@ export const createNativeMintInstructionData = struct<CreateNativeMintInstructio
  */
 export function createCreateNativeMintInstruction(
     payer: PublicKey,
-    programId = TOKEN_PROGRAM_ID,
-    nativeMintId = NATIVE_MINT
+    nativeMintId = NATIVE_MINT_2022,
+    programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
+    if (!programSupportsExtensions(programId)) {
+        throw new TokenUnsupportedInstructionError();
+    }
     const keys = [
         { pubkey: payer, isSigner: true, isWritable: true },
         { pubkey: nativeMintId, isSigner: false, isWritable: true },

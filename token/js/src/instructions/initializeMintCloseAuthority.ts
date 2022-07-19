@@ -2,12 +2,14 @@ import { struct, u8 } from '@solana/buffer-layout';
 import { publicKey } from '@solana/buffer-layout-utils';
 import { AccountMeta, PublicKey, TransactionInstruction } from '@solana/web3.js';
 import {
+    TokenUnsupportedInstructionError,
     TokenInvalidInstructionDataError,
     TokenInvalidInstructionKeysError,
     TokenInvalidInstructionProgramError,
     TokenInvalidInstructionTypeError,
 } from '../errors';
 import { TokenInstruction } from './types';
+import { programSupportsExtensions } from '../constants';
 
 /** TODO: docs */
 export interface InitializeMintCloseAuthorityInstructionData {
@@ -37,6 +39,9 @@ export function createInitializeMintCloseAuthorityInstruction(
     closeAuthority: PublicKey | null,
     programId: PublicKey
 ): TransactionInstruction {
+    if (!programSupportsExtensions(programId)) {
+        throw new TokenUnsupportedInstructionError();
+    }
     const keys = [{ pubkey: mint, isSigner: false, isWritable: true }];
 
     const data = Buffer.alloc(initializeMintCloseAuthorityInstructionData.span);

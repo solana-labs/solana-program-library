@@ -30,6 +30,9 @@ pub fn load(
         StorageType::Program => {
             loaders::program::load(client, config, &data, remove_mode);
         }
+        StorageType::Fund => {
+            loaders::fund::load(client, config, &data, remove_mode);
+        }
         StorageType::Vault => {
             loaders::vault::load(client, config, &data, remove_mode);
         }

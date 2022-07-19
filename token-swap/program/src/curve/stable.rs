@@ -123,6 +123,8 @@ fn compute_new_destination_amount(
     let leverage: U256 = leverage.into();
     let new_source_amount: U256 = new_source_amount.into();
     let d_val: U256 = d_val.into();
+    let zero = U256::from(0u128);
+    let one = U256::from(1u128);
 
     // sum' = prod' = x
     // c =  D ** (n + 1) / (n ** (2 * n) * prod' * A)
@@ -135,8 +137,18 @@ fn compute_new_destination_amount(
     // Solve for y by approximating: y**2 + b*y = c
     let mut y = d_val;
     for _ in 0..ITERATIONS {
-        let (y_new, _) = (checked_u8_power(&y, 2)?.checked_add(c)?)
-            .checked_ceil_div(checked_u8_mul(&y, 2)?.checked_add(b)?.checked_sub(d_val)?)?;
+        let numerator = checked_u8_power(&y, 2)?.checked_add(c)?;
+        let denominator = checked_u8_mul(&y, 2)?.checked_add(b)?.checked_sub(d_val)?;
+        // checked_ceil_div is conservative, not allowing for a 0 return, but we can
+        // ceiling to 1 token in this case since we're solving through approximation,
+        // and not doing a constant product calculation
+        let (y_new, _) = numerator.checked_ceil_div(denominator).unwrap_or_else(|| {
+            if numerator == U256::from(0u128) {
+                (zero, zero)
+            } else {
+                (one, zero)
+            }
+        });
         if y_new == y {
             break;
         } else {
@@ -629,5 +641,25 @@ mod tests {
                 CONVERSION_BASIS_POINTS_GUARANTEE
             );
         }
+    }
+
+    // this test comes from a failed proptest
+    #[test]
+    fn withdraw_token_conversion_huge_withdrawal() {
+        let pool_token_supply: u64 = 12798273514859089136;
+        let pool_token_amount: u64 = 12798243809352362806;
+        let swap_token_a_amount: u64 = 10000000000000000000;
+        let swap_token_b_amount: u64 = 6000000000000000000;
+        let amp = 72;
+        let curve = StableCurve { amp };
+        check_withdraw_token_conversion(
+            &curve,
+            pool_token_amount as u128,
+            pool_token_supply as u128,
+            swap_token_a_amount as u128,
+            swap_token_b_amount as u128,
+            TradeDirection::AtoB,
+            CONVERSION_BASIS_POINTS_GUARANTEE,
+        );
     }
 }

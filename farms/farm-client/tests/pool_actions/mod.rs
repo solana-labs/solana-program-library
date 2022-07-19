@@ -16,7 +16,7 @@ pub fn do_swap(client: &FarmClient, keypair: &Keypair, swap: &Swap) {
     } else {
         swap.amount
     };
-    if amount < 0.0001 {
+    if amount < 0.0003 {
         return;
     }
     println!(
@@ -28,7 +28,9 @@ pub fn do_swap(client: &FarmClient, keypair: &Keypair, swap: &Swap) {
         client
             .swap(
                 keypair,
-                swap.protocol,
+                swap.protocol
+                    .parse()
+                    .expect("Failed to parse protocol argument"),
                 swap.from_token,
                 swap.to_token,
                 amount,
@@ -292,15 +294,17 @@ pub fn run_test(pool_name: &str, swaps: Vec<Swap>, cleanup_swaps: Vec<Swap>, poo
             do_harvest(&client, &keypair, farm.name.as_str());
 
             // orca double-dip farms
-            let farm_token_name =
-                "LP.".to_string() + &farm.name.as_str()[..farm.name.as_str().len() - 3];
-            if let Ok(dd_farms) = client.find_farms_with_lp(&farm_token_name) {
-                for dd_farm in dd_farms.iter() {
-                    do_stake(&client, &keypair, dd_farm.name.as_str(), lp_received / 2.0);
-                    do_stake(&client, &keypair, dd_farm.name.as_str(), 0.0);
-                    do_harvest(&client, &keypair, dd_farm.name.as_str());
-                    do_unstake(&client, &keypair, dd_farm.name.as_str(), lp_received / 2.0);
-                    do_unstake(&client, &keypair, dd_farm.name.as_str(), 0.0);
+            if farm.name.starts_with("ORC.") {
+                let farm_token_name =
+                    "LP.".to_string() + &farm.name.as_str()[..farm.name.as_str().len() - 3];
+                if let Ok(dd_farms) = client.find_farms_with_lp(&farm_token_name) {
+                    for dd_farm in dd_farms.iter() {
+                        do_stake(&client, &keypair, dd_farm.name.as_str(), lp_received / 2.0);
+                        do_stake(&client, &keypair, dd_farm.name.as_str(), 0.0);
+                        do_harvest(&client, &keypair, dd_farm.name.as_str());
+                        do_unstake(&client, &keypair, dd_farm.name.as_str(), lp_received / 2.0);
+                        do_unstake(&client, &keypair, dd_farm.name.as_str(), 0.0);
+                    }
                 }
             }
 

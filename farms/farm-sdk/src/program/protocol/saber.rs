@@ -18,6 +18,18 @@ use {
 
 pub const SABER_FEE: f64 = 0.1;
 
+pub mod saber_redeemer {
+    solana_program::declare_id!("RDM23yr8pr1kEAmhnFpaabPny6C9UVcEcok3Py5v86X");
+}
+
+pub mod saber_decimal_wrapper {
+    solana_program::declare_id!("DecZY86MU5Gj7kppfUCEmd4LbXXuyZH1yHaP2NTqdiZB");
+}
+
+pub mod saber_to_usdc_amm {
+    solana_program::declare_id!("5cmAS6Mj4pG2Vp9hhyu3kpK9yvC7P6ejh9HiobpTE6Jc");
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Miner {
     /// Key of the [Quarry] this [Miner] works on.
@@ -220,6 +232,10 @@ fn decimal_wrapper_invoke<'a, 'b>(
     seeds: &[&[&[u8]]],
     amount: u64,
 ) -> ProgramResult {
+    if &saber_decimal_wrapper::id() != decimal_wrapper_program {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+
     let mut hasher = Hasher::default();
     hasher.hash(instruction.as_bytes());
 
@@ -516,6 +532,10 @@ pub fn redeem_rewards_with_seeds(accounts: &[AccountInfo], seeds: &[&[&[u8]]]) -
     if let [authority_account, iou_token_custody_account, sbr_token_custody_account, _spl_token_id, redeemer, redeemer_program, sbr_token_mint, iou_token_mint, saber_vault, saber_mint_proxy_program, mint_proxy_authority, mint_proxy_state, minter_info] =
         accounts
     {
+        if redeemer_program.key != &saber_redeemer::id() {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
         // convert IOU to Saber
         let mut hasher = Hasher::default();
         hasher.hash(b"global:redeem_all_tokens_from_mint_proxy");

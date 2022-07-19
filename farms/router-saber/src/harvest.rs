@@ -48,6 +48,11 @@ pub fn harvest(accounts: &[AccountInfo]) -> ProgramResult {
         {
             return Err(ProgramError::IncorrectProgramId);
         }
+        if !account::check_token_account_owner(user_iou_token_account, user_account.key)?
+            || !account::check_token_account_owner(user_sbr_token_account, user_account.key)?
+        {
+            return Err(ProgramError::IllegalOwner);
+        }
 
         let initial_iou_token_user_balance = account::get_token_balance(user_iou_token_account)?;
         let initial_sbr_token_user_balance = account::get_token_balance(user_sbr_token_account)?;

@@ -26,9 +26,10 @@ pub fn process_refdb_instruction(
     let accounts_iter = &mut accounts.iter();
 
     let signer_account = next_account_info(accounts_iter)?;
+    let _multisig_account = next_account_info(accounts_iter)?;
     let refdb_account = next_account_info(accounts_iter)?;
 
-    let res = match instruction {
+    match instruction {
         RefDbInstruction::Init {
             name,
             reference_type,
@@ -54,24 +55,24 @@ pub fn process_refdb_instruction(
                 pda::check_pda_rent_exempt(signer_account, refdb_account, seeds, data_size, true)?;
                 pda::check_pda_owner(program_id, refdb_account, seeds, true)?;
             }
-            RefDB::init(*refdb_account.try_borrow_mut_data()?, &name, reference_type)
+            RefDB::init(*refdb_account.try_borrow_mut_data()?, &name, reference_type)?;
         }
         RefDbInstruction::Drop { close_account } => {
-            let _ = RefDB::drop(*refdb_account.try_borrow_mut_data()?);
             if close_account {
                 account::close_system_account(signer_account, refdb_account, program_id)?;
+            } else {
+                let _ = RefDB::drop(*refdb_account.try_borrow_mut_data()?)?;
             }
-            Ok(())
         }
         RefDbInstruction::Write { record } => {
-            RefDB::write(*refdb_account.try_borrow_mut_data()?, &record).map(|_v| ())
+            RefDB::write(*refdb_account.try_borrow_mut_data()?, &record).map(|_v| ())?;
         }
         RefDbInstruction::Delete { record } => {
-            RefDB::delete(*refdb_account.try_borrow_mut_data()?, &record).map(|_v| ())
+            RefDB::delete(*refdb_account.try_borrow_mut_data()?, &record).map(|_v| ())?;
         }
     };
 
     msg!("MainInstruction::RefDbInstruction complete");
 
-    res
+    Ok(())
 }

@@ -55,7 +55,7 @@ pub fn pubkey_map_to_string(map: &HashMap<String, Pubkey>) -> String {
         if s.len() != 1 {
             s += ",";
         }
-        s += format!("\"{}\":\"{}\"", key, val.to_string()).as_str();
+        s += format!("\"{}\":\"{}\"", key, val).as_str();
     }
     s += "}";
     s
@@ -63,4 +63,12 @@ pub fn pubkey_map_to_string(map: &HashMap<String, Pubkey>) -> String {
 
 pub fn str_to_as64(input: &str) -> Result<ArrayString64, ProgramError> {
     ArrayString64::try_from_str(input).or(Err(ProgramError::InvalidArgument))
+}
+
+pub fn capitalize(s: &str) -> String {
+    let mut c = s.chars();
+    match c.next() {
+        None => String::new(),
+        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+    }
 }

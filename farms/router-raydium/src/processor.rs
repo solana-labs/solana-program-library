@@ -3,7 +3,7 @@
 use {
     crate::{
         add_liquidity::add_liquidity, remove_liquidity::remove_liquidity, stake::stake, swap::swap,
-        unstake::unstake,
+        unstake::unstake, user_init::user_init,
     },
     solana_farm_sdk::{instruction::amm::AmmInstruction, log::sol_log_params_short},
     solana_program::{
@@ -32,6 +32,7 @@ pub fn process_instruction(
     let instruction = AmmInstruction::unpack(instruction_data)?;
 
     match instruction {
+        AmmInstruction::UserInit => user_init(accounts)?,
         AmmInstruction::AddLiquidity {
             max_token_a_amount,
             max_token_b_amount,

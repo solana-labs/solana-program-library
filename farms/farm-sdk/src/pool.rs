@@ -252,42 +252,6 @@ impl Pool {
     pub const SABER_POOL_LEN: usize = 663;
     pub const ORCA_POOL_LEN: usize = 401;
 
-    pub fn get_size(&self) -> usize {
-        match self.route {
-            PoolRoute::Raydium { .. } => Pool::RAYDIUM_POOL_LEN,
-            PoolRoute::Saber { .. } => Pool::SABER_POOL_LEN,
-            PoolRoute::Orca { .. } => Pool::ORCA_POOL_LEN,
-        }
-    }
-
-    pub fn pack(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
-        match self.route {
-            PoolRoute::Raydium { .. } => self.pack_raydium(output),
-            PoolRoute::Saber { .. } => self.pack_saber(output),
-            PoolRoute::Orca { .. } => self.pack_orca(output),
-        }
-    }
-
-    pub fn to_vec(&self) -> Result<Vec<u8>, ProgramError> {
-        let mut output: [u8; Pool::MAX_LEN] = [0; Pool::MAX_LEN];
-        if let Ok(len) = self.pack(&mut output[..]) {
-            Ok(output[..len].to_vec())
-        } else {
-            Err(ProgramError::InvalidAccountData)
-        }
-    }
-
-    pub fn unpack(input: &[u8]) -> Result<Pool, ProgramError> {
-        check_data_len(input, 1)?;
-        let pool_route_type = PoolRouteType::try_from_primitive(input[0])
-            .or(Err(ProgramError::InvalidAccountData))?;
-        match pool_route_type {
-            PoolRouteType::Raydium => Pool::unpack_raydium(input),
-            PoolRouteType::Saber => Pool::unpack_saber(input),
-            PoolRouteType::Orca => Pool::unpack_orca(input),
-        }
-    }
-
     fn pack_raydium(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
         check_data_len(output, Pool::RAYDIUM_POOL_LEN)?;
 
@@ -704,6 +668,44 @@ impl Pool {
                 fees_account: Pubkey::new_from_array(*fees_account),
             },
         })
+    }
+}
+
+impl Packed for Pool {
+    fn get_size(&self) -> usize {
+        match self.route {
+            PoolRoute::Raydium { .. } => Pool::RAYDIUM_POOL_LEN,
+            PoolRoute::Saber { .. } => Pool::SABER_POOL_LEN,
+            PoolRoute::Orca { .. } => Pool::ORCA_POOL_LEN,
+        }
+    }
+
+    fn pack(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        match self.route {
+            PoolRoute::Raydium { .. } => self.pack_raydium(output),
+            PoolRoute::Saber { .. } => self.pack_saber(output),
+            PoolRoute::Orca { .. } => self.pack_orca(output),
+        }
+    }
+
+    fn to_vec(&self) -> Result<Vec<u8>, ProgramError> {
+        let mut output: [u8; Pool::MAX_LEN] = [0; Pool::MAX_LEN];
+        if let Ok(len) = self.pack(&mut output[..]) {
+            Ok(output[..len].to_vec())
+        } else {
+            Err(ProgramError::InvalidAccountData)
+        }
+    }
+
+    fn unpack(input: &[u8]) -> Result<Pool, ProgramError> {
+        check_data_len(input, 1)?;
+        let pool_route_type = PoolRouteType::try_from_primitive(input[0])
+            .or(Err(ProgramError::InvalidAccountData))?;
+        match pool_route_type {
+            PoolRouteType::Raydium => Pool::unpack_raydium(input),
+            PoolRouteType::Saber => Pool::unpack_saber(input),
+            PoolRouteType::Orca => Pool::unpack_orca(input),
+        }
     }
 }
 
