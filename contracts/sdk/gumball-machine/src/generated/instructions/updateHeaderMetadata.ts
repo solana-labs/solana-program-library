@@ -27,7 +27,10 @@ export type UpdateHeaderMetadataInstructionArgs = {
   goLiveDate: beet.COption<beet.bignum>
   botWallet: beet.COption<web3.PublicKey>
   authority: beet.COption<web3.PublicKey>
+  receiver: beet.COption<web3.PublicKey>
   maxMintSize: beet.COption<number>
+  creatorKeys: beet.COption<web3.PublicKey[]>
+  creatorShares: beet.COption<Uint8Array>
 }
 /**
  * @category Instructions
@@ -52,7 +55,10 @@ export const updateHeaderMetadataStruct = new beet.FixableBeetArgsStruct<
     ['goLiveDate', beet.coption(beet.i64)],
     ['botWallet', beet.coption(beetSolana.publicKey)],
     ['authority', beet.coption(beetSolana.publicKey)],
+    ['receiver', beet.coption(beetSolana.publicKey)],
     ['maxMintSize', beet.coption(beet.u32)],
+    ['creatorKeys', beet.coption(beet.array(beetSolana.publicKey))],
+    ['creatorShares', beet.coption(beet.bytes)],
   ],
   'UpdateHeaderMetadataInstructionArgs'
 )

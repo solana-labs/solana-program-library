@@ -333,9 +333,29 @@
           }
         },
         {
+          "name": "receiver",
+          "type": {
+            "option": "publicKey"
+          }
+        },
+        {
           "name": "maxMintSize",
           "type": {
             "option": "u32"
+          }
+        },
+        {
+          "name": "creatorKeys",
+          "type": {
+            "option": {
+              "vec": "publicKey"
+            }
+          }
+        },
+        {
+          "name": "creatorShares",
+          "type": {
+            "option": "bytes"
           }
         }
       ]

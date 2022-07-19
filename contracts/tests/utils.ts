@@ -32,15 +32,23 @@ export async function execute(
 /// Convert a 32 bit number to a buffer of bytes
 export function num32ToBuffer(num: number) {
   const isU32 = (num >= 0 && num < Math.pow(2, 32));
-  const isI32 = (num >= -1 * Math.pow(2, 31) && num < Math.pow(2, 31))
-  if (!isU32 || !isI32) {
+  if (!isU32) {
     throw new Error("Attempted to convert non 32 bit integer to byte array")
   }
-  var byte1 = 0xff & num;
-  var byte2 = 0xff & (num >> 8);
-  var byte3 = 0xff & (num >> 16);
-  var byte4 = 0xff & (num >> 24);
-  return Buffer.from([byte1, byte2, byte3, byte4])
+  const b = Buffer.alloc(4);
+  b.writeInt32LE(num);
+  return b;
+}
+
+/// Convert a 16 bit number to a buffer of bytes
+export function num16ToBuffer(num: number) {
+  const isU16 = (num >= 0 && num < Math.pow(2, 16));
+  if (!isU16) {
+    throw new Error("Attempted to convert non 16 bit integer to byte array")
+  }
+  const b = Buffer.alloc(2);
+  b.writeUInt16LE(num);
+  return b;
 }
 
 /// Check if two Array types contain the same values in order

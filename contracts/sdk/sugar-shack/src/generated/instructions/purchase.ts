@@ -15,11 +15,12 @@ import * as web3 from '@solana/web3.js'
  */
 export type PurchaseInstructionArgs = {
   price: beet.bignum
-  dataHash: number[] /* size: 32 */
+  metadataArgsHash: number[] /* size: 32 */
   nonce: beet.bignum
   index: number
   root: number[] /* size: 32 */
   creatorShares: Uint8Array
+  sellerFeeBasisPoints: number
 }
 /**
  * @category Instructions
@@ -34,11 +35,12 @@ export const purchaseStruct = new beet.FixableBeetArgsStruct<
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['price', beet.u64],
-    ['dataHash', beet.uniformFixedSizeArray(beet.u8, 32)],
+    ['metadataArgsHash', beet.uniformFixedSizeArray(beet.u8, 32)],
     ['nonce', beet.u64],
     ['index', beet.u32],
     ['root', beet.uniformFixedSizeArray(beet.u8, 32)],
     ['creatorShares', beet.bytes],
+    ['sellerFeeBasisPoints', beet.u16],
   ],
   'PurchaseInstructionArgs'
 )

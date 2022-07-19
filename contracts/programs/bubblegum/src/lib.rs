@@ -286,7 +286,8 @@ pub struct Compress<'info> {
 }
 
 pub fn hash_metadata(metadata: &MetadataArgs) -> Result<[u8; 32]> {
-    Ok(keccak::hashv(&[metadata.try_to_vec()?.as_slice()]).to_bytes())
+    let metadata_args_hash = keccak::hashv(&[metadata.try_to_vec()?.as_slice()]);
+    Ok(keccak::hashv(&[&metadata_args_hash.to_bytes(), &metadata.seller_fee_basis_points.to_le_bytes()]).to_bytes())
 }
 
 pub enum InstructionName {
@@ -353,7 +354,10 @@ pub mod bubblegum {
         let owner = ctx.accounts.owner.key();
         let delegate = ctx.accounts.delegate.key();
         let merkle_slab = ctx.accounts.merkle_slab.to_account_info();
-        let data_hash = keccak::hashv(&[message.try_to_vec()?.as_slice()]);
+
+        // @dev: seller_fee_basis points is encoded twice so that it can be passed to marketplace instructions, without passing the entire, un-hashed MetadataArgs struct
+        let metadata_args_hash = keccak::hashv(&[message.try_to_vec()?.as_slice()]);
+        let data_hash = keccak::hashv(&[&metadata_args_hash.to_bytes(), &message.seller_fee_basis_points.to_le_bytes()]);
         let nonce = &mut ctx.accounts.authority;
         let creator_data = message
             .creators

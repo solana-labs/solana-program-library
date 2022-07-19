@@ -388,13 +388,13 @@ pub mod gumball_machine {
             NUM_CREATORS
         );
         assert!(
-            creator_shares.iter().sum::<u8>() <= 100,
-            "Cannot have creator royalty percentages total more than 100% of the sale price"
+            creator_shares.len() == 0 || creator_shares.iter().sum::<u8>() == 100,
+            "If specifying creators, shares must sum to 100% of royalty allocation."
         );
         for i in 0..creator_keys.len() {
             let creator_to_add = GumballCreatorAdapter {
                 address: creator_keys[i],
-                // TODO: this should be set accurately, user provided array, something authority must update later?
+                // TODO: metaplex is working on creator verification
                 verified: (0 as u8),
                 share: creator_shares[i],
             };
@@ -560,7 +560,10 @@ pub mod gumball_machine {
         go_live_date: Option<i64>,
         bot_wallet: Option<Pubkey>,
         authority: Option<Pubkey>,
+        receiver: Option<Pubkey>,
         max_mint_size: Option<u32>,
+        creator_keys: Option<Vec<Pubkey>>,
+        creator_shares: Option<Vec<u8>>,
     ) -> Result<()> {
         let mut gumball_machine_data = ctx.accounts.gumball_machine.try_borrow_mut_data()?;
         let (mut header_bytes, _) =
@@ -583,6 +586,8 @@ pub mod gumball_machine {
             Some(e) => gumball_machine.config_line_encode_method = e.to_u8(),
             None => {}
         }
+        // TODO: consider this. Could result in unexpectedly high fees upon secondary sales if this is modified after the project goes live, but before all NFTs are minted.
+        //       maybe we gate this against project go live date?
         match seller_fee_basis_points {
             Some(s) => gumball_machine.seller_fee_basis_points = s,
             None => {}
@@ -595,6 +600,8 @@ pub mod gumball_machine {
             Some(ra) => gumball_machine.retain_authority = ra.into(),
             None => {}
         }
+        // TODO: consider this. Could result in unexpectedly high prices if this is modified after the project goes live, but before all NFTs are minted.
+        //       maybe we gate this against project go live date?
         match price {
             Some(p) => gumball_machine.price = p,
             None => {}
@@ -611,12 +618,50 @@ pub mod gumball_machine {
             Some(bw) => gumball_machine.bot_wallet = bw,
             None => {}
         }
-        // TODO(sorend): consider allowing changes to receiver, requires validation of receiver
+        match receiver {
+            Some(r) => gumball_machine.receiver = r,
+            None => {}
+        }
         match max_mint_size {
             Some(mms) => gumball_machine.max_mint_size = mms.max(1).min(gumball_machine.max_items),
             None => {}
         }
-        // TODO(sorend): consider allowing updates to the creators array
+        match creator_keys {
+            Some(cks) => {
+                // If creator_shares is None but creator_keys is specified, input is invalid -> panic
+                let cs = creator_shares.unwrap();
+                assert!(
+                    cs.len() == 0 || cs.iter().sum::<u8>() == 100,
+                    "If specifying creators, shares must sum to 100% of royalty allocation."
+                );
+                assert_eq!(cks.len(), cs.len());
+                assert!(
+                    cks.len() < NUM_CREATORS,
+                    "Cannot set more than {} creators",
+                    NUM_CREATORS
+                );
+                // Construct creators array
+                let mut creators: [GumballCreatorAdapter; NUM_CREATORS] = [
+                    Default::default(),
+                    Default::default(),
+                    Default::default(),
+                    Default::default(),
+                    Default::default(),
+                ];
+                for i in 0..cks.len() {
+                    let creator_to_add = GumballCreatorAdapter {
+                        address: cks[i],
+                        // TODO: metaplex is working on creator verification
+                        verified: (0 as u8),
+                        share: cs[i],
+                    };
+                    creators[i] = creator_to_add;
+                }
+                // Overwrite existing creators array, note all creators must then be re-verified
+                gumball_machine.creators = creators;
+            },
+            None => {}
+        }
         Ok(())
     }
 

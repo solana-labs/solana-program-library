@@ -182,7 +182,7 @@ async function main() {
       }
       let k = Math.floor(Math.random() * assets.length);
       response = await fetch(
-        `${proofServerUrl}?leafHash=${assets[k].leafHash}&treeId=${assets[k].treeId}`,
+        `${proofServerUrl}?assetId=${assets[k].assetId}&treeId=${assets[k].treeId}`,
         { method: "GET" }
       );
       const proof = await response.json();

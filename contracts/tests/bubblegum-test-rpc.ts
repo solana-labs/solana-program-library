@@ -1,10 +1,10 @@
 import * as anchor from "@project-serum/anchor";
-import {keccak_256} from "js-sha3";
-import {BN, Provider, Program} from "@project-serum/anchor";
-import {Bubblegum} from "../target/types/bubblegum";
-import {Gummyroll} from "../target/types/gummyroll";
+import { keccak_256 } from "js-sha3";
+import { BN, Provider, Program } from "@project-serum/anchor";
+import { Bubblegum } from "../target/types/bubblegum";
+import { Gummyroll } from "../target/types/gummyroll";
 import fetch from "node-fetch";
-import {PROGRAM_ID} from "@metaplex-foundation/mpl-token-metadata";
+import { PROGRAM_ID } from "@metaplex-foundation/mpl-token-metadata";
 import {
   PublicKey,
   Keypair,
@@ -13,7 +13,7 @@ import {
   Connection as web3Connection,
   SYSVAR_RENT_PUBKEY, AccountMeta,
 } from "@solana/web3.js";
-import {assert} from "chai";
+import { assert } from "chai";
 import {
   createMintV1Instruction,
   createDecompressV1Instruction,
@@ -24,7 +24,7 @@ import {
   createCreateTreeInstruction
 } from "../sdk/bubblegum/src/generated";
 
-import {buildTree, checkProof, Tree} from "./merkle-tree";
+import { buildTree, checkProof, Tree } from "./merkle-tree";
 import {
   decodeMerkleRoll,
   getMerkleRollAccountSize,
@@ -37,28 +37,19 @@ import {
   TOKEN_PROGRAM_ID,
   Token,
 } from "@solana/spl-token";
-import {execute, logTx} from "./utils";
-import {TokenProgramVersion, Version} from "../sdk/bubblegum/src/generated";
-import {sleep} from "@metaplex-foundation/amman/dist/utils";
-import {verbose} from "sqlite3";
-import {bs58} from "@project-serum/anchor/dist/cjs/utils/bytes";
-import {CANDY_WRAPPER_PROGRAM_ID} from "../sdk/utils";
+import { execute, logTx, num16ToBuffer, bufferToArray } from "./utils";
+import { TokenProgramVersion, Version } from "../sdk/bubblegum/src/generated";
+import { sleep } from "@metaplex-foundation/amman/dist/utils";
+import { verbose } from "sqlite3";
+import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
+import { CANDY_WRAPPER_PROGRAM_ID } from "../sdk/utils";
 
 // @ts-ignore
 let Bubblegum;
 // @ts-ignore
 let GummyrollProgramId;
 
-/// Converts to Uint8Array
-function bufferToArray(buffer: Buffer): number[] {
-  const nums = [];
-  for (let i = 0; i < buffer.length; i++) {
-    nums.push(buffer.at(i));
-  }
-  return nums;
-}
-
-interface TreeProof  {
+interface TreeProof {
   root: string,
   proof: AccountMeta[]
 }
@@ -66,7 +57,7 @@ interface TreeProof  {
 async function getProof(asset: PublicKey): Promise<TreeProof> {
   let resp = await fetch("http://localhost:9090", {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       jsonrpc: "2.0", id: "stupid", method: "get_asset_proof", params: [asset.toBase58()]
     })
@@ -229,7 +220,7 @@ describe("bubblegum", () => {
             delegate: payer.publicKey,
             merkleSlab: merkleRollKeypair.publicKey,
           },
-          {message: metadata}
+          { message: metadata }
         );
         console.log(" - Minting to tree");
         const mintTx = await Bubblegum.provider.send(
@@ -240,8 +231,12 @@ describe("bubblegum", () => {
             commitment: "confirmed",
           }
         );
+        const metadataArgsBuffer = mintIx.data.slice(8)
+        const metadataArgsHash = keccak_256.digest(metadataArgsBuffer);
+        const sellerFeeBasisPointsNumberArray = bufferToArray(num16ToBuffer(metadata.sellerFeeBasisPoints))
+        const allDataToHash = metadataArgsHash.concat(sellerFeeBasisPointsNumberArray)
         const dataHash = bufferToArray(
-          Buffer.from(keccak_256.digest(mintIx.data.slice(8)))
+          Buffer.from(keccak_256.digest(allDataToHash))
         );
         const creatorHash = bufferToArray(Buffer.from(keccak_256.digest([])));
 
@@ -257,7 +252,7 @@ describe("bubblegum", () => {
           Bubblegum.programId
         );
         {
-          let {root, proof} = await getProof(asset);
+          let { root, proof } = await getProof(asset);
           let transferIx = createTransferInstruction(
             {
               authority: treeAuthority,
@@ -284,7 +279,7 @@ describe("bubblegum", () => {
 
         console.log(" - Delegating Ownership");
         {
-          let {root, proof} = await getProof(asset);
+          let { root, proof } = await getProof(asset);
           let delegateIx = await createDelegateInstruction(
             {
               authority: treeAuthority,
@@ -309,7 +304,7 @@ describe("bubblegum", () => {
 
         console.log(" - Transferring Ownership (through delegate)");
         {
-          let {root, proof} = await getProof(asset);
+          let { root, proof } = await getProof(asset);
           let delTransferIx = createTransferInstruction(
             {
               authority: treeAuthority,
@@ -351,7 +346,7 @@ describe("bubblegum", () => {
         if (i % 2 == 0) {
           console.log(" - Redeeming Leaf", voucher.toBase58());
           {
-            let {root, proof} = await getProof(asset);
+            let { root, proof } = await getProof(asset);
             let redeemIx = createRedeemInstruction(
               {
                 authority: treeAuthority,
@@ -387,8 +382,8 @@ describe("bubblegum", () => {
                 merkleRollKeypair.publicKey
               );
             let merkleRoll = decodeMerkleRoll(merkleRollAccount.data);
-            let {root, proof} = await getProof(asset);
-           console.log("rpc root ", root);
+            let { root, proof } = await getProof(asset);
+            console.log("rpc root ", root);
 
 
             console.log("on chain roots ")
@@ -419,7 +414,7 @@ describe("bubblegum", () => {
 
           console.log(" - Decompressing leaf");
           {
-            let {root, proof} = await getProof(asset);
+            let { root, proof } = await getProof(asset);
             let redeemIx = createRedeemInstruction(
               {
                 authority: treeAuthority,

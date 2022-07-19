@@ -51,7 +51,7 @@ import {
   TreeNode,
 } from "./merkle-tree";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
-import { bufferToArray } from "./utils";
+import { bufferToArray, num16ToBuffer } from "./utils";
 import { TokenProgramVersion, Version } from "../sdk/bubblegum/src/generated";
 import { SugarShack } from "../target/types/sugar_shack";
 import { getBubblegumAuthorityPDA } from "../sdk/bubblegum/src/convenience";
@@ -88,10 +88,11 @@ describe("sugar-shack", () => {
     let lister: Keypair;
     let bubblegumAuthority: PublicKey;
     let dataHashOfCompressedNFT: number[];
+    let metadataArgsHash: number[];
     let creatorHashOfCompressedNFT: number[];
     let leafNonce: BN;
     let listingPDAKey: PublicKey;
-    let bufferOfProjectDropCreatorShare: Buffer;
+    let bufferOfCreatorShares: Buffer;
     let projectDropCreator: Keypair;
     let listingPrice: BN;
     let compressedNFTMetadata: MetadataArgs;
@@ -206,19 +207,22 @@ describe("sugar-shack", () => {
         },
         {
           price: purchasePrice,
-          dataHash: dataHashOfCompressedNFT,
+          metadataArgsHash: metadataArgsHash,
           nonce: leafNonce,
           index: 0,
           root: bufferToArray(onChainRoot),
-          creatorShares: bufferOfProjectDropCreatorShare,
+          creatorShares: bufferOfCreatorShares,
+          sellerFeeBasisPoints: compressedNFTMetadata.sellerFeeBasisPoints
         }
       );
-      let remainingAccount = {
-        pubkey: projectDropCreator.publicKey,
-        isSigner: false,
-        isWritable: true,
-      };
-      purchaseIx.keys.push(remainingAccount);
+      let remainingAccounts = compressedNFTMetadata.creators.map(c => {
+        return {
+          pubkey: c.address,
+          isSigner: false,
+          isWritable: true,
+        }
+      })
+      purchaseIx.keys = purchaseIx.keys.concat(remainingAccounts);
       if (proofToLeaf) {
         proofToLeaf.forEach(acctMeta => purchaseIx.keys.push(acctMeta));
       }
@@ -343,7 +347,7 @@ describe("sugar-shack", () => {
           name: "test",
           symbol: "test",
           uri: "www.solana.com",
-          sellerFeeBasisPoints: 0,
+          sellerFeeBasisPoints: 100,
           primarySaleHappened: false,
           isMutable: false,
           editionNonce: null,
@@ -351,7 +355,7 @@ describe("sugar-shack", () => {
           tokenProgramVersion: TokenProgramVersion.Original,
           collection: null,
           uses: null,
-          creators: [{ address: projectDropCreator.publicKey, verified: true, share: 5 }],
+          creators: [{ address: projectDropCreator.publicKey, verified: false, share: 40 }, { address: Keypair.generate().publicKey, verified: false, share: 60 }],
         };
         const mintIx = createMintV1Instruction({
           mintAuthority: payer.publicKey,
@@ -370,12 +374,23 @@ describe("sugar-shack", () => {
           }
         );
 
-        // Get data_hash and creator_hash information for future transactions
-        let bufferOfProjectDropCreatorPubkey = projectDropCreator.publicKey.toBuffer();
-        bufferOfProjectDropCreatorShare = Buffer.from([compressedNFTMetadata.creators[0].share]);
-        let bufferOfCreatorData = Buffer.concat([bufferOfProjectDropCreatorPubkey, bufferOfProjectDropCreatorShare]);
-        dataHashOfCompressedNFT = bufferToArray(Buffer.from(keccak_256.digest(mintIx.data.slice(8))));
+        // Compute the creator_hash
+        let bufferOfCreatorData = Buffer.from([]);
+        bufferOfCreatorShares = Buffer.from([]);
+        for (let creator of compressedNFTMetadata.creators) {
+          bufferOfCreatorData = Buffer.concat([bufferOfCreatorData, creator.address.toBuffer(), Buffer.from([creator.share])])
+          bufferOfCreatorShares = Buffer.concat([bufferOfCreatorShares, Buffer.from([creator.share])])
+        }
         creatorHashOfCompressedNFT = bufferToArray(Buffer.from(keccak_256.digest(bufferOfCreatorData)));
+
+        // Compute the data_hash
+        const metadataArgsBuffer = mintIx.data.slice(8)
+        metadataArgsHash = keccak_256.digest(metadataArgsBuffer);
+        const sellerFeeBasisPointsNumberArray = bufferToArray(num16ToBuffer(compressedNFTMetadata.sellerFeeBasisPoints))
+        const allDataToHash = metadataArgsHash.concat(sellerFeeBasisPointsNumberArray)
+        dataHashOfCompressedNFT = bufferToArray(
+          Buffer.from(keccak_256.digest(allDataToHash))
+        );
 
         // Get the nonce for the minted leaf
         const nonceInfo = await SugarShack.provider.connection.getAccountInfo(bubblegumAuthority);
@@ -430,13 +445,16 @@ describe("sugar-shack", () => {
           "Marketplace did not recieve expected royalty"
         );
 
-        const remainingLamportsToPayout = listingPrice.toNumber() - expectedMarketplaceFeePayout;
-        const expectedCreatorPayout = remainingLamportsToPayout * compressedNFTMetadata.creators[0].share / 100;
-        assert(
-          expectedCreatorPayout === await SugarShack.provider.connection.getBalance(projectDropCreator.publicKey),
-          "Creator did not recieve expected royalty"
-        );
-        const expectedListerPayout = remainingLamportsToPayout - expectedCreatorPayout;
+        const totalCreatorAllocation = listingPrice.toNumber() * compressedNFTMetadata.sellerFeeBasisPoints / 10000;
+        for (let creator of compressedNFTMetadata.creators) {
+          const expectedCreatorPayout = totalCreatorAllocation * creator.share / 100;
+          assert(
+            expectedCreatorPayout === await SugarShack.provider.connection.getBalance(creator.address),
+            "Creator did not recieve expected royalty"
+          );
+        }
+
+        const expectedListerPayout = listingPrice.toNumber() - totalCreatorAllocation - expectedMarketplaceFeePayout;
         assert(
           expectedListerPayout === await SugarShack.provider.connection.getBalance(lister.publicKey),
           "Lister did not recieve expected royalty"

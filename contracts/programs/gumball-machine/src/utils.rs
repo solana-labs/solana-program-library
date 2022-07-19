@@ -61,7 +61,7 @@ pub fn get_metadata_args(
         primary_sale_happened: true,
         is_mutable,
         edition_nonce: None,
-        token_standard: None,
+        token_standard: None, // TODO: set the correct token_standard here. NonFungibleEdition?
         collection: if collection == system_program_id {
             // Treat the SystemProgram as a the null case
             None
