@@ -489,6 +489,7 @@ describe("gumball-machine", () => {
     merkleRollKeypair: Keypair,
     verbose?: boolean
   ) {
+    const requestCU = ComputeBudgetProgram.requestUnits({ units: 1.4e6, additionalFee: 0 });
     const dispenseInstr = await createDispenseNFTForSolIx(
       { numItems: numNFTs },
       payer.publicKey,
@@ -498,7 +499,7 @@ describe("gumball-machine", () => {
     );
     const txId = await execute(
       GumballMachine.provider,
-      [dispenseInstr],
+      [requestCU, dispenseInstr],
       [payer],
       true
     );
@@ -842,6 +843,7 @@ describe("gumball-machine", () => {
             creatorKeys: [],
             creatorShares: Uint8Array.from([])
           };
+
           const expectedOnChainHeader: GumballMachineHeader = {
             urlBase: newGumballMachineHeader.urlBase,
             nameBase: newGumballMachineHeader.nameBase,
