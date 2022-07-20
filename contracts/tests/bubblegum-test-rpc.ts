@@ -37,12 +37,13 @@ import {
   TOKEN_PROGRAM_ID,
   Token,
 } from "@solana/spl-token";
-import { execute, logTx, num16ToBuffer, bufferToArray } from "./utils";
 import { TokenProgramVersion, Version } from "../sdk/bubblegum/src/generated";
 import { sleep } from "@metaplex-foundation/amman/dist/utils";
 import { verbose } from "sqlite3";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
-import { CANDY_WRAPPER_PROGRAM_ID } from "../sdk/utils";
+import { CANDY_WRAPPER_PROGRAM_ID, execute, logTx, num16ToBuffer, bufferToArray } from "../sdk/utils";
+// TODO: cleanup this test file using the convenience methods and remove all .send calls
+import { computeDataHash, computeCreatorHash } from "../sdk/bubblegum/src/convenience";
 
 // @ts-ignore
 let Bubblegum;
@@ -231,14 +232,8 @@ describe("bubblegum", () => {
             commitment: "confirmed",
           }
         );
-        const metadataArgsBuffer = mintIx.data.slice(8)
-        const metadataArgsHash = keccak_256.digest(metadataArgsBuffer);
-        const sellerFeeBasisPointsNumberArray = bufferToArray(num16ToBuffer(metadata.sellerFeeBasisPoints))
-        const allDataToHash = metadataArgsHash.concat(sellerFeeBasisPointsNumberArray)
-        const dataHash = bufferToArray(
-          Buffer.from(keccak_256.digest(allDataToHash))
-        );
-        const creatorHash = bufferToArray(Buffer.from(keccak_256.digest([])));
+        const dataHash = computeDataHash(metadata.sellerFeeBasisPoints, mintIx);
+        const creatorHash = computeCreatorHash(metadata.creators);
 
         console.log(" - Transferring Ownership");
         const nonceInfo = await (

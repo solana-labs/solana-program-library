@@ -19,9 +19,7 @@ export type GumballMachineHeader = {
   sellerFeeBasisPoints: number
   isMutable: number
   retainAuthority: number
-  configLineEncodeMethod: number
-  creators: GumballCreatorAdapter[] /* size: 5 */
-  padding: number[] /* size: 1 */
+  maxMintSize: number
   price: beet.bignum
   goLiveDate: beet.bignum
   mint: web3.PublicKey
@@ -30,12 +28,13 @@ export type GumballMachineHeader = {
   authority: web3.PublicKey
   collectionKey: web3.PublicKey
   extensionLen: beet.bignum
-  maxMintSize: number
   remaining: number
   maxItems: number
   totalItemsAdded: number
   smallestUninitializedIndex: number
-  padding2: number[] /* size: 4 */
+  configLineEncodeMethod: number
+  creators: GumballCreatorAdapter[] /* size: 4 */
+  padding: number[] /* size: 7 */
 }
 
 /**
@@ -51,9 +50,7 @@ export const gumballMachineHeaderBeet =
       ['sellerFeeBasisPoints', beet.u16],
       ['isMutable', beet.u8],
       ['retainAuthority', beet.u8],
-      ['configLineEncodeMethod', beet.u8],
-      ['creators', beet.uniformFixedSizeArray(gumballCreatorAdapterBeet, 5)],
-      ['padding', beet.uniformFixedSizeArray(beet.u8, 1)],
+      ['maxMintSize', beet.u32],
       ['price', beet.u64],
       ['goLiveDate', beet.i64],
       ['mint', beetSolana.publicKey],
@@ -62,12 +59,13 @@ export const gumballMachineHeaderBeet =
       ['authority', beetSolana.publicKey],
       ['collectionKey', beetSolana.publicKey],
       ['extensionLen', beet.u64],
-      ['maxMintSize', beet.u32],
       ['remaining', beet.u32],
       ['maxItems', beet.u32],
       ['totalItemsAdded', beet.u32],
       ['smallestUninitializedIndex', beet.u32],
-      ['padding2', beet.uniformFixedSizeArray(beet.u8, 4)],
+      ['configLineEncodeMethod', beet.u8],
+      ['creators', beet.uniformFixedSizeArray(gumballCreatorAdapterBeet, 4)],
+      ['padding', beet.uniformFixedSizeArray(beet.u8, 7)],
     ],
     'GumballMachineHeader'
   )

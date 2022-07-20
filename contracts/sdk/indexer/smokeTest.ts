@@ -19,8 +19,7 @@ import {
   Version,
 } from "../bubblegum/src/generated";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
-import { logTx } from "../../tests/utils";
-import { CANDY_WRAPPER_PROGRAM_ID } from "../utils";
+import { CANDY_WRAPPER_PROGRAM_ID, logTx } from "../utils";
 
 async function main() {
   const connection = new web3.Connection("http://127.0.0.1:8899", {

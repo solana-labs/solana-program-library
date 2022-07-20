@@ -371,11 +371,16 @@ pub mod gumball_machine {
         let (mut header_bytes, config_data) =
             gumball_machine_data.split_at_mut(std::mem::size_of::<GumballMachineHeader>());
         let gumball_header = GumballMachineHeader::load_mut_bytes(&mut header_bytes)?;
+
+        assert!(
+            max_items <= 1 << max_depth,
+            "Max items must fit into tree of depth {}",
+            max_depth
+        );
         let size = max_items as usize;
 
         // Construct creators array
         let mut creators: [GumballCreatorAdapter; NUM_CREATORS] = [
-            Default::default(),
             Default::default(),
             Default::default(),
             Default::default(),
@@ -412,7 +417,6 @@ pub mod gumball_machine {
                 None => EncodeMethod::UTF8.to_u8(),
             },
             creators,
-            _padding: [0; 1],
             price,
             go_live_date,
             bot_wallet,
@@ -426,7 +430,7 @@ pub mod gumball_machine {
             max_items,
             total_items_added: 0,
             smallest_uninitialized_index: 0,
-            _padding_2: [0; 4],
+            _padding: [0; 7],
         };
         let index_array_size = std::mem::size_of::<u32>() * size;
         let config_size = extension_len as usize * size;
@@ -646,7 +650,6 @@ pub mod gumball_machine {
                     Default::default(),
                     Default::default(),
                     Default::default(),
-                    Default::default(),
                 ];
                 for i in 0..cks.len() {
                     let creator_to_add = GumballCreatorAdapter {
@@ -659,7 +662,7 @@ pub mod gumball_machine {
                 }
                 // Overwrite existing creators array, note all creators must then be re-verified
                 gumball_machine.creators = creators;
-            },
+            }
             None => {}
         }
         Ok(())
