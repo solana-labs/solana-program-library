@@ -94,7 +94,7 @@ const MAX_DEPTH = 20;
 let payer = Keypair.generate();
 let destination = Keypair.generate();
 let delegateKey = Keypair.generate();
-let connection = new web3Connection("http://139.178.83.107", {
+let connection = new web3Connection("https://liquid.testnet.rpcpool.com/5ebea512d12be102f53d319dafc8", {
   commitment: "confirmed",
 });
 let wallet = new NodeWallet(payer);
@@ -212,7 +212,7 @@ async function transfer(index, treeAuthority, data, payer, destination, merkleRo
   );
   {
     let {root, proof} = await getProof(asset);
-    console.log(" - Transferring Ownership");
+    console.log("Got new proof")
     let transferIx = createTransferInstruction(
       {
         authority: treeAuthority,
@@ -235,6 +235,7 @@ async function transfer(index, treeAuthority, data, payer, destination, merkleRo
     transferIx.keys = [...transferIx.keys, ...proof];
 
     await execute(Bubblegum.provider, [transferIx], [payer], true);
+    console.log(" - Transferred Ownership");
   }
 }
 async function main() {
@@ -282,14 +283,20 @@ async function main() {
     );
     await sleep(1000);
     for (let j = 0; j < 1000; j++) {
-      if (j != 0 && j % 2 === 0) {
+      if (j != 0) {
         let temp = Keypair.fromSecretKey(payer.secretKey);
         let temp2 = Keypair.fromSecretKey(destination.secretKey);
         payer = temp2
         destination = temp;
       }
       let tx = async function() {
-        await transfer(i, treeAuthority, mintIx.data, payer, destination, merkleRollKeypair)
+        try {
+          console.log("Attempting Transfer")
+          await transfer(i, treeAuthority, mintIx.data, payer, destination, merkleRollKeypair)
+        } catch (e) {
+          console.log("Error", e)
+          throw e
+        }
       }
       await retry(tx, {max: 100})
 

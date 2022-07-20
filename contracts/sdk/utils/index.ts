@@ -10,7 +10,7 @@ export async function logTx(provider: Provider, txId: string, verbose: boolean =
   await provider.connection.confirmTransaction(txId, "confirmed");
   if (verbose) {
     console.log(
-      (await provider.connection.getConfirmedTransaction(txId, "confirmed")).meta
+      (await provider.connection.getTransaction(txId, {commitment: "confirmed"})).meta
         .logMessages
     );
   }
