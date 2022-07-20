@@ -119,7 +119,9 @@ impl Obligation {
         let max_liquidation_value = self
             .borrowed_value
             .try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))?
-            .min(liquidity.market_value);
+            .min(liquidity.market_value)
+            .min(Decimal::from(MAX_LIQUIDATABLE_VALUE_AT_ONCE));
+
         let max_liquidation_pct = max_liquidation_value.try_div(liquidity.market_value)?;
         liquidity.borrowed_amount_wads.try_mul(max_liquidation_pct)
     }
@@ -660,5 +662,80 @@ mod test {
                 assert!(liquidity.borrowed_amount_wads == borrowed_amount_wads);
             }
         }
+    }
+
+    #[test]
+    fn max_liquidation_amount_normal() {
+        let obligation_liquidity = ObligationLiquidity {
+            borrowed_amount_wads: Decimal::from(50u64),
+            market_value: Decimal::from(100u64),
+            ..ObligationLiquidity::default()
+        };
+
+        let obligation = Obligation {
+            deposited_value: Decimal::from(100u64),
+            borrowed_value: Decimal::from(100u64),
+            borrows: vec![obligation_liquidity.clone()],
+            ..Obligation::default()
+        };
+
+        let expected_collateral = Decimal::from(50u64)
+            .try_mul(Decimal::from(LIQUIDATION_CLOSE_FACTOR as u64))
+            .unwrap()
+            .try_div(100)
+            .unwrap();
+
+        assert_eq!(
+            obligation
+                .max_liquidation_amount(&obligation_liquidity)
+                .unwrap(),
+            expected_collateral
+        );
+    }
+
+    #[test]
+    fn max_liquidation_amount_low_liquidity() {
+        let obligation_liquidity = ObligationLiquidity {
+            borrowed_amount_wads: Decimal::from(100u64),
+            market_value: Decimal::from(1u64),
+            ..ObligationLiquidity::default()
+        };
+
+        let obligation = Obligation {
+            deposited_value: Decimal::from(100u64),
+            borrowed_value: Decimal::from(100u64),
+            borrows: vec![obligation_liquidity.clone()],
+            ..Obligation::default()
+        };
+
+        assert_eq!(
+            obligation
+                .max_liquidation_amount(&obligation_liquidity)
+                .unwrap(),
+            Decimal::from(100u64)
+        );
+    }
+
+    #[test]
+    fn max_liquidation_amount_big_whale() {
+        let obligation_liquidity = ObligationLiquidity {
+            borrowed_amount_wads: Decimal::from(1_000_000_000u64),
+            market_value: Decimal::from(1_000_000_000u64),
+            ..ObligationLiquidity::default()
+        };
+
+        let obligation = Obligation {
+            deposited_value: Decimal::from(1_000_000_000u64),
+            borrowed_value: Decimal::from(1_000_000_000u64),
+            borrows: vec![obligation_liquidity.clone()],
+            ..Obligation::default()
+        };
+
+        assert_eq!(
+            obligation
+                .max_liquidation_amount(&obligation_liquidity)
+                .unwrap(),
+            Decimal::from(MAX_LIQUIDATABLE_VALUE_AT_ONCE)
+        );
     }
 }

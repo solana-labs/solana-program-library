@@ -18,10 +18,13 @@ use std::{
 };
 
 /// Percentage of an obligation that can be repaid during each liquidation call
-pub const LIQUIDATION_CLOSE_FACTOR: u8 = 1;
+pub const LIQUIDATION_CLOSE_FACTOR: u8 = 20;
 
 /// Obligation borrow amount that is small enough to close out
 pub const LIQUIDATION_CLOSE_AMOUNT: u64 = 2;
+
+/// Maximum quote currency value that can be liquidated in 1 liquidate_obligation call
+pub const MAX_LIQUIDATABLE_VALUE_AT_ONCE: u64 = 500_000;
 
 /// Lending market reserve state
 #[derive(Clone, Debug, Default, PartialEq)]
