@@ -52,7 +52,6 @@ export function createAppendIx(
     gummyroll: Program<Gummyroll>,
     newLeaf: Buffer | ArrayLike<number>,
     authority: Keypair,
-    appendAuthority: Keypair,
     merkleRoll: PublicKey,
 ): TransactionInstruction {
     return gummyroll.instruction.append(
@@ -61,10 +60,9 @@ export function createAppendIx(
             accounts: {
                 merkleRoll,
                 authority: authority.publicKey,
-                appendAuthority: appendAuthority.publicKey,
                 candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
             },
-            signers: [authority, appendAuthority],
+            signers: [authority],
         }
     );
 }
@@ -73,12 +71,10 @@ export function createTransferAuthorityIx(
     gummyroll: Program<Gummyroll>,
     authority: Keypair,
     merkleRoll: PublicKey,
-    newAuthority: PublicKey | null,
-    newAppendAuthority: PublicKey | null,
+    newAuthority: PublicKey,
 ): TransactionInstruction {
     return gummyroll.instruction.transferAuthority(
         newAuthority,
-        newAppendAuthority,
         {
             accounts: {
                 merkleRoll,

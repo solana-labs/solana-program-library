@@ -11,7 +11,7 @@ export * from './convenience';
  * @category constants
  * @category generated
  */
-export const PROGRAM_ADDRESS = 'GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD'
+export const PROGRAM_ADDRESS = 'GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU'
 
 /**
  * Program public key
