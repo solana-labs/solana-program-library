@@ -6102,6 +6102,7 @@ dependencies = [
  "spl-token 3.3.0",
  "strum",
  "strum_macros",
+ "tempfile",
  "walkdir",
 ]
 

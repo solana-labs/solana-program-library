@@ -3184,10 +3184,11 @@ mod tests {
         solana_client::blockhash_query::Source,
         solana_sdk::{
             bpf_loader,
-            signature::{Keypair, Signer},
+            signature::{write_keypair_file, Keypair, Signer},
         },
         solana_test_validator::{ProgramInfo, TestValidator, TestValidatorGenesis},
         std::path::PathBuf,
+        tempfile::NamedTempFile,
     };
 
     fn clone_keypair(keypair: &Keypair) -> Keypair {
@@ -3761,5 +3762,159 @@ mod tests {
         let ui_account = config.rpc_client.get_token_account(&aux).unwrap().unwrap();
         assert_eq!(ui_account.mint, token.to_string());
         assert_eq!(ui_account.owner, aux_string);
+    }
+
+    #[test]
+    fn transfer_with_account_delegate() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+
+        let token = create_token(&config, &payer);
+        let source = create_associated_account(&config, &payer, token);
+        let destination = create_auxiliary_account(&config, &payer, token);
+        let delegate = Keypair::new();
+
+        let file = NamedTempFile::new().unwrap();
+        write_keypair_file(&delegate, &file).unwrap();
+
+        let ui_amount = 100.0;
+        mint_tokens(&config, &payer, token, ui_amount, source);
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&source)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.token_amount.amount, "100");
+        assert_eq!(ui_account.delegate, None);
+        assert_eq!(ui_account.delegated_amount, None);
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&destination)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.token_amount.amount, "0");
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Approve.into(),
+                &source.to_string(),
+                "10",
+                &delegate.pubkey().to_string(),
+            ],
+        )
+        .unwrap();
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&source)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.delegate.unwrap(), delegate.pubkey().to_string());
+        assert_eq!(ui_account.delegated_amount.unwrap().amount, "10");
+
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Transfer.into(),
+                &token.to_string(),
+                "10",
+                &destination.to_string(),
+                "--from",
+                &source.to_string(),
+                "--owner",
+                file.path().to_str().unwrap(),
+            ],
+        );
+        result.unwrap();
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&source)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.token_amount.amount, "90");
+        assert_eq!(ui_account.delegate, None);
+        assert_eq!(ui_account.delegated_amount, None);
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&destination)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.token_amount.amount, "10");
+    }
+
+    #[test]
+    fn burn_with_account_delegate() {
+        let (test_validator, payer) = validator_for_test();
+        let config = test_config(&test_validator, &payer, &spl_token::id());
+
+        let token = create_token(&config, &payer);
+        let source = create_associated_account(&config, &payer, token);
+        let delegate = Keypair::new();
+
+        let file = NamedTempFile::new().unwrap();
+        write_keypair_file(&delegate, &file).unwrap();
+
+        let ui_amount = 100.0;
+        mint_tokens(&config, &payer, token, ui_amount, source);
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&source)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.token_amount.amount, "100");
+        assert_eq!(ui_account.delegate, None);
+        assert_eq!(ui_account.delegated_amount, None);
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Approve.into(),
+                &source.to_string(),
+                "10",
+                &delegate.pubkey().to_string(),
+            ],
+        )
+        .unwrap();
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&source)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.delegate.unwrap(), delegate.pubkey().to_string());
+        assert_eq!(ui_account.delegated_amount.unwrap().amount, "10");
+
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Burn.into(),
+                &source.to_string(),
+                "10",
+                "--owner",
+                file.path().to_str().unwrap(),
+            ],
+        );
+        result.unwrap();
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&source)
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.token_amount.amount, "90");
+        assert_eq!(ui_account.delegate, None);
+        assert_eq!(ui_account.delegated_amount, None);
     }
 }
