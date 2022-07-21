@@ -17,10 +17,10 @@
   },
   "main": "dist/cjs/index.js",
   "types": "dist/types/index.d.ts",
-  "module": "dist/esm/index.mjs",
+  "module": "dist/esm/index.js",
   "sideEffects": false,
   "exports": {
-      "import": "./dist/esm/index.mjs",
+      "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js"
   },
   "files": [
