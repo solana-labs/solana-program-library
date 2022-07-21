@@ -2741,6 +2741,11 @@ impl Processor {
         let system_program_info = next_account_info(account_info_iter)?;
         let rent_sysvar_info = next_account_info(account_info_iter)?;
 
+        if !payer_info.is_signer {
+            msg!("Payer did not sign metadata creation");
+            return Err(StakePoolError::SignatureMissing.into());
+        }
+
         check_system_program(system_program_info.key)?;
         check_rent_sysvar(rent_sysvar_info.key)?;
         check_account_owner(payer_info, &system_program::id())?;
