@@ -15,8 +15,8 @@ set -x
 make -C examples/c
 
 # Build/test all host crates
-cargo +"$rust_stable" build
-BUILD_DEPENDENT_PROGRAMS=1 cargo +"$rust_stable" test -- --nocapture
+BUILD_DEPENDENT_PROGRAMS=1 cargo +"$rust_stable" build
+cargo +"$rust_stable" test -- --nocapture
 
 # Run test-client sanity check
 cargo +"$rust_stable" run --manifest-path=utils/test-client/Cargo.toml
