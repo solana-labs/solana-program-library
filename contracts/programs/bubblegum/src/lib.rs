@@ -338,7 +338,6 @@ pub mod bubblegum {
             ctx.accounts.gummyroll_program.to_account_info(),
             gummyroll::cpi::accounts::Initialize {
                 authority: ctx.accounts.authority.to_account_info(),
-                append_authority: ctx.accounts.tree_creator.to_account_info(),
                 merkle_roll: merkle_slab,
                 candy_wrapper: ctx.accounts.candy_wrapper.to_account_info(),
             },

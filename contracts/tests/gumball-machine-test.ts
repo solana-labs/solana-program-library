@@ -24,7 +24,7 @@ import {
   createDispenseNFTForSolIx,
   createDispenseNFTForTokensIx,
   createInitializeGumballMachineIxs,
-  initializeGumballMachineIndices
+  initializeGumballMachineIndices,
 } from "../sdk/gumball-machine";
 import {
   InitializeGumballMachineInstructionArgs,
@@ -35,15 +35,11 @@ import {
   createUpdateHeaderMetadataInstruction,
   createDestroyInstruction,
 } from "../sdk/gumball-machine/src/generated/instructions";
-import {
-  val,
-  strToByteArray,
-  strToByteUint8Array,
-} from "../sdk/utils/index";
+import { val, strToByteArray, strToByteUint8Array } from "../sdk/utils/index";
 import {
   GumballMachineHeader,
   gumballMachineHeaderBeet,
-  GumballCreatorAdapter
+  GumballCreatorAdapter,
 } from "../sdk/gumball-machine/src/generated/types/index";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import {
@@ -56,9 +52,7 @@ import { NATIVE_MINT } from "@solana/spl-token";
 import { num32ToBuffer, arrayEquals, logTx } from "./utils";
 import { EncodeMethod } from "../sdk/gumball-machine/src/generated/types/EncodeMethod";
 import { getBubblegumAuthorityPDA } from "../sdk/bubblegum/src/convenience";
-import {
-  execute
-} from "../../contracts/sdk/utils";
+import { execute } from "../../contracts/sdk/utils";
 
 // @ts-ignore
 let GumballMachine;
@@ -165,7 +159,9 @@ describe("gumball-machine", () => {
       // Check that creator matches user specification
       if (i < expectedHeader.creators.length) {
         assert(
-          gm.header.creators[i].address.equals(expectedHeader.creators[i].address),
+          gm.header.creators[i].address.equals(
+            expectedHeader.creators[i].address
+          ),
           "Gumball Machine creator has mismatching address"
         );
         assert(
@@ -173,14 +169,17 @@ describe("gumball-machine", () => {
           "Gumball Machine creator has mismatching share"
         );
         assert(
-          gm.header.creators[i].verified === expectedHeader.creators[i].verified,
+          gm.header.creators[i].verified ===
+            expectedHeader.creators[i].verified,
           "Gumball Machine creator has mismatching verified field"
         );
       }
-      // Check that non-user specified creators are default 
+      // Check that non-user specified creators are default
       else {
         assert(
-          gm.header.creators[i].address.equals(new PublicKey("11111111111111111111111111111111")),
+          gm.header.creators[i].address.equals(
+            new PublicKey("11111111111111111111111111111111")
+          ),
           "Gumball Machine creator has mismatching address"
         );
         assert(
@@ -208,7 +207,8 @@ describe("gumball-machine", () => {
 
     if (expectedConfigLines && onChainConfigLinesNumBytes) {
       // Calculate full-sized on-chain config bytes buffer, we must null pad the buffer up to the end of the account size
-      const numExpectedInitializedBytesInConfig = expectedConfigLines.byteLength;
+      const numExpectedInitializedBytesInConfig =
+        expectedConfigLines.byteLength;
       const bufferOfNonInitializedConfigLineBytes = Buffer.from(
         "\0".repeat(
           onChainConfigLinesNumBytes - numExpectedInitializedBytesInConfig
@@ -235,7 +235,7 @@ describe("gumball-machine", () => {
     mint: PublicKey
   ) {
     const bubblegumAuthorityPDAKey = await getBubblegumAuthorityPDA(
-      merkleRollKeypair.publicKey,
+      merkleRollKeypair.publicKey
     );
     const initializeGumballMachineInstrs =
       await createInitializeGumballMachineIxs(
@@ -285,11 +285,11 @@ describe("gumball-machine", () => {
       let c: GumballCreatorAdapter = {
         address: gumballMachineInitArgs.creatorKeys[i],
         share: gumballMachineInitArgs.creatorShares[i],
-        verified: 0
-      }
+        verified: 0,
+      };
       expectedCreators.push(c);
     }
-    gumballMachineInitArgs.creatorKeys
+    gumballMachineInitArgs.creatorKeys;
     let expectedOnChainHeader: GumballMachineHeader = {
       urlBase: gumballMachineInitArgs.urlBase,
       nameBase: gumballMachineInitArgs.nameBase,
@@ -313,7 +313,7 @@ describe("gumball-machine", () => {
       maxItems: gumballMachineInitArgs.maxItems,
       totalItemsAdded: 0,
       smallestUninitializedIndex: 0,
-      padding2: [0, 0, 0, 0]
+      padding2: [0, 0, 0, 0],
     };
     assertGumballMachineHeaderProperties(gumballMachine, expectedOnChainHeader);
   }
@@ -325,20 +325,21 @@ describe("gumball-machine", () => {
     gumballMachineAcctSize: number
   ) {
     // Initialize all indices
-    await initializeGumballMachineIndices(GumballMachine.provider, maxItems, authority, gumballMachine);
+    await initializeGumballMachineIndices(
+      GumballMachine.provider,
+      maxItems,
+      authority,
+      gumballMachine
+    );
     const onChainGumballMachineAccount =
-      await GumballMachine.provider.connection.getAccountInfo(
-        gumballMachine
-      );
+      await GumballMachine.provider.connection.getAccountInfo(gumballMachine);
     const onChainGumballMachine = decodeGumballMachine(
       onChainGumballMachineAccount.data,
       gumballMachineAcctSize
     );
 
     // Create the expected buffer for the indices of the account
-    const expectedIndexArrBuffer = [
-      ...Array(maxItems).keys(),
-    ].reduce(
+    const expectedIndexArrBuffer = [...Array(maxItems).keys()].reduce(
       (prevVal, curVal) =>
         Buffer.concat([prevVal, Buffer.from(num32ToBuffer(curVal))]),
       Buffer.from([])
@@ -489,7 +490,10 @@ describe("gumball-machine", () => {
     merkleRollKeypair: Keypair,
     verbose?: boolean
   ) {
-    const requestCU = ComputeBudgetProgram.requestUnits({ units: 1.4e6, additionalFee: 0 });
+    const requestCU = ComputeBudgetProgram.requestUnits({
+      units: 1.4e6,
+      additionalFee: 0,
+    });
     const dispenseInstr = await createDispenseNFTForSolIx(
       { numItems: numNFTs },
       payer.publicKey,
@@ -501,6 +505,7 @@ describe("gumball-machine", () => {
       GumballMachine.provider,
       [requestCU, dispenseInstr],
       [payer],
+      true,
       true
     );
   }
@@ -559,7 +564,7 @@ describe("gumball-machine", () => {
       originalAuthorityAcctBalance + originalGumballMachineAcctBalance;
     assert(
       expectedAuthorityAcctBalance ===
-      (await connection.getBalance(authorityKeypair.publicKey)),
+        (await connection.getBalance(authorityKeypair.publicKey)),
       "Failed to transfer correct balance to authority"
     );
   }
@@ -599,7 +604,10 @@ describe("gumball-machine", () => {
         gumballMachineAcctKeypair = Keypair.generate();
         merkleRollKeypair = Keypair.generate();
         exampleAdditionalSecondarySaleRoyaltyRecipient = Keypair.generate();
-        creatorKeys = [creatorPaymentWallet.publicKey, exampleAdditionalSecondarySaleRoyaltyRecipient.publicKey];
+        creatorKeys = [
+          creatorPaymentWallet.publicKey,
+          exampleAdditionalSecondarySaleRoyaltyRecipient.publicKey,
+        ];
         creatorShares = Uint8Array.from([10, 90]);
 
         baseGumballMachineInitProps = {
@@ -625,13 +633,19 @@ describe("gumball-machine", () => {
           creatorShares,
         };
 
-        GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE = baseGumballMachineInitProps.maxItems * 4;
-        GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE = baseGumballMachineInitProps.maxItems * val(baseGumballMachineInitProps.extensionLen).toNumber();
+        GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE =
+          baseGumballMachineInitProps.maxItems * 4;
+        GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE =
+          baseGumballMachineInitProps.maxItems *
+          val(baseGumballMachineInitProps.extensionLen).toNumber();
         GUMBALL_MACHINE_ACCT_SIZE =
           gumballMachineHeaderBeet.byteSize +
           GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE +
           GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE;
-        MERKLE_ROLL_ACCT_SIZE = getMerkleRollAccountSize(baseGumballMachineInitProps.maxDepth, baseGumballMachineInitProps.maxBufferSize);
+        MERKLE_ROLL_ACCT_SIZE = getMerkleRollAccountSize(
+          baseGumballMachineInitProps.maxDepth,
+          baseGumballMachineInitProps.maxBufferSize
+        );
 
         // Give creator enough funds to produce accounts for NFT
         await GumballMachine.provider.connection.confirmTransaction(
@@ -724,7 +738,7 @@ describe("gumball-machine", () => {
                   commitment: "confirmed",
                 }
               );
-            } catch (e) { }
+            } catch (e) {}
 
             if (confirmedTxId)
               assert(
@@ -745,7 +759,7 @@ describe("gumball-machine", () => {
                   commitment: "confirmed",
                 }
               );
-            } catch (e) { }
+            } catch (e) {}
 
             if (confirmedTxId)
               assert(
@@ -788,25 +802,33 @@ describe("gumball-machine", () => {
             gumballMachineAcctKeypair,
             merkleRollKeypair
           );
-          const nftBuyerBalanceAfterPurchase = await connection.getBalance(
-            nftBuyer.publicKey
-          );
           const creatorBalanceAfterPurchase = await connection.getBalance(
-            baseGumballMachineInitProps.receiver
+            baseGumballMachineInitProps.receiver,
+            "confirmed"
           );
 
           // Assert on how the creator and buyer's balances changed
           assert(
-            (await creatorBalanceAfterPurchase) ===
-            creatorBalanceBeforePurchase +
-            val(baseGumballMachineInitProps.price).toNumber(),
+            creatorBalanceAfterPurchase ===
+              creatorBalanceBeforePurchase +
+                val(baseGumballMachineInitProps.price).toNumber(),
             "Creator balance did not update as expected after NFT purchase"
           );
 
-          assert(
-            (await nftBuyerBalanceAfterPurchase) ===
+          const nftBuyerBalanceAfterPurchase = await connection.getBalance(
+            nftBuyer.publicKey,
+            "confirmed"
+          );
+
+          console.log(
+            nftBuyerBalanceAfterPurchase,
             nftBuyerBalanceBeforePurchase -
-            val(baseGumballMachineInitProps.price).toNumber(),
+              val(baseGumballMachineInitProps.price).toNumber()
+          );
+          assert(
+            nftBuyerBalanceAfterPurchase ===
+              nftBuyerBalanceBeforePurchase -
+                val(baseGumballMachineInitProps.price).toNumber(),
             "NFT purchaser balance did not decrease as expected after NFT purchase"
           );
         });
@@ -841,7 +863,7 @@ describe("gumball-machine", () => {
             receiver: Keypair.generate().publicKey,
             maxMintSize: 15,
             creatorKeys: [],
-            creatorShares: Uint8Array.from([])
+            creatorShares: Uint8Array.from([]),
           };
 
           const expectedOnChainHeader: GumballMachineHeader = {
@@ -867,7 +889,7 @@ describe("gumball-machine", () => {
             maxItems: baseGumballMachineInitProps.maxItems,
             totalItemsAdded: 0,
             smallestUninitializedIndex: baseGumballMachineInitProps.maxItems,
-            padding2: [0, 0, 0, 0]
+            padding2: [0, 0, 0, 0],
           };
           await updateHeaderMetadata(
             creatorAddress,
@@ -949,16 +971,22 @@ describe("gumball-machine", () => {
           maxMintSize: 10,
           maxItems: 250,
           creatorKeys,
-          creatorShares
+          creatorShares,
         };
 
-        GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE = baseGumballMachineInitProps.maxItems * 4;
-        GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE = baseGumballMachineInitProps.maxItems * val(baseGumballMachineInitProps.extensionLen).toNumber();
+        GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE =
+          baseGumballMachineInitProps.maxItems * 4;
+        GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE =
+          baseGumballMachineInitProps.maxItems *
+          val(baseGumballMachineInitProps.extensionLen).toNumber();
         GUMBALL_MACHINE_ACCT_SIZE =
           gumballMachineHeaderBeet.byteSize +
           GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE +
           GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE;
-        MERKLE_ROLL_ACCT_SIZE = getMerkleRollAccountSize(baseGumballMachineInitProps.maxDepth, baseGumballMachineInitProps.maxBufferSize);
+        MERKLE_ROLL_ACCT_SIZE = getMerkleRollAccountSize(
+          baseGumballMachineInitProps.maxDepth,
+          baseGumballMachineInitProps.maxBufferSize
+        );
 
         await initializeGumballMachine(
           creatorAddress,
@@ -1046,7 +1074,7 @@ describe("gumball-machine", () => {
               false,
               "Dispense should fail when part of transaction with multiple instructions, but it succeeded"
             );
-          } catch (e) { }
+          } catch (e) {}
         });
         it("Cannot dispense NFT for SOL with prior instructions in transaction", async () => {
           const tx = new Transaction()
@@ -1064,7 +1092,7 @@ describe("gumball-machine", () => {
               false,
               "Dispense should fail when part of transaction with multiple instructions, but it succeeded"
             );
-          } catch (e) { }
+          } catch (e) {}
         });
       });
       it("Can dispense multiple NFTs paid in token, but not more than remaining, unminted config lines", async () => {
@@ -1091,15 +1119,18 @@ describe("gumball-machine", () => {
         );
 
         // Since there were only two config lines added, we should have only successfully minted (and paid for) two NFTs
-        const newExpectedCreatorTokenBalance = Number(creatorReceiverTokenAccount.amount)
-          + (val(baseGumballMachineInitProps.price).toNumber() * 2);
+        const newExpectedCreatorTokenBalance =
+          Number(creatorReceiverTokenAccount.amount) +
+          val(baseGumballMachineInitProps.price).toNumber() * 2;
         assert(
-          Number(newCreatorTokenAccount.amount) === newExpectedCreatorTokenBalance,
+          Number(newCreatorTokenAccount.amount) ===
+            newExpectedCreatorTokenBalance,
           "The creator did not receive their payment as expected"
         );
 
-        const newExpectedBuyerTokenBalance = Number(buyerTokenAccount.amount)
-          - (val(baseGumballMachineInitProps.price).toNumber() * 2);
+        const newExpectedBuyerTokenBalance =
+          Number(buyerTokenAccount.amount) -
+          val(baseGumballMachineInitProps.price).toNumber() * 2;
         assert(
           Number(newBuyerTokenAccount.amount) === newExpectedBuyerTokenBalance,
           "The nft buyer did not pay for the nft as expected"
@@ -1115,8 +1146,11 @@ describe("gumball-machine", () => {
             gumballMachineAcctKeypair,
             merkleRollKeypair
           );
-          assert(false, "Dispense unexpectedly succeeded with no NFTs remaining");
-        } catch (e) { }
+          assert(
+            false,
+            "Dispense unexpectedly succeeded with no NFTs remaining"
+          );
+        } catch (e) {}
       });
     });
     describe("native sol project without config lines", async () => {
@@ -1133,7 +1167,10 @@ describe("gumball-machine", () => {
         gumballMachineAcctKeypair = Keypair.generate();
         merkleRollKeypair = Keypair.generate();
         exampleAdditionalSecondarySaleRoyaltyRecipient = Keypair.generate();
-        creatorKeys = [creatorPaymentWallet.publicKey, exampleAdditionalSecondarySaleRoyaltyRecipient.publicKey];
+        creatorKeys = [
+          creatorPaymentWallet.publicKey,
+          exampleAdditionalSecondarySaleRoyaltyRecipient.publicKey,
+        ];
         creatorShares = Uint8Array.from([10, 90]);
 
         baseGumballMachineInitProps = {
@@ -1159,7 +1196,8 @@ describe("gumball-machine", () => {
           creatorShares,
         };
 
-        GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE = baseGumballMachineInitProps.maxItems * 4;
+        GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE =
+          baseGumballMachineInitProps.maxItems * 4;
         GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE = 0;
         GUMBALL_MACHINE_ACCT_SIZE =
           gumballMachineHeaderBeet.byteSize +
@@ -1244,7 +1282,11 @@ describe("gumball-machine", () => {
       });
       describe("admin instructions", async () => {
         it("Can update gumball header", async () => {
-          const newCreatorKeys = [Keypair.generate().publicKey, Keypair.generate().publicKey, Keypair.generate().publicKey];
+          const newCreatorKeys = [
+            Keypair.generate().publicKey,
+            Keypair.generate().publicKey,
+            Keypair.generate().publicKey,
+          ];
           const newCreatorShares = Uint8Array.from([50, 25, 25]);
 
           const newGumballMachineHeader: UpdateHeaderMetadataInstructionArgs = {
@@ -1262,7 +1304,7 @@ describe("gumball-machine", () => {
             receiver: Keypair.generate().publicKey,
             maxMintSize: 15,
             creatorKeys: newCreatorKeys,
-            creatorShares: newCreatorShares
+            creatorShares: newCreatorShares,
           };
 
           let expectedCreators = [];
@@ -1270,8 +1312,8 @@ describe("gumball-machine", () => {
             let c: GumballCreatorAdapter = {
               address: newCreatorKeys[i],
               share: newCreatorShares[i],
-              verified: 0
-            }
+              verified: 0,
+            };
             expectedCreators.push(c);
           }
           const expectedOnChainHeader: GumballMachineHeader = {
@@ -1297,7 +1339,7 @@ describe("gumball-machine", () => {
             maxItems: baseGumballMachineInitProps.maxItems,
             totalItemsAdded: 0,
             smallestUninitializedIndex: baseGumballMachineInitProps.maxItems,
-            padding2: [0, 0, 0, 0]
+            padding2: [0, 0, 0, 0],
           };
           await updateHeaderMetadata(
             creatorAddress,

@@ -26,11 +26,21 @@ export async function execute(
 ): Promise<String> {
   let tx = new Transaction();
   instructions.map((ix) => { tx = tx.add(ix) });
-  const txid = await provider.send(tx, signers, {
-    commitment: "confirmed",
-    skipPreflight,
-  });
+
+  let txid = null;
+  let error = null;
+  try {
+    txid = await provider.connection.sendTransaction(tx, signers, {
+      skipPreflight,
+    })
+  } catch (e) { error = e; }
+
+  if (error) {
+    console.log("Tx error!");
+    throw error;
+  }
   await logTx(provider, txid, verbose);
+
   return txid;
 }
 

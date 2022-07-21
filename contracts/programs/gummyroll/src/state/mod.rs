@@ -97,10 +97,6 @@ pub struct MerkleRollHeader {
     /// Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs.
     pub authority: Pubkey,
 
-    /// Authority that is responsible for signing for new additions to the tree.
-    /// DEPRECATED: Likely to be removed!
-    pub append_authority: Pubkey,
-
     /// Slot corresponding to when the Merkle tree was created.
     /// Provides a lower-bound on what slot to start (re-)building a tree from.
     pub creation_slot: u64,
@@ -112,7 +108,6 @@ impl MerkleRollHeader {
         max_depth: u32,
         max_buffer_size: u32,
         authority: &Pubkey,
-        append_authority: &Pubkey,
         creation_slot: u64,
     ) {
         // Check header is empty
@@ -121,7 +116,6 @@ impl MerkleRollHeader {
         self.max_buffer_size = max_buffer_size;
         self.max_depth = max_depth;
         self.authority = *authority;
-        self.append_authority = *append_authority;
         self.creation_slot = creation_slot;
     }
 }

@@ -35,7 +35,7 @@ use crate::state::{CandyWrapper, ChangeLogEvent, MerkleRollHeader};
 use crate::utils::{wrap_event, ZeroCopy};
 pub use concurrent_merkle_tree::{error::CMTError, merkle_roll::MerkleRoll, state::Node};
 
-declare_id!("GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD");
+declare_id!("GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU");
 
 /// Context for initializing a new Merkle tere
 #[derive(Accounts)]
@@ -47,10 +47,6 @@ pub struct Initialize<'info> {
     /// Authority that validates the content of the trees.
     /// Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs.
     pub authority: Signer<'info>,
-
-    /// Authority that is responsible for signing for new additions to the tree.
-    /// CHECK: unsafe
-    pub append_authority: UncheckedAccount<'info>,
 
     /// Program used to emit changelogs as instruction data.
     /// See `WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh`
@@ -73,25 +69,6 @@ pub struct Modify<'info> {
     pub candy_wrapper: Program<'info, CandyWrapper>,
 }
 
-/// Context for appending a new leaf to the tree
-#[derive(Accounts)]
-pub struct Append<'info> {
-    #[account(mut)]
-    /// CHECK: This account is validated in the instruction
-    pub merkle_roll: UncheckedAccount<'info>,
-
-    /// Authority that validates the content of the trees.
-    /// Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs.
-    pub authority: Signer<'info>,
-
-    /// Authority that is responsible for signing for new additions to the tree.
-    pub append_authority: Signer<'info>,
-
-    /// Program used to emit changelogs as instruction data.
-    /// See `WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh`
-    pub candy_wrapper: Program<'info, CandyWrapper>,
-}
-
 /// Context for validating a provided proof against the Merkle tree.
 /// Throws an error if provided proof is invalid.
 #[derive(Accounts)]
@@ -100,7 +77,7 @@ pub struct VerifyLeaf<'info> {
     pub merkle_roll: UncheckedAccount<'info>,
 }
 
-/// Context for transferring `authority` or `append_authority`
+/// Context for transferring `authority`
 #[derive(Accounts)]
 pub struct TransferAuthority<'info> {
     #[account(mut)]
@@ -206,7 +183,11 @@ fn fill_in_proof_from_canopy(
         }
         node_idx >>= 1;
     }
-    proof.extend(inferred_nodes.iter());
+    // We only want to add inferred canopy nodes such that the proof length
+    // is equal to the tree depth. If the lengh of proof + lengh of canopy nodes is
+    // less than the tree depth, the instruction will fail.
+    let overlap = (proof.len() + inferred_nodes.len()).saturating_sub(max_depth as usize);
+    proof.extend(inferred_nodes.iter().skip(overlap));
     Ok(())
 }
 
@@ -339,7 +320,6 @@ pub mod gummyroll {
             max_depth,
             max_buffer_size,
             &ctx.accounts.authority.key(),
-            &ctx.accounts.append_authority.key(),
             Clock::get()?.slot,
         );
         header.serialize(&mut header_bytes)?;
@@ -378,7 +358,6 @@ pub mod gummyroll {
             max_depth,
             max_buffer_size,
             &ctx.accounts.authority.key(),
-            &ctx.accounts.append_authority.key(),
             Clock::get()?.slot,
         );
         header.serialize(&mut header_bytes)?;
@@ -451,12 +430,11 @@ pub mod gummyroll {
         update_canopy(canopy_bytes, header.max_depth, Some(change_log))
     }
 
-    /// Transfers `authority` or `append_authority`.
+    /// Transfers `authority`
     /// Requires `authority` to sign
     pub fn transfer_authority(
         ctx: Context<TransferAuthority>,
-        new_authority: Option<Pubkey>,
-        new_append_authority: Option<Pubkey>,
+        new_authority: Pubkey,
     ) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
         let (mut header_bytes, _) = merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
@@ -464,23 +442,8 @@ pub mod gummyroll {
         let mut header = Box::new(MerkleRollHeader::try_from_slice(header_bytes)?);
         assert_eq!(header.authority, ctx.accounts.authority.key());
 
-        match new_authority {
-            Some(new_auth) => {
-                header.authority = new_auth;
-                msg!("Authority transferred to: {:?}", header.authority);
-            }
-            _ => {}
-        }
-        match new_append_authority {
-            Some(new_append_auth) => {
-                header.append_authority = new_append_auth;
-                msg!(
-                    "Append authority transferred to: {:?}",
-                    header.append_authority
-                );
-            }
-            _ => {}
-        }
+        header.authority = new_authority;
+        msg!("Authority transferred to: {:?}", header.authority);
         header.serialize(&mut header_bytes)?;
 
         Ok(())
@@ -511,18 +474,17 @@ pub mod gummyroll {
         Ok(())
     }
 
-    /// This instruction allows the tree's `append_authority` to append a new leaf to the tree
+    /// This instruction allows the tree's `authority` to append a new leaf to the tree
     /// without having to supply a valid proof.
     ///
     /// This is accomplished by using the rightmost_proof of the merkle roll to construct a
     /// valid proof, and then updating the rightmost_proof for the next leaf if possible.
-    pub fn append(ctx: Context<Append>, leaf: [u8; 32]) -> Result<()> {
+    pub fn append(ctx: Context<Modify>, leaf: [u8; 32]) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
         let (header_bytes, rest) = merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
 
         let header = Box::new(MerkleRollHeader::try_from_slice(header_bytes)?);
         assert_eq!(header.authority, ctx.accounts.authority.key());
-        assert_eq!(header.append_authority, ctx.accounts.append_authority.key());
 
         let id = ctx.accounts.merkle_roll.key();
         let merkle_roll_size = merkle_roll_get_size!(header)?;
