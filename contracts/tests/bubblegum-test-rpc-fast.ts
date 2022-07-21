@@ -42,6 +42,7 @@ import {TokenProgramVersion, Version} from "../sdk/bubblegum/src/generated";
 import {sleep} from "@metaplex-foundation/amman/dist/utils";
 import {bs58} from "@project-serum/anchor/dist/cjs/utils/bytes";
 import  retry from "retry-as-promised";
+import {as} from "pg-promise";
 // @ts-ignore
 let Bubblegum;
 // @ts-ignore
@@ -59,6 +60,19 @@ function bufferToArray(buffer: Buffer): number[] {
 interface TreeProof {
   root: string,
   proof: AccountMeta[]
+}
+
+async function getAsset(asset: PublicKey): Promise<any> {
+  let resp = await fetch("https://rpc.aws.metaplex.com", {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      jsonrpc: "2.0", id: "stupid", method: "get_asset", params: [asset.toBase58()]
+    })
+  });
+  let js = await resp.json();
+
+  return js;
 }
 
 async function getProof(asset: PublicKey): Promise<TreeProof> {
@@ -194,24 +208,12 @@ function rngf(stop, i) {
   return i
 }
 
-async function transfer(index, treeAuthority, data, payer, destination, merkleRollKeypair) {
+async function transfer(index, treeAuthority, data, payer, destination, merkleRollKeypair, leafNonce, root, proof) {
   const dataHash = bufferToArray(
     Buffer.from(keccak_256.digest(data.slice(8)))
   );
   const creatorHash = bufferToArray(Buffer.from(keccak_256.digest([])));
 
-  const nonceInfo = await (
-    Bubblegum.provider.connection as web3Connection
-  ).getAccountInfo(treeAuthority);
-  const leafNonce = new BN(nonceInfo.data.slice(8, 16), "le").sub(
-    new BN(1)
-  );
-  let [asset] = await PublicKey.findProgramAddress(
-    [Buffer.from("asset", "utf8"), merkleRollKeypair.publicKey.toBuffer(), leafNonce.toBuffer("le", 8)],
-    Bubblegum.programId
-  );
-  {
-    let {root, proof} = await getProof(asset);
     console.log("Got new proof")
     let transferIx = createTransferInstruction(
       {
@@ -233,11 +235,10 @@ async function transfer(index, treeAuthority, data, payer, destination, merkleRo
     );
     transferIx.keys[1].isSigner = true;
     transferIx.keys = [...transferIx.keys, ...proof];
-
     await execute(Bubblegum.provider, [transferIx], [payer], true);
     console.log(" - Transferred Ownership");
-  }
 }
+
 async function main() {
   let [computedMerkleRoll, computedOffChainTree, computedTreeAuthority] =
     await createTreeOnChain(payer, destination, delegateKey);
@@ -283,7 +284,20 @@ async function main() {
     );
     await sleep(1000);
     for (let j = 0; j < 1000; j++) {
-      if (j != 0) {
+      const nonceInfo = await (
+        Bubblegum.provider.connection as web3Connection
+      ).getAccountInfo(treeAuthority);
+      const leafNonce = new BN(nonceInfo.data.slice(8, 16), "le").sub(
+        new BN(1)
+      );
+      let [asset] = await PublicKey.findProgramAddress(
+        [Buffer.from("asset", "utf8"), merkleRollKeypair.publicKey.toBuffer(), leafNonce.toBuffer("le", 8)],
+        Bubblegum.programId
+      );
+      let {root, proof} = await getProof(asset);
+      let assetObj = await getAsset(asset);
+      console.log(assetObj)
+      if(assetObj.result.ownership.owner != payer.publicKey.toBase58()) {
         let temp = Keypair.fromSecretKey(payer.secretKey);
         let temp2 = Keypair.fromSecretKey(destination.secretKey);
         payer = temp2
@@ -292,7 +306,7 @@ async function main() {
       let tx = async function() {
         try {
           console.log("Attempting Transfer")
-          await transfer(i, treeAuthority, mintIx.data, payer, destination, merkleRollKeypair)
+          await transfer(i, treeAuthority, mintIx.data, payer, destination, merkleRollKeypair, leafNonce, root, proof)
         } catch (e) {
           console.log("Error", e)
           throw e
