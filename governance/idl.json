@@ -892,12 +892,6 @@
 			"args": []
 		},
 		{
-			"name": "",
-			"docs": null,
-			"accounts": [],
-			"args": null
-		},
-		{
 			"name": "CancelProposal",
 			"docs": [
 				"Cancels Proposal by changing its state to Canceled"
@@ -945,12 +939,6 @@
 				}
 			],
 			"args": []
-		},
-		{
-			"name": "",
-			"docs": null,
-			"accounts": [],
-			"args": null
 		},
 		{
 			"name": "SignOffProposal",
@@ -1013,12 +1001,6 @@
 				}
 			],
 			"args": []
-		},
-		{
-			"name": "",
-			"docs": null,
-			"accounts": [],
-			"args": null
 		},
 		{
 			"name": "CastVote",
@@ -1291,12 +1273,6 @@
 			"args": []
 		},
 		{
-			"name": "",
-			"docs": null,
-			"accounts": [],
-			"args": null
-		},
-		{
 			"name": "ExecuteTransaction",
 			"docs": [
 				"Executes a Transaction in the Proposal",
@@ -1332,12 +1308,6 @@
 				}
 			],
 			"args": []
-		},
-		{
-			"name": "",
-			"docs": null,
-			"accounts": [],
-			"args": null
 		},
 		{
 			"name": "CreateMintGovernance",
@@ -1637,12 +1607,6 @@
 				}
 			],
 			"args": []
-		},
-		{
-			"name": "",
-			"docs": null,
-			"accounts": [],
-			"args": null
 		},
 		{
 			"name": "SetRealmAuthority",
