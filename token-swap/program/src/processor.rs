@@ -83,7 +83,7 @@ impl Processor {
         let authority_signature_seeds = [&swap_bytes[..32], &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
-        let ix = spl_token::instruction::burn(
+        let ix = spl_token_2022::instruction::burn(
             token_program.key,
             burn_account.key,
             mint.key,
@@ -112,7 +112,7 @@ impl Processor {
         let swap_bytes = swap.to_bytes();
         let authority_signature_seeds = [&swap_bytes[..32], &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
-        let ix = spl_token::instruction::mint_to(
+        let ix = spl_token_2022::instruction::mint_to(
             token_program.key,
             mint.key,
             destination.key,
@@ -141,7 +141,7 @@ impl Processor {
         let swap_bytes = swap.to_bytes();
         let authority_signature_seeds = [&swap_bytes[..32], &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
-        let ix = spl_token::instruction::transfer(
+        let ix = spl_token_2022::instruction::transfer(
             token_program.key,
             source.key,
             destination.key,
@@ -1113,7 +1113,7 @@ mod tests {
     };
     use solana_program::{instruction::Instruction, program_stubs, rent::Rent};
     use solana_sdk::account::{create_account_for_test, create_is_signer_account_infos, Account};
-    use spl_token::{
+    use spl_token_2022::{
         error::TokenError,
         instruction::{
             approve, freeze_account, initialize_account, initialize_mint, mint_to, revoke,
