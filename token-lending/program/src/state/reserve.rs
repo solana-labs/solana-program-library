@@ -380,7 +380,7 @@ pub struct CalculateRepayResult {
 }
 
 /// Calculate liquidation result
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CalculateLiquidationResult {
     /// Amount of liquidity that is settled from the obligation. It includes
     /// the amount of loan that was defaulted if collateral is depleted.
@@ -1069,6 +1069,7 @@ mod test {
     use crate::math::{PERCENT_SCALER, WAD};
     use proptest::prelude::*;
     use std::cmp::Ordering;
+    use std::default::Default;
 
     const MAX_LIQUIDITY: u64 = u64::MAX / 5;
 
@@ -1442,5 +1443,153 @@ mod test {
 
         assert_eq!(total_fee, 10); // 1% of 1000
         assert_eq!(host_fee, 0); // 0 host fee
+    }
+
+    #[derive(Debug, Clone)]
+    struct LiquidationTestCase {
+        deposit_amount: u64,
+        deposit_market_value: u64,
+        borrow_amount: u64,
+        borrow_market_value: u64,
+        liquidation_result: CalculateLiquidationResult,
+    }
+
+    fn calculate_liquidation_test_cases() -> impl Strategy<Value = LiquidationTestCase> {
+        let close_factor: Decimal = Rate::from_percent(LIQUIDATION_CLOSE_FACTOR)
+            .try_into()
+            .unwrap();
+        let liquidation_bonus: Decimal = Rate::from_percent(5)
+            .try_add(Rate::one())
+            .unwrap()
+            .try_into()
+            .unwrap();
+
+        prop_oneof![
+            // collateral market value > liquidation value
+            Just(LiquidationTestCase {
+                deposit_amount: 1000,
+                deposit_market_value: 100,
+                borrow_amount: 800,
+                borrow_market_value: 80,
+                liquidation_result: CalculateLiquidationResult {
+                    settle_amount: close_factor.try_mul(Decimal::from(800u64)).unwrap(),
+                    repay_amount: close_factor
+                        .try_mul(Decimal::from(800u64))
+                        .unwrap()
+                        .try_ceil_u64()
+                        .unwrap(),
+                    withdraw_amount: close_factor
+                        .try_mul(liquidation_bonus)
+                        .unwrap()
+                        .try_mul(Decimal::from(800u64))
+                        .unwrap()
+                        .try_floor_u64()
+                        .unwrap(),
+                },
+            }),
+            // collateral market value == liquidation_value
+            Just(LiquidationTestCase {
+                borrow_amount: 8000,
+                borrow_market_value: 8000,
+                deposit_amount: (8000 * LIQUIDATION_CLOSE_FACTOR as u64) * 105 / 10000,
+                deposit_market_value: (8000 * LIQUIDATION_CLOSE_FACTOR as u64) * 105 / 10000,
+
+                liquidation_result: CalculateLiquidationResult {
+                    settle_amount: Decimal::from((8000 * LIQUIDATION_CLOSE_FACTOR as u64) / 100),
+                    repay_amount: (8000 * LIQUIDATION_CLOSE_FACTOR as u64) / 100,
+                    withdraw_amount: (8000 * LIQUIDATION_CLOSE_FACTOR as u64) * 105 / 10000,
+                },
+            }),
+            // collateral market value < liquidation_value
+            Just(LiquidationTestCase {
+                borrow_amount: 8000,
+                borrow_market_value: 8000,
+
+                // half of liquidation value
+                deposit_amount: (8000 * LIQUIDATION_CLOSE_FACTOR as u64) * 105 / 10000 / 2,
+                deposit_market_value: (8000 * LIQUIDATION_CLOSE_FACTOR as u64) * 105 / 10000 / 2,
+
+                liquidation_result: CalculateLiquidationResult {
+                    settle_amount: Decimal::from(
+                        (8000 * LIQUIDATION_CLOSE_FACTOR as u64) / 100 / 2
+                    ),
+                    repay_amount: (8000 * LIQUIDATION_CLOSE_FACTOR as u64) / 100 / 2,
+                    withdraw_amount: (8000 * LIQUIDATION_CLOSE_FACTOR as u64) * 105 / 10000 / 2,
+                },
+            }),
+            // dust ObligationLiquidity where collateral market value > liquidation value
+            Just(LiquidationTestCase {
+                borrow_amount: 1,
+                borrow_market_value: 1000,
+                deposit_amount: 1000,
+                deposit_market_value: 2100,
+
+                liquidation_result: CalculateLiquidationResult {
+                    settle_amount: Decimal::from(1u64),
+                    repay_amount: 1,
+                    withdraw_amount: 500,
+                },
+            }),
+            // dust ObligationLiquidity where collateral market value == liquidation value
+            Just(LiquidationTestCase {
+                borrow_amount: 1,
+                borrow_market_value: 1000,
+                deposit_amount: 1000,
+                deposit_market_value: 1050,
+
+                liquidation_result: CalculateLiquidationResult {
+                    settle_amount: Decimal::from(1u64),
+                    repay_amount: 1,
+                    withdraw_amount: 1000,
+                },
+            }),
+            // dust ObligationLiquidity where collateral market value < liquidation value
+            Just(LiquidationTestCase {
+                borrow_amount: 1,
+                borrow_market_value: 1000,
+                deposit_amount: 1000,
+                deposit_market_value: 1000,
+
+                liquidation_result: CalculateLiquidationResult {
+                    settle_amount: Decimal::from(1u64),
+                    repay_amount: 1,
+                    withdraw_amount: 1000,
+                },
+            }),
+        ]
+    }
+
+    proptest! {
+        #[test]
+        fn calculate_liquidation(test_case in calculate_liquidation_test_cases()) {
+            let reserve = Reserve {
+                config: ReserveConfig {
+                    liquidation_bonus: 5,
+                    ..ReserveConfig::default()
+                },
+                ..Reserve::default()
+            };
+
+            let obligation = Obligation {
+                deposits: vec![ObligationCollateral {
+                    deposit_reserve: Pubkey::new_unique(),
+                    deposited_amount: test_case.deposit_amount,
+                    market_value: Decimal::from(test_case.deposit_market_value),
+                }],
+                borrows: vec![ObligationLiquidity {
+                    borrow_reserve: Pubkey::new_unique(),
+                    cumulative_borrow_rate_wads: Decimal::one(),
+                    borrowed_amount_wads: Decimal::from(test_case.borrow_amount),
+                    market_value: Decimal::from(test_case.borrow_market_value),
+                }],
+                borrowed_value: Decimal::from(test_case.borrow_market_value),
+                ..Obligation::default()
+            };
+
+            assert_eq!(
+                reserve.calculate_liquidation(
+                    u64::MAX, &obligation, &obligation.borrows[0], &obligation.deposits[0]).unwrap(),
+                test_case.liquidation_result);
+        }
     }
 }

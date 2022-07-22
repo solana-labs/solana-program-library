@@ -3,16 +3,13 @@
 # Runs all program tests and builds a code coverage report
 #
 
+source ci/rust-version.sh nightly # get $rust_nightly env variable
+
 set -e
 cd "$(dirname "$0")"
 
 if ! which grcov; then
   echo "Error: grcov not found.  Try |cargo install grcov|"
-  exit 1
-fi
-
-if [[ ! "$(grcov --version)" =~ "0.6.1" ]]; then
-  echo Error: Required grcov version not installed
   exit 1
 fi
 
@@ -57,7 +54,7 @@ for program in ${programs[@]}; do
   (
     set -ex
     cd $program
-    cargo +nightly test --target-dir $here/target/cov
+    cargo +"$rust_nightly" test --features test-bpf --target-dir $here/target/cov
   )
 done
 
@@ -81,14 +78,15 @@ find target/cov -type f -name '*.gcda' -newer target/cov/before-test ! -newer ta
 
 (
   set -x
-  grcov target/cov/tmp --llvm -t html -o target/cov/$reportName
-  grcov target/cov/tmp --llvm -t lcov -o target/cov/lcov.info
+  grcov target/cov/tmp -t html -o target/cov/$reportName
+  grcov target/cov/tmp -t lcov -o target/cov/lcov.info
+  grcov target/cov/tmp -t cobertura -o target/cov/cobertura.xml
 
   cd target/cov
   tar zcf report.tar.gz $reportName
 )
 
-ls -l target/cov/$reportName/index.html
-ln -sfT $reportName target/cov/LATEST
+ls -l target/cov/
+ln -sf $reportName target/cov/LATEST
 
 exit $test_status

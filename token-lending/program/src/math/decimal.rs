@@ -213,4 +213,70 @@ mod test {
     fn test_scaler() {
         assert_eq!(U192::exp10(SCALE), Decimal::wad());
     }
+
+    #[test]
+    fn test_u192() {
+        let one = U192::from(1);
+        assert_eq!(one.0, [1u64, 0, 0]);
+
+        let wad = Decimal::wad();
+        assert_eq!(wad.0, [WAD, 0, 0]);
+
+        let hundred = Decimal::from(100u64);
+        // 2^64 * 5 + 7766279631452241920 = 1e20
+        assert_eq!(hundred.0 .0, [7766279631452241920, 5, 0]);
+    }
+
+    #[test]
+    fn test_from_percent() {
+        let left = Decimal::from_percent(20);
+        let right = Decimal::from(20u64).try_div(Decimal::from(100u64)).unwrap();
+
+        assert_eq!(left, right);
+    }
+
+    #[test]
+    fn test_to_scaled_val() {
+        assert_eq!(
+            Decimal(U192::from(u128::MAX)).to_scaled_val().unwrap(),
+            u128::MAX
+        );
+
+        assert_eq!(
+            Decimal(U192::from(u128::MAX))
+                .try_add(Decimal(U192::from(1)))
+                .unwrap()
+                .to_scaled_val(),
+            Err(ProgramError::from(LendingError::MathOverflow))
+        );
+    }
+
+    #[test]
+    fn test_round_floor_ceil_u64() {
+        let mut val = Decimal::one();
+        assert_eq!(val.try_round_u64().unwrap(), 1);
+        assert_eq!(val.try_floor_u64().unwrap(), 1);
+        assert_eq!(val.try_ceil_u64().unwrap(), 1);
+
+        val = val
+            .try_add(Decimal::from_scaled_val(HALF_WAD as u128 - 1))
+            .unwrap();
+        assert_eq!(val.try_round_u64().unwrap(), 1);
+        assert_eq!(val.try_floor_u64().unwrap(), 1);
+        assert_eq!(val.try_ceil_u64().unwrap(), 2);
+
+        val = val.try_add(Decimal::from_scaled_val(1)).unwrap();
+        assert_eq!(val.try_round_u64().unwrap(), 2);
+        assert_eq!(val.try_floor_u64().unwrap(), 1);
+        assert_eq!(val.try_ceil_u64().unwrap(), 2);
+    }
+
+    #[test]
+    fn test_display() {
+        assert_eq!(Decimal::from(1u64).to_string(), "1.000000000000000000");
+        assert_eq!(
+            Decimal::from_scaled_val(1u128).to_string(),
+            "0.000000000000000001"
+        );
+    }
 }

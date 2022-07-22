@@ -51,9 +51,9 @@ export rust_nightly_docker_image=solanalabs/rust-nightly:"$nightly_version"
   stable)
      rustup_install "$rust_stable"
      ;;
-  # nightly)
-  #    rustup_install "$rust_nightly"
-  #   ;;
+  nightly)
+     rustup_install "$rust_nightly"
+    ;;
   all)
      rustup_install "$rust_stable"
      rustup_install "$rust_nightly"

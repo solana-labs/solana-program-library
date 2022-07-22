@@ -176,9 +176,55 @@ impl TryMul<Rate> for Rate {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::convert::TryInto;
+
+    #[test]
+    fn test_scaled_val() {
+        assert_eq!(Rate::from_percent(50).to_scaled_val(), HALF_WAD as u128);
+    }
 
     #[test]
     fn checked_pow() {
         assert_eq!(Rate::one(), Rate::one().try_pow(u64::MAX).unwrap());
+        assert_eq!(
+            Rate::from_percent(200).try_pow(7).unwrap(),
+            Decimal::from(128u64).try_into().unwrap()
+        );
+    }
+
+    #[test]
+    fn test_display() {
+        assert_eq!(
+            Rate::one().try_div(3u64).unwrap().to_string(),
+            "0.333333333333333333"
+        );
+    }
+
+    #[test]
+    fn test_basic_arithmetic() {
+        assert_eq!(
+            Rate::one().try_add(Rate::one()).unwrap(),
+            Rate::from_scaled_val(2 * WAD)
+        );
+
+        assert_eq!(Rate::one().try_sub(Rate::one()).unwrap(), Rate::zero());
+
+        assert_eq!(
+            Rate::from_percent(240)
+                .try_mul(Rate::from_percent(50))
+                .unwrap(),
+            Rate::from_percent(120)
+        );
+        assert_eq!(
+            Rate::from_percent(240).try_mul(10).unwrap(),
+            Decimal::from(24u64).try_into().unwrap()
+        );
+
+        assert_eq!(
+            Rate::from_percent(240)
+                .try_div(Rate::from_percent(60))
+                .unwrap(),
+            Rate::from_scaled_val(4 * WAD)
+        );
     }
 }
