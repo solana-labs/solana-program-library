@@ -2559,6 +2559,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpl-token-metadata"
+version = "1.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8b06b6275bd3f6444e22b03de7bdf6145ee6d6fa3e14415ddd317473b9ef807"
+dependencies = [
+ "arrayref",
+ "borsh",
+ "mpl-token-vault",
+ "num-derive",
+ "num-traits",
+ "shank",
+ "solana-program",
+ "spl-associated-token-account 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token 3.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "thiserror",
+]
+
+[[package]]
+name = "mpl-token-vault"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ade4ef15bc06a6033076c4ff28cba9b42521df5ec61211d6f419415ace2746a"
+dependencies = [
+ "borsh",
+ "num-derive",
+ "num-traits",
+ "solana-program",
+ "spl-token 3.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "thiserror",
+]
+
+[[package]]
 name = "multimap"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4206,6 +4238,40 @@ checksum = "881bf8156c87b6301fc5ca6b27f11eeb2761224c7081e69b409d5a1951a70c86"
 dependencies = [
  "digest 0.10.3",
  "keccak",
+]
+
+[[package]]
+name = "shank"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62c7f8aac4c67081e718ff2a7754a6264774a0eaa6ed64a6e94b1ec1c17af200"
+dependencies = [
+ "shank_macro",
+]
+
+[[package]]
+name = "shank_macro"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9a7538be7f2a6530a37d4e03de34569a1f27a2287b3efe06732d7e5648a9105"
+dependencies = [
+ "proc-macro2 1.0.36",
+ "quote 1.0.14",
+ "shank_macro_impl",
+ "syn 1.0.91",
+]
+
+[[package]]
+name = "shank_macro_impl"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4679c7294e45b98031bade3d50f5b01a562962176d76058af69e21e195919190"
+dependencies = [
+ "anyhow",
+ "proc-macro2 1.0.36",
+ "quote 1.0.14",
+ "serde",
+ "syn 1.0.91",
 ]
 
 [[package]]
@@ -5948,6 +6014,7 @@ dependencies = [
  "arrayref",
  "bincode",
  "borsh",
+ "mpl-token-metadata",
  "num-derive",
  "num-traits",
  "num_enum",

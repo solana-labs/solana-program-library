@@ -132,6 +132,9 @@ pub enum StakePoolError {
     /// Too much SOL withdrawn from the stake pool's reserve account
     #[error("SolWithdrawalTooLarge")]
     SolWithdrawalTooLarge,
+    /// Provided metadata account does not match metadata account derived for pool mint
+    #[error("InvalidMetadataAccount")]
+    InvalidMetadataAccount,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {

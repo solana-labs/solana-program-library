@@ -13,6 +13,11 @@ use {
         AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MINIMUM_ACTIVE_STAKE, TRANSIENT_STAKE_SEED_PREFIX,
     },
     borsh::{BorshDeserialize, BorshSerialize},
+    mpl_token_metadata::{
+        instruction::{create_metadata_accounts_v3, update_metadata_accounts_v2},
+        pda::find_metadata_account,
+        state::DataV2,
+    },
     num_traits::FromPrimitive,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -89,6 +94,19 @@ fn check_transient_stake_address(
     }
 }
 
+/// Check mpl metadata account address for the pool mint
+fn check_mpl_metadata_account_address(
+    metadata_address: &Pubkey,
+    pool_mint: &Pubkey,
+) -> Result<(), ProgramError> {
+    let (metadata_account_pubkey, _) = find_metadata_account(pool_mint);
+    if metadata_account_pubkey != *metadata_address {
+        Err(StakePoolError::InvalidMetadataAccount.into())
+    } else {
+        Ok(())
+    }
+}
+
 /// Check system program address
 fn check_system_program(program_id: &Pubkey) -> Result<(), ProgramError> {
     if *program_id != system_program::id() {
@@ -112,6 +130,34 @@ fn check_stake_program(program_id: &Pubkey) -> Result<(), ProgramError> {
             program_id
         );
         Err(ProgramError::IncorrectProgramId)
+    } else {
+        Ok(())
+    }
+}
+
+/// Check mpl metadata program
+fn check_mpl_metadata_program(program_id: &Pubkey) -> Result<(), ProgramError> {
+    if *program_id != mpl_token_metadata::id() {
+        msg!(
+            "Expected mpl metadata program {}, received {}",
+            mpl_token_metadata::id(),
+            program_id
+        );
+        Err(ProgramError::IncorrectProgramId)
+    } else {
+        Ok(())
+    }
+}
+
+/// Check rent sysvar correctness
+fn check_rent_sysvar(sysvar_key: &Pubkey) -> Result<(), ProgramError> {
+    if *sysvar_key != solana_program::sysvar::rent::id() {
+        msg!(
+            "Expected rent sysvar {}, received {}",
+            solana_program::sysvar::rent::id(),
+            sysvar_key
+        );
+        Err(ProgramError::InvalidArgument)
     } else {
         Ok(())
     }
@@ -2676,6 +2722,175 @@ impl Processor {
         Ok(())
     }
 
+    #[inline(never)]
+    fn process_create_pool_token_metadata(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        name: String,
+        symbol: String,
+        uri: String,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let manager_info = next_account_info(account_info_iter)?;
+        let withdraw_authority_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
+        let payer_info = next_account_info(account_info_iter)?;
+        let metadata_info = next_account_info(account_info_iter)?;
+        let mpl_token_metadata_program_info = next_account_info(account_info_iter)?;
+        let system_program_info = next_account_info(account_info_iter)?;
+        let rent_sysvar_info = next_account_info(account_info_iter)?;
+
+        if !payer_info.is_signer {
+            msg!("Payer did not sign metadata creation");
+            return Err(StakePoolError::SignatureMissing.into());
+        }
+
+        check_system_program(system_program_info.key)?;
+        check_rent_sysvar(rent_sysvar_info.key)?;
+        check_account_owner(payer_info, &system_program::id())?;
+        check_account_owner(stake_pool_info, program_id)?;
+        check_mpl_metadata_program(mpl_token_metadata_program_info.key)?;
+
+        let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        stake_pool.check_manager(manager_info)?;
+        stake_pool.check_authority_withdraw(
+            withdraw_authority_info.key,
+            program_id,
+            stake_pool_info.key,
+        )?;
+        stake_pool.check_mint(pool_mint_info)?;
+        check_mpl_metadata_account_address(metadata_info.key, &stake_pool.pool_mint)?;
+
+        // Token mint authority for stake-pool token is stake-pool withdraw authority
+        let token_mint_authority = withdraw_authority_info;
+
+        let new_metadata_instruction = create_metadata_accounts_v3(
+            *mpl_token_metadata_program_info.key,
+            *metadata_info.key,
+            *pool_mint_info.key,
+            *token_mint_authority.key,
+            *payer_info.key,
+            *token_mint_authority.key,
+            name,
+            symbol,
+            uri,
+            None,
+            0,
+            true,
+            true,
+            None,
+            None,
+            None,
+        );
+
+        let (_, stake_withdraw_bump_seed) =
+            crate::find_withdraw_authority_program_address(program_id, stake_pool_info.key);
+
+        let token_mint_authority_signer_seeds: &[&[_]] = &[
+            &stake_pool_info.key.to_bytes()[..32],
+            AUTHORITY_WITHDRAW,
+            &[stake_withdraw_bump_seed],
+        ];
+
+        invoke_signed(
+            &new_metadata_instruction,
+            &[
+                metadata_info.clone(),
+                pool_mint_info.clone(),
+                withdraw_authority_info.clone(),
+                payer_info.clone(),
+                withdraw_authority_info.clone(),
+                system_program_info.clone(),
+                rent_sysvar_info.clone(),
+                mpl_token_metadata_program_info.clone(),
+            ],
+            &[token_mint_authority_signer_seeds],
+        )?;
+
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn process_update_pool_token_metadata(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        name: String,
+        symbol: String,
+        uri: String,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let manager_info = next_account_info(account_info_iter)?;
+        let withdraw_authority_info = next_account_info(account_info_iter)?;
+        let metadata_info = next_account_info(account_info_iter)?;
+        let mpl_token_metadata_program_info = next_account_info(account_info_iter)?;
+
+        check_account_owner(stake_pool_info, program_id)?;
+
+        check_mpl_metadata_program(mpl_token_metadata_program_info.key)?;
+
+        let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        stake_pool.check_manager(manager_info)?;
+        stake_pool.check_authority_withdraw(
+            withdraw_authority_info.key,
+            program_id,
+            stake_pool_info.key,
+        )?;
+        check_mpl_metadata_account_address(metadata_info.key, &stake_pool.pool_mint)?;
+
+        // Token mint authority for stake-pool token is withdraw authority only
+        let token_mint_authority = withdraw_authority_info;
+
+        let update_metadata_accounts_instruction = update_metadata_accounts_v2(
+            *mpl_token_metadata_program_info.key,
+            *metadata_info.key,
+            *token_mint_authority.key,
+            None,
+            Some(DataV2 {
+                name,
+                symbol,
+                uri,
+                seller_fee_basis_points: 0,
+                creators: None,
+                collection: None,
+                uses: None,
+            }),
+            None,
+            Some(true),
+        );
+
+        let (_, stake_withdraw_bump_seed) =
+            crate::find_withdraw_authority_program_address(program_id, stake_pool_info.key);
+
+        let token_mint_authority_signer_seeds: &[&[_]] = &[
+            &stake_pool_info.key.to_bytes()[..32],
+            AUTHORITY_WITHDRAW,
+            &[stake_withdraw_bump_seed],
+        ];
+
+        invoke_signed(
+            &update_metadata_accounts_instruction,
+            &[
+                metadata_info.clone(),
+                withdraw_authority_info.clone(),
+                mpl_token_metadata_program_info.clone(),
+            ],
+            &[token_mint_authority_signer_seeds],
+        )?;
+
+        Ok(())
+    }
+
     /// Processes [SetManager](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_set_manager(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
@@ -2916,6 +3131,14 @@ impl Processor {
                 msg!("Instruction: WithdrawSol");
                 Self::process_withdraw_sol(program_id, accounts, pool_tokens)
             }
+            StakePoolInstruction::CreateTokenMetadata { name, symbol, uri } => {
+                msg!("Instruction: CreateTokenMetadata");
+                Self::process_create_pool_token_metadata(program_id, accounts, name, symbol, uri)
+            }
+            StakePoolInstruction::UpdateTokenMetadata { name, symbol, uri } => {
+                msg!("Instruction: UpdateTokenMetadata");
+                Self::process_update_pool_token_metadata(program_id, accounts, name, symbol, uri)
+            }
         }
     }
 }
@@ -2964,6 +3187,7 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::TransientAccountInUse => msg!("Error: Provided validator stake account already has a transient stake account in use"),
             StakePoolError::InvalidSolWithdrawAuthority => msg!("Error: Provided sol withdraw authority does not match the program's"),
             StakePoolError::SolWithdrawalTooLarge => msg!("Error: Too much SOL withdrawn from the stake pool's reserve account"),
+            StakePoolError::InvalidMetadataAccount => msg!("Error: Metadata account derived from pool mint account does not match the one passed to program")
         }
     }
 }
