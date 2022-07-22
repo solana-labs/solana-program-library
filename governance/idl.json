@@ -1,0 +1,4621 @@
+{
+	"version": "0.0.0",
+	"name": "",
+	"docs": [],
+	"ref": "https://github.com/solana-labs/solana-program-library/tree/4d1f8169a97a6df10ba5027d2036a303317fc7a0",
+	"instructions": [
+		{
+			"name": "CreateRealm",
+			"docs": [
+				"Creates Governance Realm account which aggregates governances for given Community Mint and optional Council Mint"
+			],
+			"accounts": [
+				{
+					"name": "governanceRealm",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Governance Realm account. PDA seeds:['governance',name]"
+					]
+				},
+				{
+					"name": "realmAuthority",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Realm authority"
+					]
+				},
+				{
+					"name": "communityTokenMint",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Community Token Mint"
+					]
+				},
+				{
+					"name": "communityTokenHolding",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Community Token Holding account. PDA seeds: ['governance',realm,community_mint]",
+						"The account will be created with the Realm PDA as its owner"
+					]
+				},
+				{
+					"name": "payer",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Payer"
+					]
+				},
+				{
+					"name": "system",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"System"
+					]
+				},
+				{
+					"name": "splToken",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"SPL Token"
+					]
+				},
+				{
+					"name": "sysvarRent",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Sysvar Rent"
+					]
+				},
+				{
+					"name": "councilTokenMint",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Council Token Mint - optional"
+					]
+				},
+				{
+					"name": "councilTokenHolding",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]",
+						"The account will be created with the Realm PDA as its owner"
+					]
+				},
+				{
+					"name": "optionalCommunityVoter",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Optional Community Voter Weight Addin Program Id"
+					]
+				},
+				{
+					"name": "optionalMaxCommunity",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Optional Max Community Voter Weight Addin Program Id"
+					]
+				},
+				{
+					"name": "optionalRealmConfig",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Optional RealmConfig account. PDA seeds: ['realm-config', realm]"
+					]
+				}
+			],
+			"args": [
+				{
+					"name": "config_args",
+					"type": {
+						"defined": "RealmConfigArgs"
+					},
+					"docs": []
+				}
+			]
+		},
+		{
+			"name": "DepositGoverningTokens",
+			"docs": [
+				"Deposits governing tokens (Community or Council) to Governance Realm and establishes your voter weight to be used for voting within the Realm",
+				"Note: If subsequent (top up) deposit is made and there are active votes for the Voter then the vote weights won't be updated automatically",
+				"It can be done by relinquishing votes on active Proposals and voting again with the new weight"
+			],
+			"accounts": [
+				{
+					"name": "governanceRealm",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Governance Realm account"
+					]
+				},
+				{
+					"name": "governingTokenHolding",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Governing Token Holding account. PDA seeds: ['governance',realm, governing_token_mint]"
+					]
+				},
+				{
+					"name": "governingTokenSource",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Governing Token Source account. All tokens from the account will be transferred to the Holding account"
+					]
+				},
+				{
+					"name": "governingTokenOwner",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Governing Token Owner account"
+					]
+				},
+				{
+					"name": "governingTokenTransfer",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Governing Token Transfer authority"
+					]
+				},
+				{
+					"name": "tokenOwnerRecord",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Token Owner Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]"
+					]
+				},
+				{
+					"name": "payer",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Payer"
+					]
+				},
+				{
+					"name": "system",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"System"
+					]
+				},
+				{
+					"name": "splToken",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"SPL Token"
+					]
+				},
+				{
+					"name": "sysvarRent",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Sysvar Rent"
+					]
+				}
+			],
+			"args": [
+				{
+					"name": "amount",
+					"type": "u64",
+					"docs": []
+				}
+			]
+		},
+		{
+			"name": "WithdrawGoverningTokens",
+			"docs": [
+				"Withdraws governing tokens (Community or Council) from Governance Realm and downgrades your voter weight within the Realm",
+				"Note: It's only possible to withdraw tokens if the Voter doesn't have any outstanding active votes",
+				"If there are any outstanding votes then they must be relinquished before tokens could be withdrawn"
+			],
+			"accounts": [
+				{
+					"name": "governanceRealm",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Governance Realm account"
+					]
+				},
+				{
+					"name": "governingTokenHolding",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Governing Token Holding account. PDA seeds: ['governance',realm, governing_token_mint]"
+					]
+				},
+				{
+					"name": "governingTokenDestination",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Governing Token Destination account. All tokens will be transferred to this account"
+					]
+				},
+				{
+					"name": "governingTokenOwner",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Governing Token Owner account"
+					]
+				},
+				{
+					"name": "tokenOwner",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Token Owner  Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]"
+					]
+				},
+				{
+					"name": "splToken",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"SPL Token"
+					]
+				}
+			],
+			"args": null
+		},
+		{
+			"name": "SetGovernanceDelegate",
+			"docs": [
+				"Sets Governance Delegate for the given Realm and Governing Token Mint (Community or Council)",
+				"The Delegate would have voting rights and could vote on behalf of the Governing Token Owner",
+				"The Delegate would also be able to create Proposals on behalf of the Governing Token Owner",
+				"Note: This doesn't take voting rights from the Token Owner who still can vote and change governance_delegate"
+			],
+			"accounts": [
+				{
+					"name": "currentGovernanceDelegate",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Current Governance Delegate or Governing Token owner"
+					]
+				},
+				{
+					"name": "tokenOwner",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Token Owner  Record"
+					]
+				}
+			],
+			"args": [
+				{
+					"name": "new_governance_delegate",
+					"type": {
+						"option": "publicKey"
+					},
+					"docs": []
+				}
+			]
+		},
+		{
+			"name": "CreateGovernance",
+			"docs": [
+				"Creates Governance account which can be used to govern any arbitrary Solana account or asset"
+			],
+			"accounts": [
+				{
+					"name": "realmAccount",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Realm account the created Governance belongs to"
+					]
+				},
+				{
+					"name": "accountGovernanceAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Account Governance account. PDA seeds: ['account-governance', realm, governed_account]"
+					]
+				},
+				{
+					"name": "accountGovernedBy",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Account governed by this Governance",
+						"Note: The account doesn't have to exist and can be only used as a unique identifier for the Governance account"
+					]
+				},
+				{
+					"name": "governingTokenOwner",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)"
+					]
+				},
+				{
+					"name": "payer",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Payer"
+					]
+				},
+				{
+					"name": "systemProgram",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"System program"
+					]
+				},
+				{
+					"name": "sysvarRent",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Sysvar Rent"
+					]
+				},
+				{
+					"name": "governanceAuthority",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Governance authority"
+					]
+				},
+				{
+					"name": "realmConfig",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Realm Config"
+					]
+				},
+				{
+					"name": "optionalVoterWeight",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Optional Voter Weight Record"
+					]
+				}
+			],
+			"args": [
+				{
+					"name": "config",
+					"type": {
+						"defined": "GovernanceConfig"
+					},
+					"docs": []
+				}
+			]
+		},
+		{
+			"name": "CreateProgramGovernance",
+			"docs": [
+				"Creates Program Governance account which governs an upgradable program"
+			],
+			"accounts": [
+				{
+					"name": "realmAccount",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Realm account the created Governance belongs to"
+					]
+				},
+				{
+					"name": "programGovernance",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Program Governance account. PDA seeds: ['program-governance', realm, governed_program]"
+					]
+				},
+				{
+					"name": "programGovernedBy",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Program governed by this Governance account"
+					]
+				},
+				{
+					"name": "programData",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Program Data account of the Program governed by this Governance account"
+					]
+				},
+				{
+					"name": "currentUpgradeAuthority",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Current Upgrade Authority account of the Program governed by this Governance account"
+					]
+				},
+				{
+					"name": "governingTokenOwner",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)"
+					]
+				},
+				{
+					"name": "payer",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Payer"
+					]
+				},
+				{
+					"name": "bpfUpgradeableLoaderProgram",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"bpf_upgradeable_loader program"
+					]
+				},
+				{
+					"name": "systemProgram",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"System program"
+					]
+				},
+				{
+					"name": "sysvarRent",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Sysvar Rent"
+					]
+				},
+				{
+					"name": "governanceAuthority",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Governance authority"
+					]
+				},
+				{
+					"name": "realmConfig",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Realm Config"
+					]
+				},
+				{
+					"name": "optionalVoterWeight",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Optional Voter Weight Record"
+					]
+				}
+			],
+			"args": [
+				{
+					"name": "transfer_upgrade_authority",
+					"type": "bool",
+					"docs": []
+				}
+			]
+		},
+		{
+			"name": "CreateProposal",
+			"docs": [
+				"Creates Proposal account for Transactions which will be executed at some point in the future"
+			],
+			"accounts": [
+				{
+					"name": "realmAccount",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Realm account the created Proposal belongs to"
+					]
+				},
+				{
+					"name": "proposalAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_index]"
+					]
+				},
+				{
+					"name": "governanceAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Governance account"
+					]
+				},
+				{
+					"name": "tokenOwnerRecord",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"TokenOwnerRecord account of the Proposal owner"
+					]
+				},
+				{
+					"name": "governingTokenMint",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Governing Token Mint the Proposal is created for"
+					]
+				},
+				{
+					"name": "governanceAuthoritytoken",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Governance Authority (Token Owner or Governance Delegate)"
+					]
+				},
+				{
+					"name": "payer",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Payer"
+					]
+				},
+				{
+					"name": "systemProgram",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"System program"
+					]
+				},
+				{
+					"name": "realmConfig",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Realm Config"
+					]
+				},
+				{
+					"name": "optionalVoterWeight",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Optional Voter Weight Record"
+					]
+				}
+			],
+			"args": [
+				{
+					"name": "use_deny_option",
+					"type": "bool",
+					"docs": []
+				}
+			]
+		},
+		{
+			"name": "AddSignatory",
+			"docs": [
+				"Adds a signatory to the Proposal which means this Proposal can't leave Draft state until yet another Signatory signs"
+			],
+			"accounts": [
+				{
+					"name": "proposalAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Proposal account"
+					]
+				},
+				{
+					"name": "tokenOwnerRecord",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"TokenOwnerRecord account of the Proposal owner"
+					]
+				},
+				{
+					"name": "governanceAuthoritytoken",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Governance Authority (Token Owner or Governance Delegate)"
+					]
+				},
+				{
+					"name": "signatoryRecord",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Signatory Record Account"
+					]
+				},
+				{
+					"name": "payer",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Payer"
+					]
+				},
+				{
+					"name": "systemProgram",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"System program"
+					]
+				},
+				{
+					"name": "rentSysvar",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Rent sysvar"
+					]
+				}
+			],
+			"args": [
+				{
+					"name": "signatory",
+					"type": "publicKey",
+					"docs": []
+				}
+			]
+		},
+		{
+			"name": "RemoveSignatory",
+			"docs": [
+				"Removes a Signatory from the Proposal"
+			],
+			"accounts": [
+				{
+					"name": "proposalAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Proposal account"
+					]
+				},
+				{
+					"name": "tokenOwnerRecord",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"TokenOwnerRecord account of the Proposal owner"
+					]
+				},
+				{
+					"name": "governanceAuthoritytoken",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Governance Authority (Token Owner or Governance Delegate)"
+					]
+				},
+				{
+					"name": "signatoryRecord",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Signatory Record Account"
+					]
+				},
+				{
+					"name": "beneficiaryAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Beneficiary Account which would receive lamports from the disposed Signatory Record Account"
+					]
+				}
+			],
+			"args": [
+				{
+					"name": "signatory",
+					"type": "publicKey",
+					"docs": []
+				}
+			]
+		},
+		{
+			"name": "InsertTransaction",
+			"docs": [
+				"Inserts Transaction with a set of instructions for the Proposal at the given index position",
+				"New Transaction must be inserted at the end of the range indicated by Proposal transactions_next_index",
+				"If a Transaction replaces an existing Transaction at a given index then the old one must be removed using RemoveTransaction first"
+			],
+			"accounts": [
+				{
+					"name": "governanceAccount",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Governance account"
+					]
+				},
+				{
+					"name": "proposalAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Proposal account"
+					]
+				},
+				{
+					"name": "tokenOwnerRecord",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"TokenOwnerRecord account of the Proposal owner"
+					]
+				},
+				{
+					"name": "governanceAuthoritytoken",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Governance Authority (Token Owner or Governance Delegate)"
+					]
+				},
+				{
+					"name": "proposalTransaction",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"ProposalTransaction, account. PDA seeds: ['governance', proposal, option_index, index]"
+					]
+				},
+				{
+					"name": "payer",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Payer"
+					]
+				},
+				{
+					"name": "systemProgram",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"System program"
+					]
+				},
+				{
+					"name": "rentSysvar",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Rent sysvar"
+					]
+				}
+			],
+			"args": [
+				{
+					"name": "instructions",
+					"type": {
+						"vec": {
+							"defined": "InstructionData"
+						}
+					},
+					"docs": []
+				}
+			]
+		},
+		{
+			"name": "RemoveTransaction",
+			"docs": [
+				"Removes Transaction from the Proposal"
+			],
+			"accounts": [
+				{
+					"name": "proposalAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Proposal account"
+					]
+				},
+				{
+					"name": "tokenOwnerRecord",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"TokenOwnerRecord account of the Proposal owner"
+					]
+				},
+				{
+					"name": "governanceAuthoritytoken",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Governance Authority (Token Owner or Governance Delegate)"
+					]
+				},
+				{
+					"name": "proposalTransaction",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"ProposalTransaction, account"
+					]
+				},
+				{
+					"name": "beneficiaryAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Beneficiary Account which would receive lamports from the disposed ProposalTransaction account"
+					]
+				}
+			],
+			"args": []
+		},
+		{
+			"name": "",
+			"docs": null,
+			"accounts": [],
+			"args": null
+		},
+		{
+			"name": "CancelProposal",
+			"docs": [
+				"Cancels Proposal by changing its state to Canceled"
+			],
+			"accounts": [
+				{
+					"name": "realmAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Realm account"
+					]
+				},
+				{
+					"name": "governanceAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Governance account"
+					]
+				},
+				{
+					"name": "proposalAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Proposal account"
+					]
+				},
+				{
+					"name": "tokenOwnerRecord",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"TokenOwnerRecord account of the  Proposal owner"
+					]
+				},
+				{
+					"name": "governanceAuthoritytoken",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Governance Authority (Token Owner or Governance Delegate)"
+					]
+				}
+			],
+			"args": []
+		},
+		{
+			"name": "",
+			"docs": null,
+			"accounts": [],
+			"args": null
+		},
+		{
+			"name": "SignOffProposal",
+			"docs": [
+				"Signs off Proposal indicating the Signatory approves the Proposal",
+				"When the last Signatory signs off the Proposal it enters Voting state",
+				"Note: Adding signatories to a Proposal is a quality and not a security gate and",
+				"it's entirely at the discretion of the Proposal owner",
+				"If Proposal owner doesn't designate any signatories then can sign off the Proposal themself"
+			],
+			"accounts": [
+				{
+					"name": "realmAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Realm account"
+					]
+				},
+				{
+					"name": "governanceAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Governance account"
+					]
+				},
+				{
+					"name": "proposalAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Proposal account"
+					]
+				},
+				{
+					"name": "signatoryAccount",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Signatory account signing off the Proposal",
+						"Or Proposal owner if the owner hasn't appointed any signatories"
+					]
+				},
+				{
+					"name": "tokenOwnerRecord",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"TokenOwnerRecord for the Proposal owner, required when the owner signs off the Proposal"
+					]
+				},
+				{
+					"name": "signatoryRecord",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"SignatoryRecord account, required when non owner sings off the Proposal"
+					]
+				}
+			],
+			"args": []
+		},
+		{
+			"name": "",
+			"docs": null,
+			"accounts": [],
+			"args": null
+		},
+		{
+			"name": "CastVote",
+			"docs": [
+				"Uses your voter weight (deposited Community or Council tokens) to cast a vote on a Proposal",
+				"By doing so you indicate you approve or disapprove of running the Proposal set of transactions",
+				"If you tip the consensus then the transactions can begin to be run after their hold up time"
+			],
+			"accounts": [
+				{
+					"name": "realmAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Realm account"
+					]
+				},
+				{
+					"name": "governanceAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Governance account"
+					]
+				},
+				{
+					"name": "proposalAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Proposal account"
+					]
+				},
+				{
+					"name": "tokenOwnerRecord",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"TokenOwnerRecord of the Proposal owner"
+					]
+				},
+				{
+					"name": "tokenOwnerRecord",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"TokenOwnerRecord of the voter. PDA seeds: ['governance',realm, vote_governing_token_mint, governing_token_owner]"
+					]
+				},
+				{
+					"name": "governanceAuthoritytoken",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Governance Authority (Token Owner or Governance Delegate)"
+					]
+				},
+				{
+					"name": "proposalVoteRecord",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Proposal VoteRecord account. PDA seeds: ['governance',proposal,token_owner_record]"
+					]
+				},
+				{
+					"name": "governingTokenMint",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"The Governing Token Mint which is used to cast the vote (vote_governing_token_mint)",
+						"The voting token mint is the governing_token_mint of the Proposal for Approve, Deny and Abstain votes",
+						"For Veto vote the voting token mint is the mint of the opposite voting population",
+						"Council mint to veto Community proposals and Community mint to veto Council proposals",
+						"Note: In the current version only Council veto is supported"
+					]
+				},
+				{
+					"name": "payer",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Payer"
+					]
+				},
+				{
+					"name": "systemProgram",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"System program"
+					]
+				},
+				{
+					"name": "realmConfig",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Realm Config"
+					]
+				},
+				{
+					"name": "optionalVoterWeight",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Optional Voter Weight Record"
+					]
+				},
+				{
+					"name": "optionalMaxVoter",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Optional Max Voter Weight Record"
+					]
+				}
+			],
+			"args": [
+				{
+					"name": "vote",
+					"type": {
+						"defined": "Vote"
+					},
+					"docs": []
+				}
+			]
+		},
+		{
+			"name": "FinalizeVote",
+			"docs": [
+				"Finalizes vote in case the Vote was not automatically tipped within max_voting_time period"
+			],
+			"accounts": [
+				{
+					"name": "realmAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Realm account    "
+					]
+				},
+				{
+					"name": "governanceAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Governance account"
+					]
+				},
+				{
+					"name": "proposalAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Proposal account"
+					]
+				},
+				{
+					"name": "tokenOwnerRecord",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"TokenOwnerRecord of the Proposal owner        "
+					]
+				},
+				{
+					"name": "governingTokenMint",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Governing Token Mint"
+					]
+				},
+				{
+					"name": "realmConfig",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Realm Config"
+					]
+				},
+				{
+					"name": "optionalMaxVoter",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Optional Max Voter Weight Record"
+					]
+				}
+			],
+			"args": null
+		},
+		{
+			"name": "RelinquishVote",
+			"docs": [
+				"Relinquish Vote removes voter weight from a Proposal and removes it from voter's active votes",
+				"If the Proposal is still being voted on then the voter's weight won't count towards the vote outcome",
+				"If the Proposal is already in decided state then the instruction has no impact on the Proposal",
+				"and only allows voters to prune their outstanding votes in case they wanted to withdraw Governing tokens from the Realm"
+			],
+			"accounts": [
+				{
+					"name": "realmAccount",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Realm account"
+					]
+				},
+				{
+					"name": "governanceAccount",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Governance account"
+					]
+				},
+				{
+					"name": "proposalAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Proposal account"
+					]
+				},
+				{
+					"name": "tokenOwnerRecord",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"TokenOwnerRecord account. PDA seeds: ['governance',realm, vote_governing_token_mint, governing_token_owner]"
+					]
+				},
+				{
+					"name": "proposalVoteRecord",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Proposal VoteRecord account. PDA seeds: ['governance',proposal, token_owner_record]"
+					]
+				},
+				{
+					"name": "governingTokenMint",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"The Governing Token Mint which was used to cast the vote (vote_governing_token_mint)"
+					]
+				},
+				{
+					"name": "optionalGovernanceAuthority",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Optional Governance Authority (Token Owner or Governance Delegate)",
+						"It's required only when Proposal is still being voted on"
+					]
+				},
+				{
+					"name": "optionalBeneficiary",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Optional Beneficiary account which would receive lamports when VoteRecord Account is disposed",
+						"It's required only when Proposal is still being voted on"
+					]
+				}
+			],
+			"args": []
+		},
+		{
+			"name": "",
+			"docs": null,
+			"accounts": [],
+			"args": null
+		},
+		{
+			"name": "ExecuteTransaction",
+			"docs": [
+				"Executes a Transaction in the Proposal",
+				"Anybody can execute transaction once Proposal has been voted Yes and transaction_hold_up time has passed",
+				"The actual transaction being executed will be signed by Governance PDA the Proposal belongs to",
+				"For example to execute Program upgrade the ProgramGovernance PDA would be used as the singer"
+			],
+			"accounts": [
+				{
+					"name": "governanceAccount",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Governance account"
+					]
+				},
+				{
+					"name": "proposalAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Proposal account"
+					]
+				},
+				{
+					"name": "proposalTransaction",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"ProposalTransaction account you wish to execute",
+						"3+ Any extra accounts that are part of the transaction, in order"
+					]
+				}
+			],
+			"args": []
+		},
+		{
+			"name": "",
+			"docs": null,
+			"accounts": [],
+			"args": null
+		},
+		{
+			"name": "CreateMintGovernance",
+			"docs": [
+				"Creates Mint Governance account which governs a mint"
+			],
+			"accounts": [
+				{
+					"name": "realmAccount",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Realm account the created Governance belongs to    "
+					]
+				},
+				{
+					"name": "mintGovernance",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Mint Governance account. PDA seeds: ['mint-governance', realm, governed_mint]"
+					]
+				},
+				{
+					"name": "mintGovernedBy",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Mint governed by this Governance account"
+					]
+				},
+				{
+					"name": "currentMintAuthority",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Current Mint authority (MintTokens and optionally FreezeAccount)"
+					]
+				},
+				{
+					"name": "governingTokenOwner",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)   "
+					]
+				},
+				{
+					"name": "payer",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Payer"
+					]
+				},
+				{
+					"name": "splTokenProgram",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"SPL Token program"
+					]
+				},
+				{
+					"name": "systemProgram",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"System program"
+					]
+				},
+				{
+					"name": "sysvarRent",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Sysvar Rent"
+					]
+				},
+				{
+					"name": "governanceAuthority",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Governance authority"
+					]
+				},
+				{
+					"name": "realmConfig",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Realm Config"
+					]
+				},
+				{
+					"name": "optionalVoterWeight",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Optional Voter Weight Record"
+					]
+				}
+			],
+			"args": [
+				{
+					"name": "transfer_mint_authorities",
+					"type": "bool",
+					"docs": []
+				}
+			]
+		},
+		{
+			"name": "CreateTokenGovernance",
+			"docs": [
+				"Creates Token Governance account which governs a token account"
+			],
+			"accounts": [
+				{
+					"name": "realmAccount",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Realm account the created Governance belongs to    "
+					]
+				},
+				{
+					"name": "tokenGovernance",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Token Governance account. PDA seeds: ['token-governance', realm, governed_token]"
+					]
+				},
+				{
+					"name": "tokenAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Token account governed by this Governance account"
+					]
+				},
+				{
+					"name": "currentToken",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Current token account authority (AccountOwner and optionally CloseAccount)"
+					]
+				},
+				{
+					"name": "governingTokenOwner",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)       "
+					]
+				},
+				{
+					"name": "payer",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Payer"
+					]
+				},
+				{
+					"name": "splTokenProgram",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"SPL Token program"
+					]
+				},
+				{
+					"name": "systemProgram",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"System program"
+					]
+				},
+				{
+					"name": "sysvarRent",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Sysvar Rent"
+					]
+				},
+				{
+					"name": "governanceAuthority",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Governance authority"
+					]
+				},
+				{
+					"name": "realmConfig",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Realm Config"
+					]
+				},
+				{
+					"name": "optionalVoterWeight",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Optional Voter Weight Record   "
+					]
+				}
+			],
+			"args": [
+				{
+					"name": "transfer_account_authorities",
+					"type": "bool",
+					"docs": []
+				}
+			]
+		},
+		{
+			"name": "SetGovernanceConfig",
+			"docs": [
+				"Sets GovernanceConfig for a Governance"
+			],
+			"accounts": [
+				{
+					"name": "realmAccount",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Realm account the Governance account belongs to    "
+					]
+				},
+				{
+					"name": "governanceAccount",
+					"isMut": true,
+					"isSigner": true,
+					"docs": [
+						"The Governance account the config is for"
+					]
+				}
+			],
+			"args": [
+				{
+					"name": "config",
+					"type": {
+						"defined": "GovernanceConfig"
+					},
+					"docs": []
+				}
+			]
+		},
+		{
+			"name": "FlagTransactionError",
+			"docs": [
+				"Flags a transaction and its parent Proposal with error status",
+				"It can be used by Proposal owner in case the transaction is permanently broken and can't be executed",
+				"Note: This instruction is a workaround because currently it's not possible to catch errors from CPI calls",
+				"and the Governance program has no way to know when instruction failed and flag it automatically"
+			],
+			"accounts": [
+				{
+					"name": "proposalAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Proposal account"
+					]
+				},
+				{
+					"name": "tokenOwnerRecord",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"TokenOwnerRecord account of the Proposal owner"
+					]
+				},
+				{
+					"name": "governanceAuthoritytoken",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Governance Authority (Token Owner or Governance Delegate)    "
+					]
+				},
+				{
+					"name": "proposalTransaction",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"ProposalTransaction account to flag"
+					]
+				}
+			],
+			"args": []
+		},
+		{
+			"name": "",
+			"docs": null,
+			"accounts": [],
+			"args": null
+		},
+		{
+			"name": "SetRealmAuthority",
+			"docs": [
+				"Sets new Realm authority"
+			],
+			"accounts": [
+				{
+					"name": "realmAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Realm account"
+					]
+				},
+				{
+					"name": "currentRealmAuthority",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Current Realm authority    "
+					]
+				},
+				{
+					"name": "newRealmAuthority",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"New realm authority. Must be one of the realm governances when set"
+					]
+				}
+			],
+			"args": [
+				{
+					"name": "action",
+					"type": {
+						"defined": "SetRealmAuthorityAction"
+					},
+					"docs": []
+				}
+			]
+		},
+		{
+			"name": "SetRealmConfig",
+			"docs": [
+				"Sets realm config"
+			],
+			"accounts": [
+				{
+					"name": "realmAccount",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Realm account"
+					]
+				},
+				{
+					"name": "realmAuthority",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Realm authority    "
+					]
+				},
+				{
+					"name": "councilTokenMint",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Council Token Mint - optional",
+						"Note: In the current version it's only possible to remove council mint (set it to None)",
+						"After setting council to None it won't be possible to withdraw the tokens from the Realm any longer",
+						"If that's required then it must be done before executing this instruction"
+					]
+				},
+				{
+					"name": "councilTokenHolding",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]",
+						"The account will be created with the Realm PDA as its owner"
+					]
+				},
+				{
+					"name": "system",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"System"
+					]
+				},
+				{
+					"name": "realmConfig",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"RealmConfig account. PDA seeds: ['realm-config', realm]"
+					]
+				},
+				{
+					"name": "optionalCommunityVoter",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Optional Community Voter Weight Addin Program Id    "
+					]
+				},
+				{
+					"name": "optionalMaxCommunity",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Optional Max Community Voter Weight Addin Program Id    "
+					]
+				},
+				{
+					"name": "optionalPayer",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Optional Payer"
+					]
+				}
+			],
+			"args": [
+				{
+					"name": "config_args",
+					"type": {
+						"defined": "RealmConfigArgs"
+					},
+					"docs": []
+				}
+			]
+		},
+		{
+			"name": "CreateTokenOwnerRecord",
+			"docs": [
+				"Creates TokenOwnerRecord with 0 deposit amount",
+				"It's used to register TokenOwner when voter weight addin is used and the Governance program doesn't take deposits"
+			],
+			"accounts": [
+				{
+					"name": "realmAccount",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Realm account"
+					]
+				},
+				{
+					"name": "governingTokenOwner",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Governing Token Owner account"
+					]
+				},
+				{
+					"name": "tokenOwnerRecord",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]"
+					]
+				},
+				{
+					"name": "governingTokenMint",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Governing Token Mint   "
+					]
+				},
+				{
+					"name": "payer",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Payer"
+					]
+				},
+				{
+					"name": "system",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"System"
+					]
+				}
+			],
+			"args": null
+		},
+		{
+			"name": "UpdateProgramMetadata",
+			"docs": [
+				"Updates ProgramMetadata account",
+				"The instruction dumps information implied by the program's code into a persistent account"
+			],
+			"accounts": [
+				{
+					"name": "programMetadata",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"ProgramMetadata account. PDA seeds: ['metadata']"
+					]
+				},
+				{
+					"name": "payer",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Payer"
+					]
+				},
+				{
+					"name": "system",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"System"
+					]
+				}
+			],
+			"args": null
+		},
+		{
+			"name": "CreateNativeTreasury",
+			"docs": [
+				"Creates native SOL treasury account for a Governance account",
+				"The account has no data and can be used as a payer for instructions signed by Governance PDAs or as a native SOL treasury"
+			],
+			"accounts": [
+				{
+					"name": "governanceAccount",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"Governance account the treasury account is for"
+					]
+				},
+				{
+					"name": "nativeTreasury",
+					"isMut": true,
+					"isSigner": false,
+					"docs": [
+						"NativeTreasury account. PDA seeds: ['treasury', governance]"
+					]
+				},
+				{
+					"name": "payer",
+					"isMut": false,
+					"isSigner": true,
+					"docs": [
+						"Payer"
+					]
+				},
+				{
+					"name": "system",
+					"isMut": false,
+					"isSigner": false,
+					"docs": [
+						"System"
+					]
+				}
+			],
+			"args": []
+		}
+	],
+	"accounts": [
+		{
+			"name": "GovernanceAccountType",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "Uninitialized",
+						"docs": [
+							"Default uninitialized account state"
+						]
+					},
+					{
+						"name": "RealmV1",
+						"docs": [
+							"Top level aggregation for governances with Community Token (and optional Council Token)"
+						]
+					},
+					{
+						"name": "TokenOwnerRecordV1",
+						"docs": [
+							"Token Owner Record for given governing token owner within a Realm"
+						]
+					},
+					{
+						"name": "GovernanceV1",
+						"docs": [
+							"Governance account"
+						]
+					},
+					{
+						"name": "ProgramGovernanceV1",
+						"docs": [
+							"Program Governance account"
+						]
+					},
+					{
+						"name": "ProposalV1",
+						"docs": [
+							"Proposal account for Governance account. A single Governance account can have multiple Proposal accounts"
+						]
+					},
+					{
+						"name": "SignatoryRecordV1",
+						"docs": [
+							"Proposal Signatory account"
+						]
+					},
+					{
+						"name": "VoteRecordV1",
+						"docs": [
+							"Vote record account for a given Proposal.  Proposal can have 0..n voting records"
+						]
+					},
+					{
+						"name": "ProposalInstructionV1",
+						"docs": [
+							"ProposalInstruction account which holds an instruction to execute for Proposal"
+						]
+					},
+					{
+						"name": "MintGovernanceV1",
+						"docs": [
+							"Mint Governance account"
+						]
+					},
+					{
+						"name": "TokenGovernanceV1",
+						"docs": [
+							"Token Governance account"
+						]
+					},
+					{
+						"name": "RealmConfig",
+						"docs": [
+							"Realm config account (introduced in V2)"
+						]
+					},
+					{
+						"name": "VoteRecordV2",
+						"docs": [
+							"Vote record account for a given Proposal.  Proposal can have 0..n voting records",
+							"V2 adds support for multi option votes"
+						]
+					},
+					{
+						"name": "ProposalTransactionV2",
+						"docs": [
+							"ProposalTransaction account which holds instructions to execute for Proposal within a single Transaction",
+							"V2 replaces ProposalInstruction and adds index for proposal option and multiple instructions"
+						]
+					},
+					{
+						"name": "ProposalV2",
+						"docs": [
+							"Proposal account for Governance account. A single Governance account can have multiple Proposal accounts",
+							"V2 adds support for multiple vote options"
+						]
+					},
+					{
+						"name": "ProgramMetadata",
+						"docs": [
+							"Program metadata account (introduced in V2)",
+							"It stores information about the particular SPL-Governance program instance"
+						]
+					},
+					{
+						"name": "RealmV2",
+						"docs": [
+							"Top level aggregation for governances with Community Token (and optional Council Token)",
+							"V2 adds the following fields:",
+							"1) use_community_voter_weight_addin and use_max_community_voter_weight_addin to RealmConfig",
+							"2) voting_proposal_count",
+							"3) extra reserved space reserved_v2"
+						]
+					},
+					{
+						"name": "TokenOwnerRecordV2",
+						"docs": [
+							"Token Owner Record for given governing token owner within a Realm",
+							"V2 adds extra reserved space reserved_v2"
+						]
+					},
+					{
+						"name": "GovernanceV2",
+						"docs": [
+							"Governance account",
+							"V2 adds extra reserved space reserved_v2"
+						]
+					},
+					{
+						"name": "ProgramGovernanceV2",
+						"docs": [
+							"Program Governance account",
+							"V2 adds extra reserved space reserved_v2"
+						]
+					},
+					{
+						"name": "MintGovernanceV2",
+						"docs": [
+							"Mint Governance account",
+							"V2 adds extra reserved space reserved_v2"
+						]
+					},
+					{
+						"name": "TokenGovernanceV2",
+						"docs": [
+							"Token Governance account",
+							"V2 adds extra reserved space reserved_v2"
+						]
+					},
+					{
+						"name": "SignatoryRecordV2",
+						"docs": [
+							"Proposal Signatory account",
+							"V2 adds extra reserved space reserved_v2"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Defines all Governance accounts types"
+			]
+		},
+		{
+			"name": "ProposalState",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "Draft",
+						"docs": [
+							"Draft - Proposal enters Draft state when it's created"
+						]
+					},
+					{
+						"name": "SigningOff",
+						"docs": [
+							"SigningOff - The Proposal is being signed off by Signatories",
+							"Proposal enters the state when first Signatory Sings and leaves it when last Signatory signs"
+						]
+					},
+					{
+						"name": "Voting",
+						"docs": [
+							"Taking votes"
+						]
+					},
+					{
+						"name": "Succeeded",
+						"docs": [
+							"Voting ended with success"
+						]
+					},
+					{
+						"name": "Executing",
+						"docs": [
+							"Voting on Proposal succeeded and now instructions are being executed",
+							"Proposal enter this state when first instruction is executed and leaves when the last instruction is executed"
+						]
+					},
+					{
+						"name": "Completed",
+						"docs": [
+							"Completed"
+						]
+					},
+					{
+						"name": "Cancelled",
+						"docs": [
+							"Cancelled"
+						]
+					},
+					{
+						"name": "Defeated",
+						"docs": [
+							"Defeated"
+						]
+					},
+					{
+						"name": "ExecutingWithErrors",
+						"docs": [
+							"Same as Executing but indicates some instructions failed to execute",
+							"Proposal can't be transitioned from ExecutingWithErrors to Completed state"
+						]
+					},
+					{
+						"name": "Vetoed",
+						"docs": [
+							"The Proposal was vetoed"
+						]
+					}
+				]
+			},
+			"docs": [
+				"What state a Proposal is in"
+			]
+		},
+		{
+			"name": "VoteThreshold",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "YesVotePercentage",
+						"fields": [
+							{
+								"name": "F0",
+								"type": "u8",
+								"docs": [
+									"Voting threshold of Yes votes in % required to tip the vote (Approval Quorum)",
+									"It's the percentage of tokens out of the entire pool of governance tokens eligible to vote",
+									"Note: If the threshold is below or equal to 50% then an even split of votes ex: 50:50 or 40:40 is always resolved as Defeated",
+									"In other words a '+1 vote' tie breaker is always required to have a successful vote"
+								]
+							}
+						]
+					},
+					{
+						"name": "QuorumPercentage",
+						"fields": [
+							{
+								"name": "F0",
+								"type": "u8",
+								"docs": [
+									"The minimum number of votes in % out of the entire pool of governance tokens eligible to vote",
+									"which must be cast for the vote to be valid",
+									"Once the quorum is achieved a simple majority (50%+1) of Yes votes is required for the vote to succeed",
+									"Note: Quorum is not implemented in the current version"
+								]
+							}
+						]
+					},
+					{
+						"name": "Disabled",
+						"docs": [
+							"Disabled vote threshold indicates the given voting population (community or council) is not allowed to vote",
+							"on proposals for the given Governance"
+						]
+					}
+				]
+			},
+			"docs": [
+				"The type of the vote threshold used to resolve a vote on a Proposal",
+				"",
+				"Note: In the current version only YesVotePercentage and Disabled thresholds are supported"
+			]
+		},
+		{
+			"name": "VoteTipping",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "Strict",
+						"docs": [
+							"Tip when there is no way for another option to win and the vote threshold",
+							"has been reached. This ignores voters withdrawing their votes.",
+							"",
+							"Currently only supported for the \"yes\" option in single choice votes."
+						]
+					},
+					{
+						"name": "Early",
+						"docs": [
+							"Tip when an option reaches the vote threshold and has more vote weight",
+							"than any other options.",
+							"",
+							"Currently only supported for the \"yes\" option in single choice votes."
+						]
+					},
+					{
+						"name": "Disabled",
+						"docs": [
+							"Never tip the vote early."
+						]
+					}
+				]
+			},
+			"docs": [
+				"The type of vote tipping to use on a Proposal.",
+				"",
+				"Vote tipping means that under some conditions voting will complete early."
+			]
+		},
+		{
+			"name": "TransactionExecutionStatus",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "None",
+						"docs": [
+							"Transaction was not executed yet"
+						]
+					},
+					{
+						"name": "Success",
+						"docs": [
+							"Transaction was executed successfully"
+						]
+					},
+					{
+						"name": "Error",
+						"docs": [
+							"Transaction execution failed"
+						]
+					}
+				]
+			},
+			"docs": [
+				"The status of instruction execution"
+			]
+		},
+		{
+			"name": "InstructionExecutionFlags",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "None",
+						"docs": [
+							"No execution flags are specified",
+							"Instructions can be executed individually, in any order, as soon as they hold_up time expires"
+						]
+					},
+					{
+						"name": "Ordered",
+						"docs": [
+							"Instructions are executed in a specific order",
+							"Note: Ordered execution is not supported in the current version",
+							"The implementation requires another account type to track deleted instructions"
+						]
+					},
+					{
+						"name": "UseTransaction",
+						"docs": [
+							"Multiple instructions can be executed as a single transaction",
+							"Note: Transactions are not supported in the current version",
+							"The implementation requires another account type to group instructions within a transaction"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Transaction execution flags defining how instructions are executed for a Proposal"
+			]
+		},
+		{
+			"name": "MintMaxVoteWeightSource",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "SupplyFraction",
+						"fields": [
+							{
+								"name": "F0",
+								"type": "u64",
+								"docs": [
+									"Fraction (10^10 precision) of the governing mint supply is used as max vote weight",
+									"The default is 100% (10^10) to use all available mint supply for voting"
+								]
+							}
+						]
+					},
+					{
+						"name": "Absolute",
+						"fields": [
+							{
+								"name": "F0",
+								"type": "u64",
+								"docs": [
+									"Absolute value, irrelevant of the actual mint supply, is used as max vote weight",
+									"Note: this option is not implemented in the current version"
+								]
+							}
+						]
+					}
+				]
+			},
+			"docs": [
+				"The source of max vote weight used for voting",
+				"Values below 100% mint supply can be used when the governing token is fully minted but not distributed yet"
+			]
+		},
+		{
+			"name": "GovernanceConfig",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "community_vote_threshold",
+						"type": {
+							"defined": "VoteThreshold"
+						},
+						"docs": [
+							"The type of the vote threshold used for community vote",
+							"Note: In the current version only YesVotePercentage and Disabled thresholds are supported"
+						]
+					},
+					{
+						"name": "min_community_weight_to_create_proposal",
+						"type": "u64",
+						"docs": [
+							"Minimum community weight a governance token owner must possess to be able to create a proposal"
+						]
+					},
+					{
+						"name": "min_transaction_hold_up_time",
+						"type": "u32",
+						"docs": [
+							"Minimum waiting time in seconds for a transaction to be executed after proposal is voted on"
+						]
+					},
+					{
+						"name": "max_voting_time",
+						"type": "u32",
+						"docs": [
+							"Time limit in seconds for proposal to be open for voting"
+						]
+					},
+					{
+						"name": "vote_tipping",
+						"type": {
+							"defined": "VoteTipping"
+						},
+						"docs": [
+							"Conditions under which a vote will complete early"
+						]
+					},
+					{
+						"name": "council_vote_threshold",
+						"type": {
+							"defined": "VoteThreshold"
+						},
+						"docs": [
+							"The type of the vote threshold used for council vote",
+							"Note: In the current version only YesVotePercentage and Disabled thresholds are supported"
+						]
+					},
+					{
+						"name": "council_veto_vote_threshold",
+						"type": {
+							"defined": "VoteThreshold"
+						},
+						"docs": [
+							"The threshold for Council Veto votes"
+						]
+					},
+					{
+						"name": "min_council_weight_to_create_proposal",
+						"type": "u64",
+						"docs": [
+							"Minimum council weight a governance token owner must possess to be able to create a proposal"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Governance config"
+			]
+		},
+		{
+			"name": "GovernanceV2",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "account_type",
+						"type": {
+							"defined": "GovernanceAccountType"
+						},
+						"docs": [
+							"Account type. It can be Uninitialized, Governance, ProgramGovernance, TokenGovernance or MintGovernance"
+						]
+					},
+					{
+						"name": "realm",
+						"type": "publicKey",
+						"docs": [
+							"Governance Realm"
+						]
+					},
+					{
+						"name": "governed_account",
+						"type": "publicKey",
+						"docs": [
+							"Account governed by this Governance and/or PDA identity seed",
+							"It can be Program account, Mint account, Token account or any other account",
+							"",
+							"Note: The account doesn't have to exist. In that case the field is only a PDA seed",
+							"",
+							"Note: Setting governed_account doesn't give any authority over the governed account",
+							"The relevant authorities for specific account types must still be transferred to the Governance PDA",
+							"Ex: mint_authority/freeze_authority for a Mint account",
+							"or upgrade_authority for a Program account should be transferred to the Governance PDA"
+						]
+					},
+					{
+						"name": "proposals_count",
+						"type": "u32",
+						"docs": [
+							"Running count of proposals"
+						]
+					},
+					{
+						"name": "config",
+						"type": {
+							"defined": "GovernanceConfig"
+						},
+						"docs": [
+							"Governance config"
+						]
+					},
+					{
+						"name": "reserved",
+						"type": {
+							"array": [
+								"u8",
+								6
+							]
+						},
+						"docs": [
+							"Reserved space for future versions"
+						]
+					},
+					{
+						"name": "voting_proposal_count",
+						"type": "u16",
+						"docs": [
+							"The number of proposals in voting state in the Governance"
+						]
+					},
+					{
+						"name": "reserved_v2",
+						"type": {
+							"array": [
+								"u8",
+								128
+							]
+						},
+						"docs": [
+							"Reserved space for versions v2 and onwards",
+							"Note: This space won't be available to v1 accounts until runtime supports resizing"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Governance Account"
+			]
+		},
+		{
+			"name": "RealmV1",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "account_type",
+						"type": {
+							"defined": "GovernanceAccountType"
+						},
+						"docs": [
+							"Governance account type"
+						]
+					},
+					{
+						"name": "community_mint",
+						"type": "publicKey",
+						"docs": [
+							"Community mint"
+						]
+					},
+					{
+						"name": "config",
+						"type": {
+							"defined": "RealmConfig"
+						},
+						"docs": [
+							"Configuration of the Realm"
+						]
+					},
+					{
+						"name": "reserved",
+						"type": {
+							"array": [
+								"u8",
+								6
+							]
+						},
+						"docs": [
+							"Reserved space for future versions"
+						]
+					},
+					{
+						"name": "voting_proposal_count",
+						"type": "u16",
+						"docs": [
+							"The number of proposals in voting state in the Realm",
+							"Note: This is field introduced in V2 but it took space from reserved",
+							"and we have preserve it for V1 serialization roundtrip"
+						]
+					},
+					{
+						"name": "authority",
+						"type": {
+							"option": "publicKey"
+						},
+						"docs": [
+							"Realm authority. The authority must sign transactions which update the realm config",
+							"The authority should be transferred to Realm Governance to make the Realm self governed through proposals"
+						]
+					},
+					{
+						"name": "name",
+						"type": "string",
+						"docs": [
+							"Governance Realm name"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Governance Realm Account",
+				"Account PDA seeds\" ['governance', name]"
+			]
+		},
+		{
+			"name": "TokenOwnerRecordV1",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "account_type",
+						"type": {
+							"defined": "GovernanceAccountType"
+						},
+						"docs": [
+							"Governance account type"
+						]
+					},
+					{
+						"name": "realm",
+						"type": "publicKey",
+						"docs": [
+							"The Realm the TokenOwnerRecord belongs to"
+						]
+					},
+					{
+						"name": "governing_token_mint",
+						"type": "publicKey",
+						"docs": [
+							"Governing Token Mint the TokenOwnerRecord holds deposit for"
+						]
+					},
+					{
+						"name": "governing_token_owner",
+						"type": "publicKey",
+						"docs": [
+							"The owner (either single or multisig) of the deposited governing SPL Tokens",
+							"This is who can authorize a withdrawal of the tokens"
+						]
+					},
+					{
+						"name": "governing_token_deposit_amount",
+						"type": "u64",
+						"docs": [
+							"The amount of governing tokens deposited into the Realm",
+							"This amount is the voter weight used when voting on proposals"
+						]
+					},
+					{
+						"name": "unrelinquished_votes_count",
+						"type": "u32",
+						"docs": [
+							"The number of votes cast by TokenOwner but not relinquished yet",
+							"Every time a vote is cast this number is increased and it's always decreased when relinquishing a vote regardless of the vote state"
+						]
+					},
+					{
+						"name": "total_votes_count",
+						"type": "u32",
+						"docs": [
+							"The total number of votes cast by the TokenOwner",
+							"If TokenOwner withdraws vote while voting is still in progress total_votes_count is decreased  and the vote doesn't count towards the total"
+						]
+					},
+					{
+						"name": "outstanding_proposal_count",
+						"type": "u8",
+						"docs": [
+							"The number of outstanding proposals the TokenOwner currently owns",
+							"The count is increased when TokenOwner creates a proposal",
+							"and decreased  once it's either voted on (Succeeded or Defeated) or Cancelled",
+							"By default it's restricted to 1 outstanding Proposal per token owner"
+						]
+					},
+					{
+						"name": "reserved",
+						"type": {
+							"array": [
+								"u8",
+								7
+							]
+						},
+						"docs": [
+							"Reserved space for future versions"
+						]
+					},
+					{
+						"name": "governance_delegate",
+						"type": {
+							"option": "publicKey"
+						},
+						"docs": [
+							"A single account that is allowed to operate governance with the deposited governing tokens",
+							"It can be delegated to by the governing_token_owner or current governance_delegate"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Governance Token Owner Record",
+				"Account PDA seeds: ['governance', realm, token_mint, token_owner ]"
+			]
+		},
+		{
+			"name": "GovernanceV1",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "account_type",
+						"type": {
+							"defined": "GovernanceAccountType"
+						},
+						"docs": [
+							"Account type. It can be Uninitialized, Governance, ProgramGovernance, TokenGovernance or MintGovernance"
+						]
+					},
+					{
+						"name": "realm",
+						"type": "publicKey",
+						"docs": [
+							"Governance Realm"
+						]
+					},
+					{
+						"name": "governed_account",
+						"type": "publicKey",
+						"docs": [
+							"Account governed by this Governance and/or PDA identity seed",
+							"It can be Program account, Mint account, Token account or any other account",
+							"",
+							"Note: The account doesn't have to exist. In that case the field is only a PDA seed",
+							"",
+							"Note: Setting governed_account doesn't give any authority over the governed account",
+							"The relevant authorities for specific account types must still be transferred to the Governance PDA",
+							"Ex: mint_authority/freeze_authority for a Mint account",
+							"or upgrade_authority for a Program account should be transferred to the Governance PDA"
+						]
+					},
+					{
+						"name": "proposals_count",
+						"type": "u32",
+						"docs": [
+							"Running count of proposals"
+						]
+					},
+					{
+						"name": "config",
+						"type": {
+							"defined": "GovernanceConfig"
+						},
+						"docs": [
+							"Governance config"
+						]
+					},
+					{
+						"name": "reserved",
+						"type": {
+							"array": [
+								"u8",
+								6
+							]
+						},
+						"docs": [
+							"Reserved space for future versions"
+						]
+					},
+					{
+						"name": "voting_proposal_count",
+						"type": "u16",
+						"docs": [
+							"The number of proposals in voting state in the Governance",
+							"Note: This is field introduced in V2 but it took space from reserved",
+							"and we have preserve it for V1 serialization roundtrip"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Governance Account"
+			]
+		},
+		{
+			"name": "ProposalV1",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "account_type",
+						"type": {
+							"defined": "GovernanceAccountType"
+						},
+						"docs": [
+							"Governance account type"
+						]
+					},
+					{
+						"name": "governance",
+						"type": "publicKey",
+						"docs": [
+							"Governance account the Proposal belongs to"
+						]
+					},
+					{
+						"name": "governing_token_mint",
+						"type": "publicKey",
+						"docs": [
+							"Indicates which Governing Token is used to vote on the Proposal",
+							"Whether the general Community token owners or the Council tokens owners vote on this Proposal"
+						]
+					},
+					{
+						"name": "state",
+						"type": {
+							"defined": "ProposalState"
+						},
+						"docs": [
+							"Current proposal state"
+						]
+					},
+					{
+						"name": "token_owner_record",
+						"type": "publicKey",
+						"docs": [
+							"The TokenOwnerRecord representing the user who created and owns this Proposal"
+						]
+					},
+					{
+						"name": "signatories_count",
+						"type": "u8",
+						"docs": [
+							"The number of signatories assigned to the Proposal"
+						]
+					},
+					{
+						"name": "signatories_signed_off_count",
+						"type": "u8",
+						"docs": [
+							"The number of signatories who already signed"
+						]
+					},
+					{
+						"name": "yes_votes_count",
+						"type": "u64",
+						"docs": [
+							"The number of Yes votes"
+						]
+					},
+					{
+						"name": "no_votes_count",
+						"type": "u64",
+						"docs": [
+							"The number of No votes"
+						]
+					},
+					{
+						"name": "instructions_executed_count",
+						"type": "u16",
+						"docs": [
+							"The number of the instructions already executed"
+						]
+					},
+					{
+						"name": "instructions_count",
+						"type": "u16",
+						"docs": [
+							"The number of instructions included in the proposal"
+						]
+					},
+					{
+						"name": "instructions_next_index",
+						"type": "u16",
+						"docs": [
+							"The index of the the next instruction to be added"
+						]
+					},
+					{
+						"name": "draft_at",
+						"type": "unixTimestamp",
+						"docs": [
+							"When the Proposal was created and entered Draft state"
+						]
+					},
+					{
+						"name": "signing_off_at",
+						"type": {
+							"option": "unixTimestamp"
+						},
+						"docs": [
+							"When Signatories started signing off the Proposal"
+						]
+					},
+					{
+						"name": "voting_at",
+						"type": {
+							"option": "unixTimestamp"
+						},
+						"docs": [
+							"When the Proposal began voting as UnixTimestamp"
+						]
+					},
+					{
+						"name": "voting_at_slot",
+						"type": {
+							"option": {
+								"defined": "Slot"
+							}
+						},
+						"docs": [
+							"When the Proposal began voting as Slot",
+							"Note: The slot is not currently used but the exact slot is going to be required to support snapshot based vote weights"
+						]
+					},
+					{
+						"name": "voting_completed_at",
+						"type": {
+							"option": "unixTimestamp"
+						},
+						"docs": [
+							"When the Proposal ended voting and entered either Succeeded or Defeated"
+						]
+					},
+					{
+						"name": "executing_at",
+						"type": {
+							"option": "unixTimestamp"
+						},
+						"docs": [
+							"When the Proposal entered Executing state"
+						]
+					},
+					{
+						"name": "closed_at",
+						"type": {
+							"option": "unixTimestamp"
+						},
+						"docs": [
+							"When the Proposal entered final state Completed or Cancelled and was closed"
+						]
+					},
+					{
+						"name": "execution_flags",
+						"type": {
+							"defined": "InstructionExecutionFlags"
+						},
+						"docs": [
+							"Instruction execution flag for ordered and transactional instructions",
+							"Note: This field is not used in the current version"
+						]
+					},
+					{
+						"name": "max_vote_weight",
+						"type": {
+							"option": "u64"
+						},
+						"docs": [
+							"The max vote weight for the Governing Token mint at the time Proposal was decided",
+							"It's used to show correct vote results for historical proposals in cases when the mint supply or max weight source changed",
+							"after vote was completed."
+						]
+					},
+					{
+						"name": "vote_threshold",
+						"type": {
+							"option": {
+								"defined": "VoteThreshold"
+							}
+						},
+						"docs": [
+							"The vote threshold percentage at the time Proposal was decided",
+							"It's used to show correct vote results for historical proposals in cases when the threshold",
+							"was changed for governance config after vote was completed."
+						]
+					},
+					{
+						"name": "name",
+						"type": "string",
+						"docs": [
+							"Proposal name"
+						]
+					},
+					{
+						"name": "description_link",
+						"type": "string",
+						"docs": [
+							"Link to proposal's description"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Governance Proposal"
+			]
+		},
+		{
+			"name": "SignatoryRecordV1",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "account_type",
+						"type": {
+							"defined": "GovernanceAccountType"
+						},
+						"docs": [
+							"Governance account type"
+						]
+					},
+					{
+						"name": "proposal",
+						"type": "publicKey",
+						"docs": [
+							"Proposal the signatory is assigned for"
+						]
+					},
+					{
+						"name": "signatory",
+						"type": "publicKey",
+						"docs": [
+							"The account of the signatory who can sign off the proposal"
+						]
+					},
+					{
+						"name": "signed_off",
+						"type": "bool",
+						"docs": [
+							"Indicates whether the signatory signed off the proposal"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Account PDA seeds: ['governance', proposal, signatory]"
+			]
+		},
+		{
+			"name": "ProposalInstructionV1",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "account_type",
+						"type": {
+							"defined": "GovernanceAccountType"
+						},
+						"docs": [
+							"Governance Account type"
+						]
+					},
+					{
+						"name": "proposal",
+						"type": "publicKey",
+						"docs": [
+							"The Proposal the instruction belongs to"
+						]
+					},
+					{
+						"name": "instruction_index",
+						"type": "u16",
+						"docs": [
+							"Unique instruction index within it's parent Proposal"
+						]
+					},
+					{
+						"name": "hold_up_time",
+						"type": "u32",
+						"docs": [
+							"Minimum waiting time in seconds for the  instruction to be executed once proposal is voted on"
+						]
+					},
+					{
+						"name": "instruction",
+						"type": {
+							"defined": "InstructionData"
+						},
+						"docs": [
+							"Instruction to execute",
+							"The instruction will be signed by Governance PDA the Proposal belongs to",
+							"For example for ProgramGovernance the instruction to upgrade program will be signed by ProgramGovernance PDA"
+						]
+					},
+					{
+						"name": "executed_at",
+						"type": {
+							"option": "unixTimestamp"
+						},
+						"docs": [
+							"Executed at flag"
+						]
+					},
+					{
+						"name": "execution_status",
+						"type": {
+							"defined": "TransactionExecutionStatus"
+						},
+						"docs": [
+							"Instruction execution status"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Proposal instruction V1"
+			]
+		},
+		{
+			"name": "VoteWeightV1",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "Yes",
+						"fields": [
+							{
+								"name": "F0",
+								"type": "u64",
+								"docs": [
+									"Yes vote"
+								]
+							}
+						]
+					},
+					{
+						"name": "No",
+						"fields": [
+							{
+								"name": "F0",
+								"type": "u64",
+								"docs": [
+									"No vote"
+								]
+							}
+						]
+					}
+				]
+			},
+			"docs": [
+				"Vote  with number of votes"
+			]
+		},
+		{
+			"name": "VoteRecordV1",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "account_type",
+						"type": {
+							"defined": "GovernanceAccountType"
+						},
+						"docs": [
+							"Governance account type"
+						]
+					},
+					{
+						"name": "proposal",
+						"type": "publicKey",
+						"docs": [
+							"Proposal account"
+						]
+					},
+					{
+						"name": "governing_token_owner",
+						"type": "publicKey",
+						"docs": [
+							"The user who casted this vote",
+							"This is the Governing Token Owner who deposited governing tokens into the Realm"
+						]
+					},
+					{
+						"name": "is_relinquished",
+						"type": "bool",
+						"docs": [
+							"Indicates whether the vote was relinquished by voter"
+						]
+					},
+					{
+						"name": "vote_weight",
+						"type": {
+							"defined": "VoteWeightV1"
+						},
+						"docs": [
+							"Voter's vote: Yes/No and amount"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Proposal VoteRecord"
+			]
+		},
+		{
+			"name": "NativeTreasury",
+			"type": {
+				"kind": "struct",
+				"fields": null
+			},
+			"docs": [
+				"Treasury account",
+				"The account has no data and can be used as a payer for instruction signed by Governance PDAs or as a native SOL treasury"
+			]
+		},
+		{
+			"name": "ProgramMetadata",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "account_type",
+						"type": {
+							"defined": "GovernanceAccountType"
+						},
+						"docs": [
+							"Governance account type"
+						]
+					},
+					{
+						"name": "updated_at",
+						"type": {
+							"defined": "Slot"
+						},
+						"docs": [
+							"The slot when the metadata was captured"
+						]
+					},
+					{
+						"name": "version",
+						"type": "string",
+						"docs": [
+							"The version of the program",
+							"Max 11 characters XXX.YYY.ZZZ"
+						]
+					},
+					{
+						"name": "reserved",
+						"type": {
+							"array": [
+								"u8",
+								64
+							]
+						},
+						"docs": [
+							"Reserved"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Program metadata account. It stores information about the particular SPL-Governance program instance"
+			]
+		},
+		{
+			"name": "OptionVoteResult",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "None",
+						"docs": [
+							"Vote on the option is not resolved yet"
+						]
+					},
+					{
+						"name": "Succeeded",
+						"docs": [
+							"Vote on the option is completed and the option passed"
+						]
+					},
+					{
+						"name": "Defeated",
+						"docs": [
+							"Vote on the option is completed and the option was defeated"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Proposal option vote result"
+			]
+		},
+		{
+			"name": "ProposalOption",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "label",
+						"type": "string",
+						"docs": [
+							"Option label"
+						]
+					},
+					{
+						"name": "vote_weight",
+						"type": "u64",
+						"docs": [
+							"Vote weight for the option"
+						]
+					},
+					{
+						"name": "vote_result",
+						"type": {
+							"defined": "OptionVoteResult"
+						},
+						"docs": [
+							"Vote result for the option"
+						]
+					},
+					{
+						"name": "transactions_executed_count",
+						"type": "u16",
+						"docs": [
+							"The number of the transactions already executed"
+						]
+					},
+					{
+						"name": "transactions_count",
+						"type": "u16",
+						"docs": [
+							"The number of transactions included in the option"
+						]
+					},
+					{
+						"name": "transactions_next_index",
+						"type": "u16",
+						"docs": [
+							"The index of the the next transaction to be added"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Proposal Option"
+			]
+		},
+		{
+			"name": "VoteType",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "SingleChoice",
+						"docs": [
+							"Single choice vote with mutually exclusive choices",
+							"In the SingeChoice mode there can ever be a single winner",
+							"If multiple options score the same highest vote then the Proposal is not resolved and considered as Failed",
+							"Note: Yes/No vote is a single choice (Yes) vote with the deny option (No)"
+						]
+					},
+					{
+						"name": "MultiChoice"
+					}
+				]
+			},
+			"docs": [
+				"Proposal vote type"
+			]
+		},
+		{
+			"name": "ProposalV2",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "account_type",
+						"type": {
+							"defined": "GovernanceAccountType"
+						},
+						"docs": [
+							"Governance account type"
+						]
+					},
+					{
+						"name": "governance",
+						"type": "publicKey",
+						"docs": [
+							"Governance account the Proposal belongs to"
+						]
+					},
+					{
+						"name": "governing_token_mint",
+						"type": "publicKey",
+						"docs": [
+							"Indicates which Governing Token is used to vote on the Proposal",
+							"Whether the general Community token owners or the Council tokens owners vote on this Proposal"
+						]
+					},
+					{
+						"name": "state",
+						"type": {
+							"defined": "ProposalState"
+						},
+						"docs": [
+							"Current proposal state"
+						]
+					},
+					{
+						"name": "token_owner_record",
+						"type": "publicKey",
+						"docs": [
+							"TODO: add state_at timestamp to have single field to filter recent proposals in the UI",
+							"The TokenOwnerRecord representing the user who created and owns this Proposal"
+						]
+					},
+					{
+						"name": "signatories_count",
+						"type": "u8",
+						"docs": [
+							"The number of signatories assigned to the Proposal"
+						]
+					},
+					{
+						"name": "signatories_signed_off_count",
+						"type": "u8",
+						"docs": [
+							"The number of signatories who already signed"
+						]
+					},
+					{
+						"name": "vote_type",
+						"type": {
+							"defined": "VoteType"
+						},
+						"docs": [
+							"Vote type"
+						]
+					},
+					{
+						"name": "options",
+						"type": {
+							"vec": {
+								"defined": "ProposalOption"
+							}
+						},
+						"docs": [
+							"Proposal options"
+						]
+					},
+					{
+						"name": "deny_vote_weight",
+						"type": {
+							"option": "u64"
+						},
+						"docs": [
+							"The total weight of the Proposal rejection votes",
+							"If the proposal has no deny option then the weight is None",
+							"Only proposals with the deny option can have executable instructions attached to them",
+							"Without the deny option a proposal is only non executable survey"
+						]
+					},
+					{
+						"name": "reserved1",
+						"type": "u8",
+						"docs": [
+							"Reserved space for future versions",
+							"This field is a leftover from unused veto_vote_weight: Option\u003cu64\u003e"
+						]
+					},
+					{
+						"name": "abstain_vote_weight",
+						"type": {
+							"option": "u64"
+						},
+						"docs": [
+							"The total weight of  votes",
+							"Note: Abstain is not supported in the current version"
+						]
+					},
+					{
+						"name": "start_voting_at",
+						"type": {
+							"option": "unixTimestamp"
+						},
+						"docs": [
+							"Optional start time if the Proposal should not enter voting state immediately after being signed off",
+							"Note: start_at is not supported in the current version"
+						]
+					},
+					{
+						"name": "draft_at",
+						"type": "unixTimestamp",
+						"docs": [
+							"When the Proposal was created and entered Draft state"
+						]
+					},
+					{
+						"name": "signing_off_at",
+						"type": {
+							"option": "unixTimestamp"
+						},
+						"docs": [
+							"When Signatories started signing off the Proposal"
+						]
+					},
+					{
+						"name": "voting_at",
+						"type": {
+							"option": "unixTimestamp"
+						},
+						"docs": [
+							"When the Proposal began voting as UnixTimestamp"
+						]
+					},
+					{
+						"name": "voting_at_slot",
+						"type": {
+							"option": {
+								"defined": "Slot"
+							}
+						},
+						"docs": [
+							"When the Proposal began voting as Slot",
+							"Note: The slot is not currently used but the exact slot is going to be required to support snapshot based vote weights"
+						]
+					},
+					{
+						"name": "voting_completed_at",
+						"type": {
+							"option": "unixTimestamp"
+						},
+						"docs": [
+							"When the Proposal ended voting and entered either Succeeded or Defeated"
+						]
+					},
+					{
+						"name": "executing_at",
+						"type": {
+							"option": "unixTimestamp"
+						},
+						"docs": [
+							"When the Proposal entered Executing state"
+						]
+					},
+					{
+						"name": "closed_at",
+						"type": {
+							"option": "unixTimestamp"
+						},
+						"docs": [
+							"When the Proposal entered final state Completed or Cancelled and was closed"
+						]
+					},
+					{
+						"name": "execution_flags",
+						"type": {
+							"defined": "InstructionExecutionFlags"
+						},
+						"docs": [
+							"Instruction execution flag for ordered and transactional instructions",
+							"Note: This field is not used in the current version"
+						]
+					},
+					{
+						"name": "max_vote_weight",
+						"type": {
+							"option": "u64"
+						},
+						"docs": [
+							"The max vote weight for the Governing Token mint at the time Proposal was decided",
+							"It's used to show correct vote results for historical proposals in cases when the mint supply or max weight source changed",
+							"after vote was completed."
+						]
+					},
+					{
+						"name": "max_voting_time",
+						"type": {
+							"option": "u32"
+						},
+						"docs": [
+							"Max voting time for the proposal if different from parent Governance  (only higher value possible)",
+							"Note: This field is not used in the current version"
+						]
+					},
+					{
+						"name": "vote_threshold",
+						"type": {
+							"option": {
+								"defined": "VoteThreshold"
+							}
+						},
+						"docs": [
+							"The vote threshold at the time Proposal was decided",
+							"It's used to show correct vote results for historical proposals in cases when the threshold",
+							"was changed for governance config after vote was completed.",
+							"TODO: Use this field to override the threshold from parent Governance (only higher value possible)"
+						]
+					},
+					{
+						"name": "reserved",
+						"type": {
+							"array": [
+								"u8",
+								64
+							]
+						},
+						"docs": [
+							"Reserved space for future versions"
+						]
+					},
+					{
+						"name": "name",
+						"type": "string",
+						"docs": [
+							"Proposal name"
+						]
+					},
+					{
+						"name": "description_link",
+						"type": "string",
+						"docs": [
+							"Link to proposal's description"
+						]
+					},
+					{
+						"name": "veto_vote_weight",
+						"type": "u64",
+						"docs": [
+							"The total weight of Veto votes"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Governance Proposal"
+			]
+		},
+		{
+			"name": "ProposalTransactionV2",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "account_type",
+						"type": {
+							"defined": "GovernanceAccountType"
+						},
+						"docs": [
+							"Governance Account type"
+						]
+					},
+					{
+						"name": "proposal",
+						"type": "publicKey",
+						"docs": [
+							"The Proposal the instruction belongs to"
+						]
+					},
+					{
+						"name": "option_index",
+						"type": "u8",
+						"docs": [
+							"The option index the instruction belongs to"
+						]
+					},
+					{
+						"name": "transaction_index",
+						"type": "u16",
+						"docs": [
+							"Unique transaction index within it's parent Proposal"
+						]
+					},
+					{
+						"name": "hold_up_time",
+						"type": "u32",
+						"docs": [
+							"Minimum waiting time in seconds for the  instruction to be executed once proposal is voted on"
+						]
+					},
+					{
+						"name": "instructions",
+						"type": {
+							"vec": {
+								"defined": "InstructionData"
+							}
+						},
+						"docs": [
+							"Instructions to execute",
+							"The instructions will be signed by Governance PDA the Proposal belongs to",
+							"For example for ProgramGovernance the instruction to upgrade program will be signed by ProgramGovernance PDA",
+							"All instructions will be executed within a single transaction"
+						]
+					},
+					{
+						"name": "executed_at",
+						"type": {
+							"option": "unixTimestamp"
+						},
+						"docs": [
+							"Executed at flag"
+						]
+					},
+					{
+						"name": "execution_status",
+						"type": {
+							"defined": "TransactionExecutionStatus"
+						},
+						"docs": [
+							"Instruction execution status"
+						]
+					},
+					{
+						"name": "reserved_v2",
+						"type": {
+							"array": [
+								"u8",
+								8
+							]
+						},
+						"docs": [
+							"Reserved space for versions v2 and onwards",
+							"Note: This space won't be available to v1 accounts until runtime supports resizing"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Account for an instruction to be executed for Proposal"
+			]
+		},
+		{
+			"name": "RealmV2",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "account_type",
+						"type": {
+							"defined": "GovernanceAccountType"
+						},
+						"docs": [
+							"Governance account type"
+						]
+					},
+					{
+						"name": "community_mint",
+						"type": "publicKey",
+						"docs": [
+							"Community mint"
+						]
+					},
+					{
+						"name": "config",
+						"type": {
+							"defined": "RealmConfig"
+						},
+						"docs": [
+							"Configuration of the Realm"
+						]
+					},
+					{
+						"name": "reserved",
+						"type": {
+							"array": [
+								"u8",
+								6
+							]
+						},
+						"docs": [
+							"Reserved space for future versions"
+						]
+					},
+					{
+						"name": "voting_proposal_count",
+						"type": "u16",
+						"docs": [
+							"The number of proposals in voting state in the Realm"
+						]
+					},
+					{
+						"name": "authority",
+						"type": {
+							"option": "publicKey"
+						},
+						"docs": [
+							"Realm authority. The authority must sign transactions which update the realm config",
+							"The authority should be transferred to Realm Governance to make the Realm self governed through proposals"
+						]
+					},
+					{
+						"name": "name",
+						"type": "string",
+						"docs": [
+							"Governance Realm name"
+						]
+					},
+					{
+						"name": "reserved_v2",
+						"type": {
+							"array": [
+								"u8",
+								128
+							]
+						},
+						"docs": [
+							"Reserved space for versions v2 and onwards",
+							"Note: This space won't be available to v1 accounts until runtime supports resizing"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Governance Realm Account",
+				"Account PDA seeds\" ['governance', name]"
+			]
+		},
+		{
+			"name": "RealmConfigAccount",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "account_type",
+						"type": {
+							"defined": "GovernanceAccountType"
+						},
+						"docs": [
+							"Governance account type"
+						]
+					},
+					{
+						"name": "realm",
+						"type": "publicKey",
+						"docs": [
+							"The realm the config belong to"
+						]
+					},
+					{
+						"name": "community_voter_weight_addin",
+						"type": {
+							"option": "publicKey"
+						},
+						"docs": [
+							"Addin providing voter weights for community token"
+						]
+					},
+					{
+						"name": "max_community_voter_weight_addin",
+						"type": {
+							"option": "publicKey"
+						},
+						"docs": [
+							"Addin providing max vote weight for community token",
+							"Note: This field is not implemented in the current version"
+						]
+					},
+					{
+						"name": "council_voter_weight_addin",
+						"type": {
+							"option": "publicKey"
+						},
+						"docs": [
+							"Addin providing voter weights for council token",
+							"Note: This field is not implemented in the current version"
+						]
+					},
+					{
+						"name": "council_max_vote_weight_addin",
+						"type": {
+							"option": "publicKey"
+						},
+						"docs": [
+							"Addin providing max vote weight for council token",
+							"Note: This field is not implemented in the current version"
+						]
+					},
+					{
+						"name": "reserved",
+						"type": {
+							"array": [
+								"u8",
+								128
+							]
+						},
+						"docs": [
+							"Reserved"
+						]
+					}
+				]
+			},
+			"docs": [
+				"RealmConfig account",
+				"The account is an optional extension to RealmConfig stored on Realm account"
+			]
+		},
+		{
+			"name": "SignatoryRecordV2",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "account_type",
+						"type": {
+							"defined": "GovernanceAccountType"
+						},
+						"docs": [
+							"Governance account type"
+						]
+					},
+					{
+						"name": "proposal",
+						"type": "publicKey",
+						"docs": [
+							"Proposal the signatory is assigned for"
+						]
+					},
+					{
+						"name": "signatory",
+						"type": "publicKey",
+						"docs": [
+							"The account of the signatory who can sign off the proposal"
+						]
+					},
+					{
+						"name": "signed_off",
+						"type": "bool",
+						"docs": [
+							"Indicates whether the signatory signed off the proposal"
+						]
+					},
+					{
+						"name": "reserved_v2",
+						"type": {
+							"array": [
+								"u8",
+								8
+							]
+						},
+						"docs": [
+							"Reserved space for versions v2 and onwards",
+							"Note: This space won't be available to v1 accounts until runtime supports resizing"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Account PDA seeds: ['governance', proposal, signatory]"
+			]
+		},
+		{
+			"name": "TokenOwnerRecordV2",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "account_type",
+						"type": {
+							"defined": "GovernanceAccountType"
+						},
+						"docs": [
+							"Governance account type"
+						]
+					},
+					{
+						"name": "realm",
+						"type": "publicKey",
+						"docs": [
+							"The Realm the TokenOwnerRecord belongs to"
+						]
+					},
+					{
+						"name": "governing_token_mint",
+						"type": "publicKey",
+						"docs": [
+							"Governing Token Mint the TokenOwnerRecord holds deposit for"
+						]
+					},
+					{
+						"name": "governing_token_owner",
+						"type": "publicKey",
+						"docs": [
+							"The owner (either single or multisig) of the deposited governing SPL Tokens",
+							"This is who can authorize a withdrawal of the tokens"
+						]
+					},
+					{
+						"name": "governing_token_deposit_amount",
+						"type": "u64",
+						"docs": [
+							"The amount of governing tokens deposited into the Realm",
+							"This amount is the voter weight used when voting on proposals"
+						]
+					},
+					{
+						"name": "unrelinquished_votes_count",
+						"type": "u32",
+						"docs": [
+							"The number of votes cast by TokenOwner but not relinquished yet",
+							"Every time a vote is cast this number is increased and it's always decreased when relinquishing a vote regardless of the vote state"
+						]
+					},
+					{
+						"name": "total_votes_count",
+						"type": "u32",
+						"docs": [
+							"The total number of votes cast by the TokenOwner",
+							"If TokenOwner withdraws vote while voting is still in progress total_votes_count is decreased  and the vote doesn't count towards the total"
+						]
+					},
+					{
+						"name": "outstanding_proposal_count",
+						"type": "u8",
+						"docs": [
+							"The number of outstanding proposals the TokenOwner currently owns",
+							"The count is increased when TokenOwner creates a proposal",
+							"and decreased  once it's either voted on (Succeeded or Defeated) or Cancelled",
+							"By default it's restricted to 1 outstanding Proposal per token owner"
+						]
+					},
+					{
+						"name": "reserved",
+						"type": {
+							"array": [
+								"u8",
+								7
+							]
+						},
+						"docs": [
+							"Reserved space for future versions"
+						]
+					},
+					{
+						"name": "governance_delegate",
+						"type": {
+							"option": "publicKey"
+						},
+						"docs": [
+							"A single account that is allowed to operate governance with the deposited governing tokens",
+							"It can be delegated to by the governing_token_owner or current governance_delegate"
+						]
+					},
+					{
+						"name": "reserved_v2",
+						"type": {
+							"array": [
+								"u8",
+								128
+							]
+						},
+						"docs": [
+							"Reserved space for versions v2 and onwards",
+							"Note: This space won't be available to v1 accounts until runtime supports resizing"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Governance Token Owner Record",
+				"Account PDA seeds: ['governance', realm, token_mint, token_owner ]"
+			]
+		},
+		{
+			"name": "VoteRecordV2",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "account_type",
+						"type": {
+							"defined": "GovernanceAccountType"
+						},
+						"docs": [
+							"Governance account type"
+						]
+					},
+					{
+						"name": "proposal",
+						"type": "publicKey",
+						"docs": [
+							"Proposal account"
+						]
+					},
+					{
+						"name": "governing_token_owner",
+						"type": "publicKey",
+						"docs": [
+							"The user who casted this vote",
+							"This is the Governing Token Owner who deposited governing tokens into the Realm"
+						]
+					},
+					{
+						"name": "is_relinquished",
+						"type": "bool",
+						"docs": [
+							"Indicates whether the vote was relinquished by voter"
+						]
+					},
+					{
+						"name": "voter_weight",
+						"type": "u64",
+						"docs": [
+							"The weight of the user casting the vote"
+						]
+					},
+					{
+						"name": "vote",
+						"type": {
+							"defined": "Vote"
+						},
+						"docs": [
+							"Voter's vote"
+						]
+					},
+					{
+						"name": "reserved_v2",
+						"type": {
+							"array": [
+								"u8",
+								8
+							]
+						},
+						"docs": [
+							"Reserved space for versions v2 and onwards",
+							"Note: This space won't be available to v1 accounts until runtime supports resizing"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Proposal VoteRecord"
+			]
+		}
+	],
+	"types": [
+		{
+			"name": "GovernanceConfig",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "community_vote_threshold",
+						"type": {
+							"defined": "VoteThreshold"
+						},
+						"docs": [
+							"The type of the vote threshold used for community vote",
+							"Note: In the current version only YesVotePercentage and Disabled thresholds are supported"
+						]
+					},
+					{
+						"name": "min_community_weight_to_create_proposal",
+						"type": "u64",
+						"docs": [
+							"Minimum community weight a governance token owner must possess to be able to create a proposal"
+						]
+					},
+					{
+						"name": "min_transaction_hold_up_time",
+						"type": "u32",
+						"docs": [
+							"Minimum waiting time in seconds for a transaction to be executed after proposal is voted on"
+						]
+					},
+					{
+						"name": "max_voting_time",
+						"type": "u32",
+						"docs": [
+							"Time limit in seconds for proposal to be open for voting"
+						]
+					},
+					{
+						"name": "vote_tipping",
+						"type": {
+							"defined": "VoteTipping"
+						},
+						"docs": [
+							"Conditions under which a vote will complete early"
+						]
+					},
+					{
+						"name": "council_vote_threshold",
+						"type": {
+							"defined": "VoteThreshold"
+						},
+						"docs": [
+							"The type of the vote threshold used for council vote",
+							"Note: In the current version only YesVotePercentage and Disabled thresholds are supported"
+						]
+					},
+					{
+						"name": "council_veto_vote_threshold",
+						"type": {
+							"defined": "VoteThreshold"
+						},
+						"docs": [
+							"The threshold for Council Veto votes"
+						]
+					},
+					{
+						"name": "min_council_weight_to_create_proposal",
+						"type": "u64",
+						"docs": [
+							"Minimum council weight a governance token owner must possess to be able to create a proposal"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Governance config"
+			]
+		},
+		{
+			"name": "InstructionData",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "program_id",
+						"type": "publicKey",
+						"docs": [
+							"Pubkey of the instruction processor that executes this instruction"
+						]
+					},
+					{
+						"name": "accounts",
+						"type": {
+							"vec": {
+								"defined": "AccountMetaData"
+							}
+						},
+						"docs": [
+							"Metadata for what accounts should be passed to the instruction processor"
+						]
+					},
+					{
+						"name": "data",
+						"type": {
+							"vec": "u8"
+						},
+						"docs": [
+							"Opaque data passed to the instruction processor"
+						]
+					}
+				]
+			},
+			"docs": [
+				"InstructionData wrapper. It can be removed once Borsh serialization for Instruction is supported in the SDK"
+			]
+		},
+		{
+			"name": "RealmConfigArgs",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "use_council_mint",
+						"type": "bool",
+						"docs": [
+							"Indicates whether council_mint should be used",
+							"If yes then council_mint account must also be passed to the instruction"
+						]
+					},
+					{
+						"name": "min_community_weight_to_create_governance",
+						"type": "u64",
+						"docs": [
+							"Min number of community tokens required to create a governance"
+						]
+					},
+					{
+						"name": "community_mint_max_vote_weight_source",
+						"type": {
+							"defined": "MintMaxVoteWeightSource"
+						},
+						"docs": [
+							"The source used for community mint max vote weight source"
+						]
+					},
+					{
+						"name": "use_community_voter_weight_addin",
+						"type": "bool",
+						"docs": [
+							"Indicates whether an external addin program should be used to provide community voters weights",
+							"If yes then the voters weight program account must be passed to the instruction"
+						]
+					},
+					{
+						"name": "use_max_community_voter_weight_addin",
+						"type": "bool",
+						"docs": [
+							"Indicates whether an external addin program should be used to provide max voters weight for the community mint",
+							"If yes then the max voter weight program account must be passed to the instruction"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Realm Config instruction args"
+			]
+		},
+		{
+			"name": "SetRealmAuthorityAction",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "SetUnchecked",
+						"docs": [
+							"Sets realm authority without any checks",
+							"Uncheck option allows to set the realm authority to non governance accounts"
+						]
+					},
+					{
+						"name": "SetChecked",
+						"docs": [
+							"Sets realm authority and checks the new new authority is one of the realm's governances",
+							"Note: This is not a security feature because governance creation is only gated with min_community_weight_to_create_governance",
+							"The check is done to prevent scenarios where the authority could be accidentally set to a wrong or none existing account"
+						]
+					},
+					{
+						"name": "Remove",
+						"docs": [
+							"Removes realm authority"
+						]
+					}
+				]
+			},
+			"docs": [
+				"SetRealmAuthority instruction action"
+			]
+		},
+		{
+			"name": "InstructionData",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "program_id",
+						"type": "publicKey",
+						"docs": [
+							"Pubkey of the instruction processor that executes this instruction"
+						]
+					},
+					{
+						"name": "accounts",
+						"type": {
+							"vec": {
+								"defined": "AccountMetaData"
+							}
+						},
+						"docs": [
+							"Metadata for what accounts should be passed to the instruction processor"
+						]
+					},
+					{
+						"name": "data",
+						"type": {
+							"vec": "u8"
+						},
+						"docs": [
+							"Opaque data passed to the instruction processor"
+						]
+					}
+				]
+			},
+			"docs": [
+				"InstructionData wrapper. It can be removed once Borsh serialization for Instruction is supported in the SDK"
+			]
+		},
+		{
+			"name": "AccountMetaData",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "pubkey",
+						"type": "publicKey",
+						"docs": [
+							"An account's public key"
+						]
+					},
+					{
+						"name": "is_signer",
+						"type": "bool",
+						"docs": [
+							"True if an Instruction requires a Transaction signature matching `pubkey`."
+						]
+					},
+					{
+						"name": "is_writable",
+						"type": "bool",
+						"docs": [
+							"True if the `pubkey` can be loaded as a read-write account."
+						]
+					}
+				]
+			},
+			"docs": [
+				"Account metadata used to define Instructions"
+			]
+		},
+		{
+			"name": "RealmConfigArgs",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "use_council_mint",
+						"type": "bool",
+						"docs": [
+							"Indicates whether council_mint should be used",
+							"If yes then council_mint account must also be passed to the instruction"
+						]
+					},
+					{
+						"name": "min_community_weight_to_create_governance",
+						"type": "u64",
+						"docs": [
+							"Min number of community tokens required to create a governance"
+						]
+					},
+					{
+						"name": "community_mint_max_vote_weight_source",
+						"type": {
+							"defined": "MintMaxVoteWeightSource"
+						},
+						"docs": [
+							"The source used for community mint max vote weight source"
+						]
+					},
+					{
+						"name": "use_community_voter_weight_addin",
+						"type": "bool",
+						"docs": [
+							"Indicates whether an external addin program should be used to provide community voters weights",
+							"If yes then the voters weight program account must be passed to the instruction"
+						]
+					},
+					{
+						"name": "use_max_community_voter_weight_addin",
+						"type": "bool",
+						"docs": [
+							"Indicates whether an external addin program should be used to provide max voters weight for the community mint",
+							"If yes then the max voter weight program account must be passed to the instruction"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Realm Config instruction args"
+			]
+		},
+		{
+			"name": "SetRealmAuthorityAction",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "SetUnchecked",
+						"docs": [
+							"Sets realm authority without any checks",
+							"Uncheck option allows to set the realm authority to non governance accounts"
+						]
+					},
+					{
+						"name": "SetChecked",
+						"docs": [
+							"Sets realm authority and checks the new new authority is one of the realm's governances",
+							"Note: This is not a security feature because governance creation is only gated with min_community_weight_to_create_governance",
+							"The check is done to prevent scenarios where the authority could be accidentally set to a wrong or none existing account"
+						]
+					},
+					{
+						"name": "Remove",
+						"docs": [
+							"Removes realm authority"
+						]
+					}
+				]
+			},
+			"docs": [
+				"SetRealmAuthority instruction action"
+			]
+		},
+		{
+			"name": "RealmConfig",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "use_community_voter_weight_addin",
+						"type": "bool",
+						"docs": [
+							"Indicates whether an external addin program should be used to provide voters weights for the community mint"
+						]
+					},
+					{
+						"name": "use_max_community_voter_weight_addin",
+						"type": "bool",
+						"docs": [
+							"Indicates whether an external addin program should be used to provide max voter weight for the community mint"
+						]
+					},
+					{
+						"name": "reserved",
+						"type": {
+							"array": [
+								"u8",
+								6
+							]
+						},
+						"docs": [
+							"Reserved space for future versions"
+						]
+					},
+					{
+						"name": "min_community_weight_to_create_governance",
+						"type": "u64",
+						"docs": [
+							"Min number of voter's community weight required to create a governance"
+						]
+					},
+					{
+						"name": "community_mint_max_vote_weight_source",
+						"type": {
+							"defined": "MintMaxVoteWeightSource"
+						},
+						"docs": [
+							"The source used for community mint max vote weight source"
+						]
+					},
+					{
+						"name": "council_mint",
+						"type": {
+							"option": "publicKey"
+						},
+						"docs": [
+							"Optional council mint"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Realm Config defining Realm parameters."
+			]
+		},
+		{
+			"name": "VoteChoice",
+			"type": {
+				"kind": "struct",
+				"fields": [
+					{
+						"name": "rank",
+						"type": "u8",
+						"docs": [
+							"The rank given to the choice by voter",
+							"Note: The filed is not used in the current version"
+						]
+					},
+					{
+						"name": "weight_percentage",
+						"type": "u8",
+						"docs": [
+							"The voter's weight percentage given by the voter to the choice"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Voter choice for a proposal option",
+				"In the current version only 1) Single choice and 2) Multiple choices proposals are supported",
+				"In the future versions we can add support for 1) Quadratic voting, 2) Ranked choice voting and 3) Weighted voting"
+			]
+		},
+		{
+			"name": "Vote",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "Approve",
+						"fields": [
+							{
+								"name": "F0",
+								"type": {
+									"vec": {
+										"defined": "VoteChoice"
+									}
+								},
+								"docs": [
+									"Vote approving choices"
+								]
+							}
+						]
+					},
+					{
+						"name": "Deny",
+						"docs": [
+							"Vote rejecting proposal"
+						]
+					},
+					{
+						"name": "Abstain",
+						"docs": [
+							"Declare indifference to proposal",
+							"Note: Not supported in the current version"
+						]
+					},
+					{
+						"name": "Veto",
+						"docs": [
+							"Veto proposal"
+						]
+					}
+				]
+			},
+			"docs": [
+				"User's vote"
+			]
+		},
+		{
+			"name": "VoteKind",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "Electorate",
+						"docs": [
+							"Electorate vote is cast by the voting population identified by governing_token_mint",
+							"Approve, Deny and Abstain votes are Electorate votes"
+						]
+					},
+					{
+						"name": "Veto",
+						"docs": [
+							"Vote cast by the opposite voting population to the Electorate identified by governing_token_mint"
+						]
+					}
+				]
+			},
+			"docs": [
+				"VoteKind defines the type of the vote being cast"
+			]
+		}
+	],
+	"events": [],
+	"errors": [],
+	"constants": [],
+	"metadata": {
+		"address": ""
+	}
+}
