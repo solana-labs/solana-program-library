@@ -104,10 +104,12 @@ let merkleRollKeypair: Keypair;
 
 const MAX_SIZE = 64;
 const MAX_DEPTH = 20;
-
-let payer = Keypair.generate();
-let destination = Keypair.generate();
-let delegateKey = Keypair.generate();
+const p_seed = new TextEncoder().encode(process.env["SEED"] + "p")
+const d_seed = new TextEncoder().encode(process.env["SEED"] + "d")
+let payer = Keypair.fromSeed(p_seed);
+let destination = Keypair.fromSeed(d_seed);
+console.log(payer.publicKey.toBase58())
+console.log(destination.publicKey.toBase58())
 let connection = new web3Connection("https://liquid.testnet.rpcpool.com/5ebea512d12be102f53d319dafc8", {
   commitment: "confirmed",
 });
@@ -123,29 +125,8 @@ GummyrollProgramId = anchor.workspace.Gummyroll.programId;
 
 async function createTreeOnChain(
   payer: Keypair,
-  destination: Keypair,
-  delegate: Keypair
 ): Promise<[Keypair, Tree, PublicKey]> {
   const merkleRollKeypair = Keypair.generate();
-
-  await Bubblegum.provider.connection.confirmTransaction(
-    await Bubblegum.provider.connection.requestAirdrop(payer.publicKey, 1e9),
-    "confirmed"
-  );
-  await Bubblegum.provider.connection.confirmTransaction(
-    await Bubblegum.provider.connection.requestAirdrop(
-      destination.publicKey,
-      1e9
-    ),
-    "confirmed"
-  );
-  await Bubblegum.provider.connection.confirmTransaction(
-    await Bubblegum.provider.connection.requestAirdrop(
-      delegate.publicKey,
-      1e9
-    ),
-    "confirmed"
-  );
   const requiredSpace = getMerkleRollAccountSize(MAX_DEPTH, MAX_SIZE);
   const leaves = Array(2 ** MAX_DEPTH).fill(Buffer.alloc(32));
   const tree = buildTree(leaves);
@@ -240,8 +221,9 @@ async function transfer(index, treeAuthority, data, payer, destination, merkleRo
 }
 
 async function main() {
+
   let [computedMerkleRoll, computedOffChainTree, computedTreeAuthority] =
-    await createTreeOnChain(payer, destination, delegateKey);
+    await createTreeOnChain(payer);
   merkleRollKeypair = computedMerkleRoll;
   offChainTree = computedOffChainTree;
   treeAuthority = computedTreeAuthority;
@@ -284,38 +266,40 @@ async function main() {
     );
     await sleep(1000);
     for (let j = 0; j < 1000; j++) {
-      const nonceInfo = await (
-        Bubblegum.provider.connection as web3Connection
-      ).getAccountInfo(treeAuthority);
-      const leafNonce = new BN(nonceInfo.data.slice(8, 16), "le").sub(
-        new BN(1)
-      );
-      let [asset] = await PublicKey.findProgramAddress(
-        [Buffer.from("asset", "utf8"), merkleRollKeypair.publicKey.toBuffer(), leafNonce.toBuffer("le", 8)],
-        Bubblegum.programId
-      );
-      let {root, proof} = await getProof(asset);
-      let assetObj = await getAsset(asset);
-      console.log(assetObj)
-      if(assetObj.result.ownership.owner != payer.publicKey.toBase58()) {
-        let temp = Keypair.fromSecretKey(payer.secretKey);
-        let temp2 = Keypair.fromSecretKey(destination.secretKey);
-        payer = temp2
-        destination = temp;
-      }
       let tx = async function() {
         try {
+          const nonceInfo = await (
+            Bubblegum.provider.connection as web3Connection
+          ).getAccountInfo(treeAuthority);
+          const leafNonce = new BN(nonceInfo.data.slice(8, 16), "le").sub(
+            new BN(1)
+          );
+          let [asset] = await PublicKey.findProgramAddress(
+            [Buffer.from("asset", "utf8"), merkleRollKeypair.publicKey.toBuffer(), leafNonce.toBuffer("le", 8)],
+            Bubblegum.programId
+          );
+          let {root, proof} = await getProof(asset);
+          let assetObj = await getAsset(asset);
+          console.log(assetObj)
+          let localPayer, localDest;
+          if(assetObj.result.ownership.owner != payer.publicKey.toBase58()) {
+            localPayer = destination
+            localDest = payer;
+          } else {
+            localPayer = payer;
+            localDest = destination;
+          }
           console.log("Attempting Transfer")
-          await transfer(i, treeAuthority, mintIx.data, payer, destination, merkleRollKeypair, leafNonce, root, proof)
+          await transfer(i, treeAuthority, mintIx.data, localPayer, localDest, merkleRollKeypair, leafNonce, root, proof)
         } catch (e) {
           console.log("Error", e)
           throw e
         }
       }
-      await retry(tx, {max: 100})
-
+      await retry(tx, {max: 5})
     }
   }
 }
+
 
 main()
