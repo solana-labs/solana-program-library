@@ -4613,7 +4613,498 @@
 		}
 	],
 	"events": [],
-	"errors": [],
+	"errors": [
+		{
+			"msg": "Invalid instruction passed to program",
+			"name": "InvalidInstruction",
+			"code": 500
+		},
+		{
+			"msg": "Realm with the given name and governing mints already exists",
+			"name": "RealmAlreadyExists",
+			"code": 501
+		},
+		{
+			"msg": "Invalid realm",
+			"name": "InvalidRealm",
+			"code": 502
+		},
+		{
+			"msg": "Invalid Governing Token Mint",
+			"name": "InvalidGoverningTokenMint",
+			"code": 503
+		},
+		{
+			"msg": "Governing Token Owner must sign transaction",
+			"name": "GoverningTokenOwnerMustSign",
+			"code": 504
+		},
+		{
+			"msg": "Governing Token Owner or Delegate  must sign transaction",
+			"name": "GoverningTokenOwnerOrDelegateMustSign",
+			"code": 505
+		},
+		{
+			"msg": "All votes must be relinquished to withdraw governing tokens",
+			"name": "AllVotesMustBeRelinquishedToWithdrawGoverningTokens",
+			"code": 506
+		},
+		{
+			"msg": "Invalid Token Owner Record account address",
+			"name": "InvalidTokenOwnerRecordAccountAddress",
+			"code": 507
+		},
+		{
+			"msg": "Invalid GoverningMint for TokenOwnerRecord",
+			"name": "InvalidGoverningMintForTokenOwnerRecord",
+			"code": 508
+		},
+		{
+			"msg": "Invalid Realm for TokenOwnerRecord",
+			"name": "InvalidRealmForTokenOwnerRecord",
+			"code": 509
+		},
+		{
+			"msg": "Invalid Proposal for ProposalTransaction,",
+			"name": "InvalidProposalForProposalTransaction",
+			"code": 510
+		},
+		{
+			"msg": "Invalid Signatory account address",
+			"name": "InvalidSignatoryAddress",
+			"code": 511
+		},
+		{
+			"msg": "Signatory already signed off",
+			"name": "SignatoryAlreadySignedOff",
+			"code": 512
+		},
+		{
+			"msg": "Signatory must sign",
+			"name": "SignatoryMustSign",
+			"code": 513
+		},
+		{
+			"msg": "Invalid Proposal Owner",
+			"name": "InvalidProposalOwnerAccount",
+			"code": 514
+		},
+		{
+			"msg": "Invalid Proposal for VoterRecord",
+			"name": "InvalidProposalForVoterRecord",
+			"code": 515
+		},
+		{
+			"msg": "Invalid GoverningTokenOwner for VoteRecord",
+			"name": "InvalidGoverningTokenOwnerForVoteRecord",
+			"code": 516
+		},
+		{
+			"msg": "Invalid Governance config: Vote threshold percentage out of range",
+			"name": "InvalidVoteThresholdPercentage",
+			"code": 517
+		},
+		{
+			"msg": "Proposal for the given Governance, Governing Token Mint and index already exists",
+			"name": "ProposalAlreadyExists",
+			"code": 518
+		},
+		{
+			"msg": "Token Owner already voted on the Proposal",
+			"name": "VoteAlreadyExists",
+			"code": 519
+		},
+		{
+			"msg": "Owner doesn't have enough governing tokens to create Proposal",
+			"name": "NotEnoughTokensToCreateProposal",
+			"code": 520
+		},
+		{
+			"msg": "Invalid State: Can't edit Signatories",
+			"name": "InvalidStateCannotEditSignatories",
+			"code": 521
+		},
+		{
+			"msg": "Invalid Proposal state",
+			"name": "InvalidProposalState",
+			"code": 522
+		},
+		{
+			"msg": "Invalid State: Can't edit transactions",
+			"name": "InvalidStateCannotEditTransactions",
+			"code": 523
+		},
+		{
+			"msg": "Invalid State: Can't execute transaction",
+			"name": "InvalidStateCannotExecuteTransaction",
+			"code": 524
+		},
+		{
+			"msg": "Can't execute transaction within its hold up time",
+			"name": "CannotExecuteTransactionWithinHoldUpTime",
+			"code": 525
+		},
+		{
+			"msg": "Transaction already executed",
+			"name": "TransactionAlreadyExecuted",
+			"code": 526
+		},
+		{
+			"msg": "Invalid Transaction index",
+			"name": "InvalidTransactionIndex",
+			"code": 527
+		},
+		{
+			"msg": "Transaction hold up time is below the min specified by Governance",
+			"name": "TransactionHoldUpTimeBelowRequiredMin",
+			"code": 528
+		},
+		{
+			"msg": "Transaction at the given index for the Proposal already exists",
+			"name": "TransactionAlreadyExists",
+			"code": 529
+		},
+		{
+			"msg": "Invalid State: Can't sign off",
+			"name": "InvalidStateCannotSignOff",
+			"code": 530
+		},
+		{
+			"msg": "Invalid State: Can't vote",
+			"name": "InvalidStateCannotVote",
+			"code": 531
+		},
+		{
+			"msg": "Invalid State: Can't finalize vote",
+			"name": "InvalidStateCannotFinalize",
+			"code": 532
+		},
+		{
+			"msg": "Invalid State: Can't cancel Proposal",
+			"name": "InvalidStateCannotCancelProposal",
+			"code": 533
+		},
+		{
+			"msg": "Vote already relinquished",
+			"name": "VoteAlreadyRelinquished",
+			"code": 534
+		},
+		{
+			"msg": "Can't finalize vote. Voting still in progress",
+			"name": "CannotFinalizeVotingInProgress",
+			"code": 535
+		},
+		{
+			"msg": "Proposal voting time expired",
+			"name": "ProposalVotingTimeExpired",
+			"code": 536
+		},
+		{
+			"msg": "Invalid Signatory Mint",
+			"name": "InvalidSignatoryMint",
+			"code": 537
+		},
+		{
+			"msg": "Proposal does not belong to the given Governance",
+			"name": "InvalidGovernanceForProposal",
+			"code": 538
+		},
+		{
+			"msg": "Proposal does not belong to given Governing Mint",
+			"name": "InvalidGoverningMintForProposal",
+			"code": 539
+		},
+		{
+			"msg": "Current mint authority must sign transaction",
+			"name": "MintAuthorityMustSign",
+			"code": 540
+		},
+		{
+			"msg": "Invalid mint authority",
+			"name": "InvalidMintAuthority",
+			"code": 541
+		},
+		{
+			"msg": "Mint has no authority",
+			"name": "MintHasNoAuthority",
+			"code": 542
+		},
+		{
+			"msg": "Invalid Token account owner",
+			"name": "SplTokenAccountWithInvalidOwner",
+			"code": 543
+		},
+		{
+			"msg": "Invalid Mint account owner",
+			"name": "SplTokenMintWithInvalidOwner",
+			"code": 544
+		},
+		{
+			"msg": "Token Account is not initialized",
+			"name": "SplTokenAccountNotInitialized",
+			"code": 545
+		},
+		{
+			"msg": "Token Account doesn't exist",
+			"name": "SplTokenAccountDoesNotExist",
+			"code": 546
+		},
+		{
+			"msg": "Token account data is invalid",
+			"name": "SplTokenInvalidTokenAccountData",
+			"code": 547
+		},
+		{
+			"msg": "Token mint account data is invalid",
+			"name": "SplTokenInvalidMintAccountData",
+			"code": 548
+		},
+		{
+			"msg": "Token Mint account is not initialized",
+			"name": "SplTokenMintNotInitialized",
+			"code": 549
+		},
+		{
+			"msg": "Token Mint account doesn't exist",
+			"name": "SplTokenMintDoesNotExist",
+			"code": 550
+		},
+		{
+			"msg": "Invalid ProgramData account address",
+			"name": "InvalidProgramDataAccountAddress",
+			"code": 551
+		},
+		{
+			"msg": "Invalid ProgramData account Data",
+			"name": "InvalidProgramDataAccountData",
+			"code": 552
+		},
+		{
+			"msg": "Provided upgrade authority doesn't match current program upgrade authority",
+			"name": "InvalidUpgradeAuthority",
+			"code": 553
+		},
+		{
+			"msg": "Current program upgrade authority must sign transaction",
+			"name": "UpgradeAuthorityMustSign",
+			"code": 554
+		},
+		{
+			"msg": "Given program is not upgradable",
+			"name": "ProgramNotUpgradable",
+			"code": 555
+		},
+		{
+			"msg": "Invalid token owner",
+			"name": "InvalidTokenOwner",
+			"code": 556
+		},
+		{
+			"msg": "Current token owner must sign transaction",
+			"name": "TokenOwnerMustSign",
+			"code": 557
+		},
+		{
+			"msg": "Given VoteThresholdType is not supported",
+			"name": "VoteThresholdTypeNotSupported",
+			"code": 558
+		},
+		{
+			"msg": "Given VoteWeightSource is not supported",
+			"name": "VoteWeightSourceNotSupported",
+			"code": 559
+		},
+		{
+			"msg": "GoverningTokenMint not allowed to vote",
+			"name": "GoverningTokenMintNotAllowedToVote",
+			"code": 560
+		},
+		{
+			"msg": "Governance PDA must sign",
+			"name": "GovernancePdaMustSign",
+			"code": 561
+		},
+		{
+			"msg": "Transaction already flagged with error",
+			"name": "TransactionAlreadyFlaggedWithError",
+			"code": 562
+		},
+		{
+			"msg": "Invalid Realm for Governance",
+			"name": "InvalidRealmForGovernance",
+			"code": 563
+		},
+		{
+			"msg": "Invalid Authority for Realm",
+			"name": "InvalidAuthorityForRealm",
+			"code": 564
+		},
+		{
+			"msg": "Realm has no authority",
+			"name": "RealmHasNoAuthority",
+			"code": 565
+		},
+		{
+			"msg": "Realm authority must sign",
+			"name": "RealmAuthorityMustSign",
+			"code": 566
+		},
+		{
+			"msg": "Invalid governing token holding account",
+			"name": "InvalidGoverningTokenHoldingAccount",
+			"code": 567
+		},
+		{
+			"msg": "Realm council mint change is not supported",
+			"name": "RealmCouncilMintChangeIsNotSupported",
+			"code": 568
+		},
+		{
+			"msg": "Not supported mint max vote weight source",
+			"name": "MintMaxVoteWeightSourceNotSupported",
+			"code": 569
+		},
+		{
+			"msg": "Invalid max vote weight supply fraction",
+			"name": "InvalidMaxVoteWeightSupplyFraction",
+			"code": 570
+		},
+		{
+			"msg": "Owner doesn't have enough governing tokens to create Governance",
+			"name": "NotEnoughTokensToCreateGovernance",
+			"code": 571
+		},
+		{
+			"msg": "Too many outstanding proposals",
+			"name": "TooManyOutstandingProposals",
+			"code": 572
+		},
+		{
+			"msg": "All proposals must be finalized to withdraw governing tokens",
+			"name": "AllProposalsMustBeFinalisedToWithdrawGoverningTokens",
+			"code": 573
+		},
+		{
+			"msg": "Invalid VoterWeightRecord for Realm",
+			"name": "InvalidVoterWeightRecordForRealm",
+			"code": 574
+		},
+		{
+			"msg": "Invalid VoterWeightRecord for GoverningTokenMint",
+			"name": "InvalidVoterWeightRecordForGoverningTokenMint",
+			"code": 575
+		},
+		{
+			"msg": "Invalid VoterWeightRecord for TokenOwner",
+			"name": "InvalidVoterWeightRecordForTokenOwner",
+			"code": 576
+		},
+		{
+			"msg": "VoterWeightRecord expired",
+			"name": "VoterWeightRecordExpired",
+			"code": 577
+		},
+		{
+			"msg": "Invalid RealmConfig for Realm",
+			"name": "InvalidRealmConfigForRealm",
+			"code": 578
+		},
+		{
+			"msg": "TokenOwnerRecord already exists",
+			"name": "TokenOwnerRecordAlreadyExists",
+			"code": 579
+		},
+		{
+			"msg": "Governing token deposits not allowed",
+			"name": "GoverningTokenDepositsNotAllowed",
+			"code": 580
+		},
+		{
+			"msg": "Invalid vote choice weight percentage",
+			"name": "InvalidVoteChoiceWeightPercentage",
+			"code": 581
+		},
+		{
+			"msg": "Vote type not supported",
+			"name": "VoteTypeNotSupported",
+			"code": 582
+		},
+		{
+			"msg": "Invalid proposal options",
+			"name": "InvalidProposalOptions",
+			"code": 583
+		},
+		{
+			"msg": "Proposal is not not executable",
+			"name": "ProposalIsNotExecutable",
+			"code": 584
+		},
+		{
+			"msg": "Invalid vote",
+			"name": "InvalidVote",
+			"code": 585
+		},
+		{
+			"msg": "Cannot execute defeated option",
+			"name": "CannotExecuteDefeatedOption",
+			"code": 586
+		},
+		{
+			"msg": "VoterWeightRecord invalid action",
+			"name": "VoterWeightRecordInvalidAction",
+			"code": 587
+		},
+		{
+			"msg": "VoterWeightRecord invalid action target",
+			"name": "VoterWeightRecordInvalidActionTarget",
+			"code": 588
+		},
+		{
+			"msg": "Invalid MaxVoterWeightRecord for Realm",
+			"name": "InvalidMaxVoterWeightRecordForRealm",
+			"code": 589
+		},
+		{
+			"msg": "Invalid MaxVoterWeightRecord for GoverningTokenMint",
+			"name": "InvalidMaxVoterWeightRecordForGoverningTokenMint",
+			"code": 590
+		},
+		{
+			"msg": "MaxVoterWeightRecord expired",
+			"name": "MaxVoterWeightRecordExpired",
+			"code": 591
+		},
+		{
+			"msg": "Not supported VoteType",
+			"name": "NotSupportedVoteType",
+			"code": 592
+		},
+		{
+			"msg": "RealmConfig change not allowed",
+			"name": "RealmConfigChangeNotAllowed",
+			"code": 593
+		},
+		{
+			"msg": "GovernanceConfig change not allowed",
+			"name": "GovernanceConfigChangeNotAllowed",
+			"code": 594
+		},
+		{
+			"msg": "At least one VoteThreshold is required",
+			"name": "AtLeastOneVoteThresholdRequired",
+			"code": 595
+		},
+		{
+			"msg": "Reserved buffer must be empty",
+			"name": "ReservedBufferMustBeEmpty",
+			"code": 596
+		},
+		{
+			"msg": "Cannot Relinquish in Finalizing state",
+			"name": "CannotRelinquishInFinalizingState",
+			"code": 597
+		}
+	],
 	"constants": [],
 	"metadata": {
 		"address": ""
