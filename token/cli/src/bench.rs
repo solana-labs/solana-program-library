@@ -203,9 +203,7 @@ pub(crate) fn bench_process_command(
             signers.push(owner_signer);
             let from = pubkey_of_signer(arg_matches, "from", wallet_manager)
                 .unwrap()
-                .unwrap_or_else(|| {
-                    get_associated_token_address_with_program_id(&owner, &token, &config.program_id)
-                });
+                .unwrap_or_else(|| get_associated_token_address(&owner, &token));
 
             command_deposit_into_or_withdraw_from(
                 config, signers, &token, n, &owner, ui_amount, &from, true,
@@ -222,9 +220,7 @@ pub(crate) fn bench_process_command(
             signers.push(owner_signer);
             let to = pubkey_of_signer(arg_matches, "to", wallet_manager)
                 .unwrap()
-                .unwrap_or_else(|| {
-                    get_associated_token_address_with_program_id(&owner, &token, &config.program_id)
-                });
+                .unwrap_or_else(|| get_associated_token_address(&owner, &token));
 
             command_deposit_into_or_withdraw_from(
                 config, signers, &token, n, &owner, ui_amount, &to, false,
