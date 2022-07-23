@@ -42,7 +42,7 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use spl_associated_token_account::{
-    get_associated_token_address, instruction::create_associated_token_account,
+    get_associated_token_address_with_program_id, instruction::create_associated_token_account,
 };
 use spl_token::{
     instruction::*,
@@ -404,7 +404,8 @@ fn command_create_account(
             ],
         )
     } else {
-        let account = get_associated_token_address(&owner, &token);
+        let account =
+            get_associated_token_address_with_program_id(&owner, &token, &config.program_id);
         println_display(config, format!("Creating account {}", account));
         (
             account,
@@ -413,6 +414,7 @@ fn command_create_account(
                 &config.fee_payer,
                 &owner,
                 &token,
+                &config.program_id,
             )],
         )
     };
@@ -538,8 +540,11 @@ fn command_authorize(
             }
         } else if let Ok(token_account) = Account::unpack(&target_account.data) {
             let check_associated_token_account = || -> Result<(), Error> {
-                let maybe_associated_token_account =
-                    get_associated_token_address(&token_account.owner, &token_account.mint);
+                let maybe_associated_token_account = get_associated_token_address_with_program_id(
+                    &token_account.owner,
+                    &token_account.mint,
+                    &config.program_id,
+                );
                 if account == maybe_associated_token_account
                     && !force_authorize
                     && Some(authority) != new_authority
@@ -678,7 +683,7 @@ fn command_transfer(
     let sender = if let Some(sender) = sender {
         sender
     } else {
-        get_associated_token_address(&sender_owner, &token)
+        get_associated_token_address_with_program_id(&sender_owner, &token, &config.program_id)
     };
     let (mint_pubkey, decimals) = resolve_mint_info(config, &sender, Some(token), mint_decimals)?;
     let maybe_transfer_balance =
@@ -764,7 +769,11 @@ fn command_transfer(
     };
 
     if !recipient_is_token_account {
-        recipient_token_account = get_associated_token_address(&recipient, &mint_pubkey);
+        recipient_token_account = get_associated_token_address_with_program_id(
+            &recipient,
+            &mint_pubkey,
+            &config.program_id,
+        );
         println_display(
             config,
             format!(
@@ -817,6 +826,7 @@ fn command_transfer(
                     &config.fee_payer,
                     &recipient,
                     &mint_pubkey,
+                    &config.program_id,
                 ));
             } else {
                 return Err(
@@ -1104,7 +1114,11 @@ fn command_wrap(
             )?,
         ]
     } else {
-        let account = get_associated_token_address(&wallet_address, &native_mint::id());
+        let account = get_associated_token_address_with_program_id(
+            &wallet_address,
+            &native_mint::id(),
+            &config.program_id,
+        );
 
         if !config.sign_only {
             if let Some(account_data) = config
@@ -1121,7 +1135,12 @@ fn command_wrap(
         println_display(config, format!("Wrapping {} SOL into {}", sol, account));
         vec![
             system_instruction::transfer(&wallet_address, &account, lamports),
-            create_associated_token_account(&config.fee_payer, &wallet_address, &native_mint::id()),
+            create_associated_token_account(
+                &config.fee_payer,
+                &wallet_address,
+                &native_mint::id(),
+                &config.program_id,
+            ),
         ]
     };
     if !config.sign_only {
@@ -1153,8 +1172,13 @@ fn command_unwrap(
     bulk_signers: BulkSigners,
 ) -> CommandResult {
     let use_associated_account = address.is_none();
-    let address = address
-        .unwrap_or_else(|| get_associated_token_address(&wallet_address, &native_mint::id()));
+    let address = address.unwrap_or_else(|| {
+        get_associated_token_address_with_program_id(
+            &wallet_address,
+            &native_mint::id(),
+            &config.program_id,
+        )
+    });
     println_display(config, format!("Unwrapping {}", address));
     if !config.sign_only {
         let lamports = config.rpc_client.get_balance(&address)?;
@@ -1445,7 +1469,8 @@ fn command_address(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Com
     };
     if let Some(token) = token {
         validate_mint(config, token)?;
-        let associated_token_address = get_associated_token_address(&owner, &token);
+        let associated_token_address =
+            get_associated_token_address_with_program_id(&owner, &token, &config.program_id);
         cli_address.associated_token_address = Some(associated_token_address.to_string());
     }
     Ok(config.output_format.formatted_string(&cli_address))
@@ -1459,7 +1484,8 @@ fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
         .unwrap();
     let mint = Pubkey::from_str(&account.mint).unwrap();
     let owner = Pubkey::from_str(&account.owner).unwrap();
-    let is_associated = get_associated_token_address(&owner, &mint) == address;
+    let is_associated =
+        get_associated_token_address_with_program_id(&owner, &mint, &config.program_id) == address;
     let cli_token_account = CliTokenAccount {
         address: address.to_string(),
         is_associated,
@@ -1569,7 +1595,8 @@ fn command_gc(
 
     for (token, accounts) in accounts_by_token.into_iter() {
         println_display(config, format!("Processing token: {}", token));
-        let associated_token_account = get_associated_token_address(&owner, &token);
+        let associated_token_account =
+            get_associated_token_address_with_program_id(&owner, &token, &config.program_id);
         let total_balance: u64 = accounts.values().map(|account| account.0).sum();
 
         if total_balance > 0 && !accounts.contains_key(&associated_token_account) {
@@ -1578,6 +1605,7 @@ fn command_gc(
                 &config.fee_payer,
                 &owner,
                 &token,
+                &config.program_id,
             )]);
             lamports_needed += minimum_balance_for_rent_exemption;
         }
@@ -3239,7 +3267,7 @@ mod tests {
     fn create_associated_account(config: &Config, payer: &Keypair, mint: Pubkey) -> Pubkey {
         let bulk_signers: Vec<Box<dyn Signer>> = vec![Box::new(clone_keypair(payer))];
         command_create_account(config, mint, payer.pubkey(), None, bulk_signers).unwrap();
-        get_associated_token_address(&payer.pubkey(), &mint)
+        get_associated_token_address_with_program_id(&payer.pubkey(), &mint, &config.program_id)
     }
 
     fn mint_tokens(
@@ -3348,7 +3376,11 @@ mod tests {
             ],
         );
         let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
-        let account = get_associated_token_address(&payer.pubkey(), &token);
+        let account = get_associated_token_address_with_program_id(
+            &payer.pubkey(),
+            &token,
+            &config.program_id,
+        );
         assert_eq!(value["address"], account.to_string());
         assert_eq!(value["mint"], token.to_string());
         assert_eq!(value["isAssociated"], true);
@@ -3448,7 +3480,11 @@ mod tests {
             &["spl-token", CommandName::Wrap.into(), "0.5"],
         )
         .unwrap();
-        let account = get_associated_token_address(&payer.pubkey(), &native_mint::id());
+        let account = get_associated_token_address_with_program_id(
+            &payer.pubkey(),
+            &native_mint::id(),
+            &config.program_id,
+        );
         let ui_account = config
             .rpc_client
             .get_token_account(&account)
@@ -3464,7 +3500,11 @@ mod tests {
         let config = test_config(&test_validator, &payer, &spl_token::id());
         let bulk_signers: Vec<Box<dyn Signer>> = vec![Box::new(clone_keypair(&payer))];
         command_wrap(&config, 0.5, payer.pubkey(), None, bulk_signers).unwrap();
-        let account = get_associated_token_address(&payer.pubkey(), &native_mint::id());
+        let account = get_associated_token_address_with_program_id(
+            &payer.pubkey(),
+            &native_mint::id(),
+            &config.program_id,
+        );
         let result = process_test_command(
             &config,
             &payer,
@@ -3618,7 +3658,11 @@ mod tests {
         let ui_amount = 10.0;
         command_wrap(&config, ui_amount, payer.pubkey(), None, bulk_signers).unwrap();
 
-        let recipient = get_associated_token_address(&payer.pubkey(), &native_mint::id());
+        let recipient = get_associated_token_address_with_program_id(
+            &payer.pubkey(),
+            &native_mint::id(),
+            &config.program_id,
+        );
         let _result = process_test_command(
             &config,
             &payer,
