@@ -19,7 +19,7 @@ pub(crate) struct UnsupportedAccount {
 pub(crate) fn sort_and_parse_token_accounts(
     owner: &Pubkey,
     accounts: Vec<RpcKeyedAccount>,
-    program_id: &Pubkey,
+    _program_id: &Pubkey,
 ) -> (MintAccounts, Vec<UnsupportedAccount>, usize, bool) {
     let mut mint_accounts: MintAccounts = BTreeMap::new();
     let mut unsupported_accounts = vec![];
@@ -39,7 +39,9 @@ pub(crate) fn sort_and_parse_token_accounts(
                     Ok(TokenAccountType::Account(ui_token_account)) => {
                         let mint = ui_token_account.mint.clone();
                         let is_associated = if let Ok(mint) = Pubkey::from_str(&mint) {
-                            spl_associated_token_account::get_associated_token_address_with_program_id(owner, &mint, program_id).to_string() == address
+                            spl_associated_token_account::get_associated_token_address(owner, &mint)
+                                .to_string()
+                                == address
                         } else {
                             includes_aux = true;
                             false
