@@ -30,6 +30,6 @@ export async function initializeGumballMachineIndices(
   let initializeIndexInstructions = createInitializeIndicesInstructions(maxItems, authority.publicKey, gumballMachine);
   for (let i = 0; i < initializeIndexInstructions.length; i++) {
     const instructions = [ComputeBudgetProgram.requestUnits({ units: 1.4e6, additionalFee: 0 }), initializeIndexInstructions[i]];
-    await execute(provider, instructions, [authority], false, verbose);
+    await execute(provider, instructions, [authority], true, verbose);
   }
 }

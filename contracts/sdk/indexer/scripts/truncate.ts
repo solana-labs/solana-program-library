@@ -25,7 +25,6 @@ import {
     LeafSchema,
     leafSchemaBeet,
 } from "../../bubblegum/src/generated";
-import { execute, num32ToBuffer } from "../../../tests/utils";
 import { hashCreators, hashMetadata } from "../indexer/utils";
 import { BN } from "@project-serum/anchor";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
@@ -36,7 +35,7 @@ import { createAddConfigLinesInstruction, createInitializeGumballMachineIxs, dec
 import { getWillyWonkaPDAKey } from "../../gumball-machine";
 import { createDispenseNFTForSolIx } from "../../gumball-machine";
 import { loadPrograms } from "../indexer/utils";
-import { strToByteArray } from "../../utils";
+import { strToByteArray, execute } from "../../utils";
 import { NATIVE_MINT } from "@solana/spl-token";
 
 // const url = "http://api.explorer.mainnet-beta.solana.com";

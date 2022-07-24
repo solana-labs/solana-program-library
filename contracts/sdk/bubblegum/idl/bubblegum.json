@@ -1046,6 +1046,41 @@
       "code": 6003,
       "name": "UnsupportedSchemaVersion",
       "msg": "Unsupported Schema Version"
+    },
+    {
+      "code": 6004,
+      "name": "CreatorShareTotalMustBe100",
+      "msg": "Creator shares must sum to 100"
+    },
+    {
+      "code": 6005,
+      "name": "DuplicateCreatorAddress",
+      "msg": "No duplicate creator addresses in metadata"
+    },
+    {
+      "code": 6006,
+      "name": "CreatorsTooLong",
+      "msg": "Creators list too long"
+    },
+    {
+      "code": 6007,
+      "name": "MetadataNameTooLong",
+      "msg": "Name in metadata is too long"
+    },
+    {
+      "code": 6008,
+      "name": "MetadataSymbolTooLong",
+      "msg": "Symbol in metadata is too long"
+    },
+    {
+      "code": 6009,
+      "name": "MetadataUriTooLong",
+      "msg": "Uri in metadata is too long"
+    },
+    {
+      "code": 6010,
+      "name": "MetadataBasisPointsTooHigh",
+      "msg": "Basis points in metadata cannot exceed 10000"
     }
   ],
   "metadata": {

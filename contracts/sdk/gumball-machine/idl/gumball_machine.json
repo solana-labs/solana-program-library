@@ -611,28 +611,8 @@
             "type": "u8"
           },
           {
-            "name": "configLineEncodeMethod",
-            "type": "u8"
-          },
-          {
-            "name": "creators",
-            "type": {
-              "array": [
-                {
-                  "defined": "GumballCreatorAdapter"
-                },
-                5
-              ]
-            }
-          },
-          {
-            "name": "padding",
-            "type": {
-              "array": [
-                "u8",
-                1
-              ]
-            }
+            "name": "maxMintSize",
+            "type": "u32"
           },
           {
             "name": "price",
@@ -667,10 +647,6 @@
             "type": "u64"
           },
           {
-            "name": "maxMintSize",
-            "type": "u32"
-          },
-          {
             "name": "remaining",
             "type": "u32"
           },
@@ -687,11 +663,26 @@
             "type": "u32"
           },
           {
-            "name": "padding2",
+            "name": "configLineEncodeMethod",
+            "type": "u8"
+          },
+          {
+            "name": "creators",
+            "type": {
+              "array": [
+                {
+                  "defined": "GumballCreatorAdapter"
+                },
+                4
+              ]
+            }
+          },
+          {
+            "name": "padding",
             "type": {
               "array": [
                 "u8",
-                4
+                7
               ]
             }
           }

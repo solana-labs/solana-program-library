@@ -28,7 +28,8 @@ impl EncodeMethod {
     }
 }
 
-pub const NUM_CREATORS: usize = 5;
+// TODO: ideally this could be expressed as: mpl_token_metadata::state::MAX_CREATOR_LIMIT - 1, but this throws an uncaught exception within Anchor
+pub const NUM_CREATORS: usize = 4;
 
 // Adapter Creator class that implements POD
 #[repr(C)]
@@ -80,12 +81,7 @@ pub struct GumballMachineHeader {
     pub seller_fee_basis_points: u16,
     pub is_mutable: u8,
     pub retain_authority: u8,
-    // 0 for whitespace trimming, 1 for base58 encode
-    pub config_line_encode_method: u8,
-    // Secondary sale royalty recipients
-    pub creators: [GumballCreatorAdapter; NUM_CREATORS],
-    // Used for 8-byte aligning zero copy structs
-    pub _padding: [u8; 1],
+    pub max_mint_size: u32,
     pub price: u64,
     pub go_live_date: i64,
     // Mint of the Token used to purchase NFTs
@@ -97,13 +93,16 @@ pub struct GumballMachineHeader {
     // TokenMetadata collection pointer
     pub collection_key: Pubkey,
     pub extension_len: u64,
-    pub max_mint_size: u32,
     pub remaining: u32,
     pub max_items: u32,
     pub total_items_added: u32,
     pub smallest_uninitialized_index: u32,
+    // 0 for whitespace trimming, 1 for base58 encode
+    pub config_line_encode_method: u8,
+    // Secondary sale royalty recipients
+    pub creators: [GumballCreatorAdapter; NUM_CREATORS],
     // 8-byte align struct
-    pub _padding_2: [u8; 4],
+    pub _padding: [u8; 7],
 }
 
 impl ZeroCopy for GumballMachineHeader {}
