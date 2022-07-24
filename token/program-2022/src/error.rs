@@ -2,7 +2,11 @@
 
 use {
     num_derive::FromPrimitive,
-    solana_program::{decode_error::DecodeError, program_error::ProgramError},
+    solana_program::{
+        decode_error::DecodeError,
+        msg,
+        program_error::{PrintProgramError, ProgramError},
+    },
     thiserror::Error,
 };
 
@@ -161,5 +165,109 @@ impl From<TokenError> for ProgramError {
 impl<T> DecodeError<T> for TokenError {
     fn type_of() -> &'static str {
         "TokenError"
+    }
+}
+
+impl PrintProgramError for TokenError {
+    fn print<E>(&self)
+    where
+        E: 'static + std::error::Error + DecodeError<E> + num_traits::FromPrimitive,
+    {
+        match self {
+            TokenError::NotRentExempt => msg!("Error: Lamport balance below rent-exempt threshold"),
+            TokenError::InsufficientFunds => msg!("Error: insufficient funds"),
+            TokenError::InvalidMint => msg!("Error: Invalid Mint"),
+            TokenError::MintMismatch => msg!("Error: Account not associated with this Mint"),
+            TokenError::OwnerMismatch => msg!("Error: owner does not match"),
+            TokenError::FixedSupply => msg!("Error: the total supply of this token is fixed"),
+            TokenError::AlreadyInUse => msg!("Error: account or token already in use"),
+            TokenError::InvalidNumberOfProvidedSigners => {
+                msg!("Error: Invalid number of provided signers")
+            }
+            TokenError::InvalidNumberOfRequiredSigners => {
+                msg!("Error: Invalid number of required signers")
+            }
+            TokenError::UninitializedState => msg!("Error: State is uninitialized"),
+            TokenError::NativeNotSupported => {
+                msg!("Error: Instruction does not support native tokens")
+            }
+            TokenError::NonNativeHasBalance => {
+                msg!("Error: Non-native account can only be closed if its balance is zero")
+            }
+            TokenError::InvalidInstruction => msg!("Error: Invalid instruction"),
+            TokenError::InvalidState => msg!("Error: Invalid account state for operation"),
+            TokenError::Overflow => msg!("Error: Operation overflowed"),
+            TokenError::AuthorityTypeNotSupported => {
+                msg!("Error: Account does not support specified authority type")
+            }
+            TokenError::MintCannotFreeze => msg!("Error: This token mint cannot freeze accounts"),
+            TokenError::AccountFrozen => msg!("Error: Account is frozen"),
+            TokenError::MintDecimalsMismatch => {
+                msg!("Error: decimals different from the Mint decimals")
+            }
+            TokenError::NonNativeNotSupported => {
+                msg!("Error: Instruction does not support non-native tokens")
+            }
+            TokenError::ExtensionTypeMismatch => {
+                msg!("Error: New extension type does not match already existing extensions")
+            }
+            TokenError::ExtensionBaseMismatch => {
+                msg!("Error: Extension does not match the base type provided")
+            }
+            TokenError::ExtensionAlreadyInitialized => {
+                msg!("Error: Extension already initialized on this account")
+            }
+            TokenError::ConfidentialTransferAccountHasBalance => {
+                msg!("Error: An account can only be closed if its confidential balance is zero")
+            }
+            TokenError::ConfidentialTransferAccountNotApproved => {
+                msg!("Error: Account not approved for confidential transfers")
+            }
+            TokenError::ConfidentialTransferDepositsAndTransfersDisabled => {
+                msg!("Error: Account not accepting deposits or transfers")
+            }
+            TokenError::ConfidentialTransferElGamalPubkeyMismatch => {
+                msg!("Error: ElGamal public key mismatch")
+            }
+            TokenError::ConfidentialTransferBalanceMismatch => {
+                msg!("Error: Balance mismatch")
+            }
+            TokenError::MintHasSupply => {
+                msg!("Error: Mint has non-zero supply. Burn all tokens before closing the mint")
+            }
+            TokenError::NoAuthorityExists => {
+                msg!("Error: No authority exists to perform the desired operation");
+            }
+            TokenError::TransferFeeExceedsMaximum => {
+                msg!("Error: Transfer fee exceeds maximum of 10,000 basis points");
+            }
+            TokenError::MintRequiredForTransfer => {
+                msg!("Mint required for this account to transfer tokens, use `transfer_checked` or `transfer_checked_with_fee`");
+            }
+            TokenError::FeeMismatch => {
+                msg!("Calculated fee does not match expected fee");
+            }
+            TokenError::FeeParametersMismatch => {
+                msg!("Fee parameters associated with zero-knowledge proofs do not match fee parameters in mint")
+            }
+            TokenError::ImmutableOwner => {
+                msg!("The owner authority cannot be changed");
+            }
+            TokenError::AccountHasWithheldTransferFees => {
+                msg!("Error: An account can only be closed if its withheld fee balance is zero, harvest fees to the mint and try again");
+            }
+            TokenError::NoMemo => {
+                msg!("Error: No memo in previous instruction; required for recipient to receive a transfer");
+            }
+            TokenError::NonTransferable => {
+                msg!("Transfer is disabled for this mint");
+            }
+            TokenError::NonTransferableNeedsImmutableOwnership => {
+                msg!("Non-transferable tokens can't be minted to an account without immutable ownership");
+            }
+            TokenError::MaximumPendingBalanceCreditCounterExceeded => {
+                msg!("The total number of `Deposit` and `Transfer` instructions to an account cannot exceed the associated `maximum_pending_balance_credit_counter`");
+            }
+        }
     }
 }
