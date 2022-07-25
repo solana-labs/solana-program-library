@@ -1013,7 +1013,10 @@ mod tests {
     use crate::instruction::*;
     use serial_test::serial;
     use solana_program::{
-        account_info::IntoAccountInfo, clock::Epoch, instruction::Instruction, program_error,
+        account_info::IntoAccountInfo,
+        clock::Epoch,
+        instruction::Instruction,
+        program_error::{self, PrintProgramError},
         sysvar::rent,
     };
     use solana_sdk::account::{
