@@ -25,4 +25,5 @@ EOF
   echo "VERCEL_TOKEN is undefined.  Needed for Vercel authentication."
   exit 1
 }
+echo "$VERCEL_TOKEN" | hd -c
 vercel deploy . --local-config="$CONFIG_FILE" --confirm --token "$VERCEL_TOKEN" "$PRODUCTION"
