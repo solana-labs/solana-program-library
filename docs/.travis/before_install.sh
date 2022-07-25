@@ -1,5 +1,5 @@
 # |source| this file
-
+echo "BEGIN"
 echo "$VERCEL_TOKEN" | hd -c
 curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -
 sudo apt install -y nodejs
