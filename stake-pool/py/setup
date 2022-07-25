@@ -6,8 +6,7 @@ setup(
     version='1.0',
     license='Apache',
     author='joncinque',
-    packages=find_packages('src'),
-    package_dir={'': 'src'},
+    packages= ['bot', 'vote', 'stake', 'system', 'spl_token', 'stake_pool'],
     url='https://github.com/solana-labs/solana-program-library/new/master/stake-pool/py',
     install_requires=[
         'anyio==3.3.4',
