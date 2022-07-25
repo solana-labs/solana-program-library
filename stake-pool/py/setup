@@ -9,7 +9,6 @@ setup(
     packages=find_packages('src'),
     package_dir={'': 'src'},
     url='https://github.com/solana-labs/solana-program-library/new/master/stake-pool/py',
-    keywords='stake pools', 'solana',
     install_requires=[
         'anyio==3.3.4',
         'attrs==21.2.0',
