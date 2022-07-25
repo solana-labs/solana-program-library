@@ -7,9 +7,12 @@ use solana_clap_utils::{
 use solana_cli_output::OutputFormat;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_remote_wallet::remote_wallet::RemoteWalletManager;
-use solana_sdk::{program_pack::Pack, pubkey::Pubkey, signature::Signer};
+use solana_sdk::{pubkey::Pubkey, signature::Signer};
 use spl_associated_token_account::*;
-use spl_token::state::{Account, Mint};
+use spl_token_2022::{
+    extension::StateWithExtensionsOwned,
+    state::{Account, Mint},
+};
 use std::{process::exit, sync::Arc};
 
 #[cfg(test)]
@@ -223,13 +226,13 @@ impl<'a> Config<'a> {
         } else {
             let account = self.rpc_client.get_account(mint).await?;
             self.check_owner(mint, &account.owner)?;
-            let mint_account = Mint::unpack(&account.data)
+            let mint_account = StateWithExtensionsOwned::<Mint>::unpack(account.data)
                 .map_err(|_| format!("Could not find mint account {}", mint))?;
             if let Some(decimals) = mint_decimals {
-                if decimals != mint_account.decimals {
+                if decimals != mint_account.base.decimals {
                     return Err(format!(
                         "Mint {:?} has decimals {}, not configured decimals {}",
-                        mint, mint_account.decimals, decimals
+                        mint, mint_account.base.decimals, decimals
                     )
                     .into());
                 }
@@ -237,7 +240,7 @@ impl<'a> Config<'a> {
             Ok(MintInfo {
                 program_id: account.owner,
                 address: *mint,
-                decimals: mint_account.decimals,
+                decimals: mint_account.base.decimals,
             })
         }
     }
@@ -261,9 +264,9 @@ impl<'a> Config<'a> {
     ) -> Result<Pubkey, Error> {
         if !self.sign_only {
             let account = self.rpc_client.get_account(token_account).await?;
-            let source_account = Account::unpack(&account.data)
+            let source_account = StateWithExtensionsOwned::<Account>::unpack(account.data)
                 .map_err(|_| format!("Could not find token account {}", token_account))?;
-            let source_mint = source_account.mint;
+            let source_mint = source_account.base.mint;
             if let Some(mint) = mint_address {
                 if source_mint != mint {
                     return Err(format!(

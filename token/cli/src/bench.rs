@@ -16,7 +16,8 @@ use {
         system_instruction,
     },
     spl_associated_token_account::*,
-    spl_token::{
+    spl_token_2022::{
+        extension::StateWithExtensions,
         instruction,
         state::{Account, Mint},
     },
@@ -265,7 +266,7 @@ async fn get_valid_mint_program_id(
         .await
         .map_err(|err| format!("Token mint {} does not exist: {}", token, err))?;
 
-    Mint::unpack(&mint_account.data)
+    StateWithExtensions::<Mint>::unpack(&mint_account.data)
         .map_err(|err| format!("Invalid token mint {}: {}", token, err))?;
     Ok(mint_account.owner)
 }
@@ -341,9 +342,9 @@ async fn command_close_accounts(
 
         for (account, (address, _seed)) in accounts_chunk.iter().zip(address_chunk) {
             if let Some(account) = account {
-                match Account::unpack(&account.data) {
+                match StateWithExtensions::<Account>::unpack(&account.data) {
                     Ok(token_account) => {
-                        if token_account.amount != 0 {
+                        if token_account.base.amount != 0 {
                             eprintln!(
                                 "Token account {} holds a balance; unable to close it",
                                 address,
