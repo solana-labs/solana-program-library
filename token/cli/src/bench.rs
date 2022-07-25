@@ -256,7 +256,10 @@ fn get_token_addresses_with_seed(
         .collect()
 }
 
-async fn is_valid_token(rpc_client: &RpcClient, token: &Pubkey) -> Result<Pubkey, Error> {
+async fn get_valid_mint_program_id(
+    rpc_client: &RpcClient,
+    token: &Pubkey,
+) -> Result<Pubkey, Error> {
     let mint_account = rpc_client
         .get_account(token)
         .await
@@ -277,7 +280,7 @@ async fn command_create_accounts(
     let rpc_client = &config.rpc_client;
 
     println!("Scanning accounts...");
-    let program_id = is_valid_token(rpc_client, token).await?;
+    let program_id = get_valid_mint_program_id(rpc_client, token).await?;
 
     let minimum_balance_for_rent_exemption = rpc_client
         .get_minimum_balance_for_rent_exemption(Account::get_packed_len())
@@ -327,7 +330,7 @@ async fn command_close_accounts(
     let rpc_client = &config.rpc_client;
 
     println!("Scanning accounts...");
-    let program_id = is_valid_token(rpc_client, token).await?;
+    let program_id = get_valid_mint_program_id(rpc_client, token).await?;
 
     let token_addresses_with_seed = get_token_addresses_with_seed(&program_id, token, owner, n);
     let mut messages = vec![];
@@ -383,7 +386,7 @@ async fn command_deposit_into_or_withdraw_from(
     let rpc_client = &config.rpc_client;
 
     println!("Scanning accounts...");
-    let program_id = is_valid_token(rpc_client, token).await?;
+    let program_id = get_valid_mint_program_id(rpc_client, token).await?;
 
     let mint_info = config.get_mint_info(token, None).await?;
     let from_or_to = from_or_to
