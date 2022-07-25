@@ -5,7 +5,7 @@ setup(
     name='stake-pool',
     version='1.0',
     license='Apache',
-    author="joncinque"
+    author="joncinque",
     packages=find_packages('src'),
     package_dir={'': 'src'},
     url='https://github.com/solana-labs/solana-program-library/new/master/stake-pool/py",
