@@ -18,7 +18,7 @@ async function main() {
     const endpoint = url;
     const connection = new Connection(endpoint, "confirmed");
     const payer = Keypair.generate();
-    const provider = new anchor.Provider(connection, new NodeWallet(payer), {
+    const provider = new anchor.AnchorProvider(connection, new NodeWallet(payer), {
         commitment: "confirmed",
     });
     let db = await bootstrap();

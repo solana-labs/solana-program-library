@@ -1,5 +1,5 @@
 import * as anchor from "@project-serum/anchor";
-import { BN, Provider, Program } from "@project-serum/anchor";
+import { BN, AnchorProvider, Program } from "@project-serum/anchor";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import {
   Connection,
@@ -148,7 +148,7 @@ describe("gummyroll", () => {
     });
     wallet = new NodeWallet(payer);
     anchor.setProvider(
-      new Provider(connection, wallet, {
+      new AnchorProvider(connection, wallet, {
         commitment: connection.commitment,
         skipPreflight: true,
       })

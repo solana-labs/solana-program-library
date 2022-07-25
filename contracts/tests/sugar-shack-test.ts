@@ -1,6 +1,6 @@
 import * as anchor from "@project-serum/anchor";
 import { keccak_256 } from "js-sha3";
-import { BN, Provider, Program } from "@project-serum/anchor";
+import { BN, AnchorProvider, Program } from "@project-serum/anchor";
 import {
   PublicKey,
   Keypair,
@@ -216,7 +216,7 @@ describe("sugar-shack", () => {
     });
     wallet = new NodeWallet(payer);
     anchor.setProvider(
-      new Provider(connection, wallet, {
+      new AnchorProvider(connection, wallet, {
         commitment: connection.commitment,
         skipPreflight: true,
       })

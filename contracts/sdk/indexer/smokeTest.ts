@@ -30,7 +30,7 @@ async function main() {
   const payer = Keypair.generate();
   const wallet = new NodeWallet(payer);
   anchor.setProvider(
-    new anchor.Provider(connection, wallet, {
+    new anchor.AnchorProvider(connection, wallet, {
       commitment: connection.commitment,
       skipPreflight: true,
     })

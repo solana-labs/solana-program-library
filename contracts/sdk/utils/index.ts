@@ -27,35 +27,22 @@ export async function execute(
   let tx = new Transaction();
   instructions.map((ix) => { tx = tx.add(ix) });
 
-  // Manually sign the transaction with the Anchor wallet so we can use sendRawTransaction and get on-chain logs on failures
-  // via sendRawTransaction
-  tx.feePayer = provider.wallet.publicKey;
-  tx.recentBlockhash = (
-    await provider.connection.getRecentBlockhash("confirmed")
-  ).blockhash;
-  tx = await provider.wallet.signTransaction(tx);
-
-  // We need to manually sign the transaction with each signer to use sendRawTransaction
-  (signers ?? []).forEach((kp) => {
-    tx.partialSign(kp);
-  });
-
-  const rawTx = tx.serialize();
-
   let txid = null;
-  let error = null;
   try {
-    txid = await provider.connection.sendRawTransaction(rawTx, {
+    txid = await provider.sendAndConfirm(tx, signers, {
       skipPreflight,
-      maxRetries: 1000,
     })
-  } catch (e) { error = e; }
-
-  if (error) {
-    console.log("Tx error!");
-    throw error;
+  } catch (e) { 
+    console.log("Tx error!", e.logs)
+    throw e;
   }
-  await logTx(provider, txid, verbose);
+
+  if (verbose) {
+    console.log(
+      (await provider.connection.getConfirmedTransaction(txid, "confirmed")).meta
+        .logMessages
+    );
+  }
 
   return txid;
 }

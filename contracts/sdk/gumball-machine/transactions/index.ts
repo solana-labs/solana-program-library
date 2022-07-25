@@ -1,4 +1,4 @@
-import { BN, Program, Provider } from "@project-serum/anchor";
+import { Provider } from "@project-serum/anchor";
 import {
   PublicKey,
   Keypair,

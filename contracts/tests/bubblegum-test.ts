@@ -1,6 +1,6 @@
 import * as anchor from "@project-serum/anchor";
 import { keccak_256 } from "js-sha3";
-import { BN, Provider, Program } from "@project-serum/anchor";
+import { BN, AnchorProvider, Program } from "@project-serum/anchor";
 import { Bubblegum } from "../target/types/bubblegum";
 import { Gummyroll } from "../target/types/gummyroll";
 import { PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID, metadataBeet, Metadata, Data, TokenStandard } from "@metaplex-foundation/mpl-token-metadata";
@@ -180,7 +180,7 @@ describe("bubblegum", function () {
     });
     wallet = new NodeWallet(payer);
     anchor.setProvider(
-      new Provider(connection, wallet, {
+      new AnchorProvider(connection, wallet, {
         commitment: connection.commitment,
         skipPreflight: true,
       })

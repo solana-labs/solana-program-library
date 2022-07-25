@@ -35,7 +35,7 @@ import { createAddConfigLinesInstruction, createInitializeGumballMachineIxs, dec
 import { getWillyWonkaPDAKey } from "../../gumball-machine";
 import { createDispenseNFTForSolIx } from "../../gumball-machine";
 import { loadPrograms } from "../indexer/utils";
-import { strToByteArray, execute } from "../../utils";
+import { strToByteArray, execute, val } from "../../utils";
 import { NATIVE_MINT } from "@solana/spl-token";
 
 // const url = "http://api.explorer.mainnet-beta.solana.com";
@@ -60,7 +60,7 @@ async function main() {
     const endpoint = url;
     const connection = new Connection(endpoint, "confirmed");
     const payer = keypairFromString('bubblegum-mini-milady');
-    const provider = new anchor.Provider(connection, new NodeWallet(payer), {
+    const provider = new anchor.AnchorProvider(connection, new NodeWallet(payer), {
         commitment: "confirmed",
     });
 
@@ -355,16 +355,6 @@ async function truncateWithGumball(
     payer: Keypair,
     gumballMachine: anchor.Program<GumballMachine>,
 ) {
-    const EXTENSION_LEN = 28;
-    const MAX_MINT_SIZE = 10;
-    const GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE = 1000;
-    const GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE = 7000;
-    const GUMBALL_MACHINE_ACCT_SIZE =
-        gumballMachineHeaderBeet.byteSize +
-        GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE +
-        GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE;
-    const MERKLE_ROLL_ACCT_SIZE = getMerkleRollAccountSize(3, 8);
-
     const creatorAddress = keypairFromString('gumball-machine-creat0r');
     const gumballMachineAcctKeypair = keypairFromString('gumball-machine-acct')
     const merkleRollKeypair = keypairFromString("gumball-machine-tree");
@@ -387,7 +377,7 @@ async function truncateWithGumball(
     console.log("airdrop successfull")
 
     const baseGumballMachineInitProps: InitializeGumballMachineInstructionArgs = {
-        maxDepth: 3,
+        maxDepth: 5,
         maxBufferSize: 8,
         urlBase: strToByteArray("https://arweave.net", 64),
         nameBase: strToByteArray("Milady", 32),
@@ -402,12 +392,23 @@ async function truncateWithGumball(
         receiver: creatorAddress.publicKey,
         authority: creatorAddress.publicKey,
         collectionKey: SystemProgram.programId, // 0x0 -> no collection key
-        extensionLen: new BN(EXTENSION_LEN),
-        maxMintSize: MAX_MINT_SIZE,
-        maxItems: 250,
+        extensionLen: new BN(28),
+        maxMintSize: 10,
+        maxItems: 32,
         creatorKeys: [creatorAddress.publicKey],
         creatorShares: Uint8Array.from([100]),
     };
+
+    const GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE =
+        baseGumballMachineInitProps.maxItems * 4;
+    const GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE =
+        baseGumballMachineInitProps.maxItems *
+        val(baseGumballMachineInitProps.extensionLen).toNumber();
+    const GUMBALL_MACHINE_ACCT_SIZE =
+        gumballMachineHeaderBeet.byteSize +
+        GUMBALL_MACHINE_ACCT_CONFIG_INDEX_ARRAY_SIZE +
+        GUMBALL_MACHINE_ACCT_CONFIG_LINES_SIZE;
+    const MERKLE_ROLL_ACCT_SIZE = getMerkleRollAccountSize(baseGumballMachineInitProps.maxDepth, baseGumballMachineInitProps.maxBufferSize)
 
     if (!(await connection.getAccountInfo(merkleRollKeypair.publicKey, "confirmed"))) {
         await initializeGumballMachine(
@@ -428,7 +429,7 @@ async function truncateWithGumball(
     let arr: number[] = [];
     const buffers = [];
     for (let i = 0; i < 6; i++) {
-        const str = `url-${i}                                         `.slice(0, EXTENSION_LEN);
+        const str = `url-${i}                                         `.slice(0, val(baseGumballMachineInitProps.extensionLen).toNumber());
         arr = arr.concat(strToByteArray(str));
         buffers.push(Buffer.from(str));
     }

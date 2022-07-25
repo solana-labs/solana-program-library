@@ -1,5 +1,5 @@
 import * as anchor from "@project-serum/anchor";
-import { BN, Provider, Program } from "@project-serum/anchor";
+import { BN, AnchorProvider, Program } from "@project-serum/anchor";
 import { Bubblegum } from "../target/types/bubblegum";
 import {
   PublicKey,
@@ -488,7 +488,8 @@ describe("gumball-machine", function () {
       GumballMachine.provider,
       [requestCU, dispenseInstr],
       [payer],
-      true
+      true,
+      verbose
     );
   }
 
@@ -549,7 +550,7 @@ describe("gumball-machine", function () {
     });
     wallet = new NodeWallet(payer);
     anchor.setProvider(
-      new Provider(connection, wallet, {
+      new AnchorProvider(connection, wallet, {
         commitment: connection.commitment,
         skipPreflight: true,
       })
@@ -1003,7 +1004,7 @@ describe("gumball-machine", function () {
 
       beforeEach(async function () {
         dispenseNFTForTokensInstr = await createDispenseNFTForTokensIx(
-          { numItems: new BN(1) },
+          { numItems: 1 },
           nftBuyer.publicKey,
           nftBuyerTokenAccount.address,
           creatorReceiverTokenAccount.address,
