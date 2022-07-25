@@ -47,6 +47,7 @@ export type WithdrawFeesInstructionAccounts = {
   feePayoutRecipient: web3.PublicKey
   authority: web3.PublicKey
   marketplaceProps: web3.PublicKey
+  systemProgram?: web3.PublicKey
   sysvarRent: web3.PublicKey
 }
 
@@ -66,47 +67,43 @@ export const withdrawFeesInstructionDiscriminator = [
  */
 export function createWithdrawFeesInstruction(
   accounts: WithdrawFeesInstructionAccounts,
-  args: WithdrawFeesInstructionArgs
+  args: WithdrawFeesInstructionArgs,
+  programId = new web3.PublicKey('9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK')
 ) {
-  const { feePayoutRecipient, authority, marketplaceProps, sysvarRent } =
-    accounts
-
   const [data] = withdrawFeesStruct.serialize({
     instructionDiscriminator: withdrawFeesInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: feePayoutRecipient,
+      pubkey: accounts.feePayoutRecipient,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: authority,
+      pubkey: accounts.authority,
       isWritable: false,
       isSigner: true,
     },
     {
-      pubkey: marketplaceProps,
+      pubkey: accounts.marketplaceProps,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: web3.SystemProgram.programId,
+      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: sysvarRent,
+      pubkey: accounts.sysvarRent,
       isWritable: false,
       isSigner: false,
     },
   ]
 
   const ix = new web3.TransactionInstruction({
-    programId: new web3.PublicKey(
-      '9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK'
-    ),
+    programId,
     keys,
     data,
   })

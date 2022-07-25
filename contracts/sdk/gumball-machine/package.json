@@ -5,6 +5,6 @@
   "license": "MIT",
   "dependencies": {
     "@metaplex-foundation/rustbin": "^0.3.1",
-    "@metaplex-foundation/solita": "^0.8.2"
+    "@metaplex-foundation/solita": "^0.12.2"
   }
 }

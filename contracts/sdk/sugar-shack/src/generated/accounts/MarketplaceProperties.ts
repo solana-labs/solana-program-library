@@ -20,7 +20,9 @@ export type MarketplacePropertiesArgs = {
   bump: number
 }
 
-const marketplacePropertiesDiscriminator = [31, 68, 0, 130, 46, 137, 61, 24]
+export const marketplacePropertiesDiscriminator = [
+  31, 68, 0, 130, 46, 137, 61, 24,
+]
 /**
  * Holds the data for the {@link MarketplaceProperties} Account and provides de/serialization
  * functionality for that data
@@ -70,6 +72,23 @@ export class MarketplaceProperties implements MarketplacePropertiesArgs {
       )
     }
     return MarketplaceProperties.fromAccountInfo(accountInfo, 0)[0]
+  }
+
+  /**
+   * Provides a {@link web3.Connection.getProgramAccounts} config builder,
+   * to fetch accounts matching filters that can be specified via that builder.
+   *
+   * @param programId - the program that owns the accounts we are filtering
+   */
+  static gpaBuilder(
+    programId: web3.PublicKey = new web3.PublicKey(
+      '9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK'
+    )
+  ) {
+    return beetSolana.GpaBuilder.fromStruct(
+      programId,
+      marketplacePropertiesBeet
+    )
   }
 
   /**

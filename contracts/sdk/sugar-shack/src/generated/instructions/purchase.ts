@@ -69,6 +69,7 @@ export type PurchaseInstructionAccounts = {
   merkleSlab: web3.PublicKey
   bubblegum: web3.PublicKey
   marketplaceProps: web3.PublicKey
+  systemProgram?: web3.PublicKey
   candyWrapper: web3.PublicKey
 }
 
@@ -88,81 +89,68 @@ export const purchaseInstructionDiscriminator = [
  */
 export function createPurchaseInstruction(
   accounts: PurchaseInstructionAccounts,
-  args: PurchaseInstructionArgs
+  args: PurchaseInstructionArgs,
+  programId = new web3.PublicKey('9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK')
 ) {
-  const {
-    formerOwner,
-    purchaser,
-    listingDelegate,
-    bubblegumAuthority,
-    gummyroll,
-    merkleSlab,
-    bubblegum,
-    marketplaceProps,
-    candyWrapper,
-  } = accounts
-
   const [data] = purchaseStruct.serialize({
     instructionDiscriminator: purchaseInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: formerOwner,
+      pubkey: accounts.formerOwner,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: purchaser,
+      pubkey: accounts.purchaser,
       isWritable: true,
       isSigner: true,
     },
     {
-      pubkey: listingDelegate,
+      pubkey: accounts.listingDelegate,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: bubblegumAuthority,
+      pubkey: accounts.bubblegumAuthority,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: gummyroll,
+      pubkey: accounts.gummyroll,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: merkleSlab,
+      pubkey: accounts.merkleSlab,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: bubblegum,
+      pubkey: accounts.bubblegum,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: marketplaceProps,
+      pubkey: accounts.marketplaceProps,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: web3.SystemProgram.programId,
+      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: candyWrapper,
+      pubkey: accounts.candyWrapper,
       isWritable: false,
       isSigner: false,
     },
   ]
 
   const ix = new web3.TransactionInstruction({
-    programId: new web3.PublicKey(
-      '9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK'
-    ),
+    programId,
     keys,
     data,
   })

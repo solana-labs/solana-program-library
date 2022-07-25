@@ -57,6 +57,7 @@ export type DispenseNftTokenInstructionAccounts = {
   payer: web3.PublicKey
   payerTokens: web3.PublicKey
   receiver: web3.PublicKey
+  tokenProgram?: web3.PublicKey
   willyWonka: web3.PublicKey
   recentBlockhashes: web3.PublicKey
   instructionSysvarAccount: web3.PublicKey
@@ -83,99 +84,83 @@ export const dispenseNftTokenInstructionDiscriminator = [
  */
 export function createDispenseNftTokenInstruction(
   accounts: DispenseNftTokenInstructionAccounts,
-  args: DispenseNftTokenInstructionArgs
+  args: DispenseNftTokenInstructionArgs,
+  programId = new web3.PublicKey('GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW')
 ) {
-  const {
-    gumballMachine,
-    payer,
-    payerTokens,
-    receiver,
-    willyWonka,
-    recentBlockhashes,
-    instructionSysvarAccount,
-    bubblegumAuthority,
-    candyWrapper,
-    gummyroll,
-    merkleSlab,
-    bubblegum,
-  } = accounts
-
   const [data] = dispenseNftTokenStruct.serialize({
     instructionDiscriminator: dispenseNftTokenInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: gumballMachine,
+      pubkey: accounts.gumballMachine,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: payer,
+      pubkey: accounts.payer,
       isWritable: false,
       isSigner: true,
     },
     {
-      pubkey: payerTokens,
+      pubkey: accounts.payerTokens,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: receiver,
+      pubkey: accounts.receiver,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: splToken.TOKEN_PROGRAM_ID,
+      pubkey: accounts.tokenProgram ?? splToken.TOKEN_PROGRAM_ID,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: willyWonka,
+      pubkey: accounts.willyWonka,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: recentBlockhashes,
+      pubkey: accounts.recentBlockhashes,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: instructionSysvarAccount,
+      pubkey: accounts.instructionSysvarAccount,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: bubblegumAuthority,
+      pubkey: accounts.bubblegumAuthority,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: candyWrapper,
+      pubkey: accounts.candyWrapper,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: gummyroll,
+      pubkey: accounts.gummyroll,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: merkleSlab,
+      pubkey: accounts.merkleSlab,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: bubblegum,
+      pubkey: accounts.bubblegum,
       isWritable: false,
       isSigner: false,
     },
   ]
 
   const ix = new web3.TransactionInstruction({
-    programId: new web3.PublicKey(
-      'GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW'
-    ),
+    programId,
     keys,
     data,
   })

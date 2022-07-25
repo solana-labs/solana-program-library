@@ -45,29 +45,28 @@ export const destroyInstructionDiscriminator = [
  * @category Destroy
  * @category generated
  */
-export function createDestroyInstruction(accounts: DestroyInstructionAccounts) {
-  const { gumballMachine, authority } = accounts
-
+export function createDestroyInstruction(
+  accounts: DestroyInstructionAccounts,
+  programId = new web3.PublicKey('GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW')
+) {
   const [data] = destroyStruct.serialize({
     instructionDiscriminator: destroyInstructionDiscriminator,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: gumballMachine,
+      pubkey: accounts.gumballMachine,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: authority,
+      pubkey: accounts.authority,
       isWritable: true,
       isSigner: true,
     },
   ]
 
   const ix = new web3.TransactionInstruction({
-    programId: new web3.PublicKey(
-      'GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW'
-    ),
+    programId,
     keys,
     data,
   })

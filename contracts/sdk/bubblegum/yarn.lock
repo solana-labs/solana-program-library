@@ -68,10 +68,10 @@
     text-table "^0.2.0"
     toml "^3.0.0"
 
-"@metaplex-foundation/solita@^0.12.0":
-  version "0.12.1"
-  resolved "https://registry.yarnpkg.com/@metaplex-foundation/solita/-/solita-0.12.1.tgz#8daee36ab1cef6e2651745348b1b071016e2d9bb"
-  integrity sha512-N8REWIZS2ChKvp5dPtPXlR8Y+dJSe0TQ28x1cs+PuYXuDmFO5tjuy3AvbcouoQ+0TAP9OsbvFQV+22T+igh3jg==
+"@metaplex-foundation/solita@^0.12.2":
+  version "0.12.2"
+  resolved "https://registry.yarnpkg.com/@metaplex-foundation/solita/-/solita-0.12.2.tgz#13ef213ac183c986f6d01c5d981c44e59a900834"
+  integrity sha512-oczMfE43NNHWweSqhXPTkQBUbap/aAiwjDQw8zLKNnd/J8sXr/0+rKcN5yJIEgcHeKRkp90eTqkmt2WepQc8yw==
   dependencies:
     "@metaplex-foundation/beet" "^0.4.0"
     "@metaplex-foundation/beet-solana" "^0.3.0"

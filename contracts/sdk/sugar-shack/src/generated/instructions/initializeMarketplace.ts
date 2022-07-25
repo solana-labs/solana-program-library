@@ -47,6 +47,7 @@ export const initializeMarketplaceStruct = new beet.BeetArgsStruct<
 export type InitializeMarketplaceInstructionAccounts = {
   payer: web3.PublicKey
   marketplaceProps: web3.PublicKey
+  systemProgram?: web3.PublicKey
 }
 
 export const initializeMarketplaceInstructionDiscriminator = [
@@ -65,36 +66,33 @@ export const initializeMarketplaceInstructionDiscriminator = [
  */
 export function createInitializeMarketplaceInstruction(
   accounts: InitializeMarketplaceInstructionAccounts,
-  args: InitializeMarketplaceInstructionArgs
+  args: InitializeMarketplaceInstructionArgs,
+  programId = new web3.PublicKey('9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK')
 ) {
-  const { payer, marketplaceProps } = accounts
-
   const [data] = initializeMarketplaceStruct.serialize({
     instructionDiscriminator: initializeMarketplaceInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: payer,
+      pubkey: accounts.payer,
       isWritable: true,
       isSigner: true,
     },
     {
-      pubkey: marketplaceProps,
+      pubkey: accounts.marketplaceProps,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: web3.SystemProgram.programId,
+      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
       isWritable: false,
       isSigner: false,
     },
   ]
 
   const ix = new web3.TransactionInstruction({
-    programId: new web3.PublicKey(
-      '9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK'
-    ),
+    programId,
     keys,
     data,
   })
