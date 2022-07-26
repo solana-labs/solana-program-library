@@ -24,15 +24,15 @@ use {
     std::{sync::Arc, time::Instant},
 };
 
-struct CustomSigner(Vec<Arc<dyn solana_sdk::signature::Signer>>);
+struct ArcSigner(Vec<Arc<dyn Signer>>);
 
-impl From<Vec<Arc<dyn solana_sdk::signature::Signer>>> for CustomSigner {
+impl From<Vec<Arc<dyn Signer>>> for ArcSigner {
     fn from(vec: Vec<Arc<dyn Signer>>) -> Self {
         Self(vec)
     }
 }
 
-impl Signers for CustomSigner {
+impl Signers for ArcSigner {
     fn pubkeys(&self) -> Vec<Pubkey> {
         self.0.iter().map(|keypair| keypair.pubkey()).collect()
     }
@@ -510,8 +510,8 @@ fn send_messages(
         &config.websocket_url,
         TpuClientConfig::default(),
     )?;
-    let transaction_errors =
-        tpu_client.send_and_confirm_messages_with_spinner::<CustomSigner>(messages, &signers.into())?;
+    let transaction_errors = tpu_client
+        .send_and_confirm_messages_with_spinner::<ArcSigner>(messages, &signers.into())?;
 
     for (i, transaction_error) in transaction_errors.into_iter().enumerate() {
         if let Some(transaction_error) = transaction_error {
