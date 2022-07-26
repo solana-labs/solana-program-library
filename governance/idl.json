@@ -1,17 +1,18 @@
 {
-	"version": "0.0.0",
-	"name": "",
-	"docs": [],
-	"ref": "https://github.com/solana-labs/solana-program-library/tree/4d1f8169a97a6df10ba5027d2036a303317fc7a0",
+	"version": "0.1.0",
+	"name": "governance",
+	"docs": [
+		"@ref https://github.com/solana-labs/solana-program-library/tree/4d1f8169a97a6df10ba5027d2036a303317fc7a0"
+	],
 	"instructions": [
 		{
-			"name": "CreateRealm",
+			"name": "createRealm",
 			"docs": [
 				"Creates Governance Realm account which aggregates governances for given Community Mint and optional Council Mint"
 			],
 			"accounts": [
 				{
-					"name": "governanceRealm",
+					"name": "governanceRealmAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -35,7 +36,7 @@
 					]
 				},
 				{
-					"name": "communityTokenHolding",
+					"name": "communityTokenHoldingAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -76,7 +77,7 @@
 					]
 				},
 				{
-					"name": "councilTokenMint",
+					"name": "councilTokenMintOptional",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -84,7 +85,7 @@
 					]
 				},
 				{
-					"name": "councilTokenHolding",
+					"name": "councilTokenHoldingAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -93,7 +94,7 @@
 					]
 				},
 				{
-					"name": "optionalCommunityVoter",
+					"name": "optionalCommunityVoterWeightAddin",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -101,7 +102,7 @@
 					]
 				},
 				{
-					"name": "optionalMaxCommunity",
+					"name": "optionalMaxCommunityVoterWeight",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -109,7 +110,7 @@
 					]
 				},
 				{
-					"name": "optionalRealmConfig",
+					"name": "optionalRealmConfigAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -128,7 +129,7 @@
 			]
 		},
 		{
-			"name": "DepositGoverningTokens",
+			"name": "depositGoverningTokens",
 			"docs": [
 				"Deposits governing tokens (Community or Council) to Governance Realm and establishes your voter weight to be used for voting within the Realm",
 				"Note: If subsequent (top up) deposit is made and there are active votes for the Voter then the vote weights won't be updated automatically",
@@ -136,7 +137,7 @@
 			],
 			"accounts": [
 				{
-					"name": "governanceRealm",
+					"name": "governanceRealmAccount",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -144,7 +145,7 @@
 					]
 				},
 				{
-					"name": "governingTokenHolding",
+					"name": "governingTokenHoldingAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -152,7 +153,7 @@
 					]
 				},
 				{
-					"name": "governingTokenSource",
+					"name": "governingTokenSourceAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -160,7 +161,7 @@
 					]
 				},
 				{
-					"name": "governingTokenOwner",
+					"name": "governingTokenOwnerAccount",
 					"isMut": false,
 					"isSigner": true,
 					"docs": [
@@ -168,7 +169,7 @@
 					]
 				},
 				{
-					"name": "governingTokenTransfer",
+					"name": "governingTokenTransferAuthority",
 					"isMut": false,
 					"isSigner": true,
 					"docs": [
@@ -176,7 +177,7 @@
 					]
 				},
 				{
-					"name": "tokenOwnerRecord",
+					"name": "tokenOwnerRecordAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -225,7 +226,7 @@
 			]
 		},
 		{
-			"name": "WithdrawGoverningTokens",
+			"name": "withdrawGoverningTokens",
 			"docs": [
 				"Withdraws governing tokens (Community or Council) from Governance Realm and downgrades your voter weight within the Realm",
 				"Note: It's only possible to withdraw tokens if the Voter doesn't have any outstanding active votes",
@@ -233,7 +234,7 @@
 			],
 			"accounts": [
 				{
-					"name": "governanceRealm",
+					"name": "governanceRealmAccount",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -241,7 +242,7 @@
 					]
 				},
 				{
-					"name": "governingTokenHolding",
+					"name": "governingTokenHoldingAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -249,7 +250,7 @@
 					]
 				},
 				{
-					"name": "governingTokenDestination",
+					"name": "governingTokenDestinationAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -257,7 +258,7 @@
 					]
 				},
 				{
-					"name": "governingTokenOwner",
+					"name": "governingTokenOwnerAccount",
 					"isMut": false,
 					"isSigner": true,
 					"docs": [
@@ -265,7 +266,7 @@
 					]
 				},
 				{
-					"name": "tokenOwner",
+					"name": "tokenOwnerRecord",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -281,10 +282,10 @@
 					]
 				}
 			],
-			"args": null
+			"args": []
 		},
 		{
-			"name": "SetGovernanceDelegate",
+			"name": "setGovernanceDelegate",
 			"docs": [
 				"Sets Governance Delegate for the given Realm and Governing Token Mint (Community or Council)",
 				"The Delegate would have voting rights and could vote on behalf of the Governing Token Owner",
@@ -293,7 +294,7 @@
 			],
 			"accounts": [
 				{
-					"name": "currentGovernanceDelegate",
+					"name": "currentGovernanceDelegateOrGoverning",
 					"isMut": false,
 					"isSigner": true,
 					"docs": [
@@ -301,7 +302,7 @@
 					]
 				},
 				{
-					"name": "tokenOwner",
+					"name": "tokenOwnerRecord",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -320,7 +321,7 @@
 			]
 		},
 		{
-			"name": "CreateGovernance",
+			"name": "createGovernance",
 			"docs": [
 				"Creates Governance account which can be used to govern any arbitrary Solana account or asset"
 			],
@@ -334,7 +335,7 @@
 					]
 				},
 				{
-					"name": "accountGovernanceAccount",
+					"name": "accountGovernanceAccountPDASeeds",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -342,7 +343,7 @@
 					]
 				},
 				{
-					"name": "accountGovernedBy",
+					"name": "accountGovernedByGovernance",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -351,7 +352,7 @@
 					]
 				},
 				{
-					"name": "governingTokenOwner",
+					"name": "governingTokenOwnerRecord",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -399,7 +400,7 @@
 					]
 				},
 				{
-					"name": "optionalVoterWeight",
+					"name": "optionalVoterWeightRecord",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -418,7 +419,7 @@
 			]
 		},
 		{
-			"name": "CreateProgramGovernance",
+			"name": "createProgramGovernance",
 			"docs": [
 				"Creates Program Governance account which governs an upgradable program"
 			],
@@ -432,7 +433,7 @@
 					]
 				},
 				{
-					"name": "programGovernance",
+					"name": "programGovernanceAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -440,7 +441,7 @@
 					]
 				},
 				{
-					"name": "programGovernedBy",
+					"name": "programGovernedByGovernance",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -448,7 +449,7 @@
 					]
 				},
 				{
-					"name": "programData",
+					"name": "programDataAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -456,7 +457,7 @@
 					]
 				},
 				{
-					"name": "currentUpgradeAuthority",
+					"name": "currentUpgradeAuthorityAccount",
 					"isMut": false,
 					"isSigner": true,
 					"docs": [
@@ -464,7 +465,7 @@
 					]
 				},
 				{
-					"name": "governingTokenOwner",
+					"name": "governingTokenOwnerRecord",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -480,7 +481,7 @@
 					]
 				},
 				{
-					"name": "bpfUpgradeableLoaderProgram",
+					"name": "bpfupgradeableloaderProgram",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -520,7 +521,7 @@
 					]
 				},
 				{
-					"name": "optionalVoterWeight",
+					"name": "optionalVoterWeightRecord",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -537,7 +538,7 @@
 			]
 		},
 		{
-			"name": "CreateProposal",
+			"name": "createProposal",
 			"docs": [
 				"Creates Proposal account for Transactions which will be executed at some point in the future"
 			],
@@ -567,7 +568,7 @@
 					]
 				},
 				{
-					"name": "tokenOwnerRecord",
+					"name": "tokenOwnerRecordAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -575,7 +576,7 @@
 					]
 				},
 				{
-					"name": "governingTokenMint",
+					"name": "governingTokenMintProposalIs",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -583,7 +584,7 @@
 					]
 				},
 				{
-					"name": "governanceAuthoritytoken",
+					"name": "governanceAuthorityTokenOwnerOr",
 					"isMut": false,
 					"isSigner": true,
 					"docs": [
@@ -615,7 +616,7 @@
 					]
 				},
 				{
-					"name": "optionalVoterWeight",
+					"name": "optionalVoterWeightRecord",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -632,7 +633,7 @@
 			]
 		},
 		{
-			"name": "AddSignatory",
+			"name": "addSignatory",
 			"docs": [
 				"Adds a signatory to the Proposal which means this Proposal can't leave Draft state until yet another Signatory signs"
 			],
@@ -646,7 +647,7 @@
 					]
 				},
 				{
-					"name": "tokenOwnerRecord",
+					"name": "tokenOwnerRecordAccount",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -654,7 +655,7 @@
 					]
 				},
 				{
-					"name": "governanceAuthoritytoken",
+					"name": "governanceAuthorityTokenOwnerOr",
 					"isMut": false,
 					"isSigner": true,
 					"docs": [
@@ -662,7 +663,7 @@
 					]
 				},
 				{
-					"name": "signatoryRecord",
+					"name": "signatoryRecordAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -703,7 +704,7 @@
 			]
 		},
 		{
-			"name": "RemoveSignatory",
+			"name": "removeSignatory",
 			"docs": [
 				"Removes a Signatory from the Proposal"
 			],
@@ -717,7 +718,7 @@
 					]
 				},
 				{
-					"name": "tokenOwnerRecord",
+					"name": "tokenOwnerRecordAccount",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -725,7 +726,7 @@
 					]
 				},
 				{
-					"name": "governanceAuthoritytoken",
+					"name": "governanceAuthorityTokenOwnerOr",
 					"isMut": false,
 					"isSigner": true,
 					"docs": [
@@ -733,7 +734,7 @@
 					]
 				},
 				{
-					"name": "signatoryRecord",
+					"name": "signatoryRecordAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -758,7 +759,7 @@
 			]
 		},
 		{
-			"name": "InsertTransaction",
+			"name": "insertTransaction",
 			"docs": [
 				"Inserts Transaction with a set of instructions for the Proposal at the given index position",
 				"New Transaction must be inserted at the end of the range indicated by Proposal transactions_next_index",
@@ -782,7 +783,7 @@
 					]
 				},
 				{
-					"name": "tokenOwnerRecord",
+					"name": "tokenOwnerRecordAccount",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -790,7 +791,7 @@
 					]
 				},
 				{
-					"name": "governanceAuthoritytoken",
+					"name": "governanceAuthorityTokenOwnerOr",
 					"isMut": false,
 					"isSigner": true,
 					"docs": [
@@ -798,7 +799,7 @@
 					]
 				},
 				{
-					"name": "proposalTransaction",
+					"name": "proposalTransactionAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -843,7 +844,7 @@
 			]
 		},
 		{
-			"name": "RemoveTransaction",
+			"name": "removeTransaction",
 			"docs": [
 				"Removes Transaction from the Proposal"
 			],
@@ -857,7 +858,7 @@
 					]
 				},
 				{
-					"name": "tokenOwnerRecord",
+					"name": "tokenOwnerRecordAccount",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -865,7 +866,7 @@
 					]
 				},
 				{
-					"name": "governanceAuthoritytoken",
+					"name": "governanceAuthorityTokenOwnerOr",
 					"isMut": false,
 					"isSigner": true,
 					"docs": [
@@ -873,7 +874,7 @@
 					]
 				},
 				{
-					"name": "proposalTransaction",
+					"name": "proposalTransactionAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -892,7 +893,7 @@
 			"args": []
 		},
 		{
-			"name": "CancelProposal",
+			"name": "cancelProposal",
 			"docs": [
 				"Cancels Proposal by changing its state to Canceled"
 			],
@@ -922,7 +923,7 @@
 					]
 				},
 				{
-					"name": "tokenOwnerRecord",
+					"name": "tokenOwnerRecordAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -930,7 +931,7 @@
 					]
 				},
 				{
-					"name": "governanceAuthoritytoken",
+					"name": "governanceAuthorityTokenOwnerOr",
 					"isMut": false,
 					"isSigner": true,
 					"docs": [
@@ -941,7 +942,7 @@
 			"args": []
 		},
 		{
-			"name": "SignOffProposal",
+			"name": "signOffProposal",
 			"docs": [
 				"Signs off Proposal indicating the Signatory approves the Proposal",
 				"When the last Signatory signs off the Proposal it enters Voting state",
@@ -984,26 +985,18 @@
 					]
 				},
 				{
-					"name": "tokenOwnerRecord",
+					"name": "tokenOwnerRecordForProposal",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
 						"TokenOwnerRecord for the Proposal owner, required when the owner signs off the Proposal"
-					]
-				},
-				{
-					"name": "signatoryRecord",
-					"isMut": true,
-					"isSigner": false,
-					"docs": [
-						"SignatoryRecord account, required when non owner sings off the Proposal"
 					]
 				}
 			],
 			"args": []
 		},
 		{
-			"name": "CastVote",
+			"name": "castVote",
 			"docs": [
 				"Uses your voter weight (deposited Community or Council tokens) to cast a vote on a Proposal",
 				"By doing so you indicate you approve or disapprove of running the Proposal set of transactions",
@@ -1035,7 +1028,7 @@
 					]
 				},
 				{
-					"name": "tokenOwnerRecord",
+					"name": "tokenOwnerRecordOfProposal",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -1043,7 +1036,7 @@
 					]
 				},
 				{
-					"name": "tokenOwnerRecord",
+					"name": "tokenOwnerRecordOfVoter",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -1051,7 +1044,7 @@
 					]
 				},
 				{
-					"name": "governanceAuthoritytoken",
+					"name": "governanceAuthorityTokenOwnerOr",
 					"isMut": false,
 					"isSigner": true,
 					"docs": [
@@ -1059,7 +1052,7 @@
 					]
 				},
 				{
-					"name": "proposalVoteRecord",
+					"name": "proposalVoteRecordAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -1067,7 +1060,7 @@
 					]
 				},
 				{
-					"name": "governingTokenMint",
+					"name": "theGoverningTokenMintWhich",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -1103,7 +1096,7 @@
 					]
 				},
 				{
-					"name": "optionalVoterWeight",
+					"name": "optionalVoterWeightRecord",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -1111,7 +1104,7 @@
 					]
 				},
 				{
-					"name": "optionalMaxVoter",
+					"name": "optionalMaxVoterWeightRecord",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -1130,7 +1123,7 @@
 			]
 		},
 		{
-			"name": "FinalizeVote",
+			"name": "finalizeVote",
 			"docs": [
 				"Finalizes vote in case the Vote was not automatically tipped within max_voting_time period"
 			],
@@ -1160,7 +1153,7 @@
 					]
 				},
 				{
-					"name": "tokenOwnerRecord",
+					"name": "tokenOwnerRecordOfProposal",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -1184,7 +1177,7 @@
 					]
 				},
 				{
-					"name": "optionalMaxVoter",
+					"name": "optionalMaxVoterWeightRecord",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -1192,10 +1185,10 @@
 					]
 				}
 			],
-			"args": null
+			"args": []
 		},
 		{
-			"name": "RelinquishVote",
+			"name": "relinquishVote",
 			"docs": [
 				"Relinquish Vote removes voter weight from a Proposal and removes it from voter's active votes",
 				"If the Proposal is still being voted on then the voter's weight won't count towards the vote outcome",
@@ -1228,7 +1221,7 @@
 					]
 				},
 				{
-					"name": "tokenOwnerRecord",
+					"name": "tokenOwnerRecordAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -1236,7 +1229,7 @@
 					]
 				},
 				{
-					"name": "proposalVoteRecord",
+					"name": "proposalVoteRecordAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -1244,7 +1237,7 @@
 					]
 				},
 				{
-					"name": "governingTokenMint",
+					"name": "theGoverningTokenMintWhich",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -1252,7 +1245,7 @@
 					]
 				},
 				{
-					"name": "optionalGovernanceAuthority",
+					"name": "optionalGovernanceAuthorityTokenOwner",
 					"isMut": false,
 					"isSigner": true,
 					"docs": [
@@ -1261,7 +1254,7 @@
 					]
 				},
 				{
-					"name": "optionalBeneficiary",
+					"name": "optionalBeneficiaryAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -1273,7 +1266,7 @@
 			"args": []
 		},
 		{
-			"name": "ExecuteTransaction",
+			"name": "executeTransaction",
 			"docs": [
 				"Executes a Transaction in the Proposal",
 				"Anybody can execute transaction once Proposal has been voted Yes and transaction_hold_up time has passed",
@@ -1298,7 +1291,7 @@
 					]
 				},
 				{
-					"name": "proposalTransaction",
+					"name": "proposalTransactionAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -1310,7 +1303,7 @@
 			"args": []
 		},
 		{
-			"name": "CreateMintGovernance",
+			"name": "createMintGovernance",
 			"docs": [
 				"Creates Mint Governance account which governs a mint"
 			],
@@ -1324,7 +1317,7 @@
 					]
 				},
 				{
-					"name": "mintGovernance",
+					"name": "mintGovernanceAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -1332,7 +1325,7 @@
 					]
 				},
 				{
-					"name": "mintGovernedBy",
+					"name": "mintGovernedByGovernance",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -1340,7 +1333,7 @@
 					]
 				},
 				{
-					"name": "currentMintAuthority",
+					"name": "currentMintAuthorityMintTokens",
 					"isMut": false,
 					"isSigner": true,
 					"docs": [
@@ -1348,7 +1341,7 @@
 					]
 				},
 				{
-					"name": "governingTokenOwner",
+					"name": "governingTokenOwnerRecord",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -1404,7 +1397,7 @@
 					]
 				},
 				{
-					"name": "optionalVoterWeight",
+					"name": "optionalVoterWeightRecord",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -1421,7 +1414,7 @@
 			]
 		},
 		{
-			"name": "CreateTokenGovernance",
+			"name": "createTokenGovernance",
 			"docs": [
 				"Creates Token Governance account which governs a token account"
 			],
@@ -1435,7 +1428,7 @@
 					]
 				},
 				{
-					"name": "tokenGovernance",
+					"name": "tokenGovernanceAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -1451,7 +1444,7 @@
 					]
 				},
 				{
-					"name": "currentToken",
+					"name": "currentTokenAccount",
 					"isMut": false,
 					"isSigner": true,
 					"docs": [
@@ -1459,7 +1452,7 @@
 					]
 				},
 				{
-					"name": "governingTokenOwner",
+					"name": "governingTokenOwnerRecord",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -1515,7 +1508,7 @@
 					]
 				},
 				{
-					"name": "optionalVoterWeight",
+					"name": "optionalVoterWeightRecord",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -1532,7 +1525,7 @@
 			]
 		},
 		{
-			"name": "SetGovernanceConfig",
+			"name": "setGovernanceConfig",
 			"docs": [
 				"Sets GovernanceConfig for a Governance"
 			],
@@ -1546,7 +1539,7 @@
 					]
 				},
 				{
-					"name": "governanceAccount",
+					"name": "theGovernanceAccount",
 					"isMut": true,
 					"isSigner": true,
 					"docs": [
@@ -1565,7 +1558,7 @@
 			]
 		},
 		{
-			"name": "FlagTransactionError",
+			"name": "flagTransactionError",
 			"docs": [
 				"Flags a transaction and its parent Proposal with error status",
 				"It can be used by Proposal owner in case the transaction is permanently broken and can't be executed",
@@ -1582,7 +1575,7 @@
 					]
 				},
 				{
-					"name": "tokenOwnerRecord",
+					"name": "tokenOwnerRecordAccount",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -1590,7 +1583,7 @@
 					]
 				},
 				{
-					"name": "governanceAuthoritytoken",
+					"name": "governanceAuthorityTokenOwnerOr",
 					"isMut": false,
 					"isSigner": true,
 					"docs": [
@@ -1598,7 +1591,7 @@
 					]
 				},
 				{
-					"name": "proposalTransaction",
+					"name": "proposalTransactionAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -1609,7 +1602,7 @@
 			"args": []
 		},
 		{
-			"name": "SetRealmAuthority",
+			"name": "setRealmAuthority",
 			"docs": [
 				"Sets new Realm authority"
 			],
@@ -1631,7 +1624,7 @@
 					]
 				},
 				{
-					"name": "newRealmAuthority",
+					"name": "newRealmAuthorityMustBe",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -1650,7 +1643,7 @@
 			]
 		},
 		{
-			"name": "SetRealmConfig",
+			"name": "setRealmConfig",
 			"docs": [
 				"Sets realm config"
 			],
@@ -1672,7 +1665,7 @@
 					]
 				},
 				{
-					"name": "councilTokenMint",
+					"name": "councilTokenMintOptional",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -1683,7 +1676,7 @@
 					]
 				},
 				{
-					"name": "councilTokenHolding",
+					"name": "councilTokenHoldingAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -1700,7 +1693,7 @@
 					]
 				},
 				{
-					"name": "realmConfig",
+					"name": "realmConfigAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -1708,7 +1701,7 @@
 					]
 				},
 				{
-					"name": "optionalCommunityVoter",
+					"name": "optionalCommunityVoterWeightAddin",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -1716,7 +1709,7 @@
 					]
 				},
 				{
-					"name": "optionalMaxCommunity",
+					"name": "optionalMaxCommunityVoterWeight",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -1743,7 +1736,7 @@
 			]
 		},
 		{
-			"name": "CreateTokenOwnerRecord",
+			"name": "createTokenOwnerRecord",
 			"docs": [
 				"Creates TokenOwnerRecord with 0 deposit amount",
 				"It's used to register TokenOwner when voter weight addin is used and the Governance program doesn't take deposits"
@@ -1758,7 +1751,7 @@
 					]
 				},
 				{
-					"name": "governingTokenOwner",
+					"name": "governingTokenOwnerAccount",
 					"isMut": false,
 					"isSigner": false,
 					"docs": [
@@ -1766,7 +1759,7 @@
 					]
 				},
 				{
-					"name": "tokenOwnerRecord",
+					"name": "tokenOwnerRecordAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -1798,17 +1791,17 @@
 					]
 				}
 			],
-			"args": null
+			"args": []
 		},
 		{
-			"name": "UpdateProgramMetadata",
+			"name": "updateProgramMetadata",
 			"docs": [
 				"Updates ProgramMetadata account",
 				"The instruction dumps information implied by the program's code into a persistent account"
 			],
 			"accounts": [
 				{
-					"name": "programMetadata",
+					"name": "programMetadataAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -1832,10 +1825,10 @@
 					]
 				}
 			],
-			"args": null
+			"args": []
 		},
 		{
-			"name": "CreateNativeTreasury",
+			"name": "createNativeTreasury",
 			"docs": [
 				"Creates native SOL treasury account for a Governance account",
 				"The account has no data and can be used as a payer for instructions signed by Governance PDAs or as a native SOL treasury"
@@ -1850,7 +1843,7 @@
 					]
 				},
 				{
-					"name": "nativeTreasury",
+					"name": "nativeTreasuryAccount",
 					"isMut": true,
 					"isSigner": false,
 					"docs": [
@@ -2116,56 +2109,6 @@
 			]
 		},
 		{
-			"name": "VoteThreshold",
-			"type": {
-				"kind": "enum",
-				"variants": [
-					{
-						"name": "YesVotePercentage",
-						"fields": [
-							{
-								"name": "F0",
-								"type": "u8",
-								"docs": [
-									"Voting threshold of Yes votes in % required to tip the vote (Approval Quorum)",
-									"It's the percentage of tokens out of the entire pool of governance tokens eligible to vote",
-									"Note: If the threshold is below or equal to 50% then an even split of votes ex: 50:50 or 40:40 is always resolved as Defeated",
-									"In other words a '+1 vote' tie breaker is always required to have a successful vote"
-								]
-							}
-						]
-					},
-					{
-						"name": "QuorumPercentage",
-						"fields": [
-							{
-								"name": "F0",
-								"type": "u8",
-								"docs": [
-									"The minimum number of votes in % out of the entire pool of governance tokens eligible to vote",
-									"which must be cast for the vote to be valid",
-									"Once the quorum is achieved a simple majority (50%+1) of Yes votes is required for the vote to succeed",
-									"Note: Quorum is not implemented in the current version"
-								]
-							}
-						]
-					},
-					{
-						"name": "Disabled",
-						"docs": [
-							"Disabled vote threshold indicates the given voting population (community or council) is not allowed to vote",
-							"on proposals for the given Governance"
-						]
-					}
-				]
-			},
-			"docs": [
-				"The type of the vote threshold used to resolve a vote on a Proposal",
-				"",
-				"Note: In the current version only YesVotePercentage and Disabled thresholds are supported"
-			]
-		},
-		{
 			"name": "VoteTipping",
 			"type": {
 				"kind": "enum",
@@ -2263,121 +2206,6 @@
 			},
 			"docs": [
 				"Transaction execution flags defining how instructions are executed for a Proposal"
-			]
-		},
-		{
-			"name": "MintMaxVoteWeightSource",
-			"type": {
-				"kind": "enum",
-				"variants": [
-					{
-						"name": "SupplyFraction",
-						"fields": [
-							{
-								"name": "F0",
-								"type": "u64",
-								"docs": [
-									"Fraction (10^10 precision) of the governing mint supply is used as max vote weight",
-									"The default is 100% (10^10) to use all available mint supply for voting"
-								]
-							}
-						]
-					},
-					{
-						"name": "Absolute",
-						"fields": [
-							{
-								"name": "F0",
-								"type": "u64",
-								"docs": [
-									"Absolute value, irrelevant of the actual mint supply, is used as max vote weight",
-									"Note: this option is not implemented in the current version"
-								]
-							}
-						]
-					}
-				]
-			},
-			"docs": [
-				"The source of max vote weight used for voting",
-				"Values below 100% mint supply can be used when the governing token is fully minted but not distributed yet"
-			]
-		},
-		{
-			"name": "GovernanceConfig",
-			"type": {
-				"kind": "struct",
-				"fields": [
-					{
-						"name": "community_vote_threshold",
-						"type": {
-							"defined": "VoteThreshold"
-						},
-						"docs": [
-							"The type of the vote threshold used for community vote",
-							"Note: In the current version only YesVotePercentage and Disabled thresholds are supported"
-						]
-					},
-					{
-						"name": "min_community_weight_to_create_proposal",
-						"type": "u64",
-						"docs": [
-							"Minimum community weight a governance token owner must possess to be able to create a proposal"
-						]
-					},
-					{
-						"name": "min_transaction_hold_up_time",
-						"type": "u32",
-						"docs": [
-							"Minimum waiting time in seconds for a transaction to be executed after proposal is voted on"
-						]
-					},
-					{
-						"name": "max_voting_time",
-						"type": "u32",
-						"docs": [
-							"Time limit in seconds for proposal to be open for voting"
-						]
-					},
-					{
-						"name": "vote_tipping",
-						"type": {
-							"defined": "VoteTipping"
-						},
-						"docs": [
-							"Conditions under which a vote will complete early"
-						]
-					},
-					{
-						"name": "council_vote_threshold",
-						"type": {
-							"defined": "VoteThreshold"
-						},
-						"docs": [
-							"The type of the vote threshold used for council vote",
-							"Note: In the current version only YesVotePercentage and Disabled thresholds are supported"
-						]
-					},
-					{
-						"name": "council_veto_vote_threshold",
-						"type": {
-							"defined": "VoteThreshold"
-						},
-						"docs": [
-							"The threshold for Council Veto votes"
-						]
-					},
-					{
-						"name": "min_council_weight_to_create_proposal",
-						"type": "u64",
-						"docs": [
-							"Minimum council weight a governance token owner must possess to be able to create a proposal"
-						]
-					}
-				]
-			},
-			"docs": [
-				"Governance config"
 			]
 		},
 		{
@@ -2845,9 +2673,7 @@
 					{
 						"name": "voting_at_slot",
 						"type": {
-							"option": {
-								"defined": "Slot"
-							}
+							"option": "u64"
 						},
 						"docs": [
 							"When the Proposal began voting as Slot",
@@ -3047,41 +2873,6 @@
 			]
 		},
 		{
-			"name": "VoteWeightV1",
-			"type": {
-				"kind": "enum",
-				"variants": [
-					{
-						"name": "Yes",
-						"fields": [
-							{
-								"name": "F0",
-								"type": "u64",
-								"docs": [
-									"Yes vote"
-								]
-							}
-						]
-					},
-					{
-						"name": "No",
-						"fields": [
-							{
-								"name": "F0",
-								"type": "u64",
-								"docs": [
-									"No vote"
-								]
-							}
-						]
-					}
-				]
-			},
-			"docs": [
-				"Vote  with number of votes"
-			]
-		},
-		{
 			"name": "VoteRecordV1",
 			"type": {
 				"kind": "struct",
@@ -3136,7 +2927,7 @@
 			"name": "NativeTreasury",
 			"type": {
 				"kind": "struct",
-				"fields": null
+				"fields": []
 			},
 			"docs": [
 				"Treasury account",
@@ -3159,9 +2950,7 @@
 					},
 					{
 						"name": "updated_at",
-						"type": {
-							"defined": "Slot"
-						},
+						"type": "u64",
 						"docs": [
 							"The slot when the metadata was captured"
 						]
@@ -3447,9 +3236,7 @@
 					{
 						"name": "voting_at_slot",
 						"type": {
-							"option": {
-								"defined": "Slot"
-							}
+							"option": "u64"
 						},
 						"docs": [
 							"When the Proposal began voting as Slot",
@@ -4180,57 +3967,6 @@
 			]
 		},
 		{
-			"name": "RealmConfigArgs",
-			"type": {
-				"kind": "struct",
-				"fields": [
-					{
-						"name": "use_council_mint",
-						"type": "bool",
-						"docs": [
-							"Indicates whether council_mint should be used",
-							"If yes then council_mint account must also be passed to the instruction"
-						]
-					},
-					{
-						"name": "min_community_weight_to_create_governance",
-						"type": "u64",
-						"docs": [
-							"Min number of community tokens required to create a governance"
-						]
-					},
-					{
-						"name": "community_mint_max_vote_weight_source",
-						"type": {
-							"defined": "MintMaxVoteWeightSource"
-						},
-						"docs": [
-							"The source used for community mint max vote weight source"
-						]
-					},
-					{
-						"name": "use_community_voter_weight_addin",
-						"type": "bool",
-						"docs": [
-							"Indicates whether an external addin program should be used to provide community voters weights",
-							"If yes then the voters weight program account must be passed to the instruction"
-						]
-					},
-					{
-						"name": "use_max_community_voter_weight_addin",
-						"type": "bool",
-						"docs": [
-							"Indicates whether an external addin program should be used to provide max voters weight for the community mint",
-							"If yes then the max voter weight program account must be passed to the instruction"
-						]
-					}
-				]
-			},
-			"docs": [
-				"Realm Config instruction args"
-			]
-		},
-		{
 			"name": "SetRealmAuthorityAction",
 			"type": {
 				"kind": "enum",
@@ -4260,44 +3996,6 @@
 			},
 			"docs": [
 				"SetRealmAuthority instruction action"
-			]
-		},
-		{
-			"name": "InstructionData",
-			"type": {
-				"kind": "struct",
-				"fields": [
-					{
-						"name": "program_id",
-						"type": "publicKey",
-						"docs": [
-							"Pubkey of the instruction processor that executes this instruction"
-						]
-					},
-					{
-						"name": "accounts",
-						"type": {
-							"vec": {
-								"defined": "AccountMetaData"
-							}
-						},
-						"docs": [
-							"Metadata for what accounts should be passed to the instruction processor"
-						]
-					},
-					{
-						"name": "data",
-						"type": {
-							"vec": "u8"
-						},
-						"docs": [
-							"Opaque data passed to the instruction processor"
-						]
-					}
-				]
-			},
-			"docs": [
-				"InstructionData wrapper. It can be removed once Borsh serialization for Instruction is supported in the SDK"
 			]
 		},
 		{
@@ -4381,38 +4079,6 @@
 			},
 			"docs": [
 				"Realm Config instruction args"
-			]
-		},
-		{
-			"name": "SetRealmAuthorityAction",
-			"type": {
-				"kind": "enum",
-				"variants": [
-					{
-						"name": "SetUnchecked",
-						"docs": [
-							"Sets realm authority without any checks",
-							"Uncheck option allows to set the realm authority to non governance accounts"
-						]
-					},
-					{
-						"name": "SetChecked",
-						"docs": [
-							"Sets realm authority and checks the new new authority is one of the realm's governances",
-							"Note: This is not a security feature because governance creation is only gated with min_community_weight_to_create_governance",
-							"The check is done to prevent scenarios where the authority could be accidentally set to a wrong or none existing account"
-						]
-					},
-					{
-						"name": "Remove",
-						"docs": [
-							"Removes realm authority"
-						]
-					}
-				]
-			},
-			"docs": [
-				"SetRealmAuthority instruction action"
 			]
 		},
 		{
@@ -4574,9 +4240,131 @@
 			"docs": [
 				"VoteKind defines the type of the vote being cast"
 			]
+		},
+		{
+			"name": "VoteThreshold",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "YesVotePercentage",
+						"fields": [
+							{
+								"name": "F0",
+								"type": "u8",
+								"docs": [
+									"Voting threshold of Yes votes in % required to tip the vote (Approval Quorum)",
+									"It's the percentage of tokens out of the entire pool of governance tokens eligible to vote",
+									"Note: If the threshold is below or equal to 50% then an even split of votes ex: 50:50 or 40:40 is always resolved as Defeated",
+									"In other words a '+1 vote' tie breaker is always required to have a successful vote"
+								]
+							}
+						]
+					},
+					{
+						"name": "QuorumPercentage",
+						"fields": [
+							{
+								"name": "F0",
+								"type": "u8",
+								"docs": [
+									"The minimum number of votes in % out of the entire pool of governance tokens eligible to vote",
+									"which must be cast for the vote to be valid",
+									"Once the quorum is achieved a simple majority (50%+1) of Yes votes is required for the vote to succeed",
+									"Note: Quorum is not implemented in the current version"
+								]
+							}
+						]
+					},
+					{
+						"name": "Disabled",
+						"docs": [
+							"Disabled vote threshold indicates the given voting population (community or council) is not allowed to vote",
+							"on proposals for the given Governance"
+						]
+					}
+				]
+			},
+			"docs": [
+				"The type of the vote threshold used to resolve a vote on a Proposal",
+				"",
+				"Note: In the current version only YesVotePercentage and Disabled thresholds are supported"
+			]
+		},
+		{
+			"name": "MintMaxVoteWeightSource",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "SupplyFraction",
+						"fields": [
+							{
+								"name": "F0",
+								"type": "u64",
+								"docs": [
+									"Fraction (10^10 precision) of the governing mint supply is used as max vote weight",
+									"The default is 100% (10^10) to use all available mint supply for voting"
+								]
+							}
+						]
+					},
+					{
+						"name": "Absolute",
+						"fields": [
+							{
+								"name": "F0",
+								"type": "u64",
+								"docs": [
+									"Absolute value, irrelevant of the actual mint supply, is used as max vote weight",
+									"Note: this option is not implemented in the current version"
+								]
+							}
+						]
+					}
+				]
+			},
+			"docs": [
+				"The source of max vote weight used for voting",
+				"Values below 100% mint supply can be used when the governing token is fully minted but not distributed yet"
+			]
+		},
+		{
+			"name": "VoteWeightV1",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "Yes",
+						"fields": [
+							{
+								"name": "F0",
+								"type": "u64",
+								"docs": [
+									"Yes vote"
+								]
+							}
+						]
+					},
+					{
+						"name": "No",
+						"fields": [
+							{
+								"name": "F0",
+								"type": "u64",
+								"docs": [
+									"No vote"
+								]
+							}
+						]
+					}
+				]
+			},
+			"docs": [
+				"Vote  with number of votes"
+			]
 		}
 	],
-	"events": [],
 	"errors": [
 		{
 			"msg": "Invalid instruction passed to program",
@@ -5070,6 +4858,7 @@
 		}
 	],
 	"constants": [],
+	"events": [],
 	"metadata": {
 		"address": ""
 	}
