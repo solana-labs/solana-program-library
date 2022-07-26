@@ -5,7 +5,7 @@ on:
     paths-ignore:
     - 'docs/**'
   push:
-    branches: [master]
+    branches: [master, upcoming]
     paths-ignore:
     - 'docs/**'
 
