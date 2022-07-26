@@ -102,6 +102,7 @@ async fn test_borrow_usdc_fixed_amount() {
             borrow_obligation_liquidity(
                 spl_token_lending::id(),
                 USDC_BORROW_AMOUNT_FRACTIONAL,
+                None,
                 usdc_test_reserve.liquidity_supply_pubkey,
                 usdc_test_reserve.user_liquidity_pubkey,
                 usdc_test_reserve.pubkey,
@@ -249,6 +250,7 @@ async fn test_borrow_sol_max_amount() {
             borrow_obligation_liquidity(
                 spl_token_lending::id(),
                 u64::MAX,
+                None,
                 sol_test_reserve.liquidity_supply_pubkey,
                 sol_test_reserve.user_liquidity_pubkey,
                 sol_test_reserve.pubkey,
@@ -380,6 +382,7 @@ async fn test_borrow_too_large() {
             borrow_obligation_liquidity(
                 spl_token_lending::id(),
                 USDC_BORROW_AMOUNT_FRACTIONAL,
+                None,
                 usdc_test_reserve.liquidity_supply_pubkey,
                 usdc_test_reserve.user_liquidity_pubkey,
                 usdc_test_reserve.pubkey,

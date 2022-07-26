@@ -651,6 +651,7 @@ impl TestLendingMarket {
             &[borrow_obligation_liquidity(
                 spl_token_lending::id(),
                 liquidity_amount,
+                None,
                 borrow_reserve.liquidity_supply_pubkey,
                 borrow_reserve.user_liquidity_pubkey,
                 borrow_reserve.pubkey,
