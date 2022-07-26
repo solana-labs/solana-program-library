@@ -23,7 +23,6 @@ pub(crate) enum KeypairOrPath {
 
 pub(crate) struct Config<'a> {
     pub(crate) default_signer: Arc<dyn Signer>,
-    pub(crate) default_address: Pubkey,
     pub(crate) rpc_client: Arc<RpcClient>,
     pub(crate) websocket_url: String,
     pub(crate) output_format: OutputFormat,
@@ -70,7 +69,7 @@ impl<'a> Config<'a> {
         }
 
         let token = token.unwrap();
-        let owner = self.default_address;
+        let owner = self.default_signer.pubkey();
         get_associated_token_address_with_program_id(&owner, &token, &self.program_id)
     }
 
@@ -89,7 +88,7 @@ impl<'a> Config<'a> {
             }
         }
 
-        return self.default_address.clone()
+        return self.default_signer.pubkey();
     }
 
     // Checks if an explicit signer was provided, otherwise return the default signer.

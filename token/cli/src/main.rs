@@ -2621,7 +2621,7 @@ fn main() -> Result<(), Error> {
 
         let default_keypair = KeypairOrPath::Path(cli_config.keypair_path.clone());
 
-        let (default_signer, default_address): (Arc<dyn Signer>, Pubkey) = {
+        let default_signer: Arc<dyn Signer> = {
             if let Some(owner_path) = matches.value_of("owner") {
                 signer_from_path_with_config(
                     matches,
@@ -2643,10 +2643,7 @@ fn main() -> Result<(), Error> {
                 }
             }
         }
-            .map(|signer| {
-                let signer: Arc<dyn Signer> = Arc::from(signer);
-                (signer.clone(), signer.pubkey())
-            })
+            .map(|signer| Arc::from(signer))
             .unwrap_or_else(|e| {
                 eprintln!("error: {}", e);
                 exit(1);
@@ -2723,7 +2720,6 @@ fn main() -> Result<(), Error> {
 
         Config {
             default_signer,
-            default_address,
             rpc_client: Arc::new(RpcClient::new_with_commitment(
                 json_rpc_url,
                 CommitmentConfig::confirmed(),
@@ -3274,7 +3270,6 @@ mod tests {
             websocket_url,
             output_format: OutputFormat::JsonCompact,
             fee_payer: payer.pubkey(),
-            default_address: payer.pubkey(),
             default_signer: Arc::new(clone_keypair(payer)),
             nonce_account: None,
             nonce_authority: None,
