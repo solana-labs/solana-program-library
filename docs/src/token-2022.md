@@ -5,7 +5,7 @@ title: Token-2022 Program
 A token program on the Solana blockchain, defining a common implementation for
 fungible and non-fungible tokens.
 
-The Token-2022 Program is a superset of functionality provided by the
+The Token-2022 Program is a superset of the functionality provided by the
 [Token Program](token.mdx), deployed to all networks.
 
 | Information | Account Address |
@@ -83,14 +83,14 @@ is written after the end of the `Account` in Token, which is the byte at index
 You can read more about how this is done at the
 [source code](https://github.com/solana-labs/solana-program-library/tree/master/token/program-2022/src/extensions/mod.rs).
 
-Mint extensions include:
+Mint extensions currently include:
 
 * confidential transfers
 * transfer fees
 * closing mint
 * interest-bearing tokens
 
-Account extensions include:
+Account extensions currently include:
 
 * memo required on incoming transfers
 * immutable ownership
@@ -126,4 +126,4 @@ For information about the types and instructions, the Rust docs are available at
 ## Security Audits
 
 The Token-2022 Program is currently under multiple audits to ensure safety of
-funds. all audits will be published here as they are completed.
+funds. All audits will be published here as they are completed.
