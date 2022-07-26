@@ -1,5 +1,3 @@
-use solana_sdk::signature::{Signature, SignerError};
-use solana_sdk::signers::Signers;
 /// The `bench` subcommand
 use {
     crate::{config::Config, owner_address_arg, CommandResult, Error},
@@ -14,7 +12,12 @@ use {
     },
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
-        message::Message, native_token::Sol, program_pack::Pack, pubkey::Pubkey, signature::Signer,
+        message::Message,
+        native_token::Sol,
+        program_pack::Pack,
+        pubkey::Pubkey,
+        signature::{Signature, Signer, SignerError},
+        signers::Signers,
         system_instruction,
     },
     spl_associated_token_account::*,
