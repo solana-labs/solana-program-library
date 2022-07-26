@@ -28,7 +28,6 @@ pub(crate) struct Config<'a> {
     pub(crate) websocket_url: String,
     pub(crate) output_format: OutputFormat,
     pub(crate) fee_payer: Pubkey,
-    pub(crate) default_keypair: KeypairOrPath,
     pub(crate) nonce_account: Option<Pubkey>,
     pub(crate) nonce_authority: Option<Pubkey>,
     pub(crate) blockhash_query: BlockhashQuery,
