@@ -1,0 +1,22 @@
+{
+  "include": ["./src/**/*", "index.ts"],
+  "compilerOptions": {
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "noImplicitAny": false,
+    "strictNullChecks": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "composite": true,
+    "downlevelIteration": true,
+    "baseUrl": ".",
+    "typeRoots": [
+      "src/generated/types",
+      "node_modules/@types"
+    ],
+  }
+}

@@ -1,5 +1,5 @@
 import { Keypair, Logs, Connection, Context } from "@solana/web3.js";
-import { PROGRAM_ID as BUBBLEGUM_PROGRAM_ID } from "../bubblegum/src/generated";
+import { PROGRAM_ID as BUBBLEGUM_PROGRAM_ID } from "@sorend-solana/bubblegum";
 import * as anchor from "@project-serum/anchor";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import { handleLogsAtomic } from "./indexer/log/bubblegum";

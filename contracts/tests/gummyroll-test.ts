@@ -11,7 +11,7 @@ import {
 } from "@solana/web3.js";
 import { assert } from "chai";
 import * as crypto from "crypto";
-
+import { Gummyroll } from "../target/types/gummyroll";
 import {
   buildTree,
   hash,
@@ -20,7 +20,6 @@ import {
   Tree,
 } from "./merkle-tree";
 import {
-  Gummyroll,
   createReplaceIx,
   createAppendIx,
   createTransferAuthorityIx,
@@ -29,9 +28,9 @@ import {
   createVerifyLeafIx,
   assertOnChainMerkleRollProperties,
   createAllocTreeIx,
-} from "../sdk/gummyroll";
+} from "@sorend-solana/gummyroll";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
-import { CANDY_WRAPPER_PROGRAM_ID, execute, logTx } from "../sdk/utils";
+import { CANDY_WRAPPER_PROGRAM_ID, execute, logTx } from "@sorend-solana/utils";
 
 // @ts-ignore
 let Gummyroll;

@@ -1,6 +1,6 @@
 import { PublicKey, SIGNATURE_LENGTH_IN_BYTES } from "@solana/web3.js";
 import { Connection } from "@solana/web3.js";
-import { decodeMerkleRoll } from "../gummyroll/index";
+import { decodeMerkleRoll } from "@sorend-solana/gummyroll";
 import { ParserState, handleInstructionsAtomic } from "./indexer/utils";
 import { handleLogsAtomic } from "./indexer/log/bubblegum";
 import { GapInfo, hash, NFTDatabaseConnection } from "./db";

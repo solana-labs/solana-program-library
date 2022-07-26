@@ -12,7 +12,7 @@ import {
 import {
   createInitializeIndicesInstructions
 } from "../instructions";
-import { execute } from "../../utils";
+import { execute } from "@sorend-solana/utils";
 
 /**
  * 

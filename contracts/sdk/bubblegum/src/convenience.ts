@@ -2,8 +2,8 @@ import { BN } from "@project-serum/anchor";
 import { TransactionInstruction, PublicKey, Connection, AccountInfo } from "@solana/web3.js";
 import { keccak_256 } from "js-sha3";
 import { Creator, Nonce, PROGRAM_ID } from './generated';
-import { CANDY_WRAPPER_PROGRAM_ID, bufferToArray, num16ToBuffer } from "../../utils";
-import { PROGRAM_ID as GUMMYROLL_PROGRAM_ID, createAllocTreeIx } from "../../gummyroll";
+import { CANDY_WRAPPER_PROGRAM_ID, bufferToArray, num16ToBuffer } from "@sorend-solana/utils";
+import { PROGRAM_ID as GUMMYROLL_PROGRAM_ID, createAllocTreeIx } from "@sorend-solana/gummyroll";
 import { createCreateTreeInstruction } from "./generated";
 
 export async function getBubblegumAuthorityPDA(merkleRollPubKey: PublicKey) {
@@ -94,6 +94,10 @@ export function computeDataHash(sellerFeeBasisPoints: number, mintIx?: Transacti
 
     if (typeof mintIx !== 'undefined') {
         metadataArgsHash = computeMetadataArgsHash(mintIx);
+    }
+
+    if (typeof metadataArgsHash === 'undefined') {
+        throw new Error("Metadata Args Hash Unexpectedly Undefined!");
     }
 
     const sellerFeeBasisPointsNumberArray = bufferToArray(num16ToBuffer(sellerFeeBasisPoints))

@@ -1,1 +1,0 @@
-export { GumballMachine } from "../../../target/types/gumball_machine";

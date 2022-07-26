@@ -23,8 +23,16 @@ import {
   createCancelRedeemInstruction,
   createCreateTreeInstruction,
   MetadataArgs,
-} from "../sdk/bubblegum/src/generated";
-
+  TokenProgramVersion,
+  Version,
+  Creator,
+  getBubblegumAuthorityPDA,
+  getCreateTreeIxs,
+  getNonceCount,
+  getVoucherPDA,
+  computeDataHash,
+  computeCreatorHash
+} from "@sorend-solana/bubblegum";
 import { buildTree, Tree } from "./merkle-tree";
 import {
   decodeMerkleRoll,
@@ -33,16 +41,14 @@ import {
   assertOnChainMerkleRollProperties,
   createTransferAuthorityIx,
   createAllocTreeIx,
-} from "../sdk/gummyroll";
+} from "@sorend-solana/gummyroll";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   Token,
 } from "@solana/spl-token";
-import { TokenProgramVersion, Version, Creator } from "../sdk/bubblegum/src/generated";
-import { CANDY_WRAPPER_PROGRAM_ID, execute, bufferToArray, strToByteArray, arrayEquals, trimStringPadding } from "../sdk/utils";
-import { getBubblegumAuthorityPDA, getCreateTreeIxs, getNonceCount, getVoucherPDA, computeDataHash, computeCreatorHash } from "../sdk/bubblegum/src/convenience";
+import { CANDY_WRAPPER_PROGRAM_ID, execute, bufferToArray, strToByteArray, arrayEquals, trimStringPadding } from "@sorend-solana/utils";
 
 // @ts-ignore
 let Bubblegum;

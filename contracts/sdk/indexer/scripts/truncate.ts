@@ -12,30 +12,31 @@ import {
 } from "@solana/web3.js";
 import * as anchor from '@project-serum/anchor';
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
-import { CANDY_WRAPPER_PROGRAM_ID } from "../../utils";
-import { getBubblegumAuthorityPDA, getCreateTreeIxs, getLeafAssetId } from "../../bubblegum/src/convenience";
-import { addProof, getMerkleRollAccountSize, PROGRAM_ID as GUMMYROLL_PROGRAM_ID } from '../../gummyroll';
-import { PROGRAM_ID as BUBBLEGUM_PROGRAM_ID } from "../../bubblegum/src/generated";
-import {
+import { CANDY_WRAPPER_PROGRAM_ID } from "@sorend-solana/utils";
+import { 
+    getBubblegumAuthorityPDA,
+    getCreateTreeIxs,
+    getLeafAssetId,
+    PROGRAM_ID as BUBBLEGUM_PROGRAM_ID,
     TokenStandard,
     MetadataArgs,
     TokenProgramVersion,
     createTransferInstruction,
     createMintV1Instruction,
     LeafSchema,
-    leafSchemaBeet,
-} from "../../bubblegum/src/generated";
+    leafSchemaBeet
+} from "@sorend-solana/bubblegum";
+import { addProof, getMerkleRollAccountSize, PROGRAM_ID as GUMMYROLL_PROGRAM_ID } from "@sorend-solana/gummyroll";
 import { hashCreators, hashMetadata } from "../indexer/utils";
 import { BN } from "@project-serum/anchor";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 import fetch from "node-fetch";
 import { keccak_256 } from 'js-sha3';
 import { BinaryWriter } from 'borsh';
-import { createAddConfigLinesInstruction, createInitializeGumballMachineIxs, decodeGumballMachine, EncodeMethod, GumballMachine, gumballMachineHeaderBeet, InitializeGumballMachineInstructionArgs, initializeGumballMachineIndices } from "../../gumball-machine";
-import { getWillyWonkaPDAKey } from "../../gumball-machine";
-import { createDispenseNFTForSolIx } from "../../gumball-machine";
+import { GumballMachine } from "../../../target/types/gumball_machine";
+import { createAddConfigLinesInstruction, createInitializeGumballMachineIxs, decodeGumballMachine, EncodeMethod, gumballMachineHeaderBeet, InitializeGumballMachineInstructionArgs, initializeGumballMachineIndices, createDispenseNFTForSolIx } from "@sorend-solana/gumball-machine";
 import { loadPrograms } from "../indexer/utils";
-import { strToByteArray, execute, val } from "../../utils";
+import { strToByteArray, execute, val } from "@sorend-solana/utils";
 import { NATIVE_MINT } from "@solana/spl-token";
 
 // const url = "http://api.explorer.mainnet-beta.solana.com";

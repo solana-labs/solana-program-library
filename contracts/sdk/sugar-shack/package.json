@@ -1,10 +1,37 @@
 {
-  "name": "sugar-shack",
-  "version": "1.0.0",
-  "description": "SDK for Sugar Shack contract",
+  "name": "@sorend-solana/sugar-shack",
+  "version": "0.0.2",
+  "description": "SDK for the MPL Sugar Shack contract",
+  "repository": {
+    "url": "https://github.com/jarry-xiao/candyland",
+    "type": "git"
+  },
   "license": "MIT",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "import": "./dist/esm/index.js",
+      "types": "./dist/cjs/index.d.ts"      
+    }
+  },
+  "scripts": {
+    "build": "rm -rf dist/ && tsc && tsc -p tsconfig.cjs.json"
+  },
   "dependencies": {
+    "@project-serum/anchor": "0.24.2",
+    "@solana/web3.js": "^1.50.1",
+    "@metaplex-foundation/beet": "^0.4.0",
+    "@metaplex-foundation/beet-solana": "^0.3.0"
+  },
+  "devDependencies": {
     "@metaplex-foundation/rustbin": "^0.3.1",
-    "@metaplex-foundation/solita": "^0.12.2"
-  }
+    "@metaplex-foundation/solita": "^0.12.2",
+    "typescript": "^4.3.5"
+  },
+  "files": [
+    "dist"
+  ]
 }
