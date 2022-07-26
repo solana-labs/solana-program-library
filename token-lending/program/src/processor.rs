@@ -83,9 +83,17 @@ pub fn process_instruction(
             msg!("Instruction: Withdraw Obligation Collateral");
             process_withdraw_obligation_collateral(program_id, collateral_amount, accounts)
         }
-        LendingInstruction::BorrowObligationLiquidity { liquidity_amount } => {
+        LendingInstruction::BorrowObligationLiquidity {
+            liquidity_amount,
+            slippage_limit,
+        } => {
             msg!("Instruction: Borrow Obligation Liquidity");
-            process_borrow_obligation_liquidity(program_id, liquidity_amount, accounts)
+            process_borrow_obligation_liquidity(
+                program_id,
+                liquidity_amount,
+                slippage_limit,
+                accounts,
+            )
         }
         LendingInstruction::RepayObligationLiquidity { liquidity_amount } => {
             msg!("Instruction: Repay Obligation Liquidity");
@@ -1023,6 +1031,7 @@ fn process_withdraw_obligation_collateral(
 fn process_borrow_obligation_liquidity(
     program_id: &Pubkey,
     liquidity_amount: u64,
+    slippage_limit: u64,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     if liquidity_amount == 0 {
@@ -1139,6 +1148,11 @@ fn process_borrow_obligation_liquidity(
     if receive_amount == 0 {
         msg!("Borrow amount is too small to receive liquidity after fees");
         return Err(LendingError::BorrowTooSmall.into());
+    }
+
+    if liquidity_amount == u64::MAX && receive_amount < slippage_limit {
+        msg!("Received liquidity would be smaller than the desired slippage limit");
+        return Err(LendingError::ExceededSlippage.into());
     }
 
     borrow_reserve.liquidity.borrow(borrow_amount)?;
