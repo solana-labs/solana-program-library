@@ -9,8 +9,8 @@ module.exports = {
       items: [
         "token-2022",
         "token-2022/extensions",
-        "token-2022/wallet-migration",
-        "token-2022/onchain-migration",
+        "token-2022/wallet",
+        "token-2022/onchain",
       ],
     },
     "token-swap",
