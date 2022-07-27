@@ -109,8 +109,8 @@ To get started with Token-2022:
 
 - [Install the Solana Tools](https://docs.solana.com/cli/install-solana-cli-tools)
 - [Extension Guide](token-2022/extensions.md)
-- [Wallet Migration Guide](token-2022/wallet-migration.md)
-- [On-Chain Program Migration Guide](token-2022/onchain-migration.md)
+- [Wallet Guide](token-2022/wallet.md)
+- [On-Chain Program Guide](token-2022/onchain.md)
 
 For existing functionality in the Token Program, see the [token docs](token.mdx).
 The Token functionality will always apply to Token-2022.
