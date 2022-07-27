@@ -6,7 +6,7 @@ on:
     branches:  [master]
 
 jobs:
-  build: 
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -20,10 +20,7 @@ jobs:
         name: "Build Docs"
       - run: |
          cd docs/
-         source .travis/before_install.sh
          npm ci
-         source .travis/script.sh
+         ./build.sh
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
- 
-
