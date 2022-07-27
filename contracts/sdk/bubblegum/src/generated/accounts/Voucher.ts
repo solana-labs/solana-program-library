@@ -21,7 +21,7 @@ export type VoucherArgs = {
   merkleSlab: web3.PublicKey
 }
 
-const voucherDiscriminator = [191, 204, 149, 234, 213, 165, 13, 65]
+export const voucherDiscriminator = [191, 204, 149, 234, 213, 165, 13, 65]
 /**
  * Holds the data for the {@link Voucher} Account and provides de/serialization
  * functionality for that data
@@ -72,6 +72,20 @@ export class Voucher implements VoucherArgs {
   }
 
   /**
+   * Provides a {@link web3.Connection.getProgramAccounts} config builder,
+   * to fetch accounts matching filters that can be specified via that builder.
+   *
+   * @param programId - the program that owns the accounts we are filtering
+   */
+  static gpaBuilder(
+    programId: web3.PublicKey = new web3.PublicKey(
+      'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY'
+    )
+  ) {
+    return beetSolana.GpaBuilder.fromStruct(programId, voucherBeet)
+  }
+
+  /**
    * Deserializes the {@link Voucher} from the provided data Buffer.
    * @returns a tuple of the account data and the offset up to which the buffer was read to obtain it.
    */
@@ -92,34 +106,36 @@ export class Voucher implements VoucherArgs {
 
   /**
    * Returns the byteSize of a {@link Buffer} holding the serialized data of
-   * {@link Voucher}
+   * {@link Voucher} for the provided args.
+   *
+   * @param args need to be provided since the byte size for this account
+   * depends on them
    */
-  static get byteSize() {
-    return voucherBeet.byteSize
+  static byteSize(args: VoucherArgs) {
+    const instance = Voucher.fromArgs(args)
+    return voucherBeet.toFixedFromValue({
+      accountDiscriminator: voucherDiscriminator,
+      ...instance,
+    }).byteSize
   }
 
   /**
    * Fetches the minimum balance needed to exempt an account holding
    * {@link Voucher} data from rent
    *
+   * @param args need to be provided since the byte size for this account
+   * depends on them
    * @param connection used to retrieve the rent exemption information
    */
   static async getMinimumBalanceForRentExemption(
+    args: VoucherArgs,
     connection: web3.Connection,
     commitment?: web3.Commitment
   ): Promise<number> {
     return connection.getMinimumBalanceForRentExemption(
-      Voucher.byteSize,
+      Voucher.byteSize(args),
       commitment
     )
-  }
-
-  /**
-   * Determines if the provided {@link Buffer} has the correct byte size to
-   * hold {@link Voucher} data.
-   */
-  static hasCorrectByteSize(buf: Buffer, offset = 0) {
-    return buf.byteLength - offset === Voucher.byteSize
   }
 
   /**
@@ -128,7 +144,7 @@ export class Voucher implements VoucherArgs {
    */
   pretty() {
     return {
-      leafSchema: 'LeafSchema.' + LeafSchema[this.leafSchema],
+      leafSchema: this.leafSchema.__kind,
       index: this.index,
       merkleSlab: this.merkleSlab.toBase58(),
     }
@@ -139,7 +155,7 @@ export class Voucher implements VoucherArgs {
  * @category Accounts
  * @category generated
  */
-export const voucherBeet = new beet.BeetStruct<
+export const voucherBeet = new beet.FixableBeetStruct<
   Voucher,
   VoucherArgs & {
     accountDiscriminator: number[] /* size: 8 */

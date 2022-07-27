@@ -1,3 +1,5 @@
+//! State related to storing a buffer of Merkle tree roots on-chain.
+//!
 use anchor_lang::prelude::*;
 use borsh::{BorshDeserialize, BorshSerialize};
 use concurrent_merkle_tree::state::{ChangeLog, Node};
@@ -28,9 +30,14 @@ pub struct NewLeafEvent {
 pub struct ChangeLogEvent {
     /// Public key of the Merkle Roll
     pub id: Pubkey,
+
     /// Nodes of off-chain merkle tree
     pub path: Vec<PathNode>,
+
+    /// Index corresponding to the number of successful operations on this tree.
+    /// Used by the off-chain indexer to figure out when there are gaps to be backfilled.
     pub seq: u64,
+
     /// Bitmap of node parity (used when hashing)
     pub index: u32,
 }
@@ -62,13 +69,36 @@ impl<const MAX_DEPTH: usize> From<(Box<ChangeLog<MAX_DEPTH>>, Pubkey, u64)>
     }
 }
 
+/// Initialization parameters for a Gummyroll Merkle tree.
+///
+/// Only the following permutations are valid:
+///
+/// | max_depth | max_buffer_size       |
+/// | --------- | --------------------- |
+/// | 14        | (64, 256, 1024, 2048) |           
+/// | 20        | (64, 256, 1024, 2048) |           
+/// | 24        | (64, 256, 512, 1024, 2048) |           
+/// | 26        | (64, 256, 512, 1024, 2048) |           
+/// | 30        | (512, 1024, 2048) |           
+///
 #[derive(BorshDeserialize, BorshSerialize)]
 #[repr(C)]
 pub struct MerkleRollHeader {
+    /// Buffer of changelogs stored on-chain.
+    /// Must be a power of 2; see above table for valid combinations.
     pub max_buffer_size: u32,
+
+    /// Depth of the Merkle tree to store.
+    /// Tree capacity can be calculated as power(2, max_depth).
+    /// See above table for valid options.
     pub max_depth: u32,
+
+    /// Authority that validates the content of the trees.
+    /// Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs.
     pub authority: Pubkey,
-    pub append_authority: Pubkey,
+
+    /// Slot corresponding to when the Merkle tree was created.
+    /// Provides a lower-bound on what slot to start (re-)building a tree from.
     pub creation_slot: u64,
 }
 
@@ -78,7 +108,6 @@ impl MerkleRollHeader {
         max_depth: u32,
         max_buffer_size: u32,
         authority: &Pubkey,
-        append_authority: &Pubkey,
         creation_slot: u64,
     ) {
         // Check header is empty
@@ -87,7 +116,6 @@ impl MerkleRollHeader {
         self.max_buffer_size = max_buffer_size;
         self.max_depth = max_depth;
         self.authority = *authority;
-        self.append_authority = *append_authority;
         self.creation_slot = creation_slot;
     }
 }

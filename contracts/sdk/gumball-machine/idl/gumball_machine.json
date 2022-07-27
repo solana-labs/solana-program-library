@@ -4,6 +4,9 @@
   "instructions": [
     {
       "name": "initializeGumballMachine",
+      "docs": [
+        "Initialize Gumball Machine header properties, and initialize downstream data structures (Gummyroll tree)"
+      ],
       "accounts": [
         {
           "name": "gumballMachine",
@@ -11,7 +14,7 @@
           "isSigner": false
         },
         {
-          "name": "creator",
+          "name": "payer",
           "isMut": true,
           "isSigner": true
         },
@@ -142,13 +145,42 @@
         },
         {
           "name": "maxMintSize",
-          "type": "u64"
+          "type": "u32"
         },
         {
           "name": "maxItems",
-          "type": "u64"
+          "type": "u32"
+        },
+        {
+          "name": "creatorKeys",
+          "type": {
+            "vec": "publicKey"
+          }
+        },
+        {
+          "name": "creatorShares",
+          "type": "bytes"
         }
       ]
+    },
+    {
+      "name": "initializeIndicesChunk",
+      "docs": [
+        "Initialize chunk of NFT indices (as many as possible within the compute budget of a single transaction). All indices must be initialized before the tree can dispense."
+      ],
+      "accounts": [
+        {
+          "name": "gumballMachine",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": []
     },
     {
       "name": "addConfigLines",
@@ -301,9 +333,29 @@
           }
         },
         {
+          "name": "receiver",
+          "type": {
+            "option": "publicKey"
+          }
+        },
+        {
           "name": "maxMintSize",
           "type": {
-            "option": "u64"
+            "option": "u32"
+          }
+        },
+        {
+          "name": "creatorKeys",
+          "type": {
+            "option": {
+              "vec": "publicKey"
+            }
+          }
+        },
+        {
+          "name": "creatorShares",
+          "type": {
+            "option": "bytes"
           }
         }
       ]
@@ -384,7 +436,7 @@
       "args": [
         {
           "name": "numItems",
-          "type": "u64"
+          "type": "u32"
         }
       ]
     },
@@ -469,7 +521,7 @@
       "args": [
         {
           "name": "numItems",
-          "type": "u64"
+          "type": "u32"
         }
       ]
     },
@@ -494,6 +546,26 @@
     }
   ],
   "types": [
+    {
+      "name": "GumballCreatorAdapter",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "address",
+            "type": "publicKey"
+          },
+          {
+            "name": "verified",
+            "type": "u8"
+          },
+          {
+            "name": "share",
+            "type": "u8"
+          }
+        ]
+      }
+    },
     {
       "name": "GumballMachineHeader",
       "type": {
@@ -539,17 +611,8 @@
             "type": "u8"
           },
           {
-            "name": "configLineEncodeMethod",
-            "type": "u8"
-          },
-          {
-            "name": "padding",
-            "type": {
-              "array": [
-                "u8",
-                3
-              ]
-            }
+            "name": "maxMintSize",
+            "type": "u32"
           },
           {
             "name": "price",
@@ -580,28 +643,48 @@
             "type": "publicKey"
           },
           {
-            "name": "creatorAddress",
-            "type": "publicKey"
-          },
-          {
             "name": "extensionLen",
             "type": "u64"
           },
           {
-            "name": "maxMintSize",
-            "type": "u64"
-          },
-          {
             "name": "remaining",
-            "type": "u64"
+            "type": "u32"
           },
           {
             "name": "maxItems",
-            "type": "u64"
+            "type": "u32"
           },
           {
             "name": "totalItemsAdded",
-            "type": "u64"
+            "type": "u32"
+          },
+          {
+            "name": "smallestUninitializedIndex",
+            "type": "u32"
+          },
+          {
+            "name": "configLineEncodeMethod",
+            "type": "u8"
+          },
+          {
+            "name": "creators",
+            "type": {
+              "array": [
+                {
+                  "defined": "GumballCreatorAdapter"
+                },
+                4
+              ]
+            }
+          },
+          {
+            "name": "padding",
+            "type": {
+              "array": [
+                "u8",
+                7
+              ]
+            }
           }
         ]
       }

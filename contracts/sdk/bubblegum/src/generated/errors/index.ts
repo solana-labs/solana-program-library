@@ -104,6 +104,173 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * CreatorShareTotalMustBe100: 'Creator shares must sum to 100'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class CreatorShareTotalMustBe100Error extends Error {
+  readonly code: number = 0x1774
+  readonly name: string = 'CreatorShareTotalMustBe100'
+  constructor() {
+    super('Creator shares must sum to 100')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, CreatorShareTotalMustBe100Error)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x1774,
+  () => new CreatorShareTotalMustBe100Error()
+)
+createErrorFromNameLookup.set(
+  'CreatorShareTotalMustBe100',
+  () => new CreatorShareTotalMustBe100Error()
+)
+
+/**
+ * DuplicateCreatorAddress: 'No duplicate creator addresses in metadata'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class DuplicateCreatorAddressError extends Error {
+  readonly code: number = 0x1775
+  readonly name: string = 'DuplicateCreatorAddress'
+  constructor() {
+    super('No duplicate creator addresses in metadata')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, DuplicateCreatorAddressError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1775, () => new DuplicateCreatorAddressError())
+createErrorFromNameLookup.set(
+  'DuplicateCreatorAddress',
+  () => new DuplicateCreatorAddressError()
+)
+
+/**
+ * CreatorsTooLong: 'Creators list too long'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class CreatorsTooLongError extends Error {
+  readonly code: number = 0x1776
+  readonly name: string = 'CreatorsTooLong'
+  constructor() {
+    super('Creators list too long')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, CreatorsTooLongError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1776, () => new CreatorsTooLongError())
+createErrorFromNameLookup.set(
+  'CreatorsTooLong',
+  () => new CreatorsTooLongError()
+)
+
+/**
+ * MetadataNameTooLong: 'Name in metadata is too long'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MetadataNameTooLongError extends Error {
+  readonly code: number = 0x1777
+  readonly name: string = 'MetadataNameTooLong'
+  constructor() {
+    super('Name in metadata is too long')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MetadataNameTooLongError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1777, () => new MetadataNameTooLongError())
+createErrorFromNameLookup.set(
+  'MetadataNameTooLong',
+  () => new MetadataNameTooLongError()
+)
+
+/**
+ * MetadataSymbolTooLong: 'Symbol in metadata is too long'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MetadataSymbolTooLongError extends Error {
+  readonly code: number = 0x1778
+  readonly name: string = 'MetadataSymbolTooLong'
+  constructor() {
+    super('Symbol in metadata is too long')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MetadataSymbolTooLongError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1778, () => new MetadataSymbolTooLongError())
+createErrorFromNameLookup.set(
+  'MetadataSymbolTooLong',
+  () => new MetadataSymbolTooLongError()
+)
+
+/**
+ * MetadataUriTooLong: 'Uri in metadata is too long'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MetadataUriTooLongError extends Error {
+  readonly code: number = 0x1779
+  readonly name: string = 'MetadataUriTooLong'
+  constructor() {
+    super('Uri in metadata is too long')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MetadataUriTooLongError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1779, () => new MetadataUriTooLongError())
+createErrorFromNameLookup.set(
+  'MetadataUriTooLong',
+  () => new MetadataUriTooLongError()
+)
+
+/**
+ * MetadataBasisPointsTooHigh: 'Basis points in metadata cannot exceed 10000'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MetadataBasisPointsTooHighError extends Error {
+  readonly code: number = 0x177a
+  readonly name: string = 'MetadataBasisPointsTooHigh'
+  constructor() {
+    super('Basis points in metadata cannot exceed 10000')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MetadataBasisPointsTooHighError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x177a,
+  () => new MetadataBasisPointsTooHighError()
+)
+createErrorFromNameLookup.set(
+  'MetadataBasisPointsTooHigh',
+  () => new MetadataBasisPointsTooHighError()
+)
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

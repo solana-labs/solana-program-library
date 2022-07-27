@@ -8,7 +8,7 @@ declare_id!("WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh");
 #[cfg(not(feature = "no-entrypoint"))]
 entrypoint!(wrap);
 
-fn wrap(
+pub fn wrap(
     _program_id: &Pubkey,
     _accounts: &[AccountInfo],
     _instruction_data: &[u8],

@@ -1,14 +1,11 @@
 import sqlite3 from "sqlite3";
 import { open, Database, Statement } from "sqlite";
-import { PathNode } from "../gummyroll";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { keccak_256 } from "js-sha3";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
-import { LeafSchemaEvent, NewLeafEvent } from "./indexer/bubblegum";
 import { BN } from "@project-serum/anchor";
-import { bignum } from "@metaplex-foundation/beet";
 import { Creator } from "../bubblegum/src/generated";
-import { ChangeLogEvent } from "./indexer/gummyroll";
+import { LeafSchemaEvent, NewLeafEvent, ChangeLogEvent } from "./indexer/ingester";
 let fs = require("fs");
 
 /**
@@ -24,6 +21,23 @@ export type GapInfo = {
   prevSlot: number;
   currSlot: number;
 };
+
+export type GapTxInfo = GapInfo & {
+  prevTxId: string,
+  currTxId: string,
+}
+
+export type AssetInfo = {
+  treeId: string,
+  assetId: string,
+  owner: string,
+  nonce: BN,
+  dataHash: string,
+  leafHash: string,
+  creatorHash: string,
+  compressed: number,
+}
+
 export class NFTDatabaseConnection {
   connection: Database<sqlite3.Database, sqlite3.Statement>;
   emptyNodeCache: Map<number, Buffer>;
@@ -83,6 +97,7 @@ export class NFTDatabaseConnection {
     }
   }
 
+
   async updateLeafSchema(
     leafSchemaRecord: LeafSchemaEvent,
     leafHash: PublicKey,
@@ -90,6 +105,7 @@ export class NFTDatabaseConnection {
     slot: number,
     sequenceNumber: number,
     treeId: string,
+    redeemed: boolean = false,
     compressed: boolean = true,
   ) {
     const leafSchema = leafSchemaRecord.schema.v1;
@@ -108,9 +124,10 @@ export class NFTDatabaseConnection {
           data_hash,
           creator_hash,
           leaf_hash,
+          redeemed,
           compressed
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (nonce, tree_id)
         DO UPDATE SET 
           asset_id = excluded.asset_id,
@@ -121,7 +138,9 @@ export class NFTDatabaseConnection {
           data_hash = excluded.data_hash,
           creator_hash = excluded.creator_hash,
           leaf_hash = excluded.leaf_hash,
+          redeemed = excluded.redeemed,
           compressed = excluded.compressed
+        WHERE seq <= excluded.seq
       `,
       leafSchema.id.toBase58(),
       (leafSchema.nonce.valueOf() as BN).toNumber(),
@@ -134,7 +153,20 @@ export class NFTDatabaseConnection {
       bs58.encode(leafSchema.dataHash),
       bs58.encode(leafSchema.creatorHash),
       leafHash.toBase58(),
+      redeemed,
       compressed
+    );
+  }
+
+  async setDecompressed(
+    assetId: string
+  ) {
+    await this.connection.run(
+      `UPDATE leaf_schema
+        SET compressed = 0
+        WHERE asset_id = ?
+        `,
+      assetId
     );
   }
 
@@ -278,6 +310,42 @@ export class NFTDatabaseConnection {
     return res;
   }
 
+  async getMissingDataWithTx(minSeq: number, treeId: string) {
+    let gaps: Array<GapTxInfo> = [];
+    let res = await this.connection
+      .all(
+        `
+        SELECT DISTINCT seq, slot, transaction_id
+        FROM merkle
+        where tree_id = ? and seq >= ?
+        order by seq
+      `,
+        treeId,
+        minSeq
+      )
+      .catch((e) => {
+        console.log("Failed to make query", e);
+        return [gaps, null, null];
+      });
+    for (let i = 0; i < res.length - 1; ++i) {
+      let [prevSeq, prevSlot, prevTxId] = [res[i].seq, res[i].slot, res[i].transaction_id];
+      let [currSeq, currSlot, currTxId] = [res[i + 1].seq, res[i + 1].slot, res[i + 1].transaction_id];
+      if (currSeq === prevSeq) {
+        throw new Error(
+          `Error in DB, encountered identical sequence numbers with different slots: ${prevSlot} ${currSlot}`
+        );
+      }
+      if (currSeq - prevSeq > 1) {
+        gaps.push({ prevSeq, currSeq, prevSlot, currSlot, prevTxId, currTxId });
+      }
+    }
+    if (res.length > 0) {
+      return [gaps, res[res.length - 1].seq, res[res.length - 1].slot];
+    }
+    return [gaps, null, null];
+  }
+
+
   async getMissingData(minSeq: number, treeId: string) {
     let gaps: Array<GapInfo> = [];
     let res = await this.connection
@@ -385,8 +453,9 @@ export class NFTDatabaseConnection {
       return null;
     }
   }
+
   async getInferredProof(
-    hash: Buffer,
+    assetId: string,
     treeId: string,
     check: boolean = true
   ): Promise<Proof | null> {
@@ -412,23 +481,22 @@ export class NFTDatabaseConnection {
     );
     if (gapIndex && gapIndex.seq < latestSeq) {
       return await this.inferProofWithKnownGap(
-        hash,
+        assetId,
         treeId,
         gapIndex.seq,
         check
       );
     } else {
-      return await this.getProof(hash, treeId, check);
+      return await this.getProof(assetId, treeId, check);
     }
   }
 
   async inferProofWithKnownGap(
-    hash: Buffer,
+    assetId: string,
     treeId: string,
     seq: number,
     check: boolean = true
   ) {
-    let hashString = bs58.encode(hash);
     let depth = await this.getDepth(treeId);
     if (!depth) {
       return null;
@@ -437,22 +505,25 @@ export class NFTDatabaseConnection {
     let res = await this.connection.get(
       `
         SELECT 
-          data_hash as dataHash,
-          creator_hash as creatorHash,
-          nonce as nonce,
-          owner as owner,
-          delegate as delegate
-        FROM leaf_schema
-        WHERE leaf_hash = ? and tree_id = ?
+          m.hash as hash,
+          l.data_hash as dataHash,
+          l.creator_hash as creatorHash,
+          l.nonce as nonce,
+          l.owner as owner,
+          l.delegate as delegate
+        FROM leaf_schema l
+        JOIN merkle m
+        on m.tree_id = l.tree_id and m.seq = l.seq
+        WHERE l.asset_id = ? and l.tree_id = ? and m.level = 0
       `,
-      hashString,
+      assetId,
       treeId
     );
     if (res) {
       return this.generateProof(
         treeId,
         (1 << depth) + res.nonce,
-        hash,
+        res.hash,
         res.dataHash,
         res.creatorHash,
         res.nonce,
@@ -483,15 +554,15 @@ export class NFTDatabaseConnection {
   }
 
   async getProof(
-    hash: Buffer,
+    assetId: string,
     treeId: string,
     check: boolean = true
   ): Promise<Proof | null> {
-    let hashString = bs58.encode(hash);
     let res = await this.connection.all(
       `
         SELECT 
           m.node_idx as nodeIdx,
+          m.hash as hash,
           l.data_hash as dataHash,
           l.creator_hash as creatorHash,
           l.nonce as nonce,
@@ -499,10 +570,10 @@ export class NFTDatabaseConnection {
           l.delegate as delegate
         FROM merkle m
         JOIN leaf_schema l
-        ON m.hash = l.leaf_hash and m.tree_id = l.tree_id and m.seq = l.seq
-        WHERE hash = ? and m.tree_id = ? and level = 0
+        ON m.tree_id = l.tree_id and m.seq = l.seq
+        WHERE l.asset_id = ? and m.tree_id = ? and level = 0
       `,
-      hashString,
+      assetId,
       treeId
     );
     if (res.length == 1) {
@@ -510,7 +581,7 @@ export class NFTDatabaseConnection {
       return this.generateProof(
         treeId,
         data.nodeIdx,
-        hash,
+        data.hash,
         data.dataHash,
         data.creatorHash,
         data.nonce,
@@ -526,7 +597,7 @@ export class NFTDatabaseConnection {
   async generateProof(
     treeId: string,
     nodeIdx: number,
-    hash: Buffer,
+    hash: string,
     dataHash: string,
     creatorHash: string,
     nonce: number,
@@ -588,7 +659,7 @@ export class NFTDatabaseConnection {
     }
     let leafIdx = nodeIdx - (1 << root.level);
     let inferredProof = {
-      leaf: bs58.encode(hash),
+      leaf: hash,
       root: root.hash,
       proofNodes: proof,
       index: leafIdx,
@@ -657,7 +728,41 @@ export class NFTDatabaseConnection {
     return transactionId.length ? transactionId[0].transaction_id as string : null;
   }
 
-  async getAssetsForOwner(owner: string, treeId?: string) {
+  async getAssetInfo(assetId: string): Promise<AssetInfo> {
+    const query = `
+      SELECT 
+        tree_id,
+        asset_id,
+        nonce,
+        owner,
+        data_hash,
+        leaf_hash,
+        creator_hash,
+        compressed
+      FROM leaf_schema
+      WHERE asset_id = ?
+    `;
+    const rawAssetInfo = await this.connection.all(query, assetId);
+    if (rawAssetInfo.length) {
+      const rawAsset = rawAssetInfo[0];
+      return {
+        treeId: rawAsset.tree_id,
+        assetId: rawAsset.asset_id,
+        owner: rawAsset.owner,
+        nonce: new BN(rawAsset.nonce),
+        dataHash: rawAsset.data_hash,
+        creatorHash: rawAsset.creator_hash,
+        leafHash: rawAsset.leaf_hash,
+        compressed: rawAsset.compressed
+      }
+    } else {
+      return null
+    }
+  }
+
+  async getAssetsForOwner(owner: string, treeId?: string, limit?: number, offset?: number) {
+    const limitClause = limit ? `LIMIT ${limit}` : "";
+    const offsetClause = offset ? `OFFSET ${offset}` : "";
     const query = `
       SELECT
         ls.tree_id as treeId,
@@ -667,6 +772,8 @@ export class NFTDatabaseConnection {
         n.name as name,
         n.symbol as symbol,
         n.seller_fee_basis_points as sellerFeeBasisPoints,
+        n.primary_sale_happened as primarySaleHappened,
+        n.is_mutable as isMutable,
         ls.owner as owner,
         ls.delegate as delegate,
         ls.leaf_hash as leafHash,
@@ -686,11 +793,15 @@ export class NFTDatabaseConnection {
         n.share4 as share4,
         n.verified4 as verified4,
         ls.transaction_id as transaction_id,
+        ls.redeemed as redeemed,
         ls.compressed as compressed
       FROM leaf_schema ls
       JOIN nft n   
       ON ls.asset_id = n.asset_id
       WHERE owner = ?
+      ORDER BY n.name
+      ${limitClause}
+      ${offsetClause}
       `;
 
     let rawNftMetadata;
@@ -752,11 +863,14 @@ export class NFTDatabaseConnection {
         name: metadata.name,
         symbol: metadata.symbol,
         sellerFeeBasisPoints: metadata.sellerFeeBasisPoints,
+        primarySaleHappened: metadata.primarySaleHappened,
+        isMutable: metadata.isMutable,
         owner: metadata.owner,
         delegate: metadata.delegate,
         leafHash: metadata.leafHash,
         creators: creators,
         txId: metadata.transaction_id,
+        isRedeemed: metadata.redeemed,
         isCompressed: metadata.compressed,
       });
     }
@@ -865,6 +979,7 @@ export async function bootstrap(
           creator_hash TEXT,
           leaf_hash TEXT,
           compressed BOOLEAN,
+          redeemed BOOLEAN,
           PRIMARY KEY (tree_id, nonce)
         );
         `

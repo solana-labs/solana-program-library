@@ -32,8 +32,10 @@ export type InitializeGumballMachineInstructionArgs = {
   authority: web3.PublicKey
   collectionKey: web3.PublicKey
   extensionLen: beet.bignum
-  maxMintSize: beet.bignum
-  maxItems: beet.bignum
+  maxMintSize: number
+  maxItems: number
+  creatorKeys: web3.PublicKey[]
+  creatorShares: Uint8Array
 }
 /**
  * @category Instructions
@@ -63,8 +65,10 @@ export const initializeGumballMachineStruct = new beet.FixableBeetArgsStruct<
     ['authority', beetSolana.publicKey],
     ['collectionKey', beetSolana.publicKey],
     ['extensionLen', beet.u64],
-    ['maxMintSize', beet.u64],
-    ['maxItems', beet.u64],
+    ['maxMintSize', beet.u32],
+    ['maxItems', beet.u32],
+    ['creatorKeys', beet.array(beetSolana.publicKey)],
+    ['creatorShares', beet.bytes],
   ],
   'InitializeGumballMachineInstructionArgs'
 )
@@ -72,7 +76,7 @@ export const initializeGumballMachineStruct = new beet.FixableBeetArgsStruct<
  * Accounts required by the _initializeGumballMachine_ instruction
  *
  * @property [_writable_] gumballMachine
- * @property [_writable_, **signer**] creator
+ * @property [_writable_, **signer**] payer
  * @property [] mint
  * @property [] willyWonka
  * @property [_writable_] bubblegumAuthority
@@ -86,7 +90,7 @@ export const initializeGumballMachineStruct = new beet.FixableBeetArgsStruct<
  */
 export type InitializeGumballMachineInstructionAccounts = {
   gumballMachine: web3.PublicKey
-  creator: web3.PublicKey
+  payer: web3.PublicKey
   mint: web3.PublicKey
   willyWonka: web3.PublicKey
   bubblegumAuthority: web3.PublicKey
@@ -94,6 +98,7 @@ export type InitializeGumballMachineInstructionAccounts = {
   gummyroll: web3.PublicKey
   merkleSlab: web3.PublicKey
   bubblegum: web3.PublicKey
+  systemProgram?: web3.PublicKey
 }
 
 export const initializeGumballMachineInstructionDiscriminator = [
@@ -112,81 +117,68 @@ export const initializeGumballMachineInstructionDiscriminator = [
  */
 export function createInitializeGumballMachineInstruction(
   accounts: InitializeGumballMachineInstructionAccounts,
-  args: InitializeGumballMachineInstructionArgs
+  args: InitializeGumballMachineInstructionArgs,
+  programId = new web3.PublicKey('GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW')
 ) {
-  const {
-    gumballMachine,
-    creator,
-    mint,
-    willyWonka,
-    bubblegumAuthority,
-    candyWrapper,
-    gummyroll,
-    merkleSlab,
-    bubblegum,
-  } = accounts
-
   const [data] = initializeGumballMachineStruct.serialize({
     instructionDiscriminator: initializeGumballMachineInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: gumballMachine,
+      pubkey: accounts.gumballMachine,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: creator,
+      pubkey: accounts.payer,
       isWritable: true,
       isSigner: true,
     },
     {
-      pubkey: mint,
+      pubkey: accounts.mint,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: willyWonka,
+      pubkey: accounts.willyWonka,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: bubblegumAuthority,
+      pubkey: accounts.bubblegumAuthority,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: candyWrapper,
+      pubkey: accounts.candyWrapper,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: gummyroll,
+      pubkey: accounts.gummyroll,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: merkleSlab,
+      pubkey: accounts.merkleSlab,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: bubblegum,
+      pubkey: accounts.bubblegum,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: web3.SystemProgram.programId,
+      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
       isWritable: false,
       isSigner: false,
     },
   ]
 
   const ix = new web3.TransactionInstruction({
-    programId: new web3.PublicKey(
-      'GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW'
-    ),
+    programId,
     keys,
     data,
   })

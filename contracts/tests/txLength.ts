@@ -13,7 +13,7 @@ import NodeWallet from '@project-serum/anchor/dist/cjs/nodewallet';
 import { GummyrollCrud } from '../target/types/gummyroll_crud';
 import * as crypto from 'crypto';
 
-const PROGRAM_ID = "GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD";
+const PROGRAM_ID = "GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU";
 
 const payer = Keypair.generate();
 const payerWallet = new NodeWallet(payer);

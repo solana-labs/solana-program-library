@@ -38,11 +38,10 @@ function stringifyProof(proof: Proof): string {
 }
 
 app.get("/proof", async (req, res) => {
-  const leafHashString = req.query.leafHash;
+  const assetId = req.query.assetId;
   const treeId = req.query.treeId;
-  const leafHash: Buffer = bs58.decode(leafHashString);
   try {
-    let proof = await nftDb.getInferredProof(leafHash, treeId, false);
+    let proof = await nftDb.getInferredProof(assetId, treeId, false);
     if (proof) {
       res.send(stringifyProof(proof));
     } else {
@@ -57,7 +56,7 @@ app.get("/proof", async (req, res) => {
 
 app.get("/assets", async (req, res) => {
   const owner = req.query.owner;
-  const assets = await nftDb.getAssetsForOwner(owner, req.query.treeId);
+  const assets = await nftDb.getAssetsForOwner(owner, req.query.treeId, req.query.limit, req.query.offset);
   res.send(JSON.stringify(assets));
 });
 

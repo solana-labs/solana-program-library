@@ -65,10 +65,9 @@ export const updateMarketplacePropertiesInstructionDiscriminator = [
  */
 export function createUpdateMarketplacePropertiesInstruction(
   accounts: UpdateMarketplacePropertiesInstructionAccounts,
-  args: UpdateMarketplacePropertiesInstructionArgs
+  args: UpdateMarketplacePropertiesInstructionArgs,
+  programId = new web3.PublicKey('9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK')
 ) {
-  const { authority, marketplaceProps } = accounts
-
   const [data] = updateMarketplacePropertiesStruct.serialize({
     instructionDiscriminator:
       updateMarketplacePropertiesInstructionDiscriminator,
@@ -76,21 +75,19 @@ export function createUpdateMarketplacePropertiesInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: authority,
+      pubkey: accounts.authority,
       isWritable: false,
       isSigner: true,
     },
     {
-      pubkey: marketplaceProps,
+      pubkey: accounts.marketplaceProps,
       isWritable: true,
       isSigner: false,
     },
   ]
 
   const ix = new web3.TransactionInstruction({
-    programId: new web3.PublicKey(
-      '9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK'
-    ),
+    programId,
     keys,
     data,
   })

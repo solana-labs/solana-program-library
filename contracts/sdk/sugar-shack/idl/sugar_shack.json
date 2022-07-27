@@ -251,7 +251,11 @@
     {
       "name": "purchase",
       "docs": [
-        "Enables any user to purchase an NFT listed on the marketplace."
+        "Enables any user to purchase an NFT listed on the marketplace.",
+        "@dev: To avoid overflow precision errors we generally avoid operations that would involve multiplying by f64s. (i.e. price * creator_share/100).",
+        "instead we compute the most smallest unit that could be paid out to an entity (a bip) and allocate bips via multiplication.",
+        "@notice: The risk here is that certain creators or the marketplace itself might not receive their fee, if price * num_bips_for_entity < 10,000.",
+        "@notice: Any fees not paid to creators/marketplace will be transferred to the lister."
       ],
       "accounts": [
         {
@@ -314,7 +318,7 @@
           "type": "u64"
         },
         {
-          "name": "dataHash",
+          "name": "metadataArgsHash",
           "type": {
             "array": [
               "u8",
@@ -342,6 +346,10 @@
         {
           "name": "creatorShares",
           "type": "bytes"
+        },
+        {
+          "name": "sellerFeeBasisPoints",
+          "type": "u16"
         }
       ]
     },

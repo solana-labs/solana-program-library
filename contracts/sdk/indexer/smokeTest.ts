@@ -19,8 +19,7 @@ import {
   Version,
 } from "../bubblegum/src/generated";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
-import { logTx } from "../../tests/utils";
-import { CANDY_WRAPPER_PROGRAM_ID } from "../utils";
+import { CANDY_WRAPPER_PROGRAM_ID, logTx } from "../utils";
 
 async function main() {
   const connection = new web3.Connection("http://127.0.0.1:8899", {
@@ -31,7 +30,7 @@ async function main() {
   const payer = Keypair.generate();
   const wallet = new NodeWallet(payer);
   anchor.setProvider(
-    new anchor.Provider(connection, wallet, {
+    new anchor.AnchorProvider(connection, wallet, {
       commitment: connection.commitment,
       skipPreflight: true,
     })
@@ -182,7 +181,7 @@ async function main() {
       }
       let k = Math.floor(Math.random() * assets.length);
       response = await fetch(
-        `${proofServerUrl}?leafHash=${assets[k].leafHash}&treeId=${assets[k].treeId}`,
+        `${proofServerUrl}?assetId=${assets[k].assetId}&treeId=${assets[k].treeId}`,
         { method: "GET" }
       );
       const proof = await response.json();

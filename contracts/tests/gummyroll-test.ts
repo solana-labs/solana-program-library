@@ -1,5 +1,5 @@
 import * as anchor from "@project-serum/anchor";
-import { BN, Provider, Program } from "@project-serum/anchor";
+import { BN, AnchorProvider, Program } from "@project-serum/anchor";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import {
   Connection,
@@ -30,8 +30,8 @@ import {
   assertOnChainMerkleRollProperties,
   createAllocTreeIx,
 } from "../sdk/gummyroll";
-import { execute, logTx } from "../sdk/utils";
-import { CANDY_WRAPPER_PROGRAM_ID } from "../sdk/utils";
+import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
+import { CANDY_WRAPPER_PROGRAM_ID, execute, logTx } from "../sdk/utils";
 
 // @ts-ignore
 let Gummyroll;
@@ -74,10 +74,10 @@ describe("gummyroll", () => {
       maxDepth,
       canopyDepth,
       payer.publicKey,
-      merkleRollKeypair.publicKey,
+      merkleRollKeypair.publicKey
     );
 
-    let tx = new Transaction().add(allocAccountIx);
+    const ixs = [allocAccountIx];
     if (numLeaves > 0) {
       const root = Array.from(tree.root.map((x) => x));
       const leaf = Array.from(leaves[numLeaves - 1]);
@@ -89,7 +89,7 @@ describe("gummyroll", () => {
         };
       });
 
-      tx = tx.add(
+      ixs.push(
         Gummyroll.instruction.initGummyrollWithRoot(
           maxDepth,
           maxSize,
@@ -102,7 +102,6 @@ describe("gummyroll", () => {
             accounts: {
               merkleRoll: merkleRollKeypair.publicKey,
               authority: payer.publicKey,
-              appendAuthority: payer.publicKey,
               candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
             },
             signers: [payer],
@@ -111,23 +110,23 @@ describe("gummyroll", () => {
         )
       );
     } else {
-      tx = tx.add(
+      ixs.push(
         Gummyroll.instruction.initEmptyGummyroll(maxDepth, maxSize, {
           accounts: {
             merkleRoll: merkleRollKeypair.publicKey,
             authority: payer.publicKey,
-            appendAuthority: payer.publicKey,
             candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
           },
           signers: [payer],
         })
       );
     }
-    let txId = await Gummyroll.provider.send(tx, [payer, merkleRollKeypair], {
-      commitment: "confirmed",
-    });
+    let txId = await execute(Gummyroll.provider, ixs, [
+      payer,
+      merkleRollKeypair,
+    ]);
     if (canopyDepth) {
-      await logTx(Gummyroll.provider, txId);
+      await logTx(Gummyroll.provider, txId as string);
     }
 
     await assertOnChainMerkleRollProperties(
@@ -149,7 +148,7 @@ describe("gummyroll", () => {
     });
     wallet = new NodeWallet(payer);
     anchor.setProvider(
-      new Provider(connection, wallet, {
+      new AnchorProvider(connection, wallet, {
         commitment: connection.commitment,
         skipPreflight: true,
       })
@@ -171,7 +170,6 @@ describe("gummyroll", () => {
       const appendIx = createAppendIx(
         Gummyroll,
         newLeaf,
-        payer,
         payer,
         merkleRollKeypair.publicKey
       );
@@ -257,7 +255,7 @@ describe("gummyroll", () => {
       try {
         await execute(Gummyroll.provider, [verifyLeafIx], [payer]);
         assert(false, "Proof should have failed to verify");
-      } catch { }
+      } catch {}
 
       // Replace instruction with same proof fails
       const replaceLeafIx = createReplaceIx(
@@ -273,7 +271,7 @@ describe("gummyroll", () => {
       try {
         await execute(Gummyroll.provider, [replaceLeafIx], [payer]);
         assert(false, "Replace should have failed to verify");
-      } catch { }
+      } catch {}
       const merkleRollAccount =
         await Gummyroll.provider.connection.getAccountInfo(
           merkleRollKeypair.publicKey
@@ -370,122 +368,6 @@ describe("gummyroll", () => {
   describe("Examples tranferring appendAuthority", () => {
     const authority = Keypair.generate();
     const randomSigner = Keypair.generate();
-    describe("Examples transferring appendAuthority", () => {
-      it("... initializing tree ...", async () => {
-        await Gummyroll.provider.connection.confirmTransaction(
-          await (connection as Connection).requestAirdrop(
-            authority.publicKey,
-            1e10
-          )
-        );
-        [merkleRollKeypair, offChainTree] = await createTreeOnChain(
-          authority,
-          1
-        );
-      });
-      it("Attempting to append without appendAuthority fails", async () => {
-        // Random leaf
-        const newLeaf = crypto.randomBytes(32);
-        const appendIx = createAppendIx(
-          Gummyroll,
-          newLeaf,
-          authority,
-          randomSigner,
-          merkleRollKeypair.publicKey
-        );
-
-        try {
-          await execute(Gummyroll.provider, [appendIx], [payer, randomSigner]);
-          assert(
-            false,
-            "Transaction should have failed, since `randomSigner` is not append authority"
-          );
-        } catch { }
-      });
-      it("But authority can transfer appendAuthority", async () => {
-        const transferAppendAuthorityIx = createTransferAuthorityIx(
-          Gummyroll,
-          authority,
-          merkleRollKeypair.publicKey,
-          null,
-          randomSigner.publicKey
-        );
-        await execute(
-          Gummyroll.provider,
-          [transferAppendAuthorityIx],
-          [authority]
-        );
-
-        const merkleRoll = decodeMerkleRoll(
-          (
-            await Gummyroll.provider.connection.getAccountInfo(
-              merkleRollKeypair.publicKey
-            )
-          ).data
-        );
-        const merkleRollInfo = merkleRoll.header;
-
-        assert(
-          merkleRollInfo.authority.equals(authority.publicKey),
-          `Upon transfering appendAuthority, authority should be ${authority.publicKey.toString()}, but was instead updated to ${merkleRollInfo.authority.toString()}`
-        );
-        assert(
-          merkleRollInfo.appendAuthority.equals(randomSigner.publicKey),
-          `Upon transferring appendAuthority, appendAuthority should be ${randomSigner.publicKey.toString()} but is ${merkleRollInfo.appendAuthority.toString()}`
-        );
-      });
-      it("So the new appendAuthority can append", async () => {
-        const newLeaf = crypto.randomBytes(32);
-        const appendIx = createAppendIx(
-          Gummyroll,
-          newLeaf,
-          authority,
-          randomSigner,
-          merkleRollKeypair.publicKey
-        );
-        await execute(
-          Gummyroll.provider,
-          [appendIx],
-          [authority, randomSigner]
-        );
-
-        const merkleRoll = decodeMerkleRoll(
-          (
-            await Gummyroll.provider.connection.getAccountInfo(
-              merkleRollKeypair.publicKey
-            )
-          ).data
-        );
-        assert(
-          merkleRoll.roll.rightMostPath.index === 2,
-          `Expected merkle roll to now have 2 leaves after append, but only has ${merkleRoll.roll.rightMostPath.index}`
-        );
-
-        updateTree(offChainTree, newLeaf, 1);
-      });
-      it("but not replace", async () => {
-        const newLeaf = crypto.randomBytes(32);
-        const replaceIx = createReplaceIx(
-          Gummyroll,
-          randomSigner,
-          merkleRollKeypair.publicKey,
-          offChainTree.root,
-          offChainTree.leaves[1].node,
-          newLeaf,
-          1,
-          getProofOfLeaf(offChainTree, 1).map((treeNode) => {
-            return treeNode.node;
-          })
-        );
-        try {
-          await execute(Gummyroll.provider, [replaceIx], [randomSigner]);
-          assert(
-            false,
-            "Transaction should have failed since the append authority cannot act as the authority for replaces"
-          );
-        } catch { }
-      });
-    });
     describe("Examples transferring authority", () => {
       it("... initializing tree ...", async () => {
         await Gummyroll.provider.connection.confirmTransaction(
@@ -499,49 +381,14 @@ describe("gummyroll", () => {
           1
         );
       });
-      it("Attempting to append without appendAuthority fails", async () => {
-        await (connection as Connection).requestAirdrop(
-          randomSigner.publicKey,
-          1e10
-        );
-
-        const newLeaf = crypto.randomBytes(32);
-        const replaceIndex = 0;
-        const proof = getProofOfLeaf(offChainTree, replaceIndex);
-        const replaceIx = createReplaceIx(
-          Gummyroll,
-          randomSigner,
-          merkleRollKeypair.publicKey,
-          offChainTree.root,
-          offChainTree.leaves[replaceIndex].node,
-          newLeaf,
-          replaceIndex,
-          proof.map((treeNode) => {
-            return treeNode.node;
-          })
-        );
-
-        try {
-          await execute(Gummyroll.provider, [replaceIx], [randomSigner]);
-          assert(
-            false,
-            "Transaction should have failed since incorrect authority cannot execute replaces"
-          );
-        } catch { }
-      });
       it("Can transfer authority", async () => {
-        const transferAppendAuthorityIx = createTransferAuthorityIx(
+        const transferAuthorityIx = createTransferAuthorityIx(
           Gummyroll,
           authority,
           merkleRollKeypair.publicKey,
-          randomSigner.publicKey,
-          null
+          randomSigner.publicKey
         );
-        await execute(
-          Gummyroll.provider,
-          [transferAppendAuthorityIx],
-          [authority]
-        );
+        await execute(Gummyroll.provider, [transferAuthorityIx], [authority]);
 
         const merkleRoll = decodeMerkleRoll(
           (
@@ -554,11 +401,7 @@ describe("gummyroll", () => {
 
         assert(
           merkleRollInfo.authority.equals(randomSigner.publicKey),
-          `Upon transfering appendAuthority, authority should be ${randomSigner.publicKey.toString()}, but was instead updated to ${merkleRollInfo.authority.toString()}`
-        );
-        assert(
-          merkleRollInfo.appendAuthority.equals(authority.publicKey),
-          `Upon transferring appendAuthority, appendAuthority should be ${authority.publicKey.toString()} but is ${merkleRollInfo.appendAuthority.toString()}`
+          `Upon transfering authority, authority should be ${randomSigner.publicKey.toString()}, but was instead updated to ${merkleRollInfo.authority.toString()}`
         );
       });
       it("Attempting to replace with new authority now works", async () => {
@@ -584,7 +427,7 @@ describe("gummyroll", () => {
             false,
             "Transaction should have failed since incorrect authority cannot execute replaces"
           );
-        } catch { }
+        } catch {}
       });
     });
   });
@@ -629,12 +472,8 @@ describe("gummyroll", () => {
 
       // Execute all replaces in a "single block"
       ixArray.map((ix) => {
-        const tx = new Transaction().add(ix);
         txList.push(
-          Gummyroll.provider.send(tx, [payer], {
-            commitment: "confirmed",
-            skipPreflight: true,
-          })
+          execute(Gummyroll.provider, [ix], [payer])
         );
       });
       await Promise.all(txList);
@@ -676,7 +515,6 @@ describe("gummyroll", () => {
         const appendIx = createAppendIx(
           Gummyroll,
           newLeaf,
-          payer,
           payer,
           merkleRollKeypair.publicKey
         );
@@ -728,7 +566,7 @@ describe("gummyroll", () => {
           false,
           "Attacker was able to succesfully write fake existence of a leaf"
         );
-      } catch (e) { }
+      } catch (e) {}
 
       const merkleRoll = decodeMerkleRoll(
         (
@@ -769,7 +607,7 @@ describe("gummyroll", () => {
           false,
           "Attacker was able to succesfully write fake existence of a leaf"
         );
-      } catch (e) { }
+      } catch (e) {}
 
       const merkleRoll = decodeMerkleRoll(
         (
@@ -808,7 +646,6 @@ describe("gummyroll", () => {
             Gummyroll,
             newLeaf,
             payer,
-            payer,
             merkleRollKeypair.publicKey
           );
           ixs.push(appendIx);
@@ -832,8 +669,10 @@ describe("gummyroll", () => {
       let leafList = Array.from(leaves.entries());
       leafList.sort(() => Math.random() - 0.5);
       let replaces = 0;
+      let newLeaves = {};
       for (const [i, leaf] of leafList) {
         const newLeaf = crypto.randomBytes(32);
+        newLeaves[i] = newLeaf;
         const replaceIx = createReplaceIx(
           Gummyroll,
           payer,
@@ -847,10 +686,53 @@ describe("gummyroll", () => {
         ixs.push(replaceIx);
         if (ixs.length == stepSize) {
           replaces++;
-          let tx = await execute(Gummyroll.provider, ixs, [payer]);
+          await execute(Gummyroll.provider, ixs, [payer]);
           console.log("Replaced", replaces * stepSize, "leaves");
           ixs = [];
         }
+      }
+
+      let newLeafList = []
+      for (let i = 0; i < 32; ++i)  {
+        newLeafList.push(newLeaves[i])
+      }
+
+      let tree = buildTree(newLeafList)
+
+
+      for (let proofSize = 1; proofSize <= 5; ++proofSize) {
+        const newLeaf = crypto.randomBytes(32);
+        let i = Math.floor(Math.random() * 32)
+        const leaf = newLeaves[i];
+        
+        let partialProof = getProofOfLeaf(tree, i).slice(0, proofSize).map((n) => n.node)
+        console.log(`Replacing node ${i}, proof length = ${proofSize}`)
+        for (const [level, node] of Object.entries(partialProof)) {
+          console.log(` ${level}: ${bs58.encode(node)}`)
+        }
+        const replaceIx = createReplaceIx(
+          Gummyroll,
+          payer,
+          merkleRollKeypair.publicKey,
+          root.toBuffer(),
+          newLeaves[i],
+          newLeaf,
+          i,
+          partialProof,
+        );
+        updateTree(tree, newLeaf, i);
+        const replaceBackIx = createReplaceIx(
+          Gummyroll,
+          payer,
+          merkleRollKeypair.publicKey,
+          tree.root,
+          newLeaf,
+          newLeaves[i],
+          i,
+          partialProof,
+        );
+        updateTree(tree, leaf, i);
+        await execute(Gummyroll.provider, [replaceIx, replaceBackIx], [payer], true, true);
       }
     });
   });

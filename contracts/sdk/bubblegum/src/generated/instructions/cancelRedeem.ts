@@ -70,58 +70,48 @@ export const cancelRedeemInstructionDiscriminator = [
  */
 export function createCancelRedeemInstruction(
   accounts: CancelRedeemInstructionAccounts,
-  args: CancelRedeemInstructionArgs
+  args: CancelRedeemInstructionArgs,
+  programId = new web3.PublicKey('BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY')
 ) {
-  const {
-    authority,
-    candyWrapper,
-    gummyrollProgram,
-    merkleSlab,
-    voucher,
-    owner,
-  } = accounts
-
   const [data] = cancelRedeemStruct.serialize({
     instructionDiscriminator: cancelRedeemInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: authority,
+      pubkey: accounts.authority,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: candyWrapper,
+      pubkey: accounts.candyWrapper,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: gummyrollProgram,
+      pubkey: accounts.gummyrollProgram,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: merkleSlab,
+      pubkey: accounts.merkleSlab,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: voucher,
+      pubkey: accounts.voucher,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: owner,
+      pubkey: accounts.owner,
       isWritable: true,
       isSigner: true,
     },
   ]
 
   const ix = new web3.TransactionInstruction({
-    programId: new web3.PublicKey(
-      'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY'
-    ),
+    programId,
     keys,
     data,
   })

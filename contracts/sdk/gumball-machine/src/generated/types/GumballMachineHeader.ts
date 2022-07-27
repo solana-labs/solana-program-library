@@ -8,6 +8,10 @@
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
+import {
+  GumballCreatorAdapter,
+  gumballCreatorAdapterBeet,
+} from './GumballCreatorAdapter'
 export type GumballMachineHeader = {
   urlBase: number[] /* size: 64 */
   nameBase: number[] /* size: 32 */
@@ -15,8 +19,7 @@ export type GumballMachineHeader = {
   sellerFeeBasisPoints: number
   isMutable: number
   retainAuthority: number
-  configLineEncodeMethod: number
-  padding: number[] /* size: 3 */
+  maxMintSize: number
   price: beet.bignum
   goLiveDate: beet.bignum
   mint: web3.PublicKey
@@ -24,12 +27,14 @@ export type GumballMachineHeader = {
   receiver: web3.PublicKey
   authority: web3.PublicKey
   collectionKey: web3.PublicKey
-  creatorAddress: web3.PublicKey
   extensionLen: beet.bignum
-  maxMintSize: beet.bignum
-  remaining: beet.bignum
-  maxItems: beet.bignum
-  totalItemsAdded: beet.bignum
+  remaining: number
+  maxItems: number
+  totalItemsAdded: number
+  smallestUninitializedIndex: number
+  configLineEncodeMethod: number
+  creators: GumballCreatorAdapter[] /* size: 4 */
+  padding: number[] /* size: 7 */
 }
 
 /**
@@ -45,8 +50,7 @@ export const gumballMachineHeaderBeet =
       ['sellerFeeBasisPoints', beet.u16],
       ['isMutable', beet.u8],
       ['retainAuthority', beet.u8],
-      ['configLineEncodeMethod', beet.u8],
-      ['padding', beet.uniformFixedSizeArray(beet.u8, 3)],
+      ['maxMintSize', beet.u32],
       ['price', beet.u64],
       ['goLiveDate', beet.i64],
       ['mint', beetSolana.publicKey],
@@ -54,12 +58,14 @@ export const gumballMachineHeaderBeet =
       ['receiver', beetSolana.publicKey],
       ['authority', beetSolana.publicKey],
       ['collectionKey', beetSolana.publicKey],
-      ['creatorAddress', beetSolana.publicKey],
       ['extensionLen', beet.u64],
-      ['maxMintSize', beet.u64],
-      ['remaining', beet.u64],
-      ['maxItems', beet.u64],
-      ['totalItemsAdded', beet.u64],
+      ['remaining', beet.u32],
+      ['maxItems', beet.u32],
+      ['totalItemsAdded', beet.u32],
+      ['smallestUninitializedIndex', beet.u32],
+      ['configLineEncodeMethod', beet.u8],
+      ['creators', beet.uniformFixedSizeArray(gumballCreatorAdapterBeet, 4)],
+      ['padding', beet.uniformFixedSizeArray(beet.u8, 7)],
     ],
     'GumballMachineHeader'
   )

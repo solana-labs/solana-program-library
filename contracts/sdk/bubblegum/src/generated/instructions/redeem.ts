@@ -62,6 +62,7 @@ export type RedeemInstructionAccounts = {
   delegate: web3.PublicKey
   merkleSlab: web3.PublicKey
   voucher: web3.PublicKey
+  systemProgram?: web3.PublicKey
 }
 
 export const redeemInstructionDiscriminator = [
@@ -80,69 +81,58 @@ export const redeemInstructionDiscriminator = [
  */
 export function createRedeemInstruction(
   accounts: RedeemInstructionAccounts,
-  args: RedeemInstructionArgs
+  args: RedeemInstructionArgs,
+  programId = new web3.PublicKey('BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY')
 ) {
-  const {
-    authority,
-    candyWrapper,
-    gummyrollProgram,
-    owner,
-    delegate,
-    merkleSlab,
-    voucher,
-  } = accounts
-
   const [data] = redeemStruct.serialize({
     instructionDiscriminator: redeemInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: authority,
+      pubkey: accounts.authority,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: candyWrapper,
+      pubkey: accounts.candyWrapper,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: gummyrollProgram,
+      pubkey: accounts.gummyrollProgram,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: owner,
+      pubkey: accounts.owner,
       isWritable: true,
       isSigner: true,
     },
     {
-      pubkey: delegate,
+      pubkey: accounts.delegate,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: merkleSlab,
+      pubkey: accounts.merkleSlab,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: voucher,
+      pubkey: accounts.voucher,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: web3.SystemProgram.programId,
+      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
       isWritable: false,
       isSigner: false,
     },
   ]
 
   const ix = new web3.TransactionInstruction({
-    programId: new web3.PublicKey(
-      'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY'
-    ),
+    programId,
     keys,
     data,
   })

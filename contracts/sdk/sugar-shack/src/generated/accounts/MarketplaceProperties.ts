@@ -75,6 +75,23 @@ export class MarketplaceProperties implements MarketplacePropertiesArgs {
   }
 
   /**
+   * Provides a {@link web3.Connection.getProgramAccounts} config builder,
+   * to fetch accounts matching filters that can be specified via that builder.
+   *
+   * @param programId - the program that owns the accounts we are filtering
+   */
+  static gpaBuilder(
+    programId: web3.PublicKey = new web3.PublicKey(
+      '9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK'
+    )
+  ) {
+    return beetSolana.GpaBuilder.fromStruct(
+      programId,
+      marketplacePropertiesBeet
+    )
+  }
+
+  /**
    * Deserializes the {@link MarketplaceProperties} from the provided data Buffer.
    * @returns a tuple of the account data and the offset up to which the buffer was read to obtain it.
    */

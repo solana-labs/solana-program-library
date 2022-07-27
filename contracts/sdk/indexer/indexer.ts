@@ -1,43 +1,43 @@
-import { Keypair } from "@solana/web3.js";
-import { Connection } from "@solana/web3.js";
+import { Keypair, Logs, Connection, Context } from "@solana/web3.js";
 import { PROGRAM_ID as BUBBLEGUM_PROGRAM_ID } from "../bubblegum/src/generated";
-import { PROGRAM_ID as GUMMYROLL_PROGRAM_ID } from "../gummyroll/index";
 import * as anchor from "@project-serum/anchor";
-import { Bubblegum } from "../../target/types/bubblegum";
-import { Gummyroll } from "../../target/types/gummyroll";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
-import { loadProgram, handleLogs, handleLogsAtomic } from "./indexer/utils";
-import { bootstrap } from "./db";
-import { fetchAndPlugGaps, validateTree } from "./backfiller";
+import { handleLogsAtomic } from "./indexer/log/bubblegum";
+import { loadPrograms, ParseResult, ParserState } from "./indexer/utils";
+import { bootstrap, NFTDatabaseConnection } from "./db";
+import { fetchAndPlugGaps, plugGapsFromSlot, validateTree } from "./backfiller";
 
-// const url = "http://api.internal.mainnet-beta.solana.com";
+// const url = "http://api.explorer.mainnet-beta.solana.com";
 const url = "http://127.0.0.1:8899";
-let Bubblegum: anchor.Program<Bubblegum>;
-let Gummyroll: anchor.Program<Gummyroll>;
+
+async function handleLogSubscription(
+  connection: Connection,
+  db: NFTDatabaseConnection,
+  logs: Logs,
+  ctx: Context,
+  parserState: ParserState,
+) {
+  const result = handleLogsAtomic(db, logs, ctx, parserState);
+  if (result === ParseResult.LogTruncated) {
+    console.log("\t\tLOG TRUNCATED\n\n\n\n")
+    await plugGapsFromSlot(connection, db, parserState, ctx.slot, 0, Number.MAX_SAFE_INTEGER);
+  }
+}
 
 async function main() {
   const endpoint = url;
   const connection = new Connection(endpoint, "confirmed");
   const payer = Keypair.generate();
-  const provider = new anchor.Provider(connection, new NodeWallet(payer), {
+  const provider = new anchor.AnchorProvider(connection, new NodeWallet(payer), {
     commitment: "confirmed",
   });
   let db = await bootstrap();
   console.log("Finished bootstrapping DB");
-  Gummyroll = loadProgram(
-    provider,
-    GUMMYROLL_PROGRAM_ID,
-    "target/idl/gummyroll.json"
-  ) as anchor.Program<Gummyroll>;
-  Bubblegum = loadProgram(
-    provider,
-    BUBBLEGUM_PROGRAM_ID,
-    "target/idl/bubblegum.json"
-  ) as anchor.Program<Bubblegum>;
+  const parserState = loadPrograms(provider);
   console.log("loaded programs...");
   let subscriptionId = connection.onLogs(
     BUBBLEGUM_PROGRAM_ID,
-    (logs, ctx) => handleLogsAtomic(db, logs, ctx, { Gummyroll, Bubblegum }),
+    (logs, ctx) => handleLogSubscription(connection, db, logs, ctx, parserState),
     "confirmed"
   );
   while (true) {
@@ -45,10 +45,7 @@ async function main() {
       const trees = await db.getTrees();
       for (const [treeId, depth] of trees) {
         console.log("Scanning for gaps");
-        await fetchAndPlugGaps(connection, db, 0, treeId, {
-          Gummyroll,
-          Bubblegum,
-        });
+        let maxSeq = await fetchAndPlugGaps(connection, db, 0, treeId, parserState, 5);
         console.log("Validation:");
         console.log(
           `    Off-chain tree ${treeId} is consistent: ${await validateTree(

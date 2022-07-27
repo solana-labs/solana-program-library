@@ -27,7 +27,10 @@ export type UpdateHeaderMetadataInstructionArgs = {
   goLiveDate: beet.COption<beet.bignum>
   botWallet: beet.COption<web3.PublicKey>
   authority: beet.COption<web3.PublicKey>
-  maxMintSize: beet.COption<beet.bignum>
+  receiver: beet.COption<web3.PublicKey>
+  maxMintSize: beet.COption<number>
+  creatorKeys: beet.COption<web3.PublicKey[]>
+  creatorShares: beet.COption<Uint8Array>
 }
 /**
  * @category Instructions
@@ -52,7 +55,10 @@ export const updateHeaderMetadataStruct = new beet.FixableBeetArgsStruct<
     ['goLiveDate', beet.coption(beet.i64)],
     ['botWallet', beet.coption(beetSolana.publicKey)],
     ['authority', beet.coption(beetSolana.publicKey)],
-    ['maxMintSize', beet.coption(beet.u64)],
+    ['receiver', beet.coption(beetSolana.publicKey)],
+    ['maxMintSize', beet.coption(beet.u32)],
+    ['creatorKeys', beet.coption(beet.array(beetSolana.publicKey))],
+    ['creatorShares', beet.coption(beet.bytes)],
   ],
   'UpdateHeaderMetadataInstructionArgs'
 )
@@ -86,31 +92,28 @@ export const updateHeaderMetadataInstructionDiscriminator = [
  */
 export function createUpdateHeaderMetadataInstruction(
   accounts: UpdateHeaderMetadataInstructionAccounts,
-  args: UpdateHeaderMetadataInstructionArgs
+  args: UpdateHeaderMetadataInstructionArgs,
+  programId = new web3.PublicKey('GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW')
 ) {
-  const { gumballMachine, authority } = accounts
-
   const [data] = updateHeaderMetadataStruct.serialize({
     instructionDiscriminator: updateHeaderMetadataInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: gumballMachine,
+      pubkey: accounts.gumballMachine,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: authority,
+      pubkey: accounts.authority,
       isWritable: false,
       isSigner: true,
     },
   ]
 
   const ix = new web3.TransactionInstruction({
-    programId: new web3.PublicKey(
-      'GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW'
-    ),
+    programId,
     keys,
     data,
   })

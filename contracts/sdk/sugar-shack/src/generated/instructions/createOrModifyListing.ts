@@ -84,70 +84,58 @@ export const createOrModifyListingInstructionDiscriminator = [
  */
 export function createCreateOrModifyListingInstruction(
   accounts: CreateOrModifyListingInstructionAccounts,
-  args: CreateOrModifyListingInstructionArgs
+  args: CreateOrModifyListingInstructionArgs,
+  programId = new web3.PublicKey('9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK')
 ) {
-  const {
-    owner,
-    formerDelegate,
-    newDelegate,
-    bubblegumAuthority,
-    gummyroll,
-    merkleSlab,
-    bubblegum,
-    candyWrapper,
-  } = accounts
-
   const [data] = createOrModifyListingStruct.serialize({
     instructionDiscriminator: createOrModifyListingInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: owner,
+      pubkey: accounts.owner,
       isWritable: true,
       isSigner: true,
     },
     {
-      pubkey: formerDelegate,
+      pubkey: accounts.formerDelegate,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: newDelegate,
+      pubkey: accounts.newDelegate,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: bubblegumAuthority,
+      pubkey: accounts.bubblegumAuthority,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: gummyroll,
+      pubkey: accounts.gummyroll,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: merkleSlab,
+      pubkey: accounts.merkleSlab,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: bubblegum,
+      pubkey: accounts.bubblegum,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: candyWrapper,
+      pubkey: accounts.candyWrapper,
       isWritable: false,
       isSigner: false,
     },
   ]
 
   const ix = new web3.TransactionInstruction({
-    programId: new web3.PublicKey(
-      '9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK'
-    ),
+    programId,
     keys,
     data,
   })

@@ -1,30 +1,16 @@
 use {
+    crate::error::BubblegumError,
     crate::state::metaplex_anchor::MplTokenMetadata,
     crate::state::{
-        NONCE_SIZE,
-        VOUCHER_PREFIX,
-        VOUCHER_SIZE,
-        ASSET_PREFIX,
         leaf_schema::{LeafSchema, Version},
+        metaplex_adapter::{Creator, MetadataArgs, TokenProgramVersion},
         metaplex_anchor::{MasterEdition, TokenMetadata},
-        Nonce, Voucher,
-        metaplex_adapter::{MetadataArgs, TokenProgramVersion},
-        NewNFTEvent,
-        NFTDecompressionEvent,
+        NFTDecompressionEvent, NewNFTEvent, Nonce, Voucher, ASSET_PREFIX, NONCE_SIZE,
+        VOUCHER_PREFIX, VOUCHER_SIZE,
     },
-    gummyroll::{
-        program::Gummyroll,
-        Node,
-        state::CandyWrapper,
-        utils::wrap_event,
-    },
-    crate::error::BubblegumError,
-    crate::utils::{append_leaf,
-                   replace_leaf,
-                   get_asset_id,
-                   cmp_bytes,
-                   cmp_pubkeys,
-                   assert_pubkey_equal,
+    crate::utils::{
+        append_leaf, assert_metadata_is_mpl_compatible, assert_pubkey_equal, cmp_bytes,
+        cmp_pubkeys, get_asset_id, replace_leaf,
     },
     anchor_lang::{
         prelude::*,
@@ -36,13 +22,13 @@ use {
             system_instruction,
         },
     },
+    gummyroll::{program::Gummyroll, state::CandyWrapper, utils::wrap_event, Node},
     spl_token::state::Mint as SplMint,
 };
 
-
+pub mod error;
 pub mod state;
 pub mod utils;
-pub mod error;
 
 declare_id!("BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY");
 
@@ -236,9 +222,9 @@ pub struct DecompressV1<'info> {
     #[account(
     mut,
     seeds = [
-    ASSET_PREFIX.as_ref(),
-    voucher.merkle_slab.as_ref(),
-    voucher.leaf_schema.nonce().to_le_bytes().as_ref()
+        ASSET_PREFIX.as_ref(),
+        voucher.merkle_slab.as_ref(),
+        voucher.leaf_schema.nonce().to_le_bytes().as_ref(),
     ],
     bump
     )]
@@ -301,7 +287,12 @@ pub struct Compress<'info> {
 }
 
 pub fn hash_metadata(metadata: &MetadataArgs) -> Result<[u8; 32]> {
-    Ok(keccak::hashv(&[metadata.try_to_vec()?.as_slice()]).to_bytes())
+    let metadata_args_hash = keccak::hashv(&[metadata.try_to_vec()?.as_slice()]);
+    Ok(keccak::hashv(&[
+        &metadata_args_hash.to_bytes(),
+        &metadata.seller_fee_basis_points.to_le_bytes(),
+    ])
+    .to_bytes())
 }
 
 pub enum InstructionName {
@@ -352,7 +343,6 @@ pub mod bubblegum {
             ctx.accounts.gummyroll_program.to_account_info(),
             gummyroll::cpi::accounts::Initialize {
                 authority: ctx.accounts.authority.to_account_info(),
-                append_authority: ctx.accounts.tree_creator.to_account_info(),
                 merkle_roll: merkle_slab,
                 candy_wrapper: ctx.accounts.candy_wrapper.to_account_info(),
             },
@@ -364,11 +354,17 @@ pub mod bubblegum {
     pub fn mint_v1(ctx: Context<MintV1>, message: MetadataArgs) -> Result<()> {
         // TODO -> Pass collection in check collection authority or collection delegate authority signer
         // TODO -> Separate V1 / V1 into seperate instructions
-        //
+        assert_metadata_is_mpl_compatible(&message)?;
         let owner = ctx.accounts.owner.key();
         let delegate = ctx.accounts.delegate.key();
         let merkle_slab = ctx.accounts.merkle_slab.to_account_info();
-        let data_hash = keccak::hashv(&[message.try_to_vec()?.as_slice()]);
+
+        // @dev: seller_fee_basis points is encoded twice so that it can be passed to marketplace instructions, without passing the entire, un-hashed MetadataArgs struct
+        let metadata_args_hash = keccak::hashv(&[message.try_to_vec()?.as_slice()]);
+        let data_hash = keccak::hashv(&[
+            &metadata_args_hash.to_bytes(),
+            &message.seller_fee_basis_points.to_le_bytes(),
+        ]);
         let nonce = &mut ctx.accounts.authority;
         let creator_data = message
             .creators
@@ -395,7 +391,7 @@ pub mod bubblegum {
         let new_nft = NewNFTEvent {
             version: Version::V1,
             metadata: message,
-            nonce: nonce.count
+            nonce: nonce.count,
         };
         emit!(new_nft);
         wrap_event(new_nft.try_to_vec()?, &ctx.accounts.candy_wrapper)?;
@@ -483,8 +479,15 @@ pub mod bubblegum {
             data_hash,
             creator_hash,
         );
-        let new_leaf =
-            LeafSchema::new_v0(asset_id, owner, new_delegate, nonce, data_hash, creator_hash);
+        let new_leaf = LeafSchema::new_v0(
+            asset_id,
+            owner,
+            new_delegate,
+            nonce,
+            data_hash,
+            creator_hash,
+        );
+        wrap_event(new_leaf.try_to_vec()?, &ctx.accounts.candy_wrapper)?;
         emit!(new_leaf.to_event());
         replace_leaf(
             &merkle_slab.key(),
@@ -524,6 +527,7 @@ pub mod bubblegum {
         );
         emit!(previous_leaf.to_event());
         let new_leaf = Node::default();
+        wrap_event(new_leaf.try_to_vec()?, &ctx.accounts.candy_wrapper)?;
         replace_leaf(
             &merkle_slab.key(),
             *ctx.bumps.get("authority").unwrap(),
@@ -555,6 +559,7 @@ pub mod bubblegum {
             LeafSchema::new_v0(asset_id, owner, delegate, nonce, data_hash, creator_hash);
         emit!(previous_leaf.to_event());
         let new_leaf = Node::default();
+        wrap_event(new_leaf.try_to_vec()?, &ctx.accounts.candy_wrapper)?;
         replace_leaf(
             &merkle_slab.key(),
             *ctx.bumps.get("authority").unwrap(),
@@ -581,14 +586,19 @@ pub mod bubblegum {
     ) -> Result<()> {
         let voucher = &ctx.accounts.voucher;
         match ctx.accounts.voucher.leaf_schema {
-            LeafSchema::V1 { owner, .. } =>
-                assert_pubkey_equal(&ctx.accounts.owner.key(),
-                                    &owner,
-                                    Some(BubblegumError::AssetOwnerMismatch.into()),
-                ),
+            LeafSchema::V1 { owner, .. } => assert_pubkey_equal(
+                &ctx.accounts.owner.key(),
+                &owner,
+                Some(BubblegumError::AssetOwnerMismatch.into()),
+            ),
         }?;
         let merkle_slab = ctx.accounts.merkle_slab.to_account_info();
         emit!(voucher.leaf_schema.to_event());
+        wrap_event(
+            voucher.leaf_schema.try_to_vec()?,
+            &ctx.accounts.candy_wrapper,
+        )?;
+
         replace_leaf(
             &merkle_slab.key(),
             *ctx.bumps.get("authority").unwrap(),
@@ -598,7 +608,7 @@ pub mod bubblegum {
             &ctx.accounts.candy_wrapper.to_account_info(),
             ctx.remaining_accounts,
             root,
-            [0; 32], 
+            [0; 32],
             voucher.leaf_schema.to_node(),
             voucher.index,
         )
@@ -627,7 +637,7 @@ pub mod bubblegum {
                     nonce: nonce,
                 })
             }
-            _ => Err(BubblegumError::UnsupportedSchemaVersion)
+            _ => Err(BubblegumError::UnsupportedSchemaVersion),
         }?;
         let voucher = &ctx.accounts.voucher;
         match metadata.token_program_version {
@@ -745,7 +755,18 @@ pub mod bubblegum {
                 metadata.symbol.clone(),
                 metadata.uri.clone(),
                 if metadata.creators.len() > 0 {
-                    Some(metadata.creators.iter().map(|c| c.adapt()).collect())
+                    let mut amended_metadata_creators = metadata.creators;
+                    amended_metadata_creators.push(Creator {
+                        address: ctx.accounts.mint_authority.key(),
+                        verified: true,
+                        share: 0,
+                    });
+                    Some(
+                        amended_metadata_creators
+                            .iter()
+                            .map(|c| c.adapt())
+                            .collect(),
+                    )
                 } else {
                     None
                 },

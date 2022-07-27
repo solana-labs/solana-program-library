@@ -4,8 +4,10 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
-    "@project-serum/anchor": "0.21",
-    "@solana/web3.js": "^1.43.6",
+    "@project-serum/anchor": "0.24.2",
+    "@solana/web3.js": "^1.50.1",
+    "borsh": "^0.7.0",
+    "cors": "^2.8.5",
     "express": "^4.18.1",
     "sqlite": "^4.1.1",
     "sqlite3": "^5.0.8"

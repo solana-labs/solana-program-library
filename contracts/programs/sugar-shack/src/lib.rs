@@ -294,23 +294,33 @@ pub mod sugar_shack {
     }
 
     /// Enables any user to purchase an NFT listed on the marketplace.
+    /// @dev: To avoid overflow precision errors we generally avoid operations that would involve multiplying by f64s. (i.e. price * creator_share/100).
+    ///       instead we compute the most smallest unit that could be paid out to an entity (a bip) and allocate bips via multiplication.
+    /// @notice: The risk here is that certain creators or the marketplace itself might not receive their fee, if price * num_bips_for_entity < 10,000.
+    /// @notice: Any fees not paid to creators/marketplace will be transferred to the lister.
     pub fn purchase<'info>(
         ctx: Context<'_, '_, '_, 'info, Purchase<'info>>,
         price: u64,
-        data_hash: [u8; 32],
+        metadata_args_hash: [u8; 32],
         nonce: u64,
         index: u32,
         root: [u8; 32],
         creator_shares: Vec<u8>,
+        seller_fee_basis_points: u16,
     ) -> Result<()> {
-        // First, payout the marketplace's royalty fee. In this implementation, the marketplace is taking the fee off the top.
-        // However, the marketplace could also take its fee along side the "creators". However, if that approach is taken, just note
-        // that care should be taken that the sum of percentages across creators and marketplace does not exceed 100.
+        // The fees for the marketplace plus the seller_fee_basis points cannot exceed 100% of the price
+        assert!(
+            ctx.accounts
+                .marketplace_props
+                .share
+                .safe_add(seller_fee_basis_points)?
+                <= 10000
+        );
 
-        // @notice: The risk here is that the NFT can be purchased for free (aside from gas cost) if the list price is less than 10,000 lamports.
-        let basis_point_of_price = price.safe_div(10000 as u64)?;
-        let amount_to_pay_marketplace =
-            basis_point_of_price.safe_mul(ctx.accounts.marketplace_props.share as u64)?;
+        // First, payout the marketplace's royalty fee.
+        let amount_to_pay_marketplace = (price as u128)
+            .safe_mul(ctx.accounts.marketplace_props.share as u128)?
+            .safe_div(10000)? as u64;
         invoke(
             &system_instruction::transfer(
                 &ctx.accounts.purchaser.key(),
@@ -323,12 +333,13 @@ pub mod sugar_shack {
                 ctx.accounts.system_program.to_account_info(),
             ],
         )?;
+        let mut total_remaining_price_allocation = price.safe_sub(amount_to_pay_marketplace)?;
 
         // Second, payout each "creator". Creators are an immutable set of secondary marketplace sale royalty recipients.
         // Simultaneously, collect <address, share> pairs to prepare to compute creator_hash
-        let mut total_remaining_price_allocation = price.safe_sub(amount_to_pay_marketplace)?;
-        let basis_point_of_remaining_price_allocation =
-            total_remaining_price_allocation.safe_div(10000 as u64)?;
+        let total_creator_allocation = (price as u128)
+            .safe_mul((seller_fee_basis_points as u128))?
+            .safe_div(10000)? as u64;
         let mut amount_paid_out_to_creators = 0;
         let mut creator_data: Vec<Vec<u8>> = Vec::new();
         let (creator_accounts, proof_accounts) =
@@ -336,8 +347,9 @@ pub mod sugar_shack {
         let creator_accounts_iter = &mut creator_accounts.iter();
         for share in creator_shares.into_iter() {
             let current_creator_info = next_account_info(creator_accounts_iter)?;
-            let amount_to_pay_creator = basis_point_of_remaining_price_allocation
-                .safe_mul((share as u64).safe_mul(100 as u64)?)?;
+            let amount_to_pay_creator = (total_creator_allocation as u128)
+                .safe_mul((share as u128))?
+                .safe_div(100)? as u64;
             invoke(
                 &system_instruction::transfer(
                     &ctx.accounts.purchaser.key(),
@@ -390,6 +402,8 @@ pub mod sugar_shack {
 
         // Get the data for the CPI
         let mut transfer_instruction_data = vec![163, 52, 200, 231, 140, 3, 69, 186];
+        let data_hash =
+            hashv(&[&metadata_args_hash, &seller_fee_basis_points.to_le_bytes()]).to_bytes();
         transfer_instruction_data.append(
             &mut bubblegum::instruction::Transfer {
                 root,

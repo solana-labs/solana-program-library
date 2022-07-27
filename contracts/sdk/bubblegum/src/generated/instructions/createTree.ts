@@ -52,6 +52,7 @@ export type CreateTreeInstructionAccounts = {
   payer: web3.PublicKey
   treeCreator: web3.PublicKey
   candyWrapper: web3.PublicKey
+  systemProgram?: web3.PublicKey
   gummyrollProgram: web3.PublicKey
   merkleSlab: web3.PublicKey
 }
@@ -72,63 +73,53 @@ export const createTreeInstructionDiscriminator = [
  */
 export function createCreateTreeInstruction(
   accounts: CreateTreeInstructionAccounts,
-  args: CreateTreeInstructionArgs
+  args: CreateTreeInstructionArgs,
+  programId = new web3.PublicKey('BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY')
 ) {
-  const {
-    authority,
-    payer,
-    treeCreator,
-    candyWrapper,
-    gummyrollProgram,
-    merkleSlab,
-  } = accounts
-
   const [data] = createTreeStruct.serialize({
     instructionDiscriminator: createTreeInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: authority,
+      pubkey: accounts.authority,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: payer,
+      pubkey: accounts.payer,
       isWritable: true,
       isSigner: true,
     },
     {
-      pubkey: treeCreator,
+      pubkey: accounts.treeCreator,
       isWritable: false,
       isSigner: true,
     },
     {
-      pubkey: candyWrapper,
+      pubkey: accounts.candyWrapper,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: web3.SystemProgram.programId,
+      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: gummyrollProgram,
+      pubkey: accounts.gummyrollProgram,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: merkleSlab,
+      pubkey: accounts.merkleSlab,
       isWritable: true,
       isSigner: false,
     },
   ]
 
   const ix = new web3.TransactionInstruction({
-    programId: new web3.PublicKey(
-      'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY'
-    ),
+    programId,
     keys,
     data,
   })

@@ -3,7 +3,7 @@ args=(
   --reset
   --bpf-program metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s ../../../deps/metaplex-program-library/token-metadata/target/deploy/mpl_token_metadata.so
   --bpf-program BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY ../../target/deploy/bubblegum.so
-  --bpf-program GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD ../../target/deploy/gummyroll.so
+  --bpf-program GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU ../../target/deploy/gummyroll.so
   --bpf-program GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW ../../target/deploy/gumball_machine.so
   --bpf-program WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh ../../target/deploy/candy_wrapper.so
   --bpf-program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA ../../../deps/solana-program-library/target/deploy/spl_token.so

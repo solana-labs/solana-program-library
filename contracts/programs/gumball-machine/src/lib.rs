@@ -10,17 +10,21 @@ use bubblegum::program::Bubblegum;
 
 use bubblegum::state::metaplex_adapter::MetadataArgs;
 use bytemuck::cast_slice_mut;
-use gummyroll::{
-    program::Gummyroll, state::CandyWrapper,
-};
+use gummyroll::{program::Gummyroll, state::CandyWrapper};
 use spl_token::native_mint;
+
 pub mod state;
+use crate::state::{GumballCreatorAdapter, NUM_CREATORS};
+
 pub mod utils;
 
-use crate::state::{GumballMachineHeader, EncodeMethod, ZeroCopy};
+use crate::state::{EncodeMethod, GumballMachineHeader, ZeroCopy};
 use crate::utils::get_metadata_args;
 
 declare_id!("GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW");
+
+const COMPUTE_BUDGET_ADDRESS: &str = "ComputeBudget111111111111111111111111111111";
+const MAX_NUM_INDICES_TO_INIT_FOR_CHUNK: u32 = 250000;
 
 #[derive(Accounts)]
 pub struct InitGumballMachine<'info> {
@@ -28,7 +32,7 @@ pub struct InitGumballMachine<'info> {
     #[account(zero)]
     gumball_machine: AccountInfo<'info>,
     #[account(mut)]
-    creator: Signer<'info>,
+    payer: Signer<'info>,
     mint: Account<'info, Mint>,
     /// CHECK: Mint/append authority to the merkle slab
     #[account(
@@ -46,6 +50,14 @@ pub struct InitGumballMachine<'info> {
     merkle_slab: AccountInfo<'info>,
     bubblegum: Program<'info, Bubblegum>,
     system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct InitIndices<'info> {
+    /// CHECK: Validation occurs in instruction
+    #[account(mut)]
+    gumball_machine: AccountInfo<'info>,
+    authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -158,16 +170,30 @@ pub struct Destroy<'info> {
 fn assert_valid_single_instruction_transaction<'info>(
     instruction_sysvar_account: &AccountInfo<'info>,
 ) -> Result<()> {
-    // There should only be one instruction in this transaction (the current call to dispense_...)
+    // There should only be one non compute-budget instruction
+    // in this transaction (i.e. the current call to dispense_...)
     let instruction_sysvar = instruction_sysvar_account.try_borrow_data()?;
     let mut fixed_data = [0u8; 2];
     fixed_data.copy_from_slice(&instruction_sysvar[0..2]);
     let num_instructions = u16::from_le_bytes(fixed_data);
-    assert_eq!(num_instructions, 1);
+    if num_instructions > 2 {
+        assert!(false, "Suspicious transaction, failing")
+    } else if num_instructions == 2 {
+        let compute_budget_instruction =
+            load_instruction_at_checked(0, instruction_sysvar_account)?;
 
+        let compute_budget_id: Pubkey =
+            Pubkey::new(bs58::decode(&COMPUTE_BUDGET_ADDRESS).into_vec().unwrap()[..32].as_ref());
+
+        assert_eq!(compute_budget_instruction.program_id, compute_budget_id);
+        let current_instruction = load_instruction_at_checked(1, instruction_sysvar_account)?;
+        assert_eq!(current_instruction.program_id, id());
+    } else if num_instructions == 1 {
+        let only_instruction = load_instruction_at_checked(0, instruction_sysvar_account)?;
+        assert_eq!(only_instruction.program_id, id());
+    }
     // We should not be executing dispense... from a CPI
-    let only_instruction = load_instruction_at_checked(0, instruction_sysvar_account)?;
-    assert_eq!(only_instruction.program_id, id());
+
     return Ok(());
 }
 
@@ -182,25 +208,31 @@ fn fisher_yates_shuffle_and_fetch_nft_metadata<'info>(
     config_lines_data: &mut [u8],
 ) -> Result<MetadataArgs> {
     // Get 8 bytes of entropy from the SlotHashes sysvar
-    let mut buf: [u8; 8] = [0; 8];
+    let mut buf: [u8; 4] = [0; 4];
     buf.copy_from_slice(
         &hashv(&[
             &recent_blockhashes.data.borrow(),
-            &(gumball_header.remaining as usize).to_le_bytes(),
+            &(gumball_header.remaining).to_le_bytes(),
         ])
-        .as_ref()[..8],
+        .as_ref()[..4],
     );
-    let entropy = u64::from_le_bytes(buf);
+    let entropy = u32::from_le_bytes(buf);
     // Shuffle the list of indices using Fisher-Yates
     let selected = entropy % gumball_header.remaining;
     gumball_header.remaining -= 1;
     indices.swap(selected as usize, gumball_header.remaining as usize);
     // Pull out config line from the data
-    let random_config_index = indices[(gumball_header.remaining as usize)] as usize * line_size;
-    let config_line =
-        config_lines_data[random_config_index..random_config_index + line_size].to_vec();
-
-    let nft_index = (random_config_index / line_size) + 1;
+    let zero_nft_index = indices[(gumball_header.remaining as usize)] as usize;
+    let nft_index = zero_nft_index + 1;
+    msg!("Minted NFT with 1-index {}", nft_index);
+    let random_config_index = zero_nft_index * line_size;
+    let config_line = if config_lines_data.len() > 0 {
+        // If the machine is manually specifying config lines then extract the config line data
+        config_lines_data[random_config_index..random_config_index + line_size].to_vec()
+    } else {
+        // Otherwise the 1-index serves as the config line
+        nft_index.to_le_bytes().to_vec()
+    };
 
     let message = get_metadata_args(
         gumball_header.url_base,
@@ -210,10 +242,10 @@ fn fisher_yates_shuffle_and_fetch_nft_metadata<'info>(
         gumball_header.is_mutable != 0,
         gumball_header.collection_key,
         None,
-        gumball_header.creator_address,
+        gumball_header.creators,
         nft_index,
         config_line,
-        EncodeMethod::from(gumball_header.config_line_encode_method)
+        EncodeMethod::from(gumball_header.config_line_encode_method),
     );
     return Ok(message);
 }
@@ -222,7 +254,9 @@ fn fisher_yates_shuffle_and_fetch_nft_metadata<'info>(
 // For efficiency, this returns the GumballMachineHeader because it's required to validate
 // payment parameters. But the main purpose of this function is to determine which config
 // line to mint to the user, and CPI to bubblegum to actually execute the mint
-fn find_and_mint_compressed_nft<'info>(
+// Also returns the number of nfts successfully minted, so that the purchaser is charged
+// appropriately
+fn find_and_mint_compressed_nfts<'info>(
     gumball_machine: &AccountInfo<'info>,
     payer: &Signer<'info>,
     willy_wonka: &AccountInfo<'info>,
@@ -234,8 +268,8 @@ fn find_and_mint_compressed_nft<'info>(
     merkle_slab: &AccountInfo<'info>,
     bubblegum: &Program<'info, Bubblegum>,
     candy_wrapper_program: &Program<'info, CandyWrapper>,
-    num_items: u64,
-) -> Result<GumballMachineHeader> {
+    num_items: u32,
+) -> Result<(GumballMachineHeader, u32)> {
     // Prevent atomic transaction exploit attacks
     // TODO: potentially record information about botting now as pretains to payments to bot_wallet
     assert_valid_single_instruction_transaction(instruction_sysvar_account)?;
@@ -245,8 +279,20 @@ fn find_and_mint_compressed_nft<'info>(
     let (mut header_bytes, config_data) =
         gumball_machine_data.split_at_mut(std::mem::size_of::<GumballMachineHeader>());
     let gumball_header = GumballMachineHeader::load_mut_bytes(&mut header_bytes)?;
+
+    // Cannot dispense before all indices are initialized
+    assert_eq!(
+        gumball_header.max_items,
+        gumball_header.smallest_uninitialized_index
+    );
+
+    // Cannot dispense more than the max_mint_size
+    assert!(num_items <= gumball_header.max_mint_size);
+
+    // Cannot dispense before project is live
     let clock = Clock::get()?;
     assert!(clock.unix_timestamp > gumball_header.go_live_date);
+
     let size = gumball_header.max_items as usize;
     let index_array_size = std::mem::size_of::<u32>() * size;
     let config_size = gumball_header.extension_len as usize * size;
@@ -258,10 +304,12 @@ fn find_and_mint_compressed_nft<'info>(
     // TODO: Validate data
 
     let indices = cast_slice_mut::<u8, u32>(indices_data);
-    for _ in 0..(num_items as usize)
-        .max(1)
-        .min(gumball_header.remaining as usize)
-    {
+    let num_nfts_to_mint: u32 = (num_items).max(1).min(gumball_header.remaining);
+    assert!(
+        num_nfts_to_mint > 0,
+        "There are no remaining NFTs to dispense!"
+    );
+    for _ in 0..num_nfts_to_mint {
         let message = fisher_yates_shuffle_and_fetch_nft_metadata(
             recent_blockhashes,
             gumball_header,
@@ -288,16 +336,14 @@ fn find_and_mint_compressed_nft<'info>(
         );
         bubblegum::cpi::mint_v1(cpi_ctx, message)?;
     }
-    Ok(*gumball_header)
+    Ok((*gumball_header, num_nfts_to_mint))
 }
 
 #[program]
 pub mod gumball_machine {
     use super::*;
 
-    // TODO(sorend): consider validating receiver in here. I.e. forcing the receiver to be the
-    // associated token account of creator_address and mint. This restricts payment reciept options,
-    // but it allows validation that all initialized gumball machines can receive payment
+    /// Initialize Gumball Machine header properties, and initialize downstream data structures (Gummyroll tree)
     pub fn initialize_gumball_machine(
         ctx: Context<InitGumballMachine>,
         max_depth: u32,
@@ -316,14 +362,49 @@ pub mod gumball_machine {
         authority: Pubkey,
         collection_key: Pubkey,
         extension_len: u64,
-        max_mint_size: u64,
-        max_items: u64,
+        max_mint_size: u32,
+        max_items: u32,
+        creator_keys: Vec<Pubkey>,
+        creator_shares: Vec<u8>,
     ) -> Result<()> {
         let mut gumball_machine_data = ctx.accounts.gumball_machine.try_borrow_mut_data()?;
         let (mut header_bytes, config_data) =
             gumball_machine_data.split_at_mut(std::mem::size_of::<GumballMachineHeader>());
         let gumball_header = GumballMachineHeader::load_mut_bytes(&mut header_bytes)?;
+
+        assert!(
+            max_items <= 1 << max_depth,
+            "Max items must fit into tree of depth {}",
+            max_depth
+        );
         let size = max_items as usize;
+
+        // Construct creators array
+        let mut creators: [GumballCreatorAdapter; NUM_CREATORS] = [
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        ];
+        assert_eq!(creator_keys.len(), creator_shares.len());
+        assert!(
+            creator_keys.len() < NUM_CREATORS,
+            "Cannot set more than {} creators",
+            NUM_CREATORS
+        );
+        assert!(
+            creator_shares.len() == 0 || creator_shares.iter().sum::<u8>() == 100,
+            "If specifying creators, shares must sum to 100% of royalty allocation."
+        );
+        for i in 0..creator_keys.len() {
+            let creator_to_add = GumballCreatorAdapter {
+                address: creator_keys[i],
+                // TODO: metaplex is working on creator verification
+                verified: (0 as u8),
+                share: creator_shares[i],
+            };
+            creators[i] = creator_to_add;
+        }
         *gumball_header = GumballMachineHeader {
             url_base: url_base,
             name_base: name_base,
@@ -333,9 +414,9 @@ pub mod gumball_machine {
             retain_authority: retain_authority.into(),
             config_line_encode_method: match encode_method {
                 Some(e) => e.to_u8(),
-                None => EncodeMethod::UTF8.to_u8()
+                None => EncodeMethod::UTF8.to_u8(),
             },
-            _padding: [0; 3],
+            creators,
             price,
             go_live_date,
             bot_wallet,
@@ -343,22 +424,17 @@ pub mod gumball_machine {
             authority,
             mint: ctx.accounts.mint.key(),
             collection_key,
-            creator_address: ctx.accounts.creator.key(),
             extension_len: extension_len,
             max_mint_size: max_mint_size.max(1).min(max_items),
             remaining: 0,
             max_items,
             total_items_added: 0,
+            smallest_uninitialized_index: 0,
+            _padding: [0; 7],
         };
         let index_array_size = std::mem::size_of::<u32>() * size;
         let config_size = extension_len as usize * size;
         assert!(config_data.len() == index_array_size + config_size);
-        let (indices_data, _) = config_data.split_at_mut(index_array_size);
-        let indices = cast_slice_mut::<u8, u32>(indices_data);
-        indices
-            .iter_mut()
-            .enumerate()
-            .for_each(|(i, idx)| *idx = i as u32);
         let seed = ctx.accounts.gumball_machine.key();
         let seeds = &[seed.as_ref(), &[*ctx.bumps.get("willy_wonka").unwrap()]];
         let authority_pda_signer = &[&seeds[..]];
@@ -370,12 +446,52 @@ pub mod gumball_machine {
                 candy_wrapper: ctx.accounts.candy_wrapper.to_account_info(),
                 gummyroll_program: ctx.accounts.gummyroll.to_account_info(),
                 merkle_slab: ctx.accounts.merkle_slab.to_account_info(),
-                payer: ctx.accounts.creator.to_account_info(),
+                payer: ctx.accounts.payer.to_account_info(),
                 system_program: ctx.accounts.system_program.to_account_info(),
             },
             authority_pda_signer,
         );
         bubblegum::cpi::create_tree(cpi_ctx, max_depth, max_buffer_size)
+    }
+
+    /// Initialize chunk of NFT indices (as many as possible within the compute budget of a single transaction). All indices must be initialized before the tree can dispense.
+    pub fn initialize_indices_chunk(ctx: Context<InitIndices>) -> Result<()> {
+        // Fetch mutable header data
+        let mut gumball_machine_data = ctx.accounts.gumball_machine.try_borrow_mut_data()?;
+        let (mut header_bytes, config_data) =
+            gumball_machine_data.split_at_mut(std::mem::size_of::<GumballMachineHeader>());
+        let mut gumball_header = GumballMachineHeader::load_mut_bytes(&mut header_bytes)?;
+
+        // Assert that indices initialization is authorized
+        assert_eq!(gumball_header.authority, ctx.accounts.authority.key());
+
+        // Grab mutable reference to indices bytes
+        let size = gumball_header.max_items as usize;
+        let index_array_size = std::mem::size_of::<u32>() * size;
+        let (indices_data, _) = config_data.split_at_mut(index_array_size);
+        let indices = cast_slice_mut::<u8, u32>(indices_data);
+
+        // Determine the next byte range to initialize
+        let first_index_to_initialize = gumball_header.smallest_uninitialized_index as usize;
+        let next_smallest_uninitialized_index = (gumball_header.smallest_uninitialized_index
+            + MAX_NUM_INDICES_TO_INIT_FOR_CHUNK)
+            .min(gumball_header.max_items) as usize;
+        indices[first_index_to_initialize..next_smallest_uninitialized_index]
+            .iter_mut()
+            .enumerate()
+            .for_each(|(i, idx)| *idx = (i + first_index_to_initialize) as u32);
+        msg!(
+            "Initialized indices {} up to and not including {}",
+            first_index_to_initialize,
+            next_smallest_uninitialized_index
+        );
+        gumball_header.smallest_uninitialized_index = next_smallest_uninitialized_index as u32;
+
+        // If the machine is not using config lines, and has fully initialized its inidices then we set its remaining NFTs to max
+        if gumball_header.extension_len == 0 {
+            gumball_header.remaining = gumball_header.max_items;
+        }
+        Ok(())
     }
 
     /// Add can only append config lines to the the end of the list
@@ -390,7 +506,7 @@ pub mod gumball_machine {
         let size = gumball_header.max_items as usize;
         let index_array_size = std::mem::size_of::<u32>() * size;
         let line_size = gumball_header.extension_len as usize;
-        let num_lines = new_config_lines_data.len() / line_size; // unchecked divide by zero? maybe we don't care since this will throw and the instr will fail
+        let num_lines = new_config_lines_data.len() / line_size;
         let start_index = gumball_header.total_items_added as usize;
         assert_eq!(gumball_header.authority, ctx.accounts.authority.key());
         assert_eq!(new_config_lines_data.len() % line_size, 0);
@@ -401,8 +517,8 @@ pub mod gumball_machine {
             .take(new_config_lines_data.len())
             .enumerate()
             .for_each(|(i, l)| *l = new_config_lines_data[i]);
-        gumball_header.total_items_added += num_lines as u64;
-        gumball_header.remaining += num_lines as u64;
+        gumball_header.total_items_added += num_lines as u32;
+        gumball_header.remaining += num_lines as u32;
         Ok(())
     }
 
@@ -420,7 +536,7 @@ pub mod gumball_machine {
         let index_array_size = std::mem::size_of::<u32>() * size;
         let config_size = gumball_header.extension_len as usize * size;
         let line_size = gumball_header.extension_len as usize;
-        let num_lines = new_config_lines_data.len() / line_size; // unchecked divide by zero? maybe we don't care since this will throw and the instr will fail
+        let num_lines = new_config_lines_data.len() / line_size;
         assert_eq!(gumball_header.authority, ctx.accounts.authority.key());
         assert_eq!(new_config_lines_data.len() % line_size, 0);
         assert!(config_data.len() == index_array_size + config_size);
@@ -448,7 +564,10 @@ pub mod gumball_machine {
         go_live_date: Option<i64>,
         bot_wallet: Option<Pubkey>,
         authority: Option<Pubkey>,
-        max_mint_size: Option<u64>,
+        receiver: Option<Pubkey>,
+        max_mint_size: Option<u32>,
+        creator_keys: Option<Vec<Pubkey>>,
+        creator_shares: Option<Vec<u8>>,
     ) -> Result<()> {
         let mut gumball_machine_data = ctx.accounts.gumball_machine.try_borrow_mut_data()?;
         let (mut header_bytes, _) =
@@ -469,8 +588,10 @@ pub mod gumball_machine {
         }
         match encode_method {
             Some(e) => gumball_machine.config_line_encode_method = e.to_u8(),
-            None => {} 
+            None => {}
         }
+        // TODO: consider this. Could result in unexpectedly high fees upon secondary sales if this is modified after the project goes live, but before all NFTs are minted.
+        //       maybe we gate this against project go live date?
         match seller_fee_basis_points {
             Some(s) => gumball_machine.seller_fee_basis_points = s,
             None => {}
@@ -483,6 +604,8 @@ pub mod gumball_machine {
             Some(ra) => gumball_machine.retain_authority = ra.into(),
             None => {}
         }
+        // TODO: consider this. Could result in unexpectedly high prices if this is modified after the project goes live, but before all NFTs are minted.
+        //       maybe we gate this against project go live date?
         match price {
             Some(p) => gumball_machine.price = p,
             None => {}
@@ -499,9 +622,47 @@ pub mod gumball_machine {
             Some(bw) => gumball_machine.bot_wallet = bw,
             None => {}
         }
-        // TODO(sorend): consider allowing changes to receiver, requires validation of receiver
+        match receiver {
+            Some(r) => gumball_machine.receiver = r,
+            None => {}
+        }
         match max_mint_size {
             Some(mms) => gumball_machine.max_mint_size = mms.max(1).min(gumball_machine.max_items),
+            None => {}
+        }
+        match creator_keys {
+            Some(cks) => {
+                // If creator_shares is None but creator_keys is specified, input is invalid -> panic
+                let cs = creator_shares.unwrap();
+                assert!(
+                    cs.len() == 0 || cs.iter().sum::<u8>() == 100,
+                    "If specifying creators, shares must sum to 100% of royalty allocation."
+                );
+                assert_eq!(cks.len(), cs.len());
+                assert!(
+                    cks.len() < NUM_CREATORS,
+                    "Cannot set more than {} creators",
+                    NUM_CREATORS
+                );
+                // Construct creators array
+                let mut creators: [GumballCreatorAdapter; NUM_CREATORS] = [
+                    Default::default(),
+                    Default::default(),
+                    Default::default(),
+                    Default::default(),
+                ];
+                for i in 0..cks.len() {
+                    let creator_to_add = GumballCreatorAdapter {
+                        address: cks[i],
+                        // TODO: metaplex is working on creator verification
+                        verified: (0 as u8),
+                        share: cs[i],
+                    };
+                    creators[i] = creator_to_add;
+                }
+                // Overwrite existing creators array, note all creators must then be re-verified
+                gumball_machine.creators = creators;
+            }
             None => {}
         }
         Ok(())
@@ -511,8 +672,8 @@ pub mod gumball_machine {
     /// @notice: the project must have specified the native mint (Wrapped SOL) for "mint"
     ///          in its GumballMachineHeader for this method to succeed. If mint is anything
     ///          else dispense_nft_token should be used.
-    pub fn dispense_nft_sol(ctx: Context<DispenseSol>, num_items: u64) -> Result<()> {
-        let gumball_header = find_and_mint_compressed_nft(
+    pub fn dispense_nft_sol(ctx: Context<DispenseSol>, num_items: u32) -> Result<()> {
+        let (gumball_header, num_nfts_minted) = find_and_mint_compressed_nfts(
             &ctx.accounts.gumball_machine,
             &ctx.accounts.payer,
             &ctx.accounts.willy_wonka,
@@ -538,7 +699,7 @@ pub mod gumball_machine {
             &system_instruction::transfer(
                 &ctx.accounts.payer.key(),
                 &ctx.accounts.receiver.key(),
-                gumball_header.price,
+                gumball_header.price * (num_nfts_minted as u64),
             ),
             &[
                 ctx.accounts.payer.to_account_info(),
@@ -546,7 +707,6 @@ pub mod gumball_machine {
                 ctx.accounts.system_program.to_account_info(),
             ],
         )?;
-
         Ok(())
     }
 
@@ -554,8 +714,8 @@ pub mod gumball_machine {
     /// @notice: the project's mint may be any valid Mint account EXCEPT for Wrapped SOL
     ///          if the mint is Wrapped SOL then dispense_token_sol should be used, as the
     ///          project is seeking native SOL as payment.
-    pub fn dispense_nft_token(ctx: Context<DispenseToken>, num_items: u64) -> Result<()> {
-        let gumball_header = find_and_mint_compressed_nft(
+    pub fn dispense_nft_token(ctx: Context<DispenseToken>, num_items: u32) -> Result<()> {
+        let (gumball_header, num_nfts_minted) = find_and_mint_compressed_nfts(
             &ctx.accounts.gumball_machine,
             &ctx.accounts.payer,
             &ctx.accounts.willy_wonka,
@@ -582,9 +742,8 @@ pub mod gumball_machine {
                     authority: ctx.accounts.payer.to_account_info(),
                 },
             ),
-            gumball_header.price,
+            gumball_header.price * (num_nfts_minted as u64),
         )?;
-
         Ok(())
     }
 
