@@ -24,6 +24,7 @@ use {
     std::{sync::Arc, time::Instant},
 };
 
+// TODO: remove this newtype once `Signers` is implemented for `Vec<Arc<dyn Signer>>` upstream
 struct ArcSigner(Vec<Arc<dyn Signer>>);
 
 impl From<Vec<Arc<dyn Signer>>> for ArcSigner {
