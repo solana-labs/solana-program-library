@@ -1872,343 +1872,6 @@
 	],
 	"accounts": [
 		{
-			"name": "GovernanceAccountType",
-			"type": {
-				"kind": "enum",
-				"variants": [
-					{
-						"name": "Uninitialized",
-						"docs": [
-							"Default uninitialized account state"
-						]
-					},
-					{
-						"name": "RealmV1",
-						"docs": [
-							"Top level aggregation for governances with Community Token (and optional Council Token)"
-						]
-					},
-					{
-						"name": "TokenOwnerRecordV1",
-						"docs": [
-							"Token Owner Record for given governing token owner within a Realm"
-						]
-					},
-					{
-						"name": "GovernanceV1",
-						"docs": [
-							"Governance account"
-						]
-					},
-					{
-						"name": "ProgramGovernanceV1",
-						"docs": [
-							"Program Governance account"
-						]
-					},
-					{
-						"name": "ProposalV1",
-						"docs": [
-							"Proposal account for Governance account. A single Governance account can have multiple Proposal accounts"
-						]
-					},
-					{
-						"name": "SignatoryRecordV1",
-						"docs": [
-							"Proposal Signatory account"
-						]
-					},
-					{
-						"name": "VoteRecordV1",
-						"docs": [
-							"Vote record account for a given Proposal.  Proposal can have 0..n voting records"
-						]
-					},
-					{
-						"name": "ProposalInstructionV1",
-						"docs": [
-							"ProposalInstruction account which holds an instruction to execute for Proposal"
-						]
-					},
-					{
-						"name": "MintGovernanceV1",
-						"docs": [
-							"Mint Governance account"
-						]
-					},
-					{
-						"name": "TokenGovernanceV1",
-						"docs": [
-							"Token Governance account"
-						]
-					},
-					{
-						"name": "RealmConfig",
-						"docs": [
-							"Realm config account (introduced in V2)"
-						]
-					},
-					{
-						"name": "VoteRecordV2",
-						"docs": [
-							"Vote record account for a given Proposal.  Proposal can have 0..n voting records",
-							"V2 adds support for multi option votes"
-						]
-					},
-					{
-						"name": "ProposalTransactionV2",
-						"docs": [
-							"ProposalTransaction account which holds instructions to execute for Proposal within a single Transaction",
-							"V2 replaces ProposalInstruction and adds index for proposal option and multiple instructions"
-						]
-					},
-					{
-						"name": "ProposalV2",
-						"docs": [
-							"Proposal account for Governance account. A single Governance account can have multiple Proposal accounts",
-							"V2 adds support for multiple vote options"
-						]
-					},
-					{
-						"name": "ProgramMetadata",
-						"docs": [
-							"Program metadata account (introduced in V2)",
-							"It stores information about the particular SPL-Governance program instance"
-						]
-					},
-					{
-						"name": "RealmV2",
-						"docs": [
-							"Top level aggregation for governances with Community Token (and optional Council Token)",
-							"V2 adds the following fields:",
-							"1) use_community_voter_weight_addin and use_max_community_voter_weight_addin to RealmConfig",
-							"2) voting_proposal_count",
-							"3) extra reserved space reserved_v2"
-						]
-					},
-					{
-						"name": "TokenOwnerRecordV2",
-						"docs": [
-							"Token Owner Record for given governing token owner within a Realm",
-							"V2 adds extra reserved space reserved_v2"
-						]
-					},
-					{
-						"name": "GovernanceV2",
-						"docs": [
-							"Governance account",
-							"V2 adds extra reserved space reserved_v2"
-						]
-					},
-					{
-						"name": "ProgramGovernanceV2",
-						"docs": [
-							"Program Governance account",
-							"V2 adds extra reserved space reserved_v2"
-						]
-					},
-					{
-						"name": "MintGovernanceV2",
-						"docs": [
-							"Mint Governance account",
-							"V2 adds extra reserved space reserved_v2"
-						]
-					},
-					{
-						"name": "TokenGovernanceV2",
-						"docs": [
-							"Token Governance account",
-							"V2 adds extra reserved space reserved_v2"
-						]
-					},
-					{
-						"name": "SignatoryRecordV2",
-						"docs": [
-							"Proposal Signatory account",
-							"V2 adds extra reserved space reserved_v2"
-						]
-					}
-				]
-			},
-			"docs": [
-				"Defines all Governance accounts types"
-			]
-		},
-		{
-			"name": "ProposalState",
-			"type": {
-				"kind": "enum",
-				"variants": [
-					{
-						"name": "Draft",
-						"docs": [
-							"Draft - Proposal enters Draft state when it's created"
-						]
-					},
-					{
-						"name": "SigningOff",
-						"docs": [
-							"SigningOff - The Proposal is being signed off by Signatories",
-							"Proposal enters the state when first Signatory Sings and leaves it when last Signatory signs"
-						]
-					},
-					{
-						"name": "Voting",
-						"docs": [
-							"Taking votes"
-						]
-					},
-					{
-						"name": "Succeeded",
-						"docs": [
-							"Voting ended with success"
-						]
-					},
-					{
-						"name": "Executing",
-						"docs": [
-							"Voting on Proposal succeeded and now instructions are being executed",
-							"Proposal enter this state when first instruction is executed and leaves when the last instruction is executed"
-						]
-					},
-					{
-						"name": "Completed",
-						"docs": [
-							"Completed"
-						]
-					},
-					{
-						"name": "Cancelled",
-						"docs": [
-							"Cancelled"
-						]
-					},
-					{
-						"name": "Defeated",
-						"docs": [
-							"Defeated"
-						]
-					},
-					{
-						"name": "ExecutingWithErrors",
-						"docs": [
-							"Same as Executing but indicates some instructions failed to execute",
-							"Proposal can't be transitioned from ExecutingWithErrors to Completed state"
-						]
-					},
-					{
-						"name": "Vetoed",
-						"docs": [
-							"The Proposal was vetoed"
-						]
-					}
-				]
-			},
-			"docs": [
-				"What state a Proposal is in"
-			]
-		},
-		{
-			"name": "VoteTipping",
-			"type": {
-				"kind": "enum",
-				"variants": [
-					{
-						"name": "Strict",
-						"docs": [
-							"Tip when there is no way for another option to win and the vote threshold",
-							"has been reached. This ignores voters withdrawing their votes.",
-							"",
-							"Currently only supported for the \"yes\" option in single choice votes."
-						]
-					},
-					{
-						"name": "Early",
-						"docs": [
-							"Tip when an option reaches the vote threshold and has more vote weight",
-							"than any other options.",
-							"",
-							"Currently only supported for the \"yes\" option in single choice votes."
-						]
-					},
-					{
-						"name": "Disabled",
-						"docs": [
-							"Never tip the vote early."
-						]
-					}
-				]
-			},
-			"docs": [
-				"The type of vote tipping to use on a Proposal.",
-				"",
-				"Vote tipping means that under some conditions voting will complete early."
-			]
-		},
-		{
-			"name": "TransactionExecutionStatus",
-			"type": {
-				"kind": "enum",
-				"variants": [
-					{
-						"name": "None",
-						"docs": [
-							"Transaction was not executed yet"
-						]
-					},
-					{
-						"name": "Success",
-						"docs": [
-							"Transaction was executed successfully"
-						]
-					},
-					{
-						"name": "Error",
-						"docs": [
-							"Transaction execution failed"
-						]
-					}
-				]
-			},
-			"docs": [
-				"The status of instruction execution"
-			]
-		},
-		{
-			"name": "InstructionExecutionFlags",
-			"type": {
-				"kind": "enum",
-				"variants": [
-					{
-						"name": "None",
-						"docs": [
-							"No execution flags are specified",
-							"Instructions can be executed individually, in any order, as soon as they hold_up time expires"
-						]
-					},
-					{
-						"name": "Ordered",
-						"docs": [
-							"Instructions are executed in a specific order",
-							"Note: Ordered execution is not supported in the current version",
-							"The implementation requires another account type to track deleted instructions"
-						]
-					},
-					{
-						"name": "UseTransaction",
-						"docs": [
-							"Multiple instructions can be executed as a single transaction",
-							"Note: Transactions are not supported in the current version",
-							"The implementation requires another account type to group instructions within a transaction"
-						]
-					}
-				]
-			},
-			"docs": [
-				"Transaction execution flags defining how instructions are executed for a Proposal"
-			]
-		},
-		{
 			"name": "GovernanceV2",
 			"type": {
 				"kind": "struct",
@@ -2647,7 +2310,7 @@
 					},
 					{
 						"name": "draft_at",
-						"type": "unixTimestamp",
+						"type": "i64",
 						"docs": [
 							"When the Proposal was created and entered Draft state"
 						]
@@ -2655,7 +2318,7 @@
 					{
 						"name": "signing_off_at",
 						"type": {
-							"option": "unixTimestamp"
+							"option": "i64"
 						},
 						"docs": [
 							"When Signatories started signing off the Proposal"
@@ -2664,7 +2327,7 @@
 					{
 						"name": "voting_at",
 						"type": {
-							"option": "unixTimestamp"
+							"option": "i64"
 						},
 						"docs": [
 							"When the Proposal began voting as UnixTimestamp"
@@ -2683,7 +2346,7 @@
 					{
 						"name": "voting_completed_at",
 						"type": {
-							"option": "unixTimestamp"
+							"option": "i64"
 						},
 						"docs": [
 							"When the Proposal ended voting and entered either Succeeded or Defeated"
@@ -2692,7 +2355,7 @@
 					{
 						"name": "executing_at",
 						"type": {
-							"option": "unixTimestamp"
+							"option": "i64"
 						},
 						"docs": [
 							"When the Proposal entered Executing state"
@@ -2701,7 +2364,7 @@
 					{
 						"name": "closed_at",
 						"type": {
-							"option": "unixTimestamp"
+							"option": "i64"
 						},
 						"docs": [
 							"When the Proposal entered final state Completed or Cancelled and was closed"
@@ -2851,7 +2514,7 @@
 					{
 						"name": "executed_at",
 						"type": {
-							"option": "unixTimestamp"
+							"option": "i64"
 						},
 						"docs": [
 							"Executed at flag"
@@ -2982,35 +2645,6 @@
 			]
 		},
 		{
-			"name": "OptionVoteResult",
-			"type": {
-				"kind": "enum",
-				"variants": [
-					{
-						"name": "None",
-						"docs": [
-							"Vote on the option is not resolved yet"
-						]
-					},
-					{
-						"name": "Succeeded",
-						"docs": [
-							"Vote on the option is completed and the option passed"
-						]
-					},
-					{
-						"name": "Defeated",
-						"docs": [
-							"Vote on the option is completed and the option was defeated"
-						]
-					}
-				]
-			},
-			"docs": [
-				"Proposal option vote result"
-			]
-		},
-		{
 			"name": "ProposalOption",
 			"type": {
 				"kind": "struct",
@@ -3063,29 +2697,6 @@
 			},
 			"docs": [
 				"Proposal Option"
-			]
-		},
-		{
-			"name": "VoteType",
-			"type": {
-				"kind": "enum",
-				"variants": [
-					{
-						"name": "SingleChoice",
-						"docs": [
-							"Single choice vote with mutually exclusive choices",
-							"In the SingeChoice mode there can ever be a single winner",
-							"If multiple options score the same highest vote then the Proposal is not resolved and considered as Failed",
-							"Note: Yes/No vote is a single choice (Yes) vote with the deny option (No)"
-						]
-					},
-					{
-						"name": "MultiChoice"
-					}
-				]
-			},
-			"docs": [
-				"Proposal vote type"
 			]
 		},
 		{
@@ -3201,7 +2812,7 @@
 					{
 						"name": "start_voting_at",
 						"type": {
-							"option": "unixTimestamp"
+							"option": "i64"
 						},
 						"docs": [
 							"Optional start time if the Proposal should not enter voting state immediately after being signed off",
@@ -3210,7 +2821,7 @@
 					},
 					{
 						"name": "draft_at",
-						"type": "unixTimestamp",
+						"type": "i64",
 						"docs": [
 							"When the Proposal was created and entered Draft state"
 						]
@@ -3218,7 +2829,7 @@
 					{
 						"name": "signing_off_at",
 						"type": {
-							"option": "unixTimestamp"
+							"option": "i64"
 						},
 						"docs": [
 							"When Signatories started signing off the Proposal"
@@ -3227,7 +2838,7 @@
 					{
 						"name": "voting_at",
 						"type": {
-							"option": "unixTimestamp"
+							"option": "i64"
 						},
 						"docs": [
 							"When the Proposal began voting as UnixTimestamp"
@@ -3246,7 +2857,7 @@
 					{
 						"name": "voting_completed_at",
 						"type": {
-							"option": "unixTimestamp"
+							"option": "i64"
 						},
 						"docs": [
 							"When the Proposal ended voting and entered either Succeeded or Defeated"
@@ -3255,7 +2866,7 @@
 					{
 						"name": "executing_at",
 						"type": {
-							"option": "unixTimestamp"
+							"option": "i64"
 						},
 						"docs": [
 							"When the Proposal entered Executing state"
@@ -3264,7 +2875,7 @@
 					{
 						"name": "closed_at",
 						"type": {
-							"option": "unixTimestamp"
+							"option": "i64"
 						},
 						"docs": [
 							"When the Proposal entered final state Completed or Cancelled and was closed"
@@ -3413,7 +3024,7 @@
 					{
 						"name": "executed_at",
 						"type": {
-							"option": "unixTimestamp"
+							"option": "i64"
 						},
 						"docs": [
 							"Executed at flag"
@@ -4362,6 +3973,395 @@
 			},
 			"docs": [
 				"Vote  with number of votes"
+			]
+		},
+		{
+			"name": "OptionVoteResult",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "None",
+						"docs": [
+							"Vote on the option is not resolved yet"
+						]
+					},
+					{
+						"name": "Succeeded",
+						"docs": [
+							"Vote on the option is completed and the option passed"
+						]
+					},
+					{
+						"name": "Defeated",
+						"docs": [
+							"Vote on the option is completed and the option was defeated"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Proposal option vote result"
+			]
+		},
+		{
+			"name": "VoteType",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "SingleChoice",
+						"docs": [
+							"Single choice vote with mutually exclusive choices",
+							"In the SingeChoice mode there can ever be a single winner",
+							"If multiple options score the same highest vote then the Proposal is not resolved and considered as Failed",
+							"Note: Yes/No vote is a single choice (Yes) vote with the deny option (No)"
+						]
+					},
+					{
+						"name": "MultiChoice"
+					}
+				]
+			},
+			"docs": [
+				"Proposal vote type"
+			]
+		},
+		{
+			"name": "ProposalState",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "Draft",
+						"docs": [
+							"Draft - Proposal enters Draft state when it's created"
+						]
+					},
+					{
+						"name": "SigningOff",
+						"docs": [
+							"SigningOff - The Proposal is being signed off by Signatories",
+							"Proposal enters the state when first Signatory Sings and leaves it when last Signatory signs"
+						]
+					},
+					{
+						"name": "Voting",
+						"docs": [
+							"Taking votes"
+						]
+					},
+					{
+						"name": "Succeeded",
+						"docs": [
+							"Voting ended with success"
+						]
+					},
+					{
+						"name": "Executing",
+						"docs": [
+							"Voting on Proposal succeeded and now instructions are being executed",
+							"Proposal enter this state when first instruction is executed and leaves when the last instruction is executed"
+						]
+					},
+					{
+						"name": "Completed",
+						"docs": [
+							"Completed"
+						]
+					},
+					{
+						"name": "Cancelled",
+						"docs": [
+							"Cancelled"
+						]
+					},
+					{
+						"name": "Defeated",
+						"docs": [
+							"Defeated"
+						]
+					},
+					{
+						"name": "ExecutingWithErrors",
+						"docs": [
+							"Same as Executing but indicates some instructions failed to execute",
+							"Proposal can't be transitioned from ExecutingWithErrors to Completed state"
+						]
+					},
+					{
+						"name": "Vetoed",
+						"docs": [
+							"The Proposal was vetoed"
+						]
+					}
+				]
+			},
+			"docs": [
+				"What state a Proposal is in"
+			]
+		},
+		{
+			"name": "VoteTipping",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "Strict",
+						"docs": [
+							"Tip when there is no way for another option to win and the vote threshold",
+							"has been reached. This ignores voters withdrawing their votes.",
+							"",
+							"Currently only supported for the \"yes\" option in single choice votes."
+						]
+					},
+					{
+						"name": "Early",
+						"docs": [
+							"Tip when an option reaches the vote threshold and has more vote weight",
+							"than any other options.",
+							"",
+							"Currently only supported for the \"yes\" option in single choice votes."
+						]
+					},
+					{
+						"name": "Disabled",
+						"docs": [
+							"Never tip the vote early."
+						]
+					}
+				]
+			},
+			"docs": [
+				"The type of vote tipping to use on a Proposal.",
+				"",
+				"Vote tipping means that under some conditions voting will complete early."
+			]
+		},
+		{
+			"name": "TransactionExecutionStatus",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "None",
+						"docs": [
+							"Transaction was not executed yet"
+						]
+					},
+					{
+						"name": "Success",
+						"docs": [
+							"Transaction was executed successfully"
+						]
+					},
+					{
+						"name": "Error",
+						"docs": [
+							"Transaction execution failed"
+						]
+					}
+				]
+			},
+			"docs": [
+				"The status of instruction execution"
+			]
+		},
+		{
+			"name": "InstructionExecutionFlags",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "None",
+						"docs": [
+							"No execution flags are specified",
+							"Instructions can be executed individually, in any order, as soon as they hold_up time expires"
+						]
+					},
+					{
+						"name": "Ordered",
+						"docs": [
+							"Instructions are executed in a specific order",
+							"Note: Ordered execution is not supported in the current version",
+							"The implementation requires another account type to track deleted instructions"
+						]
+					},
+					{
+						"name": "UseTransaction",
+						"docs": [
+							"Multiple instructions can be executed as a single transaction",
+							"Note: Transactions are not supported in the current version",
+							"The implementation requires another account type to group instructions within a transaction"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Transaction execution flags defining how instructions are executed for a Proposal"
+			]
+		},
+		{
+			"name": "GovernanceAccountType",
+			"type": {
+				"kind": "enum",
+				"variants": [
+					{
+						"name": "Uninitialized",
+						"docs": [
+							"Default uninitialized account state"
+						]
+					},
+					{
+						"name": "RealmV1",
+						"docs": [
+							"Top level aggregation for governances with Community Token (and optional Council Token)"
+						]
+					},
+					{
+						"name": "TokenOwnerRecordV1",
+						"docs": [
+							"Token Owner Record for given governing token owner within a Realm"
+						]
+					},
+					{
+						"name": "GovernanceV1",
+						"docs": [
+							"Governance account"
+						]
+					},
+					{
+						"name": "ProgramGovernanceV1",
+						"docs": [
+							"Program Governance account"
+						]
+					},
+					{
+						"name": "ProposalV1",
+						"docs": [
+							"Proposal account for Governance account. A single Governance account can have multiple Proposal accounts"
+						]
+					},
+					{
+						"name": "SignatoryRecordV1",
+						"docs": [
+							"Proposal Signatory account"
+						]
+					},
+					{
+						"name": "VoteRecordV1",
+						"docs": [
+							"Vote record account for a given Proposal.  Proposal can have 0..n voting records"
+						]
+					},
+					{
+						"name": "ProposalInstructionV1",
+						"docs": [
+							"ProposalInstruction account which holds an instruction to execute for Proposal"
+						]
+					},
+					{
+						"name": "MintGovernanceV1",
+						"docs": [
+							"Mint Governance account"
+						]
+					},
+					{
+						"name": "TokenGovernanceV1",
+						"docs": [
+							"Token Governance account"
+						]
+					},
+					{
+						"name": "RealmConfig",
+						"docs": [
+							"Realm config account (introduced in V2)"
+						]
+					},
+					{
+						"name": "VoteRecordV2",
+						"docs": [
+							"Vote record account for a given Proposal.  Proposal can have 0..n voting records",
+							"V2 adds support for multi option votes"
+						]
+					},
+					{
+						"name": "ProposalTransactionV2",
+						"docs": [
+							"ProposalTransaction account which holds instructions to execute for Proposal within a single Transaction",
+							"V2 replaces ProposalInstruction and adds index for proposal option and multiple instructions"
+						]
+					},
+					{
+						"name": "ProposalV2",
+						"docs": [
+							"Proposal account for Governance account. A single Governance account can have multiple Proposal accounts",
+							"V2 adds support for multiple vote options"
+						]
+					},
+					{
+						"name": "ProgramMetadata",
+						"docs": [
+							"Program metadata account (introduced in V2)",
+							"It stores information about the particular SPL-Governance program instance"
+						]
+					},
+					{
+						"name": "RealmV2",
+						"docs": [
+							"Top level aggregation for governances with Community Token (and optional Council Token)",
+							"V2 adds the following fields:",
+							"1) use_community_voter_weight_addin and use_max_community_voter_weight_addin to RealmConfig",
+							"2) voting_proposal_count",
+							"3) extra reserved space reserved_v2"
+						]
+					},
+					{
+						"name": "TokenOwnerRecordV2",
+						"docs": [
+							"Token Owner Record for given governing token owner within a Realm",
+							"V2 adds extra reserved space reserved_v2"
+						]
+					},
+					{
+						"name": "GovernanceV2",
+						"docs": [
+							"Governance account",
+							"V2 adds extra reserved space reserved_v2"
+						]
+					},
+					{
+						"name": "ProgramGovernanceV2",
+						"docs": [
+							"Program Governance account",
+							"V2 adds extra reserved space reserved_v2"
+						]
+					},
+					{
+						"name": "MintGovernanceV2",
+						"docs": [
+							"Mint Governance account",
+							"V2 adds extra reserved space reserved_v2"
+						]
+					},
+					{
+						"name": "TokenGovernanceV2",
+						"docs": [
+							"Token Governance account",
+							"V2 adds extra reserved space reserved_v2"
+						]
+					},
+					{
+						"name": "SignatoryRecordV2",
+						"docs": [
+							"Proposal Signatory account",
+							"V2 adds extra reserved space reserved_v2"
+						]
+					}
+				]
+			},
+			"docs": [
+				"Defines all Governance accounts types"
 			]
 		}
 	],
