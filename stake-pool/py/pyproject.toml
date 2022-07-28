@@ -1,14 +1,19 @@
-from setuptools import setup, find_packages
-
-
-setup(
-    name='stake-pool',
-    version='1.0',
-    license='Apache',
-    author='joncinque',
-    packages= ['bot', 'vote', 'stake', 'system', 'spl_token', 'stake_pool'],
-    url='https://github.com/solana-labs/solana-program-library/new/master/stake-pool/py',
-    install_requires=[
+[project]
+name = 'stake-pool'
+version = '1.0'
+authors = [
+  { name= 'joncinque'},
+]
+description = 'solana labs stake pool reference implementation'
+readme = 'README.md'
+license = { file='LICENSE' }
+requires-python = '>=3.7'
+classifiers = [
+    'Programming Language :: Python :: 3',
+    'License :: OSI Approved :: Apache Software License',
+    'Operating System :: OS Independent',
+]
+dependencies = [
         'anyio==3.3.4',
         'attrs==21.2.0',
         'base58==2.1.0',
@@ -44,6 +49,19 @@ setup(
         'toml==0.10.2',
         'typing-extensions==3.10.0.2',
         'urllib3==1.26.7'
-      ],
+      ]
 
-)
+[tool.setuptools]
+packages = ['bot', 'vote', 'stake', 'system', 'spl_token', 'stake_pool']
+
+[project.urls]
+'Homepage' = 'https://github.com/solana-labs/solana-program-library/new/master/stake-pool/py'
+
+[build-system]
+requires = ['setuptools>=61.0']
+build-backend = 'setuptools.build_meta'
+
+
+
+
+
