@@ -93,14 +93,11 @@ async fn modify_reserve_config_success() {
         .unwrap();
 
     let reserve_info = sol_test_reserve.get_state(&mut banks_client).await;
-    assert_eq!(
-        reserve_info.config.optimal_utilization_rate,
-        TEST_RESERVE_CONFIG.optimal_utilization_rate - OPTIMAL_UTILIZATION_RATE_CHANGE
-    );
+    assert_eq!(reserve_info.config, new_config);
 }
 
 #[tokio::test]
-#[should_panic(expected = "Transaction::sign failed with error KeypairPubkeyMismatch")]
+// Invalid Signer - Right owner, right market but owner is not a signer
 async fn wrong_signer_of_lending_market_cannot_change_reserve_config() {
     let mut test = ProgramTest::new(
         "spl_token_lending",
@@ -137,7 +134,7 @@ async fn wrong_signer_of_lending_market_cannot_change_reserve_config() {
     let other_lending_market_owner = Keypair::new();
     other_lending_market.owner = other_lending_market_owner;
 
-    let (mut _banks_client, payer, recent_blockhash) = test.start().await;
+    let (mut banks_client, payer, recent_blockhash) = test.start().await;
 
     const OPTIMAL_UTILIZATION_RATE_CHANGE: u8 = 10;
 
@@ -157,21 +154,35 @@ async fn wrong_signer_of_lending_market_cannot_change_reserve_config() {
         },
     };
 
-    let mut transaction = Transaction::new_with_payer(
-        &[modify_reserve_config(
-            spl_token_lending::id(),
-            new_config,
-            sol_test_reserve.pubkey,
-            lending_market.pubkey,
-            lending_market.owner.pubkey(),
-        )],
-        Some(&payer.pubkey()),
+    let mut instruction = modify_reserve_config(
+        spl_token_lending::id(),
+        new_config,
+        sol_test_reserve.pubkey,
+        lending_market.pubkey,
+        lending_market.owner.pubkey(),
     );
+    instruction.accounts[2].is_signer = false;
 
-    transaction.sign(&[&payer, &other_lending_market.owner], recent_blockhash);
+    let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
+
+    transaction.sign(&[&payer], recent_blockhash);
+
+    let result = banks_client
+        .process_transaction(transaction)
+        .await
+        .map_err(|e| e.unwrap());
+
+    assert_eq!(
+        result.unwrap_err(),
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(LendingError::InvalidSigner as u32)
+        )
+    );
 }
 
 #[tokio::test]
+// Right lending market, wrong owner
 async fn owner_of_different_lending_market_cannot_change_reserve_config() {
     let mut test = ProgramTest::new(
         "spl_token_lending",
@@ -205,21 +216,23 @@ async fn owner_of_different_lending_market_cannot_change_reserve_config() {
     );
 
     // Add a different lending market with a *different* owner
-    let lending_market_pubkey = Pubkey::new_unique();
-    let (lending_market_authority, bump_seed) =
-        Pubkey::find_program_address(&[lending_market_pubkey.as_ref()], &spl_token_lending::id());
+    let other_lending_market_pubkey = Pubkey::new_unique();
+    let (other_lending_market_authority, bump_seed) = Pubkey::find_program_address(
+        &[other_lending_market_pubkey.as_ref()],
+        &spl_token_lending::id(),
+    );
 
-    let lending_market_owner = Keypair::new();
+    let other_lending_market_owner = Keypair::new();
     let oracle_program_id = read_keypair_file("tests/fixtures/oracle_program_id.json")
         .unwrap()
         .pubkey();
 
     test.add_packable_account(
-        lending_market_pubkey,
+        other_lending_market_pubkey,
         u32::MAX as u64,
         &LendingMarket::new(InitLendingMarketParams {
             bump_seed,
-            owner: lending_market_owner.pubkey(),
+            owner: other_lending_market_owner.pubkey(),
             quote_currency: QUOTE_CURRENCY,
             token_program_id: spl_token::id(),
             oracle_program_id,
@@ -228,9 +241,9 @@ async fn owner_of_different_lending_market_cannot_change_reserve_config() {
     );
 
     let other_lending_market = TestLendingMarket {
-        pubkey: lending_market_pubkey,
-        owner: lending_market_owner,
-        authority: lending_market_authority,
+        pubkey: other_lending_market_pubkey,
+        owner: other_lending_market_owner,
+        authority: other_lending_market_authority,
         quote_currency: QUOTE_CURRENCY,
         oracle_program_id,
     };
@@ -260,7 +273,7 @@ async fn owner_of_different_lending_market_cannot_change_reserve_config() {
             spl_token_lending::id(),
             new_config,
             sol_test_reserve.pubkey,
-            other_lending_market.pubkey,
+            lending_market.pubkey,
             other_lending_market.owner.pubkey(),
         )],
         Some(&payer.pubkey()),
@@ -277,18 +290,16 @@ async fn owner_of_different_lending_market_cannot_change_reserve_config() {
         result.unwrap_err(),
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(LendingError::InvalidAccountInput as u32)
+            InstructionError::Custom(LendingError::InvalidMarketOwner as u32)
         )
     );
 
     let reserve_info = sol_test_reserve.get_state(&mut banks_client).await;
-    assert_eq!(
-        reserve_info.config.optimal_utilization_rate,
-        TEST_RESERVE_CONFIG.optimal_utilization_rate
-    );
+    assert_eq!(reserve_info.config, TEST_RESERVE_CONFIG);
 }
 
 #[tokio::test]
+// Right owner, wrong lending market
 async fn correct_owner_providing_wrong_lending_market_fails() {
     // When the correct owner of the lending market and reserve provides, perhaps inadvertently,
     // a lending market that is different from the given reserve's corresponding lending market,
@@ -352,12 +363,12 @@ async fn correct_owner_providing_wrong_lending_market_fails() {
             new_config,
             sol_test_reserve.pubkey,
             other_lending_market.pubkey,
-            other_lending_market.owner.pubkey(),
+            lending_market.owner.pubkey(), //lending_market.owner == other_lending_market.owner, defined by `add_lending_market`
         )],
         Some(&payer.pubkey()),
     );
 
-    transaction.sign(&[&payer, &lending_market.owner], recent_blockhash); //lending_market.owner == other_lending_market.owner, defined by `add_lending_market`
+    transaction.sign(&[&payer, &lending_market.owner], recent_blockhash);
 
     let result = banks_client
         .process_transaction(transaction)
@@ -373,8 +384,5 @@ async fn correct_owner_providing_wrong_lending_market_fails() {
     );
 
     let reserve_info = sol_test_reserve.get_state(&mut banks_client).await;
-    assert_eq!(
-        reserve_info.config.optimal_utilization_rate,
-        TEST_RESERVE_CONFIG.optimal_utilization_rate
-    );
+    assert_eq!(reserve_info.config, TEST_RESERVE_CONFIG);
 }

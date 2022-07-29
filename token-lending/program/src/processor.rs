@@ -3,7 +3,7 @@
 use crate::{
     error::LendingError,
     instruction::LendingInstruction,
-    math::{Decimal, Rate, TryAdd, TryDiv, TryMul, WAD},
+    math::{Decimal, Rate, TryAdd, TryDiv, TryMul},
     pyth,
     state::{
         CalculateBorrowResult, CalculateLiquidationResult, CalculateRepayResult,
@@ -100,7 +100,7 @@ pub fn process_instruction(
             process_flash_loan(program_id, amount, accounts)
         }
         LendingInstruction::ModifyReserveConfig { new_config } => {
-            msg!("Instruction: Modify ReserveConfig");
+            msg!("Instruction: Modify Reserve Config");
             process_modify_reserve_config(program_id, new_config, accounts)
         }
     }
@@ -178,7 +178,7 @@ fn process_init_reserve(
         return Err(LendingError::InvalidAmount.into());
     }
 
-    validate_reserve_configs(&config)?;
+    config.validate()?;
 
     let account_info_iter = &mut accounts.iter().peekable();
     let source_liquidity_info = next_account_info(account_info_iter)?;
@@ -1671,7 +1671,7 @@ fn process_modify_reserve_config(
     new_config: ReserveConfig,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
-    validate_reserve_configs(&new_config)?;
+    new_config.validate()?;
 
     let account_info_iter = &mut accounts.iter().peekable();
     let reserve_info = next_account_info(account_info_iter)?;
@@ -1834,50 +1834,6 @@ fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decima
     };
 
     Ok(market_price)
-}
-
-/// Validate the reserve configs, when initializing or modifying the reserve configs
-fn validate_reserve_configs(config: &ReserveConfig) -> ProgramResult {
-    if config.optimal_utilization_rate > 100 {
-        msg!("Optimal utilization rate must be in range [0, 100]");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.loan_to_value_ratio >= 100 {
-        msg!("Loan to value ratio must be in range [0, 100)");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.liquidation_bonus > 100 {
-        msg!("Liquidation bonus must be in range [0, 100]");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.liquidation_threshold <= config.loan_to_value_ratio
-        || config.liquidation_threshold > 100
-    {
-        msg!("Liquidation threshold must be in range (LTV, 100]");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.optimal_borrow_rate < config.min_borrow_rate {
-        msg!("Optimal borrow rate must be >= min borrow rate");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.optimal_borrow_rate > config.max_borrow_rate {
-        msg!("Optimal borrow rate must be <= max borrow rate");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.fees.borrow_fee_wad >= WAD {
-        msg!("Borrow fee must be in range [0, 1_000_000_000_000_000_000)");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.fees.flash_loan_fee_wad >= WAD {
-        msg!("Flash loan fee must be in range [0, 1_000_000_000_000_000_000)");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.fees.host_fee_percentage > 100 {
-        msg!("Host fee percentage must be in range [0, 100]");
-        return Err(LendingError::InvalidConfig.into());
-    }
-
-    Ok(())
 }
 
 /// Issue a spl_token `InitializeAccount` instruction.

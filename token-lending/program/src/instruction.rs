@@ -344,32 +344,10 @@ impl LendingInstruction {
             }
             2 => {
                 let (liquidity_amount, rest) = Self::unpack_u64(rest)?;
-                let (optimal_utilization_rate, rest) = Self::unpack_u8(rest)?;
-                let (loan_to_value_ratio, rest) = Self::unpack_u8(rest)?;
-                let (liquidation_bonus, rest) = Self::unpack_u8(rest)?;
-                let (liquidation_threshold, rest) = Self::unpack_u8(rest)?;
-                let (min_borrow_rate, rest) = Self::unpack_u8(rest)?;
-                let (optimal_borrow_rate, rest) = Self::unpack_u8(rest)?;
-                let (max_borrow_rate, rest) = Self::unpack_u8(rest)?;
-                let (borrow_fee_wad, rest) = Self::unpack_u64(rest)?;
-                let (flash_loan_fee_wad, rest) = Self::unpack_u64(rest)?;
-                let (host_fee_percentage, _rest) = Self::unpack_u8(rest)?;
+                let config = Self::unpack_reserve_config(rest)?;
                 Self::InitReserve {
                     liquidity_amount,
-                    config: ReserveConfig {
-                        optimal_utilization_rate,
-                        loan_to_value_ratio,
-                        liquidation_bonus,
-                        liquidation_threshold,
-                        min_borrow_rate,
-                        optimal_borrow_rate,
-                        max_borrow_rate,
-                        fees: ReserveFees {
-                            borrow_fee_wad,
-                            flash_loan_fee_wad,
-                            host_fee_percentage,
-                        },
-                    },
+                    config,
                 }
             }
             3 => Self::RefreshReserve,
@@ -408,32 +386,8 @@ impl LendingInstruction {
                 Self::FlashLoan { amount }
             }
             14 => {
-                let (optimal_utilization_rate, rest) = Self::unpack_u8(rest)?;
-                let (loan_to_value_ratio, rest) = Self::unpack_u8(rest)?;
-                let (liquidation_bonus, rest) = Self::unpack_u8(rest)?;
-                let (liquidation_threshold, rest) = Self::unpack_u8(rest)?;
-                let (min_borrow_rate, rest) = Self::unpack_u8(rest)?;
-                let (optimal_borrow_rate, rest) = Self::unpack_u8(rest)?;
-                let (max_borrow_rate, rest) = Self::unpack_u8(rest)?;
-                let (borrow_fee_wad, rest) = Self::unpack_u64(rest)?;
-                let (flash_loan_fee_wad, rest) = Self::unpack_u64(rest)?;
-                let (host_fee_percentage, _rest) = Self::unpack_u8(rest)?;
-                Self::ModifyReserveConfig {
-                    new_config: ReserveConfig {
-                        optimal_utilization_rate,
-                        loan_to_value_ratio,
-                        liquidation_bonus,
-                        liquidation_threshold,
-                        min_borrow_rate,
-                        optimal_borrow_rate,
-                        max_borrow_rate,
-                        fees: ReserveFees {
-                            borrow_fee_wad,
-                            flash_loan_fee_wad,
-                            host_fee_percentage,
-                        },
-                    },
-                }
+                let new_config = Self::unpack_reserve_config(rest)?;
+                Self::ModifyReserveConfig { new_config }
             }
             _ => {
                 msg!("Instruction cannot be unpacked");
@@ -494,6 +448,34 @@ impl LendingInstruction {
         Ok((pk, rest))
     }
 
+    fn unpack_reserve_config(input: &[u8]) -> Result<ReserveConfig, ProgramError> {
+        let (optimal_utilization_rate, rest) = Self::unpack_u8(input)?;
+        let (loan_to_value_ratio, rest) = Self::unpack_u8(rest)?;
+        let (liquidation_bonus, rest) = Self::unpack_u8(rest)?;
+        let (liquidation_threshold, rest) = Self::unpack_u8(rest)?;
+        let (min_borrow_rate, rest) = Self::unpack_u8(rest)?;
+        let (optimal_borrow_rate, rest) = Self::unpack_u8(rest)?;
+        let (max_borrow_rate, rest) = Self::unpack_u8(rest)?;
+        let (borrow_fee_wad, rest) = Self::unpack_u64(rest)?;
+        let (flash_loan_fee_wad, rest) = Self::unpack_u64(rest)?;
+        let (host_fee_percentage, _rest) = Self::unpack_u8(rest)?;
+
+        Ok(ReserveConfig {
+            optimal_utilization_rate,
+            loan_to_value_ratio,
+            liquidation_bonus,
+            liquidation_threshold,
+            min_borrow_rate,
+            optimal_borrow_rate,
+            max_borrow_rate,
+            fees: ReserveFees {
+                borrow_fee_wad,
+                flash_loan_fee_wad,
+                host_fee_percentage,
+            },
+        })
+    }
+
     /// Packs a [LendingInstruction](enum.LendingInstruction.html) into a byte buffer.
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
@@ -512,35 +494,11 @@ impl LendingInstruction {
             }
             Self::InitReserve {
                 liquidity_amount,
-                config:
-                    ReserveConfig {
-                        optimal_utilization_rate,
-                        loan_to_value_ratio,
-                        liquidation_bonus,
-                        liquidation_threshold,
-                        min_borrow_rate,
-                        optimal_borrow_rate,
-                        max_borrow_rate,
-                        fees:
-                            ReserveFees {
-                                borrow_fee_wad,
-                                flash_loan_fee_wad,
-                                host_fee_percentage,
-                            },
-                    },
+                config,
             } => {
                 buf.push(2);
                 buf.extend_from_slice(&liquidity_amount.to_le_bytes());
-                buf.extend_from_slice(&optimal_utilization_rate.to_le_bytes());
-                buf.extend_from_slice(&loan_to_value_ratio.to_le_bytes());
-                buf.extend_from_slice(&liquidation_bonus.to_le_bytes());
-                buf.extend_from_slice(&liquidation_threshold.to_le_bytes());
-                buf.extend_from_slice(&min_borrow_rate.to_le_bytes());
-                buf.extend_from_slice(&optimal_borrow_rate.to_le_bytes());
-                buf.extend_from_slice(&max_borrow_rate.to_le_bytes());
-                buf.extend_from_slice(&borrow_fee_wad.to_le_bytes());
-                buf.extend_from_slice(&flash_loan_fee_wad.to_le_bytes());
-                buf.extend_from_slice(&host_fee_percentage.to_le_bytes());
+                Self::extend_buffer_from_reserve_config(&mut buf, &config);
             }
             Self::RefreshReserve => {
                 buf.push(3);
@@ -583,38 +541,26 @@ impl LendingInstruction {
                 buf.push(13);
                 buf.extend_from_slice(&amount.to_le_bytes());
             }
-            Self::ModifyReserveConfig {
-                new_config:
-                    ReserveConfig {
-                        optimal_utilization_rate,
-                        loan_to_value_ratio,
-                        liquidation_bonus,
-                        liquidation_threshold,
-                        min_borrow_rate,
-                        optimal_borrow_rate,
-                        max_borrow_rate,
-                        fees:
-                            ReserveFees {
-                                borrow_fee_wad,
-                                flash_loan_fee_wad,
-                                host_fee_percentage,
-                            },
-                    },
-            } => {
+            Self::ModifyReserveConfig { new_config } => {
                 buf.push(14);
-                buf.extend_from_slice(&optimal_utilization_rate.to_le_bytes());
-                buf.extend_from_slice(&loan_to_value_ratio.to_le_bytes());
-                buf.extend_from_slice(&liquidation_bonus.to_le_bytes());
-                buf.extend_from_slice(&liquidation_threshold.to_le_bytes());
-                buf.extend_from_slice(&min_borrow_rate.to_le_bytes());
-                buf.extend_from_slice(&optimal_borrow_rate.to_le_bytes());
-                buf.extend_from_slice(&max_borrow_rate.to_le_bytes());
-                buf.extend_from_slice(&borrow_fee_wad.to_le_bytes());
-                buf.extend_from_slice(&flash_loan_fee_wad.to_le_bytes());
-                buf.extend_from_slice(&host_fee_percentage.to_le_bytes());
+                Self::extend_buffer_from_reserve_config(&mut buf, &new_config);
             }
         }
         buf
+    }
+
+    // Helper function to pack a ReserveConfig into a Vec<u8> buffer
+    fn extend_buffer_from_reserve_config(buf: &mut Vec<u8>, config: &ReserveConfig) {
+        buf.extend_from_slice(&config.optimal_utilization_rate.to_le_bytes());
+        buf.extend_from_slice(&config.loan_to_value_ratio.to_le_bytes());
+        buf.extend_from_slice(&config.liquidation_bonus.to_le_bytes());
+        buf.extend_from_slice(&config.liquidation_threshold.to_le_bytes());
+        buf.extend_from_slice(&config.min_borrow_rate.to_le_bytes());
+        buf.extend_from_slice(&config.optimal_borrow_rate.to_le_bytes());
+        buf.extend_from_slice(&config.max_borrow_rate.to_le_bytes());
+        buf.extend_from_slice(&config.fees.borrow_fee_wad.to_le_bytes());
+        buf.extend_from_slice(&config.fees.flash_loan_fee_wad.to_le_bytes());
+        buf.extend_from_slice(&config.fees.host_fee_percentage.to_le_bytes());
     }
 }
 
