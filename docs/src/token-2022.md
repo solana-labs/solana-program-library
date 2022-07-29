@@ -81,7 +81,7 @@ is written after the end of the `Account` in Token, which is the byte at index
 `165`.  This means it is always possible to differentiate mints and accounts.
 
 You can read more about how this is done at the
-[source code](https://github.com/solana-labs/solana-program-library/tree/master/token/program-2022/src/extensions/mod.rs).
+[source code](https://github.com/solana-labs/solana-program-library/blob/master/token/program-2022/src/extension/mod.rs).
 
 Mint extensions currently include:
 
