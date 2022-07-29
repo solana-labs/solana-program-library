@@ -16,6 +16,10 @@ pub(crate) struct UnsupportedAccount {
     pub err: String,
 }
 
+pub(crate) fn is_supported_program(program_name: &str) -> bool {
+    program_name == "spl-token" || program_name == "spl-token-2022"
+}
+
 pub(crate) fn sort_and_parse_token_accounts(
     owner: &Pubkey,
     accounts: Vec<RpcKeyedAccount>,
@@ -29,7 +33,7 @@ pub(crate) fn sort_and_parse_token_accounts(
         let address = keyed_account.pubkey;
 
         if let UiAccountData::Json(parsed_account) = keyed_account.account.data {
-            if parsed_account.program != "spl-token" {
+            if !is_supported_program(&parsed_account.program) {
                 unsupported_accounts.push(UnsupportedAccount {
                     address,
                     err: format!("Unsupported account program: {}", parsed_account.program),

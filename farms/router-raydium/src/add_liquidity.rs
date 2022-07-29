@@ -46,10 +46,14 @@ pub fn add_liquidity(
         if !raydium::check_pool_program_id(pool_program_id.key) {
             return Err(ProgramError::IncorrectProgramId);
         }
+        if !account::check_token_account_owner(user_lp_token_account, user_account.key)? {
+            return Err(ProgramError::IllegalOwner);
+        }
 
-        let (coin_token_amount, pc_token_amount) = raydium::get_pool_deposit_amounts(
+        let (lp_token_amount, coin_token_amount, pc_token_amount) = raydium::get_pool_deposit_amounts(
             pool_coin_token_account,
             pool_pc_token_account,
+            lp_token_mint,
             amm_open_orders,
             amm_id,
             max_coin_token_amount,
@@ -99,7 +103,7 @@ pub fn add_liquidity(
             initial_token_b_user_balance,
             pc_token_amount,
         )?;
-        account::check_tokens_received(user_lp_token_account, initial_lp_token_user_balance, 1)?;
+        account::check_tokens_received(user_lp_token_account, initial_lp_token_user_balance, lp_token_amount)?;
     } else {
         return Err(ProgramError::NotEnoughAccountKeys);
     }

@@ -33,6 +33,12 @@ pub fn remove_liquidity(accounts: &[AccountInfo], amount: u64) -> ProgramResult 
         if !orca::check_pool_program_id(pool_program_id.key) {
             return Err(ProgramError::IncorrectProgramId);
         }
+        if !account::check_token_account_owner(user_token_a_account, user_account.key)?
+            || !account::check_token_account_owner(user_token_b_account, user_account.key)?
+        {
+            return Err(ProgramError::IllegalOwner);
+        }
+
         let initial_token_a_user_balance = account::get_token_balance(user_token_a_account)?;
         let initial_token_b_user_balance = account::get_token_balance(user_token_b_account)?;
         let initial_lp_token_user_balance = account::get_token_balance(user_lp_token_account)?;

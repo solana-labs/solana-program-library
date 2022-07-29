@@ -4,6 +4,7 @@ use {
     crate::{traits::LockLiquidity, user_info::UserInfo, vault_info::VaultInfo},
     solana_farm_sdk::{
         instruction::vault::VaultInstruction,
+        math,
         program::{account, pda, protocol::saber},
         vault::{Vault, VaultStrategy},
     },
@@ -35,7 +36,7 @@ impl LockLiquidity for VaultInstruction {
         {
             // validate accounts
             if vault_authority.key != &vault.vault_authority
-                || &account::get_token_account_owner(vault_miner_account)? != vault_stake_info.key
+                || !account::check_token_account_owner(vault_miner_account, vault_stake_info.key)?
             {
                 msg!("Error: Invalid Vault accounts");
                 return Err(ProgramError::InvalidArgument);
@@ -43,17 +44,22 @@ impl LockLiquidity for VaultInstruction {
             if !user_account.is_signer {
                 return Err(ProgramError::MissingRequiredSignature);
             }
-            if &account::get_token_account_owner(user_vt_token_account)? != user_account.key {
+            if !account::check_token_account_owner(user_vt_token_account, user_account.key)? {
                 msg!("Error: Invalid VT token account owner");
                 return Err(ProgramError::IllegalOwner);
             }
 
             if let VaultStrategy::StakeLpCompoundRewards {
+                farm_id: farm_id_key,
                 lp_token_custody: lp_token_custody_key,
                 vault_stake_info: vault_stake_info_key,
                 ..
             } = vault.strategy
             {
+                if &farm_id_key != quarry.key {
+                    msg!("Error: Invalid farm id");
+                    return Err(ProgramError::InvalidArgument);
+                }
                 if &vault_stake_info_key != vault_stake_info.key {
                     msg!("Error: Invalid Vault Stake Info account");
                     return Err(ProgramError::InvalidArgument);
@@ -138,10 +144,10 @@ impl LockLiquidity for VaultInstruction {
             let vt_to_mint = if vt_supply_amount == 0 || stake_balance == 0 {
                 lp_stake_amount
             } else {
-                account::to_token_amount(
-                    lp_stake_amount as f64 / stake_balance as f64 * vt_supply_amount as f64,
-                    0,
-                )?
+                math::checked_as_u64(math::checked_div(
+                    math::checked_mul(lp_stake_amount as u128, vt_supply_amount as u128)?,
+                    stake_balance as u128
+                )?)?
             };
 
             // mint vault tokens to user

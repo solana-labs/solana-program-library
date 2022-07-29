@@ -1,4 +1,5 @@
 use {
+    pyth_client::PythError,
     solana_account_decoder::parse_account_data::ParseAccountError,
     solana_client::client_error::ClientError,
     solana_sdk::{program_error::ProgramError, pubkey::PubkeyError},
@@ -16,6 +17,8 @@ pub enum FarmClientError {
     ParseAccountError(#[from] ParseAccountError),
     #[error(transparent)]
     PubkeyError(#[from] PubkeyError),
+    #[error(transparent)]
+    PythError(#[from] PythError),
     #[error("Record not found: {0}")]
     RecordNotFound(String),
     #[error("ArrayString error: {0}")]

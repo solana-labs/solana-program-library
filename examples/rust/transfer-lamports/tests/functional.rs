@@ -30,7 +30,7 @@ async fn test_lamport_transfer() {
     program_test.add_account(
         destination_pubkey,
         Account {
-            lamports: 5,
+            lamports: 890_875,
             ..Account::default()
         },
     );

@@ -2,7 +2,8 @@ import { struct, u8 } from '@solana/buffer-layout';
 import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import { AccountState } from '../../state/account';
 import { TokenInstruction } from '../../instructions/types';
-import { TOKEN_2022_PROGRAM_ID } from '../../constants';
+import { programSupportsExtensions, TOKEN_2022_PROGRAM_ID } from '../../constants';
+import { TokenUnsupportedInstructionError } from '../../errors';
 
 export enum DefaultAccountStateInstruction {
     Initialize = 0,
@@ -37,6 +38,9 @@ export function createInitializeDefaultAccountStateInstruction(
     accountState: AccountState,
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
+    if (!programSupportsExtensions(programId)) {
+        throw new TokenUnsupportedInstructionError();
+    }
     const keys = [{ pubkey: mint, isSigner: false, isWritable: true }];
     const data = Buffer.alloc(defaultAccountStateInstructionData.span);
     defaultAccountStateInstructionData.encode(
@@ -69,6 +73,9 @@ export function createUpdateDefaultAccountStateInstruction(
     multiSigners: Signer[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
+    if (!programSupportsExtensions(programId)) {
+        throw new TokenUnsupportedInstructionError();
+    }
     const keys = [{ pubkey: mint, isSigner: false, isWritable: true }];
     keys.push({ pubkey: freezeAuthority, isSigner: !multiSigners.length, isWritable: false });
     for (const signer of multiSigners) {

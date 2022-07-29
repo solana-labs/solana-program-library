@@ -8,3 +8,4 @@ pub mod remove_liquidity;
 pub mod stake;
 pub mod swap;
 pub mod unstake;
+pub mod user_init;

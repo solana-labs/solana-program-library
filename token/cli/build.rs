@@ -46,32 +46,34 @@ fn build_bpf(program_directory: &Path) {
 }
 
 fn main() {
-    if let Ok(debug) = env::var("DEBUG") {
-        if debug == "true" {
-            let cwd = env::current_dir().expect("Unable to get current working directory");
-            let spl_token_2022_dir = cwd
-                .parent()
-                .expect("Unable to get parent directory of current working dir")
-                .join("program-2022");
-            rerun_if_changed(&spl_token_2022_dir);
-            let spl_token_dir = cwd
-                .parent()
-                .expect("Unable to get parent directory of current working dir")
-                .join("program");
-            rerun_if_changed(&spl_token_dir);
-            let spl_associated_token_account_dir = cwd
-                .parent()
-                .expect("Unable to get parent directory of current working dir")
-                .parent()
-                .expect("Unable to get parent directory of current working dir")
-                .join("associated-token-account")
-                .join("program");
-            rerun_if_changed(&spl_associated_token_account_dir);
+    let is_debug = env::var("DEBUG").map(|v| v == "true").unwrap_or(false);
+    let build_dependent_programs = env::var("BUILD_DEPENDENT_PROGRAMS")
+        .map(|v| v != "false" && v != "0")
+        .unwrap_or(false);
+    if is_debug && build_dependent_programs {
+        let cwd = env::current_dir().expect("Unable to get current working directory");
+        let spl_token_2022_dir = cwd
+            .parent()
+            .expect("Unable to get parent directory of current working dir")
+            .join("program-2022");
+        rerun_if_changed(&spl_token_2022_dir);
+        let spl_token_dir = cwd
+            .parent()
+            .expect("Unable to get parent directory of current working dir")
+            .join("program");
+        rerun_if_changed(&spl_token_dir);
+        let spl_associated_token_account_dir = cwd
+            .parent()
+            .expect("Unable to get parent directory of current working dir")
+            .parent()
+            .expect("Unable to get parent directory of current working dir")
+            .join("associated-token-account")
+            .join("program");
+        rerun_if_changed(&spl_associated_token_account_dir);
 
-            build_bpf(&spl_token_dir);
-            build_bpf(&spl_token_2022_dir);
-            build_bpf(&spl_associated_token_account_dir);
-        }
+        build_bpf(&spl_token_dir);
+        build_bpf(&spl_token_2022_dir);
+        build_bpf(&spl_associated_token_account_dir);
     }
     println!("cargo:rerun-if-changed=build.rs");
 }

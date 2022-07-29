@@ -19,6 +19,7 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     decode_error::DecodeError,
     entrypoint::ProgramResult,
+    instruction::Instruction,
     msg,
     program::invoke_signed,
     program_error::{PrintProgramError, ProgramError},
@@ -26,7 +27,8 @@ use solana_program::{
     program_pack::Pack,
     pubkey::Pubkey,
 };
-use std::convert::TryInto;
+use spl_token::error::TokenError;
+use std::{convert::TryInto, error::Error};
 
 /// Program state handler.
 pub struct Processor {}
@@ -90,7 +92,7 @@ impl Processor {
             amount,
         )?;
 
-        invoke_signed(
+        invoke_signed_wrapper::<TokenError>(
             &ix,
             &[burn_account, mint, authority, token_program],
             signers,
@@ -119,7 +121,11 @@ impl Processor {
             amount,
         )?;
 
-        invoke_signed(&ix, &[mint, destination, authority, token_program], signers)
+        invoke_signed_wrapper::<TokenError>(
+            &ix,
+            &[mint, destination, authority, token_program],
+            signers,
+        )
     }
 
     /// Issue a spl_token `Transfer` instruction.
@@ -143,7 +149,7 @@ impl Processor {
             &[],
             amount,
         )?;
-        invoke_signed(
+        invoke_signed_wrapper::<TokenError>(
             &ix,
             &[source, destination, authority, token_program],
             signers,
@@ -1069,80 +1075,26 @@ impl Processor {
     }
 }
 
-impl PrintProgramError for SwapError {
-    fn print<E>(&self)
-    where
-        E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
-    {
-        match self {
-            SwapError::AlreadyInUse => msg!("Error: Swap account already in use"),
-            SwapError::InvalidProgramAddress => {
-                msg!("Error: Invalid program address generated from bump seed and key")
-            }
-            SwapError::InvalidOwner => {
-                msg!("Error: The input account owner is not the program address")
-            }
-            SwapError::InvalidOutputOwner => {
-                msg!("Error: Output pool account owner cannot be the program address")
-            }
-            SwapError::ExpectedMint => msg!("Error: Deserialized account is not an SPL Token mint"),
-            SwapError::ExpectedAccount => {
-                msg!("Error: Deserialized account is not an SPL Token account")
-            }
-            SwapError::EmptySupply => msg!("Error: Input token account empty"),
-            SwapError::InvalidSupply => msg!("Error: Pool token mint has a non-zero supply"),
-            SwapError::RepeatedMint => msg!("Error: Swap input token accounts have the same mint"),
-            SwapError::InvalidDelegate => msg!("Error: Token account has a delegate"),
-            SwapError::InvalidInput => msg!("Error: InvalidInput"),
-            SwapError::IncorrectSwapAccount => {
-                msg!("Error: Address of the provided swap token account is incorrect")
-            }
-            SwapError::IncorrectPoolMint => {
-                msg!("Error: Address of the provided pool token mint is incorrect")
-            }
-            SwapError::InvalidOutput => msg!("Error: InvalidOutput"),
-            SwapError::CalculationFailure => msg!("Error: CalculationFailure"),
-            SwapError::InvalidInstruction => msg!("Error: InvalidInstruction"),
-            SwapError::ExceededSlippage => {
-                msg!("Error: Swap instruction exceeds desired slippage limit")
-            }
-            SwapError::InvalidCloseAuthority => msg!("Error: Token account has a close authority"),
-            SwapError::InvalidFreezeAuthority => {
-                msg!("Error: Pool token mint has a freeze authority")
-            }
-            SwapError::IncorrectFeeAccount => msg!("Error: Pool fee token account incorrect"),
-            SwapError::ZeroTradingTokens => {
-                msg!("Error: Given pool token amount results in zero trading tokens")
-            }
-            SwapError::FeeCalculationFailure => msg!(
-                "Error: The fee calculation failed due to overflow, underflow, or unexpected 0"
-            ),
-            SwapError::ConversionFailure => msg!("Error: Conversion to or from u64 failed."),
-            SwapError::InvalidFee => {
-                msg!("Error: The provided fee does not match the program owner's constraints")
-            }
-            SwapError::IncorrectTokenProgramId => {
-                msg!("Error: The provided token program does not match the token program expected by the swap")
-            }
-            SwapError::UnsupportedCurveType => {
-                msg!("Error: The provided curve type is not supported by the program owner")
-            }
-            SwapError::InvalidCurve => {
-                msg!("Error: The provided curve parameters are invalid")
-            }
-            SwapError::UnsupportedCurveOperation => {
-                msg!("Error: The operation cannot be performed on the given curve")
-            }
-        }
-    }
-}
-
 fn to_u128(val: u64) -> Result<u128, SwapError> {
     val.try_into().map_err(|_| SwapError::ConversionFailure)
 }
 
 fn to_u64(val: u128) -> Result<u64, SwapError> {
     val.try_into().map_err(|_| SwapError::ConversionFailure)
+}
+
+fn invoke_signed_wrapper<T>(
+    instruction: &Instruction,
+    account_infos: &[AccountInfo],
+    signers_seeds: &[&[&[u8]]],
+) -> Result<(), ProgramError>
+where
+    T: 'static + PrintProgramError + DecodeError<T> + FromPrimitive + Error,
+{
+    invoke_signed(instruction, account_infos, signers_seeds).map_err(|err| {
+        err.print::<T>();
+        err
+    })
 }
 
 #[cfg(test)]
@@ -1164,8 +1116,8 @@ mod tests {
     use spl_token::{
         error::TokenError,
         instruction::{
-            approve, initialize_account, initialize_mint, mint_to, revoke, set_authority,
-            AuthorityType,
+            approve, freeze_account, initialize_account, initialize_mint, mint_to, revoke,
+            set_authority, AuthorityType,
         },
     };
     use std::sync::Arc;
@@ -1945,6 +1897,99 @@ mod tests {
 
         let err = invoke_signed(&ix, &[mint, destination, authority], signers).unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
+    }
+
+    #[test]
+    fn test_token_error() {
+        test_syscall_stubs();
+        let token_id = spl_token::id();
+        let swap_key = Pubkey::new_unique();
+        let mut mint = (
+            Pubkey::new_unique(),
+            Account::new(
+                mint_minimum_balance(),
+                spl_token::state::Mint::get_packed_len(),
+                &token_id,
+            ),
+        );
+        let mut destination = (
+            Pubkey::new_unique(),
+            Account::new(
+                account_minimum_balance(),
+                spl_token::state::Account::get_packed_len(),
+                &token_id,
+            ),
+        );
+        let mut token_program = (token_id, Account::default());
+        let (authority_key, bump_seed) =
+            Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
+        let mut authority = (authority_key, Account::default());
+        let swap_bytes = swap_key.to_bytes();
+        let authority_signature_seeds = [&swap_bytes[..32], &[bump_seed]];
+        let signers = &[&authority_signature_seeds[..]];
+        let mut rent_sysvar = (
+            Pubkey::new_unique(),
+            create_account_for_test(&Rent::default()),
+        );
+        do_process_instruction(
+            initialize_mint(
+                &token_program.0,
+                &mint.0,
+                &authority.0,
+                Some(&authority.0),
+                2,
+            )
+            .unwrap(),
+            vec![&mut mint.1, &mut rent_sysvar.1],
+        )
+        .unwrap();
+        do_process_instruction(
+            initialize_account(&token_program.0, &destination.0, &mint.0, &authority.0).unwrap(),
+            vec![
+                &mut destination.1,
+                &mut mint.1,
+                &mut authority.1,
+                &mut rent_sysvar.1,
+                &mut token_program.1,
+            ],
+        )
+        .unwrap();
+        do_process_instruction(
+            freeze_account(&token_program.0, &destination.0, &mint.0, &authority.0, &[]).unwrap(),
+            vec![
+                &mut destination.1,
+                &mut mint.1,
+                &mut authority.1,
+                &mut token_program.1,
+            ],
+        )
+        .unwrap();
+        let ix = mint_to(
+            &token_program.0,
+            &mint.0,
+            &destination.0,
+            &authority.0,
+            &[],
+            10,
+        )
+        .unwrap();
+        let mint_info = (&mut mint).into();
+        let destination_info = (&mut destination).into();
+        let authority_info = (&mut authority).into();
+        let token_program_info = (&mut token_program).into();
+
+        let err = invoke_signed_wrapper::<TokenError>(
+            &ix,
+            &[
+                mint_info,
+                destination_info,
+                authority_info,
+                token_program_info,
+            ],
+            signers,
+        )
+        .unwrap_err();
+        assert_eq!(err, ProgramError::Custom(TokenError::AccountFrozen as u32));
     }
 
     #[test]

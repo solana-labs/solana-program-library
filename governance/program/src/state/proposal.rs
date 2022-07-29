@@ -276,18 +276,22 @@ impl ProposalV2 {
         Ok(())
     }
 
+    /// Vote end time determined by the configured max_voting_time period
+    pub fn vote_end_time(&self, config: &GovernanceConfig) -> UnixTimestamp {
+        self.voting_at
+            .unwrap()
+            .checked_add(config.max_voting_time as i64)
+            .unwrap()
+    }
+
     /// Checks whether the voting time has ended for the proposal
     pub fn has_vote_time_ended(
         &self,
         config: &GovernanceConfig,
         current_unix_timestamp: UnixTimestamp,
     ) -> bool {
-        // Check if we passed vote_end_time determined by the configured max_voting_time period
-        self.voting_at
-            .unwrap()
-            .checked_add(config.max_voting_time as i64)
-            .unwrap()
-            < current_unix_timestamp
+        // Check if we passed vote_end_time
+        self.vote_end_time(config) < current_unix_timestamp
     }
 
     /// Checks if Proposal can be finalized
@@ -319,8 +323,7 @@ impl ProposalV2 {
         self.assert_can_finalize_vote(config, current_unix_timestamp)?;
 
         self.state = self.resolve_final_vote_state(max_voter_weight, vote_threshold)?;
-        // TODO: set voting_completed_at based on the time when the voting ended and not when we finalized the proposal
-        self.voting_completed_at = Some(current_unix_timestamp);
+        self.voting_completed_at = Some(self.vote_end_time(config));
 
         // Capture vote params to correctly display historical results
         self.max_vote_weight = Some(max_voter_weight);
@@ -1658,7 +1661,10 @@ mod test {
 
             // Assert
             assert_eq!(proposal.state,test_case.expected_finalized_state,"CASE: {:?}",test_case);
-            assert_eq!(Some(current_timestamp),proposal.voting_completed_at);
+            assert_eq!(
+                Some(proposal.vote_end_time(&governance_config)),
+                proposal.voting_completed_at
+            );
 
             match proposal.options[0].vote_result {
                 OptionVoteResult::Succeeded => {

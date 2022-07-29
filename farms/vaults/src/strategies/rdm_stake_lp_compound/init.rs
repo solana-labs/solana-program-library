@@ -10,6 +10,7 @@ use {
             protocol::raydium::{RaydiumUserStakeInfo, RaydiumUserStakeInfoV4},
         },
         token::Token,
+        traits::Packed,
         vault::Vault,
     },
     solana_program::{
@@ -25,6 +26,7 @@ impl Init for VaultInstruction {
             admin_account,
             _vault_metadata,
             vault_info_account,
+            _multisig_account,
             vault_authority,
             vault_program,
             _system_program,

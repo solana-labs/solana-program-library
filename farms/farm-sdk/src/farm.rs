@@ -32,12 +32,12 @@ pub enum FarmRoute {
             deserialize_with = "pubkey_deserialize",
             serialize_with = "pubkey_serialize"
         )]
-        farm_reward_token_a_account: Pubkey,
+        farm_first_reward_token_account: Pubkey,
         #[serde(
             deserialize_with = "optional_pubkey_deserialize",
             serialize_with = "optional_pubkey_serialize"
         )]
-        farm_reward_token_b_account: Option<Pubkey>,
+        farm_second_reward_token_account: Option<Pubkey>,
     },
     Saber {
         #[serde(
@@ -172,12 +172,12 @@ pub struct Farm {
         deserialize_with = "optional_pubkey_deserialize",
         serialize_with = "optional_pubkey_serialize"
     )]
-    pub reward_token_a_ref: Option<Pubkey>,
+    pub first_reward_token_ref: Option<Pubkey>,
     #[serde(
         deserialize_with = "optional_pubkey_deserialize",
         serialize_with = "optional_pubkey_serialize"
     )]
-    pub reward_token_b_ref: Option<Pubkey>,
+    pub second_reward_token_ref: Option<Pubkey>,
     #[serde(
         deserialize_with = "pubkey_deserialize",
         serialize_with = "pubkey_serialize"
@@ -209,42 +209,6 @@ impl Farm {
     pub const SABER_FARM_LEN: usize = 655;
     pub const ORCA_FARM_LEN: usize = 399;
 
-    pub fn get_size(&self) -> usize {
-        match self.route {
-            FarmRoute::Raydium { .. } => Farm::RAYDIUM_FARM_LEN,
-            FarmRoute::Saber { .. } => Farm::SABER_FARM_LEN,
-            FarmRoute::Orca { .. } => Farm::ORCA_FARM_LEN,
-        }
-    }
-
-    pub fn pack(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
-        match self.route {
-            FarmRoute::Raydium { .. } => self.pack_raydium(output),
-            FarmRoute::Saber { .. } => self.pack_saber(output),
-            FarmRoute::Orca { .. } => self.pack_orca(output),
-        }
-    }
-
-    pub fn to_vec(&self) -> Result<Vec<u8>, ProgramError> {
-        let mut output: [u8; Farm::MAX_LEN] = [0; Farm::MAX_LEN];
-        if let Ok(len) = self.pack(&mut output[..]) {
-            Ok(output[..len].to_vec())
-        } else {
-            Err(ProgramError::InvalidAccountData)
-        }
-    }
-
-    pub fn unpack(input: &[u8]) -> Result<Farm, ProgramError> {
-        check_data_len(input, 1)?;
-        let farm_route_type = FarmRouteType::try_from_primitive(input[0])
-            .or(Err(ProgramError::InvalidAccountData))?;
-        match farm_route_type {
-            FarmRouteType::Raydium => Farm::unpack_raydium(input),
-            FarmRouteType::Saber => Farm::unpack_saber(input),
-            FarmRouteType::Orca => Farm::unpack_orca(input),
-        }
-    }
-
     fn pack_raydium(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
         check_data_len(output, Farm::RAYDIUM_FARM_LEN)?;
 
@@ -252,8 +216,8 @@ impl Farm {
             farm_id,
             farm_authority,
             farm_lp_token_account,
-            farm_reward_token_a_account,
-            farm_reward_token_b_account,
+            farm_first_reward_token_account,
+            farm_second_reward_token_account,
         } = self.route
         {
             let output = array_mut_ref![output, 0, Farm::RAYDIUM_FARM_LEN];
@@ -267,15 +231,15 @@ impl Farm {
                 refdb_index_out,
                 refdb_counter_out,
                 lp_token_ref_out,
-                reward_token_a_ref_out,
-                reward_token_b_ref_out,
+                first_reward_token_ref_out,
+                second_reward_token_ref_out,
                 router_program_id_out,
                 farm_program_id_out,
                 farm_id_out,
                 farm_authority_out,
                 farm_lp_token_account_out,
-                farm_reward_token_a_account_out,
-                farm_reward_token_b_account_out,
+                farm_first_reward_token_account_out,
+                farm_second_reward_token_account_out,
             ) = mut_array_refs![
                 output, 1, 64, 2, 1, 1, 5, 2, 33, 33, 33, 32, 32, 32, 32, 32, 32, 33
             ];
@@ -289,17 +253,18 @@ impl Farm {
             pack_option_u32(self.refdb_index, refdb_index_out);
             *refdb_counter_out = self.refdb_counter.to_le_bytes();
             pack_option_key(&self.lp_token_ref, lp_token_ref_out);
-            pack_option_key(&self.reward_token_a_ref, reward_token_a_ref_out);
-            pack_option_key(&self.reward_token_b_ref, reward_token_b_ref_out);
+            pack_option_key(&self.first_reward_token_ref, first_reward_token_ref_out);
+            pack_option_key(&self.second_reward_token_ref, second_reward_token_ref_out);
             router_program_id_out.copy_from_slice(self.router_program_id.as_ref());
             farm_program_id_out.copy_from_slice(self.farm_program_id.as_ref());
             farm_id_out.copy_from_slice(farm_id.as_ref());
             farm_authority_out.copy_from_slice(farm_authority.as_ref());
             farm_lp_token_account_out.copy_from_slice(farm_lp_token_account.as_ref());
-            farm_reward_token_a_account_out.copy_from_slice(farm_reward_token_a_account.as_ref());
+            farm_first_reward_token_account_out
+                .copy_from_slice(farm_first_reward_token_account.as_ref());
             pack_option_key(
-                &farm_reward_token_b_account,
-                farm_reward_token_b_account_out,
+                &farm_second_reward_token_account,
+                farm_second_reward_token_account_out,
             );
 
             Ok(Farm::RAYDIUM_FARM_LEN)
@@ -338,8 +303,8 @@ impl Farm {
                 refdb_index_out,
                 refdb_counter_out,
                 lp_token_ref_out,
-                reward_token_a_ref_out,
-                reward_token_b_ref_out,
+                first_reward_token_ref_out,
+                second_reward_token_ref_out,
                 router_program_id_out,
                 farm_program_id_out,
                 quarry_out,
@@ -369,8 +334,8 @@ impl Farm {
             pack_option_u32(self.refdb_index, refdb_index_out);
             *refdb_counter_out = self.refdb_counter.to_le_bytes();
             pack_option_key(&self.lp_token_ref, lp_token_ref_out);
-            pack_option_key(&self.reward_token_a_ref, reward_token_a_ref_out);
-            pack_option_key(&self.reward_token_b_ref, reward_token_b_ref_out);
+            pack_option_key(&self.first_reward_token_ref, first_reward_token_ref_out);
+            pack_option_key(&self.second_reward_token_ref, second_reward_token_ref_out);
             router_program_id_out.copy_from_slice(self.router_program_id.as_ref());
             farm_program_id_out.copy_from_slice(self.farm_program_id.as_ref());
             quarry_out.copy_from_slice(quarry.as_ref());
@@ -415,8 +380,8 @@ impl Farm {
                 refdb_index_out,
                 refdb_counter_out,
                 lp_token_ref_out,
-                reward_token_a_ref_out,
-                reward_token_b_ref_out,
+                first_reward_token_ref_out,
+                second_reward_token_ref_out,
                 router_program_id_out,
                 farm_program_id_out,
                 farm_id_out,
@@ -437,8 +402,8 @@ impl Farm {
             pack_option_u32(self.refdb_index, refdb_index_out);
             *refdb_counter_out = self.refdb_counter.to_le_bytes();
             pack_option_key(&self.lp_token_ref, lp_token_ref_out);
-            pack_option_key(&self.reward_token_a_ref, reward_token_a_ref_out);
-            pack_option_key(&self.reward_token_b_ref, reward_token_b_ref_out);
+            pack_option_key(&self.first_reward_token_ref, first_reward_token_ref_out);
+            pack_option_key(&self.second_reward_token_ref, second_reward_token_ref_out);
             router_program_id_out.copy_from_slice(self.router_program_id.as_ref());
             farm_program_id_out.copy_from_slice(self.farm_program_id.as_ref());
             farm_id_out.copy_from_slice(farm_id.as_ref());
@@ -466,15 +431,15 @@ impl Farm {
             refdb_index,
             refdb_counter,
             lp_token_ref,
-            reward_token_a_ref,
-            reward_token_b_ref,
+            first_reward_token_ref,
+            second_reward_token_ref,
             router_program_id,
             farm_program_id,
             farm_id,
             farm_authority,
             farm_lp_token_account,
-            farm_reward_token_a_account,
-            farm_reward_token_b_account,
+            farm_first_reward_token_account,
+            farm_second_reward_token_account,
         ) = array_refs![input, 64, 2, 1, 1, 5, 2, 33, 33, 33, 32, 32, 32, 32, 32, 32, 33];
 
         Ok(Self {
@@ -486,16 +451,20 @@ impl Farm {
             refdb_index: unpack_option_u32(refdb_index)?,
             refdb_counter: u16::from_le_bytes(*refdb_counter),
             lp_token_ref: unpack_option_key(lp_token_ref)?,
-            reward_token_a_ref: unpack_option_key(reward_token_a_ref)?,
-            reward_token_b_ref: unpack_option_key(reward_token_b_ref)?,
+            first_reward_token_ref: unpack_option_key(first_reward_token_ref)?,
+            second_reward_token_ref: unpack_option_key(second_reward_token_ref)?,
             router_program_id: Pubkey::new_from_array(*router_program_id),
             farm_program_id: Pubkey::new_from_array(*farm_program_id),
             route: FarmRoute::Raydium {
                 farm_id: Pubkey::new_from_array(*farm_id),
                 farm_authority: Pubkey::new_from_array(*farm_authority),
                 farm_lp_token_account: Pubkey::new_from_array(*farm_lp_token_account),
-                farm_reward_token_a_account: Pubkey::new_from_array(*farm_reward_token_a_account),
-                farm_reward_token_b_account: unpack_option_key(farm_reward_token_b_account)?,
+                farm_first_reward_token_account: Pubkey::new_from_array(
+                    *farm_first_reward_token_account,
+                ),
+                farm_second_reward_token_account: unpack_option_key(
+                    farm_second_reward_token_account,
+                )?,
             },
         })
     }
@@ -513,8 +482,8 @@ impl Farm {
             refdb_index,
             refdb_counter,
             lp_token_ref,
-            reward_token_a_ref,
-            reward_token_b_ref,
+            first_reward_token_ref,
+            second_reward_token_ref,
             router_program_id,
             farm_program_id,
             quarry,
@@ -544,8 +513,8 @@ impl Farm {
             refdb_index: unpack_option_u32(refdb_index)?,
             refdb_counter: u16::from_le_bytes(*refdb_counter),
             lp_token_ref: unpack_option_key(lp_token_ref)?,
-            reward_token_a_ref: unpack_option_key(reward_token_a_ref)?,
-            reward_token_b_ref: unpack_option_key(reward_token_b_ref)?,
+            first_reward_token_ref: unpack_option_key(first_reward_token_ref)?,
+            second_reward_token_ref: unpack_option_key(second_reward_token_ref)?,
             router_program_id: Pubkey::new_from_array(*router_program_id),
             farm_program_id: Pubkey::new_from_array(*farm_program_id),
             route: FarmRoute::Saber {
@@ -579,8 +548,8 @@ impl Farm {
             refdb_index,
             refdb_counter,
             lp_token_ref,
-            reward_token_a_ref,
-            reward_token_b_ref,
+            first_reward_token_ref,
+            second_reward_token_ref,
             router_program_id,
             farm_program_id,
             farm_id,
@@ -599,8 +568,8 @@ impl Farm {
             refdb_index: unpack_option_u32(refdb_index)?,
             refdb_counter: u16::from_le_bytes(*refdb_counter),
             lp_token_ref: unpack_option_key(lp_token_ref)?,
-            reward_token_a_ref: unpack_option_key(reward_token_a_ref)?,
-            reward_token_b_ref: unpack_option_key(reward_token_b_ref)?,
+            first_reward_token_ref: unpack_option_key(first_reward_token_ref)?,
+            second_reward_token_ref: unpack_option_key(second_reward_token_ref)?,
             router_program_id: Pubkey::new_from_array(*router_program_id),
             farm_program_id: Pubkey::new_from_array(*farm_program_id),
             route: FarmRoute::Orca {
@@ -611,6 +580,44 @@ impl Farm {
                 reward_token_vault: Pubkey::new_from_array(*reward_token_vault),
             },
         })
+    }
+}
+
+impl Packed for Farm {
+    fn get_size(&self) -> usize {
+        match self.route {
+            FarmRoute::Raydium { .. } => Farm::RAYDIUM_FARM_LEN,
+            FarmRoute::Saber { .. } => Farm::SABER_FARM_LEN,
+            FarmRoute::Orca { .. } => Farm::ORCA_FARM_LEN,
+        }
+    }
+
+    fn pack(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        match self.route {
+            FarmRoute::Raydium { .. } => self.pack_raydium(output),
+            FarmRoute::Saber { .. } => self.pack_saber(output),
+            FarmRoute::Orca { .. } => self.pack_orca(output),
+        }
+    }
+
+    fn to_vec(&self) -> Result<Vec<u8>, ProgramError> {
+        let mut output: [u8; Farm::MAX_LEN] = [0; Farm::MAX_LEN];
+        if let Ok(len) = self.pack(&mut output[..]) {
+            Ok(output[..len].to_vec())
+        } else {
+            Err(ProgramError::InvalidAccountData)
+        }
+    }
+
+    fn unpack(input: &[u8]) -> Result<Farm, ProgramError> {
+        check_data_len(input, 1)?;
+        let farm_route_type = FarmRouteType::try_from_primitive(input[0])
+            .or(Err(ProgramError::InvalidAccountData))?;
+        match farm_route_type {
+            FarmRouteType::Raydium => Farm::unpack_raydium(input),
+            FarmRouteType::Saber => Farm::unpack_saber(input),
+            FarmRouteType::Orca => Farm::unpack_orca(input),
+        }
     }
 }
 

@@ -2,6 +2,7 @@
 
 use {
     borsh::BorshSerialize,
+    mpl_token_metadata::{pda::find_metadata_account, state::Metadata},
     solana_program::{
         borsh::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
         hash::Hash,
@@ -40,6 +41,13 @@ const ACCOUNT_RENT_EXEMPTION: u64 = 1_000_000_000; // go with something big to b
 
 pub fn program_test() -> ProgramTest {
     ProgramTest::new("spl_stake_pool", id(), processor!(Processor::process))
+}
+
+pub fn program_test_with_metadata_program() -> ProgramTest {
+    let mut program_test = ProgramTest::default();
+    program_test.add_program("spl_stake_pool", id(), processor!(Processor::process));
+    program_test.add_program("mpl_token_metadata", mpl_token_metadata::id(), None);
+    program_test
 }
 
 pub async fn get_account(banks_client: &mut BanksClient, pubkey: &Pubkey) -> Account {
@@ -291,6 +299,16 @@ pub async fn get_token_balance(banks_client: &mut BanksClient, token: &Pubkey) -
     let account_info: spl_token::state::Account =
         spl_token::state::Account::unpack_from_slice(token_account.data.as_slice()).unwrap();
     account_info.amount
+}
+
+pub async fn get_metadata_account(banks_client: &mut BanksClient, token_mint: &Pubkey) -> Metadata {
+    let (token_metadata, _) = find_metadata_account(token_mint);
+    let token_metadata_account = banks_client
+        .get_account(token_metadata)
+        .await
+        .unwrap()
+        .unwrap();
+    try_from_slice_unchecked(token_metadata_account.data.as_slice()).unwrap()
 }
 
 pub async fn get_token_supply(banks_client: &mut BanksClient, mint: &Pubkey) -> u64 {

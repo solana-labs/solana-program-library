@@ -1,30 +1,26 @@
 //! Common helpers.
 
 use {
-    serde_json::Value, solana_farm_client::client::FarmClient,
-    solana_farm_sdk::git_token::GitToken, solana_sdk::pubkey::Pubkey, std::str::FromStr,
+    serde_json::Value, solana_farm_client::client::FarmClient, solana_farm_sdk::token::GitToken,
+    solana_sdk::pubkey::Pubkey, std::str::FromStr,
 };
 
 pub fn convert_raydium_program_id(client: &FarmClient, program_id: &str) -> Pubkey {
     match program_id {
-        "LIQUIDITY_POOL_PROGRAM_ID_V2" => client.get_program_id(&"RaydiumV2".to_string()).unwrap(),
-        "LIQUIDITY_POOL_PROGRAM_ID_V3" => client.get_program_id(&"RaydiumV3".to_string()).unwrap(),
-        "LIQUIDITY_POOL_PROGRAM_ID_V4" => client.get_program_id(&"RaydiumV4".to_string()).unwrap(),
-        "STAKE_PROGRAM_ID" => client.get_program_id(&"RaydiumStake".to_string()).unwrap(),
-        "STAKE_PROGRAM_ID_V4" => client
-            .get_program_id(&"RaydiumStakeV4".to_string())
-            .unwrap(),
-        "STAKE_PROGRAM_ID_V5" => client
-            .get_program_id(&"RaydiumStakeV5".to_string())
-            .unwrap(),
+        "LIQUIDITY_POOL_PROGRAM_ID_V2" => client.get_program_id("RaydiumV2").unwrap(),
+        "LIQUIDITY_POOL_PROGRAM_ID_V3" => client.get_program_id("RaydiumV3").unwrap(),
+        "LIQUIDITY_POOL_PROGRAM_ID_V4" => client.get_program_id("RaydiumV4").unwrap(),
+        "STAKE_PROGRAM_ID" => client.get_program_id("RaydiumStake").unwrap(),
+        "STAKE_PROGRAM_ID_V4" => client.get_program_id("RaydiumStakeV4").unwrap(),
+        "STAKE_PROGRAM_ID_V5" => client.get_program_id("RaydiumStakeV5").unwrap(),
         _ => convert_pubkey(program_id),
     }
 }
 
 pub fn convert_serum_program_id(client: &FarmClient, program_id: &str) -> Pubkey {
     match program_id {
-        "SERUM_PROGRAM_ID_V2" => client.get_program_id(&"SerumV2".to_string()).unwrap(),
-        "SERUM_PROGRAM_ID_V3" => client.get_program_id(&"SerumV3".to_string()).unwrap(),
+        "SERUM_PROGRAM_ID_V2" => client.get_program_id("SerumV2").unwrap(),
+        "SERUM_PROGRAM_ID_V3" => client.get_program_id("SerumV3").unwrap(),
         _ => convert_pubkey(program_id),
     }
 }
@@ -62,50 +58,43 @@ pub fn json_to_pubkey(input: &Value) -> Pubkey {
 pub fn normalize_name(name: &str, allow_dashes: bool) -> String {
     if allow_dashes {
         name.to_uppercase()
-            .replace(" ", "_")
-            .replace("/", "_")
-            .replace(".", "_")
+            .replace(' ', "_")
+            .replace('/', "_")
+            .replace('.', "_")
     } else {
         name.to_uppercase()
-            .replace(" ", "_")
-            .replace("/", "_")
-            .replace(".", "_")
-            .replace("-", "_")
-    }
-}
-
-pub fn get_saber_lp_token_name(lp_token: &str) -> String {
-    "LP.SBR.".to_string() + &normalize_name(lp_token.split(' ').collect::<Vec<&str>>()[0], true)
-}
-
-pub fn extract_saber_wrapped_token_name(name: &str) -> String {
-    if name.len() > 3
-        && (&name[..1] == "s" || &name[..1] == "S")
-        && vec!["_8", "_9", "10"].contains(&&name[name.len() - 2..])
-    {
-        name.split('_').collect::<Vec<&str>>()[0][1..].to_string()
-    } else {
-        panic!("Unexpected Saber wrapped token name {}", name);
+            .replace(' ', "_")
+            .replace('/', "_")
+            .replace('.', "_")
+            .replace('-', "_")
     }
 }
 
 pub fn is_saber_wrapped(token: &GitToken) -> bool {
-    token.symbol.len() > 3 && token.tags.contains(&String::from("saber-decimal-wrapped"))
+    token.symbol.len() > 3 && token.tags.contains(&String::from("saber-dec-wrapped"))
 }
 
-pub fn get_saber_pool_name(token1: &GitToken, token2: &GitToken) -> String {
-    let token1_symbol_norm = normalize_name(&token1.symbol, false);
-    let token2_symbol_norm = normalize_name(&token2.symbol, false);
-    let token1_name = if is_saber_wrapped(token1) {
-        extract_saber_wrapped_token_name(&token1_symbol_norm)
+pub fn get_saber_token_name(client: &FarmClient, token: &GitToken) -> String {
+    if is_saber_wrapped(token) {
+        client
+            .get_token_with_mint(&convert_pubkey(
+                token.extra["extensions"]["assetContract"].as_str().unwrap(),
+            ))
+            .unwrap()
+            .name
+            .to_string()
     } else {
-        token1_symbol_norm
-    };
-    let token2_name = if is_saber_wrapped(token2) {
-        extract_saber_wrapped_token_name(&token2_symbol_norm)
-    } else {
-        token2_symbol_norm
-    };
+        client
+            .get_token_with_mint(&token.address)
+            .unwrap()
+            .name
+            .to_string()
+    }
+}
+
+pub fn get_saber_pool_name(client: &FarmClient, token1: &GitToken, token2: &GitToken) -> String {
+    let token1_name = get_saber_token_name(client, token1);
+    let token2_name = get_saber_token_name(client, token2);
     format!("SBR.{}-{}-V1", token1_name, token2_name)
 }
 

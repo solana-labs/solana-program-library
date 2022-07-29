@@ -67,6 +67,14 @@ jobs:
           ./token/twoxtx-setup.sh
           ./ci/cargo-test-bpf.sh token/program-2022-test
 
+      - name: Build and test token-2022 with "serde" activated
+        run: |
+          cargo +"${{ env.RUST_STABLE }}" test \
+            --manifest-path=token/program-2022/Cargo.toml \
+            --features serde-traits \
+            -- --nocapture
+          exit 0
+
       - name: Upload programs
         uses: actions/upload-artifact@v2
         with:

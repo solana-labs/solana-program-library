@@ -2,13 +2,14 @@ import { struct, u8, u16 } from '@solana/buffer-layout';
 import { publicKey, u64 } from '@solana/buffer-layout-utils';
 import { AccountMeta, PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import {
+    TokenUnsupportedInstructionError,
     TokenInvalidInstructionDataError,
     TokenInvalidInstructionKeysError,
     TokenInvalidInstructionProgramError,
     TokenInvalidInstructionTypeError,
 } from '../../errors';
 import { TokenInstruction } from '../../instructions/types';
-import { TOKEN_2022_PROGRAM_ID } from '../../constants';
+import { programSupportsExtensions, TOKEN_2022_PROGRAM_ID } from '../../constants';
 
 export enum TransferFeeInstruction {
     InitializeTransferFeeConfig = 0,
@@ -65,6 +66,9 @@ export function createInitializeTransferFeeConfigInstruction(
     maximumFee: BigInt,
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
+    if (!programSupportsExtensions(programId)) {
+        throw new TokenUnsupportedInstructionError();
+    }
     const keys = [{ pubkey: mint, isSigner: false, isWritable: true }];
 
     const data = Buffer.alloc(initializeTransferFeeConfigInstructionData.span);
@@ -235,6 +239,9 @@ export function createTransferCheckedWithFeeInstruction(
     multiSigners: Signer[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
+    if (!programSupportsExtensions(programId)) {
+        throw new TokenUnsupportedInstructionError();
+    }
     const data = Buffer.alloc(transferCheckedWithFeeInstructionData.span);
     transferCheckedWithFeeInstructionData.encode(
         {
@@ -398,6 +405,9 @@ export function createWithdrawWithheldTokensFromMintInstruction(
     signers: Signer[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
+    if (!programSupportsExtensions(programId)) {
+        throw new TokenUnsupportedInstructionError();
+    }
     const data = Buffer.alloc(withdrawWithheldTokensFromMintInstructionData.span);
     withdrawWithheldTokensFromMintInstructionData.encode(
         {
@@ -550,6 +560,9 @@ export function createWithdrawWithheldTokensFromAccountsInstruction(
     sources: PublicKey[],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
+    if (!programSupportsExtensions(programId)) {
+        throw new TokenUnsupportedInstructionError();
+    }
     const data = Buffer.alloc(withdrawWithheldTokensFromAccountsInstructionData.span);
     withdrawWithheldTokensFromAccountsInstructionData.encode(
         {
@@ -712,6 +725,9 @@ export function createHarvestWithheldTokensToMintInstruction(
     sources: PublicKey[],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
+    if (!programSupportsExtensions(programId)) {
+        throw new TokenUnsupportedInstructionError();
+    }
     const data = Buffer.alloc(harvestWithheldTokensToMintInstructionData.span);
     harvestWithheldTokensToMintInstructionData.encode(
         {

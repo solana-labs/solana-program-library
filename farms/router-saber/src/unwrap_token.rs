@@ -25,6 +25,10 @@ pub fn unwrap_token(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
         decimal_wrapper
         ] = accounts
     {
+        if !account::check_token_account_owner(user_underlying_token_account, user_account.key)? {
+            return Err(ProgramError::IllegalOwner);
+        }
+
         let initial_underlying_token_user_balance =
             account::get_token_balance(user_underlying_token_account)?;
         let initial_wrapped_token_user_balance =

@@ -41,7 +41,7 @@ impl FarmClient {
             wallet_address,
             wallet_address,
             wallet_address,
-            self.ui_amount_to_tokens_with_decimals(ui_amount, dao_token.decimals),
+            self.ui_amount_to_tokens_with_decimals(ui_amount, dao_token.decimals)?,
             &dao_token.mint,
         );
 

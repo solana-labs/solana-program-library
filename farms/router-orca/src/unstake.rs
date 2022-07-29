@@ -39,6 +39,11 @@ pub fn unstake(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
         if !orca::check_stake_program_id(farm_program_id.key) {
             return Err(ProgramError::IncorrectProgramId);
         }
+        if !account::check_token_account_owner(user_lp_token_account, user_account.key)?
+            || !account::check_token_account_owner(user_reward_token_account, user_account.key)?
+        {
+            return Err(ProgramError::IllegalOwner);
+        }
 
         let initial_reward_token_user_balance =
             account::get_token_balance(user_reward_token_account)?;

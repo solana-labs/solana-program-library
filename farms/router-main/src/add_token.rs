@@ -2,7 +2,7 @@
 
 use {
     crate::refdb_init::{check_or_init_refdb, check_or_init_refdb_target},
-    solana_farm_sdk::{refdb, refdb::RefDB, token::Token},
+    solana_farm_sdk::{refdb, refdb::RefDB, token::Token, traits::Packed},
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
@@ -18,6 +18,7 @@ pub fn add_token(program_id: &Pubkey, accounts: &[AccountInfo], token: &Token) -
     let accounts_iter = &mut accounts.iter();
 
     let signer_account = next_account_info(accounts_iter)?;
+    let _multisig_account = next_account_info(accounts_iter)?;
     let refdb_account = next_account_info(accounts_iter)?;
     let target_account = next_account_info(accounts_iter)?;
 
