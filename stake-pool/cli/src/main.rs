@@ -1464,18 +1464,15 @@ fn command_withdraw_stake(
             );
         }
 
-        // Use separate mutable variable because withdraw might create a new account
-        let stake_receiver = stake_receiver_param.unwrap_or_else(|| {
-            let stake_keypair = new_stake_account(
-                &config.fee_payer.pubkey(),
-                &mut instructions,
-                stake_account_rent_exemption,
-            );
-            let stake_pubkey = stake_keypair.pubkey();
-            total_rent_free_balances += stake_account_rent_exemption;
-            new_stake_keypairs.push(stake_keypair);
-            stake_pubkey
-        });
+        // Creating new account to split the stake into new account
+        let stake_keypair = new_stake_account(
+            &config.fee_payer.pubkey(),
+            &mut instructions,
+            stake_account_rent_exemption,
+        );
+        let stake_receiver = stake_keypair.pubkey();
+        total_rent_free_balances += stake_account_rent_exemption;
+        new_stake_keypairs.push(stake_keypair);
 
         instructions.push(spl_stake_pool::instruction::withdraw_stake(
             &spl_stake_pool::id(),
@@ -1492,6 +1489,19 @@ fn command_withdraw_stake(
             &spl_token::id(),
             withdraw_account.pool_amount,
         ));
+    }
+    
+    // Merging the stake with account provided by user
+    if stake_receiver_param.is_some(){
+        for new_stake_keypair in &new_stake_keypairs {
+            for instruction in stake::instruction::merge(
+                &stake_receiver_param.unwrap(),
+                &new_stake_keypair.pubkey(),
+                &pool_withdraw_authority
+            ){
+                instructions.push(instruction);
+            }
+        }
     }
 
     let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
