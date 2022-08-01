@@ -2675,161 +2675,18 @@ async fn main() -> Result<(), Error> {
 
     let mut wallet_manager = None;
     let mut bulk_signers: Vec<Arc<dyn Signer>> = Vec::new();
-    let mut multisigner_ids = Vec::new();
 
     let (sub_command, sub_matches) = app_matches.subcommand();
     let sub_command = CommandName::from_str(sub_command).unwrap();
     let matches = sub_matches.unwrap();
 
-    let config = {
-        let cli_config = if let Some(config_file) = matches.value_of("config_file") {
-            solana_cli_config::Config::load(config_file).unwrap_or_else(|_| {
-                eprintln!("error: Could not find config file `{}`", config_file);
-                exit(1);
-            })
-        } else {
-            solana_cli_config::Config::default()
-        };
-        let json_rpc_url = normalize_to_url_if_moniker(
-            matches
-                .value_of("json_rpc_url")
-                .unwrap_or(&cli_config.json_rpc_url),
-        );
-        let websocket_url = solana_cli_config::Config::compute_websocket_url(&json_rpc_url);
-
-        let multisig_signers = signers_of(matches, MULTISIG_SIGNER_ARG.name, &mut wallet_manager)
-            .unwrap_or_else(|e| {
-                eprintln!("error: {}", e);
-                exit(1);
-            });
-        if let Some(mut multisig_signers) = multisig_signers {
-            multisig_signers.sort_by(|(_, lp), (_, rp)| lp.cmp(rp));
-            let (signers, pubkeys): (Vec<_>, Vec<_>) = multisig_signers.into_iter().unzip();
-            bulk_signers.extend(signers);
-            multisigner_ids = pubkeys;
-        }
-        let multisigner_pubkeys = multisigner_ids.iter().collect::<Vec<_>>();
-
-        let config = SignerFromPathConfig {
-            allow_null_signer: !multisigner_pubkeys.is_empty(),
-        };
-
-        let default_keypair = KeypairOrPath::Path(cli_config.keypair_path.clone());
-
-        let default_signer: Arc<dyn Signer> = {
-            if let Some(owner_path) = matches.value_of("owner") {
-                signer_from_path_with_config(
-                    matches,
-                    owner_path,
-                    "owner",
-                    &mut wallet_manager,
-                    &config,
-                )
-            } else {
-                match &default_keypair {
-                    #[cfg(test)]
-                    KeypairOrPath::Keypair(keypair) => {
-                        let cloned = Keypair::from_bytes(&keypair.to_bytes()).unwrap();
-                        Ok(Box::new(cloned) as Box<dyn Signer>)
-                    }
-                    KeypairOrPath::Path(path) => {
-                        signer_from_path_with_config(matches, path, "default", &mut wallet_manager, &config)
-                    }
-                }
-            }
-        }
-            .map(|signer| Arc::from(signer))
-            .unwrap_or_else(|e| {
-                eprintln!("error: {}", e);
-                exit(1);
-            });
-
-        let (signer, fee_payer) = matches.value_of("fee_payer")
-            .map_or(Ok(default_signer.clone()), |path| {
-                signer_from_path(
-                    matches,
-                    path,
-                    "fee_payer",
-                    &mut wallet_manager,
-                )
-                .map(|boxed| Arc::from(boxed))
-            })
-            .map(|s: Arc<dyn Signer>| {
-                let p = s.pubkey();
-                (s, p)
-            })
-            .unwrap_or_else(|e| {
-                eprintln!("error: {}", e);
-                exit(1);
-            });
-        bulk_signers.push(signer);
-
-        let verbose = matches.is_present("verbose");
-        let output_format = matches
-            .value_of("output_format")
-            .map(|value| match value {
-                "json" => OutputFormat::Json,
-                "json-compact" => OutputFormat::JsonCompact,
-                _ => unreachable!(),
-            })
-            .unwrap_or(if verbose {
-                OutputFormat::DisplayVerbose
-            } else {
-                OutputFormat::Display
-            });
-
-        let nonce_account = pubkey_of_signer(matches, NONCE_ARG.name, &mut wallet_manager)
-            .unwrap_or_else(|e| {
-                eprintln!("error: {}", e);
-                exit(1);
-            });
-        let nonce_authority = if nonce_account.is_some() {
-            let (signer, nonce_authority) = signer_from_path(
-                matches,
-                matches
-                    .value_of(NONCE_AUTHORITY_ARG.name)
-                    .unwrap_or(&cli_config.keypair_path),
-                NONCE_AUTHORITY_ARG.name,
-                &mut wallet_manager,
-            )
-            .map(|boxed| Arc::from(boxed))
-            .map(|s: Arc<dyn Signer>| {
-                let p = s.pubkey();
-                (s, p)
-            })
-            .unwrap_or_else(|e| {
-                eprintln!("error: {}", e);
-                exit(1);
-            });
-            bulk_signers.push(signer);
-
-            Some(nonce_authority)
-        } else {
-            None
-        };
-
-        let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
-        let dump_transaction_message = matches.is_present(DUMP_TRANSACTION_MESSAGE.name);
-        let program_id = pubkey_of(matches, "program_id").unwrap();
-
-        let rpc_client = Arc::new(RpcClient::new_with_commitment(
-            json_rpc_url,
-            CommitmentConfig::confirmed(),
-        ));
-        Config {
-            default_signer,
-            rpc_client,
-            websocket_url,
-            output_format,
-            fee_payer,
-            nonce_account,
-            nonce_authority,
-            sign_only,
-            dump_transaction_message,
-            multisigner_pubkeys,
-            program_id,
-        }
-    };
+    let mut multisigner_ids = Vec::new();
+    let config = Config::new(
+        matches,
+        &mut wallet_manager,
+        &mut bulk_signers,
+        &mut multisigner_ids,
+    );
 
     solana_logger::setup_with_default("solana=info");
     let result =
