@@ -141,6 +141,7 @@ impl Processor {
         let swap_bytes = swap.to_bytes();
         let authority_signature_seeds = [&swap_bytes[..32], &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
+        #[allow(deprecated)]
         let ix = spl_token_2022::instruction::transfer(
             token_program.key,
             source.key,
@@ -1139,7 +1140,7 @@ mod tests {
             let mut new_account_infos = vec![];
 
             // mimic check for token program in accounts
-            if !account_infos.iter().any(|x| *x.key == spl_token::id()) {
+            if !account_infos.iter().any(|x| *x.key == spl_token::id() || *x.key == spl_token_2022::id()) {
                 return Err(ProgramError::InvalidAccountData);
             }
 
@@ -1225,7 +1226,7 @@ mod tests {
                 Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
 
             let (pool_mint_key, mut pool_mint_account) =
-                create_mint(&spl_token::id(), &authority_key, None);
+                create_mint(&token_program_id, &authority_key, None);
             let (pool_token_key, pool_token_account) = mint_token(
                 token_program_id,
                 &pool_mint_key,
@@ -1243,7 +1244,7 @@ mod tests {
                 0,
             );
             let (token_a_mint_key, mut token_a_mint_account) =
-                create_mint(&spl_token::id(), user_key, None);
+                create_mint(&token_program_id, user_key, None);
             let (token_a_key, token_a_account) = mint_token(
                 token_program_id,
                 &token_a_mint_key,
@@ -1253,7 +1254,7 @@ mod tests {
                 token_a_amount,
             );
             let (token_b_mint_key, mut token_b_mint_account) =
-                create_mint(&spl_token::id(), user_key, None);
+                create_mint(&token_program_id, user_key, None);
             let (token_b_key, token_b_account) = mint_token(
                 token_program_id,
                 &token_b_mint_key,
