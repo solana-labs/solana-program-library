@@ -67,13 +67,16 @@ struct ConfidentialTransferAccount {
 ```rust
 // Actual cryptographic components are organized in `VerifyTransfer`
 // instruction data
-struct TransferInstructionData {
+struct ConfidentialTransferInstructionData {
   /// The transfer amount encrypted under the sender ElGamal public key
   encrypted_amount_sender: ElGamalCiphertext,
   /// The transfer amount encrypted under the receiver ElGamal public key
   encrypted_amount_receiver: ElGamalCiphertext,
 }
 ```
+
+Upon receiving a transfer instruction, the Token program aggregates
+`encrypted_amount_receiver` into the account `pending_balance`.
 
 The actual structures of these two components are more involved. Since the
 `TransferInstructionData` requires zero-knowledge proof components, we defer the
@@ -164,37 +167,59 @@ struct ConfidentialTransferAccount {
 }
 ```
 
-One natural way to encrypt the 64-bit pending balance is to evenly split the
-number as low and high 32-bit numbers and encrypt them separately as
-`pending_balance_lo` and `pending_balance_hi`. Then since the amounts that are
-encrypted in each ciphertexts are 32-bit numbers, each of their decryption can
-be done efficiently.
+We correspondingly divide the ciphertext that encrypts the transfer amount in
+the transfer instruction data as low and high bit encryptions.
 
-The limitation of this approach is that the 32-bit number that is encrypted as
+```rust
+// Actual cryptographic components are organized in `VerifyTransfer`
+// instruction data
+struct ConfidentialTransferInstructionData {
+  /// The transfer amount encrypted under the sender ElGamal public key
+  encrypted_amount_sender: ElGamalCiphertext,
+  /// The low-bits of the transfer amount encrypted under the receiver
+  /// ElGamal public key
+  encrypted_amount_lo_receiver: ElGamalCiphertext,
+  /// The high-bits of the transfer amount encrypted under the receiver
+  /// ElGamal public key
+  encrypted_amount_hi_receiver: ElGamalCiphertext,
+}
+```
+
+Upon receiving a transfer instruction, the Token program aggregates
+`encrypted_amount_lo_receiver` in the instruction data to `pending_balance_lo`
+in the account and `encrypted_amount_hi_receiver` to `pending_balance_hi`.
+
+One natural way to divide the 64-bit pending balance and transfer amount in the
+structures above is to evenly split the number as low and high 32-bit numbers.
+Then since the amounts that are encrypted in each ciphertexts are 32-bit
+numbers, each of their decryption can be done efficiently.
+
+The problem with this approach is that the 32-bit number that is encrypted as
 `pending_balance_lo` could easily overflow and grow larger than a 32-bit number.
+For example, two transfers of the amount `2^32-1` to an account force the
+`pending_balance_lo` ciphertext in the account to `2^32`, a 33-bit number.
 Once the encrypted amount overflows, it becomes increasingly more difficult to
 decrypt the ciphertext.
 
-To cope with overflows, we make two additional modifications to the account
+To cope with overflows, we add the following two components to the account
 state.
 
-- The `u64` pending balance is split into 16 and 48-bit numbers. The low 16-bit
-  pending balance is encrypted and stored as `pending_balance_lo`. The high
-  48-bit pending balance is encrypted and stored as `pending_balance_hi`.
 - The account state keeps track of the number of incoming transfers that it
   received since the last `ApplyPendingBalance` instruction.
 - The account state stores a `maximum_pending_balance_credit_counter` which
   limits the number of incoming transfers that it can receive before an
-  `ApplyPendingBalance` instruction is applied to the account.
+  `ApplyPendingBalance` instruction is applied to the account. This upper bound
+  can be configured with the `ConfigureAccount` and should typically be set to
+  `2^16`.
 
 ```rust
 struct ConfidentialTransferAccount {
   ... // `approved`, `encryption_pubkey`, available balance fields omitted
 
-  /// The low *16-bits* of the pending balance (encrypted by `encryption_pubkey`)
+  /// The low bits of the pending balance (encrypted by `encryption_pubkey`)
   pending_balance_lo: ElGamalCiphertext,
 
-  /// The high *48-bits* of the pending balance (encrypted by `encryption_pubkey`)
+  /// The high bits of the pending balance (encrypted by `encryption_pubkey`)
   pending_balance_hi: ElGamalCiphertext,
 
   /// The maximum number of `Deposit` and `Transfer` instructions that can credit
@@ -207,14 +232,51 @@ struct ConfidentialTransferAccount {
 }
 ```
 
-The fields `pending_balance_credit_counter` and
-`maximum_pending_balance_credit_counter` are used to limit amount of overflow in
-the pending balance ciphertexts `pending_balance_lo` and `pending_balance_hi`.
-For example, if the number of incoming transfers is limited to `2^16`, then the
-two ciphertexts can overflow by a factor of at most `2^16`.
+For the case of the transfer instruction data, we make the following
+modifications:
 
-- The `pending_balance_lo` ciphertext encrypts a number that is at most a 16-bit
+- The transfer amount is restricted to be a 48-bit number.
+- The transfer amount is divided into 16 and 32-bit numbers and is encrypted as
+  two ciphertexts `encrypted_amount_lo_receiver` and
+  `encrypted_amount_hi_receiver`.
+
+```rust
+// Actual cryptographic components are organized in `VerifyTransfer`
+// instruction data
+struct ConfidentialTransferInstructionData {
+  /// The transfer amount encrypted under the sender ElGamal public key
+  encrypted_amount_sender: ElGamalCiphertext,
+  /// The low *16-bits* of the transfer amount encrypted under the receiver
+  /// ElGamal public key
+  encrypted_amount_lo_receiver: ElGamalCiphertext,
+  /// The high *32-bits* of the transfer amount encrypted under the receiver
+  /// ElGamal public key
+  encrypted_amount_hi_receiver: ElGamalCiphertext,
+}
+```
+
+The fields `pending_balance_credit_counter` and
+`maximum_pending_balance_credit_counter` are used to limit amounts that are
+encrypted in the pending balance ciphertexts `pending_balance_lo` and
+`pending_balance_hi`. The choice of the size limit on the transfer amount is
+done to balance the efficiency of ElGamal decryption with the usability of a
+confidential transfer.
+
+Consider the case where `maximum_pending_balance_credit_counter` is set to
+`2^16`.
+
+- The `encrypted_amount_lo_receiver` encrypts a number that is at most a 16-bit
   number. Therefore, even after `2^16` incoming transfers, the ciphertext
-  encrypt a balance that is at most a 32-bit number.
-- The `pending_balance_hi` ciphertext encrypts a number that is at most a 48-bit
-  number.
+  `pending_balance_lo` in an account encrypts a balance that is at most a 32-bit
+  number. This amount can be decrypted efficiently.
+
+- The `encrypted_amount_hi_receiver` encrypts a number that is at most a 32-bit
+  number. Therefore, after `2^16` incoming transfers, the ciphertext
+  `pending_balance_hi` encrypts a balance that is at most a 48-bit number.
+
+  The decryption of a large 48-bit number is slow. However, for accounts to
+  hold a pending balance of large 48-bit numbers, they must receive a large
+  number of high transaction amounts. Clients that maintain accounts with
+  high token balances can frequently submit `ApplyPendingBalance` instructions
+  to flush out the pending balance into the available balance to prevent the
+  balance encrypted in `pending_balance_hi` from growing too large.
