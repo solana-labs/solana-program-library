@@ -6285,6 +6285,7 @@ dependencies = [
  "spl-memo 3.0.1",
  "spl-token 3.3.0",
  "spl-token-2022 0.4.2",
+ "spl-token-client",
  "strum",
  "strum_macros",
  "tempfile",

@@ -13,6 +13,7 @@ use spl_token_2022::{
     extension::StateWithExtensionsOwned,
     state::{Account, Mint},
 };
+use spl_token_client::client::{ProgramClient, ProgramRpcClientSendTransaction};
 use std::{process::exit, sync::Arc};
 
 #[cfg(test)]
@@ -34,6 +35,7 @@ pub(crate) struct MintInfo {
 
 pub(crate) struct Config<'a> {
     pub(crate) rpc_client: Arc<RpcClient>,
+    pub(crate) program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>>,
     pub(crate) websocket_url: String,
     pub(crate) output_format: OutputFormat,
     pub(crate) fee_payer: Pubkey,

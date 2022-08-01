@@ -47,6 +47,7 @@ use spl_token_2022::{
     instruction::*,
     state::{Account, Mint, Multisig},
 };
+use spl_token_client::client::{ProgramClient, ProgramRpcClient, ProgramRpcClientSendTransaction};
 use std::{
     collections::HashMap, fmt::Display, process::exit, str::FromStr, string::ToString, sync::Arc,
 };
@@ -319,7 +320,7 @@ async fn command_create_token(
 
     let minimum_balance_for_rent_exemption = if !config.sign_only {
         config
-            .rpc_client
+            .program_client
             .get_minimum_balance_for_rent_exemption(Mint::LEN)
             .await?
     } else {
@@ -383,7 +384,7 @@ async fn command_create_account(
 ) -> CommandResult {
     let minimum_balance_for_rent_exemption = if !config.sign_only {
         config
-            .rpc_client
+            .program_client
             .get_minimum_balance_for_rent_exemption(Account::LEN)
             .await?
     } else {
@@ -476,7 +477,7 @@ async fn command_create_multisig(
 
     let minimum_balance_for_rent_exemption = if !config.sign_only {
         config
-            .rpc_client
+            .program_client
             .get_minimum_balance_for_rent_exemption(Multisig::LEN)
             .await?
     } else {
@@ -824,7 +825,7 @@ async fn command_transfer(
             if fund_recipient {
                 if !config.sign_only {
                     minimum_balance_for_rent_exemption += config
-                        .rpc_client
+                        .program_client
                         .get_minimum_balance_for_rent_exemption(Account::LEN)
                         .await?;
                     println_display(
@@ -1600,7 +1601,7 @@ async fn command_gc(
 
     let minimum_balance_for_rent_exemption = if !config.sign_only {
         config
-            .rpc_client
+            .program_client
             .get_minimum_balance_for_rent_exemption(Account::LEN)
             .await?
     } else {
@@ -2760,8 +2761,12 @@ async fn main() -> Result<(), Error> {
             json_rpc_url,
             CommitmentConfig::confirmed(),
         ));
+        let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
+            ProgramRpcClient::new(rpc_client.clone(), ProgramRpcClientSendTransaction),
+        );
         Config {
             rpc_client,
+            program_client,
             websocket_url,
             output_format,
             fee_payer,
@@ -3329,8 +3334,12 @@ mod tests {
     ) -> Config<'a> {
         let websocket_url = test_validator.rpc_pubsub_url();
         let rpc_client = Arc::new(test_validator.get_async_rpc_client());
+        let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
+            ProgramRpcClient::new(rpc_client.clone(), ProgramRpcClientSendTransaction),
+        );
         Config {
             rpc_client,
+            program_client,
             websocket_url,
             output_format: OutputFormat::JsonCompact,
             fee_payer: payer.pubkey(),
