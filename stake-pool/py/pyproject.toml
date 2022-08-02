@@ -4,7 +4,7 @@ version = '1.0'
 authors = [
   { name= 'joncinque'},
 ]
-description = 'solana labs stake pool reference implementation'
+description = 'Solana Program Library Stake Pool Program Client Library'
 readme = 'README.md'
 license = { file='LICENSE' }
 requires-python = '>=3.7'
