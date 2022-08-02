@@ -3511,7 +3511,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[parallel(one)]
+    #[parallel(three)]
     async fn create_account_default() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3532,7 +3532,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[parallel(two)]
+    #[parallel(four)]
     async fn account_info() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3613,7 +3613,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[parallel(one)]
+    #[parallel(three)]
     async fn balance_after_mint() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3635,7 +3635,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[parallel(two)]
+    #[parallel(four)]
     async fn accounts() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3714,7 +3714,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[parallel(one)]
+    #[parallel(three)]
     async fn transfer() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3748,7 +3748,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[parallel(two)]
+    #[parallel(four)]
     async fn transfer_fund_recipient() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3845,7 +3845,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[parallel(one)]
+    #[parallel(three)]
     async fn close_wrapped_sol_account() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3892,7 +3892,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[parallel(two)]
+    #[parallel(four)]
     async fn disable_mint_authority() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3994,7 +3994,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[parallel(one)]
+    #[parallel(three)]
     async fn transfer_with_account_delegate() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -4089,7 +4089,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[parallel(two)]
+    #[parallel(four)]
     async fn burn_with_account_delegate() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
