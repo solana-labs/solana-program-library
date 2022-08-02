@@ -250,7 +250,7 @@ zero-knowledge proofs.
     the proof should certify that `ct_transfer` encrypts a value `x` such that
     `0 <= x < u64::MAX`.
 
-- _Equality proof_: Reall that a transfer instruction contains two ciphertexts
+- _Equality proof_: Recall that a transfer instruction contains two ciphertexts
   of the transfer value `x`: a ciphertext under the sender public key
   `ct_sender = PKE::encrypt(pk_sender, x)` and one under the receiver public key
   `ct_receiver = PKE::encrypt(pk_receiver, x)`. A malicious user can encrypt two
@@ -438,10 +438,14 @@ the originally encrypted value, one must solve a computational problem called
 the _discrete logarithm_, which requires an expoential time to solve. In the
 confidential extension program, we address this issue in the following two ways:
 
-- We restrict a transfer amount to 48-bit numbers.
-- We encrypt the transfer amount as two independent ciphertexts.
+- Transfer amounts are restricted to 48-bit numbers.
+- Transfer amounts and account pending balances are encrypted as two
+  independent ciphertexts.
+- Account available balances are additionally encrypted using a symmetric
+  encryption scheme.
 
-We refer to the documentation in the source code for more details.
+We refer to the subsequent sections and the documentation in the source code for
+additional details.
 
 ### Twisted ElGamal encryption
 
