@@ -1116,9 +1116,11 @@ mod tests {
     use solana_sdk::account::{create_account_for_test, create_is_signer_account_infos, Account};
     use spl_token_2022::{
         error::TokenError,
+        extension::ExtensionType,
         instruction::{
-            approve, freeze_account, initialize_account, initialize_mint, mint_to, revoke,
-            set_authority, AuthorityType,
+            approve, freeze_account, initialize_account, initialize_immutable_owner,
+            initialize_mint, initialize_mint_close_authority, mint_to, revoke, set_authority,
+            AuthorityType,
         },
     };
     use std::sync::Arc;
@@ -1140,7 +1142,10 @@ mod tests {
             let mut new_account_infos = vec![];
 
             // mimic check for token program in accounts
-            if !account_infos.iter().any(|x| *x.key == spl_token::id() || *x.key == spl_token_2022::id()) {
+            if !account_infos
+                .iter()
+                .any(|x| *x.key == spl_token::id() || *x.key == spl_token_2022::id())
+            {
                 return Err(ProgramError::InvalidAccountData);
             }
 
@@ -1226,7 +1231,7 @@ mod tests {
                 Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
 
             let (pool_mint_key, mut pool_mint_account) =
-                create_mint(&token_program_id, &authority_key, None);
+                create_mint(token_program_id, &authority_key, None);
             let (pool_token_key, pool_token_account) = mint_token(
                 token_program_id,
                 &pool_mint_key,
@@ -1244,7 +1249,7 @@ mod tests {
                 0,
             );
             let (token_a_mint_key, mut token_a_mint_account) =
-                create_mint(&token_program_id, user_key, None);
+                create_mint(token_program_id, user_key, None);
             let (token_a_key, token_a_account) = mint_token(
                 token_program_id,
                 &token_a_mint_key,
@@ -1254,7 +1259,7 @@ mod tests {
                 token_a_amount,
             );
             let (token_b_mint_key, mut token_b_mint_account) =
-                create_mint(&token_program_id, user_key, None);
+                create_mint(token_program_id, user_key, None);
             let (token_b_key, token_b_account) = mint_token(
                 token_program_id,
                 &token_b_mint_key,
@@ -1828,13 +1833,24 @@ mod tests {
         amount: u64,
     ) -> (Pubkey, Account) {
         let account_key = Pubkey::new_unique();
-        let mut account_account = Account::new(
-            account_minimum_balance(),
-            spl_token::state::Account::get_packed_len(),
-            program_id,
-        );
+        let space = if *program_id == spl_token_2022::id() {
+            ExtensionType::get_account_len::<spl_token_2022::state::Account>(&[
+                ExtensionType::ImmutableOwner,
+            ])
+        } else {
+            spl_token_2022::state::Account::get_packed_len()
+        };
+        let minimum_balance = Rent::default().minimum_balance(space);
+        let mut account_account = Account::new(minimum_balance, space, program_id);
         let mut mint_authority_account = Account::default();
         let mut rent_sysvar_account = create_account_for_test(&Rent::free());
+
+        // no-ops in normal token, so we're good to run it either way
+        do_process_instruction(
+            initialize_immutable_owner(program_id, &account_key).unwrap(),
+            vec![&mut account_account],
+        )
+        .unwrap();
 
         do_process_instruction(
             initialize_account(program_id, &account_key, mint_key, account_owner_key).unwrap(),
@@ -1876,13 +1892,24 @@ mod tests {
         freeze_authority: Option<&Pubkey>,
     ) -> (Pubkey, Account) {
         let mint_key = Pubkey::new_unique();
-        let mut mint_account = Account::new(
-            mint_minimum_balance(),
-            spl_token::state::Mint::get_packed_len(),
-            program_id,
-        );
+        let space = if *program_id == spl_token_2022::id() {
+            ExtensionType::get_account_len::<spl_token_2022::state::Mint>(&[
+                ExtensionType::MintCloseAuthority,
+            ])
+        } else {
+            spl_token_2022::state::Mint::get_packed_len()
+        };
+        let minimum_balance = Rent::default().minimum_balance(space);
+        let mut mint_account = Account::new(minimum_balance, space, program_id);
         let mut rent_sysvar_account = create_account_for_test(&Rent::free());
 
+        if *program_id == spl_token_2022::id() {
+            do_process_instruction(
+                initialize_mint_close_authority(program_id, &mint_key, freeze_authority).unwrap(),
+                vec![&mut mint_account],
+            )
+            .unwrap();
+        }
         do_process_instruction(
             initialize_mint(program_id, &mint_key, authority_key, freeze_authority, 2).unwrap(),
             vec![&mut mint_account, &mut rent_sysvar_account],
