@@ -81,7 +81,7 @@ Upon receiving a transfer instruction, the Token program aggregates
 The actual structures of these two components are more involved. Since the
 `TransferInstructionData` requires zero-knowledge proof components, we defer the
 discussion of its precise structure to the next subsection and focus on
-`ConfidentialTransferAccount` in this section. We start from the ideal
+`ConfidentialTransferAccount` here. We start from the ideal
 `ConfidentialTransferAccount` structure above and incrementally modify it to
 produce the final structure.
 
@@ -92,8 +92,8 @@ becomes infeasible for clients to decrypt and recover the exact balance in an
 account. Therefore, in the Token program, the available balance is additionally
 encrypted using an authenticated symmetric encryption scheme. The resulting
 ciphertext is stored as the `decryptable_balance` of an account and the
-corresponding symmetric key could be stored on the client side as an independent
-key or could be derived from the owner signing key.
+corresponding symmetric key should either be stored on the client side as an
+independent key or be derived on-the-fly from the owner signing key.
 
 ```rust
 struct ConfidentialTransferAccount {
@@ -118,7 +118,7 @@ struct ConfidentialTransferAccount {
 
 Since `decryptable_available_balance` is easily decryptable, clients should
 generally use it to decrypt the available balance in an account. The
-`available_balance` ElGamal ciphertext will generally only be used to generate
+`available_balance` ElGamal ciphertext should generally only be used to generate
 zero-knowledge proofs when creating a transfer instruction.
 
 The `available_balance` and `decryptable_available_balance` should encrypt the
@@ -133,14 +133,14 @@ data.
 Like in the case of the available balance, one can consider adding a
 `decryptable_pending_balance` to the pending balance. However, whereas the
 available balance is always controlled by the owner of an account (via the
-`ApplyPendingBalance` and `Transfer` instructions), the pending of an account
-could constantly change with incoming transfers. Since the corresponding
+`ApplyPendingBalance` and `Transfer` instructions), the pending balance of an
+account could constantly change with incoming transfers. Since the corresponding
 decryption key of a decryptable balance ciphertext is only known to the owner of
 an account, the sender of a `Transfer` instruction cannot update the decryptable
 balance of the receiver's account.
 
 Therefore, for the case of the pending balance, the Token program stores two
-independent ElGamal ciphertexts, one encrypting the low bits of the `u64`
+independent ElGamal ciphertexts, one encrypting the low bits of the 64-bit
 pending balance and one encrypting the high bits.
 
 ```rust
@@ -198,7 +198,7 @@ The problem with this approach is that the 32-bit number that is encrypted as
 `pending_balance_lo` could easily overflow and grow larger than a 32-bit number.
 For example, two transfers of the amount `2^32-1` to an account force the
 `pending_balance_lo` ciphertext in the account to `2^32`, a 33-bit number.
-Once the encrypted amount overflows, it becomes increasingly more difficult to
+As the encrypted amount overflows, it becomes increasingly more difficult to
 decrypt the ciphertext.
 
 To cope with overflows, we add the following two components to the account
@@ -258,7 +258,7 @@ struct ConfidentialTransferInstructionData {
 The fields `pending_balance_credit_counter` and
 `maximum_pending_balance_credit_counter` are used to limit amounts that are
 encrypted in the pending balance ciphertexts `pending_balance_lo` and
-`pending_balance_hi`. The choice of the size limit on the transfer amount is
+`pending_balance_hi`. The choice of the limit on the transfer amount is
 done to balance the efficiency of ElGamal decryption with the usability of a
 confidential transfer.
 
@@ -268,15 +268,17 @@ Consider the case where `maximum_pending_balance_credit_counter` is set to
 - The `encrypted_amount_lo_receiver` encrypts a number that is at most a 16-bit
   number. Therefore, even after `2^16` incoming transfers, the ciphertext
   `pending_balance_lo` in an account encrypts a balance that is at most a 32-bit
-  number. This amount can be decrypted efficiently.
+  number. This component of the pending balance can be decrypted efficiently.
 
 - The `encrypted_amount_hi_receiver` encrypts a number that is at most a 32-bit
   number. Therefore, after `2^16` incoming transfers, the ciphertext
   `pending_balance_hi` encrypts a balance that is at most a 48-bit number.
 
-  The decryption of a large 48-bit number is slow. However, for accounts to
-  hold a pending balance of large 48-bit numbers, they must receive a large
-  number of high transaction amounts. Clients that maintain accounts with
-  high token balances can frequently submit `ApplyPendingBalance` instructions
-  to flush out the pending balance into the available balance to prevent the
-  balance encrypted in `pending_balance_hi` from growing too large.
+  The decryption of a large 48-bit number is slow. However, for most
+  applications, transfers of very high transaction amounts are relatively more
+  rare. For an account to hold a pending balance of large 48-bit numbers, it
+  must receive a large number of high transactions amounts. Clients that
+  maintain accounts with high token balances can frequently submit the
+  `ApplyPendingBalance` instruction to flush out the pending balance into the
+  available balance to prevent `pending_balance_hi` from encrypting a number
+  that is too large.
