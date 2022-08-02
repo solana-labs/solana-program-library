@@ -1,5 +1,5 @@
 [project]
-name = 'stake-pool'
+name = 'spl-stake-pool'
 version = '1.0'
 authors = [
   { name="Solana Maintainers", email="maintainers@solana.foundation" },
@@ -60,8 +60,3 @@ packages = ['bot', 'vote', 'stake', 'system', 'spl_token', 'stake_pool']
 [build-system]
 requires = ['setuptools>=61.0']
 build-backend = 'setuptools.build_meta'
-
-
-
-
-
