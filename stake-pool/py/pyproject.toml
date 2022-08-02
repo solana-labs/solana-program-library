@@ -2,7 +2,7 @@
 name = 'stake-pool'
 version = '1.0'
 authors = [
-  { name= 'joncinque'},
+  { name="Solana Maintainers", email="maintainers@solana.foundation" },
 ]
 description = 'Solana Program Library Stake Pool Program Client Library'
 readme = 'README.md'
