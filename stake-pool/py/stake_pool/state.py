@@ -2,17 +2,18 @@
 
 from enum import IntEnum
 from typing import List, NamedTuple, Optional
-from construct import Container, Struct, Switch, Int8ul, Int32ul, Int64ul, Pass  # type: ignore
+from construct import Bytes, Container, Struct, Switch, Int8ul, Int32ul, Int64ul, Pass  # type: ignore
 
 from solana.publickey import PublicKey
 from solana.utils.helpers import decode_byte_string
-from solana._layouts.shared import PUBLIC_KEY_LAYOUT
 from stake.state import Lockup, LOCKUP_LAYOUT
+
+PUBLIC_KEY_LAYOUT = Bytes(32)
 
 
 def decode_optional_publickey(container: Container) -> Optional[PublicKey]:
     if container:
-        return PublicKey(container)
+        return PublicKey(container.popitem()[1])
     else:
         return None
 

@@ -4,7 +4,6 @@ import pytest_asyncio
 import os
 import shutil
 import tempfile
-import time
 from typing import AsyncIterator, List, Tuple
 from subprocess import Popen
 
@@ -66,14 +65,14 @@ async def stake_pool_addresses(async_client, payer, validators, waiter) -> Tuple
 @pytest_asyncio.fixture
 async def async_client(solana_test_validator) -> AsyncIterator[AsyncClient]:
     async_client = AsyncClient(commitment=Confirmed)
-    total_attempts = 10
+    total_attempts = 20
     current_attempt = 0
     while not await async_client.is_connected():
         if current_attempt == total_attempts:
             raise Exception("Could not connect to test validator")
         else:
             current_attempt += 1
-        time.sleep(1)
+        await asyncio.sleep(1.0)
     yield async_client
     await async_client.close()
 
