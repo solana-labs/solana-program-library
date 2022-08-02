@@ -608,6 +608,52 @@ pub struct ReserveConfig {
     pub fees: ReserveFees,
 }
 
+impl ReserveConfig {
+    /// Validate the reserve configs, when initializing or modifying the reserve configs
+    pub fn validate(&self) -> ProgramResult {
+        if self.optimal_utilization_rate > 100 {
+            msg!("Optimal utilization rate must be in range [0, 100]");
+            return Err(LendingError::InvalidConfig.into());
+        }
+        if self.loan_to_value_ratio >= 100 {
+            msg!("Loan to value ratio must be in range [0, 100)");
+            return Err(LendingError::InvalidConfig.into());
+        }
+        if self.liquidation_bonus > 100 {
+            msg!("Liquidation bonus must be in range [0, 100]");
+            return Err(LendingError::InvalidConfig.into());
+        }
+        if self.liquidation_threshold <= self.loan_to_value_ratio
+            || self.liquidation_threshold > 100
+        {
+            msg!("Liquidation threshold must be in range (LTV, 100]");
+            return Err(LendingError::InvalidConfig.into());
+        }
+        if self.optimal_borrow_rate < self.min_borrow_rate {
+            msg!("Optimal borrow rate must be >= min borrow rate");
+            return Err(LendingError::InvalidConfig.into());
+        }
+        if self.optimal_borrow_rate > self.max_borrow_rate {
+            msg!("Optimal borrow rate must be <= max borrow rate");
+            return Err(LendingError::InvalidConfig.into());
+        }
+        if self.fees.borrow_fee_wad >= WAD {
+            msg!("Borrow fee must be in range [0, 1_000_000_000_000_000_000)");
+            return Err(LendingError::InvalidConfig.into());
+        }
+        if self.fees.flash_loan_fee_wad >= WAD {
+            msg!("Flash loan fee must be in range [0, 1_000_000_000_000_000_000)");
+            return Err(LendingError::InvalidConfig.into());
+        }
+        if self.fees.host_fee_percentage > 100 {
+            msg!("Host fee percentage must be in range [0, 100]");
+            return Err(LendingError::InvalidConfig.into());
+        }
+
+        Ok(())
+    }
+}
+
 /// Additional fee information on a reserve
 ///
 /// These exist separately from interest accrual fees, and are specifically for the program owner
