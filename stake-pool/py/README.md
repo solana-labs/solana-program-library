@@ -22,10 +22,11 @@ $ python3 -m venv venv
 $ source venv/bin/activate
 ```
 
-3. Install requirements
+3. Install build and dev requirements
 
 ```
 $ pip install -r requirements.txt
+$ pip install -r optional-requirements.txt
 ```
 
 4. Install the Solana tool suite: https://docs.solana.com/cli/install-solana-cli-tools
