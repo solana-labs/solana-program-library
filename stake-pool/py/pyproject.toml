@@ -55,7 +55,7 @@ dependencies = [
 packages = ['bot', 'vote', 'stake', 'system', 'spl_token', 'stake_pool']
 
 [project.urls]
-'Homepage' = 'https://github.com/solana-labs/solana-program-library/new/master/stake-pool/py'
+'Homepage' = 'https://github.com/solana-labs/solana-program-library/tree/master/stake-pool/py'
 
 [build-system]
 requires = ['setuptools>=61.0']
