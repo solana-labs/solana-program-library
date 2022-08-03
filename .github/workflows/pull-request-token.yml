@@ -6,12 +6,14 @@ on:
     - 'associated-token-account/**'
     - 'token/**'
     - 'ci/*-version.sh'
+    - '.github/workflows/pull-request-token.yml'
   push:
     branches: [master]
     paths:
     - 'associated-token-account/**'
     - 'token/**'
     - 'ci/*-version.sh'
+    - '.github/workflows/pull-request-token.yml'
 
 jobs:
   cargo-test-bpf:
