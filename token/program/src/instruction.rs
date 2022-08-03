@@ -1678,7 +1678,7 @@ mod test {
     fn test_instruction_unpack_panic() {
         for i in 0..255u8 {
             for j in 1..10 {
-                let mut data = vec![0;j];
+                let mut data = vec![0; j];
                 data[0] = i;
                 let _no_panic = TokenInstruction::unpack(&data);
             }
