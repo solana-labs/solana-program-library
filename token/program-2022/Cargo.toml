@@ -25,7 +25,7 @@ num_enum = "0.5.4"
 solana-program = "1.10.33"
 solana-zk-token-sdk = "1.10.33"
 spl-memo = { version = "3.0.1", path = "../../memo/program", features = [ "no-entrypoint" ] }
-spl-token = { version = "3.3",  path = "../program", features = ["no-entrypoint"] }
+spl-token = { version = "3.4",  path = "../program", features = ["no-entrypoint"] }
 thiserror = "1.0"
 serde = { version = "1.0.136", optional = true }
 serde_with = { version = "1.14.0", optional = true }
