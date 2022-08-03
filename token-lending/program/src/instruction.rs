@@ -221,7 +221,6 @@ pub enum LendingInstruction {
         liquidity_amount: u64,
         /// Minimum amount of liquidity to receive, if borrowing 100% of borrowing power
         slippage_limit: u64,
-        // @TODO: slippage constraint - https://git.io/JmV67
     },
 
     // 11
