@@ -142,7 +142,6 @@ jobs:
 
   cargo-build-test-cli:
     runs-on: ubuntu-latest
-    needs: cargo-test-bpf
     steps:
       - uses: actions/checkout@v2
 
@@ -185,4 +184,5 @@ jobs:
 
       - name: Build and test
         run: |
+          BUILD_DEPENDENT_PROGRAMS=1 cargo build --manifest-path ./token/cli/Cargo.toml
           cargo test --manifest-path ./token/cli/Cargo.toml
