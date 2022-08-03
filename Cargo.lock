@@ -6195,6 +6195,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "num_enum",
+ "proptest",
  "serial_test 0.5.1",
  "solana-program",
  "solana-program-test",
