@@ -519,9 +519,6 @@ impl<'a> TokenInstruction<'a> {
             10 => Self::FreezeAccount,
             11 => Self::ThawAccount,
             12 => {
-                if rest.len() < 8 {
-                    return Err(TokenError::InvalidInstruction.into());
-                }
                 let (amount, rest) = rest.split_at(8);
                 let amount = amount
                     .try_into()
@@ -533,9 +530,6 @@ impl<'a> TokenInstruction<'a> {
                 Self::TransferChecked { amount, decimals }
             }
             13 => {
-                if rest.len() < 8 {
-                    return Err(TokenError::InvalidInstruction.into());
-                }
                 let (amount, rest) = rest.split_at(8);
                 let amount = amount
                     .try_into()
@@ -547,9 +541,6 @@ impl<'a> TokenInstruction<'a> {
                 Self::ApproveChecked { amount, decimals }
             }
             14 => {
-                if rest.len() < 8 {
-                    return Err(TokenError::InvalidInstruction.into());
-                }
                 let (amount, rest) = rest.split_at(8);
                 let amount = amount
                     .try_into()
@@ -561,9 +552,6 @@ impl<'a> TokenInstruction<'a> {
                 Self::MintToChecked { amount, decimals }
             }
             15 => {
-                if rest.len() < 8 {
-                    return Err(TokenError::InvalidInstruction.into());
-                }
                 let (amount, rest) = rest.split_at(8);
                 let amount = amount
                     .try_into()
@@ -600,9 +588,6 @@ impl<'a> TokenInstruction<'a> {
             21 => Self::GetAccountDataSize,
             22 => Self::InitializeImmutableOwner,
             23 => {
-                if rest.len() < 8 {
-                    return Err(TokenError::InvalidInstruction.into());
-                }
                 let (amount, _rest) = rest.split_at(8);
                 let amount = amount
                     .try_into()
@@ -1703,16 +1688,5 @@ mod test {
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
-    }
-
-    #[test]
-    fn test_instruction_unpack_panic() {
-        for i in 0..255u8 {
-            for j in 1..10 {
-                let mut data = vec![0; j];
-                data[0] = i;
-                let _no_panic = TokenInstruction::unpack(&data);
-            }
-        }
     }
 }
