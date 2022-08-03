@@ -176,12 +176,6 @@ jobs:
           ./ci/install-program-deps.sh
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Download programs
-        uses: actions/download-artifact@v2
-        with:
-          name: token-programs
-          path: target/deploy
-
       - name: Build and test
         run: |
           BUILD_DEPENDENT_PROGRAMS=1 cargo build --manifest-path ./token/cli/Cargo.toml
