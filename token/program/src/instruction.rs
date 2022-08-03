@@ -1447,7 +1447,7 @@ pub fn is_valid_signer_index(index: usize) -> bool {
 
 #[cfg(test)]
 mod test {
-    use {super::*, proptest::prelude::*};
+    use super::*;
 
     #[test]
     fn test_instruction_packing() {

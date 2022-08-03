@@ -1787,7 +1787,7 @@ pub(crate) fn encode_instruction<T: Into<u8>, D: Pod>(
 
 #[cfg(test)]
 mod test {
-    use {super::*, proptest::prelude::*};
+    use super::*;
 
     #[test]
     fn test_instruction_packing() {
@@ -2283,15 +2283,5 @@ mod test {
             &mint_pubkey,
             ui_amount,
         ));
-    }
-
-    proptest! {
-        #![proptest_config(ProptestConfig::with_cases(1024))]
-        #[test]
-        fn test_instruction_unpack_panic(
-            data in prop::collection::vec(any::<u8>(), 0..255)
-        ) {
-            let _no_panic = TokenInstruction::unpack(&data);
-        }
     }
 }
