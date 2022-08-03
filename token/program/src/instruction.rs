@@ -1677,8 +1677,11 @@ mod test {
     #[test]
     fn test_instruction_unpack_panic() {
         for i in 0..255u8 {
-            let expect = Vec::from([i, 1, 0, 0, 0, 0, 0, 0, 0, 2]);
-            _ = TokenInstruction::unpack(&expect[0..2]);
+            for j in 1..10 {
+                let mut data = vec![0;j];
+                data[0] = i;
+                let _no_panic = TokenInstruction::unpack(&data);
+            }
         }
     }
 }
