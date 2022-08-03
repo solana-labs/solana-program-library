@@ -80,6 +80,8 @@ jobs:
           if-no-files-found: error
 
   cargo-test-bpf-twoxtx:
+    runs-on: ubuntu-latest
+    steps:
       - uses: actions/checkout@v2
 
       - name: Set env vars
@@ -109,7 +111,8 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Build and test token-2022 twoxtx (TEMPORARY)
-        run: | ./token/twoxtx-setup.sh
+        run: |
+          ./token/twoxtx-setup.sh
           ./ci/cargo-test-bpf.sh token/program-2022-test
 
   js-test:
