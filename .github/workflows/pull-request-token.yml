@@ -139,3 +139,50 @@ jobs:
           name: token-programs
           path: target/deploy
       - run: ./ci/js-test-token.sh
+
+  cargo-build-test-cli:
+    runs-on: ubuntu-latest
+    needs: cargo-test-bpf
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+          source ci/solana-version.sh
+          echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_STABLE }}
+          override: true
+          profile: minimal
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE }}
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/solana
+          key: solana-${{ env.SOLANA_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          ./ci/install-build-deps.sh
+          ./ci/install-program-deps.sh
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Download programs
+        uses: actions/download-artifact@v2
+        with:
+          name: token-programs
+          path: target/deploy
+
+      - name: Build and test
+        run: |
+          cargo test --manifest-path ./token/cli/Cargo.toml
