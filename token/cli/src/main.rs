@@ -1740,20 +1740,15 @@ fn app<'a, 'b>(
         .about(crate_description!())
         .version(crate_version!())
         .setting(AppSettings::SubcommandRequiredElseHelp)
-        .arg({
-            let arg = Arg::with_name("config_file")
+        .arg(
+            Arg::with_name("config_file")
                 .short("C")
                 .long("config")
                 .value_name("PATH")
                 .takes_value(true)
                 .global(true)
-                .help("Configuration file to use");
-            if let Some(ref config_file) = *solana_cli_config::CONFIG_FILE {
-                arg.default_value(config_file)
-            } else {
-                arg
-            }
-        })
+                .help("Configuration file to use"),
+        )
         .arg(
             Arg::with_name("verbose")
                 .short("v")
@@ -2556,6 +2551,8 @@ fn main() -> Result<(), Error> {
                 eprintln!("error: Could not find config file `{}`", config_file);
                 exit(1);
             })
+        } else if let Some(ref config_file) = *solana_cli_config::CONFIG_FILE {
+            solana_cli_config::Config::load(config_file).unwrap_or_default()
         } else {
             solana_cli_config::Config::default()
         };
