@@ -5839,11 +5839,21 @@ dependencies = [
  "num-derive",
  "num-traits",
  "solana-program",
- "solana-program-test",
- "solana-sdk",
  "spl-token 3.4.0",
  "spl-token-2022 0.4.2",
  "thiserror",
+]
+
+[[package]]
+name = "spl-associated-token-account-test"
+version = "0.0.1"
+dependencies = [
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-associated-token-account 1.1.0",
+ "spl-token 3.4.0",
+ "spl-token-2022 0.4.2",
 ]
 
 [[package]]
