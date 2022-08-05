@@ -74,7 +74,7 @@ fn test_transfer_fee_config_with_keypairs() -> TransferFeeConfigWithKeypairs {
 
 struct TokenWithAccounts {
     context: TestContext,
-    token: Token<ProgramBanksClientProcessTransaction, Keypair>,
+    token: Token<ProgramBanksClientProcessTransaction>,
     transfer_fee_config: TransferFeeConfig,
     withdraw_withheld_authority: Keypair,
     freeze_authority: Keypair,
@@ -1093,7 +1093,7 @@ async fn no_fees_from_self_transfer() {
 }
 
 async fn create_and_transfer_to_account(
-    token: &Token<ProgramBanksClientProcessTransaction, Keypair>,
+    token: &Token<ProgramBanksClientProcessTransaction>,
     source: &Pubkey,
     authority: &Keypair,
     owner: &Pubkey,

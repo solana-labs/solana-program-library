@@ -46,6 +46,7 @@ use spl_token_2022::{
     instruction::*,
     state::{Account, Mint, Multisig},
 };
+use spl_token_client::{client::RpcClientResponse, token::Token};
 use std::{
     collections::HashMap, fmt::Display, process::exit, str::FromStr, string::ToString, sync::Arc,
 };
@@ -327,59 +328,51 @@ pub fn signers_of(
 async fn command_create_token(
     config: &Config<'_>,
     decimals: u8,
-    token: Pubkey,
+    token_pubkey: Pubkey,
     authority: Pubkey,
     enable_freeze: bool,
     memo: Option<String>,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
-    println_display(config, format!("Creating token {}", token));
+    println_display(config, format!("Creating token {}", token_pubkey));
 
-    let minimum_balance_for_rent_exemption = if !config.sign_only {
-        config
-            .program_client
-            .get_minimum_balance_for_rent_exemption(Mint::LEN)
-            .await?
+    let token = Token::new(
+        config.program_client.clone(),
+        &config.program_id,
+        &token_pubkey,
+        config.default_signer.clone(),
+    );
+
+    let token = if let (Some(nonce_account), Some(nonce_authority)) =
+        (config.nonce_account, config.nonce_authority)
+    {
+        token.with_nonce(&nonce_account, &nonce_authority)
     } else {
-        0
+        token
     };
-    let freeze_authority_pubkey = if enable_freeze { Some(authority) } else { None };
 
-    let mut instructions = vec![
-        system_instruction::create_account(
-            &config.fee_payer,
-            &token,
-            minimum_balance_for_rent_exemption,
-            Mint::LEN as u64,
-            &config.program_id,
-        ),
-        initialize_mint(
-            &config.program_id,
-            &token,
-            &authority,
-            freeze_authority_pubkey.as_ref(),
-            decimals,
-        )?,
-    ];
     if let Some(text) = memo {
-        instructions.push(spl_memo::build_memo(text.as_bytes(), &[&config.fee_payer]));
+        token.with_memo(text);
     }
 
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        minimum_balance_for_rent_exemption,
-        instructions,
-    )
-    .await?;
+    let freeze_authority = if enable_freeze { Some(authority) } else { None };
+
+    let res = token
+        .create_mint(
+            &authority,
+            freeze_authority.as_ref(),
+            decimals,
+            vec![],
+            &bulk_signers,
+        )
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
 
     Ok(match tx_return {
         TransactionReturnData::CliSignature(cli_signature) => format_output(
             CliMint {
-                address: token.to_string(),
+                address: token_pubkey.to_string(),
                 decimals,
                 transaction_data: cli_signature,
             },
@@ -1970,7 +1963,6 @@ fn app<'a, 'b>(
                 )
                 .nonce_args(true)
                 .arg(memo_arg())
-                .offline_args(),
         )
         .subcommand(
             SubCommand::with_name(CommandName::CreateAccount.into())
@@ -1998,7 +1990,6 @@ fn app<'a, 'b>(
                 )
                 .arg(owner_address_arg())
                 .nonce_args(true)
-                .offline_args(),
         )
         .subcommand(
             SubCommand::with_name(CommandName::CreateMultisig.into())
@@ -2036,7 +2027,6 @@ fn app<'a, 'b>(
                         ),
                 )
                 .nonce_args(true)
-                .offline_args(),
         )
         .subcommand(
             SubCommand::with_name(CommandName::Authorize.into())
@@ -2147,7 +2137,7 @@ fn app<'a, 'b>(
                 .arg(owner_keypair_arg_with_value_name("SENDER_TOKEN_OWNER_KEYPAIR")
                         .help(
                             "Specify the owner of the sending token account. \
-                            This may be a keypair file, the ASK keyword. \
+                            This may be a keypair file or the ASK keyword. \
                             Defaults to the client keypair.",
                         ),
                 )
@@ -2218,7 +2208,7 @@ fn app<'a, 'b>(
                 .arg(owner_keypair_arg_with_value_name("SOURCE_TOKEN_OWNER_KEYPAIR")
                         .help(
                             "Specify the source token owner account. \
-                            This may be a keypair file, the ASK keyword. \
+                            This may be a keypair file or the ASK keyword. \
                             Defaults to the client keypair.",
                         ),
                 )
@@ -2486,7 +2476,7 @@ fn app<'a, 'b>(
                         .help(
                             "Specify the token's close authority if it has one, \
                             otherwise specify the token's owner keypair. \
-                            This may be a keypair file, the ASK keyword. \
+                            This may be a keypair file or the ASK keyword. \
                             Defaults to the client keypair.",
                         ),
                 )
@@ -3129,6 +3119,8 @@ enum TransactionReturnData {
     CliSignature(CliSignature),
     CliSignOnlyData(CliSignOnlyData),
 }
+
+// XXX this goes away once everything is converted to token client
 async fn handle_tx<'a>(
     signer_info: &CliSignerInfo,
     config: &Config<'a>,
@@ -3181,6 +3173,43 @@ async fn handle_tx<'a>(
         Ok(TransactionReturnData::CliSignature(CliSignature {
             signature: signature.to_string(),
         }))
+    }
+}
+
+async fn finish_tx<'a>(
+    config: &Config<'a>,
+    rpc_response: &RpcClientResponse,
+    no_wait: bool,
+) -> Result<TransactionReturnData, Error> {
+    match rpc_response {
+        RpcClientResponse::Transaction(transaction) => {
+            Ok(TransactionReturnData::CliSignOnlyData(return_signers_data(
+                transaction,
+                &ReturnSignersConfig {
+                    dump_transaction_message: config.dump_transaction_message,
+                },
+            )))
+        }
+        RpcClientResponse::Signature(signature) if no_wait => {
+            Ok(TransactionReturnData::CliSignature(CliSignature {
+                signature: signature.to_string(),
+            }))
+        }
+        RpcClientResponse::Signature(signature) => {
+            let blockhash = config.program_client.get_latest_blockhash().await?;
+            config
+                .rpc_client
+                .confirm_transaction_with_spinner(
+                    signature,
+                    &blockhash,
+                    config.rpc_client.commitment(),
+                )
+                .await?;
+
+            Ok(TransactionReturnData::CliSignature(CliSignature {
+                signature: signature.to_string(),
+            }))
+        }
     }
 }
 
