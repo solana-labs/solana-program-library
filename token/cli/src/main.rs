@@ -124,6 +124,7 @@ pub const MULTISIG_SIGNER_ARG: ArgConstant<'static> = ArgConstant {
 pub enum CommandName {
     CreateToken,
     Close,
+    CloseMint,
     Bench,
     CreateAccount,
     CreateMultisig,
@@ -331,6 +332,7 @@ async fn command_create_token(
     token_pubkey: Pubkey,
     authority: Pubkey,
     enable_freeze: bool,
+    close_authority: bool,
     memo: Option<String>,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
@@ -1462,6 +1464,13 @@ async fn command_close(
     })
 }
 
+// HANA new command impl
+async fn command_close_mint(
+    config: &Config<'_>,
+) -> CommandResult {
+    Ok("".to_string())
+}
+
 async fn command_balance(config: &Config<'_>, address: Pubkey) -> CommandResult {
     let balance = config
         .rpc_client
@@ -1959,6 +1968,23 @@ fn app<'a, 'b>(
                         .takes_value(false)
                         .help(
                             "Enable the mint authority to freeze associated token accounts."
+                        ),
+                )
+                .arg(
+                    Arg::with_name("close_authority")
+                        .long("close-authority")
+                        // TODO allow this to take an optional value
+                        .takes_value(false)
+                        //.value_name("ADDRESS")
+                        //.validator(is_valid_pubkey)
+                        //.min_values(0)
+                        //.max_values(1)
+                        //.require_equals(true)
+                        //.default_missing_value("CLIENT")
+                        .help(
+                            "Enable a close authority to close the mint. \
+                             Value is optional and may be a keypair file or the ASK keyword. \
+                             Defaults to the client keypair address if called without a value."
                         ),
                 )
                 .nonce_args(true)
@@ -2494,6 +2520,40 @@ fn app<'a, 'b>(
                 .nonce_args(true)
                 .offline_args(),
         )
+        // HANA new command entry
+        // XXX OK COOL what the fuck is my interface here
+        // by default, we take a mint address, just like close
+        // actually no we unconditionally take it
+        // we need --close-authority just like above
+        // and we need multisig nonce offline i think?
+        .subcommand(
+            SubCommand::with_name(CommandName::CloseMint.into())
+                .about("Close a token mint")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("Token to close"),
+                )
+                .arg(
+                    Arg::with_name("close_authority")
+                        .long("close-authority")
+                        .value_name("KEYPAIR")
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help(
+                            "Specify the token's close authority. \
+                            This may be a keypair file or the ASK keyword. \
+                            Defaults to the client keypair.",
+                        ),
+                )
+                .arg(multisig_signer_arg())
+                .nonce_args(true)
+                .offline_args(),
+        )
         .subcommand(
             SubCommand::with_name(CommandName::Balance.into())
                 .about("Get token account balance")
@@ -2713,6 +2773,7 @@ async fn process_command<'a>(
                 token,
                 mint_authority,
                 arg_matches.is_present("enable_freeze"),
+                arg_matches.is_present("close_authority"),
                 memo,
                 bulk_signers,
             )
@@ -3030,6 +3091,10 @@ async fn process_command<'a>(
             let recipient = config.pubkey_or_default(arg_matches, "recipient", &mut wallet_manager);
             command_close(config, address, close_authority, recipient, bulk_signers).await
         }
+        // HANA new command invocation
+        (CommandName::CloseMint, arg_matches) => {
+            command_close_mint(config).await
+        }
         (CommandName::Balance, arg_matches) => {
             let address = config
                 .associated_token_address_or_override(arg_matches, "address", &mut wallet_manager)
@@ -3315,6 +3380,7 @@ mod tests {
             TEST_DECIMALS,
             token_pubkey,
             payer.pubkey(),
+            false,
             false,
             None,
             bulk_signers,
