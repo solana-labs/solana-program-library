@@ -17,7 +17,7 @@ use {
 };
 
 async fn run_basic(
-    token: Token<ProgramBanksClientProcessTransaction, Keypair>,
+    token: Token<ProgramBanksClientProcessTransaction>,
     context: Arc<Mutex<ProgramTestContext>>,
     account: Pubkey,
 ) {
