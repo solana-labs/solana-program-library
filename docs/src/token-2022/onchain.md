@@ -2,12 +2,15 @@
 title: On-chain Program Guide
 ---
 
+## Supporting Token and Token-2022 Together In Your Program
+
 This guide is meant for on-chain program / dapp developers who want to support
 Token and Token-2022 concurrently.
 
 ## Prerequisites
 
-This guide requires the Solana CLI tool suite.
+This guide requires the Solana CLI tool suite, minimum version 1.10.33 in order
+to support all Token-2022 features.
 
 ## Motivation
 
@@ -20,6 +23,10 @@ guide walks through the steps required to support both.
 Important note: if you do not wish to support Token-2022, there is nothing to do.
 Your existing on-chain program will loudly fail if an instruction includes any
 Token-2022 mints / accounts.
+
+Most likely, your program will fail with `ProgramError::IncorrectProgramId` while
+trying to create a CPI instruction into the Token program, providing the Token-2022
+program id.
 
 ## Structure of this Guide
 
@@ -83,7 +90,7 @@ If you're using `solana-test-validator` for your tests, you can include it using
 $ solana-test-validator -c TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb 
 ```
 
-Note: This step is temporary, until Token-2022 is included by default in
+**Note**: This step is temporary, until Token-2022 is included by default in
 `program-test` and `solana-test-validator`.
 
 The token-swap does not use `program-test`, so there's a bit more
