@@ -4,6 +4,12 @@ bubblegum = "BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY"
 gumball_machine = "GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW"
 sugar_shack = "9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK"
 
+[programs.testnet]
+gummyroll = "GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD"
+bubblegum = "BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY"
+gumball_machine = "GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW"
+sugar_shack = "9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK"
+
 [[test.genesis]]
 address = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
 program = "../deps/solana-program-library/target/deploy/spl_associated_token_account.so"
@@ -28,7 +34,7 @@ program = "./target/deploy/candy_wrapper.so"
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "localnet"
+cluster = "testnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
