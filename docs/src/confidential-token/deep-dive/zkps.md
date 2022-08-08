@@ -174,7 +174,7 @@ A validity proof certifies that a twisted ElGamal ciphertext is a well-formed
 ciphertext. The precise description of the system is specified in the following
 notes.
 
-[[Notes]](./twisted_elgamal.pdf)
+[[Notes]](./validity_proof.pdf)
 
 Validity proofs is required for the `Withdraw`, `Transfer`, and
 `TransferWithFee` instructions. These instructions require the client to include
@@ -188,7 +188,7 @@ A zero-balance proof certifies that a twisted ElGamal ciphertext encrypts the
 number zero. The precise description of the system is specified in the following
 notes.
 
-[[Notes]](./twisted_elgamal.pdf).
+[[Notes]](./zero_proof.pdf).
 
 Zero-balance proofs are required for the `EmptyAccount` instruction, which
 prepares a token account for closing. An account may only be closed if the
@@ -207,7 +207,7 @@ _ciphertext-ciphertext_ equality proof certifies that two twisted ElGamal
 ciphertexts encrypt the same message. The precise description of the system is
 specified in the following notes.
 
-[[Notes]](./twisted_elgamal.pdf).
+[[Notes]](./equality_proof.pdf).
 
 Ciphertext-commitment equality proofs are required for the `Transfer` and
 `TransferWithFee` instructions. Ciphertext-ciphertext equaltiy proofs are
