@@ -558,6 +558,17 @@ export async function withdrawStake(
       );
     });
   }
+  if (stakeReceiver && stakeReceiverAccount && stakeReceiverAccount.type === 'delegated') {
+    signers.forEach((newStakeKeypair) => {
+      instructions.concat(
+        StakeProgram.merge({
+          stakePubkey: stakeReceiver,
+          sourceStakePubKey: newStakeKeypair.publicKey,
+          authorizedPubkey: tokenOwner,
+        }).instructions,
+      );
+    });
+  }
 
   return {
     instructions,
@@ -1102,6 +1113,83 @@ export async function redelegate(props: RedelegateProps) {
       destinationTransientStakeSeed,
       validator: destinationVoteAccount,
       lamports,
+    }),
+  );
+
+  return {
+    instructions,
+  };
+}
+
+/**
+ * Creates instructions required to create pool token metadata.
+ */
+export async function createPoolTokenMetadata(
+  connection: Connection,
+  stakePoolAddress: PublicKey,
+  tokenMetadata: PublicKey,
+  name: string,
+  symbol: string,
+  uri: string,
+  payer?: PublicKey,
+) {
+  const stakePool = await getStakePoolAccount(connection, stakePoolAddress);
+
+  const withdrawAuthority = await findWithdrawAuthorityProgramAddress(
+    STAKE_POOL_PROGRAM_ID,
+    stakePoolAddress,
+  );
+
+  const manager = stakePool.account.data.manager;
+
+  const instructions: TransactionInstruction[] = [];
+  instructions.push(
+    StakePoolInstruction.createTokenMetadata({
+      stakePool: stakePoolAddress,
+      poolMint: stakePool.account.data.poolMint,
+      payer: payer ?? manager,
+      manager,
+      tokenMetadata,
+      withdrawAuthority,
+      name,
+      symbol,
+      uri,
+    }),
+  );
+
+  return {
+    instructions,
+  };
+}
+
+/**
+ * Creates instructions required to update pool token metadata.
+ */
+export async function updatePoolTokenMetadata(
+  connection: Connection,
+  stakePoolAddress: PublicKey,
+  tokenMetadata: PublicKey,
+  name: string,
+  symbol: string,
+  uri: string,
+) {
+  const stakePool = await getStakePoolAccount(connection, stakePoolAddress);
+
+  const withdrawAuthority = await findWithdrawAuthorityProgramAddress(
+    STAKE_POOL_PROGRAM_ID,
+    stakePoolAddress,
+  );
+
+  const instructions: TransactionInstruction[] = [];
+  instructions.push(
+    StakePoolInstruction.updateTokenMetadata({
+      stakePool: stakePoolAddress,
+      manager: stakePool.account.data.manager,
+      tokenMetadata,
+      withdrawAuthority,
+      name,
+      symbol,
+      uri,
     }),
   );
 
