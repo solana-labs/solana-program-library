@@ -52,7 +52,8 @@ impl Signers for ArcSigner {
     }
 
     fn sign_message(&self, message: &[u8]) -> Vec<Signature> {
-        self.0.iter()
+        self.0
+            .iter()
             .map(|keypair| keypair.sign_message(message))
             .collect()
     }
@@ -63,7 +64,6 @@ impl Signers for ArcSigner {
             signatures.push(keypair.try_sign_message(message)?);
         }
         Ok(signatures)
-
     }
 
     fn is_interactive(&self) -> bool {
