@@ -19,17 +19,6 @@ use spl_token_2022::{
 use spl_token_client::client::{ProgramClient, ProgramRpcClient, ProgramRpcClientSendTransaction};
 use std::{process::exit, sync::Arc};
 
-#[cfg(test)]
-use solana_sdk::signer::keypair::Keypair;
-
-pub(crate) enum KeypairOrPath {
-    /// Used for testing environments to avoid touching the filesystem
-    #[cfg(test)]
-    Keypair(Keypair),
-    /// Used for real CLI usage
-    Path(String),
-}
-
 pub(crate) struct MintInfo {
     pub program_id: Pubkey,
     pub address: Pubkey,
@@ -124,26 +113,19 @@ impl<'a> Config<'a> {
             allow_null_signer: !multisigner_pubkeys.is_empty(),
         };
 
-        let default_keypair = KeypairOrPath::Path(cli_config.keypair_path.clone());
+        let default_keypair = cli_config.keypair_path.clone();
 
         let default_signer: Arc<dyn Signer> = {
             if let Some(owner_path) = matches.value_of("owner") {
                 signer_from_path_with_config(matches, owner_path, "owner", wallet_manager, &config)
             } else {
-                match &default_keypair {
-                    #[cfg(test)]
-                    KeypairOrPath::Keypair(keypair) => {
-                        let cloned = Keypair::from_bytes(&keypair.to_bytes()).unwrap();
-                        Ok(Box::new(cloned) as Box<dyn Signer>)
-                    }
-                    KeypairOrPath::Path(path) => signer_from_path_with_config(
-                        matches,
-                        path,
-                        "default",
-                        wallet_manager,
-                        &config,
-                    ),
-                }
+                signer_from_path_with_config(
+                    matches,
+                    &default_keypair,
+                    "default",
+                    wallet_manager,
+                    &config,
+                )
             }
         }
         .map(Arc::from)
