@@ -2905,8 +2905,6 @@ async fn process_command<'a>(
                 address
             } else {
                 config.associated_token_address_for_token_and_program(
-                    arg_matches,
-                    &mut wallet_manager,
                     &mint_info.address,
                     &mint_info.program_id,
                 )

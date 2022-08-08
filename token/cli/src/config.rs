@@ -258,18 +258,11 @@ impl<'a> Config<'a> {
 
         let token = token.unwrap();
         let program_id = self.get_mint_info(&token, None).await.unwrap().program_id;
-        self.associated_token_address_for_token_and_program(
-            arg_matches,
-            wallet_manager,
-            &token,
-            &program_id,
-        )
+        self.associated_token_address_for_token_and_program(&token, &program_id)
     }
 
     pub(crate) fn associated_token_address_for_token_and_program(
         &self,
-        _arg_matches: &ArgMatches<'_>,
-        _wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
         token: &Pubkey,
         program_id: &Pubkey,
     ) -> Pubkey {
