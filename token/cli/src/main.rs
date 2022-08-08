@@ -3374,6 +3374,39 @@ mod tests {
         process_command(&sub_command, matches, config, wallet_manager, bulk_signers).await
     }
 
+    async fn exec_test_cmd(config: &Config<'_>, args: &[&str]) -> CommandResult {
+        let default_decimals = format!("{}", spl_token_2022::native_mint::DECIMALS);
+        let default_program_id = spl_token::id().to_string();
+        let minimum_signers_help = minimum_signers_help_string();
+        let multisig_member_help = multisig_member_help_string();
+
+        let app_matches = app(
+            &default_decimals,
+            &default_program_id,
+            &minimum_signers_help,
+            &multisig_member_help,
+        )
+        .get_matches_from(args);
+        let (sub_command, sub_matches) = app_matches.subcommand();
+        let sub_command = CommandName::from_str(sub_command).unwrap();
+        let matches = sub_matches.unwrap();
+
+        let mut wallet_manager = None;
+        let mut bulk_signers: Vec<Arc<dyn Signer>> = Vec::new();
+        let mut multisigner_ids = Vec::new();
+
+        let config = Config::new_with_client_and_ws_url(
+            matches,
+            &mut wallet_manager,
+            &mut bulk_signers,
+            &mut multisigner_ids,
+            config.rpc_client.clone(),
+            config.websocket_url.clone(),
+        );
+
+        process_command(&sub_command, matches, &config, wallet_manager, bulk_signers).await
+    }
+
     #[tokio::test]
     async fn create_token_default() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -3889,8 +3922,10 @@ mod tests {
             let destination = create_auxiliary_account(&config, &payer, token).await;
             let delegate = Keypair::new();
 
-            let file = NamedTempFile::new().unwrap();
-            write_keypair_file(&delegate, &file).unwrap();
+            let delegate_keypair_file = NamedTempFile::new().unwrap();
+            write_keypair_file(&delegate, &delegate_keypair_file).unwrap();
+            let fee_payer_keypair_file = NamedTempFile::new().unwrap();
+            write_keypair_file(&payer, &fee_payer_keypair_file).unwrap();
 
             let ui_amount = 100.0;
             mint_tokens(&config, &payer, token, ui_amount, source).await;
@@ -3912,15 +3947,20 @@ mod tests {
                 .unwrap();
             assert_eq!(ui_account.token_amount.amount, "0");
 
-            process_test_command(
+            exec_test_cmd(
                 &config,
-                &payer,
                 &[
                     "spl-token",
                     CommandName::Approve.into(),
                     &source.to_string(),
                     "10",
                     &delegate.pubkey().to_string(),
+                    "--owner",
+                    fee_payer_keypair_file.path().to_str().unwrap(),
+                    "--fee-payer",
+                    fee_payer_keypair_file.path().to_str().unwrap(),
+                    "--program-id",
+                    &program_id.to_string(),
                 ],
             )
             .await
@@ -3935,9 +3975,8 @@ mod tests {
             assert_eq!(ui_account.delegate.unwrap(), delegate.pubkey().to_string());
             assert_eq!(ui_account.delegated_amount.unwrap().amount, "10");
 
-            let result = process_test_command(
+            let result = exec_test_cmd(
                 &config,
-                &payer,
                 &[
                     "spl-token",
                     CommandName::Transfer.into(),
@@ -3947,7 +3986,11 @@ mod tests {
                     "--from",
                     &source.to_string(),
                     "--owner",
-                    file.path().to_str().unwrap(),
+                    delegate_keypair_file.path().to_str().unwrap(),
+                    "--fee-payer",
+                    fee_payer_keypair_file.path().to_str().unwrap(),
+                    "--program-id",
+                    &program_id.to_string(),
                 ],
             )
             .await;
@@ -3982,8 +4025,10 @@ mod tests {
             let source = create_associated_account(&config, &payer, token).await;
             let delegate = Keypair::new();
 
-            let file = NamedTempFile::new().unwrap();
-            write_keypair_file(&delegate, &file).unwrap();
+            let delegate_keypair_file = NamedTempFile::new().unwrap();
+            write_keypair_file(&delegate, &delegate_keypair_file).unwrap();
+            let fee_payer_keypair_file = NamedTempFile::new().unwrap();
+            write_keypair_file(&payer, &fee_payer_keypair_file).unwrap();
 
             let ui_amount = 100.0;
             mint_tokens(&config, &payer, token, ui_amount, source).await;
@@ -3998,15 +4043,20 @@ mod tests {
             assert_eq!(ui_account.delegate, None);
             assert_eq!(ui_account.delegated_amount, None);
 
-            process_test_command(
+            exec_test_cmd(
                 &config,
-                &payer,
                 &[
                     "spl-token",
                     CommandName::Approve.into(),
                     &source.to_string(),
                     "10",
                     &delegate.pubkey().to_string(),
+                    "--owner",
+                    fee_payer_keypair_file.path().to_str().unwrap(),
+                    "--fee-payer",
+                    fee_payer_keypair_file.path().to_str().unwrap(),
+                    "--program-id",
+                    &program_id.to_string(),
                 ],
             )
             .await
@@ -4021,16 +4071,19 @@ mod tests {
             assert_eq!(ui_account.delegate.unwrap(), delegate.pubkey().to_string());
             assert_eq!(ui_account.delegated_amount.unwrap().amount, "10");
 
-            let result = process_test_command(
+            let result = exec_test_cmd(
                 &config,
-                &payer,
                 &[
                     "spl-token",
                     CommandName::Burn.into(),
                     &source.to_string(),
                     "10",
                     "--owner",
-                    file.path().to_str().unwrap(),
+                    delegate_keypair_file.path().to_str().unwrap(),
+                    "--fee-payer",
+                    fee_payer_keypair_file.path().to_str().unwrap(),
+                    "--program-id",
+                    &program_id.to_string(),
                 ],
             )
             .await;
