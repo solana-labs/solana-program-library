@@ -46,7 +46,6 @@ use spl_token_2022::{
     instruction::*,
     state::{Account, Mint, Multisig},
 };
-use spl_token_client::client::{ProgramClient, ProgramRpcClient, ProgramRpcClientSendTransaction};
 use std::{
     collections::HashMap, fmt::Display, process::exit, str::FromStr, string::ToString, sync::Arc,
 };
@@ -3195,6 +3194,9 @@ mod tests {
             signature::{write_keypair_file, Keypair, Signer},
         },
         solana_test_validator::{ProgramInfo, TestValidator, TestValidatorGenesis},
+        spl_token_client::client::{
+            ProgramClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
+        },
         std::path::PathBuf,
         tempfile::NamedTempFile,
     };
