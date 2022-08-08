@@ -21,8 +21,12 @@ import {
   createDelegateInstruction,
   createRedeemInstruction,
   createCancelRedeemInstruction,
-  createCreateTreeInstruction
-} from "../sdk/bubblegum/src/generated";
+  createCreateTreeInstruction,
+  computeDataHash,
+  computeCreatorHash,
+  TokenProgramVersion, 
+  Version
+} from "@sorend-solana/bubblegum";
 
 import { buildTree, checkProof, Tree } from "./merkle-tree";
 import {
@@ -30,20 +34,19 @@ import {
   getMerkleRollAccountSize,
   assertOnChainMerkleRollProperties,
   createTransferAuthorityIx,
-} from "../sdk/gummyroll";
+} from "../sdk/gummyroll/src";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   Token,
 } from "@solana/spl-token";
-import { TokenProgramVersion, Version } from "../sdk/bubblegum/src/generated";
 import { sleep } from "@metaplex-foundation/amman/dist/utils";
 import { verbose } from "sqlite3";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
-import { CANDY_WRAPPER_PROGRAM_ID, execute, logTx, num16ToBuffer, bufferToArray } from "../sdk/utils";
+import { CANDY_WRAPPER_PROGRAM_ID, execute, logTx, num16ToBuffer, bufferToArray } from "@sorend-solana/utils";
+
 // TODO: cleanup this test file using the convenience methods and remove all .send calls
-import { computeDataHash, computeCreatorHash } from "../sdk/bubblegum/src/convenience";
 
 // @ts-ignore
 let Bubblegum;

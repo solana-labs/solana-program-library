@@ -1,6 +1,7 @@
 import { Program, web3 } from "@project-serum/anchor";
 import fetch from "node-fetch";
-import { getMerkleRollAccountSize, Gummyroll } from "../gummyroll";
+import { Gummyroll } from "../../target/types/gummyroll";
+import { getMerkleRollAccountSize } from "@sorend-solana/gummyroll";
 import * as anchor from "@project-serum/anchor";
 import {
   AccountMeta,
@@ -17,9 +18,9 @@ import {
   createTransferInstruction,
   TokenProgramVersion,
   Version,
-} from "../bubblegum/src/generated";
+} from "@sorend-solana/bubblegum";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
-import { CANDY_WRAPPER_PROGRAM_ID, logTx } from "../utils";
+import { CANDY_WRAPPER_PROGRAM_ID, logTx } from "@sorend-solana/utils";
 
 async function main() {
   const connection = new web3.Connection("http://127.0.0.1:8899", {

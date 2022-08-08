@@ -1,7 +1,7 @@
-import { Program } from '@project-serum/anchor';
+import { Program } from "@project-serum/anchor";
 import { Gummyroll } from "../types";
 import { Keypair, PublicKey, TransactionInstruction } from '@solana/web3.js';
-import { CANDY_WRAPPER_PROGRAM_ID } from '../../utils'
+import { CANDY_WRAPPER_PROGRAM_ID } from "@sorend-solana/utils";
 
 /**
  * Modifies given instruction

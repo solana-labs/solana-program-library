@@ -1,6 +1,6 @@
-import * as borsh from 'borsh';
-import { val } from '../../utils';
-import { GumballMachineHeader, gumballMachineHeaderBeet } from '../src/generated/types/GumballMachineHeader';
+import * as borsh from "borsh";
+import { val } from "@sorend-solana/utils";
+import { GumballMachineHeader, gumballMachineHeaderBeet } from '../generated/types/GumballMachineHeader';
 
 /**
  * Manually create a model for GumballMachine accounts to deserialize manually

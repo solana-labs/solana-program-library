@@ -1,7 +1,7 @@
 import * as anchor from '@project-serum/anchor';
 import { PublicKey } from '@solana/web3.js';
-import { Gummyroll } from "../../../gummyroll"
-import { PROGRAM_ID as GUMMYROLL_PROGRAM_ID } from '../../../gummyroll';
+import { Gummyroll } from "../../../../target/types/gummyroll";
+import { PROGRAM_ID as GUMMYROLL_PROGRAM_ID } from "@sorend-solana/gummyroll";
 import { parseEventFromLog, ParsedLog, ixRegEx } from './utils';
 import { ParserState } from '../utils';
 import { ChangeLogEvent } from '../ingester';

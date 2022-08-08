@@ -1,5 +1,5 @@
 import * as anchor from "@project-serum/anchor";
-import { Program, Provider, } from "@project-serum/anchor";
+import { Program, AnchorProvider } from "@project-serum/anchor";
 import {
   Connection as web3Connection,
   PublicKey,
@@ -8,9 +8,9 @@ import {
   Transaction,
 } from "@solana/web3.js";
 import { assert } from "chai";
-
+import { Gummyroll } from "../target/types/gummyroll";
 import { buildTree, getProofOfLeaf, updateTree, Tree, getProofOfAssetFromServer, checkProof } from "./merkle-tree";
-import { Gummyroll, decodeMerkleRoll, getMerkleRollAccountSize } from "../sdk/gummyroll";
+import { decodeMerkleRoll, getMerkleRollAccountSize } from "@sorend-solana/gummyroll";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 
 const HOST = "127.0.0.1";
@@ -96,7 +96,7 @@ describe.skip("gummyroll-continuous", () => {
       }
     );
     wallet = new NodeWallet(payer)
-    anchor.setProvider(new Provider(connection, wallet, { commitment: connection.commitment, skipPreflight: true }));
+    anchor.setProvider(new AnchorProvider(connection, wallet, { commitment: connection.commitment, skipPreflight: true }));
     Gummyroll = anchor.workspace.Gummyroll as Program<Gummyroll>;
     console.log(Gummyroll.programId.toString());
     await Gummyroll.provider.connection.confirmTransaction(

@@ -5,7 +5,7 @@ import {
     Connection,
 } from '@solana/web3.js';
 import { buildTree, emptyNode, Tree, } from './merkle-tree';
-import { Program, Idl, Provider } from '@project-serum/anchor';
+import { Program, Idl, AnchorProvider } from '@project-serum/anchor';
 import { Gummyroll } from "../target/types/gummyroll";
 import { IDL } from '../target/types/gummyroll';
 import { IDL as CrudIDL } from '../target/types/gummyroll_crud';
@@ -18,7 +18,7 @@ const PROGRAM_ID = "GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU";
 const payer = Keypair.generate();
 const payerWallet = new NodeWallet(payer);
 const connection = new Connection("http://localhost:8899");
-const provider = new Provider(connection,
+const provider = new AnchorProvider(connection,
     payerWallet,
     { skipPreflight: true, commitment: "confirmed" }
 );

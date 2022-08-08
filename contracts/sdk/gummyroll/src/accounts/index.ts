@@ -2,7 +2,7 @@ import { PublicKey, Connection } from "@solana/web3.js";
 import * as borsh from "borsh";
 import { BN } from "@project-serum/anchor";
 import { assert } from "chai";
-import { readPublicKey } from '../../utils';
+import { readPublicKey } from "@sorend-solana/utils";
 
 /**
  * Manually create a model for MerkleRoll in order to deserialize correctly
@@ -18,9 +18,9 @@ export class OnChainMerkleRoll {
 
   getChangeLogsWithNodeIndex(): PathNode[][] {
     const mask = this.header.maxBufferSize - 1;
-    let pathNodeList = [];
+    let pathNodeList: PathNode[][] = [];
     for (let j = 0; j < this.roll.bufferSize; j++) {
-      let pathNodes = [];
+      let pathNodes: PathNode[] = [];
       let idx = (this.roll.activeIndex - j) & mask;
       let changeLog = this.roll.changeLogs[idx];
       let pathLen = changeLog.pathNodes.length;
@@ -91,11 +91,11 @@ export function decodeMerkleRoll(buffer: Buffer): OnChainMerkleRoll {
   let bufferSize = reader.readU64().toNumber();
 
   // Decode ChangeLogs
-  let changeLogs = [];
+  let changeLogs: ChangeLog[] = [];
   for (let i = 0; i < header.maxBufferSize; i++) {
     let root = readPublicKey(reader);
 
-    let pathNodes = [];
+    let pathNodes: PublicKey[] = [];
     for (let j = 0; j < header.maxDepth; j++) {
       pathNodes.push(readPublicKey(reader));
     }
@@ -109,7 +109,7 @@ export function decodeMerkleRoll(buffer: Buffer): OnChainMerkleRoll {
 
   // Decode Right-Most Path
   let leaf = readPublicKey(reader);
-  let proof = [];
+  let proof: PublicKey[] = [];
   for (let j = 0; j < header.maxDepth; j++) {
     proof.push(readPublicKey(reader));
   }
@@ -164,6 +164,11 @@ export async function assertOnChainMerkleRollProperties(
   merkleRollPubkey: PublicKey
 ) {
   const merkleRoll = await connection.getAccountInfo(merkleRollPubkey);
+
+  if (!merkleRoll) {
+    throw new Error("Merkle Roll account data unexpectedly null!");
+  }
+
   const merkleRollAcct = decodeMerkleRoll(merkleRoll.data);
 
   assert(

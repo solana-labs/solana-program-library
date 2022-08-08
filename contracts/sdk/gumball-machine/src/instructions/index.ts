@@ -1,4 +1,3 @@
-import { BN, Program } from "@project-serum/anchor";
 import {
   PublicKey,
   Keypair,
@@ -9,7 +8,6 @@ import {
   TransactionInstruction,
   Connection,
 } from "@solana/web3.js";
-import { getBubblegumAuthorityPDA } from "../../bubblegum/src/convenience";
 import {
   InitializeGumballMachineInstructionArgs,
   createInitializeGumballMachineInstruction,
@@ -17,13 +15,13 @@ import {
   createDispenseNftTokenInstruction,
   DispenseNftSolInstructionArgs,
   DispenseNftTokenInstructionArgs,
-  createInitializeIndicesChunkInstruction
-} from "../src/generated";
+  createInitializeIndicesChunkInstruction,
+  PROGRAM_ID as GUMBALL_MACHINE_PROGRAM_ID
+} from "../generated";
 import { getWillyWonkaPDAKey } from "../utils";
-import { CANDY_WRAPPER_PROGRAM_ID } from "../../utils";
-import { PROGRAM_ID as GUMBALL_MACHINE_PROGRAM_ID } from "../src/generated";
-import { PROGRAM_ID as BUBBLEGUM_MACHINE_PROGRAM_ID } from "../../bubblegum/src/generated";
-import { PROGRAM_ID as GUMMYROLL_MACHINE_PROGRAM_ID } from "../../gummyroll";
+import { CANDY_WRAPPER_PROGRAM_ID } from "@sorend-solana/utils";
+import { PROGRAM_ID as BUBBLEGUM_MACHINE_PROGRAM_ID, getBubblegumAuthorityPDA } from "@sorend-solana/bubblegum";
+import { PROGRAM_ID as GUMMYROLL_MACHINE_PROGRAM_ID } from "@sorend-solana/gummyroll";
 
 /**
  * Wrapper on top of Solita's createInitializeGumballMachineInstruction

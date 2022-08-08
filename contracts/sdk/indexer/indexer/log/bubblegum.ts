@@ -13,7 +13,7 @@ import {
     NFTDecompressionEvent
 } from "../ingester";
 import { ParsedLog, endRegEx, startRegEx, ixRegEx, dataRegEx } from './utils';
-import { PROGRAM_ID as BUBBLEGUM_PROGRAM_ID } from "../../../bubblegum/src/generated";
+import { PROGRAM_ID as BUBBLEGUM_PROGRAM_ID } from "@sorend-solana/bubblegum";
 import { findGummyrollEvent } from './gummyroll';
 
 function findBubblegumEvents(

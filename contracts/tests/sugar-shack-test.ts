@@ -16,33 +16,33 @@ import { assert } from "chai";
 import {
   createCreateTreeInstruction,
   createMintV1Instruction,
-} from '../sdk/bubblegum/src/generated/instructions';
+  MetadataArgs,
+  LeafSchema,
+  leafSchemaBeet,
+  TokenProgramVersion,
+  Version,
+  getBubblegumAuthorityPDA,
+  computeDataHash,
+  computeCreatorHash,
+  computeMetadataArgsHash
+} from '@sorend-solana/bubblegum';
 import {
-  MarketplaceProperties
-} from "../sdk/sugar-shack/src/generated/accounts/index";
-import {
+  MarketplaceProperties,
   createInitializeMarketplaceInstruction,
   createCreateOrModifyListingInstruction,
   createRemoveListingInstruction,
   createPurchaseInstruction,
-  createWithdrawFeesInstruction
-} from "../sdk/sugar-shack/src/generated/instructions";
-import {
+  createWithdrawFeesInstruction,
   getListingPDAKeyForPrice
-} from "../sdk/sugar-shack";
+} from "@sorend-solana/sugar-shack";
 import {
   CANDY_WRAPPER_PROGRAM_ID, bufferToArray, execute
-} from "../sdk/utils/index";
-import {
-  MetadataArgs,
-  LeafSchema,
-  leafSchemaBeet
-} from "../sdk/bubblegum/src/generated/types";
+} from "@sorend-solana/utils";
 import {
   createAllocTreeIx,
   getMerkleRollAccountSize,
   getRootOfOnChainMerkleRoot
-} from "../sdk/gummyroll";
+} from "@sorend-solana/gummyroll";
 import {
   buildTree,
   hash,
@@ -52,9 +52,7 @@ import {
   TreeNode,
 } from "./merkle-tree";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
-import { TokenProgramVersion, Version } from "../sdk/bubblegum/src/generated";
 import { SugarShack } from "../target/types/sugar_shack";
-import { getBubblegumAuthorityPDA, computeDataHash, computeCreatorHash, computeMetadataArgsHash } from "../sdk/bubblegum/src/convenience";
 
 // @ts-ignore
 let SugarShack;
