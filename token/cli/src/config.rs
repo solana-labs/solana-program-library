@@ -139,7 +139,7 @@ impl<'a> Config<'a> {
                 }
             }
         }
-        .map(|signer| Arc::from(signer))
+        .map(Arc::from)
         .unwrap_or_else(|e| {
             eprintln!("error: {}", e);
             exit(1);
@@ -148,8 +148,7 @@ impl<'a> Config<'a> {
         let (signer, fee_payer) = matches
             .value_of("fee_payer")
             .map_or(Ok(default_signer.clone()), |path| {
-                signer_from_path(matches, path, "fee_payer", wallet_manager)
-                    .map(|boxed| Arc::from(boxed))
+                signer_from_path(matches, path, "fee_payer", wallet_manager).map(Arc::from)
             })
             .map(|s: Arc<dyn Signer>| {
                 let p = s.pubkey();
@@ -189,7 +188,7 @@ impl<'a> Config<'a> {
                 NONCE_AUTHORITY_ARG.name,
                 wallet_manager,
             )
-            .map(|boxed| Arc::from(boxed))
+            .map(Arc::from)
             .map(|s: Arc<dyn Signer>| {
                 let p = s.pubkey();
                 (s, p)
@@ -285,7 +284,7 @@ impl<'a> Config<'a> {
             }
         }
 
-        return self.default_signer.pubkey();
+        self.default_signer.pubkey()
     }
 
     // Checks if an explicit signer was provided, otherwise return the default signer.
@@ -310,7 +309,7 @@ impl<'a> Config<'a> {
                         wallet_manager,
                         &config,
                     )
-                    .map(|boxed| Arc::from(boxed));
+                    .map(Arc::from);
                 }
             }
 
