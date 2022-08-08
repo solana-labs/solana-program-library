@@ -24,10 +24,13 @@ use solana_program::{
     program::invoke_signed,
     program_error::{PrintProgramError, ProgramError},
     program_option::COption,
-    program_pack::Pack,
     pubkey::Pubkey,
 };
-use spl_token::error::TokenError;
+use spl_token_2022::{
+    error::TokenError,
+    extension::StateWithExtensions,
+    state::{Account, Mint},
+};
 use std::{convert::TryInto, error::Error};
 
 /// Program state handler.
@@ -37,11 +40,12 @@ impl Processor {
     pub fn unpack_token_account(
         account_info: &AccountInfo,
         token_program_id: &Pubkey,
-    ) -> Result<spl_token::state::Account, SwapError> {
+    ) -> Result<Account, SwapError> {
         if account_info.owner != token_program_id {
             Err(SwapError::IncorrectTokenProgramId)
         } else {
-            spl_token::state::Account::unpack(&account_info.data.borrow())
+            StateWithExtensions::<Account>::unpack(&account_info.data.borrow())
+                .map(|a| a.base)
                 .map_err(|_| SwapError::ExpectedAccount)
         }
     }
@@ -50,11 +54,12 @@ impl Processor {
     pub fn unpack_mint(
         account_info: &AccountInfo,
         token_program_id: &Pubkey,
-    ) -> Result<spl_token::state::Mint, SwapError> {
+    ) -> Result<Mint, SwapError> {
         if account_info.owner != token_program_id {
             Err(SwapError::IncorrectTokenProgramId)
         } else {
-            spl_token::state::Mint::unpack(&account_info.data.borrow())
+            StateWithExtensions::<Mint>::unpack(&account_info.data.borrow())
+                .map(|m| m.base)
                 .map_err(|_| SwapError::ExpectedMint)
         }
     }
@@ -83,7 +88,7 @@ impl Processor {
         let authority_signature_seeds = [&swap_bytes[..32], &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
-        let ix = spl_token::instruction::burn(
+        let ix = spl_token_2022::instruction::burn(
             token_program.key,
             burn_account.key,
             mint.key,
@@ -112,7 +117,7 @@ impl Processor {
         let swap_bytes = swap.to_bytes();
         let authority_signature_seeds = [&swap_bytes[..32], &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
-        let ix = spl_token::instruction::mint_to(
+        let ix = spl_token_2022::instruction::mint_to(
             token_program.key,
             mint.key,
             destination.key,
@@ -141,7 +146,8 @@ impl Processor {
         let swap_bytes = swap.to_bytes();
         let authority_signature_seeds = [&swap_bytes[..32], &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
-        let ix = spl_token::instruction::transfer(
+        #[allow(deprecated)]
+        let ix = spl_token_2022::instruction::transfer(
             token_program.key,
             source.key,
             destination.key,
@@ -1111,16 +1117,21 @@ mod tests {
             withdraw_all_token_types, withdraw_single_token_type_exact_amount_out,
         },
     };
-    use solana_program::{instruction::Instruction, program_stubs, rent::Rent};
-    use solana_sdk::account::{create_account_for_test, create_is_signer_account_infos, Account};
-    use spl_token::{
+    use solana_program::{instruction::Instruction, program_pack::Pack, program_stubs, rent::Rent};
+    use solana_sdk::account::{
+        create_account_for_test, create_is_signer_account_infos, Account as SolanaAccount,
+    };
+    use spl_token_2022::{
         error::TokenError,
+        extension::ExtensionType,
         instruction::{
-            approve, freeze_account, initialize_account, initialize_mint, mint_to, revoke,
-            set_authority, AuthorityType,
+            approve, freeze_account, initialize_account, initialize_immutable_owner,
+            initialize_mint, initialize_mint_close_authority, mint_to, revoke, set_authority,
+            AuthorityType,
         },
     };
     use std::sync::Arc;
+    use test_case::test_case;
 
     // Test program id for the swap program.
     const SWAP_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
@@ -1138,7 +1149,10 @@ mod tests {
             let mut new_account_infos = vec![];
 
             // mimic check for token program in accounts
-            if !account_infos.iter().any(|x| *x.key == spl_token::id()) {
+            if !account_infos
+                .iter()
+                .any(|x| *x.key == spl_token::id() || *x.key == spl_token_2022::id())
+            {
                 return Err(ProgramError::InvalidAccountData);
             }
 
@@ -1158,11 +1172,21 @@ mod tests {
                 }
             }
 
-            spl_token::processor::Processor::process(
-                &instruction.program_id,
-                &new_account_infos,
-                &instruction.data,
-            )
+            if instruction.program_id == spl_token::id() {
+                spl_token::processor::Processor::process(
+                    &instruction.program_id,
+                    &new_account_infos,
+                    &instruction.data,
+                )
+            } else if instruction.program_id == spl_token_2022::id() {
+                spl_token_2022::processor::Processor::process(
+                    &instruction.program_id,
+                    &new_account_infos,
+                    &instruction.data,
+                )
+            } else {
+                Err(ProgramError::IncorrectProgramId)
+            }
         }
     }
 
@@ -1181,21 +1205,22 @@ mod tests {
         fees: Fees,
         swap_curve: SwapCurve,
         swap_key: Pubkey,
-        swap_account: Account,
+        swap_account: SolanaAccount,
         pool_mint_key: Pubkey,
-        pool_mint_account: Account,
+        pool_mint_account: SolanaAccount,
         pool_fee_key: Pubkey,
-        pool_fee_account: Account,
+        pool_fee_account: SolanaAccount,
         pool_token_key: Pubkey,
-        pool_token_account: Account,
+        pool_token_account: SolanaAccount,
         token_a_key: Pubkey,
-        token_a_account: Account,
+        token_a_account: SolanaAccount,
         token_a_mint_key: Pubkey,
-        token_a_mint_account: Account,
+        token_a_mint_account: SolanaAccount,
         token_b_key: Pubkey,
-        token_b_account: Account,
+        token_b_account: SolanaAccount,
         token_b_mint_key: Pubkey,
-        token_b_mint_account: Account,
+        token_b_mint_account: SolanaAccount,
+        token_program_id: Pubkey,
     }
 
     impl SwapAccountInfo {
@@ -1205,16 +1230,17 @@ mod tests {
             swap_curve: SwapCurve,
             token_a_amount: u64,
             token_b_amount: u64,
+            token_program_id: &Pubkey,
         ) -> Self {
             let swap_key = Pubkey::new_unique();
-            let swap_account = Account::new(0, SwapVersion::LATEST_LEN, &SWAP_PROGRAM_ID);
+            let swap_account = SolanaAccount::new(0, SwapVersion::LATEST_LEN, &SWAP_PROGRAM_ID);
             let (authority_key, bump_seed) =
                 Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
 
             let (pool_mint_key, mut pool_mint_account) =
-                create_mint(&spl_token::id(), &authority_key, None);
+                create_mint(token_program_id, &authority_key, None);
             let (pool_token_key, pool_token_account) = mint_token(
-                &spl_token::id(),
+                token_program_id,
                 &pool_mint_key,
                 &mut pool_mint_account,
                 &authority_key,
@@ -1222,7 +1248,7 @@ mod tests {
                 0,
             );
             let (pool_fee_key, pool_fee_account) = mint_token(
-                &spl_token::id(),
+                token_program_id,
                 &pool_mint_key,
                 &mut pool_mint_account,
                 &authority_key,
@@ -1230,9 +1256,9 @@ mod tests {
                 0,
             );
             let (token_a_mint_key, mut token_a_mint_account) =
-                create_mint(&spl_token::id(), user_key, None);
+                create_mint(token_program_id, user_key, None);
             let (token_a_key, token_a_account) = mint_token(
-                &spl_token::id(),
+                token_program_id,
                 &token_a_mint_key,
                 &mut token_a_mint_account,
                 user_key,
@@ -1240,9 +1266,9 @@ mod tests {
                 token_a_amount,
             );
             let (token_b_mint_key, mut token_b_mint_account) =
-                create_mint(&spl_token::id(), user_key, None);
+                create_mint(token_program_id, user_key, None);
             let (token_b_key, token_b_account) = mint_token(
-                &spl_token::id(),
+                token_program_id,
                 &token_b_mint_key,
                 &mut token_b_mint_account,
                 user_key,
@@ -1271,6 +1297,7 @@ mod tests {
                 token_b_account,
                 token_b_mint_key,
                 token_b_mint_account,
+                token_program_id: *token_program_id,
             }
         }
 
@@ -1278,7 +1305,7 @@ mod tests {
             do_process_instruction(
                 initialize(
                     &SWAP_PROGRAM_ID,
-                    &spl_token::id(),
+                    &self.token_program_id,
                     &self.swap_key,
                     &self.authority_key,
                     &self.token_a_key,
@@ -1292,13 +1319,13 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut self.swap_account,
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
                     &mut self.token_a_account,
                     &mut self.token_b_account,
                     &mut self.pool_mint_account,
                     &mut self.pool_fee_account,
                     &mut self.pool_token_account,
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
                 ],
             )
         }
@@ -1310,9 +1337,16 @@ mod tests {
             a_amount: u64,
             b_amount: u64,
             pool_amount: u64,
-        ) -> (Pubkey, Account, Pubkey, Account, Pubkey, Account) {
+        ) -> (
+            Pubkey,
+            SolanaAccount,
+            Pubkey,
+            SolanaAccount,
+            Pubkey,
+            SolanaAccount,
+        ) {
             let (token_a_key, token_a_account) = mint_token(
-                &spl_token::id(),
+                &self.token_program_id,
                 &self.token_a_mint_key,
                 &mut self.token_a_mint_account,
                 mint_owner,
@@ -1320,7 +1354,7 @@ mod tests {
                 a_amount,
             );
             let (token_b_key, token_b_account) = mint_token(
-                &spl_token::id(),
+                &self.token_program_id,
                 &self.token_b_mint_key,
                 &mut self.token_b_mint_account,
                 mint_owner,
@@ -1328,7 +1362,7 @@ mod tests {
                 b_amount,
             );
             let (pool_key, pool_account) = mint_token(
-                &spl_token::id(),
+                &self.token_program_id,
                 &self.pool_mint_key,
                 &mut self.pool_mint_account,
                 &self.authority_key,
@@ -1345,7 +1379,7 @@ mod tests {
             )
         }
 
-        fn get_token_account(&self, account_key: &Pubkey) -> &Account {
+        fn get_token_account(&self, account_key: &Pubkey) -> &SolanaAccount {
             if *account_key == self.token_a_key {
                 return &self.token_a_account;
             } else if *account_key == self.token_b_key {
@@ -1354,7 +1388,7 @@ mod tests {
             panic!("Could not find matching swap token account");
         }
 
-        fn set_token_account(&mut self, account_key: &Pubkey, account: Account) {
+        fn set_token_account(&mut self, account_key: &Pubkey, account: SolanaAccount) {
             if *account_key == self.token_a_key {
                 self.token_a_account = account;
                 return;
@@ -1370,11 +1404,11 @@ mod tests {
             &mut self,
             user_key: &Pubkey,
             user_source_key: &Pubkey,
-            user_source_account: &mut Account,
+            user_source_account: &mut SolanaAccount,
             swap_source_key: &Pubkey,
             swap_destination_key: &Pubkey,
             user_destination_key: &Pubkey,
-            user_destination_account: &mut Account,
+            user_destination_account: &mut SolanaAccount,
             amount_in: u64,
             minimum_amount_out: u64,
         ) -> ProgramResult {
@@ -1382,7 +1416,7 @@ mod tests {
             // approve moving from user source account
             do_process_instruction(
                 approve(
-                    &spl_token::id(),
+                    &self.token_program_id,
                     user_source_key,
                     &user_transfer_key,
                     user_key,
@@ -1392,8 +1426,8 @@ mod tests {
                 .unwrap(),
                 vec![
                     user_source_account,
-                    &mut Account::default(),
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                 ],
             )
             .unwrap();
@@ -1405,7 +1439,7 @@ mod tests {
             do_process_instruction(
                 swap(
                     &SWAP_PROGRAM_ID,
-                    &spl_token::id(),
+                    &self.token_program_id,
                     &self.swap_key,
                     &self.authority_key,
                     &user_transfer_key,
@@ -1424,15 +1458,15 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut self.swap_account,
-                    &mut Account::default(),
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                     user_source_account,
                     &mut swap_source_account,
                     &mut swap_destination_account,
                     user_destination_account,
                     &mut self.pool_mint_account,
                     &mut self.pool_fee_account,
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
                 ],
             )?;
 
@@ -1447,11 +1481,11 @@ mod tests {
             &mut self,
             depositor_key: &Pubkey,
             depositor_token_a_key: &Pubkey,
-            depositor_token_a_account: &mut Account,
+            depositor_token_a_account: &mut SolanaAccount,
             depositor_token_b_key: &Pubkey,
-            depositor_token_b_account: &mut Account,
+            depositor_token_b_account: &mut SolanaAccount,
             depositor_pool_key: &Pubkey,
-            depositor_pool_account: &mut Account,
+            depositor_pool_account: &mut SolanaAccount,
             pool_token_amount: u64,
             maximum_token_a_amount: u64,
             maximum_token_b_amount: u64,
@@ -1459,7 +1493,7 @@ mod tests {
             let user_transfer_authority = Pubkey::new_unique();
             do_process_instruction(
                 approve(
-                    &spl_token::id(),
+                    &self.token_program_id,
                     depositor_token_a_key,
                     &user_transfer_authority,
                     depositor_key,
@@ -1469,15 +1503,15 @@ mod tests {
                 .unwrap(),
                 vec![
                     depositor_token_a_account,
-                    &mut Account::default(),
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                 ],
             )
             .unwrap();
 
             do_process_instruction(
                 approve(
-                    &spl_token::id(),
+                    &self.token_program_id,
                     depositor_token_b_key,
                     &user_transfer_authority,
                     depositor_key,
@@ -1487,8 +1521,8 @@ mod tests {
                 .unwrap(),
                 vec![
                     depositor_token_b_account,
-                    &mut Account::default(),
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                 ],
             )
             .unwrap();
@@ -1496,7 +1530,7 @@ mod tests {
             do_process_instruction(
                 deposit_all_token_types(
                     &SWAP_PROGRAM_ID,
-                    &spl_token::id(),
+                    &self.token_program_id,
                     &self.swap_key,
                     &self.authority_key,
                     &user_transfer_authority,
@@ -1515,15 +1549,15 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut self.swap_account,
-                    &mut Account::default(),
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                     depositor_token_a_account,
                     depositor_token_b_account,
                     &mut self.token_a_account,
                     &mut self.token_b_account,
                     &mut self.pool_mint_account,
                     depositor_pool_account,
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
                 ],
             )
         }
@@ -1533,11 +1567,11 @@ mod tests {
             &mut self,
             user_key: &Pubkey,
             pool_key: &Pubkey,
-            pool_account: &mut Account,
+            pool_account: &mut SolanaAccount,
             token_a_key: &Pubkey,
-            token_a_account: &mut Account,
+            token_a_account: &mut SolanaAccount,
             token_b_key: &Pubkey,
-            token_b_account: &mut Account,
+            token_b_account: &mut SolanaAccount,
             pool_token_amount: u64,
             minimum_token_a_amount: u64,
             minimum_token_b_amount: u64,
@@ -1546,7 +1580,7 @@ mod tests {
             // approve user transfer authority to take out pool tokens
             do_process_instruction(
                 approve(
-                    &spl_token::id(),
+                    &self.token_program_id,
                     pool_key,
                     &user_transfer_authority_key,
                     user_key,
@@ -1556,8 +1590,8 @@ mod tests {
                 .unwrap(),
                 vec![
                     pool_account,
-                    &mut Account::default(),
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                 ],
             )
             .unwrap();
@@ -1566,7 +1600,7 @@ mod tests {
             do_process_instruction(
                 withdraw_all_token_types(
                     &SWAP_PROGRAM_ID,
-                    &spl_token::id(),
+                    &self.token_program_id,
                     &self.swap_key,
                     &self.authority_key,
                     &user_transfer_authority_key,
@@ -1586,8 +1620,8 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut self.swap_account,
-                    &mut Account::default(),
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                     &mut self.pool_mint_account,
                     pool_account,
                     &mut self.token_a_account,
@@ -1595,7 +1629,7 @@ mod tests {
                     token_a_account,
                     token_b_account,
                     &mut self.pool_fee_account,
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
                 ],
             )
         }
@@ -1605,16 +1639,16 @@ mod tests {
             &mut self,
             depositor_key: &Pubkey,
             deposit_account_key: &Pubkey,
-            deposit_token_account: &mut Account,
+            deposit_token_account: &mut SolanaAccount,
             deposit_pool_key: &Pubkey,
-            deposit_pool_account: &mut Account,
+            deposit_pool_account: &mut SolanaAccount,
             source_token_amount: u64,
             minimum_pool_token_amount: u64,
         ) -> ProgramResult {
             let user_transfer_authority_key = Pubkey::new_unique();
             do_process_instruction(
                 approve(
-                    &spl_token::id(),
+                    &self.token_program_id,
                     deposit_account_key,
                     &user_transfer_authority_key,
                     depositor_key,
@@ -1624,8 +1658,8 @@ mod tests {
                 .unwrap(),
                 vec![
                     deposit_token_account,
-                    &mut Account::default(),
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                 ],
             )
             .unwrap();
@@ -1633,7 +1667,7 @@ mod tests {
             do_process_instruction(
                 deposit_single_token_type_exact_amount_in(
                     &SWAP_PROGRAM_ID,
-                    &spl_token::id(),
+                    &self.token_program_id,
                     &self.swap_key,
                     &self.authority_key,
                     &user_transfer_authority_key,
@@ -1650,14 +1684,14 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut self.swap_account,
-                    &mut Account::default(),
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                     deposit_token_account,
                     &mut self.token_a_account,
                     &mut self.token_b_account,
                     &mut self.pool_mint_account,
                     deposit_pool_account,
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
                 ],
             )
         }
@@ -1667,9 +1701,9 @@ mod tests {
             &mut self,
             user_key: &Pubkey,
             pool_key: &Pubkey,
-            pool_account: &mut Account,
+            pool_account: &mut SolanaAccount,
             destination_key: &Pubkey,
-            destination_account: &mut Account,
+            destination_account: &mut SolanaAccount,
             destination_token_amount: u64,
             maximum_pool_token_amount: u64,
         ) -> ProgramResult {
@@ -1677,7 +1711,7 @@ mod tests {
             // approve user transfer authority to take out pool tokens
             do_process_instruction(
                 approve(
-                    &spl_token::id(),
+                    &self.token_program_id,
                     pool_key,
                     &user_transfer_authority_key,
                     user_key,
@@ -1687,8 +1721,8 @@ mod tests {
                 .unwrap(),
                 vec![
                     pool_account,
-                    &mut Account::default(),
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                 ],
             )
             .unwrap();
@@ -1696,7 +1730,7 @@ mod tests {
             do_process_instruction(
                 withdraw_single_token_type_exact_amount_out(
                     &SWAP_PROGRAM_ID,
-                    &spl_token::id(),
+                    &self.token_program_id,
                     &self.swap_key,
                     &self.authority_key,
                     &user_transfer_authority_key,
@@ -1714,15 +1748,15 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut self.swap_account,
-                    &mut Account::default(),
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                     &mut self.pool_mint_account,
                     pool_account,
                     &mut self.token_a_account,
                     &mut self.token_b_account,
                     destination_account,
                     &mut self.pool_fee_account,
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
                 ],
             )
         }
@@ -1738,7 +1772,7 @@ mod tests {
 
     fn do_process_instruction_with_fee_constraints(
         instruction: Instruction,
-        accounts: Vec<&mut Account>,
+        accounts: Vec<&mut SolanaAccount>,
         swap_constraints: &Option<SwapConstraints>,
     ) -> ProgramResult {
         test_syscall_stubs();
@@ -1760,12 +1794,20 @@ mod tests {
                 &instruction.data,
                 swap_constraints,
             )
-        } else {
+        } else if instruction.program_id == spl_token::id() {
             spl_token::processor::Processor::process(
                 &instruction.program_id,
                 &account_infos,
                 &instruction.data,
             )
+        } else if instruction.program_id == spl_token_2022::id() {
+            spl_token_2022::processor::Processor::process(
+                &instruction.program_id,
+                &account_infos,
+                &instruction.data,
+            )
+        } else {
+            Err(ProgramError::IncorrectProgramId)
         };
 
         if res.is_ok() {
@@ -1791,7 +1833,7 @@ mod tests {
 
     fn do_process_instruction(
         instruction: Instruction,
-        accounts: Vec<&mut Account>,
+        accounts: Vec<&mut SolanaAccount>,
     ) -> ProgramResult {
         do_process_instruction_with_fee_constraints(instruction, accounts, &SWAP_CONSTRAINTS)
     }
@@ -1799,19 +1841,28 @@ mod tests {
     fn mint_token(
         program_id: &Pubkey,
         mint_key: &Pubkey,
-        mint_account: &mut Account,
+        mint_account: &mut SolanaAccount,
         mint_authority_key: &Pubkey,
         account_owner_key: &Pubkey,
         amount: u64,
-    ) -> (Pubkey, Account) {
+    ) -> (Pubkey, SolanaAccount) {
         let account_key = Pubkey::new_unique();
-        let mut account_account = Account::new(
-            account_minimum_balance(),
-            spl_token::state::Account::get_packed_len(),
-            program_id,
-        );
-        let mut mint_authority_account = Account::default();
+        let space = if *program_id == spl_token_2022::id() {
+            ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner])
+        } else {
+            Account::get_packed_len()
+        };
+        let minimum_balance = Rent::default().minimum_balance(space);
+        let mut account_account = SolanaAccount::new(minimum_balance, space, program_id);
+        let mut mint_authority_account = SolanaAccount::default();
         let mut rent_sysvar_account = create_account_for_test(&Rent::free());
+
+        // no-ops in normal token, so we're good to run it either way
+        do_process_instruction(
+            initialize_immutable_owner(program_id, &account_key).unwrap(),
+            vec![&mut account_account],
+        )
+        .unwrap();
 
         do_process_instruction(
             initialize_account(program_id, &account_key, mint_key, account_owner_key).unwrap(),
@@ -1851,15 +1902,26 @@ mod tests {
         program_id: &Pubkey,
         authority_key: &Pubkey,
         freeze_authority: Option<&Pubkey>,
-    ) -> (Pubkey, Account) {
+    ) -> (Pubkey, SolanaAccount) {
         let mint_key = Pubkey::new_unique();
-        let mut mint_account = Account::new(
-            mint_minimum_balance(),
-            spl_token::state::Mint::get_packed_len(),
-            program_id,
-        );
+        let space = if *program_id == spl_token_2022::id() {
+            ExtensionType::get_account_len::<spl_token_2022::state::Mint>(&[
+                ExtensionType::MintCloseAuthority,
+            ])
+        } else {
+            spl_token_2022::state::Mint::get_packed_len()
+        };
+        let minimum_balance = Rent::default().minimum_balance(space);
+        let mut mint_account = SolanaAccount::new(minimum_balance, space, program_id);
         let mut rent_sysvar_account = create_account_for_test(&Rent::free());
 
+        if *program_id == spl_token_2022::id() {
+            do_process_instruction(
+                initialize_mint_close_authority(program_id, &mint_key, freeze_authority).unwrap(),
+                vec![&mut mint_account],
+            )
+            .unwrap();
+        }
         do_process_instruction(
             initialize_mint(program_id, &mint_key, authority_key, freeze_authority, 2).unwrap(),
             vec![&mut mint_account, &mut rent_sysvar_account],
@@ -1869,16 +1931,17 @@ mod tests {
         (mint_key, mint_account)
     }
 
-    #[test]
-    fn test_token_program_id_error() {
+    #[test_case(spl_token::id(); "token")]
+    #[test_case(spl_token_2022::id(); "token-2022")]
+    fn test_token_program_id_error(token_program_id: Pubkey) {
         test_syscall_stubs();
         let swap_key = Pubkey::new_unique();
-        let mut mint = (Pubkey::new_unique(), Account::default());
-        let mut destination = (Pubkey::new_unique(), Account::default());
-        let token_program = (spl_token::id(), Account::default());
+        let mut mint = (Pubkey::new_unique(), SolanaAccount::default());
+        let mut destination = (Pubkey::new_unique(), SolanaAccount::default());
+        let token_program = (token_program_id, SolanaAccount::default());
         let (authority_key, bump_seed) =
             Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
-        let mut authority = (authority_key, Account::default());
+        let mut authority = (authority_key, SolanaAccount::default());
         let swap_bytes = swap_key.to_bytes();
         let authority_signature_seeds = [&swap_bytes[..32], &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
@@ -1899,31 +1962,31 @@ mod tests {
         assert_eq!(err, ProgramError::InvalidAccountData);
     }
 
-    #[test]
-    fn test_token_error() {
+    #[test_case(spl_token::id(); "token")]
+    #[test_case(spl_token_2022::id(); "token-2022")]
+    fn test_token_error(token_program_id: Pubkey) {
         test_syscall_stubs();
-        let token_id = spl_token::id();
         let swap_key = Pubkey::new_unique();
         let mut mint = (
             Pubkey::new_unique(),
-            Account::new(
+            SolanaAccount::new(
                 mint_minimum_balance(),
                 spl_token::state::Mint::get_packed_len(),
-                &token_id,
+                &token_program_id,
             ),
         );
         let mut destination = (
             Pubkey::new_unique(),
-            Account::new(
+            SolanaAccount::new(
                 account_minimum_balance(),
                 spl_token::state::Account::get_packed_len(),
-                &token_id,
+                &token_program_id,
             ),
         );
-        let mut token_program = (token_id, Account::default());
+        let mut token_program = (token_program_id, SolanaAccount::default());
         let (authority_key, bump_seed) =
             Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
-        let mut authority = (authority_key, Account::default());
+        let mut authority = (authority_key, SolanaAccount::default());
         let swap_bytes = swap_key.to_bytes();
         let authority_signature_seeds = [&swap_bytes[..32], &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
@@ -1992,8 +2055,9 @@ mod tests {
         assert_eq!(err, ProgramError::Custom(TokenError::AccountFrozen as u32));
     }
 
-    #[test]
-    fn test_initialize() {
+    #[test_case(spl_token::id(); "token")]
+    #[test_case(spl_token_2022::id(); "token-2022")]
+    fn test_initialize(token_program_id: Pubkey) {
         let user_key = Pubkey::new_unique();
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 2;
@@ -2023,13 +2087,19 @@ mod tests {
             calculator: Arc::new(ConstantProductCurve {}),
         };
 
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            &token_program_id,
+        );
 
         // uninitialized token a account
         {
             let old_account = accounts.token_a_account;
-            accounts.token_a_account = Account::new(0, 0, &spl_token::id());
+            accounts.token_a_account = SolanaAccount::new(0, 0, &token_program_id);
             assert_eq!(
                 Err(SwapError::ExpectedAccount.into()),
                 accounts.initialize_swap()
@@ -2040,7 +2110,7 @@ mod tests {
         // uninitialized token b account
         {
             let old_account = accounts.token_b_account;
-            accounts.token_b_account = Account::new(0, 0, &spl_token::id());
+            accounts.token_b_account = SolanaAccount::new(0, 0, &token_program_id);
             assert_eq!(
                 Err(SwapError::ExpectedAccount.into()),
                 accounts.initialize_swap()
@@ -2051,7 +2121,7 @@ mod tests {
         // uninitialized pool mint
         {
             let old_account = accounts.pool_mint_account;
-            accounts.pool_mint_account = Account::new(0, 0, &spl_token::id());
+            accounts.pool_mint_account = SolanaAccount::new(0, 0, &token_program_id);
             assert_eq!(
                 Err(SwapError::ExpectedMint.into()),
                 accounts.initialize_swap()
@@ -2062,7 +2132,7 @@ mod tests {
         // token A account owner is not swap authority
         {
             let (_token_a_key, token_a_account) = mint_token(
-                &spl_token::id(),
+                &token_program_id,
                 &accounts.token_a_mint_key,
                 &mut accounts.token_a_mint_account,
                 &user_key,
@@ -2081,7 +2151,7 @@ mod tests {
         // token B account owner is not swap authority
         {
             let (_token_b_key, token_b_account) = mint_token(
-                &spl_token::id(),
+                &token_program_id,
                 &accounts.token_b_mint_key,
                 &mut accounts.token_b_mint_account,
                 &user_key,
@@ -2100,7 +2170,7 @@ mod tests {
         // pool token account owner is swap authority
         {
             let (_pool_token_key, pool_token_account) = mint_token(
-                &spl_token::id(),
+                &token_program_id,
                 &accounts.pool_mint_key,
                 &mut accounts.pool_mint_account,
                 &accounts.authority_key,
@@ -2119,7 +2189,7 @@ mod tests {
         // pool fee account owner is swap authority
         {
             let (_pool_fee_key, pool_fee_account) = mint_token(
-                &spl_token::id(),
+                &token_program_id,
                 &accounts.pool_mint_key,
                 &mut accounts.pool_mint_account,
                 &accounts.authority_key,
@@ -2138,7 +2208,7 @@ mod tests {
         // pool mint authority is not swap authority
         {
             let (_pool_mint_key, pool_mint_account) =
-                create_mint(&spl_token::id(), &user_key, None);
+                create_mint(&token_program_id, &user_key, None);
             let old_mint = accounts.pool_mint_account;
             accounts.pool_mint_account = pool_mint_account;
             assert_eq!(
@@ -2151,7 +2221,7 @@ mod tests {
         // pool mint token has freeze authority
         {
             let (_pool_mint_key, pool_mint_account) =
-                create_mint(&spl_token::id(), &accounts.authority_key, Some(&user_key));
+                create_mint(&token_program_id, &accounts.authority_key, Some(&user_key));
             let old_mint = accounts.pool_mint_account;
             accounts.pool_mint_account = pool_mint_account;
             assert_eq!(
@@ -2164,7 +2234,7 @@ mod tests {
         // token A account owned by wrong program
         {
             let (_token_a_key, mut token_a_account) = mint_token(
-                &spl_token::id(),
+                &token_program_id,
                 &accounts.token_a_mint_key,
                 &mut accounts.token_a_mint_account,
                 &user_key,
@@ -2184,7 +2254,7 @@ mod tests {
         // token B account owned by wrong program
         {
             let (_token_b_key, mut token_b_account) = mint_token(
-                &spl_token::id(),
+                &token_program_id,
                 &accounts.token_b_mint_key,
                 &mut accounts.token_b_mint_account,
                 &user_key,
@@ -2204,7 +2274,7 @@ mod tests {
         // empty token A account
         {
             let (_token_a_key, token_a_account) = mint_token(
-                &spl_token::id(),
+                &token_program_id,
                 &accounts.token_a_mint_key,
                 &mut accounts.token_a_mint_account,
                 &user_key,
@@ -2223,7 +2293,7 @@ mod tests {
         // empty token B account
         {
             let (_token_b_key, token_b_account) = mint_token(
-                &spl_token::id(),
+                &token_program_id,
                 &accounts.token_b_mint_key,
                 &mut accounts.token_b_mint_account,
                 &user_key,
@@ -2245,11 +2315,11 @@ mod tests {
             let old_pool_account = accounts.pool_token_account;
 
             let (_pool_mint_key, pool_mint_account) =
-                create_mint(&spl_token::id(), &accounts.authority_key, None);
+                create_mint(&token_program_id, &accounts.authority_key, None);
             accounts.pool_mint_account = pool_mint_account;
 
             let (_empty_pool_token_key, empty_pool_token_account) = mint_token(
-                &spl_token::id(),
+                &token_program_id,
                 &accounts.pool_mint_key,
                 &mut accounts.pool_mint_account,
                 &accounts.authority_key,
@@ -2258,7 +2328,7 @@ mod tests {
             );
 
             let (_pool_token_key, pool_token_account) = mint_token(
-                &spl_token::id(),
+                &token_program_id,
                 &accounts.pool_mint_key,
                 &mut accounts.pool_mint_account,
                 &accounts.authority_key,
@@ -2287,7 +2357,7 @@ mod tests {
         // pool fee account has wrong mint
         {
             let (_pool_fee_key, pool_fee_account) = mint_token(
-                &spl_token::id(),
+                &token_program_id,
                 &accounts.token_a_mint_key,
                 &mut accounts.token_a_mint_account,
                 &user_key,
@@ -2307,7 +2377,7 @@ mod tests {
         {
             do_process_instruction(
                 approve(
-                    &spl_token::id(),
+                    &token_program_id,
                     &accounts.token_a_key,
                     &user_key,
                     &accounts.authority_key,
@@ -2317,8 +2387,8 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut accounts.token_a_account,
-                    &mut Account::default(),
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                 ],
             )
             .unwrap();
@@ -2329,13 +2399,13 @@ mod tests {
 
             do_process_instruction(
                 revoke(
-                    &spl_token::id(),
+                    &token_program_id,
                     &accounts.token_a_key,
                     &accounts.authority_key,
                     &[],
                 )
                 .unwrap(),
-                vec![&mut accounts.token_a_account, &mut Account::default()],
+                vec![&mut accounts.token_a_account, &mut SolanaAccount::default()],
             )
             .unwrap();
         }
@@ -2344,7 +2414,7 @@ mod tests {
         {
             do_process_instruction(
                 approve(
-                    &spl_token::id(),
+                    &token_program_id,
                     &accounts.token_b_key,
                     &user_key,
                     &accounts.authority_key,
@@ -2354,8 +2424,8 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut accounts.token_b_account,
-                    &mut Account::default(),
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                 ],
             )
             .unwrap();
@@ -2366,13 +2436,13 @@ mod tests {
 
             do_process_instruction(
                 revoke(
-                    &spl_token::id(),
+                    &token_program_id,
                     &accounts.token_b_key,
                     &accounts.authority_key,
                     &[],
                 )
                 .unwrap(),
-                vec![&mut accounts.token_b_account, &mut Account::default()],
+                vec![&mut accounts.token_b_account, &mut SolanaAccount::default()],
             )
             .unwrap();
         }
@@ -2381,7 +2451,7 @@ mod tests {
         {
             do_process_instruction(
                 set_authority(
-                    &spl_token::id(),
+                    &token_program_id,
                     &accounts.token_a_key,
                     Some(&user_key),
                     AuthorityType::CloseAccount,
@@ -2389,7 +2459,7 @@ mod tests {
                     &[],
                 )
                 .unwrap(),
-                vec![&mut accounts.token_a_account, &mut Account::default()],
+                vec![&mut accounts.token_a_account, &mut SolanaAccount::default()],
             )
             .unwrap();
             assert_eq!(
@@ -2399,7 +2469,7 @@ mod tests {
 
             do_process_instruction(
                 set_authority(
-                    &spl_token::id(),
+                    &token_program_id,
                     &accounts.token_a_key,
                     None,
                     AuthorityType::CloseAccount,
@@ -2407,7 +2477,7 @@ mod tests {
                     &[],
                 )
                 .unwrap(),
-                vec![&mut accounts.token_a_account, &mut Account::default()],
+                vec![&mut accounts.token_a_account, &mut SolanaAccount::default()],
             )
             .unwrap();
         }
@@ -2416,7 +2486,7 @@ mod tests {
         {
             do_process_instruction(
                 set_authority(
-                    &spl_token::id(),
+                    &token_program_id,
                     &accounts.token_b_key,
                     Some(&user_key),
                     AuthorityType::CloseAccount,
@@ -2424,7 +2494,7 @@ mod tests {
                     &[],
                 )
                 .unwrap(),
-                vec![&mut accounts.token_b_account, &mut Account::default()],
+                vec![&mut accounts.token_b_account, &mut SolanaAccount::default()],
             )
             .unwrap();
             assert_eq!(
@@ -2434,7 +2504,7 @@ mod tests {
 
             do_process_instruction(
                 set_authority(
-                    &spl_token::id(),
+                    &token_program_id,
                     &accounts.token_b_key,
                     None,
                     AuthorityType::CloseAccount,
@@ -2442,7 +2512,7 @@ mod tests {
                     &[],
                 )
                 .unwrap(),
-                vec![&mut accounts.token_b_account, &mut Account::default()],
+                vec![&mut accounts.token_b_account, &mut SolanaAccount::default()],
             )
             .unwrap();
         }
@@ -2469,13 +2539,13 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                         &mut accounts.token_a_account,
                         &mut accounts.token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
                         &mut accounts.pool_token_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 )
             );
@@ -2484,7 +2554,7 @@ mod tests {
         // create swap with same token A and B
         {
             let (_token_a_repeat_key, token_a_repeat_account) = mint_token(
-                &spl_token::id(),
+                &token_program_id,
                 &accounts.token_a_mint_key,
                 &mut accounts.token_a_mint_account,
                 &user_key,
@@ -2520,8 +2590,14 @@ mod tests {
                 curve_type: CurveType::ConstantPrice,
                 calculator: Arc::new(ConstantPriceCurve { token_b_price }),
             };
-            let mut accounts =
-                SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees,
+                swap_curve,
+                token_a_amount,
+                token_b_amount,
+                &token_program_id,
+            );
             assert_eq!(
                 Err(SwapError::InvalidCurve.into()),
                 accounts.initialize_swap()
@@ -2545,8 +2621,14 @@ mod tests {
                 curve_type: CurveType::ConstantPrice,
                 calculator: Arc::new(ConstantPriceCurve { token_b_price }),
             };
-            let mut accounts =
-                SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees,
+                swap_curve,
+                token_a_amount,
+                token_b_amount,
+                &token_program_id,
+            );
             accounts.initialize_swap().unwrap();
         }
 
@@ -2567,8 +2649,14 @@ mod tests {
                 curve_type: CurveType::Offset,
                 calculator: Arc::new(OffsetCurve { token_b_offset }),
             };
-            let mut accounts =
-                SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees,
+                swap_curve,
+                token_a_amount,
+                token_b_amount,
+                &token_program_id,
+            );
             assert_eq!(
                 Err(SwapError::InvalidCurve.into()),
                 accounts.initialize_swap()
@@ -2592,8 +2680,14 @@ mod tests {
                 curve_type: CurveType::Offset,
                 calculator: Arc::new(OffsetCurve { token_b_offset }),
             };
-            let mut accounts =
-                SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees,
+                swap_curve,
+                token_a_amount,
+                token_b_amount,
+                &token_program_id,
+            );
             accounts.initialize_swap().unwrap();
         }
 
@@ -2634,13 +2728,14 @@ mod tests {
                 swap_curve,
                 token_a_amount,
                 token_b_amount,
+                &token_program_id,
             );
             assert_eq!(
                 Err(SwapError::InvalidOwner.into()),
                 do_process_instruction_with_fee_constraints(
                     initialize(
                         &SWAP_PROGRAM_ID,
-                        &spl_token::id(),
+                        &token_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &accounts.token_a_key,
@@ -2654,13 +2749,13 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                         &mut accounts.token_a_account,
                         &mut accounts.token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
                         &mut accounts.pool_token_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                     ],
                     &constraints,
                 )
@@ -2705,13 +2800,14 @@ mod tests {
                 swap_curve,
                 token_a_amount,
                 token_b_amount,
+                &token_program_id,
             );
             assert_eq!(
                 Err(SwapError::InvalidFee.into()),
                 do_process_instruction_with_fee_constraints(
                     initialize(
                         &SWAP_PROGRAM_ID,
-                        &spl_token::id(),
+                        &token_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &accounts.token_a_key,
@@ -2725,13 +2821,13 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                         &mut accounts.token_a_account,
                         &mut accounts.token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
                         &mut accounts.pool_token_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                     ],
                     &constraints,
                 )
@@ -2774,11 +2870,12 @@ mod tests {
                 swap_curve,
                 token_a_amount,
                 token_b_amount,
+                &token_program_id,
             );
             do_process_instruction_with_fee_constraints(
                 initialize(
                     &SWAP_PROGRAM_ID,
-                    &spl_token::id(),
+                    &token_program_id,
                     &accounts.swap_key,
                     &accounts.authority_key,
                     &accounts.token_a_key,
@@ -2792,13 +2889,13 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut accounts.swap_account,
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
                     &mut accounts.token_a_account,
                     &mut accounts.token_b_account,
                     &mut accounts.pool_mint_account,
                     &mut accounts.pool_fee_account,
                     &mut accounts.pool_token_account,
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
                 ],
                 &constraints,
             )
@@ -2825,18 +2922,22 @@ mod tests {
         assert_eq!(*swap_state.token_a_mint(), accounts.token_a_mint_key);
         assert_eq!(*swap_state.token_b_mint(), accounts.token_b_mint_key);
         assert_eq!(*swap_state.pool_fee_account(), accounts.pool_fee_key);
-        let token_a = spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
-        assert_eq!(token_a.amount, token_a_amount);
-        let token_b = spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
-        assert_eq!(token_b.amount, token_b_amount);
+        let token_a =
+            StateWithExtensions::<Account>::unpack(&accounts.token_a_account.data).unwrap();
+        assert_eq!(token_a.base.amount, token_a_amount);
+        let token_b =
+            StateWithExtensions::<Account>::unpack(&accounts.token_b_account.data).unwrap();
+        assert_eq!(token_b.base.amount, token_b_amount);
         let pool_account =
-            spl_token::state::Account::unpack(&accounts.pool_token_account.data).unwrap();
-        let pool_mint = spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
-        assert_eq!(pool_mint.supply, pool_account.amount);
+            StateWithExtensions::<Account>::unpack(&accounts.pool_token_account.data).unwrap();
+        let pool_mint =
+            StateWithExtensions::<Mint>::unpack(&accounts.pool_mint_account.data).unwrap();
+        assert_eq!(pool_mint.base.supply, pool_account.base.amount);
     }
 
-    #[test]
-    fn test_deposit() {
+    #[test_case(spl_token::id(); "token")]
+    #[test_case(spl_token_2022::id(); "token-2022")]
+    fn test_deposit(token_program_id: Pubkey) {
         let user_key = Pubkey::new_unique();
         let depositor_key = Pubkey::new_unique();
         let trade_fee_numerator = 1;
@@ -2867,8 +2968,14 @@ mod tests {
             calculator: Arc::new(ConstantProductCurve {}),
         };
 
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            &token_program_id,
+        );
 
         // depositing 10% of the current pool amount in token A and B means
         // that our pool tokens will be worth 1 / 10 of the current pool amount
@@ -2917,7 +3024,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             let old_swap_account = accounts.swap_account;
             let mut wrong_swap_account = old_swap_account.clone();
-            wrong_swap_account.owner = spl_token::id();
+            wrong_swap_account.owner = token_program_id;
             accounts.swap_account = wrong_swap_account;
             assert_eq!(
                 Err(ProgramError::IncorrectProgramId),
@@ -2950,7 +3057,7 @@ mod tests {
             let old_authority = accounts.authority_key;
             let (bad_authority_key, _bump_seed) = Pubkey::find_program_address(
                 &[&accounts.swap_key.to_bytes()[..]],
-                &spl_token::id(),
+                &token_program_id,
             );
             accounts.authority_key = bad_authority_key;
             assert_eq!(
@@ -3115,7 +3222,7 @@ mod tests {
                 do_process_instruction(
                     deposit_all_token_types(
                         &SWAP_PROGRAM_ID,
-                        &spl_token::id(),
+                        &token_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &user_transfer_authority_key,
@@ -3134,15 +3241,15 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
-                        &mut Account::default(),
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                         &mut token_a_account,
                         &mut token_b_account,
                         &mut accounts.token_a_account,
                         &mut accounts.token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 )
             );
@@ -3183,15 +3290,15 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
-                        &mut Account::default(),
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                         &mut token_a_account,
                         &mut token_b_account,
                         &mut accounts.token_a_account,
                         &mut accounts.token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 )
             );
@@ -3272,7 +3379,7 @@ mod tests {
                 mut pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             let (pool_mint_key, pool_mint_account) =
-                create_mint(&spl_token::id(), &accounts.authority_key, None);
+                create_mint(&token_program_id, &accounts.authority_key, None);
             let old_pool_key = accounts.pool_mint_key;
             let old_pool_account = accounts.pool_mint_account;
             accounts.pool_mint_key = pool_mint_key;
@@ -3427,29 +3534,30 @@ mod tests {
                 .unwrap();
 
             let swap_token_a =
-                spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
-            assert_eq!(swap_token_a.amount, deposit_a + token_a_amount);
+                StateWithExtensions::<Account>::unpack(&accounts.token_a_account.data).unwrap();
+            assert_eq!(swap_token_a.base.amount, deposit_a + token_a_amount);
             let swap_token_b =
-                spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
-            assert_eq!(swap_token_b.amount, deposit_b + token_b_amount);
-            let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
-            assert_eq!(token_a.amount, 0);
-            let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
-            assert_eq!(token_b.amount, 0);
-            let pool_account = spl_token::state::Account::unpack(&pool_account.data).unwrap();
+                StateWithExtensions::<Account>::unpack(&accounts.token_b_account.data).unwrap();
+            assert_eq!(swap_token_b.base.amount, deposit_b + token_b_amount);
+            let token_a = StateWithExtensions::<Account>::unpack(&token_a_account.data).unwrap();
+            assert_eq!(token_a.base.amount, 0);
+            let token_b = StateWithExtensions::<Account>::unpack(&token_b_account.data).unwrap();
+            assert_eq!(token_b.base.amount, 0);
+            let pool_account = StateWithExtensions::<Account>::unpack(&pool_account.data).unwrap();
             let swap_pool_account =
-                spl_token::state::Account::unpack(&accounts.pool_token_account.data).unwrap();
+                StateWithExtensions::<Account>::unpack(&accounts.pool_token_account.data).unwrap();
             let pool_mint =
-                spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
+                StateWithExtensions::<Mint>::unpack(&accounts.pool_mint_account.data).unwrap();
             assert_eq!(
-                pool_mint.supply,
-                pool_account.amount + swap_pool_account.amount
+                pool_mint.base.supply,
+                pool_account.base.amount + swap_pool_account.base.amount
             );
         }
     }
 
-    #[test]
-    fn test_withdraw() {
+    #[test_case(spl_token::id(); "token")]
+    #[test_case(spl_token_2022::id(); "token-2022")]
+    fn test_withdraw(token_program_id: Pubkey) {
         let user_key = Pubkey::new_unique();
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 2;
@@ -3487,8 +3595,14 @@ mod tests {
         let minimum_token_a_amount = initial_a / 40;
         let minimum_token_b_amount = initial_b / 40;
 
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            &token_program_id,
+        );
 
         // swap not initialized
         {
@@ -3531,7 +3645,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &withdrawer_key, initial_a, initial_b, 0);
             let old_swap_account = accounts.swap_account;
             let mut wrong_swap_account = old_swap_account.clone();
-            wrong_swap_account.owner = spl_token::id();
+            wrong_swap_account.owner = token_program_id;
             accounts.swap_account = wrong_swap_account;
             assert_eq!(
                 Err(ProgramError::IncorrectProgramId),
@@ -3564,7 +3678,7 @@ mod tests {
             let old_authority = accounts.authority_key;
             let (bad_authority_key, _bump_seed) = Pubkey::find_program_address(
                 &[&accounts.swap_key.to_bytes()[..]],
-                &spl_token::id(),
+                &token_program_id,
             );
             accounts.authority_key = bad_authority_key;
             assert_eq!(
@@ -3773,7 +3887,7 @@ mod tests {
                 do_process_instruction(
                     withdraw_all_token_types(
                         &SWAP_PROGRAM_ID,
-                        &spl_token::id(),
+                        &token_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &user_transfer_authority_key,
@@ -3793,8 +3907,8 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
-                        &mut Account::default(),
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
                         &mut accounts.token_a_account,
@@ -3802,7 +3916,7 @@ mod tests {
                         &mut token_a_account,
                         &mut token_b_account,
                         &mut accounts.pool_fee_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 )
             );
@@ -3850,8 +3964,8 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
-                        &mut Account::default(),
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
                         &mut accounts.token_a_account,
@@ -3859,7 +3973,7 @@ mod tests {
                         &mut token_a_account,
                         &mut token_b_account,
                         &mut accounts.pool_fee_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 )
             );
@@ -3952,7 +4066,7 @@ mod tests {
                 initial_pool.try_into().unwrap(),
             );
             let (pool_mint_key, pool_mint_account) =
-                create_mint(&spl_token::id(), &accounts.authority_key, None);
+                create_mint(&token_program_id, &accounts.authority_key, None);
             let old_pool_key = accounts.pool_mint_key;
             let old_pool_account = accounts.pool_mint_account;
             accounts.pool_mint_key = pool_mint_key;
@@ -4146,50 +4260,50 @@ mod tests {
                 .unwrap();
 
             let swap_token_a =
-                spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
+                StateWithExtensions::<Account>::unpack(&accounts.token_a_account.data).unwrap();
             let swap_token_b =
-                spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
+                StateWithExtensions::<Account>::unpack(&accounts.token_b_account.data).unwrap();
             let pool_mint =
-                spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
+                StateWithExtensions::<Mint>::unpack(&accounts.pool_mint_account.data).unwrap();
             let withdraw_fee = accounts.fees.owner_withdraw_fee(withdraw_amount).unwrap();
             let results = accounts
                 .swap_curve
                 .calculator
                 .pool_tokens_to_trading_tokens(
                     withdraw_amount - withdraw_fee,
-                    pool_mint.supply.try_into().unwrap(),
-                    swap_token_a.amount.try_into().unwrap(),
-                    swap_token_b.amount.try_into().unwrap(),
+                    pool_mint.base.supply.try_into().unwrap(),
+                    swap_token_a.base.amount.try_into().unwrap(),
+                    swap_token_b.base.amount.try_into().unwrap(),
                     RoundDirection::Floor,
                 )
                 .unwrap();
             assert_eq!(
-                swap_token_a.amount,
+                swap_token_a.base.amount,
                 token_a_amount - to_u64(results.token_a_amount).unwrap()
             );
             assert_eq!(
-                swap_token_b.amount,
+                swap_token_b.base.amount,
                 token_b_amount - to_u64(results.token_b_amount).unwrap()
             );
-            let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
+            let token_a = StateWithExtensions::<Account>::unpack(&token_a_account.data).unwrap();
             assert_eq!(
-                token_a.amount,
+                token_a.base.amount,
                 initial_a + to_u64(results.token_a_amount).unwrap()
             );
-            let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
+            let token_b = StateWithExtensions::<Account>::unpack(&token_b_account.data).unwrap();
             assert_eq!(
-                token_b.amount,
+                token_b.base.amount,
                 initial_b + to_u64(results.token_b_amount).unwrap()
             );
-            let pool_account = spl_token::state::Account::unpack(&pool_account.data).unwrap();
+            let pool_account = StateWithExtensions::<Account>::unpack(&pool_account.data).unwrap();
             assert_eq!(
-                pool_account.amount,
+                pool_account.base.amount,
                 to_u64(initial_pool - withdraw_amount).unwrap()
             );
             let fee_account =
-                spl_token::state::Account::unpack(&accounts.pool_fee_account.data).unwrap();
+                StateWithExtensions::<Account>::unpack(&accounts.pool_fee_account.data).unwrap();
             assert_eq!(
-                fee_account.amount,
+                fee_account.base.amount,
                 TryInto::<u64>::try_into(withdraw_fee).unwrap()
             );
         }
@@ -4207,8 +4321,9 @@ mod tests {
 
             let pool_fee_key = accounts.pool_fee_key;
             let mut pool_fee_account = accounts.pool_fee_account.clone();
-            let fee_account = spl_token::state::Account::unpack(&pool_fee_account.data).unwrap();
-            let pool_fee_amount = fee_account.amount;
+            let fee_account =
+                StateWithExtensions::<Account>::unpack(&pool_fee_account.data).unwrap();
+            let pool_fee_amount = fee_account.base.amount;
 
             accounts
                 .withdraw_all_token_types(
@@ -4226,37 +4341,38 @@ mod tests {
                 .unwrap();
 
             let swap_token_a =
-                spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
+                StateWithExtensions::<Account>::unpack(&accounts.token_a_account.data).unwrap();
             let swap_token_b =
-                spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
+                StateWithExtensions::<Account>::unpack(&accounts.token_b_account.data).unwrap();
             let pool_mint =
-                spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
+                StateWithExtensions::<Mint>::unpack(&accounts.pool_mint_account.data).unwrap();
             let results = accounts
                 .swap_curve
                 .calculator
                 .pool_tokens_to_trading_tokens(
                     pool_fee_amount.try_into().unwrap(),
-                    pool_mint.supply.try_into().unwrap(),
-                    swap_token_a.amount.try_into().unwrap(),
-                    swap_token_b.amount.try_into().unwrap(),
+                    pool_mint.base.supply.try_into().unwrap(),
+                    swap_token_a.base.amount.try_into().unwrap(),
+                    swap_token_b.base.amount.try_into().unwrap(),
                     RoundDirection::Floor,
                 )
                 .unwrap();
-            let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
+            let token_a = StateWithExtensions::<Account>::unpack(&token_a_account.data).unwrap();
             assert_eq!(
-                token_a.amount,
+                token_a.base.amount,
                 TryInto::<u64>::try_into(results.token_a_amount).unwrap()
             );
-            let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
+            let token_b = StateWithExtensions::<Account>::unpack(&token_b_account.data).unwrap();
             assert_eq!(
-                token_b.amount,
+                token_b.base.amount,
                 TryInto::<u64>::try_into(results.token_b_amount).unwrap()
             );
         }
     }
 
-    #[test]
-    fn test_deposit_one_exact_in() {
+    #[test_case(spl_token::id(); "token")]
+    #[test_case(spl_token_2022::id(); "token-2022")]
+    fn test_deposit_one_exact_in(token_program_id: Pubkey) {
         let user_key = Pubkey::new_unique();
         let depositor_key = Pubkey::new_unique();
         let trade_fee_numerator = 1;
@@ -4287,8 +4403,14 @@ mod tests {
             calculator: Arc::new(ConstantProductCurve {}),
         };
 
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            &token_program_id,
+        );
 
         let deposit_a = token_a_amount / 10;
         let deposit_b = token_b_amount / 10;
@@ -4332,7 +4454,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             let old_swap_account = accounts.swap_account;
             let mut wrong_swap_account = old_swap_account.clone();
-            wrong_swap_account.owner = spl_token::id();
+            wrong_swap_account.owner = token_program_id;
             accounts.swap_account = wrong_swap_account;
             assert_eq!(
                 Err(ProgramError::IncorrectProgramId),
@@ -4362,7 +4484,7 @@ mod tests {
             let old_authority = accounts.authority_key;
             let (bad_authority_key, _bump_seed) = Pubkey::find_program_address(
                 &[&accounts.swap_key.to_bytes()[..]],
-                &spl_token::id(),
+                &token_program_id,
             );
             accounts.authority_key = bad_authority_key;
             assert_eq!(
@@ -4462,7 +4584,7 @@ mod tests {
                 do_process_instruction(
                     deposit_single_token_type_exact_amount_in(
                         &SWAP_PROGRAM_ID,
-                        &spl_token::id(),
+                        &token_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &user_transfer_authority_key,
@@ -4479,14 +4601,14 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
-                        &mut Account::default(),
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                         &mut token_a_account,
                         &mut accounts.token_a_account,
                         &mut accounts.token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 )
             );
@@ -4525,14 +4647,14 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
-                        &mut Account::default(),
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                         &mut token_a_account,
                         &mut accounts.token_a_account,
                         &mut accounts.token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 )
             );
@@ -4607,7 +4729,7 @@ mod tests {
                 mut pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             let (pool_mint_key, pool_mint_account) =
-                create_mint(&spl_token::id(), &accounts.authority_key, None);
+                create_mint(&token_program_id, &accounts.authority_key, None);
             let old_pool_key = accounts.pool_mint_key;
             let old_pool_account = accounts.pool_mint_account;
             accounts.pool_mint_key = pool_mint_key;
@@ -4732,11 +4854,11 @@ mod tests {
                 .unwrap();
 
             let swap_token_a =
-                spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
-            assert_eq!(swap_token_a.amount, deposit_a + token_a_amount);
+                StateWithExtensions::<Account>::unpack(&accounts.token_a_account.data).unwrap();
+            assert_eq!(swap_token_a.base.amount, deposit_a + token_a_amount);
 
-            let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
-            assert_eq!(token_a.amount, 0);
+            let token_a = StateWithExtensions::<Account>::unpack(&token_a_account.data).unwrap();
+            assert_eq!(token_a.base.amount, 0);
 
             accounts
                 .deposit_single_token_type_exact_amount_in(
@@ -4750,26 +4872,27 @@ mod tests {
                 )
                 .unwrap();
             let swap_token_b =
-                spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
-            assert_eq!(swap_token_b.amount, deposit_b + token_b_amount);
+                StateWithExtensions::<Account>::unpack(&accounts.token_b_account.data).unwrap();
+            assert_eq!(swap_token_b.base.amount, deposit_b + token_b_amount);
 
-            let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
-            assert_eq!(token_b.amount, 0);
+            let token_b = StateWithExtensions::<Account>::unpack(&token_b_account.data).unwrap();
+            assert_eq!(token_b.base.amount, 0);
 
-            let pool_account = spl_token::state::Account::unpack(&pool_account.data).unwrap();
+            let pool_account = StateWithExtensions::<Account>::unpack(&pool_account.data).unwrap();
             let swap_pool_account =
-                spl_token::state::Account::unpack(&accounts.pool_token_account.data).unwrap();
+                StateWithExtensions::<Account>::unpack(&accounts.pool_token_account.data).unwrap();
             let pool_mint =
-                spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
+                StateWithExtensions::<Mint>::unpack(&accounts.pool_mint_account.data).unwrap();
             assert_eq!(
-                pool_mint.supply,
-                pool_account.amount + swap_pool_account.amount
+                pool_mint.base.supply,
+                pool_account.base.amount + swap_pool_account.base.amount
             );
         }
     }
 
-    #[test]
-    fn test_withdraw_one_exact_out() {
+    #[test_case(spl_token::id(); "token")]
+    #[test_case(spl_token_2022::id(); "token-2022")]
+    fn test_withdraw_one_exact_out(token_program_id: Pubkey) {
         let user_key = Pubkey::new_unique();
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 2;
@@ -4807,8 +4930,14 @@ mod tests {
         let destination_a_amount = initial_a / 40;
         let destination_b_amount = initial_b / 40;
 
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            &token_program_id,
+        );
 
         // swap not initialized
         {
@@ -4848,7 +4977,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &withdrawer_key, initial_a, initial_b, 0);
             let old_swap_account = accounts.swap_account;
             let mut wrong_swap_account = old_swap_account.clone();
-            wrong_swap_account.owner = spl_token::id();
+            wrong_swap_account.owner = token_program_id;
             accounts.swap_account = wrong_swap_account;
             assert_eq!(
                 Err(ProgramError::IncorrectProgramId),
@@ -4878,7 +5007,7 @@ mod tests {
             let old_authority = accounts.authority_key;
             let (bad_authority_key, _bump_seed) = Pubkey::find_program_address(
                 &[&accounts.swap_key.to_bytes()[..]],
-                &spl_token::id(),
+                &token_program_id,
             );
             accounts.authority_key = bad_authority_key;
             assert_eq!(
@@ -5028,7 +5157,7 @@ mod tests {
                 do_process_instruction(
                     withdraw_single_token_type_exact_amount_out(
                         &SWAP_PROGRAM_ID,
-                        &spl_token::id(),
+                        &token_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &user_transfer_authority_key,
@@ -5046,15 +5175,15 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
-                        &mut Account::default(),
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
                         &mut accounts.token_a_account,
                         &mut accounts.token_b_account,
                         &mut token_a_account,
                         &mut accounts.pool_fee_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 )
             );
@@ -5100,15 +5229,15 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
-                        &mut Account::default(),
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
                         &mut accounts.token_a_account,
                         &mut accounts.token_b_account,
                         &mut token_a_account,
                         &mut accounts.pool_fee_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 )
             );
@@ -5195,7 +5324,7 @@ mod tests {
                 initial_pool.try_into().unwrap(),
             );
             let (pool_mint_key, pool_mint_account) =
-                create_mint(&spl_token::id(), &accounts.authority_key, None);
+                create_mint(&token_program_id, &accounts.authority_key, None);
             let old_pool_key = accounts.pool_mint_key;
             let old_pool_account = accounts.pool_mint_account;
             accounts.pool_mint_key = pool_mint_key;
@@ -5326,19 +5455,19 @@ mod tests {
             );
 
             let swap_token_a =
-                spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
+                StateWithExtensions::<Account>::unpack(&accounts.token_a_account.data).unwrap();
             let swap_token_b =
-                spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
+                StateWithExtensions::<Account>::unpack(&accounts.token_b_account.data).unwrap();
             let pool_mint =
-                spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
+                StateWithExtensions::<Mint>::unpack(&accounts.pool_mint_account.data).unwrap();
 
             let pool_token_amount = accounts
                 .swap_curve
                 .withdraw_single_token_type_exact_out(
                     destination_a_amount.try_into().unwrap(),
-                    swap_token_a.amount.try_into().unwrap(),
-                    swap_token_b.amount.try_into().unwrap(),
-                    pool_mint.supply.try_into().unwrap(),
+                    swap_token_a.base.amount.try_into().unwrap(),
+                    swap_token_b.base.amount.try_into().unwrap(),
+                    pool_mint.base.supply.try_into().unwrap(),
                     TradeDirection::AtoB,
                     &accounts.fees,
                 )
@@ -5358,20 +5487,23 @@ mod tests {
                 .unwrap();
 
             let swap_token_a =
-                spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
+                StateWithExtensions::<Account>::unpack(&accounts.token_a_account.data).unwrap();
 
-            assert_eq!(swap_token_a.amount, token_a_amount - destination_a_amount);
-            let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
-            assert_eq!(token_a.amount, initial_a + destination_a_amount);
-
-            let pool_account = spl_token::state::Account::unpack(&pool_account.data).unwrap();
             assert_eq!(
-                pool_account.amount,
+                swap_token_a.base.amount,
+                token_a_amount - destination_a_amount
+            );
+            let token_a = StateWithExtensions::<Account>::unpack(&token_a_account.data).unwrap();
+            assert_eq!(token_a.base.amount, initial_a + destination_a_amount);
+
+            let pool_account = StateWithExtensions::<Account>::unpack(&pool_account.data).unwrap();
+            assert_eq!(
+                pool_account.base.amount,
                 to_u64(initial_pool - pool_token_amount - withdraw_fee).unwrap()
             );
             let fee_account =
-                spl_token::state::Account::unpack(&accounts.pool_fee_account.data).unwrap();
-            assert_eq!(fee_account.amount, to_u64(withdraw_fee).unwrap());
+                StateWithExtensions::<Account>::unpack(&accounts.pool_fee_account.data).unwrap();
+            assert_eq!(fee_account.base.amount, to_u64(withdraw_fee).unwrap());
         }
 
         // correct withdrawal from fee account
@@ -5388,13 +5520,14 @@ mod tests {
             let fee_a_amount = 2;
             let pool_fee_key = accounts.pool_fee_key;
             let mut pool_fee_account = accounts.pool_fee_account.clone();
-            let fee_account = spl_token::state::Account::unpack(&pool_fee_account.data).unwrap();
-            let pool_fee_amount = fee_account.amount;
+            let fee_account =
+                StateWithExtensions::<Account>::unpack(&pool_fee_account.data).unwrap();
+            let pool_fee_amount = fee_account.base.amount;
 
             let swap_token_a =
-                spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
+                StateWithExtensions::<Account>::unpack(&accounts.token_a_account.data).unwrap();
 
-            let token_a_amount = swap_token_a.amount;
+            let token_a_amount = swap_token_a.base.amount;
             accounts
                 .withdraw_single_token_type_exact_amount_out(
                     &user_key,
@@ -5408,11 +5541,11 @@ mod tests {
                 .unwrap();
 
             let swap_token_a =
-                spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
+                StateWithExtensions::<Account>::unpack(&accounts.token_a_account.data).unwrap();
 
-            assert_eq!(swap_token_a.amount, token_a_amount - fee_a_amount);
-            let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
-            assert_eq!(token_a.amount, initial_a + fee_a_amount);
+            assert_eq!(swap_token_a.base.amount, token_a_amount - fee_a_amount);
+            let token_a = StateWithExtensions::<Account>::unpack(&token_a_account.data).unwrap();
+            assert_eq!(token_a.base.amount, initial_a + fee_a_amount);
         }
     }
 
@@ -5422,6 +5555,7 @@ mod tests {
         calculator: Arc<dyn CurveCalculator + Send + Sync>,
         token_a_amount: u64,
         token_b_amount: u64,
+        token_program_id: &Pubkey,
     ) {
         let user_key = Pubkey::new_unique();
         let swapper_key = Pubkey::new_unique();
@@ -5437,6 +5571,7 @@ mod tests {
             swap_curve.clone(),
             token_a_amount,
             token_b_amount,
+            token_program_id,
         );
         let initial_a = token_a_amount / 5;
         let initial_b = token_b_amount / 5;
@@ -5456,8 +5591,9 @@ mod tests {
         // swap one way
         let a_to_b_amount = initial_a / 10;
         let minimum_token_b_amount = 0;
-        let pool_mint = spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
-        let initial_supply = pool_mint.supply;
+        let pool_mint =
+            StateWithExtensions::<Mint>::unpack(&accounts.pool_mint_account.data).unwrap();
+        let initial_supply = pool_mint.base.supply;
         accounts
             .swap(
                 &swapper_key,
@@ -5483,25 +5619,25 @@ mod tests {
             .unwrap();
 
         let swap_token_a =
-            spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
-        let token_a_amount = swap_token_a.amount;
+            StateWithExtensions::<Account>::unpack(&accounts.token_a_account.data).unwrap();
+        let token_a_amount = swap_token_a.base.amount;
         assert_eq!(
             token_a_amount,
             TryInto::<u64>::try_into(results.new_swap_source_amount).unwrap()
         );
-        let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
-        assert_eq!(token_a.amount, initial_a - a_to_b_amount);
+        let token_a = StateWithExtensions::<Account>::unpack(&token_a_account.data).unwrap();
+        assert_eq!(token_a.base.amount, initial_a - a_to_b_amount);
 
         let swap_token_b =
-            spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
-        let token_b_amount = swap_token_b.amount;
+            StateWithExtensions::<Account>::unpack(&accounts.token_b_account.data).unwrap();
+        let token_b_amount = swap_token_b.base.amount;
         assert_eq!(
             token_b_amount,
             TryInto::<u64>::try_into(results.new_swap_destination_amount).unwrap()
         );
-        let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
+        let token_b = StateWithExtensions::<Account>::unpack(&token_b_account.data).unwrap();
         assert_eq!(
-            token_b.amount,
+            token_b.base.amount,
             initial_b + to_u64(results.destination_amount_swapped).unwrap()
         );
 
@@ -5516,17 +5652,18 @@ mod tests {
             )
             .unwrap();
         let fee_account =
-            spl_token::state::Account::unpack(&accounts.pool_fee_account.data).unwrap();
+            StateWithExtensions::<Account>::unpack(&accounts.pool_fee_account.data).unwrap();
         assert_eq!(
-            fee_account.amount,
+            fee_account.base.amount,
             TryInto::<u64>::try_into(first_fee).unwrap()
         );
 
         let first_swap_amount = results.destination_amount_swapped;
 
         // swap the other way
-        let pool_mint = spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
-        let initial_supply = pool_mint.supply;
+        let pool_mint =
+            StateWithExtensions::<Mint>::unpack(&accounts.pool_mint_account.data).unwrap();
+        let initial_supply = pool_mint.base.supply;
 
         let b_to_a_amount = initial_b / 10;
         let minimum_a_amount = 0;
@@ -5555,28 +5692,28 @@ mod tests {
             .unwrap();
 
         let swap_token_a =
-            spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
-        let token_a_amount = swap_token_a.amount;
+            StateWithExtensions::<Account>::unpack(&accounts.token_a_account.data).unwrap();
+        let token_a_amount = swap_token_a.base.amount;
         assert_eq!(
             token_a_amount,
             TryInto::<u64>::try_into(results.new_swap_destination_amount).unwrap()
         );
-        let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
+        let token_a = StateWithExtensions::<Account>::unpack(&token_a_account.data).unwrap();
         assert_eq!(
-            token_a.amount,
+            token_a.base.amount,
             initial_a - a_to_b_amount + to_u64(results.destination_amount_swapped).unwrap()
         );
 
         let swap_token_b =
-            spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
-        let token_b_amount = swap_token_b.amount;
+            StateWithExtensions::<Account>::unpack(&accounts.token_b_account.data).unwrap();
+        let token_b_amount = swap_token_b.base.amount;
         assert_eq!(
             token_b_amount,
             TryInto::<u64>::try_into(results.new_swap_source_amount).unwrap()
         );
-        let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
+        let token_b = StateWithExtensions::<Account>::unpack(&token_b_account.data).unwrap();
         assert_eq!(
-            token_b.amount,
+            token_b.base.amount,
             initial_b + to_u64(first_swap_amount).unwrap()
                 - to_u64(results.source_amount_swapped).unwrap()
         );
@@ -5592,12 +5729,16 @@ mod tests {
             )
             .unwrap();
         let fee_account =
-            spl_token::state::Account::unpack(&accounts.pool_fee_account.data).unwrap();
-        assert_eq!(fee_account.amount, to_u64(first_fee + second_fee).unwrap());
+            StateWithExtensions::<Account>::unpack(&accounts.pool_fee_account.data).unwrap();
+        assert_eq!(
+            fee_account.base.amount,
+            to_u64(first_fee + second_fee).unwrap()
+        );
     }
 
-    #[test]
-    fn test_valid_swap_curves_all_fees() {
+    #[test_case(spl_token::id(); "token")]
+    #[test_case(spl_token_2022::id(); "token-2022")]
+    fn test_valid_swap_curves_all_fees(token_program_id: Pubkey) {
         // All fees
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 10;
@@ -5627,6 +5768,7 @@ mod tests {
             Arc::new(ConstantProductCurve {}),
             token_a_amount,
             token_b_amount,
+            &token_program_id,
         );
         let token_b_price = 1;
         check_valid_swap_curve(
@@ -5635,6 +5777,7 @@ mod tests {
             Arc::new(ConstantPriceCurve { token_b_price }),
             token_a_amount,
             token_b_amount,
+            &token_program_id,
         );
         let token_b_offset = 10_000_000_000;
         check_valid_swap_curve(
@@ -5643,11 +5786,13 @@ mod tests {
             Arc::new(OffsetCurve { token_b_offset }),
             token_a_amount,
             token_b_amount,
+            &token_program_id,
         );
     }
 
-    #[test]
-    fn test_valid_swap_curves_trade_fee_only() {
+    #[test_case(spl_token::id(); "token")]
+    #[test_case(spl_token_2022::id(); "token-2022")]
+    fn test_valid_swap_curves_trade_fee_only(token_program_id: Pubkey) {
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 10;
         let owner_trade_fee_numerator = 0;
@@ -5676,6 +5821,7 @@ mod tests {
             Arc::new(ConstantProductCurve {}),
             token_a_amount,
             token_b_amount,
+            &token_program_id,
         );
         let token_b_price = 10_000;
         check_valid_swap_curve(
@@ -5684,6 +5830,7 @@ mod tests {
             Arc::new(ConstantPriceCurve { token_b_price }),
             token_a_amount,
             token_b_amount / token_b_price,
+            &token_program_id,
         );
         let token_b_offset = 1;
         check_valid_swap_curve(
@@ -5692,11 +5839,13 @@ mod tests {
             Arc::new(OffsetCurve { token_b_offset }),
             token_a_amount,
             token_b_amount,
+            &token_program_id,
         );
     }
 
-    #[test]
-    fn test_valid_swap_with_fee_constraints() {
+    #[test_case(spl_token::id(); "token")]
+    #[test_case(spl_token_2022::id(); "token-2022")]
+    fn test_valid_swap_with_fee_constraints(token_program_id: Pubkey) {
         let owner_key = Pubkey::new_unique();
 
         let trade_fee_numerator = 1;
@@ -5741,13 +5890,14 @@ mod tests {
             swap_curve,
             token_a_amount,
             token_b_amount,
+            &token_program_id,
         );
 
         // initialize swap
         do_process_instruction_with_fee_constraints(
             initialize(
                 &SWAP_PROGRAM_ID,
-                &spl_token::id(),
+                &token_program_id,
                 &accounts.swap_key,
                 &accounts.authority_key,
                 &accounts.token_a_key,
@@ -5761,13 +5911,13 @@ mod tests {
             .unwrap(),
             vec![
                 &mut accounts.swap_account,
-                &mut Account::default(),
+                &mut SolanaAccount::default(),
                 &mut accounts.token_a_account,
                 &mut accounts.token_b_account,
                 &mut accounts.pool_mint_account,
                 &mut accounts.pool_fee_account,
                 &mut accounts.pool_token_account,
-                &mut Account::default(),
+                &mut SolanaAccount::default(),
             ],
             &constraints,
         )
@@ -5797,7 +5947,7 @@ mod tests {
         do_process_instruction_with_fee_constraints(
             swap(
                 &SWAP_PROGRAM_ID,
-                &spl_token::id(),
+                &token_program_id,
                 &accounts.swap_key,
                 &accounts.authority_key,
                 &accounts.authority_key,
@@ -5816,15 +5966,15 @@ mod tests {
             .unwrap(),
             vec![
                 &mut accounts.swap_account,
-                &mut Account::default(),
-                &mut Account::default(),
+                &mut SolanaAccount::default(),
+                &mut SolanaAccount::default(),
                 &mut token_a_account,
                 &mut accounts.token_a_account,
                 &mut accounts.token_b_account,
                 &mut token_b_account,
                 &mut accounts.pool_mint_account,
                 &mut accounts.pool_fee_account,
-                &mut Account::default(),
+                &mut SolanaAccount::default(),
                 &mut pool_account,
             ],
             &constraints,
@@ -5832,19 +5982,20 @@ mod tests {
         .unwrap();
 
         // check that fees were taken in the host fee account
-        let host_fee_account = spl_token::state::Account::unpack(&pool_account.data).unwrap();
+        let host_fee_account = StateWithExtensions::<Account>::unpack(&pool_account.data).unwrap();
         let owner_fee_account =
-            spl_token::state::Account::unpack(&accounts.pool_fee_account.data).unwrap();
-        let total_fee = owner_fee_account.amount * host_fee_denominator
+            StateWithExtensions::<Account>::unpack(&accounts.pool_fee_account.data).unwrap();
+        let total_fee = owner_fee_account.base.amount * host_fee_denominator
             / (host_fee_denominator - host_fee_numerator);
         assert_eq!(
             total_fee,
-            host_fee_account.amount + owner_fee_account.amount
+            host_fee_account.base.amount + owner_fee_account.base.amount
         );
     }
 
-    #[test]
-    fn test_invalid_swap() {
+    #[test_case(spl_token::id(); "token")]
+    #[test_case(spl_token_2022::id(); "token-2022")]
+    fn test_invalid_swap(token_program_id: Pubkey) {
         let user_key = Pubkey::new_unique();
         let swapper_key = Pubkey::new_unique();
         let trade_fee_numerator = 1;
@@ -5873,8 +6024,14 @@ mod tests {
             curve_type,
             calculator: Arc::new(ConstantProductCurve {}),
         };
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            &token_program_id,
+        );
 
         let initial_a = token_a_amount / 5;
         let initial_b = token_b_amount / 5;
@@ -5923,7 +6080,7 @@ mod tests {
             ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
             let old_swap_account = accounts.swap_account;
             let mut wrong_swap_account = old_swap_account.clone();
-            wrong_swap_account.owner = spl_token::id();
+            wrong_swap_account.owner = token_program_id;
             accounts.swap_account = wrong_swap_account;
             assert_eq!(
                 Err(ProgramError::IncorrectProgramId),
@@ -5955,7 +6112,7 @@ mod tests {
             let old_authority = accounts.authority_key;
             let (bad_authority_key, _bump_seed) = Pubkey::find_program_address(
                 &[&accounts.swap_key.to_bytes()[..]],
-                &spl_token::id(),
+                &token_program_id,
             );
             accounts.authority_key = bad_authority_key;
             assert_eq!(
@@ -6010,15 +6167,15 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
-                        &mut Account::default(),
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                         &mut token_a_account,
                         &mut accounts.token_a_account,
                         &mut accounts.token_b_account,
                         &mut token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 ),
             );
@@ -6066,7 +6223,7 @@ mod tests {
                 do_process_instruction(
                     swap(
                         &SWAP_PROGRAM_ID,
-                        &spl_token::id(),
+                        &token_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &user_transfer_key,
@@ -6085,15 +6242,15 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
-                        &mut Account::default(),
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                         &mut token_a_account.clone(),
                         &mut token_a_account,
                         &mut token_b_account.clone(),
                         &mut token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 ),
             );
@@ -6162,7 +6319,7 @@ mod tests {
                 _pool_account,
             ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
             let (pool_mint_key, pool_mint_account) =
-                create_mint(&spl_token::id(), &accounts.authority_key, None);
+                create_mint(&token_program_id, &accounts.authority_key, None);
             let old_pool_key = accounts.pool_mint_key;
             let old_pool_account = accounts.pool_mint_account;
             accounts.pool_mint_key = pool_mint_key;
@@ -6235,7 +6392,7 @@ mod tests {
                 do_process_instruction(
                     swap(
                         &SWAP_PROGRAM_ID,
-                        &spl_token::id(),
+                        &token_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &user_transfer_key,
@@ -6254,15 +6411,15 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
-                        &mut Account::default(),
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                         &mut token_a_account,
                         &mut accounts.token_a_account,
                         &mut accounts.token_b_account,
                         &mut token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 ),
             );
@@ -6393,7 +6550,7 @@ mod tests {
             do_process_instruction_with_fee_constraints(
                 swap(
                     &SWAP_PROGRAM_ID,
-                    &spl_token::id(),
+                    &token_program_id,
                     &accounts.swap_key,
                     &accounts.authority_key,
                     &accounts.authority_key,
@@ -6412,15 +6569,15 @@ mod tests {
                 .unwrap(),
                 vec![
                     &mut accounts.swap_account,
-                    &mut Account::default(),
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                     &mut token_a_account,
                     &mut accounts.token_a_account,
                     &mut accounts.token_b_account,
                     &mut token_b_account,
                     &mut accounts.pool_mint_account,
                     &mut accounts.pool_fee_account,
-                    &mut Account::default(),
+                    &mut SolanaAccount::default(),
                 ],
                 &constraints,
             )
@@ -6467,7 +6624,7 @@ mod tests {
                 do_process_instruction_with_fee_constraints(
                     swap(
                         &SWAP_PROGRAM_ID,
-                        &spl_token::id(),
+                        &token_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &accounts.authority_key,
@@ -6486,15 +6643,15 @@ mod tests {
                     .unwrap(),
                     vec![
                         &mut accounts.swap_account,
-                        &mut Account::default(),
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                         &mut token_a_account,
                         &mut accounts.token_a_account,
                         &mut accounts.token_b_account,
                         &mut token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
-                        &mut Account::default(),
+                        &mut SolanaAccount::default(),
                         &mut bad_token_a_account,
                     ],
                     &constraints,
@@ -6503,8 +6660,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_overdraw_offset_curve() {
+    #[test_case(spl_token::id(); "token")]
+    #[test_case(spl_token_2022::id(); "token-2022")]
+    fn test_overdraw_offset_curve(token_program_id: Pubkey) {
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 10;
         let owner_trade_fee_numerator = 1;
@@ -6535,8 +6693,14 @@ mod tests {
         let user_key = Pubkey::new_unique();
         let swapper_key = Pubkey::new_unique();
 
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            &token_program_id,
+        );
 
         accounts.initialize_swap().unwrap();
 
@@ -6653,8 +6817,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_withdraw_all_offset_curve() {
+    #[test_case(spl_token::id(); "token")]
+    #[test_case(spl_token_2022::id(); "token-2022")]
+    fn test_withdraw_all_offset_curve(token_program_id: Pubkey) {
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 10;
         let owner_trade_fee_numerator = 1;
@@ -6686,8 +6851,14 @@ mod tests {
         let user_key = Pubkey::new_unique();
         let withdrawer_key = Pubkey::new_unique();
 
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+            &token_program_id,
+        );
 
         accounts.initialize_swap().unwrap();
 
@@ -6722,20 +6893,21 @@ mod tests {
             )
             .unwrap();
 
-        let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
-        assert_eq!(token_a.amount, token_a_amount);
-        let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
-        assert_eq!(token_b.amount, token_b_amount);
+        let token_a = StateWithExtensions::<Account>::unpack(&token_a_account.data).unwrap();
+        assert_eq!(token_a.base.amount, token_a_amount);
+        let token_b = StateWithExtensions::<Account>::unpack(&token_b_account.data).unwrap();
+        assert_eq!(token_b.base.amount, token_b_amount);
         let swap_token_a =
-            spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
-        assert_eq!(swap_token_a.amount, 0);
+            StateWithExtensions::<Account>::unpack(&accounts.token_a_account.data).unwrap();
+        assert_eq!(swap_token_a.base.amount, 0);
         let swap_token_b =
-            spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
-        assert_eq!(swap_token_b.amount, 0);
+            StateWithExtensions::<Account>::unpack(&accounts.token_b_account.data).unwrap();
+        assert_eq!(swap_token_b.base.amount, 0);
     }
 
-    #[test]
-    fn test_withdraw_all_constant_price_curve() {
+    #[test_case(spl_token::id(); "token")]
+    #[test_case(spl_token_2022::id(); "token-2022")]
+    fn test_withdraw_all_constant_price_curve(token_program_id: Pubkey) {
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 10;
         let owner_trade_fee_numerator = 1;
@@ -6776,6 +6948,7 @@ mod tests {
             swap_curve,
             swap_token_a_amount,
             swap_token_b_amount,
+            &token_program_id,
         );
 
         accounts.initialize_swap().unwrap();
@@ -6827,16 +7000,16 @@ mod tests {
             )
             .unwrap();
 
-        let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
-        assert_eq!(token_a.amount, swap_token_a_amount);
-        let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
-        assert_eq!(token_b.amount, 750);
+        let token_a = StateWithExtensions::<Account>::unpack(&token_a_account.data).unwrap();
+        assert_eq!(token_a.base.amount, swap_token_a_amount);
+        let token_b = StateWithExtensions::<Account>::unpack(&token_b_account.data).unwrap();
+        assert_eq!(token_b.base.amount, 750);
         let swap_token_a =
-            spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
-        assert_eq!(swap_token_a.amount, 0);
+            StateWithExtensions::<Account>::unpack(&accounts.token_a_account.data).unwrap();
+        assert_eq!(swap_token_a.base.amount, 0);
         let swap_token_b =
-            spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
-        assert_eq!(swap_token_b.amount, 250);
+            StateWithExtensions::<Account>::unpack(&accounts.token_b_account.data).unwrap();
+        assert_eq!(swap_token_b.base.amount, 250);
 
         // deposit now, not enough to cover the tokens already in there
         let token_b_amount = 10;
@@ -6906,8 +7079,9 @@ mod tests {
             .unwrap();
     }
 
-    #[test]
-    fn test_deposits_allowed_single_token() {
+    #[test_case(spl_token::id(); "token")]
+    #[test_case(spl_token_2022::id(); "token-2022")]
+    fn test_deposits_allowed_single_token(token_program_id: Pubkey) {
         let trade_fee_numerator = 1;
         let trade_fee_denominator = 10;
         let owner_trade_fee_numerator = 1;
@@ -6944,6 +7118,7 @@ mod tests {
             swap_curve,
             token_a_amount,
             token_b_amount,
+            &token_program_id,
         );
 
         accounts.initialize_swap().unwrap();

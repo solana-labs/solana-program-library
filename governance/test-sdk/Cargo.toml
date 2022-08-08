@@ -19,7 +19,5 @@ serde_derive = "1.0.103"
 solana-program = "1.10.33"
 solana-program-test = "1.10.33"
 solana-sdk = "1.10.33"
-spl-token = { version = "3.3", path = "../../token/program", features = [ "no-entrypoint" ] }
+spl-token = { version = "3.5", path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
-
-

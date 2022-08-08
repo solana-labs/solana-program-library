@@ -16,6 +16,7 @@ use spl_token_2022::{
     extension::StateWithExtensionsOwned,
     state::{Account, Mint},
 };
+use spl_token_client::client::{ProgramClient, ProgramRpcClient, ProgramRpcClientSendTransaction};
 use std::{process::exit, sync::Arc};
 
 #[cfg(test)]
@@ -38,6 +39,7 @@ pub(crate) struct MintInfo {
 pub(crate) struct Config<'a> {
     pub(crate) default_signer: Arc<dyn Signer>,
     pub(crate) rpc_client: Arc<RpcClient>,
+    pub(crate) program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>>,
     pub(crate) websocket_url: String,
     pub(crate) output_format: OutputFormat,
     pub(crate) fee_payer: Pubkey,
@@ -74,22 +76,27 @@ impl<'a> Config<'a> {
             json_rpc_url,
             CommitmentConfig::confirmed(),
         ));
-        Self::new_with_client_and_ws_url(
+        let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
+            ProgramRpcClient::new(rpc_client.clone(), ProgramRpcClientSendTransaction),
+        );
+        Self::new_with_clients_and_ws_url(
             matches,
             wallet_manager,
             bulk_signers,
             multisigner_ids,
             rpc_client,
+            program_client,
             websocket_url,
         )
     }
 
-    pub(crate) fn new_with_client_and_ws_url(
+    pub(crate) fn new_with_clients_and_ws_url(
         matches: &ArgMatches,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
         bulk_signers: &mut Vec<Arc<dyn Signer>>,
         multisigner_ids: &'a mut Vec<Pubkey>,
         rpc_client: Arc<RpcClient>,
+        program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>>,
         websocket_url: String,
     ) -> Self {
         let cli_config = if let Some(config_file) = matches.value_of("config_file") {
@@ -211,6 +218,7 @@ impl<'a> Config<'a> {
         Self {
             default_signer,
             rpc_client,
+            program_client,
             websocket_url,
             output_format,
             fee_payer,

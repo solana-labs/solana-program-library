@@ -10,12 +10,12 @@ use solana_account_decoder::{
 };
 use solana_clap_utils::{
     fee_payer::fee_payer_arg,
-    input_parsers::{pubkey_of, pubkey_of_signer, pubkeys_of_multiple_signers, value_of},
+    input_parsers::{pubkey_of_signer, pubkeys_of_multiple_signers, value_of},
     input_validators::{
         is_amount, is_amount_or_all, is_parsable, is_url_or_moniker, is_valid_pubkey,
-        is_valid_signer, normalize_to_url_if_moniker,
+        is_valid_signer,
     },
-    keypair::{signer_from_path, signer_from_path_with_config, SignerFromPathConfig},
+    keypair::signer_from_path,
     memo::memo_arg,
     nonce::*,
     offline::{self, *},
@@ -25,10 +25,9 @@ use solana_cli_output::{
     return_signers_data, CliSignOnlyData, CliSignature, OutputFormat, QuietDisplay,
     ReturnSignersConfig, VerboseDisplay,
 };
-use solana_client::{nonblocking::rpc_client::RpcClient, rpc_request::TokenAccountsFilter};
+use solana_client::rpc_request::TokenAccountsFilter;
 use solana_remote_wallet::remote_wallet::RemoteWalletManager;
 use solana_sdk::{
-    commitment_config::CommitmentConfig,
     instruction::Instruction,
     message::Message,
     native_token::*,
@@ -47,13 +46,14 @@ use spl_token_2022::{
     instruction::*,
     state::{Account, Mint, Multisig},
 };
+use spl_token_client::client::{ProgramClient, ProgramRpcClient, ProgramRpcClientSendTransaction};
 use std::{
     collections::HashMap, fmt::Display, process::exit, str::FromStr, string::ToString, sync::Arc,
 };
 use strum_macros::{EnumString, IntoStaticStr, ToString};
 
 mod config;
-use config::{Config, KeypairOrPath, MintInfo};
+use config::{Config, MintInfo};
 
 mod output;
 use output::*;
@@ -338,7 +338,7 @@ async fn command_create_token(
 
     let minimum_balance_for_rent_exemption = if !config.sign_only {
         config
-            .rpc_client
+            .program_client
             .get_minimum_balance_for_rent_exemption(Mint::LEN)
             .await?
     } else {
@@ -402,7 +402,7 @@ async fn command_create_account(
 ) -> CommandResult {
     let minimum_balance_for_rent_exemption = if !config.sign_only {
         config
-            .rpc_client
+            .program_client
             .get_minimum_balance_for_rent_exemption(Account::LEN)
             .await?
     } else {
@@ -495,7 +495,7 @@ async fn command_create_multisig(
 
     let minimum_balance_for_rent_exemption = if !config.sign_only {
         config
-            .rpc_client
+            .program_client
             .get_minimum_balance_for_rent_exemption(Multisig::LEN)
             .await?
     } else {
@@ -843,7 +843,7 @@ async fn command_transfer(
             if fund_recipient {
                 if !config.sign_only {
                     minimum_balance_for_rent_exemption += config
-                        .rpc_client
+                        .program_client
                         .get_minimum_balance_for_rent_exemption(Account::LEN)
                         .await?;
                     println_display(
@@ -1619,7 +1619,7 @@ async fn command_gc(
 
     let minimum_balance_for_rent_exemption = if !config.sign_only {
         config
-            .rpc_client
+            .program_client
             .get_minimum_balance_for_rent_exemption(Account::LEN)
             .await?
     } else {
@@ -1866,20 +1866,15 @@ fn app<'a, 'b>(
         .about(crate_description!())
         .version(crate_version!())
         .setting(AppSettings::SubcommandRequiredElseHelp)
-        .arg({
-            let arg = Arg::with_name("config_file")
+        .arg(
+            Arg::with_name("config_file")
                 .short("C")
                 .long("config")
                 .value_name("PATH")
                 .takes_value(true)
                 .global(true)
-                .help("Configuration file to use");
-            if let Some(ref config_file) = *solana_cli_config::CONFIG_FILE {
-                arg.default_value(config_file)
-            } else {
-                arg
-            }
-        })
+                .help("Configuration file to use"),
+        )
         .arg(
             Arg::with_name("verbose")
                 .short("v")
@@ -3194,6 +3189,7 @@ async fn handle_tx<'a>(
 mod tests {
     use {
         super::*,
+        serial_test::serial,
         solana_sdk::{
             bpf_loader,
             signature::{write_keypair_file, Keypair, Signer},
@@ -3239,8 +3235,12 @@ mod tests {
     ) -> Config<'a> {
         let websocket_url = test_validator.rpc_pubsub_url();
         let rpc_client = Arc::new(test_validator.get_async_rpc_client());
+        let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
+            ProgramRpcClient::new(rpc_client.clone(), ProgramRpcClientSendTransaction),
+        );
         Config {
             rpc_client,
+            program_client,
             websocket_url,
             output_format: OutputFormat::JsonCompact,
             fee_payer: payer.pubkey(),
@@ -3393,12 +3393,13 @@ mod tests {
         let mut bulk_signers: Vec<Arc<dyn Signer>> = Vec::new();
         let mut multisigner_ids = Vec::new();
 
-        let config = Config::new_with_client_and_ws_url(
+        let config = Config::new_with_clients_and_ws_url(
             matches,
             &mut wallet_manager,
             &mut bulk_signers,
             &mut multisigner_ids,
             config.rpc_client.clone(),
+            config.program_client.clone(),
             config.websocket_url.clone(),
         );
 
@@ -3406,6 +3407,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn create_token_default() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3425,6 +3427,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn supply() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3443,6 +3446,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn create_account_default() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3463,6 +3467,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn account_info() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3495,6 +3500,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn balance() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3514,6 +3520,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn mint() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3541,6 +3548,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn balance_after_mint() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3562,6 +3570,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn accounts() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3585,6 +3594,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn wrap() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3612,6 +3622,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn unwrap() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3638,6 +3649,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn transfer() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3671,6 +3683,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn transfer_fund_recipient() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3703,6 +3716,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn failing_to_allow_non_system_account_recipient() {
         let (test_validator, payer) = new_validator_for_test().await;
         let config = test_config(&test_validator, &payer, &spl_token::id());
@@ -3729,6 +3743,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn allow_non_system_account_recipient() {
         let (test_validator, payer) = new_validator_for_test().await;
         let config = test_config(&test_validator, &payer, &spl_token::id());
@@ -3765,6 +3780,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn close_wrapped_sol_account() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3811,6 +3827,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn disable_mint_authority() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3837,6 +3854,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn gc() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3882,6 +3900,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn set_owner() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -3910,6 +3929,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn transfer_with_account_delegate() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
@@ -4014,6 +4034,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn burn_with_account_delegate() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {

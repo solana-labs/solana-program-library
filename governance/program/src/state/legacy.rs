@@ -293,7 +293,7 @@ pub struct ProposalInstructionV1 {
     /// Unique instruction index within it's parent Proposal
     pub instruction_index: u16,
 
-    /// Minimum waiting time in seconds for the  instruction to be executed once proposal is voted on
+    /// Minimum waiting time in seconds for the instruction to be executed once proposal is voted on
     pub hold_up_time: u32,
 
     /// Instruction to execute
