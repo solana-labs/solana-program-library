@@ -412,7 +412,7 @@ async fn test_borrow_too_large() {
 }
 
 #[tokio::test]
-async fn test_borrow_max_receive_less_than_slippage() {
+async fn test_borrow_max_receive_more_than_slippage() {
     let mut test = ProgramTest::new(
         "spl_token_lending",
         spl_token_lending::id(),
