@@ -412,7 +412,7 @@ async fn test_borrow_too_large() {
 }
 
 #[tokio::test]
-async fn test_borrow_max_receive_more_than_slippage() {
+async fn test_borrow_max_receive_minimum() {
     let mut test = ProgramTest::new(
         "spl_token_lending",
         spl_token_lending::id(),
@@ -430,7 +430,7 @@ async fn test_borrow_max_receive_more_than_slippage() {
     const SOL_BORROW_AMOUNT_LAMPORTS: u64 = 50 * LAMPORTS_TO_SOL;
     const USDC_RESERVE_COLLATERAL_FRACTIONAL: u64 = 2 * USDC_DEPOSIT_AMOUNT_FRACTIONAL;
     const SOL_RESERVE_LIQUIDITY_LAMPORTS: u64 = 2 * SOL_BORROW_AMOUNT_LAMPORTS;
-    const SLIPPAGE_LIMIT: u64 = SOL_BORROW_AMOUNT_LAMPORTS - FEE_AMOUNT - 1;
+    const SLIPPAGE_LIMIT: u64 = SOL_BORROW_AMOUNT_LAMPORTS - FEE_AMOUNT;
 
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
