@@ -312,7 +312,8 @@ export async function withdrawStake(
   voteAccountAddress?: PublicKey,
   stakeReceiver?: PublicKey,
   poolTokenAccount?: PublicKey,
-  validatorComparator?: (_a: ValidatorAccount, _b: ValidatorAccount) => number,
+  validatorComparator?: (a: ValidatorAccount, b: ValidatorAccount) => number,
+  validatorLimiter?: (a: ValidatorAccount) => number,
 ) {
   const stakePool = await getStakePoolAccount(connection, stakePoolAddress);
   const poolAmount = solToLamports(amount);
@@ -391,21 +392,21 @@ export async function withdrawStake(
   } else {
     // Get the list of accounts to withdraw from
     withdrawAccounts.push(
-      ...(await prepareWithdrawAccounts(
+      ...(await prepareWithdrawAccounts({
         connection,
-        stakePool.account.data,
         stakePoolAddress,
-        poolAmount,
-        validatorComparator,
-        poolTokenAccount.equals(stakePool.account.data.managerFeeAccount),
-      )),
+        stakePool: stakePool.account.data,
+        amount: poolAmount,
+        comparator: validatorComparator,
+        limiter: validatorLimiter,
+        skipFee: poolTokenAccount.equals(stakePool.account.data.managerFeeAccount),
+      })),
     );
   }
 
   // Construct transaction to withdraw from withdrawAccounts account list
   const instructions: TransactionInstruction[] = [];
   const userTransferAuthority = Keypair.generate();
-
   const signers: Signer[] = [userTransferAuthority];
 
   instructions.push(
@@ -421,15 +422,8 @@ export async function withdrawStake(
 
   let totalRentFreeBalances = 0;
 
-  // Max 5 accounts to prevent an error: "Transaction too large"
-  const maxWithdrawAccounts = 5;
-  let i = 0;
-
   // Go through prepared accounts and withdraw/claim them
   for (const withdrawAccount of withdrawAccounts) {
-    if (i > maxWithdrawAccounts) {
-      break;
-    }
     // Convert pool tokens amount to lamports
     const solWithdrawAmount = Math.ceil(
       calcLamportsWithdrawAmount(stakePool.account.data, withdrawAccount.poolAmount),
@@ -471,7 +465,6 @@ export async function withdrawStake(
         withdrawAuthority,
       }),
     );
-    i++;
   }
 
   return {
@@ -905,5 +898,82 @@ export async function stakePoolInfo(connection: Connection, stakePoolAddress: Pu
       maxNumberOfValidators,
       updateRequired,
     }, // CliStakePoolDetails
+  };
+}
+
+/**
+ * Creates instructions required to create pool token metadata.
+ */
+export async function createPoolTokenMetadata(
+  connection: Connection,
+  stakePoolAddress: PublicKey,
+  tokenMetadata: PublicKey,
+  name: string,
+  symbol: string,
+  uri: string,
+  payer?: PublicKey,
+) {
+  const stakePool = await getStakePoolAccount(connection, stakePoolAddress);
+
+  const withdrawAuthority = await findWithdrawAuthorityProgramAddress(
+    STAKE_POOL_PROGRAM_ID,
+    stakePoolAddress,
+  );
+
+  const manager = stakePool.account.data.manager;
+
+  const instructions: TransactionInstruction[] = [];
+  instructions.push(
+    StakePoolInstruction.createTokenMetadata({
+      stakePool: stakePoolAddress,
+      poolMint: stakePool.account.data.poolMint,
+      payer: payer ?? manager,
+      manager,
+      tokenMetadata,
+      withdrawAuthority,
+      name,
+      symbol,
+      uri,
+    }),
+  );
+
+  return {
+    instructions,
+  };
+}
+
+/**
+ * Creates instructions required to update pool token metadata.
+ */
+export async function updatePoolTokenMetadata(
+  connection: Connection,
+  stakePoolAddress: PublicKey,
+  tokenMetadata: PublicKey,
+  name: string,
+  symbol: string,
+  uri: string,
+) {
+  const stakePool = await getStakePoolAccount(connection, stakePoolAddress);
+
+  const withdrawAuthority = await findWithdrawAuthorityProgramAddress(
+    STAKE_POOL_PROGRAM_ID,
+    stakePoolAddress,
+  );
+
+  const instructions: TransactionInstruction[] = [];
+  instructions.push(
+    StakePoolInstruction.updateTokenMetadata({
+      stakePool: stakePoolAddress,
+      manager: stakePool.account.data.manager,
+      tokenMetadata,
+      withdrawAuthority,
+      name,
+      symbol,
+      uri,
+    }),
+  );
+
+  return {
+    instructions,
   };
 }

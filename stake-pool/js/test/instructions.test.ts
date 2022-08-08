@@ -15,6 +15,8 @@ import {
   depositSol,
   withdrawSol,
   withdrawStake,
+  createPoolTokenMetadata,
+  updatePoolTokenMetadata,
 } from '../src';
 
 import { decodeData } from '../src/utils';
@@ -251,6 +253,55 @@ describe('StakePoolProgram', () => {
       expect(res.signers).toHaveLength(2);
       expect(res.stakeReceiver).toEqual(undefined);
       expect(res.totalRentFreeBalances).toEqual(10000);
+    });
+  });
+
+  describe('createPoolTokenMetadata', () => {
+    it.only('should create pool token metadata', async () => {
+      connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
+        if (pubKey == stakePoolAddress) {
+          return stakePoolAccount;
+        }
+        return null;
+      });
+
+      const tokenMetadata = new PublicKey(0);
+
+      const res = await createPoolTokenMetadata(
+        connection,
+        stakePoolAddress,
+        tokenMetadata,
+        'test',
+        'TEST',
+        'https://example.com',
+      );
+
+      const data = STAKE_POOL_INSTRUCTION_LAYOUTS.CreateTokenMetadata.layout.decode(
+        res.instructions[0].data,
+      );
+      expect(Buffer.from(data.name).toString().replace(/\0/g, '')).toBe('test');
+      expect(Buffer.from(data.symbol).toString().replace(/\0/g, '')).toBe('TEST');
+      expect(Buffer.from(data.uri).toString().replace(/\0/g, '')).toBe('https://example.com');
+    });
+
+    it.only('should update pool token metadata', async () => {
+      const tokenMetadata = new PublicKey(0);
+
+      const res = await updatePoolTokenMetadata(
+        connection,
+        stakePoolAddress,
+        tokenMetadata,
+        'test',
+        'TEST',
+        'https://example.com',
+      );
+
+      const data = STAKE_POOL_INSTRUCTION_LAYOUTS.UpdateTokenMetadata.layout.decode(
+        res.instructions[0].data,
+      );
+      expect(Buffer.from(data.name).toString().replace(/\0/g, '')).toBe('test');
+      expect(Buffer.from(data.symbol).toString().replace(/\0/g, '')).toBe('TEST');
+      expect(Buffer.from(data.uri).toString().replace(/\0/g, '')).toBe('https://example.com');
     });
   });
 });
