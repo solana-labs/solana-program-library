@@ -1,4 +1,4 @@
-import { AccountInfo, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
+import { AccountInfo, LAMPORTS_PER_SOL, PublicKey, StakeProgram } from '@solana/web3.js';
 import BN from 'bn.js';
 import { ValidatorStakeInfo } from '../src';
 import { ValidatorStakeInfoStatus, AccountLayout, ValidatorListLayout } from '../src/layouts';
@@ -127,6 +127,33 @@ export function mockTokenAccount(amount = 0) {
   return <AccountInfo<any>>{
     executable: true,
     owner: new PublicKey(0),
+    lamports: amount,
+    data,
+  };
+}
+
+export function mockStakeAccount(amount = 0) {
+  const data = Buffer.alloc(1024);
+  AccountLayout.encode(
+    {
+      state: 0,
+      mint: stakePoolMock.poolMint,
+      owner: StakeProgram.programId,
+      amount: new BN(amount),
+      delegate: new PublicKey(14),
+      // delegatedAmount: new BN(0),
+      // isNative: new BN(0),
+      // isNativeOption:0,
+      // closeAuthority: 0,
+      // delegateOption:0,
+      // closeAuthorityOption:0
+    },
+    data,
+  );
+
+  return <AccountInfo<any>>{
+    executable: true,
+    owner: StakeProgram.programId,
     lamports: amount,
     data,
   };

@@ -19,7 +19,7 @@ import {
 
 import { decodeData } from '../src/utils';
 
-import { mockTokenAccount, mockValidatorList, stakePoolMock } from './mocks';
+import { mockStakeAccount, mockTokenAccount, mockValidatorList, stakePoolMock } from './mocks';
 
 describe('StakePoolProgram', () => {
   const connection = new Connection('http://127.0.0.1:8899');
@@ -243,13 +243,46 @@ describe('StakePoolProgram', () => {
         }
         return null;
       });
-
       const res = await withdrawStake(connection, stakePoolAddress, tokenOwner, 1);
 
       expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(4);
       expect(res.instructions).toHaveLength(3);
       expect(res.signers).toHaveLength(2);
       expect(res.stakeReceiver).toEqual(undefined);
+      expect(res.totalRentFreeBalances).toEqual(10000);
+    });
+
+    it.only('withdraw to a stake account provided', async () => {
+      const stakeReceiver = new PublicKey(20);
+      connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
+        if (pubKey == stakePoolAddress) {
+          return stakePoolAccount;
+        }
+        if (pubKey.toBase58() == 'GQkqTamwqjaNDfsbNm7r3aXPJ4oTSqKC3d5t2PF9Smqd') {
+          return mockTokenAccount(LAMPORTS_PER_SOL * 2);
+        }
+        if (pubKey.toBase58() == stakePoolMock.validatorList.toBase58()) {
+          return mockValidatorList();
+        }
+        if (pubKey.toBase58() == stakeReceiver.toBase58()) {
+          return mockStakeAccount();
+        }
+        return null;
+      });
+      const res = await withdrawStake(
+        connection,
+        stakePoolAddress,
+        tokenOwner,
+        1,
+        undefined,
+        undefined,
+        stakeReceiver,
+      );
+
+      expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(5);
+      expect(res.instructions).toHaveLength(3);
+      expect(res.signers).toHaveLength(2);
+      expect(res.stakeReceiver).toEqual(stakeReceiver);
       expect(res.totalRentFreeBalances).toEqual(10000);
     });
   });

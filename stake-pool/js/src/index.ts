@@ -9,7 +9,12 @@ import {
   SystemProgram,
   TransactionInstruction,
 } from '@solana/web3.js';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, Token } from '@solana/spl-token';
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+  Token,
+  AccountInfo as Account,
+} from '@solana/spl-token';
 import {
   ValidatorAccount,
   addAssociatedTokenAccount,
@@ -27,6 +32,7 @@ import {
 } from './utils';
 import { StakePoolInstruction } from './instructions';
 import {
+  AccountLayout,
   StakePool,
   StakePoolLayout,
   ValidatorList,
@@ -53,6 +59,11 @@ export interface WithdrawAccount {
   stakeAddress: PublicKey;
   voteAddress?: PublicKey;
   poolAmount: number;
+}
+
+export interface StakeAccount {
+  pubkey: PublicKey;
+  account: AccountInfo<Account>;
 }
 
 /**
@@ -83,6 +94,32 @@ export async function getStakePoolAccount(
     pubkey: stakePoolAddress,
     account: {
       data: StakePoolLayout.decode(account.data),
+      executable: account.executable,
+      lamports: account.lamports,
+      owner: account.owner,
+    },
+  };
+}
+
+/**
+ * Retrieves and deserializes a Stake account using a web3js connection and the stake address.
+ * @param connection: An active web3js connection.
+ * @param stakeAccount: The public key (address) of the stake account.
+ */
+export async function getStakeAccount(
+  connection: Connection,
+  stakeAccount: PublicKey,
+): Promise<StakeAccount> {
+  const account = await connection.getAccountInfo(stakeAccount);
+
+  if (!account) {
+    throw new Error('Invalid stake account');
+  }
+
+  return {
+    pubkey: stakeAccount,
+    account: {
+      data: AccountLayout.decode(account.data),
       executable: account.executable,
       lamports: account.lamports,
       owner: account.owner,
@@ -444,17 +481,10 @@ export async function withdrawStake(
 
     console.info(infoMsg);
 
-    let stakeToReceive;
-
-    // Use separate mutable variable because withdraw might create a new account
-    if (!stakeReceiver) {
-      const stakeKeypair = newStakeAccount(tokenOwner, instructions, stakeAccountRentExemption);
-      signers.push(stakeKeypair);
-      totalRentFreeBalances += stakeAccountRentExemption;
-      stakeToReceive = stakeKeypair.publicKey;
-    } else {
-      stakeToReceive = stakeReceiver;
-    }
+    const stakeKeypair = newStakeAccount(tokenOwner, instructions, stakeAccountRentExemption);
+    signers.push(stakeKeypair);
+    totalRentFreeBalances += stakeAccountRentExemption;
+    const stakeToReceive = stakeKeypair.publicKey;
 
     instructions.push(
       StakePoolInstruction.withdrawStake({
@@ -472,6 +502,24 @@ export async function withdrawStake(
       }),
     );
     i++;
+  }
+  if (stakeReceiver) {
+    const account = (await getStakeAccount(connection, stakeReceiver)).account;
+    // check if stake reciever is a stake account and delegated to same validator
+    if (
+      account.data.owner.toBase58() == StakeProgram.programId.toBase58() &&
+      account.data.delegate?.toBase58() == stakePool.account.data.validatorList.toBase58()
+    ) {
+      signers.forEach((newStakeKeypair) => {
+        instructions.concat(
+          StakeProgram.merge({
+            stakePubkey: stakeReceiver,
+            sourceStakePubKey: newStakeKeypair.publicKey,
+            authorizedPubkey: withdrawAuthority,
+          }).instructions,
+        );
+      });
+    }
   }
 
   return {

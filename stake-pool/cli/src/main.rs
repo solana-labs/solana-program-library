@@ -1369,6 +1369,11 @@ fn command_withdraw_stake(
         )
         .into());
     }
+    let mut new_stake_keypairs = vec![];
+    let mut total_rent_free_balances = 0;
+  
+    // Construct transaction to withdraw from withdraw_accounts account list
+    let mut instructions: Vec<Instruction> = vec![];
 
     let withdraw_accounts = if use_reserve {
         vec![WithdrawAccount {
@@ -1376,7 +1381,31 @@ fn command_withdraw_stake(
             vote_address: None,
             pool_amount,
         }]
-    } else if let Some(vote_account_address) = vote_account_address {
+    } else if stake_receiver_param.is_some() && config.rpc_client.get_account(&stake_receiver_param.unwrap())?.owner == stake::program::id()
+    && get_stake_state(&config.rpc_client, &stake_receiver_param.unwrap())?.delegation().is_some(){
+        let stake_address = stake_receiver_param.unwrap();
+        // check if stake account is delegated to a validator
+        let vote_account = get_stake_state(&config.rpc_client, &stake_address)?.delegation().unwrap().voter_pubkey;
+        // Check if this vote account has staking account in the pool
+        let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
+        if vote_account_address.is_some() && vote_account != vote_account_address.unwrap(){
+            return Err(format!("Vote Account provided is not correct !").into());
+        }
+        if validator_list.validators.into_iter().find(|&x| x.vote_account_address == vote_account).is_some() {
+            let (stake_account_address, _) = find_stake_program_address(
+                &spl_stake_pool::id(),
+                &vote_account,
+                stake_pool_address,
+            );  
+            vec![WithdrawAccount {
+                stake_address: stake_account_address,
+                vote_address: Some(vote_account),
+                pool_amount,
+            }]
+        }else{
+            return Err(format!("Vote account does not exists in the stake pool").into());
+        }
+    }else if let Some(vote_account_address) = vote_account_address {
         let (stake_account_address, _) = find_stake_program_address(
             &spl_stake_pool::id(),
             vote_account_address,
@@ -1416,15 +1445,12 @@ fn command_withdraw_stake(
         )?
     };
 
-    // Construct transaction to withdraw from withdraw_accounts account list
-    let mut instructions: Vec<Instruction> = vec![];
     let user_transfer_authority = Keypair::new(); // ephemeral keypair just to do the transfer
     let mut signers = vec![
         config.fee_payer.as_ref(),
         config.token_owner.as_ref(),
         &user_transfer_authority,
     ];
-    let mut new_stake_keypairs = vec![];
 
     instructions.push(
         // Approve spending token
@@ -1437,8 +1463,6 @@ fn command_withdraw_stake(
             pool_amount,
         )?,
     );
-
-    let mut total_rent_free_balances = 0;
 
     // Go through prepared accounts and withdraw/claim them
     for withdraw_account in withdraw_accounts {
@@ -1463,17 +1487,22 @@ fn command_withdraw_stake(
                 withdraw_account.stake_address,
             );
         }
-
-        // Creating new account to split the stake into new account
-        let stake_keypair = new_stake_account(
-            &config.fee_payer.pubkey(),
-            &mut instructions,
-            stake_account_rent_exemption,
-        );
-        let stake_receiver = stake_keypair.pubkey();
-        total_rent_free_balances += stake_account_rent_exemption;
-        new_stake_keypairs.push(stake_keypair);
-
+        let stake_receiver;
+        if (stake_receiver_param.is_none()) || (stake_receiver_param.is_some() && config.rpc_client.get_account(&stake_receiver_param.unwrap())?.owner == stake::program::id()
+        && get_stake_state(&config.rpc_client, &stake_receiver_param.unwrap())?.delegation().is_some()) { 
+            // Creating new account to split the stake into new account
+            let stake_keypair = new_stake_account(
+                &config.fee_payer.pubkey(),
+                &mut instructions,
+                stake_account_rent_exemption,
+            );
+            stake_receiver = stake_keypair.pubkey();
+            total_rent_free_balances += stake_account_rent_exemption;
+            new_stake_keypairs.push(stake_keypair);
+        }else{
+            stake_receiver = stake_receiver_param.unwrap();
+        }
+        
         instructions.push(spl_stake_pool::instruction::withdraw_stake(
             &spl_stake_pool::id(),
             stake_pool_address,
@@ -1490,17 +1519,16 @@ fn command_withdraw_stake(
             withdraw_account.pool_amount,
         ));
     }
-    
+
     // Merging the stake with account provided by user
-    if stake_receiver_param.is_some(){
+    if stake_receiver_param.is_some() && config.rpc_client.get_account(&stake_receiver_param.unwrap())?.owner == stake::program::id()
+    && get_stake_state(&config.rpc_client, &stake_receiver_param.unwrap())?.delegation().is_some(){
         for new_stake_keypair in &new_stake_keypairs {
-            for instruction in stake::instruction::merge(
+            instructions.extend(stake::instruction::merge(
                 &stake_receiver_param.unwrap(),
                 &new_stake_keypair.pubkey(),
-                &pool_withdraw_authority
-            ){
-                instructions.push(instruction);
-            }
+                &config.fee_payer.pubkey(),
+            ));
         }
     }
 
