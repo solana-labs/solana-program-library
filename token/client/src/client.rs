@@ -240,3 +240,49 @@ where
             .value)
     }
 }
+
+/// Program client for offline signing.
+pub struct ProgramOfflineClient<ST> {
+    maybe_blockhash: Option<Hash>,
+    _send: ST,
+}
+
+impl<ST> fmt::Debug for ProgramOfflineClient<ST> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ProgramOfflineClient").finish()
+    }
+}
+
+impl<ST> ProgramOfflineClient<ST> {
+    pub fn new(maybe_blockhash: Option<Hash>, send: ST) -> Self {
+        Self {
+            maybe_blockhash,
+            _send: send,
+        }
+    }
+}
+
+#[async_trait]
+impl<ST> ProgramClient<ST> for ProgramOfflineClient<ST>
+where
+    ST: SendTransaction<Output = Signature> + Send + Sync,
+{
+    async fn get_minimum_balance_for_rent_exemption(
+        &self,
+        _data_len: usize,
+    ) -> ProgramClientResult<u64> {
+        Err("Unable to fetch minimum blance for rent exemption in offline mode".into())
+    }
+
+    async fn get_latest_blockhash(&self) -> ProgramClientResult<Hash> {
+        Ok(self.maybe_blockhash.unwrap())
+    }
+
+    async fn send_transaction(&self, transaction: &Transaction) -> ProgramClientResult<ST::Output> {
+        Ok(*transaction.signatures.first().expect("need a signature"))
+    }
+
+    async fn get_account(&self, _address: Pubkey) -> ProgramClientResult<Option<Account>> {
+        Err("Unable to fetch account in offline mode".into())
+    }
+}

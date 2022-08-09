@@ -1,11 +1,11 @@
 use crate::{signers_of, Error, MULTISIG_SIGNER_ARG};
 use clap::ArgMatches;
 use solana_clap_utils::{
-    input_parsers::{pubkey_of, pubkey_of_signer},
+    input_parsers::{pubkey_of, pubkey_of_signer, value_of},
     input_validators::normalize_to_url_if_moniker,
     keypair::{signer_from_path, signer_from_path_with_config, SignerFromPathConfig},
     nonce::{NONCE_ARG, NONCE_AUTHORITY_ARG},
-    offline::{DUMP_TRANSACTION_MESSAGE, SIGN_ONLY_ARG},
+    offline::{BLOCKHASH_ARG, DUMP_TRANSACTION_MESSAGE, SIGN_ONLY_ARG},
 };
 use solana_cli_output::OutputFormat;
 use solana_client::nonblocking::rpc_client::RpcClient;
@@ -16,7 +16,9 @@ use spl_token_2022::{
     extension::StateWithExtensionsOwned,
     state::{Account, Mint},
 };
-use spl_token_client::client::{ProgramClient, ProgramRpcClient, ProgramRpcClientSendTransaction};
+use spl_token_client::client::{
+    ProgramClient, ProgramOfflineClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
+};
 use std::{process::exit, sync::Arc};
 
 pub(crate) struct MintInfo {
@@ -65,9 +67,19 @@ impl<'a> Config<'a> {
             json_rpc_url,
             CommitmentConfig::confirmed(),
         ));
-        let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
-            ProgramRpcClient::new(rpc_client.clone(), ProgramRpcClientSendTransaction),
-        );
+        let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
+        let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = if sign_only {
+            let blockhash = value_of(matches, BLOCKHASH_ARG.name);
+            Arc::new(ProgramOfflineClient::new(
+                blockhash,
+                ProgramRpcClientSendTransaction,
+            ))
+        } else {
+            Arc::new(ProgramRpcClient::new(
+                rpc_client.clone(),
+                ProgramRpcClientSendTransaction,
+            ))
+        };
         Self::new_with_clients_and_ws_url(
             matches,
             wallet_manager,
