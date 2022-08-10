@@ -230,9 +230,9 @@ impl Processor {
         let pool_mint_info = next_account_info(account_info_iter)?;
         let fee_account_info = next_account_info(account_info_iter)?;
         let destination_info = next_account_info(account_info_iter)?;
-        let token_program_info = next_account_info(account_info_iter)?;
+        let pool_token_program_info = next_account_info(account_info_iter)?;
 
-        let token_program_id = *token_program_info.key;
+        let token_program_id = *pool_token_program_info.key;
         if SwapVersion::is_initialized(&swap_info.data.borrow()) {
             return Err(SwapError::AlreadyInUse.into());
         }
@@ -310,7 +310,7 @@ impl Processor {
 
         Self::token_mint_to(
             swap_info.key,
-            token_program_info.clone(),
+            pool_token_program_info.clone(),
             pool_mint_info.clone(),
             destination_info.clone(),
             authority_info.clone(),
@@ -352,7 +352,9 @@ impl Processor {
         let destination_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
-        let token_program_info = next_account_info(account_info_iter)?;
+        let source_token_program_info = next_account_info(account_info_iter)?;
+        let destination_token_program_info = next_account_info(account_info_iter)?;
+        let pool_token_program_info = next_account_info(account_info_iter)?;
 
         if swap_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
@@ -389,7 +391,7 @@ impl Processor {
         if *pool_fee_account_info.key != *token_swap.pool_fee_account() {
             return Err(SwapError::IncorrectFeeAccount.into());
         }
-        if *token_program_info.key != *token_swap.token_program_id() {
+        if *pool_token_program_info.key != *token_swap.token_program_id() {
             return Err(SwapError::IncorrectTokenProgramId.into());
         }
 
@@ -431,7 +433,7 @@ impl Processor {
 
         Self::token_transfer(
             swap_info.key,
-            token_program_info.clone(),
+            pool_token_program_info.clone(),
             source_info.clone(),
             swap_source_info.clone(),
             user_transfer_authority_info.clone(),
@@ -471,7 +473,7 @@ impl Processor {
                         .ok_or(SwapError::FeeCalculationFailure)?;
                     Self::token_mint_to(
                         swap_info.key,
-                        token_program_info.clone(),
+                        pool_token_program_info.clone(),
                         pool_mint_info.clone(),
                         host_fee_account_info.clone(),
                         authority_info.clone(),
@@ -482,7 +484,7 @@ impl Processor {
             }
             Self::token_mint_to(
                 swap_info.key,
-                token_program_info.clone(),
+                pool_token_program_info.clone(),
                 pool_mint_info.clone(),
                 pool_fee_account_info.clone(),
                 authority_info.clone(),
@@ -493,7 +495,7 @@ impl Processor {
 
         Self::token_transfer(
             swap_info.key,
-            token_program_info.clone(),
+            pool_token_program_info.clone(),
             swap_destination_info.clone(),
             destination_info.clone(),
             authority_info.clone(),
@@ -522,7 +524,9 @@ impl Processor {
         let token_b_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let dest_info = next_account_info(account_info_iter)?;
-        let token_program_info = next_account_info(account_info_iter)?;
+        let token_a_program_info = next_account_info(account_info_iter)?;
+        let token_b_program_info = next_account_info(account_info_iter)?;
+        let pool_token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
         let calculator = &token_swap.swap_curve().calculator;
@@ -537,7 +541,7 @@ impl Processor {
             token_a_info,
             token_b_info,
             pool_mint_info,
-            token_program_info,
+            pool_token_program_info,
             Some(source_a_info),
             Some(source_b_info),
             None,
@@ -581,7 +585,7 @@ impl Processor {
 
         Self::token_transfer(
             swap_info.key,
-            token_program_info.clone(),
+            pool_token_program_info.clone(),
             source_a_info.clone(),
             token_a_info.clone(),
             user_transfer_authority_info.clone(),
@@ -590,7 +594,7 @@ impl Processor {
         )?;
         Self::token_transfer(
             swap_info.key,
-            token_program_info.clone(),
+            pool_token_program_info.clone(),
             source_b_info.clone(),
             token_b_info.clone(),
             user_transfer_authority_info.clone(),
@@ -599,7 +603,7 @@ impl Processor {
         )?;
         Self::token_mint_to(
             swap_info.key,
-            token_program_info.clone(),
+            pool_token_program_info.clone(),
             pool_mint_info.clone(),
             dest_info.clone(),
             authority_info.clone(),
@@ -629,7 +633,9 @@ impl Processor {
         let dest_token_a_info = next_account_info(account_info_iter)?;
         let dest_token_b_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
-        let token_program_info = next_account_info(account_info_iter)?;
+        let pool_token_program_info = next_account_info(account_info_iter)?;
+        let token_a_program_info = next_account_info(account_info_iter)?;
+        let token_b_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
         Self::check_accounts(
@@ -640,7 +646,7 @@ impl Processor {
             token_a_info,
             token_b_info,
             pool_mint_info,
-            token_program_info,
+            pool_token_program_info,
             Some(dest_token_a_info),
             Some(dest_token_b_info),
             Some(pool_fee_account_info),
@@ -694,7 +700,7 @@ impl Processor {
         if withdraw_fee > 0 {
             Self::token_transfer(
                 swap_info.key,
-                token_program_info.clone(),
+                pool_token_program_info.clone(),
                 source_info.clone(),
                 pool_fee_account_info.clone(),
                 user_transfer_authority_info.clone(),
@@ -704,7 +710,7 @@ impl Processor {
         }
         Self::token_burn(
             swap_info.key,
-            token_program_info.clone(),
+            pool_token_program_info.clone(),
             source_info.clone(),
             pool_mint_info.clone(),
             user_transfer_authority_info.clone(),
@@ -715,7 +721,7 @@ impl Processor {
         if token_a_amount > 0 {
             Self::token_transfer(
                 swap_info.key,
-                token_program_info.clone(),
+                pool_token_program_info.clone(),
                 token_a_info.clone(),
                 dest_token_a_info.clone(),
                 authority_info.clone(),
@@ -726,7 +732,7 @@ impl Processor {
         if token_b_amount > 0 {
             Self::token_transfer(
                 swap_info.key,
-                token_program_info.clone(),
+                pool_token_program_info.clone(),
                 token_b_info.clone(),
                 dest_token_b_info.clone(),
                 authority_info.clone(),
@@ -753,7 +759,8 @@ impl Processor {
         let swap_token_b_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let destination_info = next_account_info(account_info_iter)?;
-        let token_program_info = next_account_info(account_info_iter)?;
+        let source_token_program_info = next_account_info(account_info_iter)?;
+        let pool_token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
         let calculator = &token_swap.swap_curve().calculator;
@@ -788,7 +795,7 @@ impl Processor {
             swap_token_a_info,
             swap_token_b_info,
             pool_mint_info,
-            token_program_info,
+            pool_token_program_info,
             source_a_info,
             source_b_info,
             None,
@@ -824,7 +831,7 @@ impl Processor {
             TradeDirection::AtoB => {
                 Self::token_transfer(
                     swap_info.key,
-                    token_program_info.clone(),
+                    pool_token_program_info.clone(),
                     source_info.clone(),
                     swap_token_a_info.clone(),
                     user_transfer_authority_info.clone(),
@@ -835,7 +842,7 @@ impl Processor {
             TradeDirection::BtoA => {
                 Self::token_transfer(
                     swap_info.key,
-                    token_program_info.clone(),
+                    pool_token_program_info.clone(),
                     source_info.clone(),
                     swap_token_b_info.clone(),
                     user_transfer_authority_info.clone(),
@@ -846,7 +853,7 @@ impl Processor {
         }
         Self::token_mint_to(
             swap_info.key,
-            token_program_info.clone(),
+            pool_token_program_info.clone(),
             pool_mint_info.clone(),
             destination_info.clone(),
             authority_info.clone(),
@@ -874,7 +881,8 @@ impl Processor {
         let swap_token_b_info = next_account_info(account_info_iter)?;
         let destination_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
-        let token_program_info = next_account_info(account_info_iter)?;
+        let pool_token_program_info = next_account_info(account_info_iter)?;
+        let destination_token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
         let destination_account =
@@ -904,7 +912,7 @@ impl Processor {
             swap_token_a_info,
             swap_token_b_info,
             pool_mint_info,
-            token_program_info,
+            pool_token_program_info,
             destination_a_info,
             destination_b_info,
             Some(pool_fee_account_info),
@@ -950,7 +958,7 @@ impl Processor {
         if withdraw_fee > 0 {
             Self::token_transfer(
                 swap_info.key,
-                token_program_info.clone(),
+                pool_token_program_info.clone(),
                 source_info.clone(),
                 pool_fee_account_info.clone(),
                 user_transfer_authority_info.clone(),
@@ -960,7 +968,7 @@ impl Processor {
         }
         Self::token_burn(
             swap_info.key,
-            token_program_info.clone(),
+            pool_token_program_info.clone(),
             source_info.clone(),
             pool_mint_info.clone(),
             user_transfer_authority_info.clone(),
@@ -972,7 +980,7 @@ impl Processor {
             TradeDirection::AtoB => {
                 Self::token_transfer(
                     swap_info.key,
-                    token_program_info.clone(),
+                    pool_token_program_info.clone(),
                     swap_token_a_info.clone(),
                     destination_info.clone(),
                     authority_info.clone(),
@@ -983,7 +991,7 @@ impl Processor {
             TradeDirection::BtoA => {
                 Self::token_transfer(
                     swap_info.key,
-                    token_program_info.clone(),
+                    pool_token_program_info.clone(),
                     swap_token_b_info.clone(),
                     destination_info.clone(),
                     authority_info.clone(),
@@ -1469,6 +1477,8 @@ mod tests {
                     &mut self.pool_mint_account,
                     &mut self.pool_fee_account,
                     &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                 ],
             )?;
 
@@ -1562,6 +1572,8 @@ mod tests {
                     &mut self.pool_mint_account,
                     depositor_pool_account,
                     &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                 ],
             )
         }
@@ -1636,6 +1648,8 @@ mod tests {
                     token_b_account,
                     &mut self.pool_fee_account,
                     &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                 ],
             )
         }
@@ -1698,6 +1712,7 @@ mod tests {
                     &mut self.token_b_account,
                     &mut self.pool_mint_account,
                     deposit_pool_account,
+                    &mut SolanaAccount::default(),
                     &mut SolanaAccount::default(),
                 ],
             )
@@ -1764,6 +1779,7 @@ mod tests {
                     &mut self.token_b_account,
                     destination_account,
                     &mut self.pool_fee_account,
+                    &mut SolanaAccount::default(),
                     &mut SolanaAccount::default(),
                 ],
             )
@@ -3260,6 +3276,8 @@ mod tests {
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
                         &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 )
             );
@@ -3310,6 +3328,8 @@ mod tests {
                         &mut accounts.token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                     ],
                 )
@@ -3931,6 +3951,8 @@ mod tests {
                         &mut token_b_account,
                         &mut accounts.pool_fee_account,
                         &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 )
             );
@@ -3989,6 +4011,8 @@ mod tests {
                         &mut token_a_account,
                         &mut token_b_account,
                         &mut accounts.pool_fee_account,
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                     ],
                 )
@@ -4626,6 +4650,7 @@ mod tests {
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
                         &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 )
             );
@@ -4672,6 +4697,7 @@ mod tests {
                         &mut accounts.token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
+                        &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                     ],
                 )
@@ -5203,6 +5229,7 @@ mod tests {
                         &mut token_a_account,
                         &mut accounts.pool_fee_account,
                         &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 )
             );
@@ -5257,6 +5284,7 @@ mod tests {
                         &mut accounts.token_b_account,
                         &mut token_a_account,
                         &mut accounts.pool_fee_account,
+                        &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                     ],
                 )
@@ -5997,6 +6025,8 @@ mod tests {
                 &mut accounts.pool_mint_account,
                 &mut accounts.pool_fee_account,
                 &mut SolanaAccount::default(),
+                &mut SolanaAccount::default(),
+                &mut SolanaAccount::default(),
                 &mut pool_account,
             ],
             &constraints,
@@ -6200,6 +6230,8 @@ mod tests {
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
                         &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 ),
             );
@@ -6276,6 +6308,8 @@ mod tests {
                         &mut token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                     ],
                 ),
@@ -6448,6 +6482,8 @@ mod tests {
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
                         &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                     ],
                 ),
             );
@@ -6608,6 +6644,8 @@ mod tests {
                     &mut accounts.pool_mint_account,
                     &mut accounts.pool_fee_account,
                     &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
+                    &mut SolanaAccount::default(),
                 ],
                 &constraints,
             )
@@ -6683,6 +6721,8 @@ mod tests {
                         &mut token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
+                        &mut SolanaAccount::default(),
+                        &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                         &mut bad_token_a_account,
                     ],
