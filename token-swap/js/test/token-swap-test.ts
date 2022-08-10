@@ -181,7 +181,7 @@ export async function createTokenSwap(
     swapPayer,
   );
 
-  assert(fetchedTokenSwap.tokenProgramId.equals(TOKEN_PROGRAM_ID));
+  assert(fetchedTokenSwap.poolTokenProgramId.equals(TOKEN_PROGRAM_ID));
   assert(fetchedTokenSwap.tokenAccountA.equals(tokenAccountA));
   assert(fetchedTokenSwap.tokenAccountB.equals(tokenAccountB));
   assert(fetchedTokenSwap.mintA.equals(mintA.publicKey));
@@ -262,6 +262,8 @@ export async function depositAllTokenTypes(): Promise<void> {
     userAccountA,
     userAccountB,
     newAccountPool,
+    TOKEN_PROGRAM_ID,
+    TOKEN_PROGRAM_ID,
     userTransferAuthority,
     POOL_TOKEN_AMOUNT,
     tokenA,
@@ -328,6 +330,8 @@ export async function withdrawAllTokenTypes(): Promise<void> {
     userAccountA,
     userAccountB,
     tokenAccountPool,
+    TOKEN_PROGRAM_ID,
+    TOKEN_PROGRAM_ID,
     userTransferAuthority,
     POOL_TOKEN_AMOUNT,
     tokenA,
@@ -411,7 +415,9 @@ export async function createAccountAndSwapAtomic(): Promise<void> {
       tokenSwap.feeAccount,
       null,
       tokenSwap.swapProgramId,
-      tokenSwap.tokenProgramId,
+      TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      tokenSwap.poolTokenProgramId,
       SWAP_AMOUNT_IN,
       0,
     ),
@@ -465,6 +471,8 @@ export async function swap(): Promise<void> {
     tokenAccountA,
     tokenAccountB,
     userAccountB,
+    TOKEN_PROGRAM_ID,
+    TOKEN_PROGRAM_ID,
     poolAccount,
     userTransferAuthority,
     SWAP_AMOUNT_IN,
@@ -566,6 +574,7 @@ export async function depositSingleTokenTypeExactAmountIn(): Promise<void> {
   await tokenSwap.depositSingleTokenTypeExactAmountIn(
     userAccountA,
     newAccountPool,
+    TOKEN_PROGRAM_ID,
     userTransferAuthority,
     depositAmount,
     poolTokenA,
@@ -583,6 +592,7 @@ export async function depositSingleTokenTypeExactAmountIn(): Promise<void> {
   await tokenSwap.depositSingleTokenTypeExactAmountIn(
     userAccountB,
     newAccountPool,
+    TOKEN_PROGRAM_ID,
     userTransferAuthority,
     depositAmount,
     poolTokenB,
@@ -656,6 +666,7 @@ export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
   await tokenSwap.withdrawSingleTokenTypeExactAmountOut(
     userAccountA,
     tokenAccountPool,
+    TOKEN_PROGRAM_ID,
     userTransferAuthority,
     withdrawAmount,
     adjustedPoolTokenA,
@@ -675,6 +686,7 @@ export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
   await tokenSwap.withdrawSingleTokenTypeExactAmountOut(
     userAccountB,
     tokenAccountPool,
+    TOKEN_PROGRAM_ID,
     userTransferAuthority,
     withdrawAmount,
     adjustedPoolTokenB,
