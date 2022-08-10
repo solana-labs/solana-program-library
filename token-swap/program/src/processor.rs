@@ -1440,6 +1440,8 @@ mod tests {
                 swap(
                     &SWAP_PROGRAM_ID,
                     &self.token_program_id,
+                    &self.token_program_id,
+                    &self.token_program_id,
                     &self.swap_key,
                     &self.authority_key,
                     &user_transfer_key,
@@ -1531,6 +1533,8 @@ mod tests {
                 deposit_all_token_types(
                     &SWAP_PROGRAM_ID,
                     &self.token_program_id,
+                    &self.token_program_id,
+                    &self.token_program_id,
                     &self.swap_key,
                     &self.authority_key,
                     &user_transfer_authority,
@@ -1601,6 +1605,8 @@ mod tests {
                 withdraw_all_token_types(
                     &SWAP_PROGRAM_ID,
                     &self.token_program_id,
+                    &self.token_program_id,
+                    &self.token_program_id,
                     &self.swap_key,
                     &self.authority_key,
                     &user_transfer_authority_key,
@@ -1668,6 +1674,7 @@ mod tests {
                 deposit_single_token_type_exact_amount_in(
                     &SWAP_PROGRAM_ID,
                     &self.token_program_id,
+                    &self.token_program_id,
                     &self.swap_key,
                     &self.authority_key,
                     &user_transfer_authority_key,
@@ -1730,6 +1737,7 @@ mod tests {
             do_process_instruction(
                 withdraw_single_token_type_exact_amount_out(
                     &SWAP_PROGRAM_ID,
+                    &self.token_program_id,
                     &self.token_program_id,
                     &self.swap_key,
                     &self.authority_key,
@@ -3223,6 +3231,8 @@ mod tests {
                     deposit_all_token_types(
                         &SWAP_PROGRAM_ID,
                         &token_program_id,
+                        &token_program_id,
+                        &token_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &user_transfer_authority_key,
@@ -3271,6 +3281,8 @@ mod tests {
                 do_process_instruction(
                     deposit_all_token_types(
                         &SWAP_PROGRAM_ID,
+                        &wrong_key,
+                        &wrong_key,
                         &wrong_key,
                         &accounts.swap_key,
                         &accounts.authority_key,
@@ -3888,6 +3900,8 @@ mod tests {
                     withdraw_all_token_types(
                         &SWAP_PROGRAM_ID,
                         &token_program_id,
+                        &token_program_id,
+                        &token_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &user_transfer_authority_key,
@@ -3944,6 +3958,8 @@ mod tests {
                 do_process_instruction(
                     withdraw_all_token_types(
                         &SWAP_PROGRAM_ID,
+                        &wrong_key,
+                        &wrong_key,
                         &wrong_key,
                         &accounts.swap_key,
                         &accounts.authority_key,
@@ -4585,6 +4601,7 @@ mod tests {
                     deposit_single_token_type_exact_amount_in(
                         &SWAP_PROGRAM_ID,
                         &token_program_id,
+                        &token_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &user_transfer_authority_key,
@@ -4630,6 +4647,7 @@ mod tests {
                 do_process_instruction(
                     deposit_single_token_type_exact_amount_in(
                         &SWAP_PROGRAM_ID,
+                        &wrong_key,
                         &wrong_key,
                         &accounts.swap_key,
                         &accounts.authority_key,
@@ -5158,6 +5176,7 @@ mod tests {
                     withdraw_single_token_type_exact_amount_out(
                         &SWAP_PROGRAM_ID,
                         &token_program_id,
+                        &token_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &user_transfer_authority_key,
@@ -5211,6 +5230,7 @@ mod tests {
                 do_process_instruction(
                     withdraw_single_token_type_exact_amount_out(
                         &SWAP_PROGRAM_ID,
+                        &wrong_key,
                         &wrong_key,
                         &accounts.swap_key,
                         &accounts.authority_key,
@@ -5948,6 +5968,8 @@ mod tests {
             swap(
                 &SWAP_PROGRAM_ID,
                 &token_program_id,
+                &token_program_id,
+                &token_program_id,
                 &accounts.swap_key,
                 &accounts.authority_key,
                 &accounts.authority_key,
@@ -6149,6 +6171,8 @@ mod tests {
                     swap(
                         &SWAP_PROGRAM_ID,
                         &wrong_program_id,
+                        &wrong_program_id,
+                        &wrong_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &accounts.authority_key,
@@ -6223,6 +6247,8 @@ mod tests {
                 do_process_instruction(
                     swap(
                         &SWAP_PROGRAM_ID,
+                        &token_program_id,
+                        &token_program_id,
                         &token_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
@@ -6393,6 +6419,8 @@ mod tests {
                     swap(
                         &SWAP_PROGRAM_ID,
                         &token_program_id,
+                        &token_program_id,
+                        &token_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &user_transfer_key,
@@ -6551,6 +6579,8 @@ mod tests {
                 swap(
                     &SWAP_PROGRAM_ID,
                     &token_program_id,
+                    &token_program_id,
+                    &token_program_id,
                     &accounts.swap_key,
                     &accounts.authority_key,
                     &accounts.authority_key,
@@ -6624,6 +6654,8 @@ mod tests {
                 do_process_instruction_with_fee_constraints(
                     swap(
                         &SWAP_PROGRAM_ID,
+                        &token_program_id,
+                        &token_program_id,
                         &token_program_id,
                         &accounts.swap_key,
                         &accounts.authority_key,
