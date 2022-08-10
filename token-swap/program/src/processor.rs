@@ -27,6 +27,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 use spl_token_2022::{
+    check_spl_token_program_account,
     error::TokenError,
     extension::StateWithExtensions,
     state::{Account, Mint},
@@ -41,7 +42,9 @@ impl Processor {
         account_info: &AccountInfo,
         token_program_id: &Pubkey,
     ) -> Result<Account, SwapError> {
-        if account_info.owner != token_program_id {
+        if account_info.owner != token_program_id
+            && check_spl_token_program_account(account_info.owner).is_err()
+        {
             Err(SwapError::IncorrectTokenProgramId)
         } else {
             StateWithExtensions::<Account>::unpack(&account_info.data.borrow())
@@ -55,7 +58,9 @@ impl Processor {
         account_info: &AccountInfo,
         token_program_id: &Pubkey,
     ) -> Result<Mint, SwapError> {
-        if account_info.owner != token_program_id {
+        if account_info.owner != token_program_id
+            && check_spl_token_program_account(account_info.owner).is_err()
+        {
             Err(SwapError::IncorrectTokenProgramId)
         } else {
             StateWithExtensions::<Mint>::unpack(&account_info.data.borrow())
@@ -171,7 +176,7 @@ impl Processor {
         token_a_info: &AccountInfo,
         token_b_info: &AccountInfo,
         pool_mint_info: &AccountInfo,
-        token_program_info: &AccountInfo,
+        pool_token_program_info: &AccountInfo,
         user_token_a_info: Option<&AccountInfo>,
         user_token_b_info: Option<&AccountInfo>,
         pool_fee_account_info: Option<&AccountInfo>,
@@ -193,7 +198,7 @@ impl Processor {
         if *pool_mint_info.key != *token_swap.pool_mint() {
             return Err(SwapError::IncorrectPoolMint.into());
         }
-        if *token_program_info.key != *token_swap.token_program_id() {
+        if *pool_token_program_info.key != *token_swap.token_program_id() {
             return Err(SwapError::IncorrectTokenProgramId.into());
         }
         if let Some(user_token_a_info) = user_token_a_info {
@@ -433,7 +438,7 @@ impl Processor {
 
         Self::token_transfer(
             swap_info.key,
-            pool_token_program_info.clone(),
+            source_token_program_info.clone(),
             source_info.clone(),
             swap_source_info.clone(),
             user_transfer_authority_info.clone(),
@@ -495,7 +500,7 @@ impl Processor {
 
         Self::token_transfer(
             swap_info.key,
-            pool_token_program_info.clone(),
+            destination_token_program_info.clone(),
             swap_destination_info.clone(),
             destination_info.clone(),
             authority_info.clone(),
@@ -585,7 +590,7 @@ impl Processor {
 
         Self::token_transfer(
             swap_info.key,
-            pool_token_program_info.clone(),
+            token_a_program_info.clone(),
             source_a_info.clone(),
             token_a_info.clone(),
             user_transfer_authority_info.clone(),
@@ -594,7 +599,7 @@ impl Processor {
         )?;
         Self::token_transfer(
             swap_info.key,
-            pool_token_program_info.clone(),
+            token_b_program_info.clone(),
             source_b_info.clone(),
             token_b_info.clone(),
             user_transfer_authority_info.clone(),
@@ -721,7 +726,7 @@ impl Processor {
         if token_a_amount > 0 {
             Self::token_transfer(
                 swap_info.key,
-                pool_token_program_info.clone(),
+                token_a_program_info.clone(),
                 token_a_info.clone(),
                 dest_token_a_info.clone(),
                 authority_info.clone(),
@@ -732,7 +737,7 @@ impl Processor {
         if token_b_amount > 0 {
             Self::token_transfer(
                 swap_info.key,
-                pool_token_program_info.clone(),
+                token_b_program_info.clone(),
                 token_b_info.clone(),
                 dest_token_b_info.clone(),
                 authority_info.clone(),
@@ -831,7 +836,7 @@ impl Processor {
             TradeDirection::AtoB => {
                 Self::token_transfer(
                     swap_info.key,
-                    pool_token_program_info.clone(),
+                    source_token_program_info.clone(),
                     source_info.clone(),
                     swap_token_a_info.clone(),
                     user_transfer_authority_info.clone(),
@@ -842,7 +847,7 @@ impl Processor {
             TradeDirection::BtoA => {
                 Self::token_transfer(
                     swap_info.key,
-                    pool_token_program_info.clone(),
+                    source_token_program_info.clone(),
                     source_info.clone(),
                     swap_token_b_info.clone(),
                     user_transfer_authority_info.clone(),
@@ -980,7 +985,7 @@ impl Processor {
             TradeDirection::AtoB => {
                 Self::token_transfer(
                     swap_info.key,
-                    pool_token_program_info.clone(),
+                    destination_token_program_info.clone(),
                     swap_token_a_info.clone(),
                     destination_info.clone(),
                     authority_info.clone(),
@@ -991,7 +996,7 @@ impl Processor {
             TradeDirection::BtoA => {
                 Self::token_transfer(
                     swap_info.key,
-                    pool_token_program_info.clone(),
+                    destination_token_program_info.clone(),
                     swap_token_b_info.clone(),
                     destination_info.clone(),
                     authority_info.clone(),
@@ -1521,9 +1526,10 @@ mod tests {
             maximum_token_b_amount: u64,
         ) -> ProgramResult {
             let user_transfer_authority = Pubkey::new_unique();
+            let token_a_program_id = depositor_token_a_account.owner;
             do_process_instruction(
                 approve(
-                    &self.token_a_program_id,
+                    &token_a_program_id,
                     depositor_token_a_key,
                     &user_transfer_authority,
                     depositor_key,
@@ -1539,9 +1545,10 @@ mod tests {
             )
             .unwrap();
 
+            let token_b_program_id = depositor_token_b_account.owner;
             do_process_instruction(
                 approve(
-                    &self.token_b_program_id,
+                    &token_b_program_id,
                     depositor_token_b_key,
                     &user_transfer_authority,
                     depositor_key,
@@ -1557,12 +1564,13 @@ mod tests {
             )
             .unwrap();
 
+            let pool_token_program_id = depositor_pool_account.owner;
             do_process_instruction(
                 deposit_all_token_types(
                     &SWAP_PROGRAM_ID,
-                    &self.token_a_program_id,
-                    &self.token_b_program_id,
-                    &self.pool_token_program_id,
+                    &token_a_program_id,
+                    &token_b_program_id,
+                    &pool_token_program_id,
                     &self.swap_key,
                     &self.authority_key,
                     &user_transfer_authority,
@@ -1611,10 +1619,11 @@ mod tests {
             minimum_token_b_amount: u64,
         ) -> ProgramResult {
             let user_transfer_authority_key = Pubkey::new_unique();
+            let pool_token_program_id = pool_account.owner;
             // approve user transfer authority to take out pool tokens
             do_process_instruction(
                 approve(
-                    &self.pool_token_program_id,
+                    &pool_token_program_id,
                     pool_key,
                     &user_transfer_authority_key,
                     user_key,
@@ -1631,12 +1640,14 @@ mod tests {
             .unwrap();
 
             // withdraw token a and b correctly
+            let token_a_program_id = token_a_account.owner;
+            let token_b_program_id = token_b_account.owner;
             do_process_instruction(
                 withdraw_all_token_types(
                     &SWAP_PROGRAM_ID,
-                    &self.pool_token_program_id,
-                    &self.token_a_program_id,
-                    &self.token_b_program_id,
+                    &pool_token_program_id,
+                    &token_a_program_id,
+                    &token_b_program_id,
                     &self.swap_key,
                     &self.authority_key,
                     &user_transfer_authority_key,
@@ -1703,11 +1714,12 @@ mod tests {
             )
             .unwrap();
 
+            let pool_token_program_id = deposit_pool_account.owner;
             do_process_instruction(
                 deposit_single_token_type_exact_amount_in(
                     &SWAP_PROGRAM_ID,
                     &source_token_program_id,
-                    &self.pool_token_program_id,
+                    &pool_token_program_id,
                     &self.swap_key,
                     &self.authority_key,
                     &user_transfer_authority_key,
@@ -1749,10 +1761,11 @@ mod tests {
             maximum_pool_token_amount: u64,
         ) -> ProgramResult {
             let user_transfer_authority_key = Pubkey::new_unique();
+            let pool_token_program_id = pool_account.owner;
             // approve user transfer authority to take out pool tokens
             do_process_instruction(
                 approve(
-                    &self.pool_token_program_id,
+                    &pool_token_program_id,
                     pool_key,
                     &user_transfer_authority_key,
                     user_key,
@@ -1772,7 +1785,7 @@ mod tests {
             do_process_instruction(
                 withdraw_single_token_type_exact_amount_out(
                     &SWAP_PROGRAM_ID,
-                    &self.pool_token_program_id,
+                    &pool_token_program_id,
                     &destination_token_program_id,
                     &self.swap_key,
                     &self.authority_key,
@@ -2412,7 +2425,7 @@ mod tests {
         // pool fee account has wrong mint
         {
             let (_pool_fee_key, pool_fee_account) = mint_token(
-                &pool_token_program_id,
+                &token_a_program_id,
                 &accounts.token_a_mint_key,
                 &mut accounts.token_a_mint_account,
                 &user_key,
@@ -2576,7 +2589,7 @@ mod tests {
         {
             let wrong_program_id = Pubkey::new_unique();
             assert_eq!(
-                Err(SwapError::IncorrectTokenProgramId.into()),
+                Err(ProgramError::IncorrectProgramId),
                 do_process_instruction(
                     initialize(
                         &SWAP_PROGRAM_ID,
@@ -3231,8 +3244,13 @@ mod tests {
                 pool_key,
                 mut pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            let expected_error: ProgramError = if token_a_account.owner == token_b_account.owner {
+                TokenError::MintMismatch.into()
+            } else {
+                ProgramError::InvalidAccountData
+            };
             assert_eq!(
-                Err(TokenError::MintMismatch.into()),
+                Err(expected_error),
                 accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_b_key,
@@ -3264,10 +3282,15 @@ mod tests {
                 _token_b_key,
                 mut _token_b_account,
                 _pool_key,
-                mut _pool_account,
+                pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            let expected_error: ProgramError = if token_a_account.owner == pool_account.owner {
+                TokenError::MintMismatch.into()
+            } else {
+                SwapError::IncorrectTokenProgramId.into()
+            };
             assert_eq!(
-                Err(TokenError::MintMismatch.into()),
+                Err(expected_error),
                 accounts.deposit_all_token_types(
                     &depositor_key,
                     &token_a_key,
@@ -3841,8 +3864,13 @@ mod tests {
                 initial_b,
                 withdraw_amount.try_into().unwrap(),
             );
+            let expected_error: ProgramError = if token_a_account.owner == token_b_account.owner {
+                TokenError::MintMismatch.into()
+            } else {
+                ProgramError::InvalidAccountData
+            };
             assert_eq!(
-                Err(TokenError::MintMismatch.into()),
+                Err(expected_error),
                 accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &pool_key,
@@ -3880,7 +3908,7 @@ mod tests {
                 _token_b_key,
                 _token_b_account,
                 _pool_key,
-                _pool_account,
+                pool_account,
             ) = accounts.setup_token_accounts(
                 &user_key,
                 &withdrawer_key,
@@ -3888,8 +3916,13 @@ mod tests {
                 initial_b,
                 withdraw_amount.try_into().unwrap(),
             );
+            let expected_error: ProgramError = if token_a_account.owner == pool_account.owner {
+                TokenError::MintMismatch.into()
+            } else {
+                SwapError::IncorrectTokenProgramId.into()
+            };
             assert_eq!(
-                Err(TokenError::MintMismatch.into()),
+                Err(expected_error),
                 accounts.withdraw_all_token_types(
                     &withdrawer_key,
                     &wrong_token_a_key,
@@ -4661,10 +4694,15 @@ mod tests {
                 token_b_key,
                 mut token_b_account,
                 _pool_key,
-                mut _pool_account,
+                pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
+            let expected_error: ProgramError = if token_b_account.owner == pool_account.owner {
+                TokenError::MintMismatch.into()
+            } else {
+                SwapError::IncorrectTokenProgramId.into()
+            };
             assert_eq!(
-                Err(TokenError::MintMismatch.into()),
+                Err(expected_error),
                 accounts.deposit_single_token_type_exact_amount_in(
                     &depositor_key,
                     &token_a_key,
@@ -5184,7 +5222,7 @@ mod tests {
                 token_b_key,
                 mut token_b_account,
                 _pool_key,
-                _pool_account,
+                pool_account,
             ) = accounts.setup_token_accounts(
                 &user_key,
                 &withdrawer_key,
@@ -5192,8 +5230,13 @@ mod tests {
                 initial_b,
                 maximum_pool_token_amount,
             );
+            let expected_error: ProgramError = if token_a_account.owner == pool_account.owner {
+                TokenError::MintMismatch.into()
+            } else {
+                SwapError::IncorrectTokenProgramId.into()
+            };
             assert_eq!(
-                Err(TokenError::MintMismatch.into()),
+                Err(expected_error),
                 accounts.withdraw_single_token_type_exact_amount_out(
                     &withdrawer_key,
                     &token_a_key,
@@ -6448,8 +6491,13 @@ mod tests {
                 _pool_key,
                 _pool_account,
             ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
+            let expected_error: ProgramError = if token_a_account.owner == token_b_account.owner {
+                TokenError::MintMismatch.into()
+            } else {
+                ProgramError::IncorrectProgramId
+            };
             assert_eq!(
-                Err(TokenError::MintMismatch.into()),
+                Err(expected_error),
                 accounts.swap(
                     &swapper_key,
                     &token_b_key,
