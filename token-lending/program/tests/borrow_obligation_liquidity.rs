@@ -248,9 +248,9 @@ async fn test_borrow_sol_max_amount() {
                 test_obligation.pubkey,
                 vec![usdc_test_reserve.pubkey],
             ),
-            borrow_obligation_liquidity(
+            borrow_all_obligation_liquidity(
                 spl_token_lending::id(),
-                u64::MAX,
+                0_u64,
                 sol_test_reserve.liquidity_supply_pubkey,
                 sol_test_reserve.user_liquidity_pubkey,
                 sol_test_reserve.pubkey,
