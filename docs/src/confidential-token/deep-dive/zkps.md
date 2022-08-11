@@ -200,8 +200,8 @@ example, if a transfer amount is `100` and the fee parameter is `bp = 110` and
 `max_fee = 3`, then the fee is `2`, which is rounded up from 1.1% of the
 transfer amount.
 
-The fee parameters are specified when mints are extended for fees. In addition
-to the fee parameters, mints that are extended for fees contain the
+The fee parameters can be specified in mints that are extended for fees. In
+addition to the fee parameters, mints that are extended for fees contain the
 `withdraw_withheld_authority` field, which specifies the public key of an
 authority that can collect fees that are withheld from transfer amounts.
 
@@ -237,11 +237,10 @@ struct TransferWithFeeData {
 ```
 
 Upon receiving a `TransferWithFee` instruction, the Token program deducts the
-ciphertext that encrypts the fee under the destination ElGamal public key from
-the ciphertext that encrypts the transfer amount under the same public key. Then
-it aggregates the ciphertext that encrypts the fee under the withdraw withheld
-authority's ElGamal public key into the `withheld_fee` component of the
-destination account.
+encrypted fee under the destination ElGamal public key from the encrypted
+transfer amount under the same public key. Then it aggregates the ciphertext
+that encrypts the fee under the withdraw withheld authority's ElGamal public key
+into the `withheld_fee` component of the destination account.
 
 ### Verifying the Fee Ciphertext
 
