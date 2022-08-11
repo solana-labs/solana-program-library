@@ -243,7 +243,7 @@ where
 
 /// Program client for offline signing.
 pub struct ProgramOfflineClient<ST> {
-    maybe_blockhash: Option<Hash>,
+    blockhash: Hash,
     _send: ST,
 }
 
@@ -254,9 +254,9 @@ impl<ST> fmt::Debug for ProgramOfflineClient<ST> {
 }
 
 impl<ST> ProgramOfflineClient<ST> {
-    pub fn new(maybe_blockhash: Option<Hash>, send: ST) -> Self {
+    pub fn new(blockhash: Hash, send: ST) -> Self {
         Self {
-            maybe_blockhash,
+            blockhash,
             _send: send,
         }
     }
@@ -275,7 +275,7 @@ where
     }
 
     async fn get_latest_blockhash(&self) -> ProgramClientResult<Hash> {
-        Ok(self.maybe_blockhash.unwrap())
+        Ok(self.blockhash)
     }
 
     async fn send_transaction(&self, transaction: &Transaction) -> ProgramClientResult<ST::Output> {

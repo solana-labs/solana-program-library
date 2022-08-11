@@ -69,7 +69,7 @@ impl<'a> Config<'a> {
         ));
         let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
         let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = if sign_only {
-            let blockhash = value_of(matches, BLOCKHASH_ARG.name);
+            let blockhash = value_of(matches, BLOCKHASH_ARG.name).unwrap_or_default();
             Arc::new(ProgramOfflineClient::new(
                 blockhash,
                 ProgramRpcClientSendTransaction,
