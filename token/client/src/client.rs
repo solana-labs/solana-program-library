@@ -62,8 +62,14 @@ pub trait SendTransactionRpc: SendTransaction {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ProgramRpcClientSendTransaction;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RpcClientResponse {
+    Signature(Signature),
+    Transaction(Transaction),
+}
+
 impl SendTransaction for ProgramRpcClientSendTransaction {
-    type Output = Signature;
+    type Output = RpcClientResponse;
 }
 
 impl SendTransactionRpc for ProgramRpcClientSendTransaction {
@@ -76,12 +82,12 @@ impl SendTransactionRpc for ProgramRpcClientSendTransaction {
             client
                 .send_and_confirm_transaction(transaction)
                 .await
+                .map(RpcClientResponse::Signature)
                 .map_err(Into::into)
         })
     }
 }
 
-//
 pub type ProgramClientError = Box<dyn std::error::Error + Send + Sync>;
 pub type ProgramClientResult<T> = Result<T, ProgramClientError>;
 
@@ -265,7 +271,7 @@ impl<ST> ProgramOfflineClient<ST> {
 #[async_trait]
 impl<ST> ProgramClient<ST> for ProgramOfflineClient<ST>
 where
-    ST: SendTransaction<Output = Signature> + Send + Sync,
+    ST: SendTransaction<Output = RpcClientResponse> + Send + Sync,
 {
     async fn get_minimum_balance_for_rent_exemption(
         &self,
@@ -279,7 +285,7 @@ where
     }
 
     async fn send_transaction(&self, transaction: &Transaction) -> ProgramClientResult<ST::Output> {
-        Ok(*transaction.signatures.first().expect("need a signature"))
+        Ok(RpcClientResponse::Transaction(transaction.clone()))
     }
 
     async fn get_account(&self, _address: Pubkey) -> ProgramClientResult<Option<Account>> {
