@@ -1,5 +1,5 @@
 use crate::state::{Node, EMPTY};
-use solana_program::{keccak::hashv};
+use solana_program::keccak::hashv;
 
 /// Calculates hash of empty nodes up to level i
 pub fn empty_node(level: u32) -> Node {

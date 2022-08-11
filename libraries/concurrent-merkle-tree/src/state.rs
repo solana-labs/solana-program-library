@@ -1,6 +1,6 @@
 use crate::utils::hash_to_parent;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 /// Stores proof for a given Merkle root update
 #[repr(C)]
 pub struct ChangeLog<const MAX_DEPTH: usize> {
@@ -71,7 +71,7 @@ impl<const MAX_DEPTH: usize> ChangeLog<MAX_DEPTH> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub struct Path<const MAX_DEPTH: usize> {
     pub proof: [Node; MAX_DEPTH],

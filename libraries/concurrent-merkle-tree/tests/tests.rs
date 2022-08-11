@@ -5,7 +5,6 @@ use merkle_tree_reference::MerkleTree;
 use rand::thread_rng;
 use rand::{self, Rng};
 
-
 const DEPTH: usize = 14;
 const BUFFER_SIZE: usize = 64;
 

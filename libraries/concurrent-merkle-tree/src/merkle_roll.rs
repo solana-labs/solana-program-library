@@ -210,7 +210,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
         fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
         log_compute!();
-        
+
         log_compute!();
         match self.try_apply_proof(current_root, EMPTY, leaf, &mut proof, index, false) {
             Ok(new_root) => Ok(new_root),
@@ -238,7 +238,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
             fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
             log_compute!();
-            
+
             log_compute!();
             self.try_apply_proof(
                 current_root,
