@@ -5,7 +5,7 @@ use merkle_tree_reference::MerkleTree;
 use rand::thread_rng;
 use rand::{self, Rng};
 
-const DEPTH: usize = 14;
+const DEPTH: usize = 10;
 const BUFFER_SIZE: usize = 64;
 
 fn setup() -> (MerkleRoll<DEPTH, BUFFER_SIZE>, MerkleTree) {
@@ -25,7 +25,7 @@ fn setup() -> (MerkleRoll<DEPTH, BUFFER_SIZE>, MerkleTree) {
     (merkle, reference_tree)
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_initialize() {
     let (mut merkle_roll, off_chain_tree) = setup();
     merkle_roll.initialize().unwrap();
@@ -37,7 +37,7 @@ async fn test_initialize() {
     );
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_append() {
     let (mut merkle_roll, mut off_chain_tree) = setup();
     let mut rng = thread_rng();
@@ -60,7 +60,7 @@ async fn test_append() {
     );
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_prove_leaf() {
     let (mut merkle_roll, mut off_chain_tree) = setup();
     let mut rng = thread_rng();
@@ -95,7 +95,7 @@ async fn test_prove_leaf() {
         let old_proof = off_chain_tree.get_proof_of_leaf(leaf_idx);
 
         // While executing random replaces, check
-        for _ in 0..BUFFER_SIZE {
+        for _ in 0..(BUFFER_SIZE - 1) {
             let new_leaf = rng.gen::<Node>();
             let mut random_leaf_idx = rng.gen_range(0, 1 << DEPTH);
             while random_leaf_idx == leaf_idx {
@@ -121,7 +121,7 @@ async fn test_prove_leaf() {
     }
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_initialize_with_root() {
     let (mut merkle_roll, mut tree) = setup();
     let mut rng = thread_rng();
@@ -147,7 +147,7 @@ async fn test_initialize_with_root() {
     );
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_leaf_contents_modified() {
     let (mut merkle_roll, mut tree) = setup();
     let mut rng = thread_rng();
@@ -189,7 +189,7 @@ async fn test_leaf_contents_modified() {
     }
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_replaces() {
     let (mut merkle_roll, mut tree) = setup();
     let mut rng = thread_rng();
@@ -219,8 +219,8 @@ async fn test_replaces() {
         assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
     }
 
-    // Replaces leaves in a random order by 4x capacity
-    let test_capacity: usize = 4 * (1 << DEPTH);
+    // Replaces leaves in a random order by x capacity
+    let test_capacity: usize = 1 << (DEPTH - 1);
     for _ in 0..(test_capacity) {
         let index = rng.gen_range(0, test_capacity) % (1 << DEPTH);
         let leaf = rng.gen::<[u8; 32]>();
@@ -238,7 +238,7 @@ async fn test_replaces() {
     }
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_default_node_is_empty() {
     assert_eq!(
         Node::default(),
@@ -247,7 +247,7 @@ async fn test_default_node_is_empty() {
     );
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_mixed() {
     let (mut merkle_roll, mut tree) = setup();
     let mut rng = thread_rng();
@@ -300,7 +300,7 @@ async fn test_mixed() {
     }
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 /// Append after replacing the last leaf
 async fn test_append_bug_repro_1() {
     let (mut merkle_roll, mut tree) = setup();
@@ -348,7 +348,7 @@ async fn test_append_bug_repro_1() {
     assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
 }
 
-#[tokio::test(threaded_scheduler)]
+#[tokio::test(flavor = "multi_thread")]
 /// Append after also appending via a replace
 async fn test_append_bug_repro_2() {
     let (mut merkle_roll, mut tree) = setup();
