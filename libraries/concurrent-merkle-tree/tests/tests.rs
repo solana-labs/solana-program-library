@@ -168,9 +168,7 @@ async fn test_leaf_contents_modified() {
     tree.add_leaf(leaf, 0);
     match merkle_roll.set_leaf(root, leaf, new_leaf_1, &proof, 0_u32) {
         Ok(_) => {
-            panic!(
-                "Merkle roll should fail when replacing leafs with outdated leaf proofs"
-            )
+            panic!("Merkle roll should fail when replacing leafs with outdated leaf proofs")
         }
         Err(e) => match e {
             CMTError::LeafContentsModified => {}
