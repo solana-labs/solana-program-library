@@ -166,6 +166,103 @@ struct TransferData {
 
 ## Transfer With Fee Instruction Data
 
+The confidential extension can be enabled for mints that are extended for fees.
+If a mint is extended for fees, then any confidential transfer of the
+corresponding tokens must use the confidential extension `TransferWithFee`
+instruction. In addition to the data that are required for the `Transfer`
+instruction, the `TransferWithFee` instruction requires additional cryptographic
+components associated with fees.
+
+### Background on Transfer Fees
+
+If a mint is extended for fees, then transfers of tokens that pertains to the
+mint requires a transfer fee that is calculated as a percentage of the transfer
+amount. Specifically, a transaction fee is determined by two paramters:
+
+- `bp`: The base point representing the fee rate. It is a positive integer that
+  represents a percentage rate that is two points to the right of the decimal
+  place.
+
+  For example, `bp = 1` represents the fee rate of 0.01%, `bp = 100` represents
+  the fee rate of 1%, and `bp = 10000` represents the fee rate of 100%.
+
+- `max_fee`: the max fee rate. A transfer fee is calculated using the fee rate
+  that is determined by `bp`, but it is capped by `max_fee`. 
+
+  For example, consider a transfer amount of 200 tokens.
+  - For fee parameter `bp = 100` and `max_fee = 3`, the fee is simply 1% of the
+    transfer amount, which is 2.
+  - For fee parameter `bp = 200` and `max_fee = 3`, the fee is 3 since 2% of 200
+    is 4, which is greater than the max fee of 3.
+
+The transfer fee is always rounded up to the nearest positive integer. For
+example, if a transfer amount is `100` and the fee parameter is `bp = 110` and
+`max_fee = 3`, then the fee is `2`, which is rounded up from 1.1% of the
+transfer amount.
+
+The fee parameters are specified when mints are extended for fees. In addition
+to the fee parameters, mints that are extended for fees contain the
+`withdraw_withheld_authority` field, which specifies the public key of an
+authority that can collect fees that are withheld from transfer amounts.
+
+A Token account that is extended for fees has an associated field
+`withheld_amount`. Any transfer fee that is deducted from a transfer amount is
+aggregated into the `withheld_amount` field of the destination account of the
+transfer. The `withheld_amount` can be collected by the withdraw-withheld
+authority into a specific account using the
+`TransferFeeInstructions::WithdrawWithheldTokensFromAccounts` or into the mint
+account using the `TransferFeeInstructions::HarvestWithheldTokensToMint`. The
+withheld fees that accumulate in a mint can be collected into an account using
+the `TransferFeeInstructions::WithdrawWithheldTokensFromMint`.
+
+### Fee Encryption
+
+The actual amount of a transfer fee cannot be included in the confidential
+extension `TransferWithFee` instruction in the clear since the transfer amount
+can be inferred from the fee. Therefore, in the confidential extension, the
+transfer fee is encrypted under the destination and withheld authority ElGamal
+public key. 
+
+```rust
+struct FeeEncryption {
+    commitment: PedersenCommitment,
+    destination_handle: DecryptHandle,
+    withdraw_withheld_authority_handle: DecryptHandle,
+}
+
+struct TransferWithFeeData {
+  ... // `TransferData` components
+  fee_ciphertext: FeeEncryption,
+}
+```
+
+Upon receiving a `TransferWithFee` instruction, the Token program deducts the
+ciphertext that encrypts the fee under the destination ElGamal public key from
+the ciphertext that encrypts the transfer amount under the same public key. Then
+it aggregates the ciphertext that encrypts the fee under the withdraw withheld
+authority's ElGamal public key into the `withheld_fee` component of the
+destination account.
+
+### Verifying the Fee Ciphertext
+
+The remaining pieces of the `TransferWithFee` instruction data are fields that
+are required to verify the validity of the encrypted fee. Since the fee is
+encrypted, the Token program cannot check that the fee was computed correctly by
+simply inspecting the ciphertext. A `TransferWithFee` must include three
+additional proofs to certify that the fee ciphertext is valid.
+
+- _ciphertext validity proof_: This proof component certifies that the actual
+  fee ciphertext is properly generated under the correct destination and
+  withdraw withheld authority ElGamal public key.
+- _fee sigma proof_: In combination with range proof component, the fee sigma
+  proof certifies that the fee that is encrypted in `fee_ciphertext` is properly
+  calculated according to the fee parameter.
+- _range proof_: In combination with the fee sigma proof components, the range
+  proof component certifies that the encrypted fee in `fee_ciphertext` is
+  properly calculated according to the fee parameter.
+
+We refer to the proof specifications below for the additional details.
+
 ## Sigma Protocols
 
 ### Validity Proof
