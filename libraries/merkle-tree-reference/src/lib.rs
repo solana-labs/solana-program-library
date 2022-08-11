@@ -47,12 +47,12 @@ impl MerkleTree {
             tree_node.node = *node;
             leaf_nodes.push(Rc::new(RefCell::new(tree_node)));
         }
-        let root = MerkleTree::build_root(&leaf_nodes);
+        let root = MerkleTree::build_root(leaf_nodes.as_slice());
         Self { leaf_nodes, root }
     }
 
     /// Builds root from stack of leaves
-    pub fn build_root(leaves: &Vec<Rc<RefCell<TreeNode>>>) -> Node {
+    pub fn build_root(leaves: &[Rc<RefCell<TreeNode>>]) -> Node {
         let mut tree = VecDeque::from_iter(leaves.iter().map(Rc::clone));
         let mut seq_num = leaves.len() as u128;
         while tree.len() > 1 {
