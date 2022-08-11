@@ -51,7 +51,12 @@ pub fn fill_in_proof<const MAX_DEPTH: usize>(
         full_proof[..proof_vec.len()].copy_from_slice(proof_vec);
     }
 
-    for i in proof_vec.len()..MAX_DEPTH {
-        full_proof[i] = empty_node(i as u32);
+    for (i, item) in full_proof
+        .iter_mut()
+        .enumerate()
+        .take(MAX_DEPTH)
+        .skip(proof_vec.len())
+    {
+        *item = empty_node(i as u32);
     }
 }

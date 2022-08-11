@@ -84,12 +84,12 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         &mut self,
         root: Node,
         rightmost_leaf: Node,
-        proof_vec: &Vec<Node>,
+        proof_vec: &[Node],
         index: u32,
     ) -> Result<Node, CMTError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
-        proof.copy_from_slice(&proof_vec[..]);
+        proof.copy_from_slice(proof_vec);
         let rightmost_proof = Path {
             proof,
             index: index + 1,
@@ -170,29 +170,33 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         let mut intersection_node = self.rightmost_proof.leaf;
         let mut empty_node_cache = Box::new([Node::default(); MAX_DEPTH]);
 
-        for i in 0..MAX_DEPTH {
-            change_list[i] = node;
-            if i < intersection {
-                // Compute proof to the appended node from empty nodes
-                let sibling = empty_node_cached::<MAX_DEPTH>(i as u32, &mut empty_node_cache);
-                hash_to_parent(
-                    &mut intersection_node,
-                    &self.rightmost_proof.proof[i],
-                    ((self.rightmost_proof.index - 1) >> i) & 1 == 0,
-                );
-                hash_to_parent(&mut node, &sibling, true);
-                self.rightmost_proof.proof[i] = sibling;
-            } else if i == intersection {
-                // Compute the where the new node intersects the main tree
-                hash_to_parent(&mut node, &intersection_node, false);
-                self.rightmost_proof.proof[intersection] = intersection_node;
-            } else {
-                // Update the change list path up to the root
-                hash_to_parent(
-                    &mut node,
-                    &self.rightmost_proof.proof[i],
-                    ((self.rightmost_proof.index - 1) >> i) & 1 == 0,
-                );
+        for (i, cl_item) in change_list.iter_mut().enumerate().take(MAX_DEPTH) {
+            *cl_item = node;
+            match i {
+                i if i < intersection => {
+                    // Compute proof to the appended node from empty nodes
+                    let sibling = empty_node_cached::<MAX_DEPTH>(i as u32, &mut empty_node_cache);
+                    hash_to_parent(
+                        &mut intersection_node,
+                        &self.rightmost_proof.proof[i],
+                        ((self.rightmost_proof.index - 1) >> i) & 1 == 0,
+                    );
+                    hash_to_parent(&mut node, &sibling, true);
+                    self.rightmost_proof.proof[i] = sibling;
+                }
+                i if i == intersection => {
+                    // Compute the where the new node intersects the main tree
+                    hash_to_parent(&mut node, &intersection_node, false);
+                    self.rightmost_proof.proof[intersection] = intersection_node;
+                }
+                _ => {
+                    // Update the change list path up to the root
+                    hash_to_parent(
+                        &mut node,
+                        &self.rightmost_proof.proof[i],
+                        ((self.rightmost_proof.index - 1) >> i) & 1 == 0,
+                    );
+                }
             }
         }
 
