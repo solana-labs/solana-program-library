@@ -1,0 +1,26 @@
+[package]
+name = "solana-router-raydium"
+version = "1.1.3"
+description = "Solana Raydium Router"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library/farms"
+license = "Apache-2.0"
+homepage = "https://solana.com/"
+edition = "2021"
+
+[features]
+no-entrypoint = []
+debug = []
+
+[dependencies]
+solana-farm-sdk = "1.1.3"
+solana-program = "1.9.18"
+solana-security-txt = "1.0.1"
+arrayref = "0.3.6"
+
+[dev-dependencies]
+solana-program-test = "1.9.18"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+

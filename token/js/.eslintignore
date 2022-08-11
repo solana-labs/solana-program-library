@@ -1,2 +1,4 @@
-/lib
-/test/dist
+node_modules
+
+docs
+lib

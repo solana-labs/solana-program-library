@@ -1,6 +1,5 @@
 //! Program state processor
 
-use borsh::BorshSerialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -10,12 +9,12 @@ use solana_program::{
 use crate::{
     error::GovernanceError,
     state::{
-        realm::{deserialize_realm_raw, get_realm_address_seeds},
+        realm::{get_realm_address_seeds, get_realm_data},
         token_owner_record::{
-            deserialize_token_owner_record, get_token_owner_record_address_seeds,
+            get_token_owner_record_address_seeds, get_token_owner_record_data_for_seeds,
         },
     },
-    tools::token::{get_mint_from_token_account, transfer_spl_tokens_signed},
+    tools::spl_token::{get_spl_token_mint, transfer_spl_tokens_signed},
 };
 
 /// Processes WithdrawGoverningTokens instruction
@@ -36,8 +35,15 @@ pub fn process_withdraw_governing_tokens(
         return Err(GovernanceError::GoverningTokenOwnerMustSign.into());
     }
 
-    let realm_data = deserialize_realm_raw(realm_info)?;
-    let governing_token_mint = get_mint_from_token_account(governing_token_holding_info)?;
+    let realm_data = get_realm_data(program_id, realm_info)?;
+    let governing_token_mint = get_spl_token_mint(governing_token_holding_info)?;
+
+    realm_data.assert_is_valid_governing_token_mint_and_holding(
+        program_id,
+        realm_info.key,
+        &governing_token_mint,
+        governing_token_holding_info.key,
+    )?;
 
     let token_owner_record_address_seeds = get_token_owner_record_address_seeds(
         realm_info.key,
@@ -45,17 +51,18 @@ pub fn process_withdraw_governing_tokens(
         governing_token_owner_info.key,
     );
 
-    let mut token_owner_record_data =
-        deserialize_token_owner_record(token_owner_record_info, &token_owner_record_address_seeds)?;
+    let mut token_owner_record_data = get_token_owner_record_data_for_seeds(
+        program_id,
+        token_owner_record_info,
+        &token_owner_record_address_seeds,
+    )?;
 
-    if token_owner_record_data.active_votes_count > 0 {
-        return Err(GovernanceError::CannotWithdrawGoverningTokensWhenActiveVotesExist.into());
-    }
+    token_owner_record_data.assert_can_withdraw_governing_tokens()?;
 
     transfer_spl_tokens_signed(
-        &governing_token_holding_info,
-        &governing_token_destination_info,
-        &realm_info,
+        governing_token_holding_info,
+        governing_token_destination_info,
+        realm_info,
         &get_realm_address_seeds(&realm_data.name),
         program_id,
         token_owner_record_data.governing_token_deposit_amount,

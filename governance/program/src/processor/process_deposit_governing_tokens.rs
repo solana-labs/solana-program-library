@@ -1,6 +1,5 @@
 //! Program state processor
 
-use borsh::BorshSerialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -8,29 +7,26 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
     error::GovernanceError,
     state::{
         enums::GovernanceAccountType,
-        realm::deserialize_realm_raw,
+        realm::get_realm_data,
         token_owner_record::{
-            deserialize_token_owner_record, get_token_owner_record_address_seeds, TokenOwnerRecord,
+            get_token_owner_record_address_seeds, get_token_owner_record_data_for_seeds,
+            TokenOwnerRecordV2,
         },
     },
-    tools::{
-        account::create_and_serialize_account_signed,
-        token::{
-            get_amount_from_token_account, get_mint_from_token_account,
-            get_owner_from_token_account, transfer_spl_tokens,
-        },
-    },
+    tools::spl_token::{get_spl_token_mint, get_spl_token_owner, transfer_spl_tokens},
 };
 
 /// Processes DepositGoverningTokens instruction
 pub fn process_deposit_governing_tokens(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
+    amount: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -44,20 +40,22 @@ pub fn process_deposit_governing_tokens(
     let system_info = next_account_info(account_info_iter)?; // 7
     let spl_token_info = next_account_info(account_info_iter)?; // 8
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 9
-    let rent = &Rent::from_account_info(rent_sysvar_info)?;
+    let rent = Rent::get()?;
 
-    let realm_data = deserialize_realm_raw(realm_info)?;
-    let governing_token_mint = get_mint_from_token_account(governing_token_holding_info)?;
+    let realm_data = get_realm_data(program_id, realm_info)?;
+    let governing_token_mint = get_spl_token_mint(governing_token_holding_info)?;
 
-    realm_data.assert_is_valid_governing_token_mint(&governing_token_mint)?;
-
-    let amount = get_amount_from_token_account(governing_token_source_info)?;
+    realm_data.assert_is_valid_governing_token_mint_and_holding(
+        program_id,
+        realm_info.key,
+        &governing_token_mint,
+        governing_token_holding_info.key,
+    )?;
 
     transfer_spl_tokens(
-        &governing_token_source_info,
-        &governing_token_holding_info,
-        &governing_token_transfer_authority_info,
+        governing_token_source_info,
+        governing_token_holding_info,
+        governing_token_transfer_authority_info,
         amount,
         spl_token_info,
     )?;
@@ -70,7 +68,7 @@ pub fn process_deposit_governing_tokens(
 
     if token_owner_record_info.data_is_empty() {
         // Deposited tokens can only be withdrawn by the owner so let's make sure the owner signed the transaction
-        let governing_token_owner = get_owner_from_token_account(&governing_token_source_info)?;
+        let governing_token_owner = get_spl_token_owner(governing_token_source_info)?;
 
         if !(governing_token_owner == *governing_token_owner_info.key
             && governing_token_owner_info.is_signer)
@@ -78,15 +76,18 @@ pub fn process_deposit_governing_tokens(
             return Err(GovernanceError::GoverningTokenOwnerMustSign.into());
         }
 
-        let token_owner_record_data = TokenOwnerRecord {
-            account_type: GovernanceAccountType::TokenOwnerRecord,
+        let token_owner_record_data = TokenOwnerRecordV2 {
+            account_type: GovernanceAccountType::TokenOwnerRecordV2,
             realm: *realm_info.key,
             governing_token_owner: *governing_token_owner_info.key,
             governing_token_deposit_amount: amount,
             governing_token_mint,
             governance_delegate: None,
-            active_votes_count: 0,
+            unrelinquished_votes_count: 0,
             total_votes_count: 0,
+            outstanding_proposal_count: 0,
+            reserved: [0; 7],
+            reserved_v2: [0; 128],
         };
 
         create_and_serialize_account_signed(
@@ -96,10 +97,11 @@ pub fn process_deposit_governing_tokens(
             &token_owner_record_address_seeds,
             program_id,
             system_info,
-            rent,
+            &rent,
         )?;
     } else {
-        let mut token_owner_record_data = deserialize_token_owner_record(
+        let mut token_owner_record_data = get_token_owner_record_data_for_seeds(
+            program_id,
             token_owner_record_info,
             &token_owner_record_address_seeds,
         )?;

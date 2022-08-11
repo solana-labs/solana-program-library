@@ -9,7 +9,6 @@ use solana_program::{
     entrypoint::ProgramResult,
     msg,
     program_error::ProgramError,
-    program_option::COption,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::{Pubkey, PUBKEY_BYTES},
 };
@@ -356,8 +355,8 @@ pub struct ReserveLiquidity {
     pub supply_pubkey: Pubkey,
     /// Reserve liquidity fee receiver address
     pub fee_receiver: Pubkey,
-    /// Optional reserve liquidity oracle state account
-    pub oracle_pubkey: COption<Pubkey>,
+    /// Reserve liquidity oracle account
+    pub oracle_pubkey: Pubkey,
     /// Reserve liquidity available
     pub available_amount: u64,
     /// Reserve liquidity borrowed
@@ -365,7 +364,7 @@ pub struct ReserveLiquidity {
     /// Reserve liquidity cumulative borrow rate
     pub cumulative_borrow_rate_wads: Decimal,
     /// Reserve liquidity market price in quote currency
-    pub market_price: u64,
+    pub market_price: Decimal,
 }
 
 impl ReserveLiquidity {
@@ -377,10 +376,10 @@ impl ReserveLiquidity {
             supply_pubkey: params.supply_pubkey,
             fee_receiver: params.fee_receiver,
             oracle_pubkey: params.oracle_pubkey,
-            cumulative_borrow_rate_wads: Decimal::one(),
-            market_price: params.market_price,
             available_amount: 0,
             borrowed_amount_wads: Decimal::zero(),
+            cumulative_borrow_rate_wads: Decimal::one(),
+            market_price: params.market_price,
         }
     }
 
@@ -478,10 +477,10 @@ pub struct NewReserveLiquidityParams {
     pub supply_pubkey: Pubkey,
     /// Reserve liquidity fee receiver address
     pub fee_receiver: Pubkey,
-    /// Optional reserve liquidity oracle state account
-    pub oracle_pubkey: COption<Pubkey>,
+    /// Reserve liquidity oracle account
+    pub oracle_pubkey: Pubkey,
     /// Reserve liquidity market price in quote currency
-    pub market_price: u64,
+    pub market_price: Decimal,
 }
 
 /// Reserve collateral
@@ -554,9 +553,8 @@ pub struct CollateralExchangeRate(Rate);
 impl CollateralExchangeRate {
     /// Convert reserve collateral to liquidity
     pub fn collateral_to_liquidity(&self, collateral_amount: u64) -> Result<u64, ProgramError> {
-        Decimal::from(collateral_amount)
-            .try_div(self.0)?
-            .try_round_u64()
+        self.decimal_collateral_to_liquidity(collateral_amount.into())?
+            .try_floor_u64()
     }
 
     /// Convert reserve collateral to liquidity
@@ -569,7 +567,8 @@ impl CollateralExchangeRate {
 
     /// Convert reserve liquidity to collateral
     pub fn liquidity_to_collateral(&self, liquidity_amount: u64) -> Result<u64, ProgramError> {
-        self.0.try_mul(liquidity_amount)?.try_round_u64()
+        self.decimal_liquidity_to_collateral(liquidity_amount.into())?
+            .try_floor_u64()
     }
 
     /// Convert reserve liquidity to collateral
@@ -609,6 +608,52 @@ pub struct ReserveConfig {
     pub fees: ReserveFees,
 }
 
+impl ReserveConfig {
+    /// Validate the reserve configs, when initializing or modifying the reserve configs
+    pub fn validate(&self) -> ProgramResult {
+        if self.optimal_utilization_rate > 100 {
+            msg!("Optimal utilization rate must be in range [0, 100]");
+            return Err(LendingError::InvalidConfig.into());
+        }
+        if self.loan_to_value_ratio >= 100 {
+            msg!("Loan to value ratio must be in range [0, 100)");
+            return Err(LendingError::InvalidConfig.into());
+        }
+        if self.liquidation_bonus > 100 {
+            msg!("Liquidation bonus must be in range [0, 100]");
+            return Err(LendingError::InvalidConfig.into());
+        }
+        if self.liquidation_threshold <= self.loan_to_value_ratio
+            || self.liquidation_threshold > 100
+        {
+            msg!("Liquidation threshold must be in range (LTV, 100]");
+            return Err(LendingError::InvalidConfig.into());
+        }
+        if self.optimal_borrow_rate < self.min_borrow_rate {
+            msg!("Optimal borrow rate must be >= min borrow rate");
+            return Err(LendingError::InvalidConfig.into());
+        }
+        if self.optimal_borrow_rate > self.max_borrow_rate {
+            msg!("Optimal borrow rate must be <= max borrow rate");
+            return Err(LendingError::InvalidConfig.into());
+        }
+        if self.fees.borrow_fee_wad >= WAD {
+            msg!("Borrow fee must be in range [0, 1_000_000_000_000_000_000)");
+            return Err(LendingError::InvalidConfig.into());
+        }
+        if self.fees.flash_loan_fee_wad >= WAD {
+            msg!("Flash loan fee must be in range [0, 1_000_000_000_000_000_000)");
+            return Err(LendingError::InvalidConfig.into());
+        }
+        if self.fees.host_fee_percentage > 100 {
+            msg!("Host fee percentage must be in range [0, 100]");
+            return Err(LendingError::InvalidConfig.into());
+        }
+
+        Ok(())
+    }
+}
+
 /// Additional fee information on a reserve
 ///
 /// These exist separately from interest accrual fees, and are specifically for the program owner
@@ -624,6 +669,7 @@ pub struct ReserveFees {
     /// 0.00001% (Aave borrow fee) = 100_000_000_000
     pub borrow_fee_wad: u64,
     /// Fee for flash loan, expressed as a Wad.
+    /// 0.3% (Aave flash loan fee) = 3_000_000_000_000_000
     pub flash_loan_fee_wad: u64,
     /// Amount of fee going to host account, if provided in liquidate and repay
     pub host_fee_percentage: u8,
@@ -662,9 +708,9 @@ impl ReserveFees {
         if borrow_fee_rate > Rate::zero() && amount > Decimal::zero() {
             let need_to_assess_host_fee = host_fee_rate > Rate::zero();
             let minimum_fee = if need_to_assess_host_fee {
-                2 // 1 token to owner, 1 to host
+                2u64 // 1 token to owner, 1 to host
             } else {
-                1 // 1 token to owner, nothing else
+                1u64 // 1 token to owner, nothing else
             };
 
             let borrow_fee_amount = match fee_calculation {
@@ -678,14 +724,18 @@ impl ReserveFees {
                 }
             };
 
-            let borrow_fee = borrow_fee_amount.try_round_u64()?.max(minimum_fee);
-            if Decimal::from(borrow_fee) >= amount {
+            let borrow_fee_decimal = borrow_fee_amount.max(minimum_fee.into());
+            if borrow_fee_decimal >= amount {
                 msg!("Borrow amount is too small to receive liquidity after fees");
                 return Err(LendingError::BorrowTooSmall.into());
             }
 
+            let borrow_fee = borrow_fee_decimal.try_round_u64()?;
             let host_fee = if need_to_assess_host_fee {
-                host_fee_rate.try_mul(borrow_fee)?.try_round_u64()?.max(1)
+                borrow_fee_decimal
+                    .try_mul(host_fee_rate)?
+                    .try_round_u64()?
+                    .max(1u64)
             } else {
                 0
             };
@@ -712,11 +762,11 @@ impl IsInitialized for Reserve {
     }
 }
 
-const RESERVE_LEN: usize = 567; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + (4 + 32) + 16 + 8 + 8 + 16 + 32 + 32 + 8 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 8 + 1 + 248
-                                // @TODO: break this up by reserve / liquidity / collateral / config https://git.io/JOCca
+const RESERVE_LEN: usize = 571; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + 32 + 8 + 16 + 16 + 16 + 32 + 8 + 32 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 8 + 1 + 248
 impl Pack for Reserve {
     const LEN: usize = RESERVE_LEN;
 
+    // @TODO: break this up by reserve / liquidity / collateral / config https://git.io/JOCca
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, RESERVE_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
@@ -758,11 +808,11 @@ impl Pack for Reserve {
             1,
             PUBKEY_BYTES,
             PUBKEY_BYTES,
-            4 + PUBKEY_BYTES,
+            PUBKEY_BYTES,
             8,
             16,
             16,
-            8,
+            16,
             PUBKEY_BYTES,
             8,
             PUBKEY_BYTES,
@@ -790,7 +840,7 @@ impl Pack for Reserve {
         *liquidity_mint_decimals = self.liquidity.mint_decimals.to_le_bytes();
         liquidity_supply_pubkey.copy_from_slice(self.liquidity.supply_pubkey.as_ref());
         liquidity_fee_receiver.copy_from_slice(self.liquidity.fee_receiver.as_ref());
-        pack_coption_key(&self.liquidity.oracle_pubkey, liquidity_oracle_pubkey);
+        liquidity_oracle_pubkey.copy_from_slice(self.liquidity.oracle_pubkey.as_ref());
         *liquidity_available_amount = self.liquidity.available_amount.to_le_bytes();
         pack_decimal(
             self.liquidity.borrowed_amount_wads,
@@ -800,7 +850,7 @@ impl Pack for Reserve {
             self.liquidity.cumulative_borrow_rate_wads,
             liquidity_cumulative_borrow_rate_wads,
         );
-        *liquidity_market_price = self.liquidity.market_price.to_le_bytes();
+        pack_decimal(self.liquidity.market_price, liquidity_market_price);
 
         // collateral
         collateral_mint_pubkey.copy_from_slice(self.collateral.mint_pubkey.as_ref());
@@ -862,11 +912,11 @@ impl Pack for Reserve {
             1,
             PUBKEY_BYTES,
             PUBKEY_BYTES,
-            4 + PUBKEY_BYTES,
+            PUBKEY_BYTES,
             8,
             16,
             16,
-            8,
+            16,
             PUBKEY_BYTES,
             8,
             PUBKEY_BYTES,
@@ -901,11 +951,11 @@ impl Pack for Reserve {
                 mint_decimals: u8::from_le_bytes(*liquidity_mint_decimals),
                 supply_pubkey: Pubkey::new_from_array(*liquidity_supply_pubkey),
                 fee_receiver: Pubkey::new_from_array(*liquidity_fee_receiver),
-                oracle_pubkey: unpack_coption_key(liquidity_oracle_pubkey)?,
+                oracle_pubkey: Pubkey::new_from_array(*liquidity_oracle_pubkey),
                 available_amount: u64::from_le_bytes(*liquidity_available_amount),
                 borrowed_amount_wads: unpack_decimal(liquidity_borrowed_amount_wads),
                 cumulative_borrow_rate_wads: unpack_decimal(liquidity_cumulative_borrow_rate_wads),
-                market_price: u64::from_le_bytes(*liquidity_market_price),
+                market_price: unpack_decimal(liquidity_market_price),
             },
             collateral: ReserveCollateral {
                 mint_pubkey: Pubkey::new_from_array(*collateral_mint_pubkey),
@@ -1137,6 +1187,7 @@ mod test {
             host_fee_percentage in 0..=100u8,
             borrow_amount in 3..=u64::MAX, // start at 3 to ensure calculation success
                                            // 0, 1, and 2 are covered in the minimum tests
+                                           // @FIXME: ^ no longer true
         ) {
             let fees = ReserveFees {
                 borrow_fee_wad,
@@ -1144,6 +1195,49 @@ mod test {
                 host_fee_percentage,
             };
             let (total_fee, host_fee) = fees.calculate_borrow_fees(Decimal::from(borrow_amount), FeeCalculation::Exclusive)?;
+
+            // The total fee can't be greater than the amount borrowed, as long
+            // as amount borrowed is greater than 2.
+            // At a borrow amount of 2, we can get a total fee of 2 if a host
+            // fee is also specified.
+            assert!(total_fee <= borrow_amount);
+
+            // the host fee can't be greater than the total fee
+            assert!(host_fee <= total_fee);
+
+            // for all fee rates greater than 0, we must have some fee
+            if borrow_fee_wad > 0 {
+                assert!(total_fee > 0);
+            }
+
+            if host_fee_percentage == 100 {
+                // if the host fee percentage is maxed at 100%, it should get all the fee
+                assert_eq!(host_fee, total_fee);
+            }
+
+            // if there's a host fee and some borrow fee, host fee must be greater than 0
+            if host_fee_percentage > 0 && borrow_fee_wad > 0 {
+                assert!(host_fee > 0);
+            } else {
+                assert_eq!(host_fee, 0);
+            }
+        }
+
+        #[test]
+        fn flash_loan_fee_calculation(
+            borrow_fee_wad in 0..WAD, // at WAD, fee == borrow amount, which fails
+            flash_loan_fee_wad in 0..WAD, // at WAD, fee == borrow amount, which fails
+            host_fee_percentage in 0..=100u8,
+            borrow_amount in 3..=u64::MAX, // start at 3 to ensure calculation success
+                                           // 0, 1, and 2 are covered in the minimum tests
+                                           // @FIXME: ^ no longer true
+        ) {
+            let fees = ReserveFees {
+                borrow_fee_wad,
+                flash_loan_fee_wad,
+                host_fee_percentage,
+            };
+            let (total_fee, host_fee) = fees.calculate_flash_loan_fees(Decimal::from(borrow_amount))?;
 
             // The total fee can't be greater than the amount borrowed, as long
             // as amount borrowed is greater than 2.

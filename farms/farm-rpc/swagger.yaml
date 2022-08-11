@@ -1,0 +1,3807 @@
+openapi: 3.0.1
+info:
+  title: Solana Farms RPC Service
+  description: RPC service for interaction with Pools, Farms, Vaults, and Funds built on Solana
+  version: "0.1"
+servers:
+  - url: "http://127.0.0.1:9000"
+  - url: "http://localhost:9000"
+paths:
+  /api/v1/protocols:
+    get:
+      description: "Returns description and stats of all supported protocols"
+      responses:
+        default:
+          description: The result will be an array of ProtocolInfo objects in Json or 404 status code with error description.
+
+  /api/v1/admins:
+    get:
+      description: "Returns current admin signers for the Main Router"
+      responses:
+        default:
+          description: The result will be a Multisig object in Json or 404 status code with error description.
+
+  /api/v1/program_admins:
+    get:
+      description: "Returns program upgrade signers"
+      parameters:
+        - name: program_id
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Multisig object in Json or 404 status code with error description.
+
+  /api/v1/git_token:
+    get:
+      description: "Returns Token metadata from Github"
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a GitToken object in Json or 404 status code with error description.
+
+  /api/v1/git_tokens:
+    get:
+      description: "Returns all Tokens from Github"
+      responses:
+        default:
+          description: The result will be a GitTokens object in Json or 404 status code with error description.
+
+  /api/v1/fund:
+    get:
+      description: "Returns the Fund struct for the given name"
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Fund object in Json or 404 status code with error description.
+
+  /api/v1/funds:
+    get:
+      description: "Returns all Funds available"
+      responses:
+        default:
+          description: The result will be a FundMap object in Json or 404 status code with error description.
+
+  /api/v1/fund_ref:
+    get:
+      description: "Returns the Fund metadata address for the given name"
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/fund_refs:
+    get:
+      description: "Returns Fund refs: a map of Fund name to account address with metadata"
+      responses:
+        default:
+          description: The result will be a PubkeyMap object in Json or 404 status code with error description.
+
+  /api/v1/fund_by_ref:
+    get:
+      description: "Returns the Fund metadata at the specified address"
+      parameters:
+        - name: fund_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Fund object in Json or 404 status code with error description.
+
+  /api/v1/fund_name:
+    get:
+      description: "Returns the Fund name for the given metadata address"
+      parameters:
+        - name: fund_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/find_funds:
+    get:
+      description: "Returns all Funds that have Vaults with the name matching the pattern sorted by version"
+      parameters:
+        - name: vault_name_pattern
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an array of Fund objects in Json or 404 status code with error description.
+
+  /api/v1/vault:
+    get:
+      description: "Returns the Vault struct for the given name"
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Vault object in Json or 404 status code with error description.
+
+  /api/v1/vaults:
+    get:
+      description: "Returns all Vaults available"
+      responses:
+        default:
+          description: The result will be a VaultMap object in Json or 404 status code with error description.
+
+  /api/v1/vault_ref:
+    get:
+      description: "Returns the Vault metadata address for the given name"
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/vault_refs:
+    get:
+      description: "Returns Vault refs: a map of Vault name to account address with metadata"
+      responses:
+        default:
+          description: The result will be a PubkeyMap object in Json or 404 status code with error description.
+
+  /api/v1/vault_by_ref:
+    get:
+      description: "Returns the Vault metadata at the specified address"
+      parameters:
+        - name: vault_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Vault object in Json or 404 status code with error description.
+
+  /api/v1/vault_name:
+    get:
+      description: "Returns the Vault name for the given metadata address"
+      parameters:
+        - name: vault_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/find_vaults:
+    get:
+      description: "Returns all Vaults with tokens A and B sorted by version"
+      parameters:
+        - name: token_a
+          in: query
+          schema:
+            type: string
+        - name: token_b
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an array of Vault objects in Json or 404 status code with error description.
+
+  /api/v1/find_vaults_with_vt:
+    get:
+      description: "Returns all Vaults with tokens A and B sorted by version"
+      parameters:
+        - name: vt_token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an array of Vault objects in Json or 404 status code with error description.
+
+  /api/v1/pool:
+    get:
+      description: "Returns the Pool struct for the given name"
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Pool object in Json or 404 status code with error description.
+
+  /api/v1/pools:
+    get:
+      description: "Returns all Pools available"
+      responses:
+        default:
+          description: The result will be a PoolMap object in Json or 404 status code with error description.
+
+  /api/v1/pool_ref:
+    get:
+      description: "Returns the Pool metadata address for the given name"
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/pool_refs:
+    get:
+      description: "Returns Pool refs: a map of Pool name to account address with metadata"
+      responses:
+        default:
+          description: The result will be a PubkeyMap object in Json or 404 status code with error description.
+
+  /api/v1/pool_by_ref:
+    get:
+      description: "Returns the Pool metadata at the specified address"
+      parameters:
+        - name: pool_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Pool object in Json or 404 status code with error description.
+
+  /api/v1/pool_name:
+    get:
+      description: "Returns the Pool name for the given metadata address"
+      parameters:
+        - name: pool_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/find_pools:
+    get:
+      description: "Returns all Pools with tokens A and B sorted by version for the given protocol"
+      parameters:
+        - name: protocol
+          in: query
+          schema:
+            type: string
+        - name: token_a
+          in: query
+          schema:
+            type: string
+        - name: token_b
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an array of Pool objects in Json or 404 status code with error description.
+
+  /api/v1/find_pools_with_lp:
+    get:
+      description: "Returns all Pools sorted by version for the given LP token"
+      parameters:
+        - name: lp_token
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an array of Pool objects in Json or 404 status code with error description.
+
+  /api/v1/pool_price:
+    get:
+      description: "Returns pair's price based on the ratio of tokens in the pool"
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/oracle:
+    get:
+      description: "Returns oracle address for the given token"
+      parameters:
+        - name: symbol
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Pubkey object in Json or 404 status code with error description.
+
+  /api/v1/oracle_price:
+    get:
+      description: "Returns the price in USD for the given token"
+      parameters:
+        - name: symbol
+          in: query
+          schema:
+            type: string
+        - name: max_price_age_sec
+          in: query
+          schema:
+            type: integer
+        - name: max_price_error
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/farm:
+    get:
+      description: "Returns the Farm struct for the given name"
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Farm object in Json or 404 status code with error description.
+
+  /api/v1/farms:
+    get:
+      description: "Returns all Farms available"
+      responses:
+        default:
+          description: The result will be a FarmMap object in Json or 404 status code with error description.
+
+  /api/v1/farm_ref:
+    get:
+      description: "Returns the Farm metadata address for the given name"
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/farm_refs:
+    get:
+      description: "Returns Farm refs: a map of Farm name to account address with metadata"
+      responses:
+        default:
+          description: The result will be a PubkeyMap object in Json or 404 status code with error description.
+
+  /api/v1/farm_by_ref:
+    get:
+      description: "Returns the Farm metadata at the specified address"
+      parameters:
+        - name: farm_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Farm object in Json or 404 status code with error description.
+
+  /api/v1/farm_name:
+    get:
+      description: "Returns the Farm name for the given metadata address"
+      parameters:
+        - name: farm_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/find_farms_with_lp:
+    get:
+      description: "Returns all Farms for the given LP token"
+      parameters:
+        - name: lp_token
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an array of Farm objects in Json or 404 status code with error description.
+
+  /api/v1/token:
+    get:
+      description: "Returns the Token struct for the given name"
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Token object in Json or 404 status code with error description.
+
+  /api/v1/tokens:
+    get:
+      description: "Returns all Tokens available"
+      responses:
+        default:
+          description: The result will be a TokenMap object in Json or 404 status code with error description.
+
+  /api/v1/token_ref:
+    get:
+      description: "Returns the Token metadata address for the given name"
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/token_refs:
+    get:
+      description: "Returns Token refs: a map of Token name to account address with metadata"
+      responses:
+        default:
+          description: The result will be a PubkeyMap object in Json or 404 status code with error description.
+
+  /api/v1/token_by_ref:
+    get:
+      description: "Returns the Token metadata at the specified address"
+      parameters:
+        - name: token_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Token object in Json or 404 status code with error description.
+
+  /api/v1/token_name:
+    get:
+      description: "Returns the Token name for the given metadata address"
+      parameters:
+        - name: token_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/token_with_mint:
+    get:
+      description: "Returns the Token metadata for the specified mint"
+      parameters:
+        - name: token_mint
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Token object in Json or 404 status code with error description.
+
+  /api/v1/token_with_account:
+    get:
+      description: "Returns the Token metadata for the specified token account"
+      parameters:
+        - name: token_account
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Token object in Json or 404 status code with error description.
+
+  /api/v1/program_id:
+    get:
+      description: "Returns the official Program ID for the given name"
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/program_ids:
+    get:
+      description: "Returns all official Program IDs available"
+      responses:
+        default:
+          description: The result will be a PubkeyMap object in Json or 404 status code with error description.
+
+  /api/v1/program_name:
+    get:
+      description: "Returns the official program name for the given Program ID"
+      parameters:
+        - name: prog_id
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/is_official_id:
+    get:
+      description: "Checks if the given address is the official Program ID"
+      parameters:
+        - name: prog_id
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a bool object in Json or 404 status code with error description.
+
+  /api/v1/is_fund_manager:
+    get:
+      description: "Checks if the given address is the Fund manager"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a bool object in Json or 404 status code with error description.
+
+  /api/v1/managed_funds:
+    get:
+      description: "Returns all Funds managed by the given address"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an array of Fund objects in Json or 404 status code with error description.
+
+  /api/v1/token_supply:
+    get:
+      description: "Returns token supply as UI amount"
+      parameters:
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/associated_token_address:
+    get:
+      description: "Returns the associated token account address for the given token name"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/wallet_tokens:
+    get:
+      description: "Returns all tokens with active account in the wallet"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an array of String objects in Json or 404 status code with error description.
+
+  /api/v1/token_account_data:
+    get:
+      description: "Returns UiTokenAccount struct data for the associated token account address"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a UiTokenAccount object in Json or 404 status code with error description.
+
+  /api/v1/account_balance:
+    get:
+      description: "Returns native SOL balance"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/token_account_balance:
+    get:
+      description: "Returns token balance for the associated token account address"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/token_account_balance_with_address:
+    get:
+      description: "Returns token balance for the specified token account address"
+      parameters:
+        - name: token_account
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/has_active_token_account:
+    get:
+      description: "Returns true if the associated token account exists and is initialized"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a bool object in Json or 404 status code with error description.
+
+  /api/v1/fund_admins:
+    get:
+      description: "Returns current admin signers for the Fund"
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Multisig object in Json or 404 status code with error description.
+
+  /api/v1/fund_user_info:
+    get:
+      description: "Returns user stats for specific Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a FundUserInfo object in Json or 404 status code with error description.
+
+  /api/v1/all_fund_user_infos:
+    get:
+      description: "Returns user stats for all Funds"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an array of FundUserInfo objects in Json or 404 status code with error description.
+
+  /api/v1/fund_user_requests:
+    get:
+      description: "Returns user requests for specific Fund and token"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a FundUserRequests object in Json or 404 status code with error description.
+
+  /api/v1/all_fund_user_requests:
+    get:
+      description: "Returns user requests for all tokens accepted by the Fund"
+      parameters:
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an array of FundUserRequests objects in Json or 404 status code with error description.
+
+  /api/v1/fund_info:
+    get:
+      description: "Returns Fund stats and config"
+      parameters:
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a FundInfo object in Json or 404 status code with error description.
+
+  /api/v1/all_fund_infos:
+    get:
+      description: "Returns Fund info and config for all Funds"
+      responses:
+        default:
+          description: The result will be an array of FundInfo objects in Json or 404 status code with error description.
+
+  /api/v1/fund_assets:
+    get:
+      description: "Returns the Fund assets info"
+      parameters:
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: asset_type
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a FundAssets object in Json or 404 status code with error description.
+
+  /api/v1/fund_custody:
+    get:
+      description: "Returns the Fund custody info"
+      parameters:
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: custody_type
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a FundCustody object in Json or 404 status code with error description.
+
+  /api/v1/fund_custody_with_balance:
+    get:
+      description: "Returns the Fund custody extended info"
+      parameters:
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: custody_type
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a FundCustodyWithBalance object in Json or 404 status code with error description.
+
+  /api/v1/fund_custodies:
+    get:
+      description: "Returns all custodies belonging to the Fund sorted by custody_id"
+      parameters:
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an array of FundCustody objects in Json or 404 status code with error description.
+
+  /api/v1/fund_custodies_with_balance:
+    get:
+      description: "Returns all custodies belonging to the Fund with extended info"
+      parameters:
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an array of FundCustodyWithBalance objects in Json or 404 status code with error description.
+
+  /api/v1/fund_vault:
+    get:
+      description: "Returns the Fund Vault info"
+      parameters:
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: vault_type
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a FundVault object in Json or 404 status code with error description.
+
+  /api/v1/fund_vaults:
+    get:
+      description: "Returns all Vaults belonging to the Fund sorted by vault_id"
+      parameters:
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an array of FundVault objects in Json or 404 status code with error description.
+
+  /api/v1/fund_stats:
+    get:
+      description: "Returns Fund's historical performance"
+      parameters:
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: timeframe
+          in: query
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        default:
+          description: The result will be an array of FundStatsRecord objects in Json or 404 status code with error description.
+
+  /api/v1/user_stake_balance:
+    get:
+      description: "Returns User's stacked balance"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/vault_stake_balance:
+    get:
+      description: "Returns Vault's stacked balance"
+      parameters:
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/vault_admins:
+    get:
+      description: "Returns current admin signers for the Vault"
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Multisig object in Json or 404 status code with error description.
+
+  /api/v1/vault_user_info:
+    get:
+      description: "Returns user stats for specific Vault"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a VaultUserInfo object in Json or 404 status code with error description.
+
+  /api/v1/vault_info:
+    get:
+      description: "Returns Vault stats"
+      parameters:
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a VaultInfo object in Json or 404 status code with error description.
+
+  /api/v1/all_vault_infos:
+    get:
+      description: "Returns Vault stats for all Vaults"
+      responses:
+        default:
+          description: The result will be an array of VaultInfo objects in Json or 404 status code with error description.
+
+  /api/v1/vault_token_decimals:
+    get:
+      description: "Returns number of decimal digits of the Vault token"
+      parameters:
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/pool_tokens_decimals:
+    get:
+      description: "Returns number of decimal digits of the Vault token"
+      parameters:
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an array of u8 objects in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_create_system_account:
+    get:
+      description: "Returns a new Instruction for creating system account"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: new_address
+          in: query
+          schema:
+            type: string
+        - name: lamports
+          in: query
+          schema:
+            type: integer
+        - name: space
+          in: query
+          schema:
+            type: integer
+        - name: owner
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_create_system_account_with_seed:
+    get:
+      description: "Returns a new Instruction for creating system account with seed"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: base_address
+          in: query
+          schema:
+            type: string
+        - name: seed
+          in: query
+          schema:
+            type: string
+        - name: lamports
+          in: query
+          schema:
+            type: integer
+        - name: space
+          in: query
+          schema:
+            type: integer
+        - name: owner
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_close_system_account:
+    get:
+      description: "Returns a new Instruction for closing system account"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: target_address
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_transfer:
+    get:
+      description: "Returns the native SOL transfer instruction"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: destination_wallet
+          in: query
+          schema:
+            type: string
+        - name: sol_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_token_transfer:
+    get:
+      description: "Returns a tokens transfer instruction"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: destination_wallet
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_sync_token_balance:
+    get:
+      description: "Returns a new Instruction for syncing token balance for the specified account"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_create_token_account:
+    get:
+      description: "Returns a new Instruction for creating associated token account"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_close_token_account:
+    get:
+      description: "Returns a new Instruction for closing associated token account"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_user_init_vault:
+    get:
+      description: "Returns a new Instruction for initializing a new User for the Vault"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_add_liquidity_vault:
+    get:
+      description: "Returns a new Instruction for adding liquidity to the Vault"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: number
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_lock_liquidity_vault:
+    get:
+      description: "Returns a new Instruction for locking liquidity in the Vault"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_unlock_liquidity_vault:
+    get:
+      description: "Returns a new Instruction for unlocking liquidity from the Vault"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_remove_liquidity_vault:
+    get:
+      description: "Returns a new Instruction for removing liquidity from the Vault"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_add_liquidity_pool:
+    get:
+      description: "Returns a new Instruction for adding liquidity to the Pool"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: number
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_remove_liquidity_pool:
+    get:
+      description: "Returns a new Instruction for removing liquidity from the Pool"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_wrap_token:
+    get:
+      description: "Returns a new Instruction for wrapping the token into protocol specific token"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: token_to_wrap
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_unwrap_token:
+    get:
+      description: "Returns a new Instruction for unwrapping the token from protocol specific token"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: token_to_unwrap
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_swap:
+    get:
+      description: "Returns a new Instruction for tokens swap"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: protocol
+          in: query
+          schema:
+            type: string
+        - name: from_token
+          in: query
+          schema:
+            type: string
+        - name: to_token
+          in: query
+          schema:
+            type: string
+        - name: ui_amount_in
+          in: query
+          schema:
+            type: number
+        - name: min_ui_amount_out
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_user_init:
+    get:
+      description: "Returns a new Instruction for initializing a new User in the Farm"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_stake:
+    get:
+      description: "Returns a new Instruction for tokens staking"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_unstake:
+    get:
+      description: "Returns a new Instruction for tokens unstaking"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_harvest:
+    get:
+      description: "Returns a new Instruction for rewards harvesting"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_crank_vault:
+    get:
+      description: "Returns a new Vault Crank Instruction"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: step
+          in: query
+          schema:
+            type: integer
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_user_init_fund:
+    get:
+      description: "Returns a new Instruction for initializing a new User for the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_request_deposit_fund:
+    get:
+      description: "Returns a new Instruction for requesting deposit to the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_cancel_deposit_fund:
+    get:
+      description: "Returns a new Instruction for canceling pending deposit to the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_request_withdrawal_fund:
+    get:
+      description: "Returns a new Instruction for requesting withdrawal from the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_cancel_withdrawal_fund:
+    get:
+      description: "Returns a new Instruction for canceling pending withdrawal from the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_start_liquidation_fund:
+    get:
+      description: "Returns a new Instruction for initiating liquidation of the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_disable_deposits_fund:
+    get:
+      description: "Returns a new Instruction for disabling deposits to the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_approve_deposit_fund:
+    get:
+      description: "Returns a new Instruction for approving deposit to the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: user_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_deny_deposit_fund:
+    get:
+      description: "Returns a new Instruction for denying deposit to the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: user_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: deny_reason
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_disable_withdrawals_fund:
+    get:
+      description: "Returns a new Instruction for disabling withdrawals from the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_approve_withdrawal_fund:
+    get:
+      description: "Returns a new Instruction for approving withdrawal from the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: user_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_deny_withdrawal_fund:
+    get:
+      description: "Returns a new Instruction for denying withdrawal from the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: user_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: deny_reason
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_lock_assets_fund:
+    get:
+      description: "Returns a new Instruction for moving deposited assets to the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_unlock_assets_fund:
+    get:
+      description: "Returns a new Instruction for releasing assets from the Fund to Deposit/Withdraw custody"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_update_fund_assets_with_custody:
+    get:
+      description: "Returns a new Instruction for updating Fund assets based on custody holdings"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: custody_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_update_fund_assets_with_vault:
+    get:
+      description: "Returns a new Instruction for updating Fund assets with Vault holdings"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_fund_add_liquidity_pool:
+    get:
+      description: "Returns a new Instruction for adding liquidity to the Pool in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: number
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_fund_remove_liquidity_pool:
+    get:
+      description: "Returns a new Instruction for removing liquidity from the Pool in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_fund_user_init_farm:
+    get:
+      description: "Returns a new Instruction for initializing a new User for the Farm in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_fund_stake:
+    get:
+      description: "Returns a new Instruction for tokens staking to the Farm in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_fund_unstake:
+    get:
+      description: "Returns a new Instruction for tokens unstaking from the Farm in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_fund_harvest:
+    get:
+      description: "Returns a new Instruction for rewards harvesting from the Farm in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_fund_user_init_vault:
+    get:
+      description: "Returns a new Instruction for initializing a new User for the Vault in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_fund_add_liquidity_vault:
+    get:
+      description: "Returns a new Instruction for adding liquidity to the Vault in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: number
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_fund_lock_liquidity_vault:
+    get:
+      description: "Returns a new Instruction for locking liquidity in the Vault in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_fund_unlock_liquidity_vault:
+    get:
+      description: "Returns a new Instruction for unlocking liquidity from the Vault in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/new_instruction_fund_remove_liquidity_vault:
+    get:
+      description: "Returns a new Instruction for removing liquidity from the Vault in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an Instruction object in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_token_transfer:
+    get:
+      description: "Returns a new complete set of instructions for tokens transfer"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: destination_wallet
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_wrap_sol:
+    get:
+      description: "Returns a new complete set of instructions for SOL wrapping"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_unwrap_sol:
+    get:
+      description: "Returns a new complete set of instructions for SOL unwrapping"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_add_liquidity_vault:
+    get:
+      description: "Returns a new complete set of instructions for adding liquidity to the Vault"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: number
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_add_locked_liquidity_vault:
+    get:
+      description: "Returns a new complete set of instructions for adding locked liquidity to the Vault"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_remove_liquidity_vault:
+    get:
+      description: "Returns a new complete set of Instructions for removing liquidity from the Vault"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_remove_unlocked_liquidity_vault:
+    get:
+      description: "Returns a new complete set of Instructions for removing unlocked liquidity from the Vault"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_add_liquidity_pool:
+    get:
+      description: "Returns a new complete set of Instructions for adding liquidity to the Pool"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: number
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_remove_liquidity_pool:
+    get:
+      description: "Returns a new complete set of Instructions for removing liquidity from the Pool"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_swap:
+    get:
+      description: "Returns a new complete set of Instructions for swapping tokens"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: protocol
+          in: query
+          schema:
+            type: string
+        - name: from_token
+          in: query
+          schema:
+            type: string
+        - name: to_token
+          in: query
+          schema:
+            type: string
+        - name: ui_amount_in
+          in: query
+          schema:
+            type: number
+        - name: min_ui_amount_out
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_stake:
+    get:
+      description: "Returns a new complete set of Instructions for staking tokens to the Farm"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_unstake:
+    get:
+      description: "Returns a new complete set of Instructions for unstaking tokens from the Farm"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_harvest:
+    get:
+      description: "Returns a new complete set of Instructions for harvesting rewards from the Farm"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_request_deposit_fund:
+    get:
+      description: "Returns a new complete set of Instructions for requesting a new deposit to the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_request_withdrawal_fund:
+    get:
+      description: "Returns a new complete set of Instructions for requesting a new withdrawal from the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_fund_add_liquidity_pool:
+    get:
+      description: "Returns a new complete set of Instructions for adding liquidity to the Pool in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: number
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_fund_remove_liquidity_pool:
+    get:
+      description: "Returns a new complete set of Instructions for removing liquidity from the Pool in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_fund_stake:
+    get:
+      description: "Returns a new complete set of Instructions for staking tokens to the Farm in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_fund_unstake:
+    get:
+      description: "Returns a new complete set of Instructions for unstaking tokens from the Farm in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_fund_harvest:
+    get:
+      description: "Returns a new complete set of Instructions for harvesting rewards from the Farm in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_fund_add_liquidity_vault:
+    get:
+      description: "Returns a new complete set of instructions for adding liquidity to the Vault in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: number
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_fund_add_locked_liquidity_vault:
+    get:
+      description: "Returns a new complete set of instructions for adding locked liquidity to the Vault in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_fund_remove_liquidity_vault:
+    get:
+      description: "Returns a new complete set of Instructions for removing liquidity from the Vault in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/all_instructions_fund_remove_unlocked_liquidity_vault:
+    get:
+      description: "Returns a new complete set of Instructions for removing unlocked liquidity from the Vault in the Fund"
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be an array of Instruction objects in Json or 404 status code with error description.
+
+  /api/v1/create_system_account:
+    post:
+      description: "Creates a new system account"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: new_account_keypair
+          in: query
+          schema:
+            type: string
+        - name: lamports
+          in: query
+          schema:
+            type: integer
+        - name: space
+          in: query
+          schema:
+            type: integer
+        - name: owner
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/create_system_account_with_seed:
+    post:
+      description: "Creates a new system account with seed"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: base_address
+          in: query
+          schema:
+            type: string
+        - name: seed
+          in: query
+          schema:
+            type: string
+        - name: lamports
+          in: query
+          schema:
+            type: integer
+        - name: space
+          in: query
+          schema:
+            type: integer
+        - name: owner
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/assign_system_account:
+    post:
+      description: "Assigns system account to a program"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: program_address
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/close_system_account:
+    post:
+      description: "Closes existing system account"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: target_account_keypair
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/transfer:
+    post:
+      description: "Transfers native SOL from the wallet to the destination"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: destination_wallet
+          in: query
+          schema:
+            type: string
+        - name: sol_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/token_transfer:
+    post:
+      description: "Transfers tokens from the wallet to the destination"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: destination_wallet
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/wrap_sol:
+    post:
+      description: "Transfers native SOL from the wallet to the associated Wrapped SOL account"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/unwrap_sol:
+    post:
+      description: "Transfers Wrapped SOL back to SOL by closing the associated Wrapped SOL account"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/sync_token_balance:
+    post:
+      description: "Updates token balance of the account, usefull after transfer SOL to WSOL account"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/create_token_account:
+    post:
+      description: "Returns the associated token account for the given user's main account or creates one"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/close_token_account:
+    post:
+      description: "Closes existing token account associated with the given user's main account"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/user_init_vault:
+    post:
+      description: "Initializes a new User for the Vault"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/add_liquidity_vault:
+    post:
+      description: "Adds liquidity to the Vault"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: number
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/add_locked_liquidity_vault:
+    post:
+      description: "Adds locked liquidity to the Vault"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/remove_liquidity_vault:
+    post:
+      description: "Removes liquidity from the Vault"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/remove_unlocked_liquidity_vault:
+    post:
+      description: "Removes unlocked liquidity from the Vault"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/add_liquidity_pool:
+    post:
+      description: "Adds liquidity to the Pool"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: number
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/remove_liquidity_pool:
+    post:
+      description: "Removes liquidity from the Pool"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/swap:
+    post:
+      description: "Swaps tokens"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: protocol
+          in: query
+          schema:
+            type: string
+        - name: from_token
+          in: query
+          schema:
+            type: string
+        - name: to_token
+          in: query
+          schema:
+            type: string
+        - name: ui_amount_in
+          in: query
+          schema:
+            type: number
+        - name: min_ui_amount_out
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/user_init:
+    post:
+      description: "Initializes a new User for the Farm"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/stake:
+    post:
+      description: "Stakes tokens to the Farm"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/unstake:
+    post:
+      description: "Unstakes tokens from the Farm"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/harvest:
+    post:
+      description: "Harvests rewards from the Farm"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/crank_vault:
+    post:
+      description: "Cranks single Vault"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: step
+          in: query
+          schema:
+            type: integer
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/crank_vaults:
+    post:
+      description: "Cranks all Vaults"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: step
+          in: query
+          schema:
+            type: integer
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/reset_cache:
+    post:
+      description: "Clears cache records to force re-pull from blockchain"
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/user_init_fund:
+    post:
+      description: "Initializes a new User for the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/request_deposit_fund:
+    post:
+      description: "Requests a new deposit to the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/cancel_deposit_fund:
+    post:
+      description: "Cancels pending deposit to the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/request_withdrawal_fund:
+    post:
+      description: "Requests a new withdrawal from the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/cancel_withdrawal_fund:
+    post:
+      description: "Cancels pending deposit to the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/start_liquidation_fund:
+    post:
+      description: "Starts the Fund liquidation"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/disable_deposits_fund:
+    post:
+      description: "Disables deposits to the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/approve_deposit_fund:
+    post:
+      description: "Approves pending deposit to the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: user_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/deny_deposit_fund:
+    post:
+      description: "Denies pending deposit to the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: user_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: deny_reason
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/disable_withdrawals_fund:
+    post:
+      description: "Disables withdrawals from the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/approve_withdrawal_fund:
+    post:
+      description: "Approves pending withdrawal from the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: user_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/deny_withdrawal_fund:
+    post:
+      description: "Denies pending withdrawal from the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: user_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: deny_reason
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/lock_assets_fund:
+    post:
+      description: "Moves deposited assets from Deposit/Withdraw custody to the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/unlock_assets_fund:
+    post:
+      description: "Releases assets from the Fund to Deposit/Withdraw custody"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/update_fund_assets_with_custody:
+    post:
+      description: "Update Fund assets info based on custody holdings"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: custody_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/update_fund_assets_with_custodies:
+    post:
+      description: "Update Fund assets info based on all custodies"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/update_fund_assets_with_vault:
+    post:
+      description: "Update Fund assets info based on Vault holdings"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/update_fund_assets_with_vaults:
+    post:
+      description: "Update Fund assets info based on Vault holdings"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a String object or 404 status code with error description.
+
+  /api/v1/fund_add_liquidity_pool:
+    post:
+      description: "Adds liquidity to the Pool in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: number
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/fund_remove_liquidity_pool:
+    post:
+      description: "Removes liquidity from the Pool in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/fund_user_init_farm:
+    post:
+      description: "Initializes a new User for the Farm in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/fund_stake:
+    post:
+      description: "Stakes tokens to the Farm in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/fund_unstake:
+    post:
+      description: "Unstakes tokens from the Farm in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/fund_harvest:
+    post:
+      description: "Harvests rewards from the Farm in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/fund_user_init_vault:
+    post:
+      description: "Initializes a new User for the Vault in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/fund_add_liquidity_vault:
+    post:
+      description: "Adds liquidity to the Vault in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: number
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/fund_add_locked_liquidity_vault:
+    post:
+      description: "Adds locked liquidity to the Vault in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/fund_remove_liquidity_vault:
+    post:
+      description: "Removes liquidity from the Vault in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.
+
+  /api/v1/fund_remove_unlocked_liquidity_vault:
+    post:
+      description: "Removes unlocked liquidity from the Vault in the Fund"
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: fund_name
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: The result will be a Signature object or 404 status code with error description.

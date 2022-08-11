@@ -1,21 +1,29 @@
 import assert from 'assert';
 import BN from 'bn.js';
 import {Buffer} from 'buffer';
-import * as BufferLayout from 'buffer-layout';
-import type {Connection, TransactionSignature} from '@solana/web3.js';
+import * as BufferLayout from '@solana/buffer-layout';
+import type {
+  ConfirmOptions,
+  Connection,
+  TransactionSignature,
+} from '@solana/web3.js';
 import {
   Account,
   PublicKey,
   SystemProgram,
   Transaction,
   TransactionInstruction,
+  sendAndConfirmTransaction,
 } from '@solana/web3.js';
 
 import * as Layout from './layout';
-import {sendAndConfirmTransaction} from './util/send-and-confirm-transaction';
 import {loadAccount} from './util/account';
 
 export const TOKEN_SWAP_PROGRAM_ID: PublicKey = new PublicKey(
+  'SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw',
+);
+
+export const OLD_TOKEN_SWAP_PROGRAM_ID: PublicKey = new PublicKey(
   'SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8',
 );
 
@@ -57,7 +65,7 @@ export class Numberu64 extends BN {
 export const TokenSwapLayout = BufferLayout.struct([
   BufferLayout.u8('version'),
   BufferLayout.u8('isInitialized'),
-  BufferLayout.u8('nonce'),
+  BufferLayout.u8('bumpSeed'),
   Layout.publicKey('tokenProgramId'),
   Layout.publicKey('tokenAccountA'),
   Layout.publicKey('tokenAccountB'),
@@ -180,7 +188,6 @@ export class TokenSwap {
     tokenAccountPool: PublicKey,
     tokenProgramId: PublicKey,
     swapProgramId: PublicKey,
-    nonce: number,
     tradeFeeNumerator: number,
     tradeFeeDenominator: number,
     ownerTradeFeeNumerator: number,
@@ -190,6 +197,7 @@ export class TokenSwap {
     hostFeeNumerator: number,
     hostFeeDenominator: number,
     curveType: number,
+    curveParameters: Numberu64 = new Numberu64(0),
   ): TransactionInstruction {
     const keys = [
       {pubkey: tokenSwapAccount.publicKey, isSigner: false, isWritable: true},
@@ -203,7 +211,6 @@ export class TokenSwap {
     ];
     const commandDataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      BufferLayout.u8('nonce'),
       BufferLayout.nu64('tradeFeeNumerator'),
       BufferLayout.nu64('tradeFeeDenominator'),
       BufferLayout.nu64('ownerTradeFeeNumerator'),
@@ -216,11 +223,17 @@ export class TokenSwap {
       BufferLayout.blob(32, 'curveParameters'),
     ]);
     let data = Buffer.alloc(1024);
+
+    // package curve parameters
+    // NOTE: currently assume all curves take a single parameter, u64 int
+    //       the remaining 24 of the 32 bytes available are filled with 0s
+    let curveParamsBuffer = Buffer.alloc(32);
+    curveParameters.toBuffer().copy(curveParamsBuffer);
+
     {
       const encodeLength = commandDataLayout.encode(
         {
           instruction: 0, // InitializeSwap instruction
-          nonce,
           tradeFeeNumerator,
           tradeFeeDenominator,
           ownerTradeFeeNumerator,
@@ -230,6 +243,7 @@ export class TokenSwap {
           hostFeeNumerator,
           hostFeeDenominator,
           curveType,
+          curveParameters: curveParamsBuffer,
         },
         data,
       );
@@ -325,7 +339,6 @@ export class TokenSwap {
    * @param payer Pays for the transaction
    * @param tokenSwapAccount The token swap account
    * @param authority The authority over the swap and accounts
-   * @param nonce The nonce used to generate the authority
    * @param tokenAccountA: The token swap's Token A account
    * @param tokenAccountB: The token swap's Token B account
    * @param poolToken The pool token
@@ -350,7 +363,6 @@ export class TokenSwap {
     tokenAccountPool: PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
-    nonce: number,
     tradeFeeNumerator: number,
     tradeFeeDenominator: number,
     ownerTradeFeeNumerator: number,
@@ -360,6 +372,8 @@ export class TokenSwap {
     hostFeeNumerator: number,
     hostFeeDenominator: number,
     curveType: number,
+    curveParameters?: Numberu64,
+    confirmOptions?: ConfirmOptions,
   ): Promise<TokenSwap> {
     let transaction;
     const tokenSwap = new TokenSwap(
@@ -411,7 +425,6 @@ export class TokenSwap {
       tokenAccountPool,
       tokenProgramId,
       swapProgramId,
-      nonce,
       tradeFeeNumerator,
       tradeFeeDenominator,
       ownerTradeFeeNumerator,
@@ -421,15 +434,15 @@ export class TokenSwap {
       hostFeeNumerator,
       hostFeeDenominator,
       curveType,
+      curveParameters,
     );
 
     transaction.add(instruction);
     await sendAndConfirmTransaction(
-      'createAccount and InitializeSwap',
       connection,
       transaction,
-      payer,
-      tokenSwapAccount,
+      [payer, tokenSwapAccount],
+      confirmOptions,
     );
 
     return tokenSwap;
@@ -456,9 +469,9 @@ export class TokenSwap {
     userTransferAuthority: Account,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
+    confirmOptions?: ConfirmOptions,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
-      'swap',
       this.connection,
       new Transaction().add(
         TokenSwap.swapInstruction(
@@ -478,8 +491,8 @@ export class TokenSwap {
           minimumAmountOut,
         ),
       ),
-      this.payer,
-      userTransferAuthority,
+      [this.payer, userTransferAuthority],
+      confirmOptions,
     );
   }
 
@@ -555,9 +568,9 @@ export class TokenSwap {
     poolTokenAmount: number | Numberu64,
     maximumTokenA: number | Numberu64,
     maximumTokenB: number | Numberu64,
+    confirmOptions?: ConfirmOptions,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
-      'depositAllTokenTypes',
       this.connection,
       new Transaction().add(
         TokenSwap.depositAllTokenTypesInstruction(
@@ -577,8 +590,8 @@ export class TokenSwap {
           maximumTokenB,
         ),
       ),
-      this.payer,
-      userTransferAuthority,
+      [this.payer, userTransferAuthority],
+      confirmOptions,
     );
   }
 
@@ -654,9 +667,9 @@ export class TokenSwap {
     poolTokenAmount: number | Numberu64,
     minimumTokenA: number | Numberu64,
     minimumTokenB: number | Numberu64,
+    confirmOptions?: ConfirmOptions,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
-      'withdraw',
       this.connection,
       new Transaction().add(
         TokenSwap.withdrawAllTokenTypesInstruction(
@@ -677,8 +690,8 @@ export class TokenSwap {
           minimumTokenB,
         ),
       ),
-      this.payer,
-      userTransferAuthority,
+      [this.payer, userTransferAuthority],
+      confirmOptions,
     );
   }
 
@@ -751,9 +764,9 @@ export class TokenSwap {
     userTransferAuthority: Account,
     sourceTokenAmount: number | Numberu64,
     minimumPoolTokenAmount: number | Numberu64,
+    confirmOptions?: ConfirmOptions,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
-      'depositSingleTokenTypeExactAmountIn',
       this.connection,
       new Transaction().add(
         TokenSwap.depositSingleTokenTypeExactAmountInInstruction(
@@ -771,8 +784,8 @@ export class TokenSwap {
           minimumPoolTokenAmount,
         ),
       ),
-      this.payer,
-      userTransferAuthority,
+      [this.payer, userTransferAuthority],
+      confirmOptions,
     );
   }
 
@@ -841,9 +854,9 @@ export class TokenSwap {
     userTransferAuthority: Account,
     destinationTokenAmount: number | Numberu64,
     maximumPoolTokenAmount: number | Numberu64,
+    confirmOptions?: ConfirmOptions,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
-      'withdrawSingleTokenTypeExactAmountOut',
       this.connection,
       new Transaction().add(
         TokenSwap.withdrawSingleTokenTypeExactAmountOutInstruction(
@@ -862,8 +875,8 @@ export class TokenSwap {
           maximumPoolTokenAmount,
         ),
       ),
-      this.payer,
-      userTransferAuthority,
+      [this.payer, userTransferAuthority],
+      confirmOptions,
     );
   }
 

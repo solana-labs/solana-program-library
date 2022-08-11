@@ -20,8 +20,6 @@ use arbitrary::Arbitrary;
 #[repr(C)]
 #[derive(Debug, PartialEq)]
 pub struct Initialize {
-    /// nonce used to create valid program address
-    pub nonce: u8,
     /// all swap fees
     pub fees: Fees,
     /// swap curve info for pool, including CurveType and anything
@@ -80,7 +78,7 @@ pub struct DepositSingleTokenTypeExactAmountIn {
     pub minimum_pool_token_amount: u64,
 }
 
-/// WithdrawAllTokenTypes instruction data
+/// WithdrawSingleTokenTypeExactAmountOut instruction data
 #[cfg_attr(feature = "fuzz", derive(Arbitrary))]
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
@@ -107,7 +105,7 @@ pub enum SwapInstruction {
     ///   Must be empty, not owned by swap authority
     ///   6. `[writable]` Pool Token Account to deposit the initial pool token
     ///   supply.  Must be empty, not owned by swap authority.
-    ///   7. '[]` Token program id
+    ///   7. `[]` Token program id
     Initialize(Initialize),
 
     ///   Swap the tokens in the pool.
@@ -121,8 +119,8 @@ pub enum SwapInstruction {
     ///   6. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
     ///   7. `[writable]` Pool token mint, to generate trading fees
     ///   8. `[writable]` Fee account, to receive trading fees
-    ///   9. '[]` Token program id
-    ///   10 `[optional, writable]` Host fee account to receive additional trading fees
+    ///   9. `[]` Token program id
+    ///   10. `[optional, writable]` Host fee account to receive additional trading fees
     Swap(Swap),
 
     ///   Deposit both types of tokens into the pool.  The output is a "pool"
@@ -138,7 +136,7 @@ pub enum SwapInstruction {
     ///   6. `[writable]` token_b Base Account to deposit into.
     ///   7. `[writable]` Pool MINT account, swap authority is the owner.
     ///   8. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
-    ///   9. '[]` Token program id
+    ///   9. `[]` Token program id
     DepositAllTokenTypes(DepositAllTokenTypes),
 
     ///   Withdraw both types of tokens from the pool at the current ratio, given
@@ -155,7 +153,7 @@ pub enum SwapInstruction {
     ///   7. `[writable]` token_a user Account to credit.
     ///   8. `[writable]` token_b user Account to credit.
     ///   9. `[writable]` Fee account, to receive withdrawal fees
-    ///   10 '[]` Token program id
+    ///   10. `[]` Token program id
     WithdrawAllTokenTypes(WithdrawAllTokenTypes),
 
     ///   Deposit one type of tokens into the pool.  The output is a "pool" token
@@ -170,7 +168,7 @@ pub enum SwapInstruction {
     ///   5. `[writable]` token_b Swap Account, may deposit INTO.
     ///   6. `[writable]` Pool MINT account, swap authority is the owner.
     ///   7. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
-    ///   8. '[]` Token program id
+    ///   8. `[]` Token program id
     DepositSingleTokenTypeExactAmountIn(DepositSingleTokenTypeExactAmountIn),
 
     ///   Withdraw one token type from the pool at the current ratio given the
@@ -185,7 +183,7 @@ pub enum SwapInstruction {
     ///   6. `[writable]` token_b Swap Account to potentially withdraw from.
     ///   7. `[writable]` token_(A|B) User Account to credit
     ///   8. `[writable]` Fee account, to receive withdrawal fees
-    ///   9. '[]` Token program id
+    ///   9. `[]` Token program id
     WithdrawSingleTokenTypeExactAmountOut(WithdrawSingleTokenTypeExactAmountOut),
 }
 
@@ -195,16 +193,11 @@ impl SwapInstruction {
         let (&tag, rest) = input.split_first().ok_or(SwapError::InvalidInstruction)?;
         Ok(match tag {
             0 => {
-                let (&nonce, rest) = rest.split_first().ok_or(SwapError::InvalidInstruction)?;
                 if rest.len() >= Fees::LEN {
                     let (fees, rest) = rest.split_at(Fees::LEN);
                     let fees = Fees::unpack_unchecked(fees)?;
                     let swap_curve = SwapCurve::unpack_unchecked(rest)?;
-                    Self::Initialize(Initialize {
-                        nonce,
-                        fees,
-                        swap_curve,
-                    })
+                    Self::Initialize(Initialize { fees, swap_curve })
                 } else {
                     return Err(SwapError::InvalidInstruction.into());
                 }
@@ -275,13 +268,8 @@ impl SwapInstruction {
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
         match &*self {
-            Self::Initialize(Initialize {
-                nonce,
-                fees,
-                swap_curve,
-            }) => {
+            Self::Initialize(Initialize { fees, swap_curve }) => {
                 buf.push(0);
-                buf.push(*nonce);
                 let mut fees_slice = [0u8; Fees::LEN];
                 Pack::pack_into_slice(fees, &mut fees_slice[..]);
                 buf.extend_from_slice(&fees_slice);
@@ -351,15 +339,10 @@ pub fn initialize(
     pool_pubkey: &Pubkey,
     fee_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
-    nonce: u8,
     fees: Fees,
     swap_curve: SwapCurve,
 ) -> Result<Instruction, ProgramError> {
-    let init_data = SwapInstruction::Initialize(Initialize {
-        nonce,
-        fees,
-        swap_curve,
-    });
+    let init_data = SwapInstruction::Initialize(Initialize { fees, swap_curve });
     let data = init_data.pack();
 
     let accounts = vec![
@@ -583,8 +566,8 @@ pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::curve::{base::CurveType, stable::StableCurve};
+    use std::sync::Arc;
 
     #[test]
     fn pack_intialize() {
@@ -606,21 +589,16 @@ mod tests {
             host_fee_numerator,
             host_fee_denominator,
         };
-        let nonce: u8 = 255;
         let amp: u64 = 1;
         let curve_type = CurveType::Stable;
-        let calculator = Box::new(StableCurve { amp });
+        let calculator = Arc::new(StableCurve { amp });
         let swap_curve = SwapCurve {
             curve_type,
             calculator,
         };
-        let check = SwapInstruction::Initialize(Initialize {
-            nonce,
-            fees,
-            swap_curve,
-        });
+        let check = SwapInstruction::Initialize(Initialize { fees, swap_curve });
         let packed = check.pack();
-        let mut expect = vec![0u8, nonce];
+        let mut expect = vec![0u8];
         expect.extend_from_slice(&trade_fee_numerator.to_le_bytes());
         expect.extend_from_slice(&trade_fee_denominator.to_le_bytes());
         expect.extend_from_slice(&owner_trade_fee_numerator.to_le_bytes());

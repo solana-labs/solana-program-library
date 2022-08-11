@@ -1,74 +1,95 @@
-# Token JavaScript API
+# `@solana/spl-token`
 
-The Token JavaScript library comprises:
+A TypeScript library for interacting with the SPL Token and Token-2022 programs.
 
-* A library to interact with the on-chain program
-* A test client that exercises the program
-* Scripts to facilitate building the program
+## Links
 
-## Getting Started
+- [TypeScript Docs](https://solana-labs.github.io/solana-program-library/token/js/)
+- [FAQs (Frequently Asked Questions)](#faqs)
+- [Install](#install)
+- [Build from Source](#build-from-source)
 
-First fetch the npm dependencies, including `@solana/web3.js`, by running:
-```bash
-$ npm install
+## FAQs
+
+### How can I get support?
+
+Please ask questions in the Solana Stack Exchange: https://solana.stackexchange.com/
+
+If you've found a bug or you'd like to request a feature, please
+[open an issue](https://github.com/solana-labs/solana-program-library/issues/new).
+
+### No export named Token
+
+Please see [upgrading from 0.1.x](#upgrading-from-0.1.x).
+
+## Install
+
+```shell
+yarn add @solana/spl-token
 ```
 
-### Select a Network
+## Build from Source
 
-The client connects to a local Solana cluster by default.
-
-To enable on-chain program logs, set the `RUST_LOG` environment variable:
-
-```bash
-$ export RUST_LOG=solana_runtime::native_loader=trace,solana_runtime::system_instruction_processor=trace,solana_runtime::bank=debug,solana_bpf_loader=debug,solana_rbpf=debug
+1. Clone the project:
+```shell
+git clone https://github.com/solana-labs/solana-program-library.git
 ```
 
-To start a local Solana cluster run:
-```bash
-$ solana-test-validator
+2. Navigate to the library:
+```shell
+cd solana-program-library/token/js
 ```
 
-Solana cluster logs are available with:
-```bash
-$ solana --url http://127.0.0.1:8899/ logs
+3. Install the dependencies:
+```shell
+yarn install
 ```
 
-### Build the on-chain program
-
-```bash
-$ npm run build:program
+4. Build the library:
+```shell
+yarn build
 ```
 
-### Run the test client
-
-```bash
-$ npm run start
+5. Build the on-chain programs:
+```shell
+yarn test:build-programs
 ```
 
-## Pointing to a public Solana cluster
-
-Solana maintains three public clusters:
-- `devnet` - Development cluster with airdrops enabled
-- `testnet` - Tour De Sol test cluster without airdrops enabled
-- `mainnet-beta` -  Main cluster
-
-Use npm scripts to configure which cluster.
-
-To point to `devnet`:
-```bash
-$ npm run cluster:devnet
+6. Run the tests:
+```shell
+yarn test
 ```
 
-To point back to the local cluster:
-```bash
-$ npm run cluster:localnet
+7. Run the example:
+```shell
+yarn example
 ```
 
-## Releasing
+## Upgrading
 
-1. (first-time only) Create your account on npmjs.com (with 2FA enabled!) and ask @mvines about granting the publish right and run `npm login`
-3. Bump version in `package.json` and `npm install` (to update `package-lock.json`)
-4. Create a PR for the version bump
-5. Merge the PR and push new git tag on master branch
-6. Create release on github.com from the pushed tag
-7. Run `npm run build` and `npm publish`
+### Upgrading from 0.2.0
+
+There are no breaking changes from 0.2.0, only new functionality for Token-2022.
+
+### Upgrading from 0.1.x
+
+When upgrading from spl-token 0.1.x, you may see the following error in your code:
+
+```
+import {TOKEN_PROGRAM_ID, Token, AccountLayout} from '@solana/spl-token';
+                          ^^^^^
+SyntaxError: The requested module '@solana/spl-token' does not provide an export named 'Token'
+```
+
+The `@solana/spl-token` library as of version 0.2.0 does not have the `Token`
+class. Instead the actions are split up and exported separately.
+
+To use the old version, install it with:
+
+```
+npm install @solana/spl-token@0.1.8
+```
+
+Otherwise you can find documentation on how to use new versions on the
+[SPL docs](https://spl.solana.com/token) or
+[Solana Cookbook](https://solanacookbook.com/references/token.html).

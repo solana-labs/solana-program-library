@@ -1,1 +1,1 @@
-declare module 'buffer-layout';
+declare module '@solana/buffer-layout';

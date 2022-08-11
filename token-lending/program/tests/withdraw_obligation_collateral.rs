@@ -6,7 +6,6 @@ use helpers::*;
 use solana_program_test::*;
 use solana_sdk::{
     instruction::InstructionError,
-    pubkey::Pubkey,
     signature::{Keypair, Signer},
     transaction::{Transaction, TransactionError},
 };
@@ -19,7 +18,7 @@ use spl_token_lending::{
 use std::u64;
 
 #[tokio::test]
-async fn test_withdraw_base_currency_fixed_amount() {
+async fn test_withdraw_fixed_amount() {
     let mut test = ProgramTest::new(
         "spl_token_lending",
         spl_token_lending::id(),
@@ -27,7 +26,7 @@ async fn test_withdraw_base_currency_fixed_amount() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(33_000);
+    test.set_compute_max_units(50_000);
 
     const SOL_DEPOSIT_AMOUNT_LAMPORTS: u64 = 200 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO;
     const USDC_BORROW_AMOUNT_FRACTIONAL: u64 = 1_000 * FRACTIONAL_TO_USDC;
@@ -35,15 +34,16 @@ async fn test_withdraw_base_currency_fixed_amount() {
     const WITHDRAW_AMOUNT: u64 = 100 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO;
 
     let user_accounts_owner = Keypair::new();
-    let usdc_mint = add_usdc_mint(&mut test);
-    let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
+    let lending_market = add_lending_market(&mut test);
 
     let mut reserve_config = TEST_RESERVE_CONFIG;
     reserve_config.loan_to_value_ratio = 50;
 
+    let sol_oracle = add_sol_oracle(&mut test);
     let sol_test_reserve = add_reserve(
         &mut test,
         &lending_market,
+        &sol_oracle,
         &user_accounts_owner,
         AddReserveArgs {
             collateral_amount: SOL_RESERVE_COLLATERAL_LAMPORTS,
@@ -55,9 +55,12 @@ async fn test_withdraw_base_currency_fixed_amount() {
         },
     );
 
+    let usdc_mint = add_usdc_mint(&mut test);
+    let usdc_oracle = add_usdc_oracle(&mut test);
     let usdc_test_reserve = add_reserve(
         &mut test,
         &lending_market,
+        &usdc_oracle,
         &user_accounts_owner,
         AddReserveArgs {
             borrow_amount: USDC_BORROW_AMOUNT_FRACTIONAL,
@@ -142,7 +145,7 @@ async fn test_withdraw_base_currency_fixed_amount() {
 }
 
 #[tokio::test]
-async fn test_withdraw_quote_currency_all() {
+async fn test_withdraw_max_amount() {
     let mut test = ProgramTest::new(
         "spl_token_lending",
         spl_token_lending::id(),
@@ -150,7 +153,7 @@ async fn test_withdraw_quote_currency_all() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(28_000);
+    test.set_compute_max_units(50_000);
 
     const USDC_DEPOSIT_AMOUNT_FRACTIONAL: u64 =
         1_000 * FRACTIONAL_TO_USDC * INITIAL_COLLATERAL_RATIO;
@@ -158,15 +161,17 @@ async fn test_withdraw_quote_currency_all() {
     const WITHDRAW_AMOUNT: u64 = u64::MAX;
 
     let user_accounts_owner = Keypair::new();
-    let usdc_mint = add_usdc_mint(&mut test);
-    let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
+    let lending_market = add_lending_market(&mut test);
 
     let mut reserve_config = TEST_RESERVE_CONFIG;
     reserve_config.loan_to_value_ratio = 50;
 
+    let usdc_mint = add_usdc_mint(&mut test);
+    let usdc_oracle = add_usdc_oracle(&mut test);
     let usdc_test_reserve = add_reserve(
         &mut test,
         &lending_market,
+        &usdc_oracle,
         &user_accounts_owner,
         AddReserveArgs {
             collateral_amount: USDC_RESERVE_COLLATERAL_FRACTIONAL,
@@ -262,15 +267,16 @@ async fn test_withdraw_too_large() {
     const WITHDRAW_AMOUNT: u64 = (100 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO) + 1;
 
     let user_accounts_owner = Keypair::new();
-    let usdc_mint = add_usdc_mint(&mut test);
-    let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
+    let lending_market = add_lending_market(&mut test);
 
     let mut reserve_config = TEST_RESERVE_CONFIG;
     reserve_config.loan_to_value_ratio = 50;
 
+    let sol_oracle = add_sol_oracle(&mut test);
     let sol_test_reserve = add_reserve(
         &mut test,
         &lending_market,
+        &sol_oracle,
         &user_accounts_owner,
         AddReserveArgs {
             collateral_amount: SOL_RESERVE_COLLATERAL_LAMPORTS,
@@ -282,9 +288,12 @@ async fn test_withdraw_too_large() {
         },
     );
 
+    let usdc_mint = add_usdc_mint(&mut test);
+    let usdc_oracle = add_usdc_oracle(&mut test);
     let usdc_test_reserve = add_reserve(
         &mut test,
         &lending_market,
+        &usdc_oracle,
         &user_accounts_owner,
         AddReserveArgs {
             borrow_amount: USDC_BORROW_AMOUNT_FRACTIONAL,

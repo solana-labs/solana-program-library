@@ -17,15 +17,6 @@ pub fn process_instruction(
     // Log a string
     msg!("static string");
 
-    // Log 5 numbers as u64s in hexadecimal format
-    msg!(
-        instruction_data[0],
-        instruction_data[1],
-        instruction_data[2],
-        instruction_data[3],
-        instruction_data[4]
-    );
-
     // Log a slice
     sol_log_slice(instruction_data);
 

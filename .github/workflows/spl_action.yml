@@ -1,0 +1,26 @@
+name: Docs Publish
+
+on:
+  push:
+    branches:  [master]
+    paths:
+    - 'docs/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        name: "importing all the document"
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+        name: "installing the node.js with version 16"
+      - name: "Build Docs"
+        if: ${{ github.event_name == ('push' || 'pull_request')}} && ${{github.ref == 'master'}}
+        run: |
+         cd docs/
+         npm ci
+         ./build.sh
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

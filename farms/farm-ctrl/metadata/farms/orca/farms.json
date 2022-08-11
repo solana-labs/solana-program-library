@@ -1,0 +1,1743 @@
+{
+"name": "Orca Farms",
+"farms":
+ [
+  {
+    "name": "SOL_USDC_AQ",
+    "address": "85HrPbJtrN82aeB74WTwoFxcNgmf5aDNP2ENngbDpd5G",
+    "farmTokenMint": "FFdjrSvNALfdgxANNpt3x85WpeVMdQSH5SEP2poM8fcK",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "APDFRM3HMr8CAGXwKHiu2f5ePSpaiEJhaURwhsRrUUt9",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SOL_USDT_AQ",
+    "address": "4RRRJkscV2DmwJUxTQgRdYock75GfwYJn7LTxy9rGTmY",
+    "farmTokenMint": "71vZ7Jvu8fTyFzpX399dmoSovoz24rVbipLrRn2wBNzW",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "FZthQCuYHhcfiDma7QrX7buDHwrZEd7vL8SjS6LQa3Tx",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ETH_SOL_AQ",
+    "address": "3ARgavt1NhqLmJWj3wAJy6XBarG6pJbEKRv1wzzRbbaN",
+    "farmTokenMint": "CGFTRh4jKLPbS9r4hZtbDfaRuC7qcA8rZpbLnVTzJBer",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "71FymgN2ZUf7VvVTLE8jYEnjP3jSK1Frp2XT1nHs8Hob",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ETH_USDC_AQ",
+    "address": "FpezTR76RRjgpBb9HhR6ap8BgQfkHyNMQSqJDcoXpjAb",
+    "farmTokenMint": "HDP2AYFmvLz6sWpoSuNS62JjvW4HjMKp7doXucqpWN56",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "3e1W6Aqcbuk2DfHUwRiRcyzpyYRRjg6yhZZcyEARydUX",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "RAY_SOL_AQ",
+    "address": "B1aByG1fU5yUgQT2EtJrp96SC4tJhnipzdXqHx2CXRgj",
+    "farmTokenMint": "AUkn5f4N4TqPA5BiWirTDHWnG3SePfmeDpDqrFmhSgKb",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "5kimD5W6yJpHRHCyPtnEyDsQRdiiJKivu5AqN3si82Jc",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ROPE_SOL_AQ",
+    "address": "NFsHa28zxuLnncHme7iLx8TXWV8ypyxPvEPaQh29zDh",
+    "farmTokenMint": "xpPyQwQ1HXHyEpvFGyTQRLY6rmj6jtAdEgLMV5uoz4m",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "ADrvfPBsRcJfGsN6Bs385zYddH52nuM5FA8UaAkX9o2V",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "STEP_SOL_AQ",
+    "address": "DGtiR1LWNPGV9A5byh7EjAoh9NC2cW5YDcmxCpUJosD2",
+    "farmTokenMint": "GwrBA1F8rGummDCDd8NY9Eu1cLNuJqbT8WaGxgWpFwGL",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "8nTzqDXHriG2CXKbybeuEh1EqDQMtrbYMFWcP7AkiDaP",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SRM_SOL_AQ",
+    "address": "5CQVdPpaW95X1atyfqunZf7eBE1rhQBXMfgJ1wRVF1p1",
+    "farmTokenMint": "D659zwnbeTgquChbaWC3KDHrkYoqMuz1doGLHTFaqTtD",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "9tf8rBSEQYG7AqL896fN2nZi1iYPqpWaLEdpbeQaC1Vy",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "FTT_SOL_AQ",
+    "address": "GzZE2CEemaTGNtRSYs9sArAJFuJi5kwsPJFyz5puYhsj",
+    "farmTokenMint": "9r9BcPwCon96P5Y6JSdRAog7Uknz9p9GrnuHm4VzuB9k",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "EsYaDKJCmcJtJHFuJYwQZwqohvVMCrFzcg8yo3i328No",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "COPE_SOL_AQ",
+    "address": "CXYEVaqtDs4R9Bpeu4xYf8KT8S6nYis6VWkDEh9Mu1FS",
+    "farmTokenMint": "7CT19h7n2YBKiCFCaxXqMM79jNM4cmUvjXhNMjJNRYa",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "CzieDbGRdN1QGaGDNpSqzEA18bi881ccvkkGZi51pe1k",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "OXY_SOL_AQ",
+    "address": "ALmRst1DksKXVfY64KXq7pJUUG5PP56kwY18ijVDGAsz",
+    "farmTokenMint": "G48RkwsNYd3A4rBfuQhCswr9YUE63fFmZGyhgH95dq3S",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "7tYCdLN84EnTMkxM7HNamWJx7F4xgKe9KiiWvLyWjbgT",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "BTC_SOL_AQ",
+    "address": "EeG5AAnFS56AveUrKexzivQeUdWhm6zYq6ubn6fLMCQa",
+    "farmTokenMint": "GxmjQZvgwNCh3QSRNB8CPED81hzySem62PDDuMp4B379",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "Acxs19v6eUMTEfdvkvWkRB4bwFCHm3XV9jABCy7c1mXe",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "MER_SOL_AQ",
+    "address": "8gJggSfM35JpfvXmEsuJoHPLB8D6br15MEWEWdQF81d6",
+    "farmTokenMint": "CrKVRnH6iGbFXxEnXMn3Emwv3Fe7VwxEqpA8zNbwsgkH",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "HiwRobjfHZ4zsPtqCC4oBS24pSmy4t8GGkXRbQj4yU6L",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "FIDA_SOL_AQ",
+    "address": "4X3U1tpfiwQ5zPPd4oQSPcu3UK7nMSUWyAXxCmcSA6qP",
+    "farmTokenMint": "4geGcEfgVjzJGZAaT8iTicPm1XLDPjdSpVhtA99sZ7jX",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "EYsNdtyu4gGTaGz8N5m5iQ3G1N6rDyMbR72B3CqbWW4W",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "MAPS_SOL_AQ",
+    "address": "Gobr8FhZDtn8yxkFQDND3KmfuwZseWEuyZ3xpD56hk1i",
+    "farmTokenMint": "7Dy84zJNHzEM9335BrtFjCuunt2VgxJ7KBT6PJarxKMq",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "99pfC8fWymXgbq3CvrExhx3UxQDC1fMWEWLbNT83F45e",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "USDC_USDT_AQ",
+    "address": "5psKJrxWnPmoAbCxk3An2CGh7wHAX2cWddf5vZuYbbVw",
+    "farmTokenMint": "GjpXgKwn4VW4J2pZdS3dovM58hiXWLJtopTfqG83zY2f",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "H2uzgruPvonVpCRhwwdukcpXK8TG17swFNzYFr2rtPxy",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ORCA_SOL_AQ",
+    "address": "F6pi7SyXWx56fP96mYQ4Yfh4yZ7oGNtDjwSYHT5Mz7Ld",
+    "farmTokenMint": "B5waaKnsmtqFawPspUwcuy1cRjAC7u2LrHSwxPSxK4sZ",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "2uVjAuRXavpM6h1scGQaxqb6HVaNRn6T2X7HHXTabz25",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ORCA_USDC_AQ",
+    "address": "9S1BsxbDNQXQccjFamVEGgxiYQHTeudvhEYwFr4oWeaf",
+    "farmTokenMint": "Gc7W5U66iuHQcC1cQyeX9hxkPF2QUVJPTf1NWbW8fNrt",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "n8Mpu28RjeYD7oUX3LG1tPxzhRZh3YYLRSHcHRdS3Zx",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "KIN_SOL_AQ",
+    "address": "9XTA3t3X8KaeLgkv7XuDWATo4oDwBnTZqjnSPcE5ijYK",
+    "farmTokenMint": "7Ho3ht7krdFELBcPAsGXFfQMyG4PUvYSfpz4aNBRP3Ek",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "HEvnD66WcBfTajS9adUYnGRBMDehFtLySiFHSD6kEBWs",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SAMO_SOL_AQ",
+    "address": "98EDd1L47pdW1F7ne82dyFXpfhVdEcrCqUF1dYrWLFZi",
+    "farmTokenMint": "CNf8gZtLahBWxKe3YwsqywLHMTewGqvq6pJ5ecg3cTYU",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "D6N9j8F2DhtzDtrdpT74y3u2YmYAzcggiLc3nTjqux9M",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "LIQ_USDC_AQ",
+    "address": "z2WHNcBJTZqbK5wCuBPtswEq2614T6si1cJmog7vFAL",
+    "farmTokenMint": "57vGdcMZLnbNr4TZ4hgrpGJZGR9vTPhu8L9bNKDrqxKT",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "3PD9SZFwXKkXr4akLf4ofo37ZUMycwML89R2P3qxcbZG",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SNY_USDC_AQ",
+    "address": "7qAQZxYQRcmHmz3Wi9NeieujwLSd3N41M4dJipgSCNsB",
+    "farmTokenMint": "6Qw5Gzf1TkM3YRe7Dh6yMVMo2wnJxRiCUBP8abTTn9Yg",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "AZpo4BJHHRetF96v6SGinFZBMXM4yWMo4RA8C4PriDLk",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "mSOL_USDC_AQ",
+    "address": "EvtMzreDMq1U8ytV5fEmfoWNfPhrjZ87za835GuRvZCc",
+    "farmTokenMint": "5r3vDsNTGXXb9cGQfqyNuYD2bjhRPymGJBfDmKosR9Ev",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "8PSfyiTVwPb6Rr2iZ8F3kNpbg65BCfJM9v8LfB916r44",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SLRS_USDC_AQ",
+    "address": "5XXw91d4HoLjqhUhXmUcdkCDtQyXvQkLJMUcYJkKn5Dx",
+    "farmTokenMint": "66xCxkffQZKBZLiHV3PDcfR8ANJTfnDRxPCaBdv4wxB7",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "AtB4nUmdyQfuWWJ9xAHw9xyVnJFfSjSuVWkiYan8y86w",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "PORT_USDC_AQ",
+    "address": "FpEb4eEqhnPBAA2RNvsSe8baCoev4mSNQjxKPGvx5Gjv",
+    "farmTokenMint": "4CGxvZdwiZgVMLXiTdJHTkJRUTpTSJCtmtCRbSkAxerE",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "F8gPSpwVHj8FdAJAYULDuZBxFEJut87hUbARYYx3471w",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SBR_USDC_AQ",
+    "address": "EWRNKpLc4Y8r6Aur9mo8GtBYatqfoML9A7bfEmDv2JD4",
+    "farmTokenMint": "Cum6sRPGpWYQHZapekDtMhbZ1BQ2QkYv9PAwQjypxMVo",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "CS7fA5n4c2D82dUoHrYzS3gAqgqaoVSfgsr18kitp2xo",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "scnSOL_USDC_AQ",
+    "address": "5MzBKRo6YqK1BKBz67sXd42jrb6gYzBuX6R5F8ywC33e",
+    "farmTokenMint": "7YFfqZGTxkj3Zeq3Et23kMznCaEYZ1WBZDt6CVrxwfqd",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "Dkr8B675PGnNwEr9vTKXznjjHke5454EQdz3iaSbparB",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SOCN_USDC_AQ",
+    "address": "5MzBKRo6YqK1BKBz67sXd42jrb6gYzBuX6R5F8ywC33e",
+    "farmTokenMint": "7YFfqZGTxkj3Zeq3Et23kMznCaEYZ1WBZDt6CVrxwfqd",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "Dkr8B675PGnNwEr9vTKXznjjHke5454EQdz3iaSbparB",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "pSOL_USDC_AQ",
+    "address": "4TK569s8SLgzmEcihyhrH8GmqFsufjZqsvHs8zrPEZYP",
+    "farmTokenMint": "8kWk6CuCAfaxhWQZvQva6qkB1DkWNHq9LRKKN6n9joUG",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "C2YzN6MymD5HM2kPaH7bzcbqciyjfmpqyVaR3KA5V6z1",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "mSOL_SOL_AQ",
+    "address": "JADWjBW1Xs8WhW8kj3GTCRQn3LR4gwvbFTEMwv9ZNxQh",
+    "farmTokenMint": "3RTGL7gPF4V1ns1AeGFApT7cBEGVDfmJ77DqQi9AC6uG",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "29cdoMgu6MS2VXpcMo1sqRdWEzdUR9tjvoh8fcK8Z87R",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ORCA_PAI_AQ",
+    "address": "8KBSXu7zFjvbVXiwf1opGNBx3evVwdpaYHWR3uc4HVR6",
+    "farmTokenMint": "4aEi4A91hRbERJVDYxRWbbSrBrsxoM1Hm33KRoRzWMht",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "C7TH2jEJJaxVwwuvkbcDGfHUiZvEkkeYjyAcdTMi5ujb",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ORCA_mSOL_AQ",
+    "address": "7EVKT4iqfjiyzeVrafs23JrfhSoLd6XTanVuENNvisq7",
+    "farmTokenMint": "3Duk5b6fLztPmS4ryV48FM1Q9WXUSMwz9jehAT4UtqpE",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "CVapmQn7HaU1yMDW3q6oUV4hx6XoYv54T4zfGXkuJqkA",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "scnSOL_SOL_AQ",
+    "address": "5cE7V9D13k1P1qC23g5vcQEMsvrDzL5yFHhiesVUyn93",
+    "farmTokenMint": "CNqmEKGjZUUARVFHcz4w9CvX5pR8Ae2c6imHDNqsbxgj",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "APNpzQvR91v1THbsAyG3HHrUEwvexWYeNCFLQuVnxgMc",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SOCN_SOL_AQ",
+    "address": "5cE7V9D13k1P1qC23g5vcQEMsvrDzL5yFHhiesVUyn93",
+    "farmTokenMint": "CNqmEKGjZUUARVFHcz4w9CvX5pR8Ae2c6imHDNqsbxgj",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "APNpzQvR91v1THbsAyG3HHrUEwvexWYeNCFLQuVnxgMc",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ATLAS_USDC_AQ",
+    "address": "G92aJeZBCFiECwrKSQsbobfykh6cNLCf5Pd3zkiLjGLe",
+    "farmTokenMint": "HFmY1ggCsCky1zJ1sfdkNR4zb3u5n38YNRdf4vsGu17t",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "FZ8x1LCRSPDeHBDoAc3Gc6Y7ETCynuHEr5q5YWV7uRCJ",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "POLIS_USDC_AQ",
+    "address": "5NkDw3LcFscf5WSxUiquNregP6RaP79Y2pN1jyUYepzc",
+    "farmTokenMint": "63JUKLnCAuNMPSPioEgbjjzp9Qk8qSEEM8eZqEtPqfLU",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "GteBdo9sqE7T41G8AJsaG9WHW48uXBwsLLznmu2TBdgy",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "BOP_USDC_AQ",
+    "address": "4bmbPAxrf5NLAD6A5fkhKhmuffdGScpu9Ei39YEaPATQ",
+    "farmTokenMint": "A7vvbqENJj8kED3ABjphe8TvwpasQYtoWGKpjpLArMxa",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "2gXDJZ7XAtQEtf4PRSQZKoq1WMuu1H44tQanbMA3YVpu",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SAMO_USDC_AQ",
+    "address": "F5ZvDWRVpQP5A17RFogL4dE7gZ2Uda7ZqKUy3DWJDEFx",
+    "farmTokenMint": "9voVuTq1S9bFZkF2Jo44HoVG63w2xDRT8eBzB23YbQud",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "6VK1ksrmYGMBWUUZfygGF8tHRGpNxQEWv8pfvzQHdyyc",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "NINJA_SOL_AQ",
+    "address": "B8Q8e1hdCw6fhnSKmsMCrsDbvSNLZyzHjnPpwZKBkcSB",
+    "farmTokenMint": "7YyhptkxY81HPzFVfyCzA5UXxWdsNRD41ofLva3TuSpd",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "4X1oYoFWYtLebk51zuh889r1WFLe8Z9qWApj87hQMfML",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SLIM_USDC_AQ",
+    "address": "3muHEhQLmt7jmaicMHqe6LqXrrfFtqEuAfBog2fAXhRm",
+    "farmTokenMint": "3K7aZhtwWJ2JS6GnbbgeDVnxd1q2hwhqasmgRsAMZ4yC",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "BVWwyiHVHZQMPHsiW7dZH7bnBVKmbxdeEjWqVRciHCyo",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "wHAPI_USDC_AQ",
+    "address": "r2MxTnFdnP7ECMxH7F4mcg1p3CowwhPmDmYoZ1syKZh",
+    "farmTokenMint": "Bfoi3RNnfdP5VeRGqvTA8MRN9ePGJoZgeKfe8WeBHUxE",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "ELfBngAgvLEHVBuJQhhE7AW6eqLX7id2sfrBngVNVAUW",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "COPE_USDC_AQ",
+    "address": "xigyMM8txxzpvjRw3Z1tX9euUshtqeHucW6K3f81KNQ",
+    "farmTokenMint": "9SDpBrfqNxjXcCzpKWM6yUKdfky975VJBD6xcu5cKf5s",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "HsauTv9s52Zv12eaDuSp6y7BEm4e4BHEyAsbdjyyWzPK",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SUNNY_USDC_AQ",
+    "address": "Nw3caGfeqM8xQZ45iAf5zWmPMQux5wMWMjxsKEfnNk4",
+    "farmTokenMint": "9HPn1oREyNA7CEK7B1xwmBmVH6qtQaSfLBXc1JyRsdUE",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "GHuoeq9UnFBsBhMwH43eL3RWX5XVXbSRYJymmyMYpT7n",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "GRAPE_USDC_AQ",
+    "address": "6eeK7PHkUXJ9t2qgdrHfbZfmU5S7zWZwpDw6i46Rf1jU",
+    "farmTokenMint": "97q89hnoKwqcynvwXcj83YqfqUBuCm4A8f2zHeV6bfZg",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "EorFh8siFyLF1QTZ7cCXQaPGqyo7eb4SAgKtRH8Jcxjd",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ABR_USDC_AQ",
+    "address": "PyzV3qSzbj98ArVpASj2LQg6zCq6zfAixqUtYDafnRU",
+    "farmTokenMint": "5uR5STASUmoGVHzqMeut98t26TfVkQqWU9f9dsv3NfJ6",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "GMzPbaCuQmeMUm1opH3oSCgKUjVgJUW14myq99RVPGX5",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "KURO_USDC_AQ",
+    "address": "6bHkoSxnK3aKW3PyG34dUz1naD6T3Pc7143s41nSuuzN",
+    "farmTokenMint": "6PGoaQdL9e463hdaFxHXsuPcjCHRK32CQ9PFKxvM7XY2",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "DRknxb4ZFxXUTG6UJ5HupNHG1SmvBSCPzsZ1o9gAhyBi",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "MEDIA_USDC_AQ",
+    "address": "jCGam3ptTrFKhCwBGYUcqtrvt8pY4uWXaPoqC9E7uXB",
+    "farmTokenMint": "3pMYToENTB7jKrJiUPq19FCZCWE35Ph7bkRRMN6kxDXK",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "2toFgkQDoPrTJYGDEVoCasPXuL9uQnjvXJaDwa9LHyTx",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "TULIP_USDC_AQ",
+    "address": "AEemiZ28JTnz3xmj6LSfXruK1et317ZAGY5KCrKdXNCX",
+    "farmTokenMint": "2KYUwdRbVtaMUgHp1a6NuTomyCb33FxoZ4fkeVdwjaJA",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "4SBx8GXu8HhcVHWydQv1vsDdZs3G93XSL9CtMBny6hS5",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "MNGO_USDC_AQ",
+    "address": "2LM1Y428kPtLAsxcdxv2iKWaPxobt9poD2DAjeGpN6TC",
+    "farmTokenMint": "CxhcLZtbhfkwjAZ956SEkGxkAvMVQH3hfKTjKpgTV9Q5",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "H9yC7jDng974WwcU4kTGs7BKf7nBNswpdsP5bzbdXjib",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "stSOL_wstETH_AQ",
+    "address": "6eW2skHuzMxxPZjzE7x5fxtn3ZZ1Ak2SawrMH9T5KANp",
+    "farmTokenMint": "3kT3oYuS1rCfhmqfgy6EKcbZdaJimaVEjoy25QiuEaoj",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "Eswigpwm3xsipkTqahGi2PEJsJcULQBwZgxhQpr6yBEa",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SYP_USDC_AQ",
+    "address": "7GDHcUdLhHxCHeQccpbJr3eNGzQvnoMdLBzkVNYvQgkh",
+    "farmTokenMint": "Ds4VGZhZzS2PMFzhzKeC3mwcQjdiCG21R76fTVbsSJyJ",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "qJxKN9BhxbYvRNbjfK2uAVWboto6sonj8XC1ZEW5XTB",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "stSOL_wLDO_AQ",
+    "address": "DMECkFUnVp1esox6Yyyfc7vJeN7spUHd5JypAWqEqCRC",
+    "farmTokenMint": "DQsbebdNDy8yQrwLTpieckhzi7Ewx9LoCPVf7G9KvY2U",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "74B9aMS7SA832xKngt5VLKmWAP3pa3qkUzWncTmQSsGF",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "whETH_SOL_AQ",
+    "address": "BerS3SE5G6FqZER7L7G3BhUJBrZ7BpizmuQRH9LMEYQw",
+    "farmTokenMint": "FkHQBBZGh5GS4GcXpcVksKYUUkLTNn6Yk1PCMxucR2AK",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "7aYnrdmdCRodDy2Czn6keUquUhjF1jPEmfwZPh488z8U",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "whETH_USDC_AQ",
+    "address": "GdQyNtN9rQWzpcm7mQMNBiXyeKRjjQoobh2waVQq5QyP",
+    "farmTokenMint": "B11Xp26xU2gzjToJEuGswvr6Jtidfh4GRUyCWzWMNdQZ",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "7NPtjjAP7vhp4t5NCLyY4DY5rurvyc8cgZ2a2rYabRia",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "MNDE_mSOL_AQ",
+    "address": "5wr7m4YrJB38vuz3xyLqvq2DwLCcDkEDH5X97chKpH4T",
+    "farmTokenMint": "2wPsMuzhEsC6GhV3qtFpmJF6atEgLGbnmQ8U43Y6fPxZ",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "5PHS5w6hQwFNnLz1jJFe7TVTxSQ98cDYC3akmiAoFMXs",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "WAG_USDC_AQ",
+    "address": "4GWmnvMg7EGQZ6LeQtK6rbJrtTTVsQHj2ivwm4vm8mnR",
+    "farmTokenMint": "8Wu5sJpERA1J5iWcT8aMpt9cTAfKDLPbLpGjNsJoPgLc",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "Df6XNHMF3uRVZnz7LCEGiZVax6rXgz76owtVkBHEjSb6",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "mSOL_USDT_AQ",
+    "address": "HULY26UFdfVkc2STTt1KREd57BwFV2md1tqdk253QyiK",
+    "farmTokenMint": "Afvh7TWfcT1E9eEEWJk17fPjnqk36hreTJJK5g3s4fm8",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "9cMWe4UYRPGAUUsTkjShJWVM7bk8DUBgxtwwH8asFJoV",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "mSOL_whETH_AQ",
+    "address": "D4Pmc82b9W1UDAqYNNNMGG7UYxBaZckf97AYExGbUK95",
+    "farmTokenMint": "58nifjPjF3CutGz2xMxvAMk7R9YgbVEc8Cstj4rCcs8j",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "5qoTq3qC4U7vFxo3iCzbXcaD1UEmDeCD63Dsuoct71oV",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "BTC_mSOL_AQ",
+    "address": "GBrpFtiTabs14mc4Hi1RX9YiQY7res6JxrVfMTADfcQV",
+    "farmTokenMint": "DzpLz78wuwyFsQToin8iDv6YK6aBEymRqQq82swiFh7r",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "8nKJ4z9FSw6wrVZKASqBiS9DS1CiNsRnqwCCKVQjqdkB",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "IVN_SOL_AQ",
+    "address": "FwzqbJZQiL3qzMx88r2o3CNKFxztuW3JC45YYk6ghMLR",
+    "farmTokenMint": "HqajzzbGMST3yCCVBJuXvNVsWkY2DXqiBz9cTRmmyBMy",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "DfgCnzaiTXfPkAH1C1Z441b5MzjjTCEh134ioxqRZxYf",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "LARIX_USDC_AQ",
+    "address": "HeAQxAGBQdGURFFcLpdPagQ2vb66kXFTVxDfTjme8eGo",
+    "farmTokenMint": "DNAGfa7tK8csprRQmiDUwDaFfhw6ueHhVFHTCgTJ8HGs",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "8sfThep3io4gvcGeuoAg1Rs8GDwKJjtcdAFHqQSSNAVE",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "PRT_USDC_AQ",
+    "address": "9dCsoLdfkpYw1s7TMNE1HZPNmVSNDZrUkUHfxn2p8675",
+    "farmTokenMint": "2cYMt26745oFc7PadaQn8Vv3xFUxWBfbip2NyJeVG35F",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "6jCERp5hKj37PCXP3VTjCDJeoPuSpnMDMz5A6jWQv3yS",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "JET_USDC_AQ",
+    "address": "BKdPQziyuKmXwZeVuo8Uj7usfUYpwSfnGBDbG96y266V",
+    "farmTokenMint": "4DjiLEKADWjYmiY9gzFnu5xews5oCTMRByWHWEzDa3bj",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "GBijunwxa4Ni3JmYC6q6zgaVhSUJU6hVX5qTyJDRpNTc",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "stSOL_USDC_AQ",
+    "address": "2P7FGV8XNXUkEAG6q5LbhfoBFkHJ7PDAjYqmAbwnVHBF",
+    "farmTokenMint": "3u2dNfGuU6C3vmSg5EvLPUpX57b3niqhWBV5Gc3WDEf5",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "GtQ1NT7R5aaTiST7K6ZWdMhwDdFxsSFvVFhBo8vyHGAq",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "wstETH_USDC_AQ",
+    "address": "2FAzkAgm8EpE7WpWUsEcNyj4kcVeCX2L8SR1BicGWEx9",
+    "farmTokenMint": "ojpWEdNYa5nGviUc8k8M2XLjHuaCL2EgHFdvTtdkXA1",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "5a6Y1ephcbKSoyLMQyD1JWbtqawCy8p2FtRL9v3zhaG5",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "AURY_USDC_AQ",
+    "address": "FvkyNXLizY4FCNkgbGpr1WA3z4A8iTRU4rPnnNJC3q2V",
+    "farmTokenMint": "7s7Veo1P8ZRy6z5MCvoAmg2kPFcQnq2Grt6yewWS8LbQ",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "6mJqqT5TMgveDvxzBt3hrjGkPV5VAj7tacxFCT3GebXh",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "AVAX_USDC_AQ",
+    "address": "GkmPgsKU9uYaZtKfzjWeJjBSvX8mkK8gNqoWMYBdcvUx",
+    "farmTokenMint": "5mZydNG1fBPTXzgp9SoS7Jny6EmSzBPTPrFbB1ttGnvx",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "Hmfrtmo93DpSDmVNLQKcBS5D1ia5JatiRSok9ososubz",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "FTT_USDC_AQ",
+    "address": "2FtSDVRmYq4x6NeTidpZVuLzgN2APzr3zHxpHx8zdgbr",
+    "farmTokenMint": "2AAzmhZ9Kh9mFcQtHJVTafu69tc5GCGpi6CTgafYta1S",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "FwCombynV2fTVizxPCNA2oZKoWXLZgdJThjE4Xv9sjxc",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "RAY_USDC_AQ",
+    "address": "GCcVYpBCPcPjb11LeeoVhLNJQzS5GXEEd6Dmo5eejBTx",
+    "farmTokenMint": "9MaXcCERB4DzedPNSBwyHM2P6Yo6jCFLjnatuWCtR3WF",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "4cXw2MYj94TFBXLL73fEpMCr8DPrW68JvrV8mzWgktbD",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SLND_USDC_AQ",
+    "address": "5NrUSiG134QLY4JkmX82n4hdZQnmqsWMrBapQwfAtpeu",
+    "farmTokenMint": "GdySZb2nbeEjCLBg65veC5kzfMCfCWgtgqwH9YWDtDXr",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "F59gkD7NnsdJbFKrRZsiBC8PAooN4c56T8QmahfW1iXN",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "GOFX_USDC_AQ",
+    "address": "GmyMx4JtRrkjmxNn4WQCmVNuLfwRjkAmCfMv2AXag5se",
+    "farmTokenMint": "B95rdqSY4dqPwmt295XwBZZqZJYLmqDNXU6NvBpT4ep4",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "7vnps4VE5RTGAr5fmPZu7fSrk2VnM4Up838grZfqmxqE",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "WOOF_USDC_AQ",
+    "address": "5K7WdUTG2yZjULeNUUiH3eoWhY9YYAnpoWFGiwVj3q2V",
+    "farmTokenMint": "4HaQXDz9gdLgKUjvNVtnLyNZoWNYKjh3XxH1TpLgiwmi",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "9EjcYfHcG8f1mccpHyaAwpoxaUPiheC6KgLQjyD9aTb6",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SDOGE_USDC_AQ",
+    "address": "672wPyV8sJdqBfyay6MccLxsCj1sqQyd5WaPXkTbeB8N",
+    "farmTokenMint": "4kXYyZAMBdvgDaBKUGvRWJnHw9af7sCUPvpQ68PEdP8b",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "CHTKUJGYRtBDqnxCFjxe5KEkZgxV98udbhuYYyzGxup5",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "CATO_USDC_AQ",
+    "address": "4EfikjxutL59CXMBYffhSXdPEw28T963idHiwz2qpodQ",
+    "farmTokenMint": "BHtZnTBMeY4EBEW5egGnuK5bdW12v6Dod6wFav79AyYx",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "55r9txzQtmjTykmTXmBYZCVMg5z9squB8b5cSw2AhxA4",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "OOGI_USDC_AQ",
+    "address": "CzWsHjE7azpbksPhHxdkvH5gfpBAx4FqohwFnkHgfVpr",
+    "farmTokenMint": "FiwSk36yi1DNWcuQUeNipAc1VKxa9Wv9AR2xFvyKUxAE",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "DSiHyHDn96bUQSZtizyCRLcQzrwohZeMpVu8rYJN1HzG",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SONAR_USDC_AQ",
+    "address": "2SxKGe1PEKWQC6m5Q1jUnXJuZBVXyUC37ffCPop38iiA",
+    "farmTokenMint": "GWmwwMGYBG4NqYdnsYrudzBnbgDC49MkBxdzhfLA9kVY",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "5MvQHx8eftU39JTucFsT315JFnQASuDQg3FqxTw7xcvN",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "APT_USDC_AQ",
+    "address": "3YZ5GYL625vWibn7d8hMdrMBawy9HGUyeTe4AoXoME1Q",
+    "farmTokenMint": "Dx7DYSuaBufhXyQG7155ePkLmHyn6w7WeKKtQB9zscZV",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "HNrYngS1eoqkjWro9D3Y5Z9sWBDzPNK2tX4rfV2Up177",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "DFL_USDC_AQ",
+    "address": "GaKnyw7sYU6raJpZGjFER1eXZ9zHfqih5fAj1T5xxP6J",
+    "farmTokenMint": "C8jJeUM9s7R7gTw1ybgTW4LPkgrYtogstD6MtBjroGLB",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "AWrtTWG4Zgxw8D92bb3L3sQtGLD3zDztMPWsXSph8iBP",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "DFL_SOL_AQ",
+    "address": "HTEe4r3YDRqDbA2dwQNMnMBAToV7rHvpyMBe6EjZmXyz",
+    "farmTokenMint": "E3omuGbZSksAdbiyvtpdfGsUGhptA26Enwe5Y5jJKnbK",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "9Y1vPaAsMz8X65DebMMnmBjbMo8i4jh4mcgiggZUUS3M",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "FRKT_USDC_AQ",
+    "address": "EUgwcVQhm1BDHWeMThNRx143RRay1byP6gmca9dp8HMe",
+    "farmTokenMint": "Bc4CvPm15iLRopgLmU17RJicBgjykiMwVzYxa7Wnujdh",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "FnDxJPNk7pPmGHUbR4XUHmHevrkXHdna5D3sQKcAtjBL",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "TTT_USDC_AQ",
+    "address": "BPsQWbFEwYRxHims8Yw14BbL8njWEQq4tNWrrJb9sgXD",
+    "farmTokenMint": "AmrPpJFQj4xtv3yVgPCFqhXEMBPhaKRP6qFyhuCdz66c",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "FGgP1npQTsC5Q4xBmQtNYSh51NKqNwdxBZy8JCo3igcu",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "UPS_USDC_AQ",
+    "address": "4TQzMpNP5JdZ3YDi1iz9kYqv4L7sTKQeFtpvnfc6T7aJ",
+    "farmTokenMint": "9fuv3emLQXECrTWqm2HaKT3wQhmvmgqmReZSMcu8PfpH",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "E1U63VXhNiWoUkVvjrfLDdV1oJrwE6zLde3bohr6jCqz",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "FANT_USDC_AQ",
+    "address": "BkiSfYmmt8KxrKFhpS4oq6TYf5C4DFnaFWDnn3eDhcfp",
+    "farmTokenMint": "C2EcthTMaC5eATXVaXg5ctvMfUYYgFyNibybHes5D3S6",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "GjG7JjTQfQpDxw4hWx4etP9oTaYCuCbPjsU8WaUT3xHB",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "BLOCK_USDC_AQ",
+    "address": "3QHfuWvAkUfr1QenKaPBDUUUwShvoMLZCmfux5bovz1J",
+    "farmTokenMint": "CkSfxpcpunHLUQktiFAeTJCYHsT4brYoJE23R3vw5zCF",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "D8WjqtwC9CzBrQKfSf2ccCHFQuPYwyLv5KAy8WjT5vnf",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "RUN_USDC_AQ",
+    "address": "2yCL6hAsNQN7R2wrPaUffxVDyK8hhSL1hYf2knhUzLZk",
+    "farmTokenMint": "Gxh7KubJPEqR1i4oHCxxYayWcSJMzn7h2kpJeCCEAkNC",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "34Ppq6R8NfYBwWwPY4cBK4Afyb8hHaASQFukCzH6cV4n",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "UXP_USDC_AQ",
+    "address": "G7W1y2Mv2kxu7ht3csCUNdduaUNBkYVcvX6QA47CJKuF",
+    "farmTokenMint": "8BxKJ3FAFbidm9rPotQEcm6dDqJkTz2PhLtaq6hnZk8L",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "HjR8JgqNKQVMvdryqJw5RJ4PCE9WGk8sgbEF7S9S3obv",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "BTC_USDC_AQ",
+    "address": "3japFRAWZTq8FLjeTsi4hmNHpeo7RhP9ift4joCjRkga",
+    "farmTokenMint": "3aDHNJpWPEzXHZNeuak3LgcB8MbAwnDKkB2YftaPyhev",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "J3kvcay3N16FBdawgnqoJ9v9p6XCvyCLE2Z9F5RLvGkj",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "MNDE_USDC_AQ",
+    "address": "FBSHQPtDZLvv8tmj1S75GW4TKGhxXVqU1zcSK57ZWHGF",
+    "farmTokenMint": "BtXnDsnidDZnkVFJJnqtAMMCtkoG5uioYF72yC8fhVTn",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "12Uj74zgUUoBe4yeackwQ4qYtFMr9fk1xL6q5Nha6t2N",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "CHICKS_USDC_AQ",
+    "address": "BQivr16DZwUyzx9Qa5LR7V7eg1ASMiPjBtyj1bsoLXw2",
+    "farmTokenMint": "GTcxXu3yw7yotq2UtAMvpEbx84ozJyrBwy77Cmem7m4X",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "71CBZeJ4tw38L9pSPoCz4fRsuWE64Fipyzotte7haoCS",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ONESOL_USDC_AQ",
+    "address": "5FSwvhovxgEJPg4yufxCXiLXD3RY2SJKQ2fFy8mMupJj",
+    "farmTokenMint": "4tcadvVpXQPswr5dRt6jJW1sVFW2CxrKgzP594ZxaUTv",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "6MF5CHWAj5mS7FhpxiKz37CzR2eYTu236XpBKKMXCrGg",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "WMP_USDC_AQ",
+    "address": "8brkHbXG9fNoYZu68D7cQy9Q1gC7hfTZQD7jfKFv4hvC",
+    "farmTokenMint": "Ce3VXSQGFEHqrQSEzcVb2Ro88Mcn56cYBUAXFx5tL9bo",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "HDgxKmiA8Pv82fNguhVeMkZqQkos2YksFPoP1KttWxX8",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "UNQ_USDC_AQ",
+    "address": "9hQXfKCdD4v9v8vzimd6KExoSnS36q5kUPTW3PdX6KRu",
+    "farmTokenMint": "CsGTrgJ6oLx9UQow9aLjuAacjXTY53zT8B2FnAbfVZAS",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "2VuGzaMrDnDyZfYvDwSXk38s7M2wpud7LDY3dGA1J9sy",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "BASIS_USDC_AQ",
+    "address": "A8CNiARq7zYMMGKYbqJVfByVyBzdMexhc5EEGzCN13dS",
+    "farmTokenMint": "4yx2aHMa7N4m1uUaBRy9QPtpstw3HFPtvcCPJQaGFHKL",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "GoaAiajubRgeCFEz9L6mLnSmT2QFegoJDH5tpLfivpj",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "GST_USDC_AQ",
+    "address": "44aNS8nnj4r3WWvnR1Ud929iAqn5jJ7ugVkJJvH4XuW9",
+    "farmTokenMint": "72vxFxfeSN2DRKmSQAkJCoFBNYb2WNevyaDh4v2t8TqP",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "E6FUnQHGHJVJg7oExVr5Moeaj1QpdpZQF5odYjHXWPZb",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "MEAN_USDC_AQ",
+    "address": "4ZqD3uYerAhUrVCPSKV15JT7ToR4EW1TwK6HHckAZNio",
+    "farmTokenMint": "3h2VBX8533NB8eEH8rPXMdayodFDbgTHpbav6JqLZAQq",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "F5BTnwuMA6rxftTdbZ33VWKr2wrr6DuQHnd4guKmPSYQ",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "AART_USDC_AQ",
+    "address": "6pvWTK3UZJ2gKpVZBXMEUEbnSbqf8GxEFbAQjWuuW4C7",
+    "farmTokenMint": "Bg7pZq7KdsQsnCQBeNpa4XVnrWfjUJNu3ViHoNB7YUZU",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "HCtyJzFUtYecXrA52s4Y9atq4J1fhT3cYsTX17XVSFag",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SHDW_USDC_AQ",
+    "address": "ABmFqgfvQjjU8uBkZL2KdH5AvYEMsuddtdvpm4s62Pzq",
+    "farmTokenMint": "7WWHfufv8vuBC1x7GXA3pu7kgNhEQkXoq3CtbaQihAJ9",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "DJqqvzSuPaWThfzwMjXx7H2ZmHDdwxza6NtFudtuXcpc",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SHDW_SOL_AQ",
+    "address": "EKe5CgBnBJA2cgeEUe67aQS57bAQsPvfVdArEWuEuEEW",
+    "farmTokenMint": "BDStVBt4NS5bfda25ubK51kVRioV4yjKKCPbe96jeEms",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "2ws7g3LBPdctfKn42Di9qxzQtUJ8ZL1aEAX2rGEQMNqh",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SCY_USDC_AQ",
+    "address": "GDf3GpSU1V1UCvpcU19rV8p8CUC4cken9b5RpKzBBgiN",
+    "farmTokenMint": "DkxeyV1TEt9umvqjPNf9tdjJjgyvW5Mdi4AQnExA5bZa",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "99ZHUQsgxL7K6PHrGNi1gSwawwPr7UA5fbWrYoHQ6qhX",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SLC_USDC_AQ",
+    "address": "AgscvT8HJ4uqznp4SeYMgKf9qUjTrQL7AzU6mjcqpPCB",
+    "farmTokenMint": "X8GnAvxq942xXjNzqYPFQQ9JstJQNEA81uPeNoQpgrN",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "E5kSBqTDxFLbLNQaVVtPtnhEYVLMCK2fVSEKoMKL98qR",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "wUST_SOL_AQ",
+    "address": "7tHjwHKvoSPjoAZepTZsw7uV9XobkgRXhMbhbZmqA8mS",
+    "farmTokenMint": "F49Cm3srGucQCBanA2xL7nSKHfH1QZd9vLdFtkg4LKnq",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "6c13xsmyk7UaHUWZ2rm1MM3ZdrQRSBkQ9waaG25ridVs",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "wUST_USDC_AQ",
+    "address": "Aq289TqufDB4A4TEGVUkVquVggyrPjCwxkEv7pDEVpWZ",
+    "farmTokenMint": "2mhVUMsG7eb3XhHjAbKpRZgWNyGZNCiWU7dRxauzZaGL",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "J1KfRtP5y2warpD7LdJhfBLPKoWwSqYuovdArSv1mpQ7",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "mSOL_wUST_AQ",
+    "address": "9iXAweywwdGR76L58FNg9siQzxyzbeJsomjEohPztpHF",
+    "farmTokenMint": "6wqME6zPQzGDLugpnwZnVBKBbATC5nTaEa781Vj98yvM",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "68YVjgPnTUPcBqZyghqvD2WPNsrLKsjYTmBKJzHRr4qd",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "wLUNA_wUST_AQ",
+    "address": "52VxPD3pag6QrtEKXTe4jYBvSTvfggjbXZv3vqo455uU",
+    "farmTokenMint": "3ZGKT28NXAqb2YtUAMvKixQvHNHT31Q5mK8AC2iBMs29",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "8Mh7drLbt3jFJYwp948XyvQscGLaLkChNcaH5wwaAoWA",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "stSOL_wUST_AQ",
+    "address": "GxhewC22S6wsXT156yC9SARvDnijoc3YEYyLVcQFDUCx",
+    "farmTokenMint": "3Q44iV4URXdbS4Tk1PGs5VdWQoCxHB7zdcdMnemo8jfH",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "HTZd53fYwYQRyAjiaPsZy9Gf41gobFdqkF4oKe3XLi95",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "JSOL_USDC_AQ",
+    "address": "62JumLDtnsQ5YsEZrJaQsvDMP5pRmok3JEWHghFkL8D2",
+    "farmTokenMint": "B3JDURP58ooQT8zvhLgDRKVjstqgrHhn61qzzudHWrS1",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "AzEoVuNJyo9ByoLRZ5t6vav2Zg24vULNVJM41PgCKUqR",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "daoSOL_USDC_AQ",
+    "address": "EaxYr2iZhrgwUKQVeFFeHQLW1afzS8pgZGn6hLhgFMgy",
+    "farmTokenMint": "A9kPybFFdj3MGKWWSwgb3KvzQyeNXESayh4ngmkmee2R",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "CCyDxjdW3G7hPTthTMPTZ4bnhFF19XG6rx2fNiKeRQww",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ORCA_USDT_AQ",
+    "address": "4SNMBiDGjDSZnyQFqSodJTTmRqEkisBWciXZ4hGbDujc",
+    "farmTokenMint": "C2YSdSesufbMVWtKXSZGhc12f6UL2j3WDe9VT6rRbmA8",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "Gx4PoxenyQwhGGnKagAT35iVg4im1iKhJxDWqVhgu6tk",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ORCA_whETH_AQ",
+    "address": "AgWH92f8cPAuURyqehF6A9wFgupEsnDX3VP5eHyytabA",
+    "farmTokenMint": "A7EAHvFEWzW8qSTFNLrEHN894GAZWZesNiebttEwtUGJ",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "GsfyYHkSgC3Ta6aWR9MjB2sxoBrkGGeR2tAwXbpphf3",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "GENE_USDC_AQ",
+    "address": "EoRaCH4cwmmxc78s5E1fTDt2zPkivXNLf1MvoGhJywKd",
+    "farmTokenMint": "GrBZ4HLhL28JTxMfAH2Vm2hVv3RE4TYXCG9p9BpyUaRq",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "7cuu94swKL5PtFQohKMAzyd1mjj65rgMW3GzLY31HCnK",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "CMFI_USDC_AQ",
+    "address": "2CGcou8YJoannsazSYQ16jSUZzPP8zZ9jdqgSRSGsVXa",
+    "farmTokenMint": "E8RVjS24pBuF3oCCeJVAgC4RQ7mVa5P3FGXqGbiczzvD",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "85krvT9DxdYgoFLQDHTAGdvtNuLdAsc4xE5FkVLpN2aR",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "acCELO_USDC_AQ",
+    "address": "EowPc9YUmqJDjAujhD1eaLzDm99JnCu88fA1W8skKgQv",
+    "farmTokenMint": "9RRBDWZGWGVnHgazCpb9R1XApmHLBDya8Tq1yrzoMsKY",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "HVLyX8mD8YvKgZJ4oB6rXJiCYMLpHKwB6iCiCjE1XwdT",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "afFTM_USDC_AQ",
+    "address": "EsE6fq5rP5Dg3ivS42JodpaQNpmkB6LTFX2nDSRZZ2og",
+    "farmTokenMint": "E7Af9Fa2U1YqEkQpAYjXwDB5TJUou9VcN3ot33Gj6UY9",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "Gpzd833qSmv3kXpQmxEaqkrZTXZaRjhNAoqhf61qAhTG",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "CELO_USDC_AQ",
+    "address": "EowPc9YUmqJDjAujhD1eaLzDm99JnCu88fA1W8skKgQv",
+    "farmTokenMint": "9RRBDWZGWGVnHgazCpb9R1XApmHLBDya8Tq1yrzoMsKY",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "HVLyX8mD8YvKgZJ4oB6rXJiCYMLpHKwB6iCiCjE1XwdT",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "FTM_USDC_AQ",
+    "address": "EsE6fq5rP5Dg3ivS42JodpaQNpmkB6LTFX2nDSRZZ2og",
+    "farmTokenMint": "E7Af9Fa2U1YqEkQpAYjXwDB5TJUou9VcN3ot33Gj6UY9",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "Gpzd833qSmv3kXpQmxEaqkrZTXZaRjhNAoqhf61qAhTG",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "BTC_ORCA_AQ",
+    "address": "8TcCqDgPgim1CV6zgAXFq3PxSBH7MDCeVSGharRzJ4SA",
+    "farmTokenMint": "EQsfnq9d1R2MbXGKDPSgJXnDk1oXocgMFoSd15pEAPGD",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "DFpLFcQZqDKykyDePgip4r6MExVmBKWqTa12ezq6qxUY",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "HBB_USDC_AQ",
+    "address": "3saySWJwipyCXqqhYT8XaSMFAS7NNksKKdP3zFJuUMtT",
+    "farmTokenMint": "BxPd4x7gm6WQF6jsDCRQuQVZ2bopQ4KegMrqyQgdkPDk",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "cL5WhffCYFRLM4We8VS2W684kM4pHyuvEDwp8Ddw48k",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "HBB_SOL_AQ",
+    "address": "9fEfGhHjvqDPcFx6cBNuWHHjQaa6fSEP5pRHjdFkPenE",
+    "farmTokenMint": "62q8m79WkXR1MAer4H2zLpA38s47Fywkqqv4MMwEHjad",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "FkKzu2HeMJZf4oHwoYPxLGVy3net5Jq8HAfnA5VqETgk",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SB_USDC_AQ",
+    "address": "Ax8vkRHj3Gqo5Tv6PfWZzmbr8zHfPdeYbJpG7QYkP3r1",
+    "farmTokenMint": "3Wppx86xN7Dg7GLUTD9C7AqCt68qZkWzNYUdCS7t1pCk",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "2Reqt4Sw9xNY8BoJ3EZLpFu5yVgNxFrbw8M3KiJpPn6o",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "stSOL_USDT_AQ",
+    "address": "2xvT1Z2SU1iKvmWpUNP9y4vRXyB8GpGq7sD9CforJoYd",
+    "farmTokenMint": "CtvKaRLzCzRZCcYPwai7NCYBK4ArBj2oD6BfvMgJoiCN",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "4ni1nho89cDKAQ9ddbNQA9ieLYpzvJVmJpuogu5Ct5ur",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SEEDED_USDC_AQ",
+    "address": "n7VuBP5qpMt2fZxNevR2gtxsgogDv22GJsj5f2WNJCN",
+    "farmTokenMint": "H15WptGntFQifZmJHUzYBV9Mv7P27ofavEsF6yqpLTdX",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "H7gyTmNCDXkD8MGMqnxqoD8ANszjcju4tjT6ERZ5dakf",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "AUDIO_USDC_AQ",
+    "address": "DvzYNQoPYFWQCjBs6rxvMmarcKMiEaQHC7sWVAm5K2XM",
+    "farmTokenMint": "BbRVh76k2jYsSWnd7qpDQ8ptzVzgRq67viK6tAFEkB8z",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "3hksYA17VxgiKSeihjnZkBbjc2CTbEBfvDCYgQhojTo5",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "MMA_USDC_AQ",
+    "address": "C54TkajKsLqHZP1taiayDAaAHrr6KBmCVRT1BuZHxa9q",
+    "farmTokenMint": "H9qkbU2XYSQTk6JJJ2TMuZBthfkeCHigmuxB5jiQaamn",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "AaZRnJAnDyJyPD9uPJpJ8bzBGDCEi6jtBpUf92xErWPp",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ONESOL_SOL_AQ",
+    "address": "64zLHH6zA8yuLxxPAgbVx5Cp9F8afHZWSyUndHsFBP95",
+    "farmTokenMint": "Hva9oLa2GjoKdB45WoHujsX7MTpehByPshMrQpNDmkFq",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "9wPhuYapychVDSxmXqCZxy2Ka8Lmav4SHM72si8bfraV",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "PUFF_SOL_AQ",
+    "address": "Gp4r2PFLSf9Y1Y1K46gpEYsM7mkFNVY4Ga7s6YXZmxGD",
+    "farmTokenMint": "Ge5kuYg5PekrPUeKzngw97Cnfngj8j6NCX5q1jTBkWSW",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "Eho8h1BcoG5QWU7X9FzJafw5ErKUXtR2LobAJJZfWff4",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SAO_USDC_AQ",
+    "address": "4rKjrmHAmeT6bu3JNhP2NYjFgVHtt71U9yumBDKHTe14",
+    "farmTokenMint": "A9BeGSRJJYXPrMs81rVZxvkk16fopzgG5YkngntgTu7p",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "4iyU77yZbg8iD344vbwruAuDAf9i1EVV3FhZJDnWStBE",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "sRLY_SOL_AQ",
+    "address": "9SV2NL59i1PfD72AUHDXa2KT1xWnFD3VyMgfzCRDARW1",
+    "farmTokenMint": "6gkZ7QUmxmwPLS2NK3Dr6YHtTPZs6GQrkA595WSx5iLe",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "3dXdXg5HPyZ73GFC9LkSn3thdJUGeXWB8iSTHs5UcqiH",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ZBC_USDC_AQ",
+    "address": "gBBNuRf5VsGoAEwKzTAaVsPSqTiYLh5VmaxvzvbCEBb",
+    "farmTokenMint": "7Hoi4adCSBzERdvSiUXtVDz79tiDxMD5HpDv7m9rs3Sb",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "2LYgm6nGXmSSjfoEriPuYeGoNiWNxUs7n3rnTbDWN5c7",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "GMT_USDC_AQ",
+    "address": "DbJT9UTTt8U8xAk7BtRWC3nQHxJnNmZdZydUAhJj14TZ",
+    "farmTokenMint": "8EnEoVX1aXkzbTzhrqDQ2aVGybbPpeWZDCYEGjjw1dyG",
+    "rewardTokenMint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "CFxQF5kNAtbbDj298Xr47Sf4mkSyuzWpRH97hrdQ6kxi",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "LIQ_USDC_DD",
+    "address": "AraZDjfmkqzDJ3CdbjjYbtpujUYivgTEKKM2TPf6hJ27",
+    "farmTokenMint": "5rGtJDiJhD5Mx2fvdEYuLrCiWaMD9z3wpmJSxwGHmo4u",
+    "rewardTokenMint": "4wjPQJ6PrkC4dHhYghwJzGBVP78DkBzA2U3kHoFNBuhj",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "57vGdcMZLnbNr4TZ4hgrpGJZGR9vTPhu8L9bNKDrqxKT",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "STEP_SOL_DD",
+    "address": "FmHGpt2scyJ8NuDuknnzQ7jectLyRRQmTyXxu5tRoD2j",
+    "farmTokenMint": "Gs1fM7EFS1rXkxhqs4mwu9uvSkupNzZgRbHGxG2NGRh7",
+    "rewardTokenMint": "StepAscQoEioFxxWGnh2sLBDFp9d8rvKz2Yp39iDpyT",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "GwrBA1F8rGummDCDd8NY9Eu1cLNuJqbT8WaGxgWpFwGL",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SLRS_USDC_DD",
+    "address": "8JkTAVHXChDPzsNkcJYRJ69mXN5nCcyb1qVBmbVhCH1n",
+    "farmTokenMint": "F3rWkGAtdjWcU1rr16Wq4YPTgFdsyb1oS1xdy5tr9K1r",
+    "rewardTokenMint": "SLRSSpSLUTP7okbCUBYStWCo1vUgyt775faPqz8HUMr",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "66xCxkffQZKBZLiHV3PDcfR8ANJTfnDRxPCaBdv4wxB7",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "PORT_USDC_DD",
+    "address": "C8k63XU8xzzvBpSraYWjHCNzvprjYKDadAML3MWSFbxW",
+    "farmTokenMint": "Zm2dmUuuBicmvHxGAnAzaohZR2Y86gXEV2WMfo8AoCa",
+    "rewardTokenMint": "PoRTjZMPXb9T7dyU7tpLEZRQj7e6ssfAE62j2oQuc6y",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "4CGxvZdwiZgVMLXiTdJHTkJRUTpTSJCtmtCRbSkAxerE",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "COPE_USDC_DD",
+    "address": "HW21NT7v6ViM2Cs3S2tVgUnawACF8JRRwd2AA41a8HUh",
+    "farmTokenMint": "AtcMEt9caZxpunQV99pxED2rhpQmaDykBreEqBsYU11v",
+    "rewardTokenMint": "8HGyAAB1yoM1ttS7pXjHMa3dukTFGQggnFFH3hJZgzQh",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "9SDpBrfqNxjXcCzpKWM6yUKdfky975VJBD6xcu5cKf5s",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "BOP_USDC_DD",
+    "address": "GYipJSPD7zcDoEABRCZfDSqh7zqYMmjyP8dNKEUnW1iC",
+    "farmTokenMint": "CjGUbKiH1QmFFjMqhAbJn4DrbjgBWUhQHV4LuzrgpFqi",
+    "rewardTokenMint": "BLwTnYKqf7u4qjgZrrsKeNs2EzWkMLqVCu6j8iHyrNA3",
+    "rewardTokenDecimals": 8,
+    "baseTokenMint": "A7vvbqENJj8kED3ABjphe8TvwpasQYtoWGKpjpLArMxa",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SAMO_USDC_DD",
+    "address": "8VJT2SYGXgvQ8jYvh1Cq6mg83gkAVuTY3cHiULUy6Cit",
+    "farmTokenMint": "EdfAy8jwnvU1z61UaFUjwoRPFgD3UkkPvnhEBZjzwhv8",
+    "rewardTokenMint": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "9voVuTq1S9bFZkF2Jo44HoVG63w2xDRT8eBzB23YbQud",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "wHAPI_USDC_DD",
+    "address": "GFFQdLWvbWzrZBQrPQVyzGQfd6SWuZaiRwmkKA2bJPeY",
+    "farmTokenMint": "41VBoy8SGJzQnWGcxiBL4yM6H68FiPp74aMvsZGNGCbt",
+    "rewardTokenMint": "6VNKqgz9hk7zRShTFdg5AnkfKwZUcojzwAkzxSH3bnUm",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "Bfoi3RNnfdP5VeRGqvTA8MRN9ePGJoZgeKfe8WeBHUxE",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SLIM_USDC_DD",
+    "address": "3RsBqqz9MiXa1uhFFd6tpGVQ66ptkFPCBAUyqLAXeCTE",
+    "farmTokenMint": "HhDk3ySWkVbMZjgBsFSnLtAeudDCrfZ6DNSRgxh2oRUp",
+    "rewardTokenMint": "xxxxa1sKNGwFtw2kFn8XauW9xq8hBZ5kVtcSesTT9fW",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "3K7aZhtwWJ2JS6GnbbgeDVnxd1q2hwhqasmgRsAMZ4yC",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "NINJA_SOL_DD",
+    "address": "HPeAGzDEhYUNm4z4aV2PTjVjbESnNg6jBy6LtFjFJzQj",
+    "farmTokenMint": "Db7mPGrZbswvFmJ7MgZsM6CFhnXHMnrUDqr2hrzmi7Re",
+    "rewardTokenMint": "FgX1WD9WzMU3yLwXaFSarPfkgzjLb2DZCqmkx9ExpuvJ",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "7YyhptkxY81HPzFVfyCzA5UXxWdsNRD41ofLva3TuSpd",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ATLAS_USDC_DD",
+    "address": "DTP1xr4EzFf1YDu4CeWTtWVsCBzFPk4HDEsL3AzoR3kB",
+    "farmTokenMint": "894ptAFT7d3inPsWTniCGL2NZpJDiXGvFZFfuHXA1w8F",
+    "rewardTokenMint": "ATLASXmbPQxBUYbxPsV97usA3fPQYEqzQBUHgiFCUsXx",
+    "rewardTokenDecimals": 8,
+    "baseTokenMint": "HFmY1ggCsCky1zJ1sfdkNR4zb3u5n38YNRdf4vsGu17t",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "POLIS_USDC_DD",
+    "address": "7h1zAHj2xzEw3eKfprYqG36aN5XwcZXBsYwM2haWQVzR",
+    "farmTokenMint": "FE1QJzi5RA5aKnTfSV3DAMN3z4uHUzSR5Z4drs9S5vB",
+    "rewardTokenMint": "poLisWXnNRwC6oBu1vHiuKQzFjGL4XDSu4g9qjz9qVk",
+    "rewardTokenDecimals": 8,
+    "baseTokenMint": "63JUKLnCAuNMPSPioEgbjjzp9Qk8qSEEM8eZqEtPqfLU",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ABR_USDC_DD",
+    "address": "98htZRc2QNd8BS9GGHoxkySZ9BiL9MAgHLEQfxzXYKk6",
+    "farmTokenMint": "7bp7psdaC3DVc86Hmdz5tAMEjgPjmCzgFEVALfqBwMmz",
+    "rewardTokenMint": "a11bdAAuV8iB2fu7X6AxAvDTo1QZ8FXB3kk5eecdasp",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "5uR5STASUmoGVHzqMeut98t26TfVkQqWU9f9dsv3NfJ6",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "KURO_USDC_DD",
+    "address": "BK3VXXDA4KxVurHbP3yPytGWp1HifbBtB4ugpzfDeq4v",
+    "farmTokenMint": "88RCQs9VFvqPjsRe3PKNzBeMtzCS9oS1a1CJuAnGnLZJ",
+    "rewardTokenMint": "2Kc38rfQ49DFaKHQaWbijkE7fcymUMLY5guUiUsDmFfn",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "6PGoaQdL9e463hdaFxHXsuPcjCHRK32CQ9PFKxvM7XY2",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "mSOL_USDC_DD",
+    "address": "5fhDMuGKRDPWVWXf7BBEwifRFrp6XwXctDQoG7UHGVt6",
+    "farmTokenMint": "9y3QYM5mcaB8tU7oXRzAQnzHVa75P8riDuPievLp64cY",
+    "rewardTokenMint": "MNDEFzGvMt87ueuHvVU9VcTqsAP5b3fTGPsHuuPA5ey",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "5r3vDsNTGXXb9cGQfqyNuYD2bjhRPymGJBfDmKosR9Ev",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ORCA_mSOL_DD",
+    "address": "41ZYSekqDNtJ1BdGkTZVR1CJfBiFrud6HcT3HVUdSyWN",
+    "farmTokenMint": "876yhw4J4GHyynNJUtARYEnWGaejhrWC7Hy3DAm1pZxi",
+    "rewardTokenMint": "MNDEFzGvMt87ueuHvVU9VcTqsAP5b3fTGPsHuuPA5ey",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "3Duk5b6fLztPmS4ryV48FM1Q9WXUSMwz9jehAT4UtqpE",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "mSOL_SOL_DD",
+    "address": "2SciNw7cEsKJc1PMRDzWCcEzvuScmEaUgmrJXCi9UFxY",
+    "farmTokenMint": "576ABEdvLG1iFU3bLC8AMJ3mo5LhfgPPhMtTeVAGG6u7",
+    "rewardTokenMint": "MNDEFzGvMt87ueuHvVU9VcTqsAP5b3fTGPsHuuPA5ey",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "3RTGL7gPF4V1ns1AeGFApT7cBEGVDfmJ77DqQi9AC6uG",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "stSOL_wstETH_DD",
+    "address": "EmWtmApj1PtJMgMfzbYMmnmtuwfcBy7es3Tg2AR8xfW6",
+    "farmTokenMint": "5WXyG6zL1HmESPCSHHKBtqLuRPZCNgd9mTB25op87FkU",
+    "rewardTokenMint": "HZRCwxP2Vq9PCpPXooayhJ2bxTpo5xfpQrwB1svh332p",
+    "rewardTokenDecimals": 8,
+    "baseTokenMint": "3kT3oYuS1rCfhmqfgy6EKcbZdaJimaVEjoy25QiuEaoj",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SYP_USDC_DD",
+    "address": "gpy1dZRbPbLZ2KNr4wd2r9zoxERbWV8gWTqTL47KNnh",
+    "farmTokenMint": "BpHfwFwJwkZKWY5xVMC3oifMvWRy42R4VE1vPeBzg2G1",
+    "rewardTokenMint": "FnKE9n6aGjQoNWRBZXy4RW6LZVao7qwBonUbiD7edUmZ",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "Ds4VGZhZzS2PMFzhzKeC3mwcQjdiCG21R76fTVbsSJyJ",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "MNDE_mSOL_DD",
+    "address": "C9AfeUkti1ykMTebw9N1WoiEhNqwNiXinfXBwuLUv1BT",
+    "farmTokenMint": "2FMpVEhvxiFxhfideFUMNxCoUZK3TfhezzajoHGTQKP2",
+    "rewardTokenMint": "MNDEFzGvMt87ueuHvVU9VcTqsAP5b3fTGPsHuuPA5ey",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "2wPsMuzhEsC6GhV3qtFpmJF6atEgLGbnmQ8U43Y6fPxZ",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "mSOL_USDT_DD",
+    "address": "FNV9pGMWTYSMq5dRhmjpRwHpDJKV6JD4HTKsqZndKvuY",
+    "farmTokenMint": "7iKG16aukdXXw43MowbfrGqXhAoYe51iVR9u2Nf2dCEY",
+    "rewardTokenMint": "MNDEFzGvMt87ueuHvVU9VcTqsAP5b3fTGPsHuuPA5ey",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "Afvh7TWfcT1E9eEEWJk17fPjnqk36hreTJJK5g3s4fm8",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "mSOL_whETH_DD",
+    "address": "D6oqo3F2KkJcePDoNZfbb8F7SPnRhP7WCC9FNktzVCDT",
+    "farmTokenMint": "3kFeVJUxhQS7PE7vV8pt9bhTCQrUDqeGf6AU4sjkLzVt",
+    "rewardTokenMint": "MNDEFzGvMt87ueuHvVU9VcTqsAP5b3fTGPsHuuPA5ey",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "58nifjPjF3CutGz2xMxvAMk7R9YgbVEc8Cstj4rCcs8j",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "BTC_mSOL_DD",
+    "address": "Cn7QNyosNQ8DyKEeMDPmtg66R7vKMXigcQ561kTkFD8E",
+    "farmTokenMint": "6uA1ADUJbvwYJZpzUn9z9LuyKoRVngBKcQTKdXsSivA8",
+    "rewardTokenMint": "MNDEFzGvMt87ueuHvVU9VcTqsAP5b3fTGPsHuuPA5ey",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "DzpLz78wuwyFsQToin8iDv6YK6aBEymRqQq82swiFh7r",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "IVN_SOL_DD",
+    "address": "9DNgTpphCRXhkf8ySiSnf1L2CHwACZybgPNwsnLUdzfA",
+    "farmTokenMint": "5X71f6zUnVYWSxWM8wf942pzWLv1ZtCDhGCYqZipYutD",
+    "rewardTokenMint": "iVNcrNE9BRZBC9Aqf753iZiZfbszeAVUoikgT9yvr2a",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "HqajzzbGMST3yCCVBJuXvNVsWkY2DXqiBz9cTRmmyBMy",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "LARIX_USDC_DD",
+    "address": "GnFV3S7H6eM9V12EJwptv111VmV7W3AnEEfzdHJL25n7",
+    "farmTokenMint": "Huy453KXTaWaA3AiJeqLrAWWSMwoGjFU8nsEi7GiPY7n",
+    "rewardTokenMint": "Lrxqnh6ZHKbGy3dcrCED43nsoLkM1LTzU2jRfWe8qUC",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "DNAGfa7tK8csprRQmiDUwDaFfhw6ueHhVFHTCgTJ8HGs",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "GOFX_USDC_DD",
+    "address": "EVDvbsD5f1qz7FpVyknrzB3bLK86FHfqVbcH9WqpWZtK",
+    "farmTokenMint": "BzZ3mLyXEaGt1Na1zxfZYjRJBFDbDckurc2LDq46irUx",
+    "rewardTokenMint": "GFX1ZjR2P15tmrSwow6FjyDYcEkoFb4p4gJCpLBjaxHD",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "B95rdqSY4dqPwmt295XwBZZqZJYLmqDNXU6NvBpT4ep4",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "WOOF_USDC_DD",
+    "address": "9M9JKUWatibJKghbDDjHXLGGY18dLPLHgs6a4WiP9EAe",
+    "farmTokenMint": "G6kaJ4NrCS9VoNgPiMuR5ENFrGJBfMe98PXFgVYkBKts",
+    "rewardTokenMint": "9nEqaUcb16sQ3Tn1psbkWqyhPdLmfHWjKGymREjsAgTE",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "4HaQXDz9gdLgKUjvNVtnLyNZoWNYKjh3XxH1TpLgiwmi",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SDOGE_USDC_DD",
+    "address": "J3AmdMedeE1mhwbZzZFysER8CZdMqxL3HoyLxCmub9mc",
+    "farmTokenMint": "3upLraKWWJ3Tv8JgwygBszT1nQwksYBnx2XWEgaGMTt6",
+    "rewardTokenMint": "8ymi88q5DtmdNTn2sPRNFkvMkszMHuLJ1e3RVdWjPa3s",
+    "rewardTokenDecimals": 0,
+    "baseTokenMint": "4kXYyZAMBdvgDaBKUGvRWJnHw9af7sCUPvpQ68PEdP8b",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "CATO_USDC_DD",
+    "address": "7YMRTqXna5vtCkncV6hxhUd7qCrv621iRq96b7LYySR2",
+    "farmTokenMint": "2YbEbQD8DP8QyRQnp7CXwdD6BqeJsry4MkWZgxovZPMm",
+    "rewardTokenMint": "5p2zjqCd1WJzAVgcEnjhb9zWDU7b9XVhFhx4usiyN7jB",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "BHtZnTBMeY4EBEW5egGnuK5bdW12v6Dod6wFav79AyYx",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "OOGI_USDC_DD",
+    "address": "F1jqYgps3MsGvWJ9WKq7NYx1eT4xjPDruFtQ9gMD1pLk",
+    "farmTokenMint": "3CiL5pm15BiLH8PBrhx7uFJr2uYoeBNZk55kuphp48Py",
+    "rewardTokenMint": "H7Qc9APCWWGDVxGD5fJHmLTmdEgT9GFatAKFNg6sHh8A",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "FiwSk36yi1DNWcuQUeNipAc1VKxa9Wv9AR2xFvyKUxAE",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SONAR_USDC_DD",
+    "address": "E3hyqjh9R7UWMwkMSxYHws4qdnpMSzXwkuJfVcEfmJwb",
+    "farmTokenMint": "9tpC9vawMtim6q3MaQHfPPwFnnErh58qXhdqczS2p7sd",
+    "rewardTokenMint": "sonarX4VtVkQemriJeLm6CKeW3GDMyiBnnAEMw1MRAE",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "GWmwwMGYBG4NqYdnsYrudzBnbgDC49MkBxdzhfLA9kVY",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "UPS_USDC_DD",
+    "address": "8V2RqGTNmz2xYBdonfvkLstGWV7ibHopoZMQeaV9rykb",
+    "farmTokenMint": "9Ux3QdsLpLXCNFsACXjp4F2D5ihkWZnVhdDiTDTvw2Ny",
+    "rewardTokenMint": "EwJN2GqUGXXzYmoAciwuABtorHczTA5LqbukKXV1viH7",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "9fuv3emLQXECrTWqm2HaKT3wQhmvmgqmReZSMcu8PfpH",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "FANT_USDC_DD",
+    "address": "2J5exwdrNhqK1y1DF5jPQV2JieZ5xBsR3jDrZRh8PfPZ",
+    "farmTokenMint": "FftGKB7DThU5N96xYQ8BWkRBpFTKDvSzN7hCCNxuypsE",
+    "rewardTokenMint": "FANTafPFBAt93BNJVpdu25pGPmca3RfwdsDsRrT3LX1r",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "C2EcthTMaC5eATXVaXg5ctvMfUYYgFyNibybHes5D3S6",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "stSOL_USDC_DD",
+    "address": "HhBtZgPaFb5rodxXsZbtZUqxk2vEg6tdzM4AcaG2PjcL",
+    "farmTokenMint": "CejKA1pePxny3iprRDEyiojfTKNxxX2bjmKToDGZqwvh",
+    "rewardTokenMint": "HZRCwxP2Vq9PCpPXooayhJ2bxTpo5xfpQrwB1svh332p",
+    "rewardTokenDecimals": 8,
+    "baseTokenMint": "3u2dNfGuU6C3vmSg5EvLPUpX57b3niqhWBV5Gc3WDEf5",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "WMP_USDC_DD",
+    "address": "2aUMqCFWK3PKeScspP4SqRFS7fag18TDHv2VsaBfSS72",
+    "farmTokenMint": "4SWDBKeb44RQMYmyorUiuF94Fqf1toketzJyvLSjVtHN",
+    "rewardTokenMint": "BygDd5LURoqztD3xETc99WCxLUbTi6WYSht9XiBgZ4HW",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "Ce3VXSQGFEHqrQSEzcVb2Ro88Mcn56cYBUAXFx5tL9bo",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "CHICKS_USDC_DD",
+    "address": "61uQt5e3Vd3cps6mS5xnL1UVLe3rwNS4aDaa3F2V7h3z",
+    "farmTokenMint": "3EPqpch8B8nk37gcxKCnQ5n6VSu4NyetcyZen636NYfb",
+    "rewardTokenMint": "cxxShYRVcepDudXhe7U62QHvw8uBJoKFifmzggGKVC2",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "GTcxXu3yw7yotq2UtAMvpEbx84ozJyrBwy77Cmem7m4X",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "UNQ_USDC_DD",
+    "address": "G5cvdbZwbwAV4eW8ENQy5tmbzaJu8TbdgF5MLXgLPXj3",
+    "farmTokenMint": "75jdeQfjFnNzg4dSbkA3HxTN63hXo99MrpafDJsz5Gcy",
+    "rewardTokenMint": "UNQtEecZ5Zb4gSSVHCAWUQEoNnSVEbWiKCi1v9kdUJJ",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "CsGTrgJ6oLx9UQow9aLjuAacjXTY53zT8B2FnAbfVZAS",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "MEAN_USDC_DD",
+    "address": "9TQ4HQXymNLVKEMve5peFXst5VPDXX1oZ8VTVuQeG7W7",
+    "farmTokenMint": "FaFGyRihhc8XUqWXNrVAd6gjRsyJ98mogonH4EN8WUPb",
+    "rewardTokenMint": "MEANeD3XDdUmNMsRGjASkSWdC8prLYsoRJ61pPeHctD",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "3h2VBX8533NB8eEH8rPXMdayodFDbgTHpbav6JqLZAQq",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "WAG_USDC_DD",
+    "address": "5dA9HWoFnBagq25bpMPA79bKxQkQ6YXvBtYQn6Le6vyp",
+    "farmTokenMint": "BYno9HNAiLoi7K8Wa5c1f5EE7hukzZPUQZDesGxBPzhh",
+    "rewardTokenMint": "5tN42n9vMi6ubp67Uy4NnmM5DMZYN8aS8GeB3bEDHr6E",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "8Wu5sJpERA1J5iWcT8aMpt9cTAfKDLPbLpGjNsJoPgLc",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SHDW_USDC_DD",
+    "address": "GJ9EixfM3noFT1b7Y5uAzV1qJSFev5uPaRrmfMoibck6",
+    "farmTokenMint": "HPv7XJ16t4pZVNTBPHoYY19xiv4pHjjSbarE7Km3jJ1R",
+    "rewardTokenMint": "SHDWyBxihqiCj6YekG2GUr7wqKLeLAMK1gHZck9pL6y",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "7WWHfufv8vuBC1x7GXA3pu7kgNhEQkXoq3CtbaQihAJ9",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SHDW_SOL_DD",
+    "address": "2EHJ8ToKpJfXyAfechjH9QSbVMKTSViYPdJRepQz7V8S",
+    "farmTokenMint": "8HgXuNigmLvfsgDun1vQso6pBuj7sVvDqpcergjtu3dz",
+    "rewardTokenMint": "SHDWyBxihqiCj6YekG2GUr7wqKLeLAMK1gHZck9pL6y",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "BDStVBt4NS5bfda25ubK51kVRioV4yjKKCPbe96jeEms",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "AART_USDC_DD",
+    "address": "BKFSHwhqDHRFM3PzNh7BG1vgxtEbx1A9Co1JN6z9SLYz",
+    "farmTokenMint": "FvmyENsZf68ezNbHxRqv1hAb7phfhdnXMfQm74Vcpnkn",
+    "rewardTokenMint": "F3nefJBcejYbtdREjui1T9DPh5dBgpkKq7u2GAAMXs5B",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "Bg7pZq7KdsQsnCQBeNpa4XVnrWfjUJNu3ViHoNB7YUZU",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "BASIS_USDC_DD",
+    "address": "DasaXe2Wqcks6csFv1bWwdW41mV8rMD5c27Uw9rFYVu4",
+    "farmTokenMint": "8XtNSYBhLHa4cYzNsXd6yDAweMECumrxFJ7F2qxk2xN",
+    "rewardTokenMint": "Basis9oJw9j8cw53oMV7iqsgo6ihi9ALw4QR31rcjUJa",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "4yx2aHMa7N4m1uUaBRy9QPtpstw3HFPtvcCPJQaGFHKL",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SLC_USDC_DD",
+    "address": "DdYbYsTgpp3pBdGhN9sSdgRJs4ijKZQuDqzqKz6qmScs",
+    "farmTokenMint": "6VWtaecVXHuorMwVrZ4GAnYC3T5MG1YdQLYNPGyWzQHh",
+    "rewardTokenMint": "METAmTMXwdb8gYzyCPfXXFmZZw4rUsXX58PNsDg7zjL",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "X8GnAvxq942xXjNzqYPFQQ9JstJQNEA81uPeNoQpgrN",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "wUST_SOL_DD",
+    "address": "6p47BJ5d9JmywGpbZa8MapJmhcLdu5w2uNg9NQTJKvi",
+    "farmTokenMint": "BkcNGF6iV6NTfoH1ocoywXrfDpPWiWUu7eARBT42e57v",
+    "rewardTokenMint": "F6v4wfAdJB8D8p77bMXZgYt8TDKsYxLYxH5AFhUkYx9W",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "F49Cm3srGucQCBanA2xL7nSKHfH1QZd9vLdFtkg4LKnq",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "wUST_USDC_DD",
+    "address": "87ArJQZCaUwLkZfaRHbjU8geq6F8HsFcCtoppCV7Buby",
+    "farmTokenMint": "DGxLh6BykS8C4zLrBRRD4cHZRdy73eVqZ5283JkAdU7d",
+    "rewardTokenMint": "F6v4wfAdJB8D8p77bMXZgYt8TDKsYxLYxH5AFhUkYx9W",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "2mhVUMsG7eb3XhHjAbKpRZgWNyGZNCiWU7dRxauzZaGL",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "mSOL_wUST_DD",
+    "address": "5z183wdSnkc1k9EmnXncE66VQYYLn8MkxG9gJTo5gabj",
+    "farmTokenMint": "2q4rZYZgicviVBsb8CTWGR3bGWys3ePFDYtrayyQpwyi",
+    "rewardTokenMint": "F6v4wfAdJB8D8p77bMXZgYt8TDKsYxLYxH5AFhUkYx9W",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "6wqME6zPQzGDLugpnwZnVBKBbATC5nTaEa781Vj98yvM",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "wLUNA_wUST_DD",
+    "address": "4G49eoJrt6DGWnVR84tgNzw987cjwD4cPYd3SUuo6mrd",
+    "farmTokenMint": "HQnMrrLP5RxYN6Peuu9cfDNQK81yd3TtBt3ZCjoD8UAf",
+    "rewardTokenMint": "F6v4wfAdJB8D8p77bMXZgYt8TDKsYxLYxH5AFhUkYx9W",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "3ZGKT28NXAqb2YtUAMvKixQvHNHT31Q5mK8AC2iBMs29",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "stSOL_wUST_DD",
+    "address": "CXbiLWJoYcVmV7GcF9xSwwMPSgHh5rHRLJB84F54R4qU",
+    "farmTokenMint": "DxiftFoeRxHk15N4rDYzpwtGhfK3LqSn4gWDCaEkMksE",
+    "rewardTokenMint": "HZRCwxP2Vq9PCpPXooayhJ2bxTpo5xfpQrwB1svh332p",
+    "rewardTokenDecimals": 8,
+    "baseTokenMint": "3Q44iV4URXdbS4Tk1PGs5VdWQoCxHB7zdcdMnemo8jfH",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "CMFI_USDC_DD",
+    "address": "E5m2jmo8DhLiY93nh95K4XCxvZgt66JzaJnwyt5CPmVR",
+    "farmTokenMint": "Dr7ks8oV6iRTT2R2uqE4x6Egmg3djt14aCEciNhq3SF9",
+    "rewardTokenMint": "5Wsd311hY8NXQhkt9cWHwTnqafk7BGEbLu8Py3DSnPAr",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "E8RVjS24pBuF3oCCeJVAgC4RQ7mVa5P3FGXqGbiczzvD",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "HBB_USDC_DD",
+    "address": "CvYum3awvbxPVa5FpZRBs97Prg5GDmLha4X6mggX7R1p",
+    "farmTokenMint": "FYdet59VXibMU8FhnbZamZTVMsjnCyNevUqzWUrJfGum",
+    "rewardTokenMint": "HBB111SCo9jkCejsZfz8Ec8nH7T6THF8KEKSnvwT6XK6",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "BxPd4x7gm6WQF6jsDCRQuQVZ2bopQ4KegMrqyQgdkPDk",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "acCELO_USDC_DD",
+    "address": "DrDpUFTvHjznYEugMqcXTqspdmQ6GZhuBzjodU7A6qWU",
+    "farmTokenMint": "4EUgJ5LSF3UDVbVAYzqE133NXAxfhHZSvqx214EJkNkQ",
+    "rewardTokenMint": "a11bdAAuV8iB2fu7X6AxAvDTo1QZ8FXB3kk5eecdasp",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "9RRBDWZGWGVnHgazCpb9R1XApmHLBDya8Tq1yrzoMsKY",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "CELO_USDC_DD",
+    "address": "DrDpUFTvHjznYEugMqcXTqspdmQ6GZhuBzjodU7A6qWU",
+    "farmTokenMint": "4EUgJ5LSF3UDVbVAYzqE133NXAxfhHZSvqx214EJkNkQ",
+    "rewardTokenMint": "a11bdAAuV8iB2fu7X6AxAvDTo1QZ8FXB3kk5eecdasp",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "9RRBDWZGWGVnHgazCpb9R1XApmHLBDya8Tq1yrzoMsKY",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SB_USDC_DD",
+    "address": "74hUtc4MaZUt4YDDjVSqHyUbPT8kbxW16mbAharpZhPV",
+    "farmTokenMint": "EdkL9TXiT2NV1LND5nj4kR1L9SYjozWpJvbcStvrUUJF",
+    "rewardTokenMint": "SuperbZyz7TsSdSoFAZ6RYHfAWe9NmjXBLVQpS8hqdx",
+    "rewardTokenDecimals": 6,
+    "baseTokenMint": "3Wppx86xN7Dg7GLUTD9C7AqCt68qZkWzNYUdCS7t1pCk",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "afFTM_USDC_DD",
+    "address": "7cYU6ux4GwB1X2FKaRruQ9dbDZKUrxZAaWGNJfeoHeGJ",
+    "farmTokenMint": "4r3uYr4Ph4ctw1chiUaAtwon4stFGHqbSJ6Lym139rM9",
+    "rewardTokenMint": "a11bdAAuV8iB2fu7X6AxAvDTo1QZ8FXB3kk5eecdasp",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "E7Af9Fa2U1YqEkQpAYjXwDB5TJUou9VcN3ot33Gj6UY9",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "FTM_USDC_DD",
+    "address": "7cYU6ux4GwB1X2FKaRruQ9dbDZKUrxZAaWGNJfeoHeGJ",
+    "farmTokenMint": "4r3uYr4Ph4ctw1chiUaAtwon4stFGHqbSJ6Lym139rM9",
+    "rewardTokenMint": "a11bdAAuV8iB2fu7X6AxAvDTo1QZ8FXB3kk5eecdasp",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "E7Af9Fa2U1YqEkQpAYjXwDB5TJUou9VcN3ot33Gj6UY9",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "stSOL_USDT_DD",
+    "address": "AihUw1sSxuzL2i1ELWMXmiRT3UgyRds68iNXwFKbyQnP",
+    "farmTokenMint": "2kftNiMcrjp9CRqtoLZNwApGEoirfunHPvunenGLz17y",
+    "rewardTokenMint": "HZRCwxP2Vq9PCpPXooayhJ2bxTpo5xfpQrwB1svh332p",
+    "rewardTokenDecimals": 8,
+    "baseTokenMint": "CtvKaRLzCzRZCcYPwai7NCYBK4ArBj2oD6BfvMgJoiCN",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SEEDED_USDC_DD",
+    "address": "EsSWWXMipKC4aVHcKjkYdvNjKphxk86DGCYhdF2huoso",
+    "farmTokenMint": "AjCuWDEZYC9FuwdYpdAy4vLoY6PxMNF8xitQeaNZd1nW",
+    "rewardTokenMint": "seedEDBqu63tJ7PFqvcbwvThrYUkQeqT6NLf81kLibs",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "H15WptGntFQifZmJHUzYBV9Mv7P27ofavEsF6yqpLTdX",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ONESOL_SOL_DD",
+    "address": "2GpXwBPbooPwqxLuM1bW9FaSK5hxaJqNkr7WdPsjoPca",
+    "farmTokenMint": "DuTybhuJgwECRHDLgtrBuKnfhxve2zXoYXD6cnDikzoT",
+    "rewardTokenMint": "4ThReWAbAVZjNVgs5Ui9Pk3cZ5TYaD9u6Y89fp6EFzoF",
+    "rewardTokenDecimals": 8,
+    "baseTokenMint": "Hva9oLa2GjoKdB45WoHujsX7MTpehByPshMrQpNDmkFq",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "MMA_USDC_DD",
+    "address": "7w9ztS9wcnsk2gqCEvKmQFUBbwhPZPfb5CXhC2onUWXs",
+    "farmTokenMint": "9hSvWrDqgAr7E8sWpatomKcgAGy3hvgAWPXtGPySNbsy",
+    "rewardTokenMint": "MMAx26JtJgSWv6yH48nEHCGZcVvRbf9Lt9ALa7jSipe",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "H9qkbU2XYSQTk6JJJ2TMuZBthfkeCHigmuxB5jiQaamn",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "PUFF_SOL_DD",
+    "address": "HNTRmR36ZXBNakYpfPPq7VJaXzLrNY6hN1Xz9p5s8wWA",
+    "farmTokenMint": "Grn1ipjetWK7sz5Bq9S1nwD7F7dUsFzM44diFxbMruvK",
+    "rewardTokenMint": "G9tt98aYSznRk7jWsfuz9FnTdokxS6Brohdo9hSmjTRB",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "Ge5kuYg5PekrPUeKzngw97Cnfngj8j6NCX5q1jTBkWSW",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "SAO_USDC_DD",
+    "address": "9eVq1gfxbgRpX8W4XctocHEm2U8eT5KzTcnMduFThoz1",
+    "farmTokenMint": "47PY3ET5oziYHEt1mddYFE7opJnqPbp98yZ1xf6cpgER",
+    "rewardTokenMint": "2HeykdKjzHKGm2LKHw8pDYwjKPiFEoXAz74dirhUgQvq",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "A9BeGSRJJYXPrMs81rVZxvkk16fopzgG5YkngntgTu7p",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "sRLY_SOL_DD",
+    "address": "7GAp1xR64GjjbyHbvE28Rt9xLEBLTjk4W3AemRMvTcrS",
+    "farmTokenMint": "4Xtia3w6AKBNPCYmFZCAQV8CNwUmHYrVQiNMEGdMkRMg",
+    "rewardTokenMint": "RLYv2ubRMDLcGG2UyvPmnPmkfuQTsMbg4Jtygc7dmnq",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "6gkZ7QUmxmwPLS2NK3Dr6YHtTPZs6GQrkA595WSx5iLe",
+    "baseTokenDecimals": 6
+  },
+  {
+    "name": "ZBC_USDC_DD",
+    "address": "AMVd1e1mvWxvJ9LPU3GWjRQ7bfhkwVB69RiL5oRkyAtC",
+    "farmTokenMint": "2ygRp6eeFaBmfEZngpkVwuVs8hmRbe3FMnF4qiJiFzhT",
+    "rewardTokenMint": "zebeczgi5fSEtbpfQKVZKCJ3WgYXxjkMUkNNx7fLKAF",
+    "rewardTokenDecimals": 9,
+    "baseTokenMint": "7Hoi4adCSBzERdvSiUXtVDz79tiDxMD5HpDv7m9rs3Sb",
+    "baseTokenDecimals": 6
+  }
+] 
+}

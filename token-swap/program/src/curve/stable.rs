@@ -12,13 +12,27 @@ use {
         program_error::ProgramError,
         program_pack::{IsInitialized, Pack, Sealed},
     },
-    spl_math::{precise_number::PreciseNumber, uint::U256},
+    spl_math::{checked_ceil_div::CheckedCeilDiv, precise_number::PreciseNumber, uint::U256},
     std::convert::TryFrom,
 };
 
 const N_COINS: u8 = 2;
 const N_COINS_SQUARED: u8 = 4;
 const ITERATIONS: u8 = 32;
+
+/// Calculates A for deriving D
+///
+/// Per discussion with the designer and writer of stable curves, this A is not
+/// the same as the A from the whitepaper, it's actually `A * n**(n-1)`, so when
+/// you set A, you actually set `A * n**(n-1)`. This is because `D**n / prod(x)`
+/// loses precision with a huge A value.
+///
+/// There is little information to document this choice, but the original contracts
+/// use this same convention, see a comment in the code at:
+/// https://github.com/curvefi/curve-contract/blob/b0bbf77f8f93c9c5f4e415bce9cd71f0cdee960e/contracts/pool-templates/base/SwapTemplateBase.vy#L136
+fn compute_a(amp: u64) -> Option<u64> {
+    amp.checked_mul(N_COINS as u64)
+}
 
 /// Returns self to the power of b
 fn checked_u8_power(a: &U256, b: u8) -> Option<U256> {
@@ -48,12 +62,12 @@ pub struct StableCurve {
 /// d = (leverage * sum_x + d_product * n_coins) * initial_d / ((leverage - 1) * initial_d + (n_coins + 1) * d_product)
 fn calculate_step(initial_d: &U256, leverage: u64, sum_x: u128, d_product: &U256) -> Option<U256> {
     let leverage_mul = U256::from(leverage).checked_mul(sum_x.into())?;
-    let d_p_mul = checked_u8_mul(&d_product, N_COINS)?;
+    let d_p_mul = checked_u8_mul(d_product, N_COINS)?;
 
     let l_val = leverage_mul.checked_add(d_p_mul)?.checked_mul(*initial_d)?;
 
     let leverage_sub = initial_d.checked_mul((leverage.checked_sub(1)?).into())?;
-    let n_coins_sum = checked_u8_mul(&d_product, N_COINS.checked_add(1)?)?;
+    let n_coins_sum = checked_u8_mul(d_product, N_COINS.checked_add(1)?)?;
 
     let r_val = leverage_sub.checked_add(n_coins_sum)?;
 
@@ -109,6 +123,8 @@ fn compute_new_destination_amount(
     let leverage: U256 = leverage.into();
     let new_source_amount: U256 = new_source_amount.into();
     let d_val: U256 = d_val.into();
+    let zero = U256::from(0u128);
+    let one = U256::from(1u128);
 
     // sum' = prod' = x
     // c =  D ** (n + 1) / (n ** (2 * n) * prod' * A)
@@ -119,14 +135,24 @@ fn compute_new_destination_amount(
     let b = new_source_amount.checked_add(d_val.checked_div(leverage)?)?;
 
     // Solve for y by approximating: y**2 + b*y = c
-    let mut y_prev: U256;
     let mut y = d_val;
     for _ in 0..ITERATIONS {
-        y_prev = y;
-        y = (checked_u8_power(&y, 2)?.checked_add(c)?)
-            .checked_div(checked_u8_mul(&y, 2)?.checked_add(b)?.checked_sub(d_val)?)?;
-        if y == y_prev {
+        let numerator = checked_u8_power(&y, 2)?.checked_add(c)?;
+        let denominator = checked_u8_mul(&y, 2)?.checked_add(b)?.checked_sub(d_val)?;
+        // checked_ceil_div is conservative, not allowing for a 0 return, but we can
+        // ceiling to 1 token in this case since we're solving through approximation,
+        // and not doing a constant product calculation
+        let (y_new, _) = numerator.checked_ceil_div(denominator).unwrap_or_else(|| {
+            if numerator == U256::from(0u128) {
+                (zero, zero)
+            } else {
+                (one, zero)
+            }
+        });
+        if y_new == y {
             break;
+        } else {
+            y = y_new;
         }
     }
     u128::try_from(y).ok()
@@ -141,7 +167,13 @@ impl CurveCalculator for StableCurve {
         swap_destination_amount: u128,
         _trade_direction: TradeDirection,
     ) -> Option<SwapWithoutFeesResult> {
-        let leverage = self.amp.checked_mul(N_COINS as u64)?;
+        if source_amount == 0 {
+            return Some(SwapWithoutFeesResult {
+                source_amount_swapped: 0,
+                destination_amount_swapped: 0,
+            });
+        }
+        let leverage = compute_a(self.amp)?;
 
         let new_source_amount = swap_source_amount.checked_add(source_amount)?;
         let new_destination_amount = compute_new_destination_amount(
@@ -158,7 +190,9 @@ impl CurveCalculator for StableCurve {
         })
     }
 
-    /// Re-implementation of `remove_liquidty`: https://github.com/curvefi/curve-contract/blob/80bbe179083c9a7062e4c482b0be3bfb7501f2bd/contracts/pool-templates/base/SwapTemplateBase.vy#L513
+    /// Re-implementation of `remove_liquidity`:
+    ///
+    /// <https://github.com/curvefi/curve-contract/blob/80bbe179083c9a7062e4c482b0be3bfb7501f2bd/contracts/pool-templates/base/SwapTemplateBase.vy#L513>
     fn pool_tokens_to_trading_tokens(
         &self,
         pool_tokens: u128,
@@ -199,7 +233,9 @@ impl CurveCalculator for StableCurve {
     }
 
     /// Get the amount of pool tokens for the given amount of token A or B.
-    /// Re-implementation of `calc_token_amount`: https://github.com/curvefi/curve-contract/blob/80bbe179083c9a7062e4c482b0be3bfb7501f2bd/contracts/pool-templates/base/SwapTemplateBase.vy#L267
+    /// Re-implementation of `calc_token_amount`:
+    ///
+    /// <https://github.com/curvefi/curve-contract/blob/80bbe179083c9a7062e4c482b0be3bfb7501f2bd/contracts/pool-templates/base/SwapTemplateBase.vy#L267>
     fn deposit_single_token_type(
         &self,
         source_amount: u128,
@@ -211,7 +247,7 @@ impl CurveCalculator for StableCurve {
         if source_amount == 0 {
             return Some(0);
         }
-        let leverage = self.amp.checked_mul(N_COINS as u64)?;
+        let leverage = compute_a(self.amp)?;
         let d0 = PreciseNumber::new(compute_d(
             leverage,
             swap_token_a_amount,
@@ -244,7 +280,7 @@ impl CurveCalculator for StableCurve {
         if source_amount == 0 {
             return Some(0);
         }
-        let leverage = self.amp.checked_mul(N_COINS as u64)?;
+        let leverage = compute_a(self.amp)?;
         let d0 = PreciseNumber::new(compute_d(
             leverage,
             swap_token_a_amount,
@@ -273,7 +309,7 @@ impl CurveCalculator for StableCurve {
     ) -> Option<PreciseNumber> {
         #[cfg(not(any(test, feature = "fuzz")))]
         {
-            let leverage = self.amp.checked_mul(N_COINS as u64)?;
+            let leverage = compute_a(self.amp)?;
             PreciseNumber::new(compute_d(
                 leverage,
                 swap_token_a_amount,
@@ -391,9 +427,19 @@ mod tests {
         check_pool_token_rate(5, 501, 2, 10, 1, 101);
     }
 
+    #[test]
+    fn swap_zero() {
+        let curve = StableCurve { amp: 100 };
+        let result = curve.swap_without_fees(0, 100, 1_000_000_000_000_000, TradeDirection::AtoB);
+
+        let result = result.unwrap();
+        assert_eq!(result.source_amount_swapped, 0);
+        assert_eq!(result.destination_amount_swapped, 0);
+    }
+
     proptest! {
         #[test]
-        fn constant_product_swap_no_fee(
+        fn swap_no_fee(
             swap_source_amount in 100..1_000_000_000_000_000_000u128,
             swap_destination_amount in 100..1_000_000_000_000_000_000u128,
             source_amount in 100..100_000_000_000u128,
@@ -422,8 +468,11 @@ mod tests {
             let diff =
                 (sim_result as i128 - result.destination_amount_swapped as i128).abs();
 
+            // tolerate a difference of 2 because of the ceiling during calculation
+            let tolerance = std::cmp::max(2, sim_result as i128 / 1_000_000_000);
+
             assert!(
-                diff <= 1,
+                diff <= tolerance,
                 "result={}, sim_result={}, amp={}, source_amount={}, swap_source_amount={}, swap_destination_amount={}, diff={}",
                 result.destination_amount_swapped,
                 sim_result,
@@ -592,5 +641,25 @@ mod tests {
                 CONVERSION_BASIS_POINTS_GUARANTEE
             );
         }
+    }
+
+    // this test comes from a failed proptest
+    #[test]
+    fn withdraw_token_conversion_huge_withdrawal() {
+        let pool_token_supply: u64 = 12798273514859089136;
+        let pool_token_amount: u64 = 12798243809352362806;
+        let swap_token_a_amount: u64 = 10000000000000000000;
+        let swap_token_b_amount: u64 = 6000000000000000000;
+        let amp = 72;
+        let curve = StableCurve { amp };
+        check_withdraw_token_conversion(
+            &curve,
+            pool_token_amount as u128,
+            pool_token_supply as u128,
+            swap_token_a_amount as u128,
+            swap_token_b_amount as u128,
+            TradeDirection::AtoB,
+            CONVERSION_BASIS_POINTS_GUARANTEE,
+        );
     }
 }

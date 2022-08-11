@@ -1,0 +1,19 @@
+[workspace]
+members = [
+  "farm-client",
+  "farm-ctrl",
+  "farm-rpc",
+  "farm-sdk",
+  "fund",
+  "router-main",
+  "router-raydium",
+  "router-saber",
+  "router-orca",
+  "vaults"
+]
+
+[profile.release]
+overflow-checks = true
+
+[profile.dev]
+split-debuginfo = "unpacked"

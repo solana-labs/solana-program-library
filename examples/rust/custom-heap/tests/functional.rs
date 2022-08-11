@@ -8,7 +8,7 @@ use {
 
 #[tokio::test]
 async fn test_custom_heap() {
-    let program_id = Pubkey::from_str(&"CustomHeap111111111111111111111111111111111").unwrap();
+    let program_id = Pubkey::from_str("CustomHeap111111111111111111111111111111111").unwrap();
     let (mut banks_client, payer, recent_blockhash) = ProgramTest::new(
         "spl_example_custom_heap",
         program_id,

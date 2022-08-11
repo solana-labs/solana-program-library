@@ -3,25 +3,33 @@
 mod helpers;
 
 use {
-    borsh::{BorshDeserialize, BorshSerialize},
+    borsh::BorshSerialize,
     helpers::*,
     solana_program::{
+        borsh::try_from_slice_unchecked,
         hash::Hash,
         instruction::{AccountMeta, Instruction},
     },
     solana_program_test::*,
     solana_sdk::{
-        instruction::InstructionError, signature::Keypair, signature::Signer,
-        transaction::Transaction, transaction::TransactionError, transport::TransportError,
+        instruction::InstructionError,
+        signature::{Keypair, Signer},
+        transaction::{Transaction, TransactionError},
+        transport::TransportError,
     },
-    spl_stake_pool::{error, id, instruction, state},
+    spl_stake_pool::{error, id, instruction, state, MINIMUM_RESERVE_LAMPORTS},
 };
 
 async fn setup() -> (BanksClient, Keypair, Hash, StakePoolAccounts, Keypair) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
         .await
         .unwrap();
 
@@ -54,7 +62,8 @@ async fn success_set_staker_as_manager() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool = state::StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(stake_pool.staker, new_staker.pubkey());
 }
@@ -77,7 +86,8 @@ async fn success_set_staker_as_staker() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool = state::StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(stake_pool.staker, new_staker.pubkey());
 
@@ -94,7 +104,8 @@ async fn success_set_staker_as_staker() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool = state::StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(stake_pool.staker, stake_pool_accounts.staker.pubkey());
 }
@@ -114,11 +125,13 @@ async fn fail_wrong_manager() {
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &new_staker], recent_blockhash);
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(
@@ -153,11 +166,13 @@ async fn fail_set_staker_without_signature() {
 
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
     transaction.sign(&[&payer], recent_blockhash);
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(

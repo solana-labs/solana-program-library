@@ -8,6 +8,7 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
+use std::sync::Arc;
 
 /// Trait representing access to program state across all versions
 #[enum_dispatch]
@@ -15,7 +16,7 @@ pub trait SwapState {
     /// Is the swap initialized, with data written to it
     fn is_initialized(&self) -> bool;
     /// Bump seed used to generate the program address / authority
-    fn nonce(&self) -> u8;
+    fn bump_seed(&self) -> u8;
     /// Token program ID associated with the swap
     fn token_program_id(&self) -> &Pubkey;
     /// Address of token A liquidity account
@@ -65,12 +66,12 @@ impl SwapVersion {
 
     /// Unpack the swap account based on its version, returning the result as a
     /// SwapState trait object
-    pub fn unpack(input: &[u8]) -> Result<Box<dyn SwapState>, ProgramError> {
+    pub fn unpack(input: &[u8]) -> Result<Arc<dyn SwapState>, ProgramError> {
         let (&version, rest) = input
             .split_first()
             .ok_or(ProgramError::InvalidAccountData)?;
         match version {
-            1 => Ok(Box::new(SwapV1::unpack(rest)?)),
+            1 => Ok(Arc::new(SwapV1::unpack(rest)?)),
             _ => Err(ProgramError::UninitializedAccount),
         }
     }
@@ -91,12 +92,12 @@ impl SwapVersion {
 pub struct SwapV1 {
     /// Initialized state.
     pub is_initialized: bool,
-    /// Nonce used in program address.
-    /// The program address is created deterministically with the nonce,
+    /// Bump seed used in program address.
+    /// The program address is created deterministically with the bump seed,
     /// swap program id, and swap account pubkey.  This program address has
     /// authority over the swap's token A account, token B account, and pool
     /// token mint.
-    pub nonce: u8,
+    pub bump_seed: u8,
 
     /// Program ID of the tokens being exchanged.
     pub token_program_id: Pubkey,
@@ -131,8 +132,8 @@ impl SwapState for SwapV1 {
         self.is_initialized
     }
 
-    fn nonce(&self) -> u8 {
-        self.nonce
+    fn bump_seed(&self) -> u8 {
+        self.bump_seed
     }
 
     fn token_program_id(&self) -> &Pubkey {
@@ -186,7 +187,7 @@ impl Pack for SwapV1 {
         let output = array_mut_ref![output, 0, 323];
         let (
             is_initialized,
-            nonce,
+            bump_seed,
             token_program_id,
             token_a,
             token_b,
@@ -198,7 +199,7 @@ impl Pack for SwapV1 {
             swap_curve,
         ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 33];
         is_initialized[0] = self.is_initialized as u8;
-        nonce[0] = self.nonce;
+        bump_seed[0] = self.bump_seed;
         token_program_id.copy_from_slice(self.token_program_id.as_ref());
         token_a.copy_from_slice(self.token_a.as_ref());
         token_b.copy_from_slice(self.token_b.as_ref());
@@ -216,7 +217,7 @@ impl Pack for SwapV1 {
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             is_initialized,
-            nonce,
+            bump_seed,
             token_program_id,
             token_a,
             token_b,
@@ -233,7 +234,7 @@ impl Pack for SwapV1 {
                 [1] => true,
                 _ => return Err(ProgramError::InvalidAccountData),
             },
-            nonce: nonce[0],
+            bump_seed: bump_seed[0],
             token_program_id: Pubkey::new_from_array(*token_program_id),
             token_a: Pubkey::new_from_array(*token_a),
             token_b: Pubkey::new_from_array(*token_b),
@@ -265,7 +266,7 @@ mod tests {
         host_fee_denominator: 20,
     };
 
-    const TEST_NONCE: u8 = 255;
+    const TEST_BUMP_SEED: u8 = 255;
     const TEST_TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([1u8; 32]);
     const TEST_TOKEN_A: Pubkey = Pubkey::new_from_array([2u8; 32]);
     const TEST_TOKEN_B: Pubkey = Pubkey::new_from_array([3u8; 32]);
@@ -281,14 +282,14 @@ mod tests {
     #[test]
     fn swap_version_pack() {
         let curve_type = TEST_CURVE_TYPE.try_into().unwrap();
-        let calculator = Box::new(TEST_CURVE);
+        let calculator = Arc::new(TEST_CURVE);
         let swap_curve = SwapCurve {
             curve_type,
             calculator,
         };
         let swap_info = SwapVersion::SwapV1(SwapV1 {
             is_initialized: true,
-            nonce: TEST_NONCE,
+            bump_seed: TEST_BUMP_SEED,
             token_program_id: TEST_TOKEN_PROGRAM_ID,
             token_a: TEST_TOKEN_A,
             token_b: TEST_TOKEN_B,
@@ -304,8 +305,8 @@ mod tests {
         SwapVersion::pack(swap_info, &mut packed).unwrap();
         let unpacked = SwapVersion::unpack(&packed).unwrap();
 
-        assert_eq!(unpacked.is_initialized(), true);
-        assert_eq!(unpacked.nonce(), TEST_NONCE);
+        assert!(unpacked.is_initialized());
+        assert_eq!(unpacked.bump_seed(), TEST_BUMP_SEED);
         assert_eq!(*unpacked.token_program_id(), TEST_TOKEN_PROGRAM_ID);
         assert_eq!(*unpacked.token_a_account(), TEST_TOKEN_A);
         assert_eq!(*unpacked.token_b_account(), TEST_TOKEN_B);
@@ -320,14 +321,14 @@ mod tests {
     #[test]
     fn swap_v1_pack() {
         let curve_type = TEST_CURVE_TYPE.try_into().unwrap();
-        let calculator = Box::new(TEST_CURVE);
+        let calculator = Arc::new(TEST_CURVE);
         let swap_curve = SwapCurve {
             curve_type,
             calculator,
         };
         let swap_info = SwapV1 {
             is_initialized: true,
-            nonce: TEST_NONCE,
+            bump_seed: TEST_BUMP_SEED,
             token_program_id: TEST_TOKEN_PROGRAM_ID,
             token_a: TEST_TOKEN_A,
             token_b: TEST_TOKEN_B,
@@ -344,7 +345,7 @@ mod tests {
         let unpacked = SwapV1::unpack(&packed).unwrap();
         assert_eq!(swap_info, unpacked);
 
-        let mut packed = vec![1u8, TEST_NONCE];
+        let mut packed = vec![1u8, TEST_BUMP_SEED];
         packed.extend_from_slice(&TEST_TOKEN_PROGRAM_ID.to_bytes());
         packed.extend_from_slice(&TEST_TOKEN_A.to_bytes());
         packed.extend_from_slice(&TEST_TOKEN_B.to_bytes());

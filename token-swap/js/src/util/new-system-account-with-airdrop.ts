@@ -1,5 +1,3 @@
-// @flow
-
 import {Account, Connection} from '@solana/web3.js';
 
 /**

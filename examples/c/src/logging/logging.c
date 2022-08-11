@@ -27,7 +27,7 @@ extern uint64_t logging(SolParameters *params) {
 }
 
 extern uint64_t entrypoint(const uint8_t *input) {
-  SolAccountInfo accounts[0];
+  SolAccountInfo accounts[1];
   SolParameters params = (SolParameters){.ka = accounts};
 
   if (!sol_deserialize(input, &params, SOL_ARRAY_SIZE(accounts))) {

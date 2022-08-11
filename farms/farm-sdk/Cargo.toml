@@ -1,0 +1,41 @@
+[package]
+name = "solana-farm-sdk"
+version = "1.1.3"
+description = "Solana Farm SDK"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library/farms"
+license = "Apache-2.0"
+homepage = "https://solana.com/"
+edition = "2021"
+
+[features]
+debug = []
+
+[dependencies]
+solana-program = "1.9.18"
+arrayref = "0.3.6"
+arraystring = "0.3.0"
+serde = "1.0.136"
+serde_derive = "1.0.136"
+serde_json = "1.0.79"
+thiserror = "1.0.30"
+num_enum = "0.5.7"
+num-traits = "0.2.14"
+spl-token-swap = { version = "2.1.0", features = ["no-entrypoint"] }
+spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
+spl-associated-token-account = { version = "=1.0.3", features = ["no-entrypoint"] }
+quarry-mine = { version = "5.0.2", features = ["no-entrypoint"] }
+quarry-mint-wrapper = { version = "5.0.2", features = ["no-entrypoint"] }
+quarry-redeemer = { version = "5.0.2", features = ["no-entrypoint"] }
+pyth-client = { version = "=0.5.0", features = ["no-entrypoint"] }
+stable-swap-client = "1.8.1"
+uint = "0.9.1"
+lazy_static = "1.4.0"
+ahash = "0.7.6"
+
+[build-dependencies]
+solana-program = "1.9.18"
+
+[dev-dependencies]
+solana-program-test = "1.9.18"
+

@@ -139,17 +139,15 @@ impl StableSwapModel {
     fn call0(&self, py: Python, method_name: &str) -> Result<PyObject, PyErr> {
         let sim = PyModule::from_code(py, &self.py_src, FILE_NAME, MODULE_NAME).unwrap();
         let model = sim
-            .call1(
-                "Curve",
-                (
-                    self.amp_factor,
-                    self.balances.to_vec(),
-                    self.n_coins,
-                    self.fee,
-                    self.target_prices.to_vec(),
-                    self.pool_tokens,
-                ),
-            )
+            .getattr("Curve")?
+            .call1((
+                self.amp_factor,
+                self.balances.to_vec(),
+                self.n_coins,
+                self.fee,
+                self.target_prices.to_vec(),
+                self.pool_tokens,
+            ))
             .unwrap()
             .to_object(py);
         let py_ret = model.as_ref(py).call_method0(method_name);
@@ -164,17 +162,15 @@ impl StableSwapModel {
     ) -> Result<PyObject, PyErr> {
         let sim = PyModule::from_code(py, &self.py_src, FILE_NAME, MODULE_NAME).unwrap();
         let model = sim
-            .call1(
-                "Curve",
-                (
-                    self.amp_factor,
-                    self.balances.to_vec(),
-                    self.n_coins,
-                    self.fee,
-                    self.target_prices.to_vec(),
-                    self.pool_tokens,
-                ),
-            )
+            .getattr("Curve")?
+            .call1((
+                self.amp_factor,
+                self.balances.to_vec(),
+                self.n_coins,
+                self.fee,
+                self.target_prices.to_vec(),
+                self.pool_tokens,
+            ))
             .unwrap()
             .to_object(py);
         let py_ret = model.as_ref(py).call_method1(method_name, args);
