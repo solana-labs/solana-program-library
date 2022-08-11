@@ -3138,7 +3138,7 @@ async fn handle_tx<'a>(
 ) -> Result<TransactionReturnData, Error> {
     let fee_payer = Some(&config.fee_payer);
 
-    let recent_blockhash = config.rpc_client.get_latest_blockhash().await?;
+    let recent_blockhash = config.program_client.get_latest_blockhash().await?;
     let message = if let Some(nonce_account) = config.nonce_account.as_ref() {
         let mut message = Message::new_with_nonce(
             instructions,
@@ -3151,9 +3151,9 @@ async fn handle_tx<'a>(
     } else {
         Message::new_with_blockhash(&instructions, fee_payer, &recent_blockhash)
     };
-    let fee = config.rpc_client.get_fee_for_message(&message).await?;
 
     if !config.sign_only {
+        let fee = config.rpc_client.get_fee_for_message(&message).await?;
         check_fee_payer_balance(config, minimum_balance_for_rent_exemption + fee).await?;
     }
 
