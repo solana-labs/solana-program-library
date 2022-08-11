@@ -11,16 +11,10 @@ const BUFFER_SIZE: usize = 64;
 fn setup() -> (MerkleRoll<DEPTH, BUFFER_SIZE>, MerkleTree) {
     // On-chain merkle change-record
     let merkle = MerkleRoll::<DEPTH, BUFFER_SIZE>::new();
-
     // Init off-chain Merkle tree with corresponding # of leaves
-    let mut leaves = vec![];
-    for _ in 0..(1 << DEPTH) {
-        let leaf = EMPTY;
-        leaves.push(leaf);
-    }
-
+    let leaves = vec![EMPTY; 1 << DEPTH];
     // Off-chain merkle tree
-    let reference_tree = MerkleTree::new(leaves);
+    let reference_tree = MerkleTree::new(leaves.as_slice());
 
     (merkle, reference_tree)
 }
@@ -174,16 +168,14 @@ async fn test_leaf_contents_modified() {
     tree.add_leaf(leaf, 0);
     match merkle_roll.set_leaf(root, leaf, new_leaf_1, &proof, 0_u32) {
         Ok(_) => {
-            assert!(
-                false,
+            panic!(
                 "Merkle roll should fail when replacing leafs with outdated leaf proofs"
             )
         }
         Err(e) => match e {
             CMTError::LeafContentsModified => {}
             _ => {
-                // println!()
-                assert!(false, "Wrong error was thrown: {:?}", e);
+                panic!("Wrong error was thrown: {:?}", e);
             }
         },
     }

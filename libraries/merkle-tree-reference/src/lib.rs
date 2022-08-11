@@ -40,7 +40,7 @@ pub struct MerkleTree {
 
 impl MerkleTree {
     /// Calculates updated root from the passed leaves
-    pub fn new(leaves: Vec<Node>) -> Self {
+    pub fn new(leaves: &[Node]) -> Self {
         let mut leaf_nodes = vec![];
         for (i, node) in leaves.iter().enumerate() {
             let mut tree_node = TreeNode::new_empty(0, i as u128);
