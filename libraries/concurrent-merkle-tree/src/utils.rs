@@ -47,7 +47,7 @@ pub fn fill_in_proof<const MAX_DEPTH: usize>(
     full_proof: &mut [Node; MAX_DEPTH],
 ) {
     solana_logging!("Attempting to fill in proof");
-    if proof_vec.len() > 0 {
+    if !proof_vec.is_empty() {
         full_proof[..proof_vec.len()].copy_from_slice(proof_vec);
     }
 
