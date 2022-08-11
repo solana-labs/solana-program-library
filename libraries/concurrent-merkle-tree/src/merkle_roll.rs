@@ -1,7 +1,7 @@
 use crate::{
     error::CMTError,
     state::{ChangeLog, Node, Path, EMPTY},
-    utils::{empty_node, empty_node_cached, fill_in_proof, recompute, hash_to_parent},
+    utils::{empty_node, empty_node_cached, fill_in_proof, hash_to_parent, recompute},
 };
 use bytemuck::{Pod, Zeroable};
 pub(crate) use log_compute;

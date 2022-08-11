@@ -37,7 +37,12 @@ impl<const MAX_DEPTH: usize> ChangeLog<MAX_DEPTH> {
     }
 
     /// Sets all change log values from a leaf and valid proof
-    pub fn replace_and_recompute_path(&mut self, index: u32, mut node: Node, proof: &[Node]) -> Node {
+    pub fn replace_and_recompute_path(
+        &mut self,
+        index: u32,
+        mut node: Node,
+        proof: &[Node],
+    ) -> Node {
         self.index = index;
         for (i, sibling) in proof.iter().enumerate() {
             self.path[i] = node;
