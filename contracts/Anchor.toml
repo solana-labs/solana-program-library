@@ -1,30 +1,8 @@
 [programs.localnet]
 gummyroll = "GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU"
-bubblegum = "BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY"
-gumball_machine = "GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW"
-sugar_shack = "9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK"
 
 [programs.testnet]
 gummyroll = "GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD"
-bubblegum = "BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY"
-gumball_machine = "GBALLoMcmimUutWvtNdFFGH5oguS7ghUUV6toQPppuTW"
-sugar_shack = "9T5Xv2cJRydUBqvdK7rLGuNGqhkA8sU8Yq1rGN7hExNK"
-
-[[test.genesis]]
-address = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-program = "../deps/solana-program-library/target/deploy/spl_associated_token_account.so"
-
-[[test.genesis]]
-address = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
-program = "../deps/solana-program-library/target/deploy/spl_token_2022.so"
-
-[[test.genesis]]
-address = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-program = "../deps/solana-program-library/target/deploy/spl_token.so"
-
-[[test.genesis]]
-address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
-program = "../deps/metaplex-program-library/token-metadata/target/deploy/mpl_token_metadata.so"
 
 [[test.genesis]]
 address = "WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh"
