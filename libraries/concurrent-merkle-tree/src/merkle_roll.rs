@@ -115,7 +115,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
                 leaf_index,
                 self.rightmost_proof.index
             );
-            return Err(CMTError::LeafIndexOutOfBounds);
+            Err(CMTError::LeafIndexOutOfBounds)
         } else {
             let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
             fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
@@ -140,7 +140,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         if old_root == empty_node(MAX_DEPTH as u32) {
             self.try_apply_proof(old_root, EMPTY, leaf, &mut proof, 0, false)
         } else {
-            return Err(CMTError::TreeAlreadyInitialized);
+            Err(CMTError::TreeAlreadyInitialized)
         }
     }
 
@@ -156,7 +156,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         if self.rightmost_proof.index == 0 {
             return self.initialize_tree_from_append(node, self.rightmost_proof.proof);
         }
-        let leaf = node.clone();
+        let leaf = node;
         let intersection = self.rightmost_proof.index.trailing_zeros() as usize;
         let mut change_list = [EMPTY; MAX_DEPTH];
         let mut intersection_node = self.rightmost_proof.leaf;
@@ -191,7 +191,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         self.update_internal_counters();
         self.change_logs[self.active_index as usize] =
             ChangeLog::<MAX_DEPTH>::new(node, change_list, self.rightmost_proof.index);
-        self.rightmost_proof.index = self.rightmost_proof.index + 1;
+        self.rightmost_proof.index += 1;
         self.rightmost_proof.leaf = leaf;
         Ok(node)
     }
@@ -208,17 +208,17 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     ) -> Result<Node, CMTError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
-        fill_in_proof::<MAX_DEPTH>(&proof_vec, &mut proof);
+        fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
         log_compute!();
-        let root = match self.try_apply_proof(current_root, EMPTY, leaf, &mut proof, index, false) {
+        
+        log_compute!();
+        match self.try_apply_proof(current_root, EMPTY, leaf, &mut proof, index, false) {
             Ok(new_root) => Ok(new_root),
             Err(error) => match error {
                 CMTError::LeafContentsModified => self.append(leaf),
                 _ => Err(error),
             },
-        };
-        log_compute!();
-        root
+        }
     }
 
     /// On write conflict:
@@ -233,21 +233,21 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     ) -> Result<Node, CMTError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
         if index > self.rightmost_proof.index {
-            return Err(CMTError::LeafIndexOutOfBounds);
+            Err(CMTError::LeafIndexOutOfBounds)
         } else {
             let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
-            fill_in_proof::<MAX_DEPTH>(&proof_vec, &mut proof);
+            fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
             log_compute!();
-            let root = self.try_apply_proof(
+            
+            log_compute!();
+            self.try_apply_proof(
                 current_root,
                 previous_leaf,
                 new_leaf,
                 &mut proof,
                 index,
                 true,
-            );
-            log_compute!();
-            root
+            )
         }
     }
 
@@ -397,7 +397,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             } else {
                 assert!(index == self.rightmost_proof.index);
                 solana_logging!("Appending rightmost leaf");
-                self.rightmost_proof.proof.copy_from_slice(&proof);
+                self.rightmost_proof.proof.copy_from_slice(proof);
                 self.rightmost_proof.index = index + 1;
                 self.rightmost_proof.leaf = change_log.get_leaf();
             }

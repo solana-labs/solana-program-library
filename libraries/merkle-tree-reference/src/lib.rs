@@ -153,7 +153,7 @@ impl MerkleTree {
     }
 
     pub fn get_leaf(&self, leaf_idx: usize) -> Node {
-        self.leaf_nodes[leaf_idx].borrow().node.clone()
+        self.leaf_nodes[leaf_idx].borrow().node
     }
 }
 

@@ -4,7 +4,7 @@ use concurrent_merkle_tree::state::{Node, EMPTY};
 use merkle_tree_reference::MerkleTree;
 use rand::thread_rng;
 use rand::{self, Rng};
-use tokio;
+
 
 const DEPTH: usize = 14;
 const BUFFER_SIZE: usize = 64;
@@ -90,7 +90,7 @@ async fn test_prove_leaf() {
     let num_leaves_to_try = 10;
     for _ in 0..num_leaves_to_try {
         let leaf_idx = rng.gen_range(0, 1 << DEPTH);
-        let last_leaf_idx = off_chain_tree.leaf_nodes.len() - 1;
+        let _last_leaf_idx = off_chain_tree.leaf_nodes.len() - 1;
         let root = off_chain_tree.get_root();
         let leaf = off_chain_tree.get_leaf(leaf_idx);
         let old_proof = off_chain_tree.get_proof_of_leaf(leaf_idx);
@@ -167,13 +167,13 @@ async fn test_leaf_contents_modified() {
     let new_leaf_0 = rng.gen::<[u8; 32]>();
     tree.add_leaf(leaf, 0);
     merkle_roll
-        .set_leaf(root, leaf, new_leaf_0, &proof, 0 as u32)
+        .set_leaf(root, leaf, new_leaf_0, &proof, 0_u32)
         .unwrap();
 
     // Should fail to replace same leaf using outdated info
     let new_leaf_1 = rng.gen::<[u8; 32]>();
     tree.add_leaf(leaf, 0);
-    match merkle_roll.set_leaf(root, leaf, new_leaf_1, &proof, 0 as u32) {
+    match merkle_roll.set_leaf(root, leaf, new_leaf_1, &proof, 0_u32) {
         Ok(_) => {
             assert!(
                 false,
@@ -341,7 +341,7 @@ async fn test_append_bug_repro_1() {
 
     // Now compare something
     if merkle_roll.get_change_log().root != tree.get_root() {
-        let last_active_index: usize =
+        let _last_active_index: usize =
             (merkle_roll.active_index as usize + BUFFER_SIZE - 1) % BUFFER_SIZE;
         println!("{:?}", &last_rmp);
     }
@@ -390,7 +390,7 @@ async fn test_append_bug_repro_2() {
 
     // Now compare something
     if merkle_roll.get_change_log().root != tree.get_root() {
-        let last_active_index: usize =
+        let _last_active_index: usize =
             (merkle_roll.active_index as usize + BUFFER_SIZE - 1) % BUFFER_SIZE;
         println!("{:?}", &last_rmp);
     }
