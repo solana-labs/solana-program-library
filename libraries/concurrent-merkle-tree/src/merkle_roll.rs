@@ -41,8 +41,10 @@ unsafe impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> Pod
 {
 }
 
-impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH, MAX_BUFFER_SIZE> {
-    pub fn new() -> Self {
+impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> Default
+    for MerkleRoll<MAX_DEPTH, MAX_BUFFER_SIZE>
+{
+    fn default() -> Self {
         Self {
             sequence_number: 0,
             active_index: 0,
@@ -50,6 +52,12 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
             change_logs: [ChangeLog::<MAX_DEPTH>::default(); MAX_BUFFER_SIZE],
             rightmost_proof: Path::<MAX_DEPTH>::default(),
         }
+    }
+}
+
+impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH, MAX_BUFFER_SIZE> {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn initialize(&mut self) -> Result<Node, CMTError> {

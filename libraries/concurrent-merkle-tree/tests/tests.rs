@@ -308,7 +308,7 @@ async fn test_append_bug_repro_1() {
     merkle_roll.initialize().unwrap();
 
     // Fill both trees with random nodes
-    let mut tree_size = 10;
+    let tree_size = 10;
     for i in 0..tree_size {
         let leaf = rng.gen::<[u8; 32]>();
         tree.add_leaf(leaf, i);
@@ -330,13 +330,12 @@ async fn test_append_bug_repro_1() {
         .unwrap();
     tree.add_leaf(leaf_0, index);
 
-    let mut last_rmp = merkle_roll.rightmost_proof;
+    let last_rmp = merkle_roll.rightmost_proof;
 
     // Append
     let leaf_1 = rng.gen::<[u8; 32]>();
     merkle_roll.append(leaf_1).unwrap();
     tree.add_leaf(leaf_1, tree_size);
-    tree_size += 1;
 
     // Now compare something
     if merkle_roll.get_change_log().root != tree.get_root() {
@@ -344,7 +343,6 @@ async fn test_append_bug_repro_1() {
             (merkle_roll.active_index as usize + BUFFER_SIZE - 1) % BUFFER_SIZE;
         println!("{:?}", &last_rmp);
     }
-    last_rmp = merkle_roll.rightmost_proof;
     assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
 }
 
@@ -379,13 +377,12 @@ async fn test_append_bug_repro_2() {
     tree.add_leaf(leaf, index);
     tree_size += 1;
 
-    let mut last_rmp = merkle_roll.rightmost_proof;
+    let last_rmp = merkle_roll.rightmost_proof;
 
     // Append
     leaf = rng.gen::<[u8; 32]>();
     merkle_roll.append(leaf).unwrap();
     tree.add_leaf(leaf, tree_size);
-    tree_size += 1;
 
     // Now compare something
     if merkle_roll.get_change_log().root != tree.get_root() {
@@ -393,6 +390,5 @@ async fn test_append_bug_repro_2() {
             (merkle_roll.active_index as usize + BUFFER_SIZE - 1) % BUFFER_SIZE;
         println!("{:?}", &last_rmp);
     }
-    last_rmp = merkle_roll.rightmost_proof;
     assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
 }
