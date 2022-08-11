@@ -1,15 +1,18 @@
-[workspace]
 [package]
 name = "concurrent-merkle-tree"
 version = "0.1.0"
-edition = "2021"
+description = "Solana Program Library Concurrent Merkle Tree"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
 
 [features]
 log = []
 sol-log = [ "log" ]
 
 [dependencies]
-solana-program = "1.10.10"
+solana-program = "1.10.33"
 bytemuck = "1.8.0"
 thiserror = "1.0.30"
 
@@ -18,3 +21,9 @@ rand_distr = "0.4.3"
 rand = "0.7"
 merkle-tree-reference = { path = "../merkle-tree-reference" }
 tokio = { version = "0.2", features = ["macros"] }
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
