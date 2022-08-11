@@ -10,6 +10,7 @@ edition = "2018"
 [features]
 log = []
 sol-log = [ "log" ]
+default = [ "sol-log" ]
 
 [dependencies]
 solana-program = "1.10.33"
