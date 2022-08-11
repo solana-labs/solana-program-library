@@ -113,7 +113,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         &mut self,
         current_root: Node,
         leaf: Node,
-        proof_vec: &Vec<Node>,
+        proof_vec: &[Node],
         leaf_index: u32,
     ) -> Result<Node, CMTError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
@@ -215,7 +215,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         &mut self,
         current_root: Node,
         leaf: Node,
-        proof_vec: &Vec<Node>,
+        proof_vec: &[Node],
         index: u32,
     ) -> Result<Node, CMTError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
@@ -240,7 +240,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         current_root: Node,
         previous_leaf: Node,
         new_leaf: Node,
-        proof_vec: &Vec<Node>,
+        proof_vec: &[Node],
         index: u32,
     ) -> Result<Node, CMTError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
