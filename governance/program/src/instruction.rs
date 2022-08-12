@@ -1514,29 +1514,21 @@ pub fn with_governing_token_config_args(
 ) -> GoverningTokenConfigArgs {
     let governing_token_config_args = governing_token_config_args.unwrap_or_default();
 
-    let use_voter_weight_addin = if let Some(community_voter_weight_addin) =
-        governing_token_config_args.voter_weight_addin
-    {
-        accounts.push(AccountMeta::new_readonly(
-            community_voter_weight_addin,
-            false,
-        ));
-        true
-    } else {
-        false
-    };
+    let use_voter_weight_addin =
+        if let Some(voter_weight_addin) = governing_token_config_args.voter_weight_addin {
+            accounts.push(AccountMeta::new_readonly(voter_weight_addin, false));
+            true
+        } else {
+            false
+        };
 
-    let use_max_voter_weight_addin = if let Some(max_community_voter_weight_addin) =
-        governing_token_config_args.max_voter_weight_addin
-    {
-        accounts.push(AccountMeta::new_readonly(
-            max_community_voter_weight_addin,
-            false,
-        ));
-        true
-    } else {
-        false
-    };
+    let use_max_voter_weight_addin =
+        if let Some(max_voter_weight_addin) = governing_token_config_args.max_voter_weight_addin {
+            accounts.push(AccountMeta::new_readonly(max_voter_weight_addin, false));
+            true
+        } else {
+            false
+        };
 
     GoverningTokenConfigArgs {
         use_voter_weight_addin,

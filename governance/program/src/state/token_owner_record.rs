@@ -26,7 +26,7 @@ use solana_program::{
 use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
-use super::realm_config::RealmConfigAccount;
+use crate::state::realm_config::RealmConfigAccount;
 
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
