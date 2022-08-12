@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+/// Concurrent merkle tree operation errors
 #[derive(Error, Debug)]
 pub enum CMTError {
     /// Received an index larger than the rightmost index

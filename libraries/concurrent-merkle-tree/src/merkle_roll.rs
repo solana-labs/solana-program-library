@@ -10,16 +10,34 @@ pub(crate) use solana_logging;
 #[cfg(feature = "sol-log")]
 use solana_program::{log::sol_log_compute_units, msg};
 
+/// Enforce constraints on max depth and buffer size
 #[inline(always)]
 fn check_bounds(max_depth: usize, max_buffer_size: usize) {
     assert!(max_depth < 31);
     // This will return true if MAX_BUFFER_SIZE is a power of 2 or if it is 0
     assert!(max_buffer_size & (max_buffer_size - 1) == 0);
 }
-/// Tracks updates to off-chain Merkle tree
+
+/// MerkleRoll is an implementation of a Conurrent Merkle Tree that allows
+/// multiple tree operations targeted for the same tree root to succeed.
 ///
-/// Allows for concurrent writes to same merkle tree so long as proof
-/// was generated at most MAX_SIZE updates since the tx was submitted
+/// In a normal merkle tree, only the first tree operation will succeed because the
+/// following operations will have proofs for the unmodified tree state. MerkleRoll avoids
+/// this by storing a buffer of modified nodes (`change_logs`) which allows it to implement fast-forwarding
+/// of concurrent merkle tree operations. 
+///
+/// As long as the concurrent merkle tree operations
+/// have proofs that are valid for a previous state of the tree that can be found in the stored
+/// buffer, that tree operation's proof can be fast-forwarded and the tree operation can be
+/// applied. 
+///
+/// There are two primitive operations for Concurrent Merkle Trees:
+/// [set_leaf](MerkleRoll:set_leaf) and [append](MerkleRoll::append). Setting a leaf value requires
+/// passing a proof to perform that tree operation, but appending does not require a proof.
+///
+/// An additional key property of MerkleRoll is support for [append](MerkleRoll::append) operations, 
+/// which do not require any proofs to be passed. This is accomplished by keeping track of the
+/// proof to the rightmost leaf in the tree (`rightmost_proof`).
 #[derive(Copy, Clone)]
 pub struct MerkleRoll<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> {
     pub sequence_number: u64,
@@ -60,6 +78,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         Self::default()
     }
 
+    /// This is the trustless initialization method that should be used in most cases.
     pub fn initialize(&mut self) -> Result<Node, CMTError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
         let mut rightmost_proof = Path::default();
@@ -80,6 +99,12 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         Ok(self.change_logs[0].root)
     }
 
+    /// This is a trustful initialization method that assumes the root contains the expected
+    /// leaves.
+    ///
+    /// At the time of this crate's publishing, there is no supported way to efficiently verify
+    /// a pre-initialized root on-chain. Using this method before having a method for on-chain verification
+    /// will prevent other applications from indexing the leaf data stored in this tree.
     pub fn initialize_with_root(
         &mut self,
         root: Node,
@@ -109,6 +134,8 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         Box::new(self.change_logs[self.active_index as usize])
     }
 
+    /// This method will fail if the proof cannot be verified for
+    /// the current tree root.
     pub fn prove_leaf(
         &mut self,
         current_root: Node,
@@ -137,7 +164,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         }
     }
 
-    /// Only used to initialize right most path for a completely empty tree
+    /// Only used to initialize right most path for a completely empty tree.
     #[inline(always)]
     fn initialize_tree_from_append(
         &mut self,
@@ -152,7 +179,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         }
     }
 
-    /// Basic operation that always succeeds
+    /// Appending a non-empty Node will always succeed .
     pub fn append(&mut self, mut node: Node) -> Result<Node, CMTError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
         if node == EMPTY {
@@ -209,8 +236,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
     }
 
     /// Convenience function for `set_leaf`
-    /// On write conflict:
-    /// Will append
+    ///
+    /// This method will `set_leaf` if the leaf at `index` is an empty node,
+    /// otherwise it will `append` the new leaf.
     pub fn fill_empty_or_append(
         &mut self,
         current_root: Node,
@@ -233,8 +261,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         }
     }
 
-    /// On write conflict:
-    /// Will fail by returning None
+    /// This method will update the leaf at `index`.
+    ///
+    /// However if the proof cannot be verified, this method will fail.
     pub fn set_leaf(
         &mut self,
         current_root: Node,
@@ -249,7 +278,6 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH,
         } else {
             let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
             fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
-            log_compute!();
 
             log_compute!();
             self.try_apply_proof(

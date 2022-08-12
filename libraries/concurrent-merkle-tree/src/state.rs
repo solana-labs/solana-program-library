@@ -1,7 +1,7 @@
 use crate::utils::hash_to_parent;
 
+/// Stores the path of nodes changed in a tree by a Merkle tree operation
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-/// Stores proof for a given Merkle root update
 #[repr(C)]
 pub struct ChangeLog<const MAX_DEPTH: usize> {
     /// Historical root value before Path was applied
@@ -32,6 +32,7 @@ impl<const MAX_DEPTH: usize> ChangeLog<MAX_DEPTH> {
         }
     }
 
+    /// Returns the leaf value modified when the change log was recorded
     pub fn get_leaf(&self) -> Node {
         self.path[0]
     }
@@ -52,6 +53,8 @@ impl<const MAX_DEPTH: usize> ChangeLog<MAX_DEPTH> {
         node
     }
 
+    /// Fast forwards the given proof and corresponding leaf by applying an update from
+    /// the current change log
     pub fn update_proof_or_leaf(
         &self,
         leaf_index: u32,
@@ -71,6 +74,7 @@ impl<const MAX_DEPTH: usize> ChangeLog<MAX_DEPTH> {
     }
 }
 
+/// Represents a proof to perform a Merkle tree operation on the leaf at `index`
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub struct Path<const MAX_DEPTH: usize> {
@@ -91,5 +95,8 @@ impl<const MAX_DEPTH: usize> Default for Path<MAX_DEPTH> {
     }
 }
 
+/// Abstract type for 32 byte leaf data
 pub type Node = [u8; 32];
+
+/// An empty node is a 32 byte array of zeroes
 pub const EMPTY: Node = [0_u8; 32];

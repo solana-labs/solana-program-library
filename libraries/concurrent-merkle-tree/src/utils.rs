@@ -1,12 +1,12 @@
 use crate::state::{Node, EMPTY};
 use solana_program::keccak::hashv;
 
-/// Calculates hash of empty nodes up to level i
+/// Calculates the hash of empty nodes up to level i
 pub fn empty_node(level: u32) -> Node {
     empty_node_cached::<0>(level, &mut Box::new([]))
 }
 
-/// Calculates hash of empty nodes up to level i
+/// Calculates and caches the hash of empty nodes up to level i
 pub fn empty_node_cached<const N: usize>(level: u32, cache: &mut Box<[Node; N]>) -> Node {
     let mut data = EMPTY;
     if level != 0 {
@@ -42,6 +42,8 @@ pub fn hash_to_parent(node: &mut Node, sibling: &Node, is_left: bool) {
     node.copy_from_slice(parent.as_ref())
 }
 
+/// Fills in proof to the height of the concurrent merkle tree.
+/// Missing nodes are inferred as empty node hashes.
 pub fn fill_in_proof<const MAX_DEPTH: usize>(
     proof_vec: &[Node],
     full_proof: &mut [Node; MAX_DEPTH],
