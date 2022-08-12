@@ -35,6 +35,12 @@ pub enum GoverningTokenType {
     Dormant,
 }
 
+impl Default for GoverningTokenType {
+    fn default() -> Self {
+        GoverningTokenType::Liquid
+    }
+}
+
 /// GoverningTokenConfig specifies configuration for Realm governing token (Community or Council)
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GoverningTokenConfig {
@@ -56,7 +62,7 @@ impl Default for GoverningTokenConfig {
         Self {
             voter_weight_addin: None,
             max_voter_weight_addin: None,
-            token_type: GoverningTokenType::Liquid,
+            token_type: GoverningTokenType::default(),
             reserved: [0; 8],
         }
     }

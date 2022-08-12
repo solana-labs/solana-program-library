@@ -63,6 +63,16 @@ pub struct GoverningTokenConfigArgs {
     pub token_type: GoverningTokenType,
 }
 
+impl Default for GoverningTokenConfigArgs {
+    fn default() -> Self {
+        Self {
+            use_voter_weight_addin: false,
+            use_max_voter_weight_addin: false,
+            token_type: GoverningTokenType::default(),
+        }
+    }
+}
+
 /// Realm Config instruction args with account parametres
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GoverningTokenConfigAccountArgs {
@@ -78,12 +88,12 @@ pub struct GoverningTokenConfigAccountArgs {
     pub token_type: GoverningTokenType,
 }
 
-impl Default for GoverningTokenConfigArgs {
+impl Default for GoverningTokenConfigAccountArgs {
     fn default() -> Self {
         Self {
-            use_voter_weight_addin: false,
-            use_max_voter_weight_addin: false,
-            token_type: GoverningTokenType::Liquid,
+            voter_weight_addin: None,
+            max_voter_weight_addin: None,
+            token_type: GoverningTokenType::default(),
         }
     }
 }
