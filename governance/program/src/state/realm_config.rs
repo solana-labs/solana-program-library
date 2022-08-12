@@ -28,7 +28,7 @@ pub enum GoverningTokenType {
     Membership,
 
     /// Dormant token is a token which is only a placeholder and its deposits are not accepted and not used for governance power within the Realm
-    /// Note: When an external voter weight plugin is used then the token type should be set to Dormant
+    /// Note: When an external voter weight plugin which takes deposits of the token is used then the type should be set to Dormant
     /// Deposit - no, dormant tokens can't be deposited into the Realm
     /// Withdraw - yes, tokens can still be withdrawn from Realm to support scenario where the config is changed while some tokens are still deposited
     /// Revoke - no, Realm authority cannot revoke dormant tokens
