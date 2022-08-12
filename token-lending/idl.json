@@ -1,6 +1,6 @@
 {
   "version": "0.2.0",
-  "name": "token_lending",
+  "name": "spl_token_lending",
   "instructions": [
     {
       "name": "initLendingMarket",
@@ -34,7 +34,10 @@
         {
           "name": "quoteCurrency",
           "type": {
-            "array": ["u8", 32]
+            "array": [
+              "u8",
+              32
+            ]
           }
         }
       ]
@@ -711,40 +714,6 @@
   ],
   "accounts": [
     {
-      "name": "LendingMarket",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "version",
-            "type": "u8"
-          },
-          {
-            "name": "bumpSeed",
-            "type": "u8"
-          },
-          {
-            "name": "owner",
-            "type": "publicKey"
-          },
-          {
-            "name": "quoteCurrency",
-            "type": {
-              "array": ["u8", 32]
-            }
-          },
-          {
-            "name": "tokenProgramId",
-            "type": "publicKey"
-          },
-          {
-            "name": "oracleProgramId",
-            "type": "publicKey"
-          }
-        ]
-      }
-    },
-    {
       "name": "Obligation",
       "type": {
         "kind": "struct",
@@ -811,6 +780,43 @@
       }
     },
     {
+      "name": "LendingMarket",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "bumpSeed",
+            "type": "u8"
+          },
+          {
+            "name": "owner",
+            "type": "publicKey"
+          },
+          {
+            "name": "quoteCurrency",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "tokenProgramId",
+            "type": "publicKey"
+          },
+          {
+            "name": "oracleProgramId",
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
+    {
       "name": "Reserve",
       "type": {
         "kind": "struct",
@@ -859,81 +865,11 @@
         "fields": [
           {
             "name": "slot",
-            "type": {
-              "defined": "Slot"
-            }
+            "type": "u64"
           },
           {
             "name": "stale",
             "type": "bool"
-          }
-        ]
-      }
-    },
-    {
-      "name": "InitLendingMarketParams",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "bumpSeed",
-            "type": "u8"
-          },
-          {
-            "name": "owner",
-            "type": "publicKey"
-          },
-          {
-            "name": "quoteCurrency",
-            "type": {
-              "array": ["u8", 32]
-            }
-          },
-          {
-            "name": "tokenProgramId",
-            "type": "publicKey"
-          },
-          {
-            "name": "oracleProgramId",
-            "type": "publicKey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "InitObligationParams",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "currentSlot",
-            "type": {
-              "defined": "Slot"
-            }
-          },
-          {
-            "name": "lendingMarket",
-            "type": "publicKey"
-          },
-          {
-            "name": "owner",
-            "type": "publicKey"
-          },
-          {
-            "name": "deposits",
-            "type": {
-              "vec": {
-                "defined": "ObligationCollateral"
-              }
-            }
-          },
-          {
-            "name": "borrows",
-            "type": {
-              "vec": {
-                "defined": "ObligationLiquidity"
-              }
-            }
           }
         ]
       }
@@ -991,108 +927,6 @@
       }
     },
     {
-      "name": "InitReserveParams",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "currentSlot",
-            "type": {
-              "defined": "Slot"
-            }
-          },
-          {
-            "name": "lendingMarket",
-            "type": "publicKey"
-          },
-          {
-            "name": "liquidity",
-            "type": {
-              "defined": "ReserveLiquidity"
-            }
-          },
-          {
-            "name": "collateral",
-            "type": {
-              "defined": "ReserveCollateral"
-            }
-          },
-          {
-            "name": "config",
-            "type": {
-              "defined": "ReserveConfig"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "CalculateBorrowResult",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "borrowAmount",
-            "type": {
-              "defined": "Decimal"
-            }
-          },
-          {
-            "name": "receiveAmount",
-            "type": "u64"
-          },
-          {
-            "name": "borrowFee",
-            "type": "u64"
-          },
-          {
-            "name": "hostFee",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "CalculateRepayResult",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "settleAmount",
-            "type": {
-              "defined": "Decimal"
-            }
-          },
-          {
-            "name": "repayAmount",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "CalculateLiquidationResult",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "settleAmount",
-            "type": {
-              "defined": "Decimal"
-            }
-          },
-          {
-            "name": "repayAmount",
-            "type": "u64"
-          },
-          {
-            "name": "withdrawAmount",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
       "name": "ReserveLiquidity",
       "type": {
         "kind": "struct",
@@ -1143,40 +977,6 @@
       }
     },
     {
-      "name": "NewReserveLiquidityParams",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "mintPubkey",
-            "type": "publicKey"
-          },
-          {
-            "name": "mintDecimals",
-            "type": "u8"
-          },
-          {
-            "name": "supplyPubkey",
-            "type": "publicKey"
-          },
-          {
-            "name": "feeReceiver",
-            "type": "publicKey"
-          },
-          {
-            "name": "oraclePubkey",
-            "type": "publicKey"
-          },
-          {
-            "name": "marketPrice",
-            "type": {
-              "defined": "Decimal"
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "ReserveCollateral",
       "type": {
         "kind": "struct",
@@ -1197,17 +997,21 @@
       }
     },
     {
-      "name": "NewReserveCollateralParams",
+      "name": "ReserveFees",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "mintPubkey",
-            "type": "publicKey"
+            "name": "borrowFeeWad",
+            "type": "u64"
           },
           {
-            "name": "supplyPubkey",
-            "type": "publicKey"
+            "name": "flashLoanFeeWad",
+            "type": "u64"
+          },
+          {
+            "name": "hostFeePercentage",
+            "type": "u8"
           }
         ]
       }
@@ -1250,40 +1054,6 @@
             "type": {
               "defined": "ReserveFees"
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "ReserveFees",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "borrowFeeWad",
-            "type": "u64"
-          },
-          {
-            "name": "flashLoanFeeWad",
-            "type": "u64"
-          },
-          {
-            "name": "hostFeePercentage",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "FeeCalculation",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Exclusive"
-          },
-          {
-            "name": "Inclusive"
           }
         ]
       }
