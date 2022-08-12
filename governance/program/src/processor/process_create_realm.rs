@@ -30,7 +30,7 @@ pub fn process_create_realm(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     name: String,
-    config_args: RealmConfigArgs,
+    realm_config_args: RealmConfigArgs,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -49,7 +49,7 @@ pub fn process_create_realm(
         return Err(GovernanceError::RealmAlreadyExists.into());
     }
 
-    assert_valid_realm_config_args(&config_args)?;
+    assert_valid_realm_config_args(&realm_config_args)?;
 
     // Create Community token holding account
     create_spl_token_account_signed(
@@ -66,7 +66,7 @@ pub fn process_create_realm(
     )?;
 
     // Create Council token holding account
-    let council_token_mint_address = if config_args.use_council_mint {
+    let council_token_mint_address = if realm_config_args.use_council_mint {
         let council_token_mint_info = next_account_info(account_info_iter)?; // 8
         let council_token_holding_info = next_account_info(account_info_iter)?; // 9
 
@@ -94,13 +94,13 @@ pub fn process_create_realm(
     // 11, 12
     let community_token_config = resolve_governing_token_config(
         account_info_iter,
-        config_args.community_token_config_args.clone(),
+        realm_config_args.community_token_config_args.clone(),
     )?;
 
     // 13, 14
     let council_token_config = resolve_governing_token_config(
         account_info_iter,
-        config_args.council_token_config_args.clone(),
+        realm_config_args.council_token_config_args.clone(),
     )?;
 
     let realm_config_data = RealmConfigAccount {
@@ -132,14 +132,14 @@ pub fn process_create_realm(
         config: RealmConfig {
             council_mint: council_token_mint_address,
             reserved: [0; 6],
-            community_mint_max_vote_weight_source: config_args
+            community_mint_max_vote_weight_source: realm_config_args
                 .community_mint_max_vote_weight_source,
-            min_community_weight_to_create_governance: config_args
+            min_community_weight_to_create_governance: realm_config_args
                 .min_community_weight_to_create_governance,
-            use_community_voter_weight_addin: config_args
+            use_community_voter_weight_addin: realm_config_args
                 .community_token_config_args
                 .use_voter_weight_addin,
-            use_max_community_voter_weight_addin: config_args
+            use_max_community_voter_weight_addin: realm_config_args
                 .community_token_config_args
                 .use_max_voter_weight_addin,
         },
