@@ -63,6 +63,7 @@ pub struct GoverningTokenConfigArgs {
     pub token_type: GoverningTokenType,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for GoverningTokenConfigArgs {
     fn default() -> Self {
         Self {
@@ -88,6 +89,7 @@ pub struct GoverningTokenConfigAccountArgs {
     pub token_type: GoverningTokenType,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for GoverningTokenConfigAccountArgs {
     fn default() -> Self {
         Self {

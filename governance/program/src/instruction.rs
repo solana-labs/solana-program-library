@@ -489,7 +489,9 @@ pub fn create_realm(
     community_token_mint: &Pubkey,
     payer: &Pubkey,
     council_token_mint: Option<Pubkey>,
-    community_token_args: Option<GoverningTokenConfigAccountArgs>,
+    // Accounts Args
+    community_token_config_args: Option<GoverningTokenConfigAccountArgs>,
+    council_token_config_args: Option<GoverningTokenConfigAccountArgs>,
     // Args
     name: String,
     min_community_weight_to_create_governance: u64,
@@ -510,8 +512,6 @@ pub fn create_realm(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
-    let community_token_args = community_token_args.unwrap_or_default();
-
     let use_council_mint = if let Some(council_token_mint) = council_token_mint {
         let council_token_holding_address =
             get_governing_token_holding_address(program_id, &realm_address, &council_token_mint);
@@ -523,45 +523,23 @@ pub fn create_realm(
         false
     };
 
-    let use_community_voter_weight_addin =
-        if let Some(community_voter_weight_addin) = community_token_args.voter_weight_addin {
-            accounts.push(AccountMeta::new_readonly(
-                community_voter_weight_addin,
-                false,
-            ));
-            true
-        } else {
-            false
-        };
+    let community_token_config_args =
+        with_governing_token_config_args(&mut accounts, community_token_config_args);
 
-    let use_max_community_voter_weight_addin = if let Some(max_community_voter_weight_addin) =
-        community_token_args.max_voter_weight_addin
-    {
-        accounts.push(AccountMeta::new_readonly(
-            max_community_voter_weight_addin,
-            false,
-        ));
-        true
-    } else {
-        false
-    };
+    let council_token_config_args =
+        with_governing_token_config_args(&mut accounts, council_token_config_args);
 
-    if use_community_voter_weight_addin || use_max_community_voter_weight_addin {
-        let realm_config_address = get_realm_config_address(program_id, &realm_address);
-        accounts.push(AccountMeta::new(realm_config_address, false));
-    }
+    // TODO: Move before token config accoutns
+    let realm_config_address = get_realm_config_address(program_id, &realm_address);
+    accounts.push(AccountMeta::new(realm_config_address, false));
 
     let instruction = GovernanceInstruction::CreateRealm {
         config_args: RealmConfigArgs {
             use_council_mint,
             min_community_weight_to_create_governance,
             community_mint_max_vote_weight_source,
-            community_token_config_args: GoverningTokenConfigArgs {
-                use_voter_weight_addin: use_community_voter_weight_addin,
-                use_max_voter_weight_addin: use_max_community_voter_weight_addin,
-                token_type: community_token_args.token_type,
-            },
-            council_token_config_args: GoverningTokenConfigArgs::default(),
+            community_token_config_args,
+            council_token_config_args,
         },
         name,
     };
@@ -1364,7 +1342,9 @@ pub fn set_realm_config(
     realm_authority: &Pubkey,
     council_token_mint: Option<Pubkey>,
     payer: &Pubkey,
-    community_token_args: Option<GoverningTokenConfigAccountArgs>,
+    // Accounts  Args
+    community_token_config_args: Option<GoverningTokenConfigAccountArgs>,
+    council_token_config_args: Option<GoverningTokenConfigAccountArgs>,
     // Args
     min_community_weight_to_create_governance: u64,
     community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
@@ -1392,46 +1372,21 @@ pub fn set_realm_config(
     let realm_config_address = get_realm_config_address(program_id, realm);
     accounts.push(AccountMeta::new(realm_config_address, false));
 
-    let community_token_args = community_token_args.unwrap_or_default();
+    let community_token_config_args =
+        with_governing_token_config_args(&mut accounts, community_token_config_args);
 
-    let use_community_voter_weight_addin =
-        if let Some(community_voter_weight_addin) = community_token_args.voter_weight_addin {
-            accounts.push(AccountMeta::new_readonly(
-                community_voter_weight_addin,
-                false,
-            ));
-            true
-        } else {
-            false
-        };
+    let council_token_config_args =
+        with_governing_token_config_args(&mut accounts, council_token_config_args);
 
-    let use_max_community_voter_weight_addin = if let Some(max_community_voter_weight_addin) =
-        community_token_args.max_voter_weight_addin
-    {
-        accounts.push(AccountMeta::new_readonly(
-            max_community_voter_weight_addin,
-            false,
-        ));
-        true
-    } else {
-        false
-    };
-
-    if use_community_voter_weight_addin || use_max_community_voter_weight_addin {
-        accounts.push(AccountMeta::new(*payer, true));
-    }
+    accounts.push(AccountMeta::new(*payer, true));
 
     let instruction = GovernanceInstruction::SetRealmConfig {
         config_args: RealmConfigArgs {
             use_council_mint,
             min_community_weight_to_create_governance,
             community_mint_max_vote_weight_source,
-            community_token_config_args: GoverningTokenConfigArgs {
-                use_voter_weight_addin: use_community_voter_weight_addin,
-                use_max_voter_weight_addin: use_max_community_voter_weight_addin,
-                token_type: community_token_args.token_type,
-            },
-            council_token_config_args: GoverningTokenConfigArgs::default(),
+            community_token_config_args,
+            council_token_config_args,
         },
     };
 
@@ -1549,5 +1504,44 @@ pub fn create_native_treasury(
         program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Adds accounts specified by GoverningTokenConfigAccountArgs
+/// and returns GoverningTokenConfigArgs
+pub fn with_governing_token_config_args(
+    accounts: &mut Vec<AccountMeta>,
+    governing_token_config_args: Option<GoverningTokenConfigAccountArgs>,
+) -> GoverningTokenConfigArgs {
+    let governing_token_config_args = governing_token_config_args.unwrap_or_default();
+
+    let use_voter_weight_addin = if let Some(community_voter_weight_addin) =
+        governing_token_config_args.voter_weight_addin
+    {
+        accounts.push(AccountMeta::new_readonly(
+            community_voter_weight_addin,
+            false,
+        ));
+        true
+    } else {
+        false
+    };
+
+    let use_max_voter_weight_addin = if let Some(max_community_voter_weight_addin) =
+        governing_token_config_args.max_voter_weight_addin
+    {
+        accounts.push(AccountMeta::new_readonly(
+            max_community_voter_weight_addin,
+            false,
+        ));
+        true
+    } else {
+        false
+    };
+
+    GoverningTokenConfigArgs {
+        use_voter_weight_addin,
+        use_max_voter_weight_addin,
+        token_type: governing_token_config_args.token_type,
     }
 }

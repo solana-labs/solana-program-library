@@ -301,6 +301,7 @@ impl GovernanceProgramTest {
             &self.bench.payer.pubkey(),
             council_token_mint_pubkey,
             Some(community_token_args),
+            None,
             name.clone(),
             set_realm_config_args
                 .realm_config_args
@@ -399,6 +400,7 @@ impl GovernanceProgramTest {
             &realm_cookie.account.community_mint,
             &self.bench.context.payer.pubkey(),
             Some(council_mint),
+            None,
             None,
             name.clone(),
             min_community_weight_to_create_governance,
@@ -1051,6 +1053,7 @@ impl GovernanceProgramTest {
             council_token_mint,
             &self.bench.payer.pubkey(),
             Some(community_token_args),
+            None,
             set_realm_config_args
                 .realm_config_args
                 .min_community_weight_to_create_governance,

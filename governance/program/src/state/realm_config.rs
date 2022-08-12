@@ -58,6 +58,7 @@ pub struct GoverningTokenConfig {
     pub reserved: [u8; 8],
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for GoverningTokenConfig {
     fn default() -> Self {
         Self {
