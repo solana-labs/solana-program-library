@@ -219,7 +219,7 @@ pub enum ConfidentialTransferInstruction {
     ///   6.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
     /// Data expected by this instruction:
-    ///   `TransferWithFeeInstructionData`
+    ///   `TransferInstructionData`
     ///
     TransferWithFee,
 
@@ -418,21 +418,11 @@ pub struct WithdrawInstructionData {
     pub proof_instruction_offset: i8,
 }
 
-/// Data expected by `ConfidentialTransferInstruction::Transfer`
+/// Data expected by `ConfidentialTransferInstruction::Transfer` and
+/// `ConfidentialTransferInstruction::TransferWithFee`
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
 pub struct TransferInstructionData {
-    /// The new source decryptable balance if the transfer succeeds
-    pub new_source_decryptable_available_balance: DecryptableBalance,
-    /// Relative location of the `ProofInstruction::VerifyTransfer` instruction to the
-    /// `Transfer` instruction in the transaction
-    pub proof_instruction_offset: i8,
-}
-
-/// Data expected by `ConfidentialTransferInstruction::TransferWithFee`
-#[derive(Clone, Copy, Pod, Zeroable)]
-#[repr(C)]
-pub struct TransferWithFeeInstructionData {
     /// The new source decryptable balance if the transfer succeeds
     pub new_source_decryptable_available_balance: DecryptableBalance,
     /// Relative location of the `ProofInstruction::VerifyTransfer` instruction to the
@@ -834,7 +824,7 @@ pub fn inner_transfer_with_fee(
         accounts,
         TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::TransferWithFee,
-        &TransferWithFeeInstructionData {
+        &TransferInstructionData {
             new_source_decryptable_available_balance,
             proof_instruction_offset,
         },

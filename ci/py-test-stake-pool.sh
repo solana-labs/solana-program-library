@@ -8,6 +8,7 @@ cd stake-pool/py
 python3 -m venv venv
 source ./venv/bin/activate
 pip3 install -r requirements.txt
+pip3 install -r optional-requirements.txt
 check_dirs=(
   "bot"
   "spl_token"

@@ -63,7 +63,7 @@ pub const SRM_PYTH_PRICE: &str = "992moaMQKs32GKZ9dxi8keyM2bUmbrwBZpK4p2K6X5Vs";
 
 pub const USDC_MINT: &str = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
-trait AddPacked {
+pub trait AddPacked {
     fn add_packable_account<T: Pack>(
         &mut self,
         pubkey: Pubkey,

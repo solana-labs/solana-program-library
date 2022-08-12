@@ -1236,7 +1236,7 @@ pub(crate) fn process_instruction(
             msg!("ConfidentialTransferInstruction::TransferWithFee");
             #[cfg(feature = "zk-ops")]
             {
-                let data = decode_instruction_data::<TransferWithFeeInstructionData>(input)?;
+                let data = decode_instruction_data::<TransferInstructionData>(input)?;
                 process_transfer(
                     program_id,
                     accounts,

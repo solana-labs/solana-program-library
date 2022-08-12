@@ -7,17 +7,69 @@ use {
         input_validators::{is_amount, is_parsable, is_valid_pubkey},
     },
     solana_client::{
-        rpc_client::RpcClient,
-        tpu_client::{TpuClient, TpuClientConfig},
+        nonblocking::rpc_client::RpcClient, rpc_client::RpcClient as BlockingRpcClient,
+        tpu_client::TpuClient, tpu_client::TpuClientConfig,
     },
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
-        message::Message, native_token::Sol, program_pack::Pack, pubkey::Pubkey, signature::Signer,
+        message::Message,
+        native_token::Sol,
+        program_pack::Pack,
+        pubkey::Pubkey,
+        signature::{Signature, Signer, SignerError},
+        signers::Signers,
         system_instruction,
     },
     spl_associated_token_account::*,
+    spl_token_2022::{
+        extension::StateWithExtensions,
+        instruction,
+        state::{Account, Mint},
+    },
     std::{sync::Arc, time::Instant},
 };
+
+// TODO: remove this newtype once `Signers` is implemented for `Vec<Arc<dyn Signer>>` upstream
+struct ArcSigner(Vec<Arc<dyn Signer>>);
+
+impl From<Vec<Arc<dyn Signer>>> for ArcSigner {
+    fn from(vec: Vec<Arc<dyn Signer>>) -> Self {
+        Self(vec)
+    }
+}
+
+impl Signers for ArcSigner {
+    fn pubkeys(&self) -> Vec<Pubkey> {
+        self.0.iter().map(|keypair| keypair.pubkey()).collect()
+    }
+
+    fn try_pubkeys(&self) -> Result<Vec<Pubkey>, SignerError> {
+        let mut pubkeys = Vec::new();
+        for keypair in self.0.iter() {
+            pubkeys.push(keypair.try_pubkey()?);
+        }
+        Ok(pubkeys)
+    }
+
+    fn sign_message(&self, message: &[u8]) -> Vec<Signature> {
+        self.0
+            .iter()
+            .map(|keypair| keypair.sign_message(message))
+            .collect()
+    }
+
+    fn try_sign_message(&self, message: &[u8]) -> Result<Vec<Signature>, SignerError> {
+        let mut signatures = Vec::new();
+        for keypair in self.0.iter() {
+            signatures.push(keypair.try_sign_message(message)?);
+        }
+        Ok(signatures)
+    }
+
+    fn is_interactive(&self) -> bool {
+        self.0.iter().any(|s| s.is_interactive())
+    }
+}
 
 pub(crate) trait BenchSubCommand {
     fn bench_subcommand(self) -> Self;
@@ -160,10 +212,10 @@ impl BenchSubCommand for App<'_, '_> {
     }
 }
 
-pub(crate) fn bench_process_command(
+pub(crate) async fn bench_process_command(
     matches: &ArgMatches<'_>,
-    config: &Config,
-    mut signers: Vec<Box<dyn Signer>>,
+    config: &Config<'_>,
+    mut signers: Vec<Arc<dyn Signer>>,
     wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
 ) -> CommandResult {
     assert!(!config.sign_only);
@@ -179,7 +231,7 @@ pub(crate) fn bench_process_command(
                 config.signer_or_default(arg_matches, "owner", wallet_manager);
             signers.push(owner_signer);
 
-            command_create_accounts(config, signers, &token, n, &owner)?;
+            command_create_accounts(config, signers, &token, n, &owner).await?;
         }
         ("close-accounts", Some(arg_matches)) => {
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
@@ -190,7 +242,7 @@ pub(crate) fn bench_process_command(
                 config.signer_or_default(arg_matches, "owner", wallet_manager);
             signers.push(owner_signer);
 
-            command_close_accounts(config, signers, &token, n, &owner)?;
+            command_close_accounts(config, signers, &token, n, &owner).await?;
         }
         ("deposit-into", Some(arg_matches)) => {
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
@@ -201,15 +253,11 @@ pub(crate) fn bench_process_command(
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", wallet_manager);
             signers.push(owner_signer);
-            let from = pubkey_of_signer(arg_matches, "from", wallet_manager)
-                .unwrap()
-                .unwrap_or_else(|| {
-                    get_associated_token_address_with_program_id(&owner, &token, &config.program_id)
-                });
-
+            let from = pubkey_of_signer(arg_matches, "from", wallet_manager).unwrap();
             command_deposit_into_or_withdraw_from(
-                config, signers, &token, n, &owner, ui_amount, &from, true,
-            )?;
+                config, signers, &token, n, &owner, ui_amount, from, true,
+            )
+            .await?;
         }
         ("withdraw-from", Some(arg_matches)) => {
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
@@ -220,15 +268,11 @@ pub(crate) fn bench_process_command(
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", wallet_manager);
             signers.push(owner_signer);
-            let to = pubkey_of_signer(arg_matches, "to", wallet_manager)
-                .unwrap()
-                .unwrap_or_else(|| {
-                    get_associated_token_address_with_program_id(&owner, &token, &config.program_id)
-                });
-
+            let to = pubkey_of_signer(arg_matches, "to", wallet_manager).unwrap();
             command_deposit_into_or_withdraw_from(
-                config, signers, &token, n, &owner, ui_amount, &to, false,
-            )?;
+                config, signers, &token, n, &owner, ui_amount, to, false,
+            )
+            .await?;
         }
         _ => unreachable!(),
     }
@@ -260,19 +304,23 @@ fn get_token_addresses_with_seed(
         .collect()
 }
 
-fn is_valid_token(rpc_client: &RpcClient, token: &Pubkey) -> Result<(), Error> {
-    let mint_account_data = rpc_client
-        .get_account_data(token)
+async fn get_valid_mint_program_id(
+    rpc_client: &RpcClient,
+    token: &Pubkey,
+) -> Result<Pubkey, Error> {
+    let mint_account = rpc_client
+        .get_account(token)
+        .await
         .map_err(|err| format!("Token mint {} does not exist: {}", token, err))?;
 
-    spl_token::state::Mint::unpack(&mint_account_data)
-        .map(|_| ())
-        .map_err(|err| format!("Invalid token mint {}: {}", token, err).into())
+    StateWithExtensions::<Mint>::unpack(&mint_account.data)
+        .map_err(|err| format!("Invalid token mint {}: {}", token, err))?;
+    Ok(mint_account.owner)
 }
 
-fn command_create_accounts(
-    config: &Config,
-    signers: Vec<Box<dyn Signer>>,
+async fn command_create_accounts(
+    config: &Config<'_>,
+    signers: Vec<Arc<dyn Signer>>,
     token: &Pubkey,
     n: usize,
     owner: &Pubkey,
@@ -280,19 +328,20 @@ fn command_create_accounts(
     let rpc_client = &config.rpc_client;
 
     println!("Scanning accounts...");
-    is_valid_token(rpc_client, token)?;
+    let program_id = get_valid_mint_program_id(rpc_client, token).await?;
 
     let minimum_balance_for_rent_exemption = rpc_client
-        .get_minimum_balance_for_rent_exemption(spl_token::state::Account::get_packed_len())?;
+        .get_minimum_balance_for_rent_exemption(Account::get_packed_len())
+        .await?;
 
     let mut lamports_required = 0;
 
-    let token_addresses_with_seed =
-        get_token_addresses_with_seed(&config.program_id, token, owner, n);
+    let token_addresses_with_seed = get_token_addresses_with_seed(&program_id, token, owner, n);
     let mut messages = vec![];
     for address_chunk in token_addresses_with_seed.chunks(100) {
         let accounts_chunk = rpc_client
-            .get_multiple_accounts(&address_chunk.iter().map(|x| x.0).collect::<Vec<_>>())?;
+            .get_multiple_accounts(&address_chunk.iter().map(|x| x.0).collect::<Vec<_>>())
+            .await?;
 
         for (account, (address, seed)) in accounts_chunk.iter().zip(address_chunk) {
             if account.is_none() {
@@ -305,15 +354,10 @@ fn command_create_accounts(
                             owner,
                             seed,
                             minimum_balance_for_rent_exemption,
-                            spl_token::state::Account::get_packed_len() as u64,
-                            &config.program_id,
+                            Account::get_packed_len() as u64,
+                            &program_id,
                         ),
-                        spl_token::instruction::initialize_account(
-                            &config.program_id,
-                            address,
-                            token,
-                            owner,
-                        )?,
+                        instruction::initialize_account(&program_id, address, token, owner)?,
                     ],
                     Some(&config.fee_payer),
                 ));
@@ -321,12 +365,12 @@ fn command_create_accounts(
         }
     }
 
-    send_messages(config, &messages, lamports_required, signers)
+    send_messages(config, &messages, lamports_required, signers).await
 }
 
-fn command_close_accounts(
-    config: &Config,
-    signers: Vec<Box<dyn Signer>>,
+async fn command_close_accounts(
+    config: &Config<'_>,
+    signers: Vec<Arc<dyn Signer>>,
     token: &Pubkey,
     n: usize,
     owner: &Pubkey,
@@ -334,28 +378,28 @@ fn command_close_accounts(
     let rpc_client = &config.rpc_client;
 
     println!("Scanning accounts...");
-    is_valid_token(rpc_client, token)?;
+    let program_id = get_valid_mint_program_id(rpc_client, token).await?;
 
-    let token_addresses_with_seed =
-        get_token_addresses_with_seed(&config.program_id, token, owner, n);
+    let token_addresses_with_seed = get_token_addresses_with_seed(&program_id, token, owner, n);
     let mut messages = vec![];
     for address_chunk in token_addresses_with_seed.chunks(100) {
         let accounts_chunk = rpc_client
-            .get_multiple_accounts(&address_chunk.iter().map(|x| x.0).collect::<Vec<_>>())?;
+            .get_multiple_accounts(&address_chunk.iter().map(|x| x.0).collect::<Vec<_>>())
+            .await?;
 
         for (account, (address, _seed)) in accounts_chunk.iter().zip(address_chunk) {
             if let Some(account) = account {
-                match spl_token::state::Account::unpack(&account.data) {
+                match StateWithExtensions::<Account>::unpack(&account.data) {
                     Ok(token_account) => {
-                        if token_account.amount != 0 {
+                        if token_account.base.amount != 0 {
                             eprintln!(
                                 "Token account {} holds a balance; unable to close it",
                                 address,
                             );
                         } else {
                             messages.push(Message::new(
-                                &[spl_token::instruction::close_account(
-                                    &config.program_id,
+                                &[instruction::close_account(
+                                    &program_id,
                                     address,
                                     owner,
                                     owner,
@@ -373,50 +417,50 @@ fn command_close_accounts(
         }
     }
 
-    send_messages(config, &messages, 0, signers)
+    send_messages(config, &messages, 0, signers).await
 }
 
 #[allow(clippy::too_many_arguments)]
-fn command_deposit_into_or_withdraw_from(
-    config: &Config,
-    signers: Vec<Box<dyn Signer>>,
+async fn command_deposit_into_or_withdraw_from(
+    config: &Config<'_>,
+    signers: Vec<Arc<dyn Signer>>,
     token: &Pubkey,
     n: usize,
     owner: &Pubkey,
     ui_amount: f64,
-    from_or_to: &Pubkey,
+    from_or_to: Option<Pubkey>,
     deposit_into: bool,
 ) -> Result<(), Error> {
     let rpc_client = &config.rpc_client;
 
     println!("Scanning accounts...");
-    is_valid_token(rpc_client, token)?;
+    let program_id = get_valid_mint_program_id(rpc_client, token).await?;
 
-    let (mint_pubkey, decimals) = crate::resolve_mint_info(config, from_or_to, Some(*token), None)?;
-    if mint_pubkey != *token {
-        return Err(format!("Source account {} is not a {} token", from_or_to, token).into());
-    }
-    let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
+    let mint_info = config.get_mint_info(token, None).await?;
+    let from_or_to = from_or_to
+        .unwrap_or_else(|| get_associated_token_address_with_program_id(owner, token, &program_id));
+    config.check_account(&from_or_to, Some(*token)).await?;
+    let amount = spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals);
 
-    let token_addresses_with_seed =
-        get_token_addresses_with_seed(&config.program_id, token, owner, n);
+    let token_addresses_with_seed = get_token_addresses_with_seed(&program_id, token, owner, n);
     let mut messages = vec![];
     for address_chunk in token_addresses_with_seed.chunks(100) {
         let accounts_chunk = rpc_client
-            .get_multiple_accounts(&address_chunk.iter().map(|x| x.0).collect::<Vec<_>>())?;
+            .get_multiple_accounts(&address_chunk.iter().map(|x| x.0).collect::<Vec<_>>())
+            .await?;
 
         for (account, (address, _seed)) in accounts_chunk.iter().zip(address_chunk) {
             if account.is_some() {
                 messages.push(Message::new(
-                    &[spl_token::instruction::transfer_checked(
-                        &config.program_id,
-                        if deposit_into { from_or_to } else { address },
+                    &[instruction::transfer_checked(
+                        &program_id,
+                        if deposit_into { &from_or_to } else { address },
                         token,
-                        if deposit_into { address } else { from_or_to },
+                        if deposit_into { address } else { &from_or_to },
                         owner,
                         &[],
                         amount,
-                        decimals,
+                        mint_info.decimals,
                     )?],
                     Some(&config.fee_payer),
                 ));
@@ -426,14 +470,14 @@ fn command_deposit_into_or_withdraw_from(
         }
     }
 
-    send_messages(config, &messages, 0, signers)
+    send_messages(config, &messages, 0, signers).await
 }
 
-fn send_messages(
-    config: &Config,
+async fn send_messages(
+    config: &Config<'_>,
     messages: &[Message],
     mut lamports_required: u64,
-    signers: Vec<Box<dyn Signer>>,
+    signers: Vec<Arc<dyn Signer>>,
 ) -> Result<(), Error> {
     if messages.is_empty() {
         println!("Nothing to do");
@@ -442,7 +486,8 @@ fn send_messages(
 
     let (_blockhash, fee_calculator, _last_valid_block_height) = config
         .rpc_client
-        .get_recent_blockhash_with_commitment(config.rpc_client.commitment())?
+        .get_recent_blockhash_with_commitment(config.rpc_client.commitment())
+        .await?
         .value;
 
     lamports_required += messages
@@ -456,17 +501,18 @@ fn send_messages(
         Sol(lamports_required)
     );
 
-    crate::check_fee_payer_balance(config, lamports_required)?;
+    crate::check_fee_payer_balance(config, lamports_required).await?;
 
+    // TODO use async tpu client once it's available in 1.11
     let start = Instant::now();
+    let rpc_client = BlockingRpcClient::new(config.rpc_client.url());
     let tpu_client = TpuClient::new(
-        config.rpc_client.clone(),
+        Arc::new(rpc_client),
         &config.websocket_url,
         TpuClientConfig::default(),
     )?;
-    let transaction_errors =
-        tpu_client.send_and_confirm_messages_with_spinner(messages, &signers)?;
-
+    let transaction_errors = tpu_client
+        .send_and_confirm_messages_with_spinner::<ArcSigner>(messages, &signers.into())?;
     for (i, transaction_error) in transaction_errors.into_iter().enumerate() {
         if let Some(transaction_error) = transaction_error {
             println!("Message {} failed with {:?}", i, transaction_error);
