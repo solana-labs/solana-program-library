@@ -406,6 +406,10 @@ pub enum GovernanceError {
     /// Cannot Relinquish in Finalizing state
     #[error("Cannot Relinquish in Finalizing state")]
     CannotRelinquishInFinalizingState,
+
+    /// Invalid RealmConfig account address
+    #[error("Invalid RealmConfig account address")]
+    InvalidRealmConfigAddress,
 }
 
 impl PrintProgramError for GovernanceError {

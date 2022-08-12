@@ -5,11 +5,8 @@ use std::slice::Iter;
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    borsh::try_from_slice_unchecked,
-    program_error::ProgramError,
-    program_pack::IsInitialized,
-    pubkey::Pubkey,
+    account_info::AccountInfo, borsh::try_from_slice_unchecked, program_error::ProgramError,
+    program_pack::IsInitialized, pubkey::Pubkey,
 };
 use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::{
@@ -27,6 +24,8 @@ use crate::{
     },
     PROGRAM_AUTHORITY_SEED,
 };
+
+use crate::state::realm_config::next_realm_config_info_for_realm;
 
 /// Realm Config instruction args
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -304,7 +303,9 @@ impl RealmV2 {
 
         token_owner_record_data.assert_token_owner_or_delegate_is_signer(create_authority_info)?;
 
-        let realm_config_info = next_account_info(account_info_iter)?;
+        // Get realm_config_info from the account_info iterator and assert it has a valid PDA for the given Realm
+        let realm_config_info =
+            next_realm_config_info_for_realm(account_info_iter, program_id, realm)?;
 
         let voter_weight = token_owner_record_data.resolve_voter_weight(
             program_id,

@@ -11,7 +11,7 @@ use solana_program::{
 use crate::state::{
     governance::get_governance_data_for_realm,
     proposal::get_proposal_data_for_governance_and_governing_mint,
-    realm::get_realm_data_for_governing_token_mint,
+    realm::get_realm_data_for_governing_token_mint, realm_config::next_realm_config_info_for_realm,
     token_owner_record::get_token_owner_record_data_for_proposal_owner, vote_record::VoteKind,
 };
 
@@ -43,7 +43,9 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         governing_token_mint_info.key,
     )?;
 
-    let realm_config_info = next_account_info(account_info_iter)?; // 5
+    // Get realm_config_info from the account_info iterator and assert it has a valid PDA for the given Realm
+    let realm_config_info =
+        next_realm_config_info_for_realm(account_info_iter, program_id, realm_info.key)?; //5
 
     let max_voter_weight = proposal_data.resolve_max_voter_weight(
         program_id,

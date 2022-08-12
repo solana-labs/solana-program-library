@@ -188,6 +188,25 @@ pub fn resolve_governing_token_config(
     })
 }
 
+/// Returns next RealmConfigInfo from the AccountInfo iterator and validates its PDA matches the given Realm
+// PDA validation is required because RealmConfigAccount might not exist for legacy Realms
+// and then its absense is used as default RealmConfigAccount value with no plugins and Liqquid governance tokens
+pub fn next_realm_config_info_for_realm<'a, 'b, I: Iterator<Item = &'a AccountInfo<'b>>>(
+    account_info_iter: &mut I,
+    program_id: &Pubkey,
+    realm: &Pubkey,
+) -> Result<I::Item, ProgramError> {
+    let realm_config_info = next_account_info(account_info_iter)?;
+
+    let realm_config_address = get_realm_config_address(program_id, realm);
+
+    if realm_config_address != *realm_config_info.key {
+        return Err(GovernanceError::InvalidRealmConfigAddress.into());
+    }
+
+    Ok(realm_config_info)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
