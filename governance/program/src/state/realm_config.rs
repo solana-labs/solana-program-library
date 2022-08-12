@@ -137,17 +137,39 @@ pub fn get_realm_config_data(
     get_account_data::<RealmConfigAccount>(program_id, realm_config_info)
 }
 
-/// Deserializes RealmConfig account and checks the owner program and the Realm it belongs to
+/// If the account exists then desrialises it into RealmConfigAccount struct and checks the owner program and the Realm it belongs to
+/// If the accoutn doesn't exist then it checks its address is derived from the given owner program and Realm and returns default RealmConfigAccount
 pub fn get_realm_config_data_for_realm(
     program_id: &Pubkey,
     realm_config_info: &AccountInfo,
     realm: &Pubkey,
 ) -> Result<RealmConfigAccount, ProgramError> {
-    let realm_config_data = get_realm_config_data(program_id, realm_config_info)?;
+    let realm_config_data = if realm_config_info.data_is_empty() {
+        // If RealmConfigAccount doesn't exist yet then validate its PDA
+        // PDA validation is required because RealmConfigAccount might not exist for legacy Realms
+        // and then its absense is used as default RealmConfigAccount value with no plugins and Liquid governance tokens
+        let realm_config_address = get_realm_config_address(program_id, realm);
 
-    if realm_config_data.realm != *realm {
-        return Err(GovernanceError::InvalidRealmConfigForRealm.into());
-    }
+        if realm_config_address != *realm_config_info.key {
+            return Err(GovernanceError::InvalidRealmConfigAddress.into());
+        }
+
+        RealmConfigAccount {
+            account_type: GovernanceAccountType::RealmConfig,
+            realm: realm.clone(),
+            community_token_config: GoverningTokenConfig::default(),
+            council_token_config: GoverningTokenConfig::default(),
+            reserved: Reserved110::default(),
+        }
+    } else {
+        let realm_config_data = get_realm_config_data(program_id, realm_config_info)?;
+
+        if realm_config_data.realm != *realm {
+            return Err(GovernanceError::InvalidRealmConfigForRealm.into());
+        }
+
+        realm_config_data
+    };
 
     Ok(realm_config_data)
 }
@@ -186,25 +208,6 @@ pub fn resolve_governing_token_config(
         token_type: governing_token_config_args.token_type,
         reserved: [0; 8],
     })
-}
-
-/// Returns next RealmConfigInfo from the AccountInfo iterator and validates its PDA matches the given Realm
-// PDA validation is required because RealmConfigAccount might not exist for legacy Realms
-// and then its absense is used as default RealmConfigAccount value with no plugins and Liqquid governance tokens
-pub fn next_realm_config_info_for_realm<'a, 'b, I: Iterator<Item = &'a AccountInfo<'b>>>(
-    account_info_iter: &mut I,
-    program_id: &Pubkey,
-    realm: &Pubkey,
-) -> Result<I::Item, ProgramError> {
-    let realm_config_info = next_account_info(account_info_iter)?;
-
-    let realm_config_address = get_realm_config_address(program_id, realm);
-
-    if realm_config_address != *realm_config_info.key {
-        return Err(GovernanceError::InvalidRealmConfigAddress.into());
-    }
-
-    Ok(realm_config_info)
 }
 
 #[cfg(test)]

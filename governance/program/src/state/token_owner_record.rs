@@ -10,7 +10,7 @@ use crate::{
     error::GovernanceError,
     state::{
         enums::GovernanceAccountType, governance::GovernanceConfig, legacy::TokenOwnerRecordV1,
-        realm::RealmV2, realm_config::get_realm_config_data_for_realm,
+        realm::RealmV2,
     },
     PROGRAM_AUTHORITY_SEED,
 };
@@ -25,6 +25,8 @@ use solana_program::{
 };
 use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
+
+use super::realm_config::RealmConfigAccount;
 
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
@@ -189,10 +191,8 @@ impl TokenOwnerRecordV2 {
     #[allow(clippy::too_many_arguments)]
     pub fn resolve_voter_weight(
         &self,
-        program_id: &Pubkey,
-        realm_config_info: &AccountInfo,
+        realm_config_data: &RealmConfigAccount,
         account_info_iter: &mut Iter<AccountInfo>,
-        realm: &Pubkey,
         realm_data: &RealmV2,
         weight_action: VoterWeightAction,
         weight_action_target: &Pubkey,
@@ -202,9 +202,6 @@ impl TokenOwnerRecordV2 {
             && realm_data.community_mint == self.governing_token_mint
         {
             let voter_weight_record_info = next_account_info(account_info_iter)?;
-
-            let realm_config_data =
-                get_realm_config_data_for_realm(program_id, realm_config_info, realm)?;
 
             let voter_weight_record_data = get_voter_weight_record_data_for_token_owner_record(
                 &realm_config_data

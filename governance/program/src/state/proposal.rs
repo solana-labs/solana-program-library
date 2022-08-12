@@ -30,13 +30,14 @@ use crate::{
         governance::GovernanceConfig,
         proposal_transaction::ProposalTransactionV2,
         realm::RealmV2,
-        realm_config::get_realm_config_data_for_realm,
         vote_record::Vote,
         vote_record::VoteKind,
     },
     PROGRAM_AUTHORITY_SEED,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+
+use crate::state::realm_config::RealmConfigAccount;
 
 /// Proposal option vote result
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -476,8 +477,7 @@ impl ProposalV2 {
     #[allow(clippy::too_many_arguments)]
     pub fn resolve_max_voter_weight(
         &mut self,
-        program_id: &Pubkey,
-        realm_config_info: &AccountInfo,
+        realm_config_data: &RealmConfigAccount,
         vote_governing_token_mint_info: &AccountInfo,
         account_info_iter: &mut Iter<AccountInfo>,
         realm: &Pubkey,
@@ -488,9 +488,6 @@ impl ProposalV2 {
         if realm_data.config.use_max_community_voter_weight_addin
             && realm_data.community_mint == *vote_governing_token_mint_info.key
         {
-            let realm_config_data =
-                get_realm_config_data_for_realm(program_id, realm_config_info, realm)?;
-
             let max_voter_weight_record_info = next_account_info(account_info_iter)?;
 
             let max_voter_weight_record_data =

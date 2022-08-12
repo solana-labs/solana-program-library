@@ -21,7 +21,7 @@ use crate::{
             ProposalOption, ProposalV2, VoteType,
         },
         realm::get_realm_data_for_governing_token_mint,
-        realm_config::next_realm_config_info_for_realm,
+        realm_config::get_realm_config_data_for_realm,
         token_owner_record::get_token_owner_record_data_for_realm,
         vote_record::VoteKind,
     },
@@ -82,15 +82,13 @@ pub fn process_create_proposal(
     proposal_owner_record_data
         .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    // Get realm_config_info from the account_info iterator and assert it has a valid PDA for the given Realm
-    let realm_config_info =
-        next_realm_config_info_for_realm(account_info_iter, program_id, realm_info.key)?; // 10
+    let realm_config_info = next_account_info(account_info_iter)?; // 10
+    let realm_config_data =
+        get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
 
     let voter_weight = proposal_owner_record_data.resolve_voter_weight(
-        program_id,
-        realm_config_info,
+        &realm_config_data,
         account_info_iter,
-        realm_info.key,
         &realm_data,
         VoterWeightAction::CreateProposal,
         governance_info.key,
