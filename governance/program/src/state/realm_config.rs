@@ -11,7 +11,7 @@ use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 use crate::{error::GovernanceError, state::enums::GovernanceAccountType};
 
 /// The type of the governing token defines:
-/// 1) Who retains authority over deposited tokens
+/// 1) Who retains the authority over deposited tokens
 /// 2) Which token instructions Deposit, Withdraw and Revoke (burn) are allowed
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum GoverningTokenType {
@@ -27,11 +27,12 @@ pub enum GoverningTokenType {
     /// Revoke - yes, Realm authority can Revoke (burn) membership tokens
     Membership,
 
-    /// Proxy token is token which is not deposited into Realm and is controlled externally (via plugins)
-    /// Deposit - no, proxy tokens can't be deposited into the Realm
+    /// Dormant token is a token which is only a placeholder and its deposits are not accepted and not used for governance power
+    /// Note: When an external voter weight plugin is used then the token type should be set to Dormant
+    /// Deposit - no, dormant tokens can't be deposited into the Realm
     /// Withdraw - yes, tokens can still be withdrawn from Realm to support scenario where the config is changed while some tokens are still deposited
-    /// Revoke - no, Realm authority cannot revoke proxy tokens
-    Proxy,
+    /// Revoke - no, Realm authority cannot revoke dormant tokens
+    Dormant,
 }
 
 /// GoverningTokenConfig specifies configuration for Realm governing token (Community or Council)
