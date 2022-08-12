@@ -98,7 +98,7 @@ pub fn process_set_realm_config(
         let realm_config_data = RealmConfigAccount {
             account_type: GovernanceAccountType::RealmConfig,
             realm: *realm_info.key,
-            community_token_config: community_token_config.clone(),
+            community_token_config,
             council_token_config,
             reserved: Reserved110::default(),
         };
