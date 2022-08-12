@@ -19,7 +19,6 @@ echo "Build required programs"
 ./twoxtx-solana/cargo-build-sbf --manifest-path ../associated-token-account/program/Cargo.toml
 
 echo "Test token-2022"
-./twoxtx-solana/cargo-test-sbf --manifest-path ./program-2022-test/Cargo.toml -- --nocapture
+./twoxtx-solana/cargo-test-sbf --jobs 2 --manifest-path ./program-2022-test/Cargo.toml -- --nocapture
 
 exit 0
-
