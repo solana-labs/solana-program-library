@@ -7,18 +7,17 @@ use crate::{
     state::{Account, AccountState, Mint, Multisig},
     try_ui_amount_into_amount,
 };
-use num_traits::FromPrimitive;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
-    decode_error::DecodeError,
     entrypoint::ProgramResult,
     msg,
     program::set_return_data,
-    program_error::{PrintProgramError, ProgramError},
-    program_memory::{sol_memcmp, sol_memset},
+    program_error::ProgramError,
+    program_memory::sol_memcmp,
     program_option::COption,
     program_pack::{IsInitialized, Pack},
     pubkey::{Pubkey, PUBKEY_BYTES},
+    system_program,
     sysvar::{rent::Rent, Sysvar},
 };
 
@@ -698,8 +697,7 @@ impl Processor {
             .ok_or(TokenError::Overflow)?;
 
         **source_account_info.lamports.borrow_mut() = 0;
-
-        sol_memset(*source_account_info.data.borrow_mut(), 0, Account::LEN);
+        delete_account(source_account_info)?;
 
         Ok(())
     }
@@ -1009,48 +1007,23 @@ impl Processor {
     }
 }
 
-impl PrintProgramError for TokenError {
-    fn print<E>(&self)
-    where
-        E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
-    {
-        match self {
-            TokenError::NotRentExempt => msg!("Error: Lamport balance below rent-exempt threshold"),
-            TokenError::InsufficientFunds => msg!("Error: insufficient funds"),
-            TokenError::InvalidMint => msg!("Error: Invalid Mint"),
-            TokenError::MintMismatch => msg!("Error: Account not associated with this Mint"),
-            TokenError::OwnerMismatch => msg!("Error: owner does not match"),
-            TokenError::FixedSupply => msg!("Error: the total supply of this token is fixed"),
-            TokenError::AlreadyInUse => msg!("Error: account or token already in use"),
-            TokenError::InvalidNumberOfProvidedSigners => {
-                msg!("Error: Invalid number of provided signers")
-            }
-            TokenError::InvalidNumberOfRequiredSigners => {
-                msg!("Error: Invalid number of required signers")
-            }
-            TokenError::UninitializedState => msg!("Error: State is uninitialized"),
-            TokenError::NativeNotSupported => {
-                msg!("Error: Instruction does not support native tokens")
-            }
-            TokenError::NonNativeHasBalance => {
-                msg!("Error: Non-native account can only be closed if its balance is zero")
-            }
-            TokenError::InvalidInstruction => msg!("Error: Invalid instruction"),
-            TokenError::InvalidState => msg!("Error: Invalid account state for operation"),
-            TokenError::Overflow => msg!("Error: Operation overflowed"),
-            TokenError::AuthorityTypeNotSupported => {
-                msg!("Error: Account does not support specified authority type")
-            }
-            TokenError::MintCannotFreeze => msg!("Error: This token mint cannot freeze accounts"),
-            TokenError::AccountFrozen => msg!("Error: Account is frozen"),
-            TokenError::MintDecimalsMismatch => {
-                msg!("Error: decimals different from the Mint decimals")
-            }
-            TokenError::NonNativeNotSupported => {
-                msg!("Error: Instruction does not support non-native tokens")
-            }
-        }
-    }
+/// Helper function to mostly delete an account in a test environment.  We could
+/// potentially muck around the bytes assuming that a vec is passed in, but that
+/// would be more trouble than it's worth.
+#[cfg(not(target_arch = "bpf"))]
+fn delete_account(account_info: &AccountInfo) -> Result<(), ProgramError> {
+    account_info.assign(&system_program::id());
+    let mut account_data = account_info.data.borrow_mut();
+    let data_len = account_data.len();
+    solana_program::program_memory::sol_memset(*account_data, 0, data_len);
+    Ok(())
+}
+
+/// Helper function to totally delete an account on-chain
+#[cfg(target_arch = "bpf")]
+fn delete_account(account_info: &AccountInfo) -> Result<(), ProgramError> {
+    account_info.assign(&system_program::id());
+    account_info.realloc(0, false)
 }
 
 #[cfg(test)]
@@ -1059,7 +1032,10 @@ mod tests {
     use crate::instruction::*;
     use serial_test::serial;
     use solana_program::{
-        account_info::IntoAccountInfo, clock::Epoch, instruction::Instruction, program_error,
+        account_info::IntoAccountInfo,
+        clock::Epoch,
+        instruction::Instruction,
+        program_error::{self, PrintProgramError},
         sysvar::rent,
     };
     use solana_sdk::account::{

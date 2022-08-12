@@ -67,6 +67,20 @@ if [[ -n $CI ]]; then
     fi
     export CI_REPO_SLUG=$APPVEYOR_REPO_NAME
     export CI_TAG=$APPVEYOR_REPO_TAG_NAME
+  elif [[ -n $GITHUB_ACTIONS ]]; then
+    export CI_BRANCH=$GITHUB_REF
+    export CI_BASE_BRANCH=$GITHUB_BASE_REF
+    export CI_BUILD_ID=$GITHUB_RUN_ID
+    export CI_COMMIT=$GITHUB_SHA
+    export CI_JOB_ID=$GITHUB_JOB
+    if [[ -n $GITHUB_HEAD_REF ]]; then
+      export CI_PULL_REQUEST=true
+    else
+      export CI_PULL_REQUEST=
+    fi
+    export CI_OS_NAME=$RUNNER_OS
+    export CI_REPO_SLUG=$GITHUB_REPOSITORY
+    export CI_TAG=$GITHUB_REF_NAME
   fi
 else
   export CI=

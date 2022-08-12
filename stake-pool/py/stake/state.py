@@ -2,11 +2,12 @@
 
 from enum import IntEnum
 from typing import NamedTuple, Dict
-from construct import Container, Struct, Float64l, Int32ul, Int64ul  # type: ignore
+from construct import Bytes, Container, Struct, Float64l, Int32ul, Int64ul  # type: ignore
 
 from solana.publickey import PublicKey
 from solana.utils.helpers import decode_byte_string
-from solana._layouts.shared import PUBLIC_KEY_LAYOUT
+
+PUBLIC_KEY_LAYOUT = Bytes(32)
 
 
 class Lockup(NamedTuple):

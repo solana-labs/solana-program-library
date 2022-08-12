@@ -30,7 +30,23 @@ extern uint64_t do_invoke(SolParameters *params) {
   if (!SolPubkey_same(&expected_allocated_key, allocated_info->key)) {
     return ERROR_INVALID_ARGUMENT;
   }
-
+  /*
+  System program instruction source: https://github.com/solana-labs/solana/blob/master/sdk/program/src/system_instruction.rs
+  Enum Values:
+  0: CreateAccount
+  1: Assign
+  2: Transfer
+  3: CreateAccountWithSeed
+  4: AdvanceNonceAccount
+  5: WithdrawNonceAccount
+  6: InitializeNonceAccount
+  7: AuthorizeNonceAccount
+  8: Allocate
+  9: AllocateWithSeed
+  10: AssignWithSeed
+  11: TransferWithSeed
+  12: UpgradeNonceAccount
+  */
   SolAccountMeta arguments[] = {{allocated_info->key, true, true}};
   uint8_t data[4 + 8];            // Enough room for the Allocate instruction
   *(uint16_t *)data = 8;          // Allocate instruction enum value
