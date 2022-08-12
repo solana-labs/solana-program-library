@@ -489,7 +489,7 @@ pub fn create_realm(
     community_token_mint: &Pubkey,
     payer: &Pubkey,
     council_token_mint: Option<Pubkey>,
-    community_token_args: &GoverningTokenConfigAccountArgs,
+    community_token_args: Option<GoverningTokenConfigAccountArgs>,
     // Args
     name: String,
     min_community_weight_to_create_governance: u64,
@@ -509,6 +509,8 @@ pub fn create_realm(
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
+
+    let community_token_args = community_token_args.unwrap_or_default();
 
     let use_council_mint = if let Some(council_token_mint) = council_token_mint {
         let council_token_holding_address =
@@ -557,7 +559,7 @@ pub fn create_realm(
             community_token_config_args: GoverningTokenConfigArgs {
                 use_voter_weight_addin: use_community_voter_weight_addin,
                 use_max_voter_weight_addin: use_max_community_voter_weight_addin,
-                token_type: community_token_args.token_type.clone(),
+                token_type: community_token_args.token_type,
             },
             council_token_config_args: GoverningTokenConfigArgs::default(),
         },
@@ -1362,7 +1364,7 @@ pub fn set_realm_config(
     realm_authority: &Pubkey,
     council_token_mint: Option<Pubkey>,
     payer: &Pubkey,
-    community_token_args: &GoverningTokenConfigAccountArgs,
+    community_token_args: Option<GoverningTokenConfigAccountArgs>,
     // Args
     min_community_weight_to_create_governance: u64,
     community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
@@ -1389,6 +1391,8 @@ pub fn set_realm_config(
     // but also when it's set to false and the addin is being  removed from the realm
     let realm_config_address = get_realm_config_address(program_id, realm);
     accounts.push(AccountMeta::new(realm_config_address, false));
+
+    let community_token_args = community_token_args.unwrap_or_default();
 
     let use_community_voter_weight_addin =
         if let Some(community_voter_weight_addin) = community_token_args.voter_weight_addin {
@@ -1425,7 +1429,7 @@ pub fn set_realm_config(
             community_token_config_args: GoverningTokenConfigArgs {
                 use_voter_weight_addin: use_community_voter_weight_addin,
                 use_max_voter_weight_addin: use_max_community_voter_weight_addin,
-                token_type: community_token_args.token_type.clone(),
+                token_type: community_token_args.token_type,
             },
             council_token_config_args: GoverningTokenConfigArgs::default(),
         },

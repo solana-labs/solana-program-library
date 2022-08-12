@@ -35,6 +35,7 @@ pub enum GoverningTokenType {
     Dormant,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for GoverningTokenType {
     fn default() -> Self {
         GoverningTokenType::Liquid

@@ -300,7 +300,7 @@ impl GovernanceProgramTest {
             &community_token_mint_keypair.pubkey(),
             &self.bench.payer.pubkey(),
             council_token_mint_pubkey,
-            &community_token_args,
+            Some(community_token_args),
             name.clone(),
             set_realm_config_args
                 .realm_config_args
@@ -393,19 +393,13 @@ impl GovernanceProgramTest {
         let community_mint_max_vote_weight_source = MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION;
         let min_community_weight_to_create_governance = 10;
 
-        let community_token_args = GoverningTokenConfigAccountArgs {
-            voter_weight_addin: None,
-            max_voter_weight_addin: None,
-            token_type: GoverningTokenType::Liquid,
-        };
-
         let create_realm_ix = create_realm(
             &self.program_id,
             &realm_authority.pubkey(),
             &realm_cookie.account.community_mint,
             &self.bench.context.payer.pubkey(),
             Some(council_mint),
-            &community_token_args,
+            None,
             name.clone(),
             min_community_weight_to_create_governance,
             community_mint_max_vote_weight_source,
@@ -1056,7 +1050,7 @@ impl GovernanceProgramTest {
             &realm_cookie.realm_authority.as_ref().unwrap().pubkey(),
             council_token_mint,
             &self.bench.payer.pubkey(),
-            &community_token_args,
+            Some(community_token_args),
             set_realm_config_args
                 .realm_config_args
                 .min_community_weight_to_create_governance,
