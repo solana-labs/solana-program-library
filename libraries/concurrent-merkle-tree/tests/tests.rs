@@ -1,5 +1,5 @@
 use concurrent_merkle_tree::error::CMTError;
-use concurrent_merkle_tree::merkle_roll::MerkleRoll;
+use concurrent_merkle_tree::cmt::ConcurrentMerkleTree;
 use concurrent_merkle_tree::state::{Node, EMPTY};
 use merkle_tree_reference::MerkleTree;
 use rand::thread_rng;
@@ -8,24 +8,24 @@ use rand::{self, Rng};
 const DEPTH: usize = 10;
 const BUFFER_SIZE: usize = 64;
 
-fn setup() -> (MerkleRoll<DEPTH, BUFFER_SIZE>, MerkleTree) {
-    // On-chain merkle change-record
-    let merkle = MerkleRoll::<DEPTH, BUFFER_SIZE>::new();
+fn setup() -> (ConcurrentMerkleTree<DEPTH, BUFFER_SIZE>, MerkleTree) {
+    // On-chain CMT
+    let cmt = ConcurrentMerkleTree::<DEPTH, BUFFER_SIZE>::new();
     // Init off-chain Merkle tree with corresponding # of leaves
     let leaves = vec![EMPTY; 1 << DEPTH];
     // Off-chain merkle tree
     let reference_tree = MerkleTree::new(leaves.as_slice());
 
-    (merkle, reference_tree)
+    (cmt, reference_tree)
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_initialize() {
-    let (mut merkle_roll, off_chain_tree) = setup();
-    merkle_roll.initialize().unwrap();
+    let (mut cmt, off_chain_tree) = setup();
+    cmt.initialize().unwrap();
 
     assert_eq!(
-        merkle_roll.get_change_log().root,
+        cmt.get_change_log().root,
         off_chain_tree.get_root(),
         "Init failed to set root properly"
     );
@@ -33,42 +33,42 @@ async fn test_initialize() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_append() {
-    let (mut merkle_roll, mut off_chain_tree) = setup();
+    let (mut cmt, mut off_chain_tree) = setup();
     let mut rng = thread_rng();
-    merkle_roll.initialize().unwrap();
+    cmt.initialize().unwrap();
 
     for i in 0..(1 << DEPTH) {
         let leaf = rng.gen::<[u8; 32]>();
-        merkle_roll.append(leaf).unwrap();
+        cmt.append(leaf).unwrap();
         off_chain_tree.add_leaf(leaf, i);
         assert_eq!(
-            merkle_roll.get_change_log().root,
+            cmt.get_change_log().root,
             off_chain_tree.get_root(),
             "On chain tree failed to update properly on an append",
         );
     }
 
     assert_eq!(
-        merkle_roll.buffer_size, BUFFER_SIZE as u64,
-        "Merkle roll buffer size is wrong"
+        cmt.buffer_size, BUFFER_SIZE as u64,
+        "CMT buffer size is wrong"
     );
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_prove_leaf() {
-    let (mut merkle_roll, mut off_chain_tree) = setup();
+    let (mut cmt, mut off_chain_tree) = setup();
     let mut rng = thread_rng();
-    merkle_roll.initialize().unwrap();
+    cmt.initialize().unwrap();
 
     for i in 0..(1 << DEPTH) {
         let leaf = rng.gen::<[u8; 32]>();
-        merkle_roll.append(leaf).unwrap();
+        cmt.append(leaf).unwrap();
         off_chain_tree.add_leaf(leaf, i);
     }
 
     // Test that all leaves can be verified
     for leaf_index in 0..(1 << DEPTH) {
-        merkle_roll
+        cmt
             .prove_leaf(
                 off_chain_tree.get_root(),
                 off_chain_tree.get_leaf(leaf_index),
@@ -96,7 +96,7 @@ async fn test_prove_leaf() {
                 random_leaf_idx = rng.gen_range(0, 1 << DEPTH);
             }
 
-            merkle_roll
+            cmt
                 .set_leaf(
                     off_chain_tree.get_root(),
                     off_chain_tree.get_leaf(random_leaf_idx),
@@ -108,7 +108,7 @@ async fn test_prove_leaf() {
             off_chain_tree.add_leaf(new_leaf, random_leaf_idx);
 
             // Assert that we can still prove existence of our mostly unused leaf
-            merkle_roll
+            cmt
                 .prove_leaf(root, leaf, &old_proof, leaf_idx as u32)
                 .unwrap();
         }
@@ -117,7 +117,7 @@ async fn test_prove_leaf() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_initialize_with_root() {
-    let (mut merkle_roll, mut tree) = setup();
+    let (mut cmt, mut tree) = setup();
     let mut rng = thread_rng();
 
     for i in 0..(1 << DEPTH) {
@@ -125,7 +125,7 @@ async fn test_initialize_with_root() {
     }
 
     let last_leaf_idx = tree.leaf_nodes.len() - 1;
-    merkle_roll
+    cmt
         .initialize_with_root(
             tree.get_root(),
             tree.get_leaf(last_leaf_idx),
@@ -135,7 +135,7 @@ async fn test_initialize_with_root() {
         .unwrap();
 
     assert_eq!(
-        merkle_roll.get_change_log().root,
+        cmt.get_change_log().root,
         tree.get_root(),
         "Init failed to set root properly"
     );
@@ -143,14 +143,14 @@ async fn test_initialize_with_root() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_leaf_contents_modified() {
-    let (mut merkle_roll, mut tree) = setup();
+    let (mut cmt, mut tree) = setup();
     let mut rng = thread_rng();
-    merkle_roll.initialize().unwrap();
+    cmt.initialize().unwrap();
 
     // Create tree with a single leaf
     let leaf = rng.gen::<[u8; 32]>();
     tree.add_leaf(leaf, 0);
-    merkle_roll.append(leaf).unwrap();
+    cmt.append(leaf).unwrap();
 
     // Save a proof of this leaf
     let root = tree.get_root();
@@ -159,16 +159,16 @@ async fn test_leaf_contents_modified() {
     // Update leaf to be something else
     let new_leaf_0 = rng.gen::<[u8; 32]>();
     tree.add_leaf(leaf, 0);
-    merkle_roll
+    cmt
         .set_leaf(root, leaf, new_leaf_0, &proof, 0_u32)
         .unwrap();
 
     // Should fail to replace same leaf using outdated info
     let new_leaf_1 = rng.gen::<[u8; 32]>();
     tree.add_leaf(leaf, 0);
-    match merkle_roll.set_leaf(root, leaf, new_leaf_1, &proof, 0_u32) {
+    match cmt.set_leaf(root, leaf, new_leaf_1, &proof, 0_u32) {
         Ok(_) => {
-            panic!("Merkle roll should fail when replacing leafs with outdated leaf proofs")
+            panic!("CMT should fail when replacing leafs with outdated leaf proofs")
         }
         Err(e) => match e {
             CMTError::LeafContentsModified => {}
@@ -181,22 +181,22 @@ async fn test_leaf_contents_modified() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_replaces() {
-    let (mut merkle_roll, mut tree) = setup();
+    let (mut cmt, mut tree) = setup();
     let mut rng = thread_rng();
-    merkle_roll.initialize().unwrap();
+    cmt.initialize().unwrap();
 
     // Fill both trees with random nodes
     for i in 0..(1 << DEPTH) {
         let leaf = rng.gen::<[u8; 32]>();
         tree.add_leaf(leaf, i);
-        merkle_roll.append(leaf).unwrap();
+        cmt.append(leaf).unwrap();
     }
-    assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
+    assert_eq!(cmt.get_change_log().root, tree.get_root());
 
     // Replace leaves in order
     for i in 0..(1 << DEPTH) {
         let leaf = rng.gen::<[u8; 32]>();
-        merkle_roll
+        cmt
             .set_leaf(
                 tree.get_root(),
                 tree.get_leaf(i),
@@ -206,7 +206,7 @@ async fn test_replaces() {
             )
             .unwrap();
         tree.add_leaf(leaf, i);
-        assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
+        assert_eq!(cmt.get_change_log().root, tree.get_root());
     }
 
     // Replaces leaves in a random order by x capacity
@@ -214,7 +214,7 @@ async fn test_replaces() {
     for _ in 0..(test_capacity) {
         let index = rng.gen_range(0, test_capacity) % (1 << DEPTH);
         let leaf = rng.gen::<[u8; 32]>();
-        merkle_roll
+        cmt
             .set_leaf(
                 tree.get_root(),
                 tree.get_leaf(index),
@@ -224,7 +224,7 @@ async fn test_replaces() {
             )
             .unwrap();
         tree.add_leaf(leaf, index);
-        assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
+        assert_eq!(cmt.get_change_log().root, tree.get_root());
     }
 }
 
@@ -239,21 +239,21 @@ async fn test_default_node_is_empty() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_mixed() {
-    let (mut merkle_roll, mut tree) = setup();
+    let (mut cmt, mut tree) = setup();
     let mut rng = thread_rng();
-    merkle_roll.initialize().unwrap();
+    cmt.initialize().unwrap();
 
     // Fill both trees with random nodes
     let mut tree_size = 10;
     for i in 0..tree_size {
         let leaf = rng.gen::<[u8; 32]>();
         tree.add_leaf(leaf, i);
-        merkle_roll.append(leaf).unwrap();
+        cmt.append(leaf).unwrap();
     }
-    assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
+    assert_eq!(cmt.get_change_log().root, tree.get_root());
 
     // Replaces leaves in a random order by 4x capacity
-    let mut last_rmp = merkle_roll.rightmost_proof;
+    let mut last_rmp = cmt.rightmost_proof;
 
     let tree_capacity: usize = 1 << DEPTH;
     while tree_size < tree_capacity {
@@ -261,13 +261,13 @@ async fn test_mixed() {
         let random_num: u32 = rng.gen_range(0, 10);
         if random_num < 5 {
             println!("{} append", tree_size);
-            merkle_roll.append(leaf).unwrap();
+            cmt.append(leaf).unwrap();
             tree.add_leaf(leaf, tree_size);
             tree_size += 1;
         } else {
             let index = rng.gen_range(0, tree_size) % (tree_size);
             println!("{} replace {}", tree_size, index);
-            merkle_roll
+            cmt
                 .set_leaf(
                     tree.get_root(),
                     tree.get_leaf(index),
@@ -278,38 +278,38 @@ async fn test_mixed() {
                 .unwrap();
             tree.add_leaf(leaf, index);
         }
-        if merkle_roll.get_change_log().root != tree.get_root() {
+        if cmt.get_change_log().root != tree.get_root() {
             let last_active_index: usize =
-                (merkle_roll.active_index as usize + BUFFER_SIZE - 1) % BUFFER_SIZE;
+                (cmt.active_index as usize + BUFFER_SIZE - 1) % BUFFER_SIZE;
             println!("{:?}", &last_rmp);
-            println!("{:?}", &merkle_roll.change_logs[last_active_index]);
-            println!("{:?}", &merkle_roll.get_change_log())
+            println!("{:?}", &cmt.change_logs[last_active_index]);
+            println!("{:?}", &cmt.get_change_log())
         }
-        last_rmp = merkle_roll.rightmost_proof;
-        assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
+        last_rmp = cmt.rightmost_proof;
+        assert_eq!(cmt.get_change_log().root, tree.get_root());
     }
 }
 
 #[tokio::test(flavor = "multi_thread")]
 /// Append after replacing the last leaf
 async fn test_append_bug_repro_1() {
-    let (mut merkle_roll, mut tree) = setup();
+    let (mut cmt, mut tree) = setup();
     let mut rng = thread_rng();
-    merkle_roll.initialize().unwrap();
+    cmt.initialize().unwrap();
 
     // Fill both trees with random nodes
     let tree_size = 10;
     for i in 0..tree_size {
         let leaf = rng.gen::<[u8; 32]>();
         tree.add_leaf(leaf, i);
-        merkle_roll.append(leaf).unwrap();
+        cmt.append(leaf).unwrap();
     }
-    assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
+    assert_eq!(cmt.get_change_log().root, tree.get_root());
 
     // Replace the rightmost leaf
     let leaf_0 = rng.gen::<[u8; 32]>();
     let index = 9;
-    merkle_roll
+    cmt
         .set_leaf(
             tree.get_root(),
             tree.get_leaf(index),
@@ -320,42 +320,42 @@ async fn test_append_bug_repro_1() {
         .unwrap();
     tree.add_leaf(leaf_0, index);
 
-    let last_rmp = merkle_roll.rightmost_proof;
+    let last_rmp = cmt.rightmost_proof;
 
     // Append
     let leaf_1 = rng.gen::<[u8; 32]>();
-    merkle_roll.append(leaf_1).unwrap();
+    cmt.append(leaf_1).unwrap();
     tree.add_leaf(leaf_1, tree_size);
 
     // Now compare something
-    if merkle_roll.get_change_log().root != tree.get_root() {
+    if cmt.get_change_log().root != tree.get_root() {
         let _last_active_index: usize =
-            (merkle_roll.active_index as usize + BUFFER_SIZE - 1) % BUFFER_SIZE;
+            (cmt.active_index as usize + BUFFER_SIZE - 1) % BUFFER_SIZE;
         println!("{:?}", &last_rmp);
     }
-    assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
+    assert_eq!(cmt.get_change_log().root, tree.get_root());
 }
 
 #[tokio::test(flavor = "multi_thread")]
 /// Append after also appending via a replace
 async fn test_append_bug_repro_2() {
-    let (mut merkle_roll, mut tree) = setup();
+    let (mut cmt, mut tree) = setup();
     let mut rng = thread_rng();
-    merkle_roll.initialize().unwrap();
+    cmt.initialize().unwrap();
 
     // Fill both trees with random nodes
     let mut tree_size = 10;
     for i in 0..tree_size {
         let leaf = rng.gen::<[u8; 32]>();
         tree.add_leaf(leaf, i);
-        merkle_roll.append(leaf).unwrap();
+        cmt.append(leaf).unwrap();
     }
-    assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
+    assert_eq!(cmt.get_change_log().root, tree.get_root());
 
     // Replace the rightmost leaf
     let mut leaf = rng.gen::<[u8; 32]>();
     let index = 10;
-    merkle_roll
+    cmt
         .set_leaf(
             tree.get_root(),
             tree.get_leaf(index),
@@ -367,18 +367,18 @@ async fn test_append_bug_repro_2() {
     tree.add_leaf(leaf, index);
     tree_size += 1;
 
-    let last_rmp = merkle_roll.rightmost_proof;
+    let last_rmp = cmt.rightmost_proof;
 
     // Append
     leaf = rng.gen::<[u8; 32]>();
-    merkle_roll.append(leaf).unwrap();
+    cmt.append(leaf).unwrap();
     tree.add_leaf(leaf, tree_size);
 
     // Now compare something
-    if merkle_roll.get_change_log().root != tree.get_root() {
+    if cmt.get_change_log().root != tree.get_root() {
         let _last_active_index: usize =
-            (merkle_roll.active_index as usize + BUFFER_SIZE - 1) % BUFFER_SIZE;
+            (cmt.active_index as usize + BUFFER_SIZE - 1) % BUFFER_SIZE;
         println!("{:?}", &last_rmp);
     }
-    assert_eq!(merkle_roll.get_change_log().root, tree.get_root());
+    assert_eq!(cmt.get_change_log().root, tree.get_root());
 }

@@ -18,11 +18,11 @@ fn check_bounds(max_depth: usize, max_buffer_size: usize) {
     assert!(max_buffer_size & (max_buffer_size - 1) == 0);
 }
 
-/// MerkleRoll is an implementation of a Conurrent Merkle Tree that allows
+/// Conurrent Merkle Tree is a Merkle Tree that allows
 /// multiple tree operations targeted for the same tree root to succeed.
 ///
 /// In a normal merkle tree, only the first tree operation will succeed because the
-/// following operations will have proofs for the unmodified tree state. MerkleRoll avoids
+/// following operations will have proofs for the unmodified tree state. ConcurrentMerkleTree avoids
 /// this by storing a buffer of modified nodes (`change_logs`) which allows it to implement fast-forwarding
 /// of concurrent merkle tree operations. 
 ///
@@ -32,14 +32,14 @@ fn check_bounds(max_depth: usize, max_buffer_size: usize) {
 /// applied. 
 ///
 /// There are two primitive operations for Concurrent Merkle Trees:
-/// [set_leaf](MerkleRoll:set_leaf) and [append](MerkleRoll::append). Setting a leaf value requires
+/// [set_leaf](ConcurrentMerkleTree:set_leaf) and [append](ConcurrentMerkleTree::append). Setting a leaf value requires
 /// passing a proof to perform that tree operation, but appending does not require a proof.
 ///
-/// An additional key property of MerkleRoll is support for [append](MerkleRoll::append) operations, 
+/// An additional key property of ConcurrentMerkleTree is support for [append](ConcurrentMerkleTree::append) operations, 
 /// which do not require any proofs to be passed. This is accomplished by keeping track of the
 /// proof to the rightmost leaf in the tree (`rightmost_proof`).
 #[derive(Copy, Clone)]
-pub struct MerkleRoll<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> {
+pub struct ConcurrentMerkleTree<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> {
     pub sequence_number: u64,
     /// Index of most recent root & changes
     pub active_index: u64,
@@ -51,16 +51,16 @@ pub struct MerkleRoll<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> {
 }
 
 unsafe impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> Zeroable
-    for MerkleRoll<MAX_DEPTH, MAX_BUFFER_SIZE>
+    for ConcurrentMerkleTree<MAX_DEPTH, MAX_BUFFER_SIZE>
 {
 }
 unsafe impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> Pod
-    for MerkleRoll<MAX_DEPTH, MAX_BUFFER_SIZE>
+    for ConcurrentMerkleTree<MAX_DEPTH, MAX_BUFFER_SIZE>
 {
 }
 
 impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> Default
-    for MerkleRoll<MAX_DEPTH, MAX_BUFFER_SIZE>
+    for ConcurrentMerkleTree<MAX_DEPTH, MAX_BUFFER_SIZE>
 {
     fn default() -> Self {
         Self {
@@ -73,7 +73,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> Default
     }
 }
 
-impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> MerkleRoll<MAX_DEPTH, MAX_BUFFER_SIZE> {
+impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> ConcurrentMerkleTree<MAX_DEPTH, MAX_BUFFER_SIZE> {
     pub fn new() -> Self {
         Self::default()
     }

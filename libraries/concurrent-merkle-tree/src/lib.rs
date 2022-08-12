@@ -12,7 +12,7 @@ pub mod error;
 #[macro_use]
 pub mod log;
 /// Core implementation of the concurrent merkle tree structure
-pub mod merkle_roll;
+pub mod cmt;
 /// Structs to support concurrent merkle tree operations
 pub mod state;
 /// Hashing utils to support concurrent merkle tree operations
