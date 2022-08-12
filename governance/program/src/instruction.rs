@@ -523,15 +523,14 @@ pub fn create_realm(
         false
     };
 
+    let realm_config_address = get_realm_config_address(program_id, &realm_address);
+    accounts.push(AccountMeta::new(realm_config_address, false));
+
     let community_token_config_args =
         with_governing_token_config_args(&mut accounts, community_token_config_args);
 
     let council_token_config_args =
         with_governing_token_config_args(&mut accounts, council_token_config_args);
-
-    // TODO: Move before token config accoutns
-    let realm_config_address = get_realm_config_address(program_id, &realm_address);
-    accounts.push(AccountMeta::new(realm_config_address, false));
 
     let instruction = GovernanceInstruction::CreateRealm {
         config_args: RealmConfigArgs {

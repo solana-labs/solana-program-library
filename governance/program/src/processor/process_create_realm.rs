@@ -51,6 +51,7 @@ pub fn process_create_realm(
 
     assert_valid_realm_config_args(&config_args)?;
 
+    // Create Community token holding account
     create_spl_token_account_signed(
         payer_info,
         governance_token_holding_info,
@@ -64,6 +65,7 @@ pub fn process_create_realm(
         rent,
     )?;
 
+    // Create Council token holding account
     let council_token_mint_address = if config_args.use_council_mint {
         let council_token_mint_info = next_account_info(account_info_iter)?; // 8
         let council_token_holding_info = next_account_info(account_info_iter)?; // 9
@@ -86,13 +88,14 @@ pub fn process_create_realm(
         None
     };
 
-    // Setup config for addins
+    // Create and serialzie RealmConfig
+    let realm_config_info = next_account_info(account_info_iter)?; // 10
 
     let community_voter_weight_addin = if config_args
         .community_token_config_args
         .use_voter_weight_addin
     {
-        let community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 10
+        let community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 11
         Some(*community_voter_weight_addin_info.key)
     } else {
         None
@@ -102,45 +105,36 @@ pub fn process_create_realm(
         .community_token_config_args
         .use_max_voter_weight_addin
     {
-        let max_community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 11
+        let max_community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 12
         Some(*max_community_voter_weight_addin_info.key)
     } else {
         None
     };
 
-    if config_args
-        .community_token_config_args
-        .use_voter_weight_addin
-        || config_args
-            .community_token_config_args
-            .use_max_voter_weight_addin
-    {
-        let realm_config_info = next_account_info(account_info_iter)?; // 12
+    let realm_config_data = RealmConfigAccount {
+        account_type: GovernanceAccountType::RealmConfig,
+        realm: *realm_info.key,
+        community_token_config: GoverningTokenConfig {
+            voter_weight_addin: community_voter_weight_addin,
+            max_voter_weight_addin: max_community_voter_weight_addin,
+            token_type: GoverningTokenType::Liquid,
+            reserved: [0; 8],
+        },
+        council_token_config: GoverningTokenConfig::default(),
+        reserved: Reserved110::default(),
+    };
 
-        let realm_config_data = RealmConfigAccount {
-            account_type: GovernanceAccountType::RealmConfig,
-            realm: *realm_info.key,
-            community_token_config: GoverningTokenConfig {
-                voter_weight_addin: community_voter_weight_addin,
-                max_voter_weight_addin: max_community_voter_weight_addin,
-                token_type: GoverningTokenType::Liquid,
-                reserved: [0; 8],
-            },
-            council_token_config: GoverningTokenConfig::default(),
-            reserved: Reserved110::default(),
-        };
+    create_and_serialize_account_signed::<RealmConfigAccount>(
+        payer_info,
+        realm_config_info,
+        &realm_config_data,
+        &get_realm_config_address_seeds(realm_info.key),
+        program_id,
+        system_info,
+        rent,
+    )?;
 
-        create_and_serialize_account_signed::<RealmConfigAccount>(
-            payer_info,
-            realm_config_info,
-            &realm_config_data,
-            &get_realm_config_address_seeds(realm_info.key),
-            program_id,
-            system_info,
-            rent,
-        )?;
-    }
-
+    // Create and serialize Realm
     let realm_data = RealmV2 {
         account_type: GovernanceAccountType::RealmV2,
         community_mint: *governance_token_mint_info.key,
