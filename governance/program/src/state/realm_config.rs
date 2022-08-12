@@ -1,4 +1,7 @@
 //! RealmConfig account
+use std::slice::Iter;
+
+use solana_program::account_info::next_account_info;
 
 use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
@@ -9,6 +12,8 @@ use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
 use crate::{error::GovernanceError, state::enums::GovernanceAccountType};
+
+use crate::state::realm::GoverningTokenConfigArgs;
 
 /// The type of the governing token defines:
 /// 1) Who retains the authority over deposited tokens
@@ -155,6 +160,32 @@ pub fn get_realm_config_address_seeds(realm: &Pubkey) -> [&[u8]; 2] {
 /// Returns RealmConfig PDA address
 pub fn get_realm_config_address(program_id: &Pubkey, realm: &Pubkey) -> Pubkey {
     Pubkey::find_program_address(&get_realm_config_address_seeds(realm), program_id).0
+}
+/// Resolves GoverningTokenConfig from GoverningTokenConfigArgs and instruction accounts
+pub fn resolve_governing_token_config(
+    account_info_iter: &mut Iter<AccountInfo>,
+    governing_token_config_args: GoverningTokenConfigArgs,
+) -> Result<GoverningTokenConfig, ProgramError> {
+    let voter_weight_addin = if governing_token_config_args.use_voter_weight_addin {
+        let voter_weight_addin_info = next_account_info(account_info_iter)?;
+        Some(*voter_weight_addin_info.key)
+    } else {
+        None
+    };
+
+    let max_voter_weight_addin = if governing_token_config_args.use_max_voter_weight_addin {
+        let max_voter_weight_addin_info = next_account_info(account_info_iter)?;
+        Some(*max_voter_weight_addin_info.key)
+    } else {
+        None
+    };
+
+    Ok(GoverningTokenConfig {
+        voter_weight_addin,
+        max_voter_weight_addin,
+        token_type: governing_token_config_args.token_type,
+        reserved: [0; 8],
+    })
 }
 
 #[cfg(test)]

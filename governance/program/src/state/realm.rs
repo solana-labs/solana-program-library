@@ -120,9 +120,12 @@ pub enum SetRealmAuthorityAction {
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfig {
     /// Indicates whether an external addin program should be used to provide voters weights for the community mint
+    /// TODO: Do we need this? Can we make RealmConfig mandatory?
+    /// Note: If removed be carefull abtou reusing the field, Force to update?
     pub use_community_voter_weight_addin: bool,
 
     /// Indicates whether an external addin program should be used to provide max voter weight for the community mint
+    /// TODO: Do we need this?
     pub use_max_community_voter_weight_addin: bool,
 
     /// Reserved space for future versions

@@ -18,8 +18,8 @@ use crate::{
             get_realm_address_seeds, RealmConfig, RealmConfigArgs, RealmV2,
         },
         realm_config::{
-            get_realm_config_address_seeds, GoverningTokenConfig, GoverningTokenType,
-            RealmConfigAccount, Reserved110,
+            get_realm_config_address_seeds, resolve_governing_token_config, RealmConfigAccount,
+            Reserved110,
         },
     },
     tools::spl_token::create_spl_token_account_signed,
@@ -91,36 +91,23 @@ pub fn process_create_realm(
     // Create and serialzie RealmConfig
     let realm_config_info = next_account_info(account_info_iter)?; // 10
 
-    let community_voter_weight_addin = if config_args
-        .community_token_config_args
-        .use_voter_weight_addin
-    {
-        let community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 11
-        Some(*community_voter_weight_addin_info.key)
-    } else {
-        None
-    };
+    // 11, 12
+    let community_token_config = resolve_governing_token_config(
+        account_info_iter,
+        config_args.community_token_config_args.clone(),
+    )?;
 
-    let max_community_voter_weight_addin = if config_args
-        .community_token_config_args
-        .use_max_voter_weight_addin
-    {
-        let max_community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 12
-        Some(*max_community_voter_weight_addin_info.key)
-    } else {
-        None
-    };
+    // 13, 14
+    let council_token_config = resolve_governing_token_config(
+        account_info_iter,
+        config_args.council_token_config_args.clone(),
+    )?;
 
     let realm_config_data = RealmConfigAccount {
         account_type: GovernanceAccountType::RealmConfig,
         realm: *realm_info.key,
-        community_token_config: GoverningTokenConfig {
-            voter_weight_addin: community_voter_weight_addin,
-            max_voter_weight_addin: max_community_voter_weight_addin,
-            token_type: GoverningTokenType::Liquid,
-            reserved: [0; 8],
-        },
-        council_token_config: GoverningTokenConfig::default(),
+        community_token_config,
+        council_token_config,
         reserved: Reserved110::default(),
     };
 
