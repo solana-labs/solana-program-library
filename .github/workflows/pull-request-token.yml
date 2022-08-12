@@ -114,7 +114,7 @@ jobs:
       - name: Build and test token-2022 twoxtx (TEMPORARY)
         run: |
           ./token/twoxtx-setup.sh
-          ./token/twoxtx-solana/cargo-test-sbf --manifest-path ./token/program-2022-test/Cargo.toml -- --nocapture
+          ./token/twoxtx-test-bpf.sh
 
   js-test:
     runs-on: ubuntu-latest
