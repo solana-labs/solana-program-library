@@ -133,14 +133,6 @@ pub fn process_set_realm_config(
     realm_data.config.min_community_weight_to_create_governance =
         realm_config_args.min_community_weight_to_create_governance;
 
-    realm_data.config.use_community_voter_weight_addin = realm_config_args
-        .community_token_config_args
-        .use_voter_weight_addin;
-
-    realm_data.config.use_max_community_voter_weight_addin = realm_config_args
-        .community_token_config_args
-        .use_max_voter_weight_addin;
-
     realm_data.serialize(&mut *realm_info.data.borrow_mut())?;
 
     Ok(())

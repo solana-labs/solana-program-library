@@ -121,14 +121,15 @@ pub enum SetRealmAuthorityAction {
 /// Realm Config defining Realm parameters.
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfig {
-    /// Indicates whether an external addin program should be used to provide voters weights for the community mint
-    /// TODO: Do we need this? Can we make RealmConfig mandatory?
-    /// Note: If removed be carefull abtou reusing the field, Force to update?
-    pub use_community_voter_weight_addin: bool,
+    /// Legacy field introdcued and used in V2 as use_community_voter_weight_addin: bool
+    /// If the field is going to be reused in future version it must be taken under consideration
+    /// that for some Realms it might be already set to 1
+    pub legacy1: u8,
 
-    /// Indicates whether an external addin program should be used to provide max voter weight for the community mint
-    /// TODO: Do we need this?
-    pub use_max_community_voter_weight_addin: bool,
+    /// Legacy field introdcued and used in V2 as use_max_community_voter_weight_addin: bool
+    /// If the field is going to be reused in future version it must be taken under consideration
+    /// that for some Realms it might be already set to 1
+    pub legacy2: u8,
 
     /// Reserved space for future versions
     pub reserved: [u8; 6],
@@ -489,8 +490,8 @@ mod test {
             name: "test-realm".to_string(),
             config: RealmConfig {
                 council_mint: Some(Pubkey::new_unique()),
-                use_community_voter_weight_addin: false,
-                use_max_community_voter_weight_addin: false,
+                legacy1: 0,
+                legacy2: 0,
                 reserved: [0; 6],
                 community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Absolute(100),
                 min_community_weight_to_create_governance: 10,

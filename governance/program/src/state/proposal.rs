@@ -485,7 +485,10 @@ impl ProposalV2 {
         vote_kind: &VoteKind,
     ) -> Result<u64, ProgramError> {
         // if the realm uses addin for max community voter weight then use the externally provided max weight
-        if realm_data.config.use_max_community_voter_weight_addin
+        if realm_config_data
+            .community_token_config
+            .max_voter_weight_addin
+            .is_some()
             && realm_data.community_mint == *vote_governing_token_mint_info.key
         {
             let max_voter_weight_record_info = next_account_info(account_info_iter)?;
@@ -1166,8 +1169,8 @@ mod test {
             config: RealmConfig {
                 council_mint: Some(Pubkey::new_unique()),
                 reserved: [0; 6],
-                use_community_voter_weight_addin: false,
-                use_max_community_voter_weight_addin: false,
+                legacy1: 0,
+                legacy2: 0,
 
                 community_mint_max_vote_weight_source:
                     MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,

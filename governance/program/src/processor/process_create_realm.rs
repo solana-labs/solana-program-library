@@ -136,12 +136,8 @@ pub fn process_create_realm(
                 .community_mint_max_vote_weight_source,
             min_community_weight_to_create_governance: realm_config_args
                 .min_community_weight_to_create_governance,
-            use_community_voter_weight_addin: realm_config_args
-                .community_token_config_args
-                .use_voter_weight_addin,
-            use_max_community_voter_weight_addin: realm_config_args
-                .community_token_config_args
-                .use_max_voter_weight_addin,
+            legacy1: 0,
+            legacy2: 0,
         },
         voting_proposal_count: 0,
         reserved_v2: [0; 128],

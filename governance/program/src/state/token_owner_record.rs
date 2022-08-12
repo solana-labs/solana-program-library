@@ -198,7 +198,10 @@ impl TokenOwnerRecordV2 {
         weight_action_target: &Pubkey,
     ) -> Result<u64, ProgramError> {
         // if the realm uses addin for community voter weight then use the externally provided weight
-        if realm_data.config.use_community_voter_weight_addin
+        if realm_config_data
+            .community_token_config
+            .voter_weight_addin
+            .is_some()
             && realm_data.community_mint == self.governing_token_mint
         {
             let voter_weight_record_info = next_account_info(account_info_iter)?;

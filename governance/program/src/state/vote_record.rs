@@ -28,7 +28,7 @@ use crate::state::{
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct VoteChoice {
     /// The rank given to the choice by voter
-    /// Note: The filed is not used in the current version
+    /// Note: The field is not used in the current version
     pub rank: u8,
 
     /// The voter's weight percentage given by the voter to the choice

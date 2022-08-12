@@ -335,8 +335,8 @@ impl GovernanceProgramTest {
                     .realm_config_args
                     .community_mint_max_vote_weight_source
                     .clone(),
-                use_community_voter_weight_addin: false,
-                use_max_community_voter_weight_addin: false,
+                legacy1: 0,
+                legacy2: 0,
             },
             voting_proposal_count: 0,
             reserved_v2: [0; 128],
@@ -426,8 +426,8 @@ impl GovernanceProgramTest {
                 community_mint_max_vote_weight_source:
                     MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
                 min_community_weight_to_create_governance,
-                use_community_voter_weight_addin: false,
-                use_max_community_voter_weight_addin: false,
+                legacy1: 0,
+                legacy2: 0,
             },
             voting_proposal_count: 0,
             reserved_v2: [0; 128],

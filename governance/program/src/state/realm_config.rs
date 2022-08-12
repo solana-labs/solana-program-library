@@ -156,7 +156,7 @@ pub fn get_realm_config_data_for_realm(
 
         RealmConfigAccount {
             account_type: GovernanceAccountType::RealmConfig,
-            realm: realm.clone(),
+            realm: *realm,
             community_token_config: GoverningTokenConfig::default(),
             council_token_config: GoverningTokenConfig::default(),
             reserved: Reserved110::default(),
