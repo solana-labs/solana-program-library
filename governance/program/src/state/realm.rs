@@ -63,6 +63,21 @@ pub struct GoverningTokenConfigArgs {
     pub token_type: GoverningTokenType,
 }
 
+/// Realm Config instruction args with account parametres
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct GoverningTokenConfigAccountArgs {
+    /// Specifies an external plugin program which should be used to provide voters weights
+    /// for the given goventing token
+    pub voter_weight_addin: Option<Pubkey>,
+
+    /// Specifies an external an external plugin program should be used to provide max voters weight
+    /// for the given goventing token
+    pub max_voter_weight_addin: Option<Pubkey>,
+
+    /// Governing token type defines how the token is used for governance power
+    pub token_type: GoverningTokenType,
+}
+
 impl Default for GoverningTokenConfigArgs {
     fn default() -> Self {
         Self {
