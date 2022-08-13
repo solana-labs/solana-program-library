@@ -94,8 +94,9 @@ pub fn process_post_message(
     )?;
 
     let realm_config_info = next_account_info(account_info_iter)?; // 10
+
     let realm_config_data =
-        get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
+        get_realm_config_data_for_realm(governance_program_id, realm_config_info, realm_info.key)?;
 
     let voter_weight = token_owner_record_data.resolve_voter_weight(
         account_info_iter, // voter_weight_record *11

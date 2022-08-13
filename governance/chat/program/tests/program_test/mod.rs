@@ -13,7 +13,8 @@ use spl_governance::{
         enums::{MintMaxVoteWeightSource, VoteThreshold},
         governance::{get_governance_address, GovernanceConfig},
         proposal::{get_proposal_address, VoteType},
-        realm::get_realm_address,
+        realm::{get_realm_address, GoverningTokenConfigAccountArgs},
+        realm_config::GoverningTokenType,
         token_owner_record::get_token_owner_record_address,
     },
 };
@@ -108,13 +109,19 @@ impl GovernanceChatProgramTest {
 
         let realm_authority = Keypair::new();
 
+        let community_token_config_args = GoverningTokenConfigAccountArgs {
+            voter_weight_addin: self.voter_weight_addin_id,
+            max_voter_weight_addin: None,
+            token_type: GoverningTokenType::default(),
+        };
+
         let create_realm_ix = create_realm(
             &self.governance_program_id,
             &realm_authority.pubkey(),
             &governing_token_mint_keypair.pubkey(),
             &self.bench.payer.pubkey(),
             None,
-            self.voter_weight_addin_id,
+            Some(community_token_config_args),
             None,
             name.clone(),
             1,
