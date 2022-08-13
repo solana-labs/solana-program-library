@@ -112,7 +112,6 @@ pub struct RealmConfigAccount {
     pub community_token_config: GoverningTokenConfig,
 
     /// Council token config
-    /// Note: This field is not implemented in the current version
     pub council_token_config: GoverningTokenConfig,
 
     /// Reserved
