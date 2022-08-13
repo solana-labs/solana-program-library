@@ -767,7 +767,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_initial_governing_token_mint_deposit(
+    pub async fn with_initial_governing_token_deposit_using_mint(
         &mut self,
         realm_address: &Pubkey,
         governing_mint: &Pubkey,

@@ -296,46 +296,34 @@ async fn test_deposit_community_tokens_with_malicious_holding_account_error() {
 async fn test_deposit_community_tokens_using_mint() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
-    let _realm_cookie = governance_test.with_realm().await;
+    let realm_cookie = governance_test.with_realm().await;
 
     // Act
-    // let _token_owner_record_cookie = governance_test
-    //     .with_initial_governing_token_mint_deposit(
-    //         &realm_cookie.address,
-    //         &realm_cookie.account.community_mint,
-    //         &realm_cookie.community_mint_authority,
-    //         10,
-    //         None,
-    //     )
-    //     .await
-    //     .unwrap();
+    let token_owner_record_cookie = governance_test
+        .with_initial_governing_token_deposit_using_mint(
+            &realm_cookie.address,
+            &realm_cookie.account.community_mint,
+            &realm_cookie.community_mint_authority,
+            10,
+            None,
+        )
+        .await
+        .unwrap();
 
     // Assert
 
-    // let token_owner_record = governance_test
-    //     .get_token_owner_record_account(&token_owner_record_cookie.address)
-    //     .await;
+    let token_owner_record = governance_test
+        .get_token_owner_record_account(&token_owner_record_cookie.address)
+        .await;
 
-    // assert_eq!(token_owner_record_cookie.account, token_owner_record);
+    assert_eq!(token_owner_record_cookie.account, token_owner_record);
 
-    // let source_account = governance_test
-    //     .get_token_account(&token_owner_record_cookie.token_source)
-    //     .await;
+    let holding_account = governance_test
+        .get_token_account(&realm_cookie.community_token_holding_account)
+        .await;
 
-    // assert_eq!(
-    //     token_owner_record_cookie.token_source_amount
-    //         - token_owner_record_cookie
-    //             .account
-    //             .governing_token_deposit_amount,
-    //     source_account.amount
-    // );
-
-    // let holding_account = governance_test
-    //     .get_token_account(&realm_cookie.community_token_holding_account)
-    //     .await;
-
-    // assert_eq!(
-    //     token_owner_record.governing_token_deposit_amount,
-    //     holding_account.amount
-    // );
+    assert_eq!(
+        token_owner_record.governing_token_deposit_amount,
+        holding_account.amount
+    );
 }
