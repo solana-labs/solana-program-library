@@ -1544,7 +1544,7 @@ pub fn revoke_governing_tokens(
     let governing_token_holding_address =
         get_governing_token_holding_address(program_id, realm, governing_token_mint);
 
-    let realm_config_address = get_realm_config_address(program_id, &realm);
+    let realm_config_address = get_realm_config_address(program_id, realm);
 
     let accounts = vec![
         AccountMeta::new_readonly(*realm, false),
