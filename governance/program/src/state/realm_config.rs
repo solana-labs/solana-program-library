@@ -161,7 +161,7 @@ impl RealmConfigAccount {
         match governing_token_type {
             GoverningTokenType::Membership => Ok(()),
             GoverningTokenType::Liquid | GoverningTokenType::Dormant => {
-                Err(GovernanceError::CannotRevokeGoverningToken.into())
+                Err(GovernanceError::CannotRevokeGoverningTokens.into())
             }
         }
     }
@@ -178,7 +178,9 @@ impl RealmConfigAccount {
 
         match governing_token_type {
             GoverningTokenType::Membership | GoverningTokenType::Liquid => Ok(()),
-            GoverningTokenType::Dormant => Err(GovernanceError::CannotDepositGoverningToken.into()),
+            GoverningTokenType::Dormant => {
+                Err(GovernanceError::CannotDepositGoverningTokens.into())
+            }
         }
     }
 
@@ -195,7 +197,7 @@ impl RealmConfigAccount {
         match governing_token_type {
             GoverningTokenType::Dormant | GoverningTokenType::Liquid => Ok(()),
             GoverningTokenType::Membership => {
-                Err(GovernanceError::CannotWithdrawGoverningToken.into())
+                Err(GovernanceError::CannotWithdrawGoverningTokens.into())
             }
         }
     }
