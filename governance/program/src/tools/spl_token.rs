@@ -170,6 +170,55 @@ pub fn transfer_spl_tokens_signed<'a>(
     Ok(())
 }
 
+/// Burns SPL Tokens from a token account owned by the provided PDA authority with seeds
+pub fn burn_spl_tokens_signed<'a>(
+    token_account_info: &AccountInfo<'a>,
+    token_mint_info: &AccountInfo<'a>,
+    authority_info: &AccountInfo<'a>,
+    authority_seeds: &[&[u8]],
+    program_id: &Pubkey,
+    amount: u64,
+    spl_token_info: &AccountInfo<'a>,
+) -> ProgramResult {
+    let (authority_address, bump_seed) = Pubkey::find_program_address(authority_seeds, program_id);
+
+    if authority_address != *authority_info.key {
+        msg!(
+            "Burn SPL Token with Authority PDA: {:?} was requested while PDA: {:?} was expected",
+            authority_info.key,
+            authority_address
+        );
+        return Err(ProgramError::InvalidSeeds);
+    }
+
+    let burn_ix = spl_token::instruction::burn(
+        &spl_token::id(),
+        token_account_info.key,
+        token_mint_info.key,
+        authority_info.key,
+        &[],
+        amount,
+    )
+    .unwrap();
+
+    let mut signers_seeds = authority_seeds.to_vec();
+    let bump = &[bump_seed];
+    signers_seeds.push(bump);
+
+    invoke_signed(
+        &burn_ix,
+        &[
+            spl_token_info.clone(),
+            token_account_info.clone(),
+            token_mint_info.clone(),
+            authority_info.clone(),
+        ],
+        &[&signers_seeds[..]],
+    )?;
+
+    Ok(())
+}
+
 /// Asserts the given account_info represents a valid SPL Token account which is initialized and belongs to spl_token program
 pub fn assert_is_valid_spl_token_account(account_info: &AccountInfo) -> Result<(), ProgramError> {
     if account_info.data_is_empty() {

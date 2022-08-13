@@ -478,6 +478,22 @@ pub enum GovernanceInstruction {
     ///  2. `[signer]` Payer
     ///  3. `[]` System
     CreateNativeTreasury,
+
+    /// Revokes (burns) membership governing tokens for the given TokenOwnerRecord and hence takes away governance power from the TokenOwner
+    /// Note: If there are active votes for the TokenOwner then the vote weights won't be updated automatically
+    ///
+    ///  0. `[]` Realm account
+    ///  1. `[signer]`  Realm authority    
+    ///  2. `[writable]` Governing Token Holding account. PDA seeds: ['governance',realm, governing_token_mint]
+    ///  3. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///  4. `[writable]` GoverningTokenMint
+    ///  5. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///  6. `[]` SPL Token program
+    RevokeGoverningTokens {
+        /// The amount to revoke
+        #[allow(dead_code)]
+        amount: u64,
+    },
 }
 
 /// Creates CreateRealm instruction
@@ -1498,6 +1514,49 @@ pub fn create_native_treasury(
     ];
 
     let instruction = GovernanceInstruction::CreateNativeTreasury {};
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates RevokeGoverningTokens instruction
+#[allow(clippy::too_many_arguments)]
+pub fn revoke_governing_tokens(
+    program_id: &Pubkey,
+    // Accounts
+    realm: &Pubkey,
+    realm_authority: &Pubkey,
+    governing_token_owner: &Pubkey,
+    governing_token_mint: &Pubkey,
+    // Args
+    amount: u64,
+) -> Instruction {
+    let token_owner_record_address = get_token_owner_record_address(
+        program_id,
+        realm,
+        governing_token_mint,
+        governing_token_owner,
+    );
+
+    let governing_token_holding_address =
+        get_governing_token_holding_address(program_id, realm, governing_token_mint);
+
+    let realm_config_address = get_realm_config_address(program_id, &realm);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*realm, false),
+        AccountMeta::new_readonly(*realm_authority, true),
+        AccountMeta::new(governing_token_holding_address, false),
+        AccountMeta::new(token_owner_record_address, false),
+        AccountMeta::new(*governing_token_mint, false),
+        AccountMeta::new_readonly(realm_config_address, false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::RevokeGoverningTokens { amount };
 
     Instruction {
         program_id: *program_id,

@@ -410,6 +410,14 @@ pub enum GovernanceError {
     /// Invalid RealmConfig account address
     #[error("Invalid RealmConfig account address")]
     InvalidRealmConfigAddress,
+
+    /// Cannot revoke GoverningToken
+    #[error("Cannot revoke GoverningToken")]
+    CannotRevokeGoverningToken, // 599
+
+    /// Invalid Revoke amount
+    #[error("Invalid Revoke amount")]
+    InvalidRevokeAmount, // 600
 }
 
 impl PrintProgramError for GovernanceError {

@@ -148,6 +148,24 @@ impl RealmConfigAccount {
 
         Ok(token_config)
     }
+
+    /// Assertes the given governing token can be revoked
+    pub fn assert_can_revoke_governing_token(
+        &self,
+        realm_data: &RealmV2,
+        governing_token_mint: &Pubkey,
+    ) -> Result<(), ProgramError> {
+        let governing_token_type = &self
+            .get_token_config(realm_data, governing_token_mint)?
+            .token_type;
+
+        match governing_token_type {
+            GoverningTokenType::Membership => Ok(()),
+            GoverningTokenType::Liquid | GoverningTokenType::Dormant => {
+                Err(GovernanceError::CannotRevokeGoverningToken.into())
+            }
+        }
+    }
 }
 
 /// Deserializes RealmConfig account and checks owner program

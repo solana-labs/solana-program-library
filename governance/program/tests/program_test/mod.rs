@@ -20,9 +20,9 @@ use spl_governance::{
         create_native_treasury, create_program_governance, create_proposal, create_realm,
         create_token_governance, create_token_owner_record, deposit_governing_tokens,
         execute_transaction, finalize_vote, flag_transaction_error, insert_transaction,
-        relinquish_vote, remove_signatory, remove_transaction, set_governance_config,
-        set_governance_delegate, set_realm_authority, set_realm_config, sign_off_proposal,
-        upgrade_program_metadata, withdraw_governing_tokens,
+        relinquish_vote, remove_signatory, remove_transaction, revoke_governing_tokens,
+        set_governance_config, set_governance_delegate, set_realm_authority, set_realm_config,
+        sign_off_proposal, upgrade_program_metadata, withdraw_governing_tokens,
     },
     processor::process_instruction,
     state::{
@@ -291,7 +291,11 @@ impl GovernanceProgramTest {
         let community_token_args = GoverningTokenConfigAccountArgs {
             voter_weight_addin: set_realm_config_args.community_voter_weight_addin,
             max_voter_weight_addin: set_realm_config_args.max_community_voter_weight_addin,
-            token_type: GoverningTokenType::Liquid,
+            token_type: set_realm_config_args
+                .realm_config_args
+                .community_token_config_args
+                .token_type
+                .clone(),
         };
 
         let create_realm_ix = create_realm(
@@ -1160,6 +1164,47 @@ impl GovernanceProgramTest {
                 &[deposit_governing_tokens_ix],
                 Some(&[governing_token_owner]),
             )
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn revoke_community_tokens(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+    ) -> Result<(), ProgramError> {
+        self.revoke_governing_tokens(
+            realm_cookie,
+            token_owner_record_cookie,
+            &realm_cookie.account.community_mint,
+            token_owner_record_cookie
+                .account
+                .governing_token_deposit_amount,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    async fn revoke_governing_tokens(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        governing_token_mint: &Pubkey,
+        amount: u64,
+    ) -> Result<(), ProgramError> {
+        let revoke_governing_tokens_ix = revoke_governing_tokens(
+            &self.program_id,
+            &realm_cookie.address,
+            &realm_cookie.account.authority.unwrap(),
+            &token_owner_record_cookie.account.governing_token_owner,
+            governing_token_mint,
+            amount,
+        );
+
+        let default_signers = &[realm_cookie.realm_authority.as_ref().unwrap()];
+
+        self.bench
+            .process_transaction(&[revoke_governing_tokens_ix], Some(default_signers))
             .await
     }
 
