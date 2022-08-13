@@ -590,6 +590,8 @@ pub fn deposit_governing_tokens(
     let governing_token_holding_address =
         get_governing_token_holding_address(program_id, realm, governing_token_mint);
 
+    let realm_config_address = get_realm_config_address(program_id, realm);
+
     let accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(governing_token_holding_address, false),
@@ -600,6 +602,7 @@ pub fn deposit_governing_tokens(
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(realm_config_address, false),
     ];
 
     let instruction = GovernanceInstruction::DepositGoverningTokens { amount };
@@ -631,6 +634,8 @@ pub fn withdraw_governing_tokens(
     let governing_token_holding_address =
         get_governing_token_holding_address(program_id, realm, governing_token_mint);
 
+    let realm_config_address = get_realm_config_address(program_id, realm);
+
     let accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(governing_token_holding_address, false),
@@ -638,6 +643,7 @@ pub fn withdraw_governing_tokens(
         AccountMeta::new_readonly(*governing_token_owner, true),
         AccountMeta::new(token_owner_record_address, false),
         AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(realm_config_address, false),
     ];
 
     let instruction = GovernanceInstruction::WithdrawGoverningTokens {};

@@ -14,6 +14,7 @@ use crate::{
     state::{
         enums::GovernanceAccountType,
         realm::get_realm_data,
+        realm_config::get_realm_config_data_for_realm,
         token_owner_record::{
             get_token_owner_record_address_seeds, get_token_owner_record_data_for_seeds,
             TokenOwnerRecordV2,
@@ -39,6 +40,7 @@ pub fn process_deposit_governing_tokens(
     let payer_info = next_account_info(account_info_iter)?; // 6
     let system_info = next_account_info(account_info_iter)?; // 7
     let spl_token_info = next_account_info(account_info_iter)?; // 8
+    let realm_config_info = next_account_info(account_info_iter)?; // 9
 
     let rent = Rent::get()?;
 
@@ -51,6 +53,11 @@ pub fn process_deposit_governing_tokens(
         &governing_token_mint,
         governing_token_holding_info.key,
     )?;
+
+    let realm_config_data =
+        get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
+
+    realm_config_data.assert_can_deposit_governing_token(&realm_data, &governing_token_mint)?;
 
     transfer_spl_tokens(
         governing_token_source_info,

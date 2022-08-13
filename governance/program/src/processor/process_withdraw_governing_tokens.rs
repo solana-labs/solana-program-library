@@ -10,6 +10,7 @@ use crate::{
     error::GovernanceError,
     state::{
         realm::{get_realm_address_seeds, get_realm_data},
+        realm_config::get_realm_config_data_for_realm,
         token_owner_record::{
             get_token_owner_record_address_seeds, get_token_owner_record_data_for_seeds,
         },
@@ -30,6 +31,7 @@ pub fn process_withdraw_governing_tokens(
     let governing_token_owner_info = next_account_info(account_info_iter)?; // 3
     let token_owner_record_info = next_account_info(account_info_iter)?; // 4
     let spl_token_info = next_account_info(account_info_iter)?; // 5
+    let realm_config_info = next_account_info(account_info_iter)?; // 6
 
     if !governing_token_owner_info.is_signer {
         return Err(GovernanceError::GoverningTokenOwnerMustSign.into());
@@ -44,6 +46,11 @@ pub fn process_withdraw_governing_tokens(
         &governing_token_mint,
         governing_token_holding_info.key,
     )?;
+
+    let realm_config_data =
+        get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
+
+    realm_config_data.assert_can_withdraw_governing_token(&realm_data, &governing_token_mint)?;
 
     let token_owner_record_address_seeds = get_token_owner_record_address_seeds(
         realm_info.key,

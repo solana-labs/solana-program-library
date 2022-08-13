@@ -166,6 +166,40 @@ impl RealmConfigAccount {
             }
         }
     }
+
+    /// Assertes the given governing token can be deposited
+    pub fn assert_can_deposit_governing_token(
+        &self,
+        realm_data: &RealmV2,
+        governing_token_mint: &Pubkey,
+    ) -> Result<(), ProgramError> {
+        let governing_token_type = &self
+            .get_token_config(realm_data, governing_token_mint)?
+            .token_type;
+
+        match governing_token_type {
+            GoverningTokenType::Membership | GoverningTokenType::Liquid => Ok(()),
+            GoverningTokenType::Dormant => Err(GovernanceError::CannotDepositGoverningToken.into()),
+        }
+    }
+
+    /// Assertes the given governing token can be withdrawn
+    pub fn assert_can_withdraw_governing_token(
+        &self,
+        realm_data: &RealmV2,
+        governing_token_mint: &Pubkey,
+    ) -> Result<(), ProgramError> {
+        let governing_token_type = &self
+            .get_token_config(realm_data, governing_token_mint)?
+            .token_type;
+
+        match governing_token_type {
+            GoverningTokenType::Dormant | GoverningTokenType::Liquid => Ok(()),
+            GoverningTokenType::Membership => {
+                Err(GovernanceError::CannotWithdrawGoverningToken.into())
+            }
+        }
+    }
 }
 
 /// Deserializes RealmConfig account and checks owner program
