@@ -48,11 +48,11 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
 
     let max_voter_weight = proposal_data.resolve_max_voter_weight(
-        &realm_config_data,
-        governing_token_mint_info,
         account_info_iter, // *6
         realm_info.key,
         &realm_data,
+        &realm_config_data,
+        governing_token_mint_info,
         &VoteKind::Electorate,
     )?;
 

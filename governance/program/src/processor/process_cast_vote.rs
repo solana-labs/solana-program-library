@@ -150,11 +150,11 @@ pub fn process_cast_vote(
     }
 
     let max_voter_weight = proposal_data.resolve_max_voter_weight(
-        &realm_config_data,
-        vote_governing_token_mint_info,
         account_info_iter, // max_voter_weight_record  11
         realm_info.key,
         &realm_data,
+        &realm_config_data,
+        vote_governing_token_mint_info,
         &vote_kind,
     )?;
 

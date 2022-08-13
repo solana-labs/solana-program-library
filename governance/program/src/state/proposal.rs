@@ -473,32 +473,28 @@ impl ProposalV2 {
         max_voter_weight.max(total_vote_weight)
     }
 
-    /// Resolves max voter weight
+    /// Resolves max voter weight using either 1) voting governing_token_mint supply or 2) max voter weight if configured for the token mint
     #[allow(clippy::too_many_arguments)]
     pub fn resolve_max_voter_weight(
         &mut self,
-        realm_config_data: &RealmConfigAccount,
-        vote_governing_token_mint_info: &AccountInfo,
         account_info_iter: &mut Iter<AccountInfo>,
         realm: &Pubkey,
         realm_data: &RealmV2,
+        realm_config_data: &RealmConfigAccount,
+        vote_governing_token_mint_info: &AccountInfo,
         vote_kind: &VoteKind,
     ) -> Result<u64, ProgramError> {
-        // if the realm uses addin for max community voter weight then use the externally provided max weight
-        if realm_config_data
-            .community_token_config
+        // if the Realm is configured to use max voter weight for the given voting governing_token_mint then use the externally provided max_voter_weight
+        // instead of the supply based max
+        if let Some(max_voter_weight_addin) = realm_config_data
+            .get_token_config(realm_data, vote_governing_token_mint_info.key)?
             .max_voter_weight_addin
-            .is_some()
-            && realm_data.community_mint == *vote_governing_token_mint_info.key
         {
             let max_voter_weight_record_info = next_account_info(account_info_iter)?;
 
             let max_voter_weight_record_data =
                 get_max_voter_weight_record_data_for_realm_and_governing_token_mint(
-                    &realm_config_data
-                        .community_token_config
-                        .max_voter_weight_addin
-                        .unwrap(),
+                    &max_voter_weight_addin,
                     max_voter_weight_record_info,
                     realm,
                     vote_governing_token_mint_info.key,

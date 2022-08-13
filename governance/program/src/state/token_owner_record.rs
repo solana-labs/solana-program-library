@@ -197,6 +197,8 @@ impl TokenOwnerRecordV2 {
         weight_action: VoterWeightAction,
         weight_action_target: &Pubkey,
     ) -> Result<u64, ProgramError> {
+        // if the Realm is configured to use voter weight plugin for our governing_token_mint then use the externally provided voter_weight
+        // instead of governing_token_deposit_amount
         if let Some(voter_weight_addin) = realm_config_data
             .get_token_config(realm_data, &self.governing_token_mint)?
             .voter_weight_addin
