@@ -191,26 +191,20 @@ impl TokenOwnerRecordV2 {
     #[allow(clippy::too_many_arguments)]
     pub fn resolve_voter_weight(
         &self,
-        realm_config_data: &RealmConfigAccount,
         account_info_iter: &mut Iter<AccountInfo>,
         realm_data: &RealmV2,
+        realm_config_data: &RealmConfigAccount,
         weight_action: VoterWeightAction,
         weight_action_target: &Pubkey,
     ) -> Result<u64, ProgramError> {
-        // if the realm uses addin for community voter weight then use the externally provided weight
-        if realm_config_data
-            .community_token_config
+        if let Some(voter_weight_addin) = realm_config_data
+            .get_token_config(realm_data, &self.governing_token_mint)?
             .voter_weight_addin
-            .is_some()
-            && realm_data.community_mint == self.governing_token_mint
         {
             let voter_weight_record_info = next_account_info(account_info_iter)?;
 
             let voter_weight_record_data = get_voter_weight_record_data_for_token_owner_record(
-                &realm_config_data
-                    .community_token_config
-                    .voter_weight_addin
-                    .unwrap(),
+                &voter_weight_addin,
                 voter_weight_record_info,
                 self,
             )?;

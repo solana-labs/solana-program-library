@@ -312,9 +312,9 @@ impl RealmV2 {
             get_realm_config_data_for_realm(program_id, realm_config_info, realm)?;
 
         let voter_weight = token_owner_record_data.resolve_voter_weight(
-            &realm_config_data,
             account_info_iter,
             self,
+            &realm_config_data,
             VoterWeightAction::CreateGovernance,
             realm,
         )?;

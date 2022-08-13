@@ -15,6 +15,8 @@ use crate::{error::GovernanceError, state::enums::GovernanceAccountType};
 
 use crate::state::realm::GoverningTokenConfigArgs;
 
+use crate::state::realm::RealmV2;
+
 /// The type of the governing token defines:
 /// 1) Who retains the authority over deposited tokens
 /// 2) Which token instructions Deposit, Withdraw and Revoke (burn) are allowed
@@ -126,6 +128,25 @@ impl AccountMaxSize for RealmConfigAccount {
 impl IsInitialized for RealmConfigAccount {
     fn is_initialized(&self) -> bool {
         self.account_type == GovernanceAccountType::RealmConfig
+    }
+}
+
+impl RealmConfigAccount {
+    /// Returns GoverningTokenConfig for the given governing_token_mint
+    pub fn get_token_config(
+        &self,
+        realm_data: &RealmV2,
+        governing_token_mint: &Pubkey,
+    ) -> Result<&GoverningTokenConfig, ProgramError> {
+        let token_config = if *governing_token_mint == realm_data.community_mint {
+            &self.community_token_config
+        } else if Some(*governing_token_mint) == realm_data.config.council_mint {
+            &self.council_token_config
+        } else {
+            return Err(GovernanceError::InvalidGoverningTokenMint.into());
+        };
+
+        Ok(token_config)
     }
 }
 

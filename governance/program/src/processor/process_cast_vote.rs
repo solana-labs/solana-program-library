@@ -110,9 +110,9 @@ pub fn process_cast_vote(
         get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
 
     let voter_weight = voter_token_owner_record_data.resolve_voter_weight(
-        &realm_config_data,
-        account_info_iter, // voter_weight_record  10
+        account_info_iter, // voter_weight_record  *10
         &realm_data,
+        &realm_config_data,
         VoterWeightAction::CastVote,
         proposal_info.key,
     )?;

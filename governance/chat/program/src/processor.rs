@@ -98,9 +98,9 @@ pub fn process_post_message(
         get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
 
     let voter_weight = token_owner_record_data.resolve_voter_weight(
-        &realm_config_data,
-        account_info_iter, // 11
+        account_info_iter, // voter_weight_record *11
         &realm_data,
+        &realm_config_data,
         VoterWeightAction::CommentProposal,
         proposal_info.key,
     )?;
