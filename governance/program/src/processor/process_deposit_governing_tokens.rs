@@ -21,8 +21,8 @@ use crate::{
         },
     },
     tools::spl_token::{
-        get_spl_token_mint, get_spl_token_owner, is_spl_token_account, is_spl_token_mint,
-        mint_spl_tokens_to, transfer_spl_tokens,
+        get_spl_token_mint, is_spl_token_account, is_spl_token_mint, mint_spl_tokens_to,
+        transfer_spl_tokens,
     },
 };
 
@@ -92,11 +92,7 @@ pub fn process_deposit_governing_tokens(
 
     if token_owner_record_info.data_is_empty() {
         // Deposited tokens can only be withdrawn by the owner so let's make sure the owner signed the transaction
-        let governing_token_owner = get_spl_token_owner(governing_token_source_info)?;
-
-        if !(governing_token_owner == *governing_token_owner_info.key
-            && governing_token_owner_info.is_signer)
-        {
+        if !governing_token_owner_info.is_signer {
             return Err(GovernanceError::GoverningTokenOwnerMustSign.into());
         }
 

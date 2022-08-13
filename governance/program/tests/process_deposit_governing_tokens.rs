@@ -235,55 +235,6 @@ async fn test_deposit_initial_community_tokens_with_owner_must_sign_error() {
     // Assert
     assert_eq!(error, GovernanceError::GoverningTokenOwnerMustSign.into());
 }
-#[tokio::test]
-async fn test_deposit_initial_community_tokens_with_invalid_owner_error() {
-    // Arrange
-    let mut governance_test = GovernanceProgramTest::start_new().await;
-    let realm_cookie = governance_test.with_realm().await;
-
-    let token_owner = Keypair::new();
-    let transfer_authority = Keypair::new();
-    let token_source = Keypair::new();
-
-    let invalid_owner = Keypair::new();
-
-    let amount = 10;
-
-    governance_test
-        .bench
-        .create_token_account_with_transfer_authority(
-            &token_source,
-            &realm_cookie.account.community_mint,
-            &realm_cookie.community_mint_authority,
-            amount,
-            &token_owner,
-            &transfer_authority.pubkey(),
-        )
-        .await;
-
-    let deposit_ix = deposit_governing_tokens(
-        &governance_test.program_id,
-        &realm_cookie.address,
-        &token_source.pubkey(),
-        &invalid_owner.pubkey(),
-        &transfer_authority.pubkey(),
-        &governance_test.bench.context.payer.pubkey(),
-        amount,
-        &realm_cookie.account.community_mint,
-    );
-
-    // // Act
-
-    let error = governance_test
-        .bench
-        .process_transaction(&[deposit_ix], Some(&[&transfer_authority, &invalid_owner]))
-        .await
-        .err()
-        .unwrap();
-
-    // Assert
-    assert_eq!(error, GovernanceError::GoverningTokenOwnerMustSign.into());
-}
 
 #[tokio::test]
 async fn test_deposit_community_tokens_with_malicious_holding_account_error() {
