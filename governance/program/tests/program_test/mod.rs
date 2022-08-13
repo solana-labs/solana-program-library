@@ -767,6 +767,73 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    pub async fn with_initial_governing_token_mint_deposit(
+        &mut self,
+        realm_address: &Pubkey,
+        governing_mint: &Pubkey,
+        governing_mint_authority: &Keypair,
+        amount: u64,
+        token_owner: Option<Keypair>,
+    ) -> Result<TokenOwnerRecordCookie, ProgramError> {
+        let token_owner = token_owner.unwrap_or(Keypair::new());
+        let token_source = Keypair::new();
+
+        let deposit_governing_tokens_ix = deposit_governing_tokens(
+            &self.program_id,
+            realm_address,
+            governing_mint,
+            &token_owner.pubkey(),
+            &governing_mint_authority.pubkey(),
+            &self.bench.payer.pubkey(),
+            amount,
+            governing_mint,
+        );
+
+        self.bench
+            .process_transaction(
+                &[deposit_governing_tokens_ix],
+                Some(&[&token_owner, &governing_mint_authority]),
+            )
+            .await?;
+
+        let token_owner_record_address = get_token_owner_record_address(
+            &self.program_id,
+            realm_address,
+            governing_mint,
+            &token_owner.pubkey(),
+        );
+
+        let account = TokenOwnerRecordV2 {
+            account_type: GovernanceAccountType::TokenOwnerRecordV2,
+            realm: *realm_address,
+            governing_token_mint: *governing_mint,
+            governing_token_owner: token_owner.pubkey(),
+            governing_token_deposit_amount: amount,
+            governance_delegate: None,
+            unrelinquished_votes_count: 0,
+            total_votes_count: 0,
+            outstanding_proposal_count: 0,
+            reserved: [0; 7],
+            reserved_v2: [0; 128],
+        };
+
+        let governance_delegate = Keypair::from_base58_string(&token_owner.to_base58_string());
+
+        Ok(TokenOwnerRecordCookie {
+            address: token_owner_record_address,
+            account,
+
+            token_source_amount: amount,
+            token_source: token_source.pubkey(),
+            token_owner,
+            governance_authority: None,
+            governance_delegate,
+            voter_weight_record: None,
+            max_voter_weight_record: None,
+        })
+    }
+
+    #[allow(dead_code)]
     pub async fn mint_community_tokens(&mut self, realm_cookie: &RealmCookie, amount: u64) {
         let token_account_keypair = Keypair::new();
 

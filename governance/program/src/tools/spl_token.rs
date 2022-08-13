@@ -121,6 +121,37 @@ pub fn transfer_spl_tokens<'a>(
     Ok(())
 }
 
+/// Mint SPL Tokens
+pub fn mint_spl_tokens_to<'a>(
+    mint_info: &AccountInfo<'a>,
+    destination_info: &AccountInfo<'a>,
+    mint_authority_info: &AccountInfo<'a>,
+    amount: u64,
+    spl_token_info: &AccountInfo<'a>,
+) -> ProgramResult {
+    let mint_to_ix = spl_token::instruction::mint_to(
+        &spl_token::id(),
+        mint_info.key,
+        destination_info.key,
+        mint_authority_info.key,
+        &[],
+        amount,
+    )
+    .unwrap();
+
+    invoke(
+        &mint_to_ix,
+        &[
+            spl_token_info.clone(),
+            mint_authority_info.clone(),
+            mint_info.clone(),
+            destination_info.clone(),
+        ],
+    )?;
+
+    Ok(())
+}
+
 /// Transfers SPL Tokens from a token account owned by the provided PDA authority with seeds
 pub fn transfer_spl_tokens_signed<'a>(
     source_info: &AccountInfo<'a>,
@@ -244,6 +275,31 @@ pub fn assert_is_valid_spl_token_account(account_info: &AccountInfo) -> Result<(
     Ok(())
 }
 
+/// Checks if the given account_info  is spl-token token account
+pub fn is_spl_token_account(account_info: &AccountInfo) -> bool {
+    if account_info.data_is_empty() {
+        return false;
+    }
+
+    if account_info.owner != &spl_token::id() {
+        return false;
+    }
+
+    if account_info.data_len() != Account::LEN {
+        return false;
+    }
+
+    // TokeAccount layout:   mint(32), owner(32), amount(8), delegate(36), state(1), ...
+    let data = account_info.try_borrow_data().unwrap();
+    let state = array_ref![data, 108, 1];
+
+    if state == &[0] {
+        return false;
+    }
+
+    true
+}
+
 /// Asserts the given mint_info represents a valid SPL Token Mint account  which is initialized and belongs to spl_token program
 pub fn assert_is_valid_spl_token_mint(mint_info: &AccountInfo) -> Result<(), ProgramError> {
     if mint_info.data_is_empty() {
@@ -259,7 +315,7 @@ pub fn assert_is_valid_spl_token_mint(mint_info: &AccountInfo) -> Result<(), Pro
     }
 
     // In token program [36, 8, 1, is_initialized(1), 36] is the layout
-    let data = mint_info.try_borrow_data().unwrap();
+    let data = mint_info.try_borrow_data()?;
     let is_initialized = array_ref![data, 45, 1];
 
     if is_initialized == &[0] {
@@ -267,6 +323,31 @@ pub fn assert_is_valid_spl_token_mint(mint_info: &AccountInfo) -> Result<(), Pro
     }
 
     Ok(())
+}
+
+/// Checks if the given account_info is be spl-token mint account
+pub fn is_spl_token_mint(mint_info: &AccountInfo) -> bool {
+    if mint_info.data_is_empty() {
+        return false;
+    }
+
+    if mint_info.owner != &spl_token::id() {
+        return false;
+    }
+
+    if mint_info.data_len() != Mint::LEN {
+        return false;
+    }
+
+    // In token program [36, 8, 1, is_initialized(1), 36] is the layout
+    let data = mint_info.try_borrow_data().unwrap();
+    let is_initialized = array_ref![data, 45, 1];
+
+    if is_initialized == &[0] {
+        return false;
+    }
+
+    true
 }
 
 /// Computationally cheap method to get mint from a token account

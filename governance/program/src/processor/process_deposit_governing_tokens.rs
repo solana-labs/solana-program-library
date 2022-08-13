@@ -20,7 +20,10 @@ use crate::{
             TokenOwnerRecordV2,
         },
     },
-    tools::spl_token::{get_spl_token_mint, get_spl_token_owner, transfer_spl_tokens},
+    tools::spl_token::{
+        get_spl_token_mint, get_spl_token_owner, is_spl_token_account, is_spl_token_mint,
+        mint_spl_tokens_to, transfer_spl_tokens,
+    },
 };
 
 /// Processes DepositGoverningTokens instruction
@@ -35,7 +38,7 @@ pub fn process_deposit_governing_tokens(
     let governing_token_holding_info = next_account_info(account_info_iter)?; // 1
     let governing_token_source_info = next_account_info(account_info_iter)?; // 2
     let governing_token_owner_info = next_account_info(account_info_iter)?; // 3
-    let governing_token_transfer_authority_info = next_account_info(account_info_iter)?; // 4
+    let governing_token_source_authority_info = next_account_info(account_info_iter)?; // 4
     let token_owner_record_info = next_account_info(account_info_iter)?; // 5
     let payer_info = next_account_info(account_info_iter)?; // 6
     let system_info = next_account_info(account_info_iter)?; // 7
@@ -59,13 +62,27 @@ pub fn process_deposit_governing_tokens(
 
     realm_config_data.assert_can_deposit_governing_token(&realm_data, &governing_token_mint)?;
 
-    transfer_spl_tokens(
-        governing_token_source_info,
-        governing_token_holding_info,
-        governing_token_transfer_authority_info,
-        amount,
-        spl_token_info,
-    )?;
+    if is_spl_token_account(governing_token_source_info) {
+        // If the source is spl-token token account then transfer tokens from it
+        transfer_spl_tokens(
+            governing_token_source_info,
+            governing_token_holding_info,
+            governing_token_source_authority_info,
+            amount,
+            spl_token_info,
+        )?;
+    } else if is_spl_token_mint(governing_token_source_info) {
+        // If it's a mint then mint the tokens
+        mint_spl_tokens_to(
+            governing_token_source_info,
+            governing_token_holding_info,
+            governing_token_source_authority_info,
+            amount,
+            spl_token_info,
+        )?;
+    } else {
+        return Err(GovernanceError::InvalidGoverningTokenSource.into());
+    }
 
     let token_owner_record_address_seeds = get_token_owner_record_address_seeds(
         realm_info.key,

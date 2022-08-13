@@ -426,6 +426,10 @@ pub enum GovernanceError {
     /// Invalid Revoke amount
     #[error("Invalid Revoke amount")]
     InvalidRevokeAmount, // 602
+
+    /// Invalid GoverningToken source
+    #[error("Invalid GoverningToken source")]
+    InvalidGoverningTokenSource, // 603
 }
 
 impl PrintProgramError for GovernanceError {

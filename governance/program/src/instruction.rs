@@ -574,7 +574,7 @@ pub fn deposit_governing_tokens(
     realm: &Pubkey,
     governing_token_source: &Pubkey,
     governing_token_owner: &Pubkey,
-    governing_token_transfer_authority: &Pubkey,
+    governing_token_source_authority: &Pubkey,
     payer: &Pubkey,
     // Args
     amount: u64,
@@ -597,7 +597,7 @@ pub fn deposit_governing_tokens(
         AccountMeta::new(governing_token_holding_address, false),
         AccountMeta::new(*governing_token_source, false),
         AccountMeta::new_readonly(*governing_token_owner, true),
-        AccountMeta::new_readonly(*governing_token_transfer_authority, true),
+        AccountMeta::new_readonly(*governing_token_source_authority, true),
         AccountMeta::new(token_owner_record_address, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
