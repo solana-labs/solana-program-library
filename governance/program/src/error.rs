@@ -411,13 +411,13 @@ pub enum GovernanceError {
     #[error("Invalid RealmConfig account address")]
     InvalidRealmConfigAddress,
 
-    /// Cannot deposit GoverningTokens
-    #[error("Cannot deposit GoverningTokens")]
-    CannotDepositGoverningTokens, // 599
+    /// Cannot deposit dormant tokens
+    #[error("Cannot deposit dormant tokens")]
+    CannotDepositDormantTokens, // 599
 
-    /// Cannot withdraw GoverningTokens
-    #[error("Cannot withdraw GoverningTokens")]
-    CannotWithdrawGoverningTokens, // 600
+    /// Cannot withdraw membership tokens
+    #[error("Cannot withdraw membership tokens")]
+    CannotWithdrawMembershipTokens, // 600
 
     /// Cannot revoke GoverningTokens
     #[error("Cannot revoke GoverningTokens")]

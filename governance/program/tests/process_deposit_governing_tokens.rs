@@ -7,7 +7,12 @@ mod program_test;
 
 use program_test::*;
 use solana_sdk::signature::{Keypair, Signer};
-use spl_governance::{error::GovernanceError, instruction::deposit_governing_tokens};
+use spl_governance::{
+    error::GovernanceError, instruction::deposit_governing_tokens,
+    state::realm_config::GoverningTokenType,
+};
+
+use crate::program_test::args::*;
 
 #[tokio::test]
 async fn test_deposit_initial_community_tokens() {
@@ -326,4 +331,27 @@ async fn test_deposit_community_tokens_using_mint() {
         token_owner_record.governing_token_deposit_amount,
         holding_account.amount
     );
+}
+
+#[tokio::test]
+async fn test_deposit_comunity_tokens_with_cannot_deposit_dormant_tokens_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_config_args = RealmSetupArgs::default();
+    realm_config_args.council_token_config_args.token_type = GoverningTokenType::Dormant;
+
+    let realm_cookie = governance_test
+        .with_realm_using_args(&realm_config_args)
+        .await;
+
+    // Act
+    let err = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(err, GovernanceError::CannotDepositDormantTokens.into());
 }
