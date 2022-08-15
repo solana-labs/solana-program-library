@@ -107,7 +107,7 @@ import {
 
 With the `MintCloseAuthority` extension on the mint and a valid authority, it's
 possible to close the mint account and reclaim the lamports on the mint account.
-Note that the supply on the mint must be 0.
+**Note**: The supply on the mint must be 0.
 
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
@@ -135,7 +135,7 @@ are assessed at the protocol level. On every transfer, some amount is withheld
 on the recipient account, untouchable by the recipient. These tokens can be
 withheld by a separate authority on the mint.
 
-Important note: transferring tokens with a transfer fee requires using
+**Important note**: Transferring tokens with a transfer fee requires using
 `transfer_checked` or `transfer_checked_with_fee` instead of `transfer`.
 Otherwise, the transfer will fail.
 
@@ -308,11 +308,53 @@ CLI support coming soon!
   </TabItem>
 </Tabs>
 
-#### Example: Withdraw withheld tokens from accounts
+#### Example: Find accounts with withheld tokens
 
 As users transfer their tokens, transfer fees accumulate in the various recipient
 accounts. The withdraw withheld authority, configured at initialization, can move
-these tokens wherever they wish using `withdraw_withheld_tokens_from_accounts`.
+these tokens wherever they wish using `withdraw_withheld_tokens_from_accounts` or
+`harvest_withheld_tokens_to_mint`.
+
+Before doing that, however, they must find which accounts have withheld tokens
+by iterating over all accounts for the mint.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+    const allAccounts = await connection.getProgramAccounts(TOKEN_2022_PROGRAM_ID, {
+        commitment: 'confirmed',
+        filters: [
+            {
+                memcmp: {
+                    offset: 0,
+                    bytes: mint.toString(),
+                },
+            },
+        ],
+    });
+    const accountsToWithdrawFrom = [];
+    for (const accountInfo of allAccounts) {
+        const account = unpackAccount(accountInfo.account, accountInfo.pubkey, TOKEN_2022_PROGRAM_ID);
+        const transferFeeAmount = getTransferFeeAmount(account);
+        if (transferFeeAmount !== null && transferFeeAmount.withheldAmount > BigInt(0)) {
+            accountsToWithdrawFrom.push(accountInfo.pubkey);
+        }
+    }
+```
+
+  </TabItem>
+</Tabs>
+
+#### Example: Withdraw withheld tokens from accounts
+
+With the accounts found, the withheld withdraw authority may move the withheld
+tokens.
 
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
@@ -339,7 +381,7 @@ CLI support coming soon!
   </TabItem>
 </Tabs>
 
-Note: the design of pooling transfer fees at the recipient account is meant to
+**Note**: The design of pooling transfer fees at the recipient account is meant to
 maximize parallelization of transactions. Otherwise, one configured fee recipient
 account would be write-locked between parallel transfers, decreasing throughput
 of the protocol.
@@ -710,7 +752,7 @@ By enabling required memo transfers on your token account, the program enforces
 that all incoming transfers must have an accompanying memo instruction right
 before the transfer instruction.
 
-Note that this also works in CPI contexts, as long as a CPI is performed to log
+**Note**: This also works in CPI contexts, as long as a CPI is performed to log
 the memo before invoking the transfer.
 
 #### Example: Create account with required memo transfers
@@ -920,8 +962,8 @@ Interest is continuously compounded based on the timestamp in the network. Due
 to drift that may occur in the network timestamp, the accumulated interest could
 be lower than the expected value. Thankfully, this is rare.
 
-Note that no new tokens are ever created, the UI amount returns the amount of tokens
-plus all interest the tokens have accumulated.
+**Note**: No new tokens are ever created, the UI amount returns the amount of tokens
+plus all interest the tokens have accumulated. The feature is entirely cosmetic.
 
 #### Example: Create an interest-bearing mint
 

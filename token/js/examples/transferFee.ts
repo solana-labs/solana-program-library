@@ -14,6 +14,8 @@ import {
     mintTo,
     createAccount,
     getMintLen,
+    getTransferFeeAmount,
+    unpackAccount,
     TOKEN_2022_PROGRAM_ID,
 } from '../src';
 
@@ -118,6 +120,26 @@ import {
         TOKEN_2022_PROGRAM_ID
     );
 
+    const allAccounts = await connection.getProgramAccounts(TOKEN_2022_PROGRAM_ID, {
+        commitment: 'confirmed',
+        filters: [
+            {
+                memcmp: {
+                    offset: 0,
+                    bytes: mint.toString(),
+                },
+            },
+        ],
+    });
+    const accountsToWithdrawFrom = [];
+    for (const accountInfo of allAccounts) {
+        const account = unpackAccount(accountInfo.account, accountInfo.pubkey, TOKEN_2022_PROGRAM_ID);
+        const transferFeeAmount = getTransferFeeAmount(account);
+        if (transferFeeAmount !== null && transferFeeAmount.withheldAmount > BigInt(0)) {
+            accountsToWithdrawFrom.push(accountInfo.pubkey);
+        }
+    }
+
     await withdrawWithheldTokensFromAccounts(
         connection,
         payer,
@@ -125,7 +147,7 @@ import {
         destinationAccount,
         withdrawWithheldAuthority,
         [],
-        [destinationAccount],
+        accountsToWithdrawFrom,
         undefined,
         TOKEN_2022_PROGRAM_ID
     );
