@@ -1228,13 +1228,15 @@ impl GovernanceProgramTest {
         realm_cookie: &RealmCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
     ) -> Result<(), ProgramError> {
-        self.revoke_governing_tokens(
+        self.revoke_governing_tokens_using_instruction(
             realm_cookie,
             token_owner_record_cookie,
             &realm_cookie.account.community_mint,
             token_owner_record_cookie
                 .account
                 .governing_token_deposit_amount,
+            NopOverride,
+            None,
         )
         .await
     }
@@ -1245,26 +1247,30 @@ impl GovernanceProgramTest {
         realm_cookie: &RealmCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
     ) -> Result<(), ProgramError> {
-        self.revoke_governing_tokens(
+        self.revoke_governing_tokens_using_instruction(
             realm_cookie,
             token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
             token_owner_record_cookie
                 .account
                 .governing_token_deposit_amount,
+            NopOverride,
+            None,
         )
         .await
     }
 
     #[allow(dead_code)]
-    async fn revoke_governing_tokens(
+    pub async fn revoke_governing_tokens_using_instruction<F: Fn(&mut Instruction)>(
         &mut self,
         realm_cookie: &RealmCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         governing_token_mint: &Pubkey,
         amount: u64,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
     ) -> Result<(), ProgramError> {
-        let revoke_governing_tokens_ix = revoke_governing_tokens(
+        let mut revoke_governing_tokens_ix = revoke_governing_tokens(
             &self.program_id,
             &realm_cookie.address,
             &realm_cookie.account.authority.unwrap(),
@@ -1273,10 +1279,13 @@ impl GovernanceProgramTest {
             amount,
         );
 
+        instruction_override(&mut revoke_governing_tokens_ix);
+
         let default_signers = &[realm_cookie.realm_authority.as_ref().unwrap()];
+        let signers = signers_override.unwrap_or(default_signers);
 
         self.bench
-            .process_transaction(&[revoke_governing_tokens_ix], Some(default_signers))
+            .process_transaction(&[revoke_governing_tokens_ix], Some(signers))
             .await
     }
 

@@ -140,3 +140,39 @@ async fn test_revoke_community_tokens_with_cannot_revoke_dormant_token_error() {
 
     assert_eq!(err, GovernanceError::CannotRevokeGoverningTokens.into());
 }
+
+#[tokio::test]
+async fn test_revoke_council_tokens_with_realm_authority_must_sign_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_config_args = RealmSetupArgs::default();
+    realm_config_args.council_token_config_args.token_type = GoverningTokenType::Membership;
+
+    let realm_cookie = governance_test
+        .with_realm_using_args(&realm_config_args)
+        .await;
+
+    let token_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    let err = governance_test
+        .revoke_governing_tokens_using_instruction(
+            &realm_cookie,
+            &token_owner_record_cookie,
+            &realm_cookie.account.config.council_mint.unwrap(),
+            1,
+            |i| i.accounts[1].is_signer = false,
+            Some(&[]),
+        )
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(err, GovernanceError::RealmAuthorityMustSign.into());
+}

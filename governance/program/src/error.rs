@@ -261,23 +261,23 @@ pub enum GovernanceError {
 
     /// Governance PDA must sign
     #[error("Governance PDA must sign")]
-    GovernancePdaMustSign,
+    GovernancePdaMustSign, // 561
 
     /// Transaction already flagged with error
     #[error("Transaction already flagged with error")]
-    TransactionAlreadyFlaggedWithError,
+    TransactionAlreadyFlaggedWithError, // 562
 
     /// Invalid Realm for Governance
     #[error("Invalid Realm for Governance")]
-    InvalidRealmForGovernance,
+    InvalidRealmForGovernance, // 563
 
     /// Invalid Authority for Realm
     #[error("Invalid Authority for Realm")]
-    InvalidAuthorityForRealm,
+    InvalidAuthorityForRealm, // 564
 
     /// Realm has no authority
     #[error("Realm has no authority")]
-    RealmHasNoAuthority,
+    RealmHasNoAuthority, // 565
 
     /// Realm authority must sign
     #[error("Realm authority must sign")]
