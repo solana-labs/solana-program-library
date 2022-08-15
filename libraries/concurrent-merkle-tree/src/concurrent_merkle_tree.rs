@@ -15,6 +15,8 @@ use solana_program::{log::sol_log_compute_units, msg};
 /// Enforce constraints on max depth and buffer size
 #[inline(always)]
 fn check_bounds(max_depth: usize, max_buffer_size: usize) {
+    // We cannot allow a tree depth greater than 30 because of the bit math
+    // required to update `ChangeLog`s
     assert!(max_depth < 31);
     // This will return true if MAX_BUFFER_SIZE is a power of 2 or if it is 0
     assert!(max_buffer_size & (max_buffer_size - 1) == 0);
@@ -128,7 +130,10 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> ConcurrentMerkleTree<
         self.active_index = 0;
         self.buffer_size = 1;
         self.rightmost_proof = rightmost_proof;
-        assert_eq!(root, recompute(rightmost_leaf, &proof, index,));
+        if root != recompute(rightmost_leaf, &proof, index) {
+            solana_logging!("Proof failed to verify");
+            return Err(ConcurrentMerkleTreeError::InvalidProof);
+        }
         Ok(root)
     }
 
@@ -139,12 +144,12 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> ConcurrentMerkleTree<
     /// This method will fail if the proof cannot be verified for
     /// the current tree root.
     pub fn prove_leaf(
-        &mut self,
+        &self,
         current_root: Node,
         leaf: Node,
         proof_vec: &[Node],
         leaf_index: u32,
-    ) -> Result<Node, ConcurrentMerkleTreeError> {
+    ) -> Result<(), ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
         if leaf_index > self.rightmost_proof.index {
             solana_logging!(
@@ -162,7 +167,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> ConcurrentMerkleTree<
                 solana_logging!("Proof failed to verify");
                 return Err(ConcurrentMerkleTreeError::InvalidProof);
             }
-            Ok(Node::default())
+            Ok(())
         }
     }
 
@@ -251,7 +256,6 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> ConcurrentMerkleTree<
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
         fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
-        log_compute!();
 
         log_compute!();
         match self.try_apply_proof(current_root, EMPTY, leaf, &mut proof, index, false) {
