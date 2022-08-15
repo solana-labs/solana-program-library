@@ -18,13 +18,11 @@ async fn test_create_realm_with_all_addins() {
 
     // Assert
 
-    let realm_config_cookie = realm_cookie.realm_config.unwrap();
-
     let realm_config_data = governance_test
-        .get_realm_config_data(&realm_config_cookie.address)
+        .get_realm_config_account(&realm_cookie.realm_config.address)
         .await;
 
-    assert_eq!(realm_config_cookie.account, realm_config_data);
+    assert_eq!(realm_cookie.realm_config.account, realm_config_data);
 
     assert!(realm_config_data
         .community_token_config
@@ -77,13 +75,11 @@ async fn test_set_all_addins_for_realm_without_addins() {
 
     // Assert
 
-    let realm_config_cookie = realm_cookie.realm_config.unwrap();
-
     let realm_config_data = governance_test
-        .get_realm_config_data(&realm_config_cookie.address)
+        .get_realm_config_account(&realm_cookie.realm_config.address)
         .await;
 
-    assert_eq!(realm_config_cookie.account, realm_config_data);
+    assert_eq!(realm_cookie.realm_config.account, realm_config_data);
 
     assert!(realm_config_data
         .community_token_config
@@ -138,13 +134,11 @@ async fn test_set_all_addin_for_realm_without_council_and_addins() {
 
     // Assert
 
-    let realm_config_cookie = realm_cookie.realm_config.unwrap();
-
     let realm_config_data = governance_test
-        .get_realm_config_data(&realm_config_cookie.address)
+        .get_realm_config_account(&realm_cookie.realm_config.address)
         .await;
 
-    assert_eq!(realm_config_cookie.account, realm_config_data);
+    assert_eq!(realm_cookie.realm_config.account, realm_config_data);
 
     assert!(realm_config_data
         .community_token_config
@@ -193,13 +187,11 @@ async fn test_set_all_realm_addins_for_realm_with_all_addins() {
 
     // Assert
 
-    let realm_config_cookie = realm_cookie.realm_config.unwrap();
-
     let realm_config_data = governance_test
-        .get_realm_config_data(&realm_config_cookie.address)
+        .get_realm_config_account(&realm_cookie.realm_config.address)
         .await;
 
-    assert_eq!(realm_config_cookie.account, realm_config_data);
+    assert_eq!(realm_cookie.realm_config.account, realm_config_data);
     assert_eq!(
         realm_config_data
             .community_token_config
@@ -262,10 +254,8 @@ async fn test_set_realm_config_without_addins_for_realm_without_addins() {
 
     // Assert
 
-    let realm_config_cookie = realm_cookie.realm_config.unwrap();
-
     let realm_config_data = governance_test
-        .get_realm_config_data(&realm_config_cookie.address)
+        .get_realm_config_account(&realm_cookie.realm_config.address)
         .await;
 
     assert!(realm_config_data
@@ -307,7 +297,7 @@ async fn test_set_realm_config_without_any_addins_for_realm_with_existing_addins
     // Assert
 
     let realm_config_data = governance_test
-        .get_realm_config_data(&realm_cookie.realm_config.unwrap().address)
+        .get_realm_config_account(&realm_cookie.realm_config.address)
         .await;
 
     assert!(realm_config_data

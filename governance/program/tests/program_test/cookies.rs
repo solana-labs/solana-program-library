@@ -32,7 +32,7 @@ pub struct RealmCookie {
 
     pub realm_authority: Option<Keypair>,
 
-    pub realm_config: Option<RealmConfigCookie>,
+    pub realm_config: RealmConfigCookie,
 }
 
 #[derive(Debug)]

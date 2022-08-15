@@ -306,6 +306,8 @@ async fn test_set_realm_config_with_liquid_community_token_cannot_be_changed_to_
     let mut realm_cookie = governance_test.with_realm().await;
 
     let mut set_realm_config_args = SetRealmConfigArgs::default();
+
+    // Try to change Community token type to Membership
     set_realm_config_args
         .realm_config_args
         .community_token_config_args
@@ -322,5 +324,59 @@ async fn test_set_realm_config_with_liquid_community_token_cannot_be_changed_to_
     assert_eq!(
         err,
         GovernanceError::CannotChangeCommunityTokenTypeToMemebership.into()
+    );
+}
+
+#[tokio::test]
+async fn test_set_realm_config_for_community_token() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_cookie = governance_test.with_realm().await;
+
+    let mut set_realm_config_args = SetRealmConfigArgs::default();
+
+    // Change Community token type to Dormant and set plugins
+    set_realm_config_args
+        .realm_config_args
+        .community_token_config_args = GoverningTokenConfigArgs {
+        use_voter_weight_addin: true,
+        use_max_voter_weight_addin: true,
+        token_type: GoverningTokenType::Dormant,
+    };
+
+    set_realm_config_args.community_voter_weight_addin = Some(Pubkey::new_unique());
+    set_realm_config_args.max_community_voter_weight_addin = Some(Pubkey::new_unique());
+
+    // Act
+
+    governance_test
+        .set_realm_config(&mut realm_cookie, &set_realm_config_args)
+        .await
+        .unwrap();
+
+    // Assert
+
+    let realm_config_account = governance_test
+        .get_realm_config_account(&realm_cookie.realm_config.address)
+        .await;
+
+    assert_eq!(
+        realm_config_account.community_token_config.token_type,
+        GoverningTokenType::Dormant
+    );
+
+    assert_eq!(
+        realm_config_account
+            .community_token_config
+            .voter_weight_addin,
+        set_realm_config_args.community_voter_weight_addin
+    );
+
+    assert_eq!(
+        realm_config_account
+            .community_token_config
+            .max_voter_weight_addin,
+        set_realm_config_args.max_community_voter_weight_addin
     );
 }
