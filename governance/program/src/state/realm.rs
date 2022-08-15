@@ -456,8 +456,10 @@ pub fn get_governing_token_holding_address(
 }
 
 /// Asserts given realm config args are correct
-pub fn assert_valid_realm_config_args(config_args: &RealmConfigArgs) -> Result<(), ProgramError> {
-    match config_args.community_mint_max_vote_weight_source {
+pub fn assert_valid_realm_config_args(
+    realm_config_args: &RealmConfigArgs,
+) -> Result<(), ProgramError> {
+    match realm_config_args.community_mint_max_vote_weight_source {
         MintMaxVoteWeightSource::SupplyFraction(fraction) => {
             if !(1..=MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE).contains(&fraction) {
                 return Err(GovernanceError::InvalidMaxVoteWeightSupplyFraction.into());

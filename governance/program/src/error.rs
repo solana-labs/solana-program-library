@@ -430,6 +430,10 @@ pub enum GovernanceError {
     /// Invalid GoverningToken source
     #[error("Invalid GoverningToken source")]
     InvalidGoverningTokenSource, // 603
+
+    /// Cannot change community TokenType to Memebership
+    #[error("Cannot change community TokenType to Memebership")]
+    CannotChangeCommunityTokenTypeToMemebership, // 604
 }
 
 impl PrintProgramError for GovernanceError {

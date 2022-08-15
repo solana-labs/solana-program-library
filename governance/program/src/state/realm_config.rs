@@ -15,7 +15,7 @@ use crate::{error::GovernanceError, state::enums::GovernanceAccountType};
 
 use crate::state::realm::GoverningTokenConfigArgs;
 
-use crate::state::realm::RealmV2;
+use crate::state::realm::{RealmConfigArgs, RealmV2};
 
 /// The type of the governing token defines:
 /// 1) Who retains the authority over deposited tokens
@@ -200,6 +200,25 @@ impl RealmConfigAccount {
                 Err(GovernanceError::CannotWithdrawGoverningTokens.into())
             }
         }
+    }
+
+    /// Asserts the given RealmConfigArgs represent a valid Realm configuraiton change
+    pub fn assert_can_change_config(
+        &self,
+        realm_config_args: &RealmConfigArgs,
+    ) -> Result<(), ProgramError> {
+        // Existing community token type can't be changed to Membership because it would
+        // give the Realm authority the right to burn members tokens which should not be the case because the tokens belong to the members
+        // On the other had for the Council token it's acceptable and in fact desired change becuase council tokens denote memebership
+        // which should be controled by the Realm
+        if self.community_token_config.token_type != GoverningTokenType::Membership
+            && realm_config_args.community_token_config_args.token_type
+                == GoverningTokenType::Membership
+        {
+            return Err(GovernanceError::CannotChangeCommunityTokenTypeToMemebership.into());
+        }
+
+        Ok(())
     }
 }
 

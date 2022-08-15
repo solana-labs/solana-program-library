@@ -13,11 +13,10 @@ use spl_governance_tools::account::create_and_serialize_account_signed;
 use crate::{
     error::GovernanceError,
     state::{
-        enums::GovernanceAccountType,
         realm::{assert_valid_realm_config_args, get_realm_data_for_authority, RealmConfigArgs},
         realm_config::{
             get_realm_config_address_seeds, get_realm_config_data_for_realm,
-            resolve_governing_token_config, RealmConfigAccount, Reserved110,
+            resolve_governing_token_config, RealmConfigAccount,
         },
     },
 };
@@ -76,9 +75,14 @@ pub fn process_set_realm_config(
     }
 
     let system_info = next_account_info(account_info_iter)?; // 4
-    let realm_config_info = next_account_info(account_info_iter)?; // 5
 
-    // Setup config for addins
+    let realm_config_info = next_account_info(account_info_iter)?; // 5
+    let mut realm_config_data =
+        get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
+
+    realm_config_data.assert_can_change_config(&realm_config_args)?;
+
+    // Setup configs for tokens (plugins and token types)
 
     // 6, 7
     let community_token_config = resolve_governing_token_config(
@@ -92,16 +96,12 @@ pub fn process_set_realm_config(
         realm_config_args.council_token_config_args.clone(),
     )?;
 
+    realm_config_data.community_token_config = community_token_config;
+    realm_config_data.council_token_config = council_token_config;
+
     // Update or create RealmConfigAccount
     if realm_config_info.data_is_empty() {
-        // If RealmConfigAccount doesn't exist yet then create it
-        let realm_config_data = RealmConfigAccount {
-            account_type: GovernanceAccountType::RealmConfig,
-            realm: *realm_info.key,
-            community_token_config,
-            council_token_config,
-            reserved: Reserved110::default(),
-        };
+        // For older Realms (pre v3) RealmConfigAccount might not exist yet and we have to create it
 
         // We need the payer to pay for the new account if it's created
         let payer_info = next_account_info(account_info_iter)?; // 10
@@ -117,16 +117,10 @@ pub fn process_set_realm_config(
             &rent,
         )?;
     } else {
-        let mut realm_config_data =
-            get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
-
-        realm_config_data.community_token_config = community_token_config;
-        realm_config_data.council_token_config = council_token_config;
-
         realm_config_data.serialize(&mut *realm_config_info.data.borrow_mut())?;
     }
 
-    // Update RealmConfig (Realm.config)
+    // Update RealmConfig (Realm.config field)
     realm_data.config.community_mint_max_vote_weight_source =
         realm_config_args.community_mint_max_vote_weight_source;
 
