@@ -8,11 +8,7 @@ mod program_test;
 use program_test::*;
 use spl_governance::{
     error::GovernanceError,
-    state::{
-        enums::MintMaxVoteWeightSource,
-        realm::{GoverningTokenConfigArgs, RealmConfigArgs},
-        realm_config::GoverningTokenType,
-    },
+    state::{realm::GoverningTokenConfigArgs, realm_config::GoverningTokenType},
 };
 
 use self::args::SetRealmConfigArgs;
@@ -24,20 +20,7 @@ async fn test_set_realm_config() {
 
     let mut realm_cookie = governance_test.with_realm().await;
 
-    let realm_config_args = RealmConfigArgs {
-        use_council_mint: true,
-
-        community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
-        min_community_weight_to_create_governance: 10,
-        community_token_config_args: GoverningTokenConfigArgs::default(),
-        council_token_config_args: GoverningTokenConfigArgs::default(),
-    };
-
-    let set_realm_config_args = SetRealmConfigArgs {
-        realm_config_args,
-        community_voter_weight_addin: None,
-        max_community_voter_weight_addin: None,
-    };
+    let set_realm_config_args = SetRealmConfigArgs::default();
 
     // Act
 
@@ -61,20 +44,7 @@ async fn test_set_realm_config_with_authority_must_sign_error() {
 
     let mut realm_cookie = governance_test.with_realm().await;
 
-    let realm_config_args = RealmConfigArgs {
-        use_council_mint: true,
-
-        community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
-        min_community_weight_to_create_governance: 10,
-        community_token_config_args: GoverningTokenConfigArgs::default(),
-        council_token_config_args: GoverningTokenConfigArgs::default(),
-    };
-
-    let set_realm_config_args = SetRealmConfigArgs {
-        realm_config_args,
-        community_voter_weight_addin: None,
-        max_community_voter_weight_addin: None,
-    };
+    let set_realm_config_args = SetRealmConfigArgs::default();
 
     // Act
 
@@ -100,20 +70,7 @@ async fn test_set_realm_config_with_no_authority_error() {
 
     let mut realm_cookie = governance_test.with_realm().await;
 
-    let realm_config_args = RealmConfigArgs {
-        use_council_mint: true,
-
-        community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
-        min_community_weight_to_create_governance: 10,
-        community_token_config_args: GoverningTokenConfigArgs::default(),
-        council_token_config_args: GoverningTokenConfigArgs::default(),
-    };
-
-    let set_realm_config_args = SetRealmConfigArgs {
-        realm_config_args,
-        community_voter_weight_addin: None,
-        max_community_voter_weight_addin: None,
-    };
+    let set_realm_config_args = SetRealmConfigArgs::default();
 
     governance_test
         .set_realm_authority(&realm_cookie, None)
@@ -144,20 +101,7 @@ async fn test_set_realm_config_with_invalid_authority_error() {
 
     let mut realm_cookie = governance_test.with_realm().await;
 
-    let realm_config_args = RealmConfigArgs {
-        use_council_mint: true,
-
-        community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
-        min_community_weight_to_create_governance: 10,
-        community_token_config_args: GoverningTokenConfigArgs::default(),
-        council_token_config_args: GoverningTokenConfigArgs::default(),
-    };
-
-    let set_realm_config_args = SetRealmConfigArgs {
-        realm_config_args,
-        community_voter_weight_addin: None,
-        max_community_voter_weight_addin: None,
-    };
+    let set_realm_config_args = SetRealmConfigArgs::default();
 
     let realm_cookie2 = governance_test.with_realm().await;
 
@@ -183,20 +127,8 @@ async fn test_set_realm_config_with_remove_council() {
 
     let mut realm_cookie = governance_test.with_realm().await;
 
-    let realm_config_args = RealmConfigArgs {
-        use_council_mint: false,
-
-        community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
-        min_community_weight_to_create_governance: 10,
-        community_token_config_args: GoverningTokenConfigArgs::default(),
-        council_token_config_args: GoverningTokenConfigArgs::default(),
-    };
-
-    let set_realm_config_args = SetRealmConfigArgs {
-        realm_config_args,
-        community_voter_weight_addin: None,
-        max_community_voter_weight_addin: None,
-    };
+    let mut set_realm_config_args = SetRealmConfigArgs::default();
+    set_realm_config_args.realm_config_args.use_council_mint = false;
 
     // Act
     governance_test
@@ -220,20 +152,7 @@ async fn test_set_realm_config_with_council_change_error() {
 
     let mut realm_cookie = governance_test.with_realm().await;
 
-    let realm_config_args = RealmConfigArgs {
-        use_council_mint: true,
-
-        community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
-        min_community_weight_to_create_governance: 10,
-        community_token_config_args: GoverningTokenConfigArgs::default(),
-        council_token_config_args: GoverningTokenConfigArgs::default(),
-    };
-
-    let set_realm_config_args = SetRealmConfigArgs {
-        realm_config_args,
-        community_voter_weight_addin: None,
-        max_community_voter_weight_addin: None,
-    };
+    let set_realm_config_args = SetRealmConfigArgs::default();
 
     // Try to replace council mint
     realm_cookie.account.config.council_mint = serde::__private::Some(Pubkey::new_unique());
@@ -259,20 +178,8 @@ async fn test_set_realm_config_with_council_restore_error() {
 
     let mut realm_cookie = governance_test.with_realm().await;
 
-    let realm_config_args = RealmConfigArgs {
-        use_council_mint: false,
-
-        community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
-        min_community_weight_to_create_governance: 10,
-        community_token_config_args: GoverningTokenConfigArgs::default(),
-        council_token_config_args: GoverningTokenConfigArgs::default(),
-    };
-
-    let mut set_realm_config_args = SetRealmConfigArgs {
-        realm_config_args,
-        community_voter_weight_addin: None,
-        max_community_voter_weight_addin: None,
-    };
+    let mut set_realm_config_args = SetRealmConfigArgs::default();
+    set_realm_config_args.realm_config_args.use_council_mint = false;
 
     governance_test
         .set_realm_config(&mut realm_cookie, &set_realm_config_args)
@@ -345,8 +252,12 @@ async fn test_set_realm_config_for_community_token() {
         token_type: GoverningTokenType::Dormant,
     };
 
-    set_realm_config_args.community_voter_weight_addin = Some(Pubkey::new_unique());
-    set_realm_config_args.max_community_voter_weight_addin = Some(Pubkey::new_unique());
+    set_realm_config_args
+        .community_token_config
+        .voter_weight_addin = Some(Pubkey::new_unique());
+    set_realm_config_args
+        .community_token_config
+        .max_voter_weight_addin = Some(Pubkey::new_unique());
 
     // Act
 
@@ -370,13 +281,75 @@ async fn test_set_realm_config_for_community_token() {
         realm_config_account
             .community_token_config
             .voter_weight_addin,
-        set_realm_config_args.community_voter_weight_addin
+        set_realm_config_args
+            .community_token_config
+            .voter_weight_addin
     );
 
     assert_eq!(
         realm_config_account
             .community_token_config
             .max_voter_weight_addin,
-        set_realm_config_args.max_community_voter_weight_addin
+        set_realm_config_args
+            .community_token_config
+            .max_voter_weight_addin
     );
+}
+
+#[tokio::test]
+async fn test_set_realm_config_for_council_token() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_cookie = governance_test.with_realm().await;
+
+    let mut set_realm_config_args = SetRealmConfigArgs::default();
+
+    // Change Council token type to Membership and set plugins
+    set_realm_config_args
+        .realm_config_args
+        .council_token_config_args = GoverningTokenConfigArgs {
+        use_voter_weight_addin: true,
+        use_max_voter_weight_addin: true,
+        token_type: GoverningTokenType::Membership,
+    };
+
+    set_realm_config_args
+        .council_token_config
+        .voter_weight_addin = Some(Pubkey::new_unique());
+    set_realm_config_args
+        .council_token_config
+        .max_voter_weight_addin = Some(Pubkey::new_unique());
+
+    // Act
+
+    governance_test
+        .set_realm_config(&mut realm_cookie, &set_realm_config_args)
+        .await
+        .unwrap();
+
+    // Assert
+
+    let _realm_config_account = governance_test
+        .get_realm_config_account(&realm_cookie.realm_config.address)
+        .await;
+
+    // assert_eq!(
+    //     realm_config_account.council_token_config.token_type,
+    //     GoverningTokenType::Membership
+    // );
+
+    // assert_eq!(
+    //     realm_config_account
+    //         .community_token_config
+    //         .voter_weight_addin,
+    //     set_realm_config_args.community_voter_weight_addin
+    // );
+
+    // assert_eq!(
+    //     realm_config_account
+    //         .community_token_config
+    //         .max_voter_weight_addin,
+    //     set_realm_config_args.max_community_voter_weight_addin
+    // );
 }

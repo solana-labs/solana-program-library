@@ -8,6 +8,7 @@ use program_test::*;
 use spl_governance::state::{
     enums::MintMaxVoteWeightSource,
     realm::{get_realm_address, GoverningTokenConfigArgs, RealmConfigArgs},
+    realm_config::GoverningTokenConfig,
 };
 
 use self::args::SetRealmConfigArgs;
@@ -43,8 +44,8 @@ async fn test_create_realm_with_non_default_config() {
 
     let set_realm_config_args = SetRealmConfigArgs {
         realm_config_args,
-        community_voter_weight_addin: None,
-        max_community_voter_weight_addin: None,
+        community_token_config: GoverningTokenConfig::default(),
+        council_token_config: GoverningTokenConfig::default(),
     };
 
     // Act

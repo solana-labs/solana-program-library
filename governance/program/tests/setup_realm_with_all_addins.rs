@@ -172,11 +172,14 @@ async fn test_set_all_realm_addins_for_realm_with_all_addins() {
 
     let max_community_voter_weight_addin_address = Pubkey::new_unique();
 
-    set_realm_config_args.max_community_voter_weight_addin =
-        Some(max_community_voter_weight_addin_address);
+    set_realm_config_args
+        .community_token_config
+        .max_voter_weight_addin = Some(max_community_voter_weight_addin_address);
 
     let community_voter_weight_addin_address = Pubkey::new_unique();
-    set_realm_config_args.community_voter_weight_addin = Some(community_voter_weight_addin_address);
+    set_realm_config_args
+        .community_token_config
+        .voter_weight_addin = Some(community_voter_weight_addin_address);
 
     // Act
 

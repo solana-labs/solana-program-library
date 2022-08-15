@@ -141,8 +141,9 @@ async fn test_set_realm_max_voter_weight_addin_for_realm_with_existing_voter_wei
         .use_max_voter_weight_addin = true;
 
     let max_community_voter_weight_addin_address = Pubkey::new_unique();
-    set_realm_config_args.max_community_voter_weight_addin =
-        Some(max_community_voter_weight_addin_address);
+    set_realm_config_args
+        .community_token_config
+        .max_voter_weight_addin = Some(max_community_voter_weight_addin_address);
 
     // Act
 

@@ -216,8 +216,13 @@ impl GovernanceProgramTest {
 
         SetRealmConfigArgs {
             realm_config_args,
-            community_voter_weight_addin,
-            max_community_voter_weight_addin,
+            council_token_config: GoverningTokenConfig::default(),
+            community_token_config: GoverningTokenConfig {
+                voter_weight_addin: community_voter_weight_addin,
+                max_voter_weight_addin: max_community_voter_weight_addin,
+                token_type: GoverningTokenType::default(),
+                reserved: [0; 8],
+            },
         }
     }
 
@@ -289,8 +294,12 @@ impl GovernanceProgramTest {
         let realm_authority = Keypair::new();
 
         let community_token_args = GoverningTokenConfigAccountArgs {
-            voter_weight_addin: set_realm_config_args.community_voter_weight_addin,
-            max_voter_weight_addin: set_realm_config_args.max_community_voter_weight_addin,
+            voter_weight_addin: set_realm_config_args
+                .community_token_config
+                .voter_weight_addin,
+            max_voter_weight_addin: set_realm_config_args
+                .community_token_config
+                .max_voter_weight_addin,
             token_type: set_realm_config_args
                 .realm_config_args
                 .community_token_config_args
@@ -354,8 +363,12 @@ impl GovernanceProgramTest {
                 council_token_config: GoverningTokenConfig::default(),
                 reserved: Reserved110::default(),
                 community_token_config: GoverningTokenConfig {
-                    voter_weight_addin: set_realm_config_args.community_voter_weight_addin,
-                    max_voter_weight_addin: set_realm_config_args.max_community_voter_weight_addin,
+                    voter_weight_addin: set_realm_config_args
+                        .community_token_config
+                        .voter_weight_addin,
+                    max_voter_weight_addin: set_realm_config_args
+                        .community_token_config
+                        .max_voter_weight_addin,
                     token_type: GoverningTokenType::Liquid,
                     reserved: [0; 8],
                 },
@@ -1098,7 +1111,9 @@ impl GovernanceProgramTest {
             .community_token_config_args
             .use_voter_weight_addin
         {
-            set_realm_config_args.community_voter_weight_addin
+            set_realm_config_args
+                .community_token_config
+                .voter_weight_addin
         } else {
             None
         };
@@ -1108,7 +1123,9 @@ impl GovernanceProgramTest {
             .community_token_config_args
             .use_max_voter_weight_addin
         {
-            set_realm_config_args.max_community_voter_weight_addin
+            set_realm_config_args
+                .community_token_config
+                .max_voter_weight_addin
         } else {
             None
         };

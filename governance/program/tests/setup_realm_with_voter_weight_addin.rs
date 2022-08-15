@@ -128,7 +128,9 @@ async fn test_set_realm_voter_weight_addin_for_realm_with_existing_voter_weight_
         .use_voter_weight_addin = true;
 
     let community_voter_weight_addin_address = Pubkey::new_unique();
-    set_realm_config_args.community_voter_weight_addin = Some(community_voter_weight_addin_address);
+    set_realm_config_args
+        .community_token_config
+        .voter_weight_addin = Some(community_voter_weight_addin_address);
 
     // Act
 
