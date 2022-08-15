@@ -309,26 +309,28 @@ async fn test_set_realm_config_for_council_token_config() {
 
     // Assert
 
-    let _realm_config_account = governance_test
+    let realm_config_account = governance_test
         .get_realm_config_account(&realm_cookie.realm_config.address)
         .await;
 
-    // assert_eq!(
-    //     realm_config_account.council_token_config.token_type,
-    //     GoverningTokenType::Membership
-    // );
+    assert_eq!(
+        realm_config_account.council_token_config.token_type,
+        GoverningTokenType::Membership
+    );
 
-    // assert_eq!(
-    //     realm_config_account
-    //         .community_token_config
-    //         .voter_weight_addin,
-    //     realm_setup_args.community_voter_weight_addin
-    // );
+    assert_eq!(
+        realm_config_account.council_token_config.voter_weight_addin,
+        realm_setup_args
+            .council_token_config_args
+            .voter_weight_addin
+    );
 
-    // assert_eq!(
-    //     realm_config_account
-    //         .community_token_config
-    //         .max_voter_weight_addin,
-    //     realm_setup_args.max_community_voter_weight_addin
-    // );
+    assert_eq!(
+        realm_config_account
+            .council_token_config
+            .max_voter_weight_addin,
+        realm_setup_args
+            .council_token_config_args
+            .max_voter_weight_addin
+    );
 }
