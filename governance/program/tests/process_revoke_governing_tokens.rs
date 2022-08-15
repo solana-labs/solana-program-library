@@ -5,9 +5,11 @@ use solana_program_test::*;
 mod program_test;
 
 use program_test::*;
+
 use spl_governance::{error::GovernanceError, state::realm_config::GoverningTokenType};
 
 use crate::program_test::args::RealmSetupArgs;
+use solana_sdk::signature::{Keypair, Signer};
 
 #[tokio::test]
 async fn test_revoke_community_tokens() {
@@ -165,7 +167,7 @@ async fn test_revoke_council_tokens_with_realm_authority_must_sign_error() {
             &token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
             1,
-            |i| i.accounts[1].is_signer = false,
+            |i| i.accounts[1].is_signer = false, // realm_authority
             Some(&[]),
         )
         .await
@@ -175,4 +177,42 @@ async fn test_revoke_council_tokens_with_realm_authority_must_sign_error() {
     // Assert
 
     assert_eq!(err, GovernanceError::RealmAuthorityMustSign.into());
+}
+
+#[tokio::test]
+async fn test_revoke_council_tokens_with_invalid_realm_authority_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_config_args = RealmSetupArgs::default();
+    realm_config_args.council_token_config_args.token_type = GoverningTokenType::Membership;
+
+    let realm_cookie = governance_test
+        .with_realm_using_args(&realm_config_args)
+        .await;
+
+    let token_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let realm_authority = Keypair::new();
+
+    // Act
+    let err = governance_test
+        .revoke_governing_tokens_using_instruction(
+            &realm_cookie,
+            &token_owner_record_cookie,
+            &realm_cookie.account.config.council_mint.unwrap(),
+            1,
+            |i| i.accounts[1].pubkey = realm_authority.pubkey(),
+            Some(&[&realm_authority]),
+        )
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(err, GovernanceError::InvalidAuthorityForRealm.into());
 }
