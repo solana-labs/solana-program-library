@@ -22,3 +22,49 @@ impl Default for RealmSetupArgs {
         }
     }
 }
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct PluginSetupArgs {
+    pub use_community_voter_weight_addin: bool,
+    pub use_max_community_voter_weight_addin: bool,
+    pub use_council_voter_weight_addin: bool,
+    pub use_max_council_voter_weight_addin: bool,
+}
+
+impl PluginSetupArgs {
+    #[allow(dead_code)]
+    pub const COMMUNITY_VOTER_WEIGHT: PluginSetupArgs = PluginSetupArgs {
+        use_community_voter_weight_addin: true,
+        use_max_community_voter_weight_addin: false,
+        use_council_voter_weight_addin: false,
+        use_max_council_voter_weight_addin: false,
+    };
+    #[allow(dead_code)]
+    pub const COMMUNITY_MAX_VOTER_WEIGHT: PluginSetupArgs = PluginSetupArgs {
+        use_community_voter_weight_addin: false,
+        use_max_community_voter_weight_addin: true,
+        use_council_voter_weight_addin: false,
+        use_max_council_voter_weight_addin: false,
+    };
+    #[allow(dead_code)]
+    pub const COUNCIL_VOTER_WEIGHT: PluginSetupArgs = PluginSetupArgs {
+        use_community_voter_weight_addin: false,
+        use_max_community_voter_weight_addin: false,
+        use_council_voter_weight_addin: true,
+        use_max_council_voter_weight_addin: false,
+    };
+    #[allow(dead_code)]
+    pub const COUNCIL_MAX_VOTER_WEIGHT: PluginSetupArgs = PluginSetupArgs {
+        use_community_voter_weight_addin: false,
+        use_max_community_voter_weight_addin: false,
+        use_council_voter_weight_addin: false,
+        use_max_council_voter_weight_addin: true,
+    };
+    #[allow(dead_code)]
+    pub const ALL: PluginSetupArgs = PluginSetupArgs {
+        use_community_voter_weight_addin: true,
+        use_max_community_voter_weight_addin: true,
+        use_council_voter_weight_addin: true,
+        use_max_council_voter_weight_addin: true,
+    };
+}
