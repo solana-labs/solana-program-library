@@ -11,6 +11,7 @@ use spl_governance::{
     state::{
         enums::MintMaxVoteWeightSource,
         realm::{GoverningTokenConfigArgs, RealmConfigArgs},
+        realm_config::GoverningTokenType,
     },
 };
 
@@ -293,5 +294,33 @@ async fn test_set_realm_config_with_council_restore_error() {
     assert_eq!(
         err,
         GovernanceError::RealmCouncilMintChangeIsNotSupported.into()
+    );
+}
+
+#[tokio::test]
+async fn test_set_realm_config_with_liquid_community_token_cannot_be_changed_to_memebership_error()
+{
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_cookie = governance_test.with_realm().await;
+
+    let mut set_realm_config_args = SetRealmConfigArgs::default();
+    set_realm_config_args
+        .realm_config_args
+        .community_token_config_args
+        .token_type = GoverningTokenType::Membership;
+
+    // Act
+    let err = governance_test
+        .set_realm_config(&mut realm_cookie, &set_realm_config_args)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        err,
+        GovernanceError::CannotChangeCommunityTokenTypeToMemebership.into()
     );
 }

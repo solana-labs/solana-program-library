@@ -1114,7 +1114,11 @@ impl GovernanceProgramTest {
         let community_token_args = GoverningTokenConfigAccountArgs {
             voter_weight_addin: community_voter_weight_addin,
             max_voter_weight_addin: max_community_voter_weight_addin,
-            token_type: GoverningTokenType::Liquid,
+            token_type: set_realm_config_args
+                .realm_config_args
+                .community_token_config_args
+                .token_type
+                .clone(),
         };
 
         let mut set_realm_config_ix = set_realm_config(
