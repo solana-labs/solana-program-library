@@ -45,8 +45,7 @@ use spl_governance::{
             GoverningTokenConfigAccountArgs, RealmConfig, RealmV2, SetRealmAuthorityAction,
         },
         realm_config::{
-            get_realm_config_address, GoverningTokenConfig, GoverningTokenType, RealmConfigAccount,
-            Reserved110,
+            get_realm_config_address, GoverningTokenConfig, RealmConfigAccount, Reserved110,
         },
         signatory_record::{get_signatory_record_address, SignatoryRecordV2},
         token_owner_record::{get_token_owner_record_address, TokenOwnerRecordV2},
@@ -285,6 +284,19 @@ impl GovernanceProgramTest {
                 .clone(),
         };
 
+        let council_token_args = GoverningTokenConfigAccountArgs {
+            voter_weight_addin: realm_setup_args
+                .council_token_config_args
+                .voter_weight_addin,
+            max_voter_weight_addin: realm_setup_args
+                .council_token_config_args
+                .max_voter_weight_addin,
+            token_type: realm_setup_args
+                .council_token_config_args
+                .token_type
+                .clone(),
+        };
+
         let create_realm_ix = create_realm(
             &self.program_id,
             &realm_authority.pubkey(),
@@ -292,7 +304,7 @@ impl GovernanceProgramTest {
             &self.bench.payer.pubkey(),
             council_token_mint_pubkey,
             Some(community_token_args),
-            None,
+            Some(council_token_args),
             name.clone(),
             realm_setup_args.min_community_weight_to_create_governance,
             realm_setup_args
@@ -333,7 +345,6 @@ impl GovernanceProgramTest {
             account: RealmConfigAccount {
                 account_type: GovernanceAccountType::RealmConfig,
                 realm: realm_address,
-                council_token_config: GoverningTokenConfig::default(),
                 reserved: Reserved110::default(),
                 community_token_config: GoverningTokenConfig {
                     voter_weight_addin: realm_setup_args
@@ -342,7 +353,23 @@ impl GovernanceProgramTest {
                     max_voter_weight_addin: realm_setup_args
                         .community_token_config_args
                         .max_voter_weight_addin,
-                    token_type: GoverningTokenType::Liquid,
+                    token_type: realm_setup_args
+                        .community_token_config_args
+                        .token_type
+                        .clone(),
+                    reserved: [0; 8],
+                },
+                council_token_config: GoverningTokenConfig {
+                    voter_weight_addin: realm_setup_args
+                        .council_token_config_args
+                        .voter_weight_addin,
+                    max_voter_weight_addin: realm_setup_args
+                        .council_token_config_args
+                        .max_voter_weight_addin,
+                    token_type: realm_setup_args
+                        .council_token_config_args
+                        .token_type
+                        .clone(),
                     reserved: [0; 8],
                 },
             },
@@ -1205,6 +1232,23 @@ impl GovernanceProgramTest {
             realm_cookie,
             token_owner_record_cookie,
             &realm_cookie.account.community_mint,
+            token_owner_record_cookie
+                .account
+                .governing_token_deposit_amount,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn revoke_council_tokens(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+    ) -> Result<(), ProgramError> {
+        self.revoke_governing_tokens(
+            realm_cookie,
+            token_owner_record_cookie,
+            &realm_cookie.account.config.council_mint.unwrap(),
             token_owner_record_cookie
                 .account
                 .governing_token_deposit_amount,
