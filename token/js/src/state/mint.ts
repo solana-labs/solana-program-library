@@ -1,6 +1,6 @@
 import { struct, u32, u8 } from '@solana/buffer-layout';
 import { bool, publicKey, u64 } from '@solana/buffer-layout-utils';
-import { Commitment, Connection, PublicKey } from '@solana/web3.js';
+import { AccountInfo, Commitment, Connection, PublicKey } from '@solana/web3.js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants';
 import {
     TokenAccountNotFoundError,
@@ -77,6 +77,17 @@ export async function getMint(
     programId = TOKEN_PROGRAM_ID
 ): Promise<Mint> {
     const info = await connection.getAccountInfo(address, commitment);
+    return unpackMint(info, address, programId);
+}
+
+/**
+ * Unpacks a mint
+ * @param info the mint on-chain account
+ * @param address Mint
+ * @param programId SPL Token program account
+ * @returns
+ */
+export function unpackMint(info: AccountInfo<Buffer> | null, address: PublicKey, programId: PublicKey): Mint {
     if (!info) throw new TokenAccountNotFoundError();
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
     if (info.data.length < MINT_SIZE) throw new TokenInvalidAccountSizeError();

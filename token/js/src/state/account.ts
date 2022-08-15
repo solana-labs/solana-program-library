@@ -157,7 +157,14 @@ export async function getMinimumBalanceForRentExemptAccountWithExtensions(
     return await connection.getMinimumBalanceForRentExemption(accountLen, commitment);
 }
 
-function unpackAccount(info: AccountInfo<Buffer> | null, address: PublicKey, programId: PublicKey) {
+/**
+ * Unpacks a token account
+ * @param info the token account on-chain account
+ * @param address TokenAccount
+ * @param programId SPL Token program account
+ * @returns
+ */
+export function unpackAccount(info: AccountInfo<Buffer> | null, address: PublicKey, programId: PublicKey): Account {
     if (!info) throw new TokenAccountNotFoundError();
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
     if (info.data.length < ACCOUNT_SIZE) throw new TokenInvalidAccountSizeError();
