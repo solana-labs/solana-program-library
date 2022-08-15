@@ -18,7 +18,7 @@ async fn test_create_governance_with_voter_weight_addin() {
     let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let realm_cookie = governance_test.with_realm().await;
+    let realm_cookie = governance_test.with_realm_using_addins(true, false).await;
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_owner_record(&realm_cookie)
@@ -53,7 +53,7 @@ async fn test_create_proposal_with_voter_weight_addin() {
     let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let realm_cookie = governance_test.with_realm().await;
+    let realm_cookie = governance_test.with_realm_using_addins(true, false).await;
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_owner_record(&realm_cookie)
@@ -93,7 +93,7 @@ async fn test_cast_vote_with_voter_weight_addin() {
     let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let realm_cookie = governance_test.with_realm().await;
+    let realm_cookie = governance_test.with_realm_using_addins(true, false).await;
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_owner_record(&realm_cookie)
@@ -152,7 +152,7 @@ async fn test_create_token_governance_with_voter_weight_addin() {
     let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
     let governed_token_cookie = governance_test.with_governed_token().await;
 
-    let realm_cookie = governance_test.with_realm().await;
+    let realm_cookie = governance_test.with_realm_using_addins(true, false).await;
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_owner_record(&realm_cookie)
@@ -187,7 +187,7 @@ async fn test_create_mint_governance_with_voter_weight_addin() {
     let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
     let governed_mint_cookie = governance_test.with_governed_mint().await;
 
-    let realm_cookie = governance_test.with_realm().await;
+    let realm_cookie = governance_test.with_realm_using_addins(true, false).await;
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_owner_record(&realm_cookie)
@@ -222,7 +222,7 @@ async fn test_create_program_governance_with_voter_weight_addin() {
     let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
     let governed_program_cookie = governance_test.with_governed_program().await;
 
-    let realm_cookie = governance_test.with_realm().await;
+    let realm_cookie = governance_test.with_realm_using_addins(true, false).await;
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_owner_record(&realm_cookie)
@@ -260,7 +260,7 @@ async fn test_create_governance_with_voter_weight_action_error() {
     let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let realm_cookie = governance_test.with_realm().await;
+    let realm_cookie = governance_test.with_realm_using_addins(true, false).await;
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_owner_record(&realm_cookie)
@@ -298,7 +298,7 @@ async fn test_create_governance_with_voter_weight_expiry_error() {
     let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let realm_cookie = governance_test.with_realm().await;
+    let realm_cookie = governance_test.with_realm_using_addins(true, false).await;
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_owner_record(&realm_cookie)
@@ -338,7 +338,7 @@ async fn test_cast_vote_with_voter_weight_action_error() {
     let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let realm_cookie = governance_test.with_realm().await;
+    let realm_cookie = governance_test.with_realm_using_addins(true, false).await;
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_owner_record(&realm_cookie)
@@ -394,7 +394,7 @@ async fn test_create_governance_with_voter_weight_action_target_error() {
     let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let realm_cookie = governance_test.with_realm().await;
+    let realm_cookie = governance_test.with_realm_using_addins(true, false).await;
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_owner_record(&realm_cookie)
@@ -437,7 +437,7 @@ async fn test_create_proposal_with_voter_weight_action_error() {
     let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let realm_cookie = governance_test.with_realm().await;
+    let realm_cookie = governance_test.with_realm_using_addins(true, false).await;
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_owner_record(&realm_cookie)
@@ -481,7 +481,7 @@ async fn test_create_governance_with_voter_weight_record() {
     let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let realm_cookie = governance_test.with_realm().await;
+    let realm_cookie = governance_test.with_realm_using_addins(true, false).await;
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_owner_record(&realm_cookie)

@@ -12,7 +12,7 @@ async fn test_cast_vote_with_all_addin() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_with_all_addins().await;
 
-    let realm_cookie = governance_test.with_realm().await;
+    let realm_cookie = governance_test.with_realm_using_addins(true, true).await;
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_owner_record(&realm_cookie)
@@ -72,7 +72,7 @@ async fn test_tip_vote_with_all_addin() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_with_all_addins().await;
 
-    let realm_cookie = governance_test.with_realm().await;
+    let realm_cookie = governance_test.with_realm_using_addins(true, true).await;
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_owner_record(&realm_cookie)
@@ -132,7 +132,7 @@ async fn test_finalize_vote_with_all_addin() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_with_all_addins().await;
 
-    let realm_cookie = governance_test.with_realm().await;
+    let realm_cookie = governance_test.with_realm_using_addins(true, true).await;
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_owner_record(&realm_cookie)

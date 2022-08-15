@@ -5,13 +5,9 @@ use solana_program_test::*;
 mod program_test;
 
 use program_test::*;
-use spl_governance::state::{
-    enums::MintMaxVoteWeightSource,
-    realm::{get_realm_address, GoverningTokenConfigArgs, RealmConfigArgs},
-    realm_config::GoverningTokenConfig,
-};
+use spl_governance::state::{enums::MintMaxVoteWeightSource, realm::get_realm_address};
 
-use self::args::SetRealmConfigArgs;
+use crate::program_test::args::RealmSetupArgs;
 
 #[tokio::test]
 async fn test_create_realm() {
@@ -34,18 +30,11 @@ async fn test_create_realm_with_non_default_config() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
-    let realm_config_args = RealmConfigArgs {
+    let set_realm_config_args = RealmSetupArgs {
         use_council_mint: false,
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(1),
-        min_community_weight_to_create_governance: 10,
-        community_token_config_args: GoverningTokenConfigArgs::default(),
-        council_token_config_args: GoverningTokenConfigArgs::default(),
-    };
-
-    let set_realm_config_args = SetRealmConfigArgs {
-        realm_config_args,
-        community_token_config: GoverningTokenConfig::default(),
-        council_token_config: GoverningTokenConfig::default(),
+        min_community_weight_to_create_governance: 1,
+        ..Default::default()
     };
 
     // Act

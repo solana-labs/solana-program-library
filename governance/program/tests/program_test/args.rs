@@ -1,30 +1,24 @@
 use spl_governance::state::{
-    enums::MintMaxVoteWeightSource,
-    realm::{GoverningTokenConfigArgs, RealmConfigArgs},
-    realm_config::GoverningTokenConfig,
+    enums::MintMaxVoteWeightSource, realm::GoverningTokenConfigAccountArgs,
 };
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct SetRealmConfigArgs {
-    pub realm_config_args: RealmConfigArgs,
-    pub community_token_config: GoverningTokenConfig,
-    pub council_token_config: GoverningTokenConfig,
+pub struct RealmSetupArgs {
+    pub use_council_mint: bool,
+    pub min_community_weight_to_create_governance: u64,
+    pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
+    pub community_token_config_args: GoverningTokenConfigAccountArgs,
+    pub council_token_config_args: GoverningTokenConfigAccountArgs,
 }
 
-impl Default for SetRealmConfigArgs {
+impl Default for RealmSetupArgs {
     fn default() -> Self {
-        let realm_config_args = RealmConfigArgs {
-            use_council_mint: true,
-            community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
-            min_community_weight_to_create_governance: 10,
-            community_token_config_args: GoverningTokenConfigArgs::default(),
-            council_token_config_args: GoverningTokenConfigArgs::default(),
-        };
-
         Self {
-            realm_config_args,
-            community_token_config: GoverningTokenConfig::default(),
-            council_token_config: GoverningTokenConfig::default(),
+            use_council_mint: true,
+            community_token_config_args: GoverningTokenConfigAccountArgs::default(),
+            council_token_config_args: GoverningTokenConfigAccountArgs::default(),
+            min_community_weight_to_create_governance: 10,
+            community_mint_max_vote_weight_source: MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
         }
     }
 }

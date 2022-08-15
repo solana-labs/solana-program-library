@@ -7,16 +7,15 @@ mod program_test;
 use program_test::*;
 use spl_governance::state::realm_config::GoverningTokenType;
 
+use crate::program_test::args::RealmSetupArgs;
+
 #[tokio::test]
 async fn test_revoke_community_tokens() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
-    let mut realm_config_args = governance_test.get_default_set_realm_config_args();
-    realm_config_args
-        .realm_config_args
-        .community_token_config_args
-        .token_type = GoverningTokenType::Membership;
+    let mut realm_config_args = RealmSetupArgs::default();
+    realm_config_args.community_token_config_args.token_type = GoverningTokenType::Membership;
 
     let realm_cookie = governance_test
         .with_realm_using_config_args(&realm_config_args)
