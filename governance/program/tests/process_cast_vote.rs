@@ -8,7 +8,10 @@ use solana_program_test::tokio;
 use program_test::*;
 use spl_governance::{
     error::GovernanceError,
-    state::enums::{ProposalState, VoteThreshold, VoteTipping},
+    state::{
+        enums::{ProposalState, VoteThreshold, VoteTipping},
+        vote_record::Vote,
+    },
 };
 
 #[tokio::test]
@@ -1242,4 +1245,53 @@ async fn test_cast_council_vote() {
         Some(governance_cookie.account.config.council_vote_threshold),
         proposal_account.vote_threshold
     );
+}
+
+#[tokio::test]
+async fn test_cast_vote_with_invalid_realm_config_account_address_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_cookie = governance_test
+        .with_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    // Try bypass config check by using none existing config account
+    let realm_config_address = Pubkey::new_unique();
+
+    // Act
+    let err = governance_test
+        .with_cast_vote_using_instruction(
+            &proposal_cookie,
+            &token_owner_record_cookie,
+            Vote::Deny,
+            |i| {
+                i.accounts[10].pubkey = realm_config_address; // realm_config_address
+            },
+            None,
+        )
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(err, GovernanceError::InvalidRealmConfigAddress.into());
 }

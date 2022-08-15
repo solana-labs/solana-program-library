@@ -2348,13 +2348,31 @@ impl GovernanceProgramTest {
         self.with_cast_vote(proposal_cookie, token_owner_record_cookie, vote)
             .await
     }
-
     #[allow(dead_code)]
     pub async fn with_cast_vote(
         &mut self,
         proposal_cookie: &ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         vote: Vote,
+    ) -> Result<VoteRecordCookie, ProgramError> {
+        self.with_cast_vote_using_instruction(
+            proposal_cookie,
+            token_owner_record_cookie,
+            vote,
+            NopOverride,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_cast_vote_using_instruction<F: Fn(&mut Instruction)>(
+        &mut self,
+        proposal_cookie: &ProposalCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        vote: Vote,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
     ) -> Result<VoteRecordCookie, ProgramError> {
         let voter_weight_record =
             if let Some(voter_weight_record) = &token_owner_record_cookie.voter_weight_record {
@@ -2371,7 +2389,7 @@ impl GovernanceProgramTest {
             None
         };
 
-        let cast_vote_ix = cast_vote(
+        let mut cast_vote_ix = cast_vote(
             &self.program_id,
             &token_owner_record_cookie.account.realm,
             &proposal_cookie.account.governance,
@@ -2386,11 +2404,13 @@ impl GovernanceProgramTest {
             vote.clone(),
         );
 
+        instruction_override(&mut cast_vote_ix);
+
+        let default_signers = &[&token_owner_record_cookie.token_owner];
+        let signers = signers_override.unwrap_or(default_signers);
+
         self.bench
-            .process_transaction(
-                &[cast_vote_ix],
-                Some(&[&token_owner_record_cookie.token_owner]),
-            )
+            .process_transaction(&[cast_vote_ix], Some(signers))
             .await?;
 
         let vote_amount = token_owner_record_cookie

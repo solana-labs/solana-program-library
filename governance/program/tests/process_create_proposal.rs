@@ -542,3 +542,41 @@ async fn test_create_proposal_with_disabled_community_vote_error() {
         GovernanceError::GoverningTokenMintNotAllowedToVote.into()
     );
 }
+
+#[tokio::test]
+async fn test_create_proposal_with_invalid_realm_config_account_address_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_cookie = governance_test
+        .with_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    // Try bypass config check by using none existing config account
+    let realm_config_address = Pubkey::new_unique();
+
+    // Act
+    let err = governance_test
+        .with_proposal_using_instruction(&token_owner_record_cookie, &mut governance_cookie, |i| {
+            i.accounts[8].pubkey = realm_config_address;
+        })
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(err, GovernanceError::InvalidRealmConfigAddress.into());
+}
