@@ -18,7 +18,7 @@ async fn test_revoke_community_tokens() {
     realm_config_args.community_token_config_args.token_type = GoverningTokenType::Membership;
 
     let realm_cookie = governance_test
-        .with_realm_using_config_args(&realm_config_args)
+        .with_realm_using_args(&realm_config_args)
         .await;
 
     let token_owner_record_cookie = governance_test

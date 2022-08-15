@@ -30,7 +30,7 @@ async fn test_create_realm_with_non_default_config() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
-    let set_realm_config_args = RealmSetupArgs {
+    let realm_setup_args = RealmSetupArgs {
         use_council_mint: false,
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(1),
         min_community_weight_to_create_governance: 1,
@@ -39,7 +39,7 @@ async fn test_create_realm_with_non_default_config() {
 
     // Act
     let realm_cookie = governance_test
-        .with_realm_using_config_args(&set_realm_config_args)
+        .with_realm_using_args(&realm_setup_args)
         .await;
 
     // Assert
