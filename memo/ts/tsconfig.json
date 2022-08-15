@@ -1,16 +1,27 @@
 {
-  "compilerOptions": {
-      "target": "esnext",
-      "module": "esnext",
-      "esModuleInterop": true,
-      "moduleResolution": "node",
-      "outDir": "dist",
-      "declaration": true,
-      "declarationMap": true,
-      "strict": true,
-      "isolatedModules": true,
-      "noImplicitReturns": true,
-  },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules"]
+    "include": ["src", "types"],
+    "exclude": ["node_modules"],
+    "compilerOptions": {
+        "target": "es2019",
+        "module": "esnext",
+        "outDir": "lib/esm",
+        "declarationDir": "lib/types",
+        "noEmit": false,
+        "declaration": true,
+        "sourceMap": true,
+        "noEmitOnError": true,
+        "stripInternal": true,
+        "moduleResolution": "node",
+        "jsx": "react",
+        "strict": true,
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "typeRoots": ["node_modules/@types"]
+    },
+    "typedocOptions": {
+        "entryPoints": "src/index.ts",
+        "out": "docs",
+        "readme": "README.md"
+    }
 }

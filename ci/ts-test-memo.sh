@@ -6,7 +6,8 @@ source ./ci/solana-version.sh install
 
 set -x
 cd memo/ts
-yarn
-yarn build
+
+yarn install --pure-lockfile
 yarn lint
+yarn build
 yarn test
