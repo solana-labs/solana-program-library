@@ -2,7 +2,7 @@ use thiserror::Error;
 
 /// Concurrent merkle tree operation errors
 #[derive(Error, Debug)]
-pub enum CMTError {
+pub enum ConcurrentMerkleTreeError {
     /// Received an index larger than the rightmost index
     #[error("Received an index larger than the rightmost index")]
     LeafIndexOutOfBounds,
@@ -23,17 +23,13 @@ pub enum CMTError {
     #[error("Tree already initialized")]
     TreeAlreadyInitialized,
 
-    /// Invalid number of bytes passed for node (expected 32 bytes)
-    #[error("Invalid number of bytes passed for node (expected 32 bytes)")]
-    InvalidNodeByteLength,
-
-    /// Fast forward error: we cannot find a valid point to fast-forward the current proof from
+    /// Root passed as argument cannot be found in stored changelog buffer
     #[error("Root not found in changelog buffer")]
     RootNotFound,
 
-    /// Valid proof was passed to a leaf, but it's value has changed since the proof was issued
+    /// Valid proof was passed to a leaf, but its value has changed since the proof was issued
     #[error(
-        "Valid proof was passed to a leaf, but it's value has changed since the proof was issued"
+        "Valid proof was passed to a leaf, but its value has changed since the proof was issued"
     )]
     LeafContentsModified,
 }

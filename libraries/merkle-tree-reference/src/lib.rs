@@ -13,8 +13,6 @@ pub const MAX_SIZE: usize = 64;
 /// Max depth of the Merkle tree
 pub const MAX_DEPTH: usize = 14;
 
-pub const PADDING: usize = 32 - MAX_DEPTH;
-
 /// Used for node parity when hashing
 pub const MASK: usize = MAX_SIZE - 1;
 

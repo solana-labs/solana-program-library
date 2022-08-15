@@ -1,5 +1,5 @@
 [package]
-name = "concurrent-merkle-tree"
+name = "spl-concurrent-merkle-tree"
 version = "0.1.0"
 description = "Solana Program Library Concurrent Merkle Tree"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
@@ -19,7 +19,7 @@ thiserror = "1.0.30"
 [dev-dependencies]
 rand_distr = "0.4.3"
 rand = "0.7"
-merkle-tree-reference = { path = "../merkle-tree-reference" }
+spl-merkle-tree-reference = { path = "../merkle-tree-reference" }
 tokio = { version = "1.12", features = ["full"] }
 
 [lib]

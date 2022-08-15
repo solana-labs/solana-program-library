@@ -1,7 +1,7 @@
-use concurrent_merkle_tree::error::CMTError;
-use concurrent_merkle_tree::cmt::ConcurrentMerkleTree;
-use concurrent_merkle_tree::state::{Node, EMPTY};
-use merkle_tree_reference::MerkleTree;
+use spl_concurrent_merkle_tree::error::ConcurrentMerkleTreeError;
+use spl_concurrent_merkle_tree::concurrent_merkle_tree::ConcurrentMerkleTree;
+use spl_concurrent_merkle_tree::state::{Node, EMPTY};
+use spl_merkle_tree_reference::MerkleTree;
 use rand::thread_rng;
 use rand::{self, Rng};
 
@@ -171,7 +171,7 @@ async fn test_leaf_contents_modified() {
             panic!("CMT should fail when replacing leafs with outdated leaf proofs")
         }
         Err(e) => match e {
-            CMTError::LeafContentsModified => {}
+            ConcurrentMerkleTreeError::LeafContentsModified => {}
             _ => {
                 panic!("Wrong error was thrown: {:?}", e);
             }

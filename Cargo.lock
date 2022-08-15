@@ -801,19 +801,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "concurrent-merkle-tree"
-version = "0.1.0"
-dependencies = [
- "bytemuck",
- "merkle-tree-reference",
- "rand 0.7.3",
- "rand_distr",
- "solana-program",
- "thiserror",
- "tokio",
-]
-
-[[package]]
 name = "console"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2527,14 +2514,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5aa361d4faea93603064a027415f07bd8e1d5c88c9fbf68bf56a285428fd79ce"
 dependencies = [
  "autocfg",
-]
-
-[[package]]
-name = "merkle-tree-reference"
-version = "0.1.0"
-dependencies = [
- "solana-program",
- "thiserror",
 ]
 
 [[package]]
@@ -5904,6 +5883,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-concurrent-merkle-tree"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "rand 0.7.3",
+ "rand_distr",
+ "solana-program",
+ "spl-merkle-tree-reference",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "spl-example-cross-program-invocation"
 version = "1.0.0"
 dependencies = [
@@ -6126,6 +6118,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd0dc6f70db6bacea7ff25870b016a65ba1d1b6013536f08e4fd79a8f9005325"
 dependencies = [
  "solana-program",
+]
+
+[[package]]
+name = "spl-merkle-tree-reference"
+version = "0.1.0"
+dependencies = [
+ "solana-program",
+ "thiserror",
 ]
 
 [[package]]

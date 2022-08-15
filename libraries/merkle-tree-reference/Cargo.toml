@@ -1,5 +1,5 @@
 [package]
-name = "merkle-tree-reference"
+name = "spl-merkle-tree-reference"
 version = "0.1.0"
 description = "Reference implementation of a merkle tree"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
