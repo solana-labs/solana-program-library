@@ -1,4 +1,7 @@
-use crate::utils::hash_to_parent;
+use crate::{
+    hash::hash_to_parent,
+    node::{Node, EMPTY},
+};
 
 /// Stores the path of nodes changed in a tree by a Merkle tree operation
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -73,30 +76,3 @@ impl<const MAX_DEPTH: usize> ChangeLog<MAX_DEPTH> {
         }
     }
 }
-
-/// Represents a proof to perform a Merkle tree operation on the leaf at `index`
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[repr(C)]
-pub struct Path<const MAX_DEPTH: usize> {
-    pub proof: [Node; MAX_DEPTH],
-    pub leaf: Node,
-    pub index: u32,
-    pub _padding: u32,
-}
-
-impl<const MAX_DEPTH: usize> Default for Path<MAX_DEPTH> {
-    fn default() -> Self {
-        Self {
-            proof: [Node::default(); MAX_DEPTH],
-            leaf: Node::default(),
-            index: 0,
-            _padding: 0,
-        }
-    }
-}
-
-/// Abstract type for 32 byte leaf data
-pub type Node = [u8; 32];
-
-/// An empty node is a 32 byte array of zeroes
-pub const EMPTY: Node = [0_u8; 32];

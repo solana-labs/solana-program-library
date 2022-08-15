@@ -1,7 +1,9 @@
 use crate::{
     error::ConcurrentMerkleTreeError,
-    state::{ChangeLog, Node, Path, EMPTY},
-    utils::{empty_node, empty_node_cached, fill_in_proof, hash_to_parent, recompute},
+    changelog::ChangeLog, 
+    path::Path,
+    node::{Node, empty_node, EMPTY, empty_node_cached},
+    hash::{hash_to_parent, recompute, fill_in_proof},
 };
 use bytemuck::{Pod, Zeroable};
 use log_compute;

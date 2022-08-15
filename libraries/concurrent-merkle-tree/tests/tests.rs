@@ -1,6 +1,6 @@
 use spl_concurrent_merkle_tree::error::ConcurrentMerkleTreeError;
 use spl_concurrent_merkle_tree::concurrent_merkle_tree::ConcurrentMerkleTree;
-use spl_concurrent_merkle_tree::state::{Node, EMPTY};
+use spl_concurrent_merkle_tree::node::{Node, EMPTY};
 use spl_merkle_tree_reference::MerkleTree;
 use rand::thread_rng;
 use rand::{self, Rng};

@@ -4,16 +4,20 @@
 //! concurrent merkle tree data structure introduced in [this
 //! whitepaper](https://drive.google.com/file/d/1BOpa5OFmara50fTvL0VIVYjtg-qzHCVc/view)
 //!
-//! The core implementation of CMT can be found in [merkle_roll]
+//! The core implementation of CMT can be found in [concurrent_merkle_tree]
 
-/// Descriptive errors
-pub mod error;
 /// Private macros to enable logging in the Solana runtime
 #[macro_use]
 mod log;
 /// Core implementation of the concurrent merkle tree structure
 pub mod concurrent_merkle_tree;
-/// Structs to support concurrent merkle tree operations
-pub mod state;
-/// Hashing utils to support concurrent merkle tree operations
-pub mod utils;
+/// Changelog implementation to keep track of information necessary to fast forward proofs
+pub mod changelog;
+/// Descriptive errors
+pub mod error;
+/// Hashing utils to support merkle tree operations
+pub mod hash;
+/// Node implementation and utils
+pub mod node;
+/// Path implementation
+pub mod path;
