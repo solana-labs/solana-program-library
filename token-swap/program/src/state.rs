@@ -1,12 +1,21 @@
 //! State transition types
 
-use crate::curve::{base::SwapCurve, fees::Fees};
+use crate::{
+    curve::{base::SwapCurve, fees::Fees},
+    error::SwapError,
+};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use enum_dispatch::enum_dispatch;
 use solana_program::{
+    account_info::AccountInfo,
+    msg,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
+};
+use spl_token_2022::{
+    extension::StateWithExtensions,
+    state::{Account, AccountState},
 };
 use std::sync::Arc;
 
@@ -33,6 +42,9 @@ pub trait SwapState {
 
     /// Address of pool fee account
     fn pool_fee_account(&self) -> &Pubkey;
+    /// Check if the pool fee info is a valid token program account
+    /// capable of receiving tokens from the mint.
+    fn check_pool_fee_info(&self, pool_fee_info: &AccountInfo) -> Result<(), ProgramError>;
 
     /// Fees associated with swap
     fn fees(&self) -> &Fees;
@@ -162,6 +174,25 @@ impl SwapState for SwapV1 {
 
     fn pool_fee_account(&self) -> &Pubkey {
         &self.pool_fee_account
+    }
+
+    fn check_pool_fee_info(&self, pool_fee_info: &AccountInfo) -> Result<(), ProgramError> {
+        let data = &pool_fee_info.data.borrow();
+        let token_account =
+            StateWithExtensions::<Account>::unpack(&data).map_err(|err| match err {
+                ProgramError::InvalidAccountData | ProgramError::UninitializedAccount => {
+                    SwapError::InvalidFeeAccount.into()
+                }
+                _ => err,
+            })?;
+        if pool_fee_info.owner != &self.token_program_id
+            || token_account.base.state != AccountState::Initialized
+            || token_account.base.mint != self.pool_mint
+        {
+            msg!("Pool fee account is not owned by token program, is not initialized, or does not match stake pool's mint");
+            return Err(SwapError::InvalidFeeAccount.into());
+        }
+        Ok(())
     }
 
     fn fees(&self) -> &Fees {
