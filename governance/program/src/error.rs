@@ -285,7 +285,7 @@ pub enum GovernanceError {
 
     /// Invalid governing token holding account
     #[error("Invalid governing token holding account")]
-    InvalidGoverningTokenHoldingAccount,
+    InvalidGoverningTokenHoldingAccount, // 567
 
     /// Realm council mint change is not supported
     #[error("Realm council mint change is not supported")]

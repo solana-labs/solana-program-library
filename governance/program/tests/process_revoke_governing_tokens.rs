@@ -6,7 +6,10 @@ mod program_test;
 
 use program_test::*;
 
-use spl_governance::{error::GovernanceError, state::realm_config::GoverningTokenType};
+use spl_governance::{
+    error::GovernanceError,
+    state::{realm::get_governing_token_holding_address, realm_config::GoverningTokenType},
+};
 
 use crate::program_test::args::RealmSetupArgs;
 use solana_sdk::signature::{Keypair, Signer};
@@ -196,6 +199,7 @@ async fn test_revoke_council_tokens_with_invalid_realm_authority_error() {
         .await
         .unwrap();
 
+    // Try to use fake auhtority
     let realm_authority = Keypair::new();
 
     // Act
@@ -215,4 +219,50 @@ async fn test_revoke_council_tokens_with_invalid_realm_authority_error() {
     // Assert
 
     assert_eq!(err, GovernanceError::InvalidAuthorityForRealm.into());
+}
+
+#[tokio::test]
+async fn test_revoke_council_tokens_with_invalid_token_holding_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_config_args = RealmSetupArgs::default();
+    realm_config_args.council_token_config_args.token_type = GoverningTokenType::Membership;
+
+    let realm_cookie = governance_test
+        .with_realm_using_args(&realm_config_args)
+        .await;
+
+    let token_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Try to revoke from the community holding account
+    let governing_token_holding_address = get_governing_token_holding_address(
+        &governance_test.program_id,
+        &realm_cookie.address,
+        &realm_cookie.account.community_mint,
+    );
+
+    // Act
+    let err = governance_test
+        .revoke_governing_tokens_using_instruction(
+            &realm_cookie,
+            &token_owner_record_cookie,
+            &realm_cookie.account.config.council_mint.unwrap(),
+            1,
+            |i| i.accounts[2].pubkey = governing_token_holding_address,
+            None,
+        )
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(
+        err,
+        GovernanceError::InvalidGoverningTokenHoldingAccount.into()
+    );
 }
