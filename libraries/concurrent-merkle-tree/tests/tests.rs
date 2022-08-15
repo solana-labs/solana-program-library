@@ -1,9 +1,9 @@
-use spl_concurrent_merkle_tree::error::ConcurrentMerkleTreeError;
-use spl_concurrent_merkle_tree::concurrent_merkle_tree::ConcurrentMerkleTree;
-use spl_concurrent_merkle_tree::node::{Node, EMPTY};
-use spl_merkle_tree_reference::MerkleTree;
 use rand::thread_rng;
 use rand::{self, Rng};
+use spl_concurrent_merkle_tree::concurrent_merkle_tree::ConcurrentMerkleTree;
+use spl_concurrent_merkle_tree::error::ConcurrentMerkleTreeError;
+use spl_concurrent_merkle_tree::node::{Node, EMPTY};
+use spl_merkle_tree_reference::MerkleTree;
 
 const DEPTH: usize = 10;
 const BUFFER_SIZE: usize = 64;
@@ -68,14 +68,13 @@ async fn test_prove_leaf() {
 
     // Test that all leaves can be verified
     for leaf_index in 0..(1 << DEPTH) {
-        cmt
-            .prove_leaf(
-                off_chain_tree.get_root(),
-                off_chain_tree.get_leaf(leaf_index),
-                &off_chain_tree.get_proof_of_leaf(leaf_index),
-                leaf_index as u32,
-            )
-            .unwrap();
+        cmt.prove_leaf(
+            off_chain_tree.get_root(),
+            off_chain_tree.get_leaf(leaf_index),
+            &off_chain_tree.get_proof_of_leaf(leaf_index),
+            leaf_index as u32,
+        )
+        .unwrap();
     }
 
     // Test that old proofs can be verified
@@ -96,20 +95,18 @@ async fn test_prove_leaf() {
                 random_leaf_idx = rng.gen_range(0, 1 << DEPTH);
             }
 
-            cmt
-                .set_leaf(
-                    off_chain_tree.get_root(),
-                    off_chain_tree.get_leaf(random_leaf_idx),
-                    new_leaf,
-                    &off_chain_tree.get_proof_of_leaf(random_leaf_idx),
-                    random_leaf_idx as u32,
-                )
-                .unwrap();
+            cmt.set_leaf(
+                off_chain_tree.get_root(),
+                off_chain_tree.get_leaf(random_leaf_idx),
+                new_leaf,
+                &off_chain_tree.get_proof_of_leaf(random_leaf_idx),
+                random_leaf_idx as u32,
+            )
+            .unwrap();
             off_chain_tree.add_leaf(new_leaf, random_leaf_idx);
 
             // Assert that we can still prove existence of our mostly unused leaf
-            cmt
-                .prove_leaf(root, leaf, &old_proof, leaf_idx as u32)
+            cmt.prove_leaf(root, leaf, &old_proof, leaf_idx as u32)
                 .unwrap();
         }
     }
@@ -125,14 +122,13 @@ async fn test_initialize_with_root() {
     }
 
     let last_leaf_idx = tree.leaf_nodes.len() - 1;
-    cmt
-        .initialize_with_root(
-            tree.get_root(),
-            tree.get_leaf(last_leaf_idx),
-            &tree.get_proof_of_leaf(last_leaf_idx),
-            last_leaf_idx as u32,
-        )
-        .unwrap();
+    cmt.initialize_with_root(
+        tree.get_root(),
+        tree.get_leaf(last_leaf_idx),
+        &tree.get_proof_of_leaf(last_leaf_idx),
+        last_leaf_idx as u32,
+    )
+    .unwrap();
 
     assert_eq!(
         cmt.get_change_log().root,
@@ -159,9 +155,7 @@ async fn test_leaf_contents_modified() {
     // Update leaf to be something else
     let new_leaf_0 = rng.gen::<[u8; 32]>();
     tree.add_leaf(leaf, 0);
-    cmt
-        .set_leaf(root, leaf, new_leaf_0, &proof, 0_u32)
-        .unwrap();
+    cmt.set_leaf(root, leaf, new_leaf_0, &proof, 0_u32).unwrap();
 
     // Should fail to replace same leaf using outdated info
     let new_leaf_1 = rng.gen::<[u8; 32]>();
@@ -196,15 +190,14 @@ async fn test_replaces() {
     // Replace leaves in order
     for i in 0..(1 << DEPTH) {
         let leaf = rng.gen::<[u8; 32]>();
-        cmt
-            .set_leaf(
-                tree.get_root(),
-                tree.get_leaf(i),
-                leaf,
-                &tree.get_proof_of_leaf(i),
-                i as u32,
-            )
-            .unwrap();
+        cmt.set_leaf(
+            tree.get_root(),
+            tree.get_leaf(i),
+            leaf,
+            &tree.get_proof_of_leaf(i),
+            i as u32,
+        )
+        .unwrap();
         tree.add_leaf(leaf, i);
         assert_eq!(cmt.get_change_log().root, tree.get_root());
     }
@@ -214,15 +207,14 @@ async fn test_replaces() {
     for _ in 0..(test_capacity) {
         let index = rng.gen_range(0, test_capacity) % (1 << DEPTH);
         let leaf = rng.gen::<[u8; 32]>();
-        cmt
-            .set_leaf(
-                tree.get_root(),
-                tree.get_leaf(index),
-                leaf,
-                &tree.get_proof_of_leaf(index),
-                index as u32,
-            )
-            .unwrap();
+        cmt.set_leaf(
+            tree.get_root(),
+            tree.get_leaf(index),
+            leaf,
+            &tree.get_proof_of_leaf(index),
+            index as u32,
+        )
+        .unwrap();
         tree.add_leaf(leaf, index);
         assert_eq!(cmt.get_change_log().root, tree.get_root());
     }
@@ -267,15 +259,14 @@ async fn test_mixed() {
         } else {
             let index = rng.gen_range(0, tree_size) % (tree_size);
             println!("{} replace {}", tree_size, index);
-            cmt
-                .set_leaf(
-                    tree.get_root(),
-                    tree.get_leaf(index),
-                    leaf,
-                    &tree.get_proof_of_leaf(index),
-                    index as u32,
-                )
-                .unwrap();
+            cmt.set_leaf(
+                tree.get_root(),
+                tree.get_leaf(index),
+                leaf,
+                &tree.get_proof_of_leaf(index),
+                index as u32,
+            )
+            .unwrap();
             tree.add_leaf(leaf, index);
         }
         if cmt.get_change_log().root != tree.get_root() {
@@ -309,15 +300,14 @@ async fn test_append_bug_repro_1() {
     // Replace the rightmost leaf
     let leaf_0 = rng.gen::<[u8; 32]>();
     let index = 9;
-    cmt
-        .set_leaf(
-            tree.get_root(),
-            tree.get_leaf(index),
-            leaf_0,
-            &tree.get_proof_of_leaf(index),
-            index as u32,
-        )
-        .unwrap();
+    cmt.set_leaf(
+        tree.get_root(),
+        tree.get_leaf(index),
+        leaf_0,
+        &tree.get_proof_of_leaf(index),
+        index as u32,
+    )
+    .unwrap();
     tree.add_leaf(leaf_0, index);
 
     let last_rmp = cmt.rightmost_proof;
@@ -329,8 +319,7 @@ async fn test_append_bug_repro_1() {
 
     // Now compare something
     if cmt.get_change_log().root != tree.get_root() {
-        let _last_active_index: usize =
-            (cmt.active_index as usize + BUFFER_SIZE - 1) % BUFFER_SIZE;
+        let _last_active_index: usize = (cmt.active_index as usize + BUFFER_SIZE - 1) % BUFFER_SIZE;
         println!("{:?}", &last_rmp);
     }
     assert_eq!(cmt.get_change_log().root, tree.get_root());
@@ -355,15 +344,14 @@ async fn test_append_bug_repro_2() {
     // Replace the rightmost leaf
     let mut leaf = rng.gen::<[u8; 32]>();
     let index = 10;
-    cmt
-        .set_leaf(
-            tree.get_root(),
-            tree.get_leaf(index),
-            leaf,
-            &tree.get_proof_of_leaf(index),
-            index as u32,
-        )
-        .unwrap();
+    cmt.set_leaf(
+        tree.get_root(),
+        tree.get_leaf(index),
+        leaf,
+        &tree.get_proof_of_leaf(index),
+        index as u32,
+    )
+    .unwrap();
     tree.add_leaf(leaf, index);
     tree_size += 1;
 
@@ -376,8 +364,7 @@ async fn test_append_bug_repro_2() {
 
     // Now compare something
     if cmt.get_change_log().root != tree.get_root() {
-        let _last_active_index: usize =
-            (cmt.active_index as usize + BUFFER_SIZE - 1) % BUFFER_SIZE;
+        let _last_active_index: usize = (cmt.active_index as usize + BUFFER_SIZE - 1) % BUFFER_SIZE;
         println!("{:?}", &last_rmp);
     }
     assert_eq!(cmt.get_change_log().root, tree.get_root());

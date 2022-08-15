@@ -1,4 +1,4 @@
-use crate::node::{Node, empty_node};
+use crate::node::{empty_node, Node};
 use solana_program::keccak::hashv;
 
 /// Recomputes root of the Merkle tree from Node & proof

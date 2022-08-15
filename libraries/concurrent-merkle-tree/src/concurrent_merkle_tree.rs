@@ -1,9 +1,9 @@
 use crate::{
+    changelog::ChangeLog,
     error::ConcurrentMerkleTreeError,
-    changelog::ChangeLog, 
+    hash::{fill_in_proof, hash_to_parent, recompute},
+    node::{empty_node, empty_node_cached, Node, EMPTY},
     path::Path,
-    node::{Node, empty_node, EMPTY, empty_node_cached},
-    hash::{hash_to_parent, recompute, fill_in_proof},
 };
 use bytemuck::{Pod, Zeroable};
 use log_compute;
@@ -28,18 +28,18 @@ fn check_bounds(max_depth: usize, max_buffer_size: usize) {
 /// In a normal merkle tree, only the first tree operation will succeed because the
 /// following operations will have proofs for the unmodified tree state. ConcurrentMerkleTree avoids
 /// this by storing a buffer of modified nodes (`change_logs`) which allows it to implement fast-forwarding
-/// of concurrent merkle tree operations. 
+/// of concurrent merkle tree operations.
 ///
 /// As long as the concurrent merkle tree operations
 /// have proofs that are valid for a previous state of the tree that can be found in the stored
 /// buffer, that tree operation's proof can be fast-forwarded and the tree operation can be
-/// applied. 
+/// applied.
 ///
 /// There are two primitive operations for Concurrent Merkle Trees:
 /// [set_leaf](ConcurrentMerkleTree:set_leaf) and [append](ConcurrentMerkleTree::append). Setting a leaf value requires
 /// passing a proof to perform that tree operation, but appending does not require a proof.
 ///
-/// An additional key property of ConcurrentMerkleTree is support for [append](ConcurrentMerkleTree::append) operations, 
+/// An additional key property of ConcurrentMerkleTree is support for [append](ConcurrentMerkleTree::append) operations,
 /// which do not require any proofs to be passed. This is accomplished by keeping track of the
 /// proof to the rightmost leaf in the tree (`rightmost_proof`).
 #[derive(Copy, Clone)]
@@ -77,7 +77,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> Default
     }
 }
 
-impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> ConcurrentMerkleTree<MAX_DEPTH, MAX_BUFFER_SIZE> {
+impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
+    ConcurrentMerkleTree<MAX_DEPTH, MAX_BUFFER_SIZE>
+{
     pub fn new() -> Self {
         Self::default()
     }
