@@ -164,7 +164,11 @@ export async function getMinimumBalanceForRentExemptAccountWithExtensions(
  * @param programId SPL Token program account
  * @returns
  */
-export function unpackAccount(info: AccountInfo<Buffer> | null, address: PublicKey, programId: PublicKey): Account {
+export function unpackAccount(
+    info: AccountInfo<Buffer> | null,
+    address: PublicKey,
+    programId: PublicKey = TOKEN_PROGRAM_ID
+): Account {
     if (!info) throw new TokenAccountNotFoundError();
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
     if (info.data.length < ACCOUNT_SIZE) throw new TokenInvalidAccountSizeError();

@@ -87,7 +87,11 @@ export async function getMint(
  * @param programId SPL Token program account
  * @returns
  */
-export function unpackMint(info: AccountInfo<Buffer> | null, address: PublicKey, programId: PublicKey): Mint {
+export function unpackMint(
+    info: AccountInfo<Buffer> | null,
+    address: PublicKey,
+    programId: PublicKey = TOKEN_PROGRAM_ID
+): Mint {
     if (!info) throw new TokenAccountNotFoundError();
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
     if (info.data.length < MINT_SIZE) throw new TokenInvalidAccountSizeError();
