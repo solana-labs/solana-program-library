@@ -7820,7 +7820,7 @@ mod tests {
             pool_key,
             mut pool_account,
         ) = accounts.setup_token_accounts(
-            &owner_key,
+            owner_key,
             &authority_key,
             token_a_amount,
             token_b_amount,
@@ -7831,7 +7831,7 @@ mod tests {
         let mut destination = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
-            &owner_key,
+            owner_key,
         );
 
         do_process_instruction(
@@ -7839,7 +7839,7 @@ mod tests {
                 &pool_token_program_id,
                 &accounts.pool_fee_key,
                 &destination_key,
-                &owner_key,
+                owner_key,
                 &[],
             )
             .unwrap(),
