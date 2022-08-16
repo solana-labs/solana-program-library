@@ -4,7 +4,9 @@
   "description": "SPL Memo Program JS API",
   "files": [
     "lib",
-    "src"
+    "src",
+    "LICENSE",
+    "README.md"
   ],
   "main": "lib/cjs/index.js",
   "module": "lib/esm/index.mjs",
@@ -13,7 +15,8 @@
   "sideEffects": false,
   "exports": {
     "import": "./lib/esm/index.mjs",
-    "require": "./lib/cjs/index.js"
+    "require": "./lib/cjs/index.js",
+    "types": "./lib/types/index.d.ts"
   },
   "scripts": {
     "build": "yarn clean && tsc -p tsconfig.json && tsc-esm -p tsconfig.json && tsc -p tsconfig.cjs.json",
@@ -37,7 +40,7 @@
     "access": "public"
   },
   "author": "Solana Maintainers <maintainers@solana.com>",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "devDependencies": {
     "@types/chai": "^4.3.1",
     "@types/jest": "^28.1.1",
@@ -52,6 +55,7 @@
     "jest": "^28.1.1",
     "prettier": "^2.7.0",
     "process": "^0.11.10",
+    "rimraf": "^3.0.2",
     "start-server-and-test": "^1.14.0",
     "ts-jest": "^28.0.5",
     "ts-node": "^10.8.1",

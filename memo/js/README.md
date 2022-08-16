@@ -1,4 +1,4 @@
-# `@solana/spl-token`
+# `@solana/spl-memo`
 
 A TypeScript library for interacting with the SPL Memo program.
 

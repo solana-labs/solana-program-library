@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 source ./ci/solana-version.sh install
 
 set -x
-cd memo/ts
+cd memo/js
 
 yarn install --pure-lockfile
 yarn lint
