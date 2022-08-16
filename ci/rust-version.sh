@@ -18,7 +18,9 @@
 if [[ -n $RUST_STABLE_VERSION ]]; then
   stable_version="$RUST_STABLE_VERSION"
 else
-  stable_version=1.59.0
+  base="$(dirname "${BASH_SOURCE[0]}")"
+  source "$base/read-cargo-variable.sh"
+  stable_version=$(readCargoVariable channel "$base/../rust-toolchain.toml")
 fi
 
 if [[ -n $RUST_NIGHTLY_VERSION ]]; then

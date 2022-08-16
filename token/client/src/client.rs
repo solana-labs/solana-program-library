@@ -62,8 +62,14 @@ pub trait SendTransactionRpc: SendTransaction {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ProgramRpcClientSendTransaction;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RpcClientResponse {
+    Signature(Signature),
+    Transaction(Transaction),
+}
+
 impl SendTransaction for ProgramRpcClientSendTransaction {
-    type Output = Signature;
+    type Output = RpcClientResponse;
 }
 
 impl SendTransactionRpc for ProgramRpcClientSendTransaction {
@@ -76,12 +82,12 @@ impl SendTransactionRpc for ProgramRpcClientSendTransaction {
             client
                 .send_and_confirm_transaction(transaction)
                 .await
+                .map(RpcClientResponse::Signature)
                 .map_err(Into::into)
         })
     }
 }
 
-//
 pub type ProgramClientError = Box<dyn std::error::Error + Send + Sync>;
 pub type ProgramClientResult<T> = Result<T, ProgramClientError>;
 
@@ -238,5 +244,51 @@ where
             .get_account_with_commitment(&address, self.client.commitment())
             .await?
             .value)
+    }
+}
+
+/// Program client for offline signing.
+pub struct ProgramOfflineClient<ST> {
+    blockhash: Hash,
+    _send: ST,
+}
+
+impl<ST> fmt::Debug for ProgramOfflineClient<ST> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ProgramOfflineClient").finish()
+    }
+}
+
+impl<ST> ProgramOfflineClient<ST> {
+    pub fn new(blockhash: Hash, send: ST) -> Self {
+        Self {
+            blockhash,
+            _send: send,
+        }
+    }
+}
+
+#[async_trait]
+impl<ST> ProgramClient<ST> for ProgramOfflineClient<ST>
+where
+    ST: SendTransaction<Output = RpcClientResponse> + Send + Sync,
+{
+    async fn get_minimum_balance_for_rent_exemption(
+        &self,
+        _data_len: usize,
+    ) -> ProgramClientResult<u64> {
+        Err("Unable to fetch minimum blance for rent exemption in offline mode".into())
+    }
+
+    async fn get_latest_blockhash(&self) -> ProgramClientResult<Hash> {
+        Ok(self.blockhash)
+    }
+
+    async fn send_transaction(&self, transaction: &Transaction) -> ProgramClientResult<ST::Output> {
+        Ok(RpcClientResponse::Transaction(transaction.clone()))
+    }
+
+    async fn get_account(&self, _address: Pubkey) -> ProgramClientResult<Option<Account>> {
+        Err("Unable to fetch account in offline mode".into())
     }
 }

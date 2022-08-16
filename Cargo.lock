@@ -5840,7 +5840,7 @@ dependencies = [
  "num-traits",
  "solana-program",
  "spl-token 3.5.0",
- "spl-token-2022 0.4.2",
+ "spl-token-2022 0.4.3",
  "thiserror",
 ]
 
@@ -6135,7 +6135,7 @@ dependencies = [
 
 [[package]]
 name = "spl-stake-pool"
-version = "0.6.4"
+version = "0.7.0"
 dependencies = [
  "arrayref",
  "bincode",
@@ -6158,7 +6158,7 @@ dependencies = [
 
 [[package]]
 name = "spl-stake-pool-cli"
-version = "0.6.4"
+version = "0.7.0"
 dependencies = [
  "bincode",
  "borsh",
@@ -6233,7 +6233,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-2022"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "arrayref",
  "bytemuck",
@@ -6265,7 +6265,7 @@ dependencies = [
  "solana-sdk",
  "spl-associated-token-account 1.1.1",
  "spl-memo 3.0.1",
- "spl-token-2022 0.4.2",
+ "spl-token-2022 0.4.3",
  "spl-token-client",
  "walkdir",
 ]
@@ -6295,7 +6295,7 @@ dependencies = [
  "spl-associated-token-account 1.1.1",
  "spl-memo 3.0.1",
  "spl-token 3.5.0",
- "spl-token-2022 0.4.2",
+ "spl-token-2022 0.4.3",
  "spl-token-client",
  "strum",
  "strum_macros",
@@ -6314,7 +6314,7 @@ dependencies = [
  "solana-sdk",
  "spl-associated-token-account 1.1.1",
  "spl-memo 3.0.1",
- "spl-token-2022 0.4.2",
+ "spl-token-2022 0.4.3",
  "thiserror",
 ]
 

@@ -1,0 +1,1040 @@
+---
+title: Extension Guide
+---
+
+```mdx-code-block
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+```
+
+The Token-2022 program provides additional functionality on mints and token
+accounts through an extension model.
+
+This guide explains all of the available extensions, along with some examples of
+how to use them.
+
+Please see the [Token-2022 Introduction](../token-2022) more general information
+about Token-2022 and the concept of extensions.
+
+## Setup
+
+See the [Token Setup Guide](../token#setup) to install the client utilities.
+Token-2022 shares the same CLI and NPM packages for maximal compatibility.
+
+All JS examples are adapted from the tests, and available in full at the
+[Token JS examples](https://github.com/solana-labs/solana-program-library/tree/master/token/js/examples).
+
+## Extensions
+
+### Mint Close Authority
+
+The Token program allows owners to close token accounts, but it is impossible
+to close mint accounts. In Token-2022, it is possible to close mints by initializing
+the `MintCloseAuthority` extension before initializing the mint.
+
+#### Example: Initializing a mint with mint close authority
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+import {
+    closeAccount,
+    createInitializeMintInstruction,
+    createInitializeMintCloseAuthorityInstruction,
+    getMintLen,
+    ExtensionType,
+    TOKEN_2022_PROGRAM_ID,
+} from '@solana/spl-token';
+import {
+    clusterApiUrl,
+    sendAndConfirmTransaction,
+    Connection,
+    Keypair,
+    SystemProgram,
+    Transaction,
+    LAMPORTS_PER_SOL,
+} from '@solana/web3.js';
+
+(async () => {
+    const payer = Keypair.generate();
+
+    const mintKeypair = Keypair.generate();
+    const mint = mintKeypair.publicKey;
+    const mintAuthority = Keypair.generate();
+    const freezeAuthority = Keypair.generate();
+    const closeAuthority = Keypair.generate();
+
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
+    const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
+    await connection.confirmTransaction(airdropSignature);
+
+    const extensions = [ExtensionType.MintCloseAuthority];
+    const mintLen = getMintLen(extensions);
+    const lamports = await connection.getMinimumBalanceForRentExemption(mintLen);
+
+    const transaction = new Transaction().add(
+        SystemProgram.createAccount({
+            fromPubkey: payer.publicKey,
+            newAccountPubkey: mint,
+            space: mintLen,
+            lamports,
+            programId: TOKEN_2022_PROGRAM_ID,
+        }),
+        createInitializeMintCloseAuthorityInstruction(mint, closeAuthority.publicKey, TOKEN_2022_PROGRAM_ID),
+        createInitializeMintInstruction(
+            mint,
+            9,
+            mintAuthority.publicKey,
+            freezeAuthority.publicKey,
+            TOKEN_2022_PROGRAM_ID
+        )
+    );
+    await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair], undefined);
+})();
+```
+
+  </TabItem>
+</Tabs>
+
+#### Example: Closing a mint
+
+With the `MintCloseAuthority` extension on the mint and a valid authority, it's
+possible to close the mint account and reclaim the lamports on the mint account.
+**Note**: The supply on the mint must be 0.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+await closeAccount(connection, payer, mint, payer.publicKey, closeAuthority, [], undefined, TOKEN_2022_PROGRAM_ID);
+```
+
+  </TabItem>
+</Tabs>
+
+### Transfer Fees
+
+In the Token program, it is impossible to assess a fee on every transfer. The
+existing systems typically involve freezing user accounts, and forcing them to go
+through a third party to unfreeze, transfer, and refreeze the accounts.
+
+With Token-2022, it's possible to configure a transfer fee on a mint so that fees
+are assessed at the protocol level. On every transfer, some amount is withheld
+on the recipient account, untouchable by the recipient. These tokens can be
+withheld by a separate authority on the mint.
+
+**Important note**: Transferring tokens with a transfer fee requires using
+`transfer_checked` or `transfer_checked_with_fee` instead of `transfer`.
+Otherwise, the transfer will fail.
+
+#### Example: Creating a mint with a transfer fee
+
+Transfer fee configurations contain a few important fields:
+
+* Fee in basis points: fee assessed on every transfer, as basis points of
+  the transfer amount. For example, with 50 basis points, a transfer of 1,000
+  tokens yields 5 tokens
+* Maximum fee: cap on transfer fees. With a maximum fee of 5,000 tokens, even
+  a transfer of 10,000,000,000,000 tokens only yields 5,000 tokens
+* Transfer fee authority: entity that can modify the fees
+* Withdraw withheld authority: entity that can move tokens withheld on the
+  mint or token accounts
+
+Let's create a mint with 50 basis point transfer fee, and a maximum fee of 5,000
+tokens.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+import {
+    clusterApiUrl,
+    sendAndConfirmTransaction,
+    Connection,
+    Keypair,
+    SystemProgram,
+    Transaction,
+    LAMPORTS_PER_SOL,
+} from '@solana/web3.js';
+
+import {
+    ExtensionType,
+    createInitializeMintInstruction,
+    mintTo,
+    createAccount,
+    getMintLen,
+    TOKEN_2022_PROGRAM_ID,
+} from '@solana/spl-token';
+
+import {
+    createInitializeTransferFeeConfigInstruction,
+    harvestWithheldTokensToMint,
+    transferCheckedWithFee,
+    withdrawWithheldTokensFromAccounts,
+    withdrawWithheldTokensFromMint,
+} from '@solana/spl-token';
+
+(async () => {
+    const payer = Keypair.generate();
+
+    const mintAuthority = Keypair.generate();
+    const mintKeypair = Keypair.generate();
+    const mint = mintKeypair.publicKey;
+    const transferFeeConfigAuthority = Keypair.generate();
+    const withdrawWithheldAuthority = Keypair.generate();
+
+    const extensions = [ExtensionType.TransferFeeConfig];
+
+    const mintLen = getMintLen(extensions);
+    const decimals = 9;
+    const feeBasisPoints = 50;
+    const maxFee = BigInt(5_000);
+
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
+    const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
+    await connection.confirmTransaction(airdropSignature);
+
+    const mintLamports = await connection.getMinimumBalanceForRentExemption(mintLen);
+    const mintTransaction = new Transaction().add(
+        SystemProgram.createAccount({
+            fromPubkey: payer.publicKey,
+            newAccountPubkey: mint,
+            space: mintLen,
+            lamports: mintLamports,
+            programId: TOKEN_2022_PROGRAM_ID,
+        }),
+        createInitializeTransferFeeConfigInstruction(
+            mint,
+            transferFeeConfigAuthority.publicKey,
+            withdrawWithheldAuthority.publicKey,
+            feeBasisPoints,
+            maxFee,
+            TOKEN_2022_PROGRAM_ID
+        ),
+        createInitializeMintInstruction(mint, decimals, mintAuthority.publicKey, null, TOKEN_2022_PROGRAM_ID)
+    );
+    await sendAndConfirmTransaction(connection, mintTransaction, [payer, mintKeypair], undefined);
+})();
+```
+
+  </TabItem>
+</Tabs>
+
+#### Example: Transferring tokens with the fee checked
+
+As part of the extension, there is a new `transfer_checked_with_fee` instruction,
+which accepts the expected fee. The transfer only succeeds if the fee is correctly
+calculated, in order to avoid any surprises during the transfer.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+    const mintAmount = BigInt(1_000_000_000);
+    const owner = Keypair.generate();
+    const sourceAccount = await createAccount(
+        connection,
+        payer,
+        mint,
+        owner.publicKey,
+        undefined,
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
+    await mintTo(
+        connection,
+        payer,
+        mint,
+        sourceAccount,
+        mintAuthority,
+        mintAmount,
+        [],
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
+
+    const accountKeypair = Keypair.generate();
+    const destinationAccount = await createAccount(
+        connection,
+        payer,
+        mint,
+        owner.publicKey,
+        accountKeypair,
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
+
+    const transferAmount = BigInt(1_000_000);
+    const fee = (transferAmount * BigInt(feeBasisPoints)) / BigInt(10_000);
+    await transferCheckedWithFee(
+        connection,
+        payer,
+        sourceAccount,
+        mint,
+        destinationAccount,
+        owner,
+        transferAmount,
+        decimals,
+        fee,
+        [],
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
+```
+
+  </TabItem>
+</Tabs>
+
+#### Example: Find accounts with withheld tokens
+
+As users transfer their tokens, transfer fees accumulate in the various recipient
+accounts. The withdraw withheld authority, configured at initialization, can move
+these tokens wherever they wish using `withdraw_withheld_tokens_from_accounts` or
+`harvest_withheld_tokens_to_mint`.
+
+Before doing that, however, they must find which accounts have withheld tokens
+by iterating over all accounts for the mint.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+    const allAccounts = await connection.getProgramAccounts(TOKEN_2022_PROGRAM_ID, {
+        commitment: 'confirmed',
+        filters: [
+            {
+                memcmp: {
+                    offset: 0,
+                    bytes: mint.toString(),
+                },
+            },
+        ],
+    });
+    const accountsToWithdrawFrom = [];
+    for (const accountInfo of allAccounts) {
+        const account = unpackAccount(accountInfo.account, accountInfo.pubkey, TOKEN_2022_PROGRAM_ID);
+        const transferFeeAmount = getTransferFeeAmount(account);
+        if (transferFeeAmount !== null && transferFeeAmount.withheldAmount > BigInt(0)) {
+            accountsToWithdrawFrom.push(accountInfo.pubkey);
+        }
+    }
+```
+
+  </TabItem>
+</Tabs>
+
+#### Example: Withdraw withheld tokens from accounts
+
+With the accounts found, the withheld withdraw authority may move the withheld
+tokens.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+    await withdrawWithheldTokensFromAccounts(
+        connection,
+        payer,
+        mint,
+        destinationAccount,
+        withdrawWithheldAuthority,
+        [],
+        [destinationAccount],
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
+```
+
+  </TabItem>
+</Tabs>
+
+**Note**: The design of pooling transfer fees at the recipient account is meant to
+maximize parallelization of transactions. Otherwise, one configured fee recipient
+account would be write-locked between parallel transfers, decreasing throughput
+of the protocol.
+
+#### Example: Harvest withheld tokens to mint
+
+Users may want to close a token account with withheld transfer fees, but it is
+impossible to close an account that holds any tokens, including withheld ones.
+
+To clear out their account of withheld tokens, they can use the permissionless
+`harvest_withheld_tokens_to_mint` instruction.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+    await harvestWithheldTokensToMint(connection, payer, mint, [destinationAccount], undefined, TOKEN_2022_PROGRAM_ID);
+```
+
+  </TabItem>
+</Tabs>
+
+#### Example: Withdraw withheld tokens from mint
+
+As users move the withheld tokens to the mint, the withdraw authority
+may choose to move those tokens from the mint to any other account.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+    await withdrawWithheldTokensFromMint(
+        connection,
+        payer,
+        mint,
+        destinationAccount,
+        withdrawWithheldAuthority,
+        [],
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
+```
+
+  </TabItem>
+</Tabs>
+
+### Default Account State
+
+A mint creator may want to restrict who can use their token. There are many
+heavy-handed approaches to this problem, most of which include going through a
+centralized service at the beginning. Even through a centralized service, however,
+it's possible for anyone to create a new token account and transfer the tokens
+around.
+
+To simplify the restriction, a mint creator may use the `DefaultAccountState`
+extension, which can force all new token accounts to be frozen. This way, users
+must eventually interact with some service to unfreeze their account and use
+tokens.
+
+#### Example: Creating a mint with default frozen accounts
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+import {
+    clusterApiUrl,
+    sendAndConfirmTransaction,
+    Connection,
+    Keypair,
+    SystemProgram,
+    Transaction,
+    LAMPORTS_PER_SOL,
+} from '@solana/web3.js';
+import {
+    AccountState,
+    createInitializeMintInstruction,
+    createInitializeDefaultAccountStateInstruction,
+    getMintLen,
+    updateDefaultAccountState,
+    ExtensionType,
+    TOKEN_2022_PROGRAM_ID,
+} from '@solana/spl-token';
+
+(async () => {
+    const payer = Keypair.generate();
+
+    const mintAuthority = Keypair.generate();
+    const freezeAuthority = Keypair.generate();
+    const mintKeypair = Keypair.generate();
+    const mint = mintKeypair.publicKey;
+
+    const extensions = [ExtensionType.DefaultAccountState];
+    const mintLen = getMintLen(extensions);
+    const decimals = 9;
+
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
+    const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
+    await connection.confirmTransaction(airdropSignature);
+
+    const defaultState = AccountState.Frozen;
+
+    const lamports = await connection.getMinimumBalanceForRentExemption(mintLen);
+    const transaction = new Transaction().add(
+        SystemProgram.createAccount({
+            fromPubkey: payer.publicKey,
+            newAccountPubkey: mint,
+            space: mintLen,
+            lamports,
+            programId: TOKEN_2022_PROGRAM_ID,
+        }),
+        createInitializeDefaultAccountStateInstruction(mint, defaultState, TOKEN_2022_PROGRAM_ID),
+        createInitializeMintInstruction(
+            mint,
+            decimals,
+            mintAuthority.publicKey,
+            freezeAuthority.publicKey,
+            TOKEN_2022_PROGRAM_ID
+        )
+    );
+    await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair], undefined);
+})();
+```
+
+  </TabItem>
+</Tabs>
+
+#### Example: Updating default state
+
+Over time, if the mint creator decides to relax this restriction, the freeze
+authority may sign an `update_default_account_state` instruction to make all
+accounts unfrozen by default.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+    await updateDefaultAccountState(
+        connection,
+        payer,
+        mint,
+        AccountState.Initialized,
+        freezeAuthority,
+        [],
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
+```
+
+  </TabItem>
+</Tabs>
+
+### Immutable Owner
+
+Token account owners may reassign ownership to any other address. This is useful
+in many situations, but it can also create security vulnerabilities.
+
+For example, the addresses for Associated Token Accounts are derived based on
+the owner and the mint, making it easy to find the "right" token account for an
+owner. If the account owner has reassigned ownership of their associated token
+account, then applications may derive the address for that account and use it,
+not knowing that it does not belong to the owner anymore.
+
+To avoid this issue, Token-2022 includes the `ImmutableOwner` extension, which
+makes it impossible to reassign ownership of an account. The Associated Token
+Account program always uses this extension when creating accounts.
+
+#### Example: Explicitly creating an account with immutable ownership
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+import {
+    clusterApiUrl,
+    sendAndConfirmTransaction,
+    Connection,
+    Keypair,
+    SystemProgram,
+    Transaction,
+    LAMPORTS_PER_SOL,
+} from '@solana/web3.js';
+import {
+    createAccount,
+    createMint,
+    createInitializeImmutableOwnerInstruction,
+    createInitializeAccountInstruction,
+    getAccountLen,
+    ExtensionType,
+    TOKEN_2022_PROGRAM_ID,
+} from '@solana/spl-token';
+
+(async () => {
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
+    const payer = Keypair.generate();
+    const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
+    await connection.confirmTransaction(airdropSignature);
+
+    const mintAuthority = Keypair.generate();
+    const decimals = 9;
+    const mint = await createMint(
+        connection,
+        payer,
+        mintAuthority.publicKey,
+        mintAuthority.publicKey,
+        decimals,
+        undefined,
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
+
+    const accountLen = getAccountLen([ExtensionType.ImmutableOwner]);
+    const lamports = await connection.getMinimumBalanceForRentExemption(accountLen);
+
+    const owner = Keypair.generate();
+    const accountKeypair = Keypair.generate();
+    const account = accountKeypair.publicKey;
+    const transaction = new Transaction().add(
+        SystemProgram.createAccount({
+            fromPubkey: payer.publicKey,
+            newAccountPubkey: account,
+            space: accountLen,
+            lamports,
+            programId: TOKEN_2022_PROGRAM_ID,
+        }),
+        createInitializeImmutableOwnerInstruction(account, TOKEN_2022_PROGRAM_ID),
+        createInitializeAccountInstruction(account, mint, owner.publicKey, TOKEN_2022_PROGRAM_ID)
+    );
+    await sendAndConfirmTransaction(connection, transaction, [payer, accountKeypair], undefined);
+})();
+```
+
+  </TabItem>
+</Tabs>
+
+#### Example: Creating an associated token account with immutable ownership
+
+All associated token accounts have the immutable owner extension included, so
+it's extremely easy to use the extension.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+    const associatedAccount = await createAccount(
+        connection,
+        payer,
+        mint,
+        owner.publicKey,
+        undefined,
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
+```
+
+  </TabItem>
+</Tabs>
+
+### Non-Transferable Tokens
+
+To accompany immutably owner token accounts, the `NonTransferable` mint extension
+allows for "soul-bound" tokens that cannot be moved to any other entity. For
+example, this extension is perfect for achievements that can only belong to one
+person or account.
+
+This extension is very similar to issuing a token and then freezing the account,
+but allows the owner to burn and close the account if they want.
+
+#### Example: Creating a non-transferable mint
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+import {
+    clusterApiUrl,
+    sendAndConfirmTransaction,
+    Connection,
+    Keypair,
+    SystemProgram,
+    Transaction,
+    LAMPORTS_PER_SOL,
+} from '@solana/web3.js';
+import {
+    createInitializeNonTransferableMintInstruction,
+    createInitializeMintInstruction,
+    getMintLen,
+    ExtensionType,
+    TOKEN_2022_PROGRAM_ID,
+} from '@solana/spl-token';
+
+(async () => {
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
+    const payer = Keypair.generate();
+    const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
+    await connection.confirmTransaction(airdropSignature);
+
+    const mintAuthority = Keypair.generate();
+    const decimals = 9;
+
+    const mintKeypair = Keypair.generate();
+    const mint = mintKeypair.publicKey;
+    const mintLen = getMintLen([ExtensionType.NonTransferable]);
+    const lamports = await connection.getMinimumBalanceForRentExemption(mintLen);
+
+    const transaction = new Transaction().add(
+        SystemProgram.createAccount({
+            fromPubkey: payer.publicKey,
+            newAccountPubkey: mint,
+            space: mintLen,
+            lamports,
+            programId: TOKEN_2022_PROGRAM_ID,
+        }),
+        createInitializeNonTransferableMintInstruction(mint, TOKEN_2022_PROGRAM_ID),
+        createInitializeMintInstruction(mint, decimals, mintAuthority.publicKey, null, TOKEN_2022_PROGRAM_ID)
+    );
+    await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair], undefined);
+})();
+```
+
+  </TabItem>
+</Tabs>
+
+### Required Memo on Transfer
+
+Traditional banking systems typically require a memo to accompany all transfers.
+The Token-2022 program contains an extension to satisfy this requirement.
+
+By enabling required memo transfers on your token account, the program enforces
+that all incoming transfers must have an accompanying memo instruction right
+before the transfer instruction.
+
+**Note**: This also works in CPI contexts, as long as a CPI is performed to log
+the memo before invoking the transfer.
+
+#### Example: Create account with required memo transfers
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+import {
+    clusterApiUrl,
+    sendAndConfirmTransaction,
+    Connection,
+    Keypair,
+    SystemProgram,
+    Transaction,
+    LAMPORTS_PER_SOL,
+} from '@solana/web3.js';
+import {
+    createMint,
+    createEnableRequiredMemoTransfersInstruction,
+    createInitializeAccountInstruction,
+    disableRequiredMemoTransfers,
+    enableRequiredMemoTransfers,
+    getAccountLen,
+    ExtensionType,
+    TOKEN_2022_PROGRAM_ID,
+} from '@solana/spl-token';
+
+(async () => {
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
+    const payer = Keypair.generate();
+    const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
+    await connection.confirmTransaction(airdropSignature);
+
+    const mintAuthority = Keypair.generate();
+    const decimals = 9;
+    const mint = await createMint(
+        connection,
+        payer,
+        mintAuthority.publicKey,
+        mintAuthority.publicKey,
+        decimals,
+        undefined,
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
+
+    const accountLen = getAccountLen([ExtensionType.MemoTransfer]);
+    const lamports = await connection.getMinimumBalanceForRentExemption(accountLen);
+
+    const owner = Keypair.generate();
+    const destinationKeypair = Keypair.generate();
+    const destination = destinationKeypair.publicKey;
+    const transaction = new Transaction().add(
+        SystemProgram.createAccount({
+            fromPubkey: payer.publicKey,
+            newAccountPubkey: destination,
+            space: accountLen,
+            lamports,
+            programId: TOKEN_2022_PROGRAM_ID,
+        }),
+        createInitializeAccountInstruction(destination, mint, owner.publicKey, TOKEN_2022_PROGRAM_ID),
+        createEnableRequiredMemoTransfersInstruction(destination, owner.publicKey, [], TOKEN_2022_PROGRAM_ID)
+    );
+
+    await sendAndConfirmTransaction(connection, transaction, [payer, owner, destinationKeypair], undefined);
+
+})();
+```
+
+  </TabItem>
+</Tabs>
+
+#### Example: Enabling or disabling required memo transfers
+
+An account owner may always choose to flip required memo transfers on or off.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+    await disableRequiredMemoTransfers(connection, payer, destination, owner, [], undefined, TOKEN_2022_PROGRAM_ID);
+
+    await enableRequiredMemoTransfers(connection, payer, destination, owner, [], undefined, TOKEN_2022_PROGRAM_ID);
+```
+
+  </TabItem>
+</Tabs>
+
+### Reallocate
+
+In the previous example, astute readers of the JavaScript code may have noticed
+that the `EnableRequiredMemoTransfers` instruction came after `InitializeAccount`,
+which means that this extension can be enabled after the account is already
+created.
+
+In order to actually add this extension after the account is created, however,
+you may need to reallocate more space in the account for the additional extension
+bytes.
+
+The `Reallocate` instruction allows an owner to reallocate their token account
+to fit room for more extensions.
+
+#### Example: Reallocating existing account to enable required memo transfers
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+import {
+    clusterApiUrl,
+    sendAndConfirmTransaction,
+    Connection,
+    Keypair,
+    Transaction,
+    LAMPORTS_PER_SOL,
+} from '@solana/web3.js';
+import {
+    createAccount,
+    createMint,
+    createEnableRequiredMemoTransfersInstruction,
+    createReallocateInstruction,
+    ExtensionType,
+    TOKEN_2022_PROGRAM_ID,
+} from '@solana/spl-token';
+
+(async () => {
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
+    const payer = Keypair.generate();
+    const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
+    await connection.confirmTransaction(airdropSignature);
+
+    const mintAuthority = Keypair.generate();
+    const decimals = 9;
+    const mint = await createMint(
+        connection,
+        payer,
+        mintAuthority.publicKey,
+        mintAuthority.publicKey,
+        decimals,
+        undefined,
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
+
+    const owner = Keypair.generate();
+    const account = await createAccount(
+        connection,
+        payer,
+        mint,
+        owner.publicKey,
+        undefined,
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
+
+    const extensions = [ExtensionType.MemoTransfer];
+    const transaction = new Transaction().add(
+        createReallocateInstruction(
+            account,
+            payer.publicKey,
+            extensions,
+            owner.publicKey,
+            undefined,
+            TOKEN_2022_PROGRAM_ID
+        ),
+        createEnableRequiredMemoTransfersInstruction(account, owner.publicKey, [], TOKEN_2022_PROGRAM_ID)
+    );
+    await sendAndConfirmTransaction(connection, transaction, [payer, owner], undefined);
+})();
+```
+
+  </TabItem>
+</Tabs>
+
+### Interest-Bearing Tokens
+
+Tokens that constantly grow or decrease in value have many uses in the real world.
+The most well known example is a bond.
+
+With Token, this has only been possible through proxy contracts that require
+regular rebase or update operations.
+
+With the Token-2022 extension model, however, we have the possibility to change
+how the UI amount of tokens are represented. Using the `InterestBearingMint`
+extension and the `amount_to_ui_amount` instruction, you can set an interest
+rate on your token and fetch its amount with interest at any time.
+
+Interest is continuously compounded based on the timestamp in the network. Due
+to drift that may occur in the network timestamp, the accumulated interest could
+be lower than the expected value. Thankfully, this is rare.
+
+**Note**: No new tokens are ever created, the UI amount returns the amount of tokens
+plus all interest the tokens have accumulated. The feature is entirely cosmetic.
+
+#### Example: Create an interest-bearing mint
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+import { clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { createInterestBearingMint, updateRateInterestBearingMint, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
+
+(async () => {
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
+    const payer = Keypair.generate();
+    const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
+    await connection.confirmTransaction(airdropSignature);
+
+    const mintAuthority = Keypair.generate();
+    const freezeAuthority = Keypair.generate();
+    const rateAuthority = Keypair.generate();
+    const mintKeypair = Keypair.generate();
+    const rate = 10;
+    const decimals = 9;
+    const mint = await createInterestBearingMint(
+        connection,
+        payer,
+        mintAuthority.publicKey,
+        freezeAuthority.publicKey,
+        rateAuthority.publicKey,
+        rate,
+        decimals,
+        mintKeypair,
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
+})();
+```
+
+  </TabItem>
+</Tabs>
+
+#### Example: Update the interest rate
+
+The rate authority may update the interest rate on the mint at any time.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+CLI support coming soon!
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+    const updateRate = 50;
+    await updateRateInterestBearingMint(
+        connection,
+        payer,
+        mint,
+        rateAuthority,
+        updateRate,
+        [],
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
+```
+
+  </TabItem>
+</Tabs>
