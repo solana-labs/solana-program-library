@@ -46,7 +46,10 @@ use spl_token_2022::{
     instruction::*,
     state::{Account, Mint, Multisig},
 };
-use spl_token_client::{client::RpcClientResponse, token::Token};
+use spl_token_client::{
+    client::RpcClientResponse,
+    token::{ExtensionInitializationParams, Token},
+};
 use std::{
     collections::HashMap, fmt::Display, process::exit, str::FromStr, string::ToString, sync::Arc,
 };
@@ -332,7 +335,7 @@ async fn command_create_token(
     token_pubkey: Pubkey,
     authority: Pubkey,
     enable_freeze: bool,
-    close_authority: bool,
+    enable_close: bool,
     memo: Option<String>,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
@@ -353,18 +356,26 @@ async fn command_create_token(
         token
     };
 
+    let freeze_authority = if enable_freeze { Some(authority) } else { None };
+
+    let mut extensions = vec![];
+
+    if enable_close {
+        extensions.push(ExtensionInitializationParams::MintCloseAuthority {
+            close_authority: Some(authority),
+        });
+    }
+
     if let Some(text) = memo {
         token.with_memo(text);
     }
-
-    let freeze_authority = if enable_freeze { Some(authority) } else { None };
 
     let res = token
         .create_mint(
             &authority,
             freeze_authority.as_ref(),
             decimals,
-            vec![],
+            extensions,
             &bulk_signers,
         )
         .await?;
@@ -1465,9 +1476,7 @@ async fn command_close(
 }
 
 // HANA new command impl
-async fn command_close_mint(
-    config: &Config<'_>,
-) -> CommandResult {
+async fn command_close_mint(config: &Config<'_>) -> CommandResult {
     Ok("".to_string())
 }
 
@@ -1967,24 +1976,15 @@ fn app<'a, 'b>(
                         .long("enable-freeze")
                         .takes_value(false)
                         .help(
-                            "Enable the mint authority to freeze associated token accounts."
+                            "Enable the mint authority to freeze token accounts for this mint"
                         ),
                 )
                 .arg(
-                    Arg::with_name("close_authority")
-                        .long("close-authority")
-                        // TODO allow this to take an optional value
+                    Arg::with_name("enable_close")
+                        .long("enable-close")
                         .takes_value(false)
-                        //.value_name("ADDRESS")
-                        //.validator(is_valid_pubkey)
-                        //.min_values(0)
-                        //.max_values(1)
-                        //.require_equals(true)
-                        //.default_missing_value("CLIENT")
                         .help(
-                            "Enable a close authority to close the mint. \
-                             Value is optional and may be a keypair file or the ASK keyword. \
-                             Defaults to the client keypair address if called without a value."
+                            "Enable the mint authority to close this mint"
                         ),
                 )
                 .nonce_args(true)
@@ -2773,7 +2773,7 @@ async fn process_command<'a>(
                 token,
                 mint_authority,
                 arg_matches.is_present("enable_freeze"),
-                arg_matches.is_present("close_authority"),
+                arg_matches.is_present("enable_close"),
                 memo,
                 bulk_signers,
             )
@@ -3092,9 +3092,7 @@ async fn process_command<'a>(
             command_close(config, address, close_authority, recipient, bulk_signers).await
         }
         // HANA new command invocation
-        (CommandName::CloseMint, arg_matches) => {
-            command_close_mint(config).await
-        }
+        (CommandName::CloseMint, arg_matches) => command_close_mint(config).await,
         (CommandName::Balance, arg_matches) => {
             let address = config
                 .associated_token_address_or_override(arg_matches, "address", &mut wallet_manager)
