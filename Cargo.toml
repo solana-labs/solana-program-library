@@ -18,6 +18,8 @@ members = [
   "governance/tools",
   "governance/chat/program",
   "libraries/math",
+  "libraries/concurrent-merkle-tree",
+  "libraries/merkle-tree-reference",
   "memo/program",
   "name-service/program",
   "record/program",

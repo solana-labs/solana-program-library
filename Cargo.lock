@@ -2824,6 +2824,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a64b1ec5cda2586e284722486d802acf1f7dbdc623e2bfc57e65ca1cd099290"
 dependencies = [
  "autocfg",
+ "libm",
 ]
 
 [[package]]
@@ -3665,6 +3666,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d34f1408f55294453790c48b2f1ebbb1c5b4b7563eb1f418bcfcfdbb06ebb4e7"
 dependencies = [
  "getrandom 0.2.3",
+]
+
+[[package]]
+name = "rand_distr"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32cb0b9bc82b0a0876c2dd994a7e7a2683d3e7390ca40e6886785ef0c7e3ee31"
+dependencies = [
+ "num-traits",
+ "rand 0.8.5",
 ]
 
 [[package]]
@@ -5872,6 +5883,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-concurrent-merkle-tree"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "rand 0.7.3",
+ "rand_distr",
+ "solana-program",
+ "spl-merkle-tree-reference",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "spl-example-cross-program-invocation"
 version = "1.0.0"
 dependencies = [
@@ -6094,6 +6118,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd0dc6f70db6bacea7ff25870b016a65ba1d1b6013536f08e4fd79a8f9005325"
 dependencies = [
  "solana-program",
+]
+
+[[package]]
+name = "spl-merkle-tree-reference"
+version = "0.1.0"
+dependencies = [
+ "solana-program",
+ "thiserror",
 ]
 
 [[package]]
