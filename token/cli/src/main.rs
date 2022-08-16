@@ -42,12 +42,12 @@ use spl_associated_token_account::{
     get_associated_token_address_with_program_id, instruction::create_associated_token_account,
 };
 use spl_token_2022::{
-    extension::StateWithExtensionsOwned,
+    extension::{StateWithExtensionsOwned, mint_close_authority::MintCloseAuthority},
     instruction::*,
     state::{Account, Mint, Multisig},
 };
 use spl_token_client::{
-    client::RpcClientResponse,
+    client::{RpcClientResponse, ProgramRpcClientSendTransaction},
     token::{ExtensionInitializationParams, Token},
 };
 use std::{
@@ -328,6 +328,23 @@ pub fn signers_of(
     }
 }
 
+fn token_client_from_config(config: &Config<'_>, token_pubkey: &Pubkey) -> Token<ProgramRpcClientSendTransaction> {
+    let token = Token::new(
+        config.program_client.clone(),
+        &config.program_id,
+        token_pubkey,
+        config.default_signer.clone(),
+    );
+
+    if let (Some(nonce_account), Some(nonce_authority)) =
+        (config.nonce_account, config.nonce_authority)
+    {
+        token.with_nonce(&nonce_account, &nonce_authority)
+    } else {
+        token
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn command_create_token(
     config: &Config<'_>,
@@ -341,20 +358,7 @@ async fn command_create_token(
 ) -> CommandResult {
     println_display(config, format!("Creating token {}", token_pubkey));
 
-    let token = Token::new(
-        config.program_client.clone(),
-        &config.program_id,
-        &token_pubkey,
-        config.default_signer.clone(),
-    );
-
-    let token = if let (Some(nonce_account), Some(nonce_authority)) =
-        (config.nonce_account, config.nonce_authority)
-    {
-        token.with_nonce(&nonce_account, &nonce_authority)
-    } else {
-        token
-    };
+    let token = token_client_from_config(config, &token_pubkey);
 
     let freeze_authority = if enable_freeze { Some(authority) } else { None };
 
@@ -547,6 +551,7 @@ async fn command_create_multisig(
 // how does this flow. i want to add close mint support
 // it kinda looks like this moight work already?
 // i think i wanna move the auth_str shit into a Display impl
+// update: no its inside token22 itself and i dont want to pollute that
 //
 // so theres a giant block that only executes in not signonly
 // fetches the account, checks programid owner, gets the real programid
@@ -580,6 +585,9 @@ async fn command_authorize(
     force_authorize: bool,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
+    // XXX i can get mint address out of the giant branch shit below but maybe doesnt matter
+    let token = token_client_from_config(config, &Pubkey::default());
+
     let auth_str = match authority_type {
         AuthorityType::MintTokens => "mint authority",
         AuthorityType::FreezeAccount => "freeze authority",
@@ -605,7 +613,14 @@ async fn command_authorize(
                 )),
                 AuthorityType::MintTokens => Ok(mint.base.mint_authority),
                 AuthorityType::FreezeAccount => Ok(mint.base.freeze_authority),
-                AuthorityType::CloseMint => unimplemented!(),
+                AuthorityType::CloseMint => {
+                    if let Ok(mint_close_authority) = mint.get_extension::<MintCloseAuthority>() {
+                        Ok(COption::<Pubkey>::from(mint_close_authority.close_authority))
+                    }
+                    else {
+                        Err(format!("Mint `{}` does not support close authority", account))
+                    }
+                },
                 AuthorityType::TransferFeeConfig => unimplemented!(),
                 AuthorityType::WithheldWithdraw => unimplemented!(),
                 AuthorityType::InterestRate => unimplemented!(),
@@ -660,6 +675,7 @@ async fn command_authorize(
         } else {
             Err("Unsupported account data format".to_string())
         }?;
+
         (previous_authority, program_id)
     } else {
         (COption::None, config.program_id)
@@ -673,8 +689,7 @@ async fn command_authorize(
             auth_str,
             previous_authority
                 .map(|pubkey| pubkey.to_string())
-                // XXX if signonly unknown else disabled
-                .unwrap_or_else(|| "disabled".to_string()),
+                .unwrap_or_else(|| if config.sign_only { "unknown".to_string() } else { "disabled".to_string() }),
             auth_str,
             new_authority
                 .map(|pubkey| pubkey.to_string())
@@ -682,8 +697,8 @@ async fn command_authorize(
         ),
     );
 
-    // XXX should we sanity check that attempts to reassign a disabled auth dont happen?
-    // or just let it hit the program and fail is fine i guess
+    // XXX TODO NEXT i need to change set_authority in the client to return properly
+    // and then i can cut out handle_tx here... cool yea good this actually works as is
 
     let instructions = vec![set_authority(
         &program_id,
