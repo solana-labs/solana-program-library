@@ -179,7 +179,7 @@ impl SwapState for SwapV1 {
     fn check_pool_fee_info(&self, pool_fee_info: &AccountInfo) -> Result<(), ProgramError> {
         let data = &pool_fee_info.data.borrow();
         let token_account =
-            StateWithExtensions::<Account>::unpack(&data).map_err(|err| match err {
+            StateWithExtensions::<Account>::unpack(data).map_err(|err| match err {
                 ProgramError::InvalidAccountData | ProgramError::UninitializedAccount => {
                     SwapError::InvalidFeeAccount.into()
                 }
