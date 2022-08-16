@@ -4,7 +4,7 @@ A TypeScript library for interacting with the SPL Memo program.
 
 ## Links
 
-- [TypeScript Docs](https://solana-labs.github.io/solana-program-library/memo/ts/)
+- [TypeScript Docs](https://solana-labs.github.io/solana-program-library/memo/js/)
 - [Install](#install)
 - [Build from Source](#build-from-source)
 
