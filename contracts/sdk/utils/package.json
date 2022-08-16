@@ -1,0 +1,35 @@
+{
+  "name": "@sorend-solana/utils",
+  "version": "0.0.5",
+  "description": "Utility methods for the Candyland suite",
+  "repository": {
+    "url": "https://github.com/jarry-xiao/candyland",
+    "type": "git"
+  },
+  "license": "MIT",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "import": "./dist/esm/index.js",
+      "types": "./dist/cjs/index.d.ts"      
+    }
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc && tsc -p tsconfig.cjs.json"
+  },
+  "dependencies": {
+    "@metaplex-foundation/beet": "0.3.0",
+    "@project-serum/anchor": "0.24.2",
+    "@solana/web3.js": "^1.50.1",
+    "borsh": "^0.7.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.3.5"
+  },
+  "files": [
+    "dist"
+  ]
+}

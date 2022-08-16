@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "programs/gummyroll",
+    "programs/bubblegum",
+    "programs/gumball-machine",
+    "programs/sugar-shack",
+    "programs/candy-wrapper"
+]
