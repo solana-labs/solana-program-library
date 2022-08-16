@@ -1,3 +1,0 @@
-# Candyland Utils
-
-Docs TBD.

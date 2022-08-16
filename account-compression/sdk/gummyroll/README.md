@@ -1,3 +1,0 @@
-# Gummyroll SDK
-
-Docs TBD.
