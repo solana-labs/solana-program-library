@@ -143,10 +143,10 @@
   dependencies:
     buffer "~6.0.3"
 
-"@solana/spl-memo@^0.1.0":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@solana/spl-memo/-/spl-memo-0.1.0.tgz#2578a48da5184b306195bef0d658dec532b46c74"
-  integrity sha512-2Ob89TYXVkLXsdRIsVh9H/9rJrVXpOTapn/f/32n5/B8JRaSRBcVBLIAgAwSjMH1oJdBlmBO0lt8+cbWBrRLuA==
+"@solana/spl-memo@^0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@solana/spl-memo/-/spl-memo-0.2.0.tgz#adfd4085f3243108a4a6b2f6d08ab8aacc96b382"
+  integrity sha512-qXsayORFdgnnorLXF6XFV2/xaz3T3mHlG6aYsLlhSidPHjaaV0DcJRrYJoO4zMuMyO/s/lJ1vqczthLiV0WjKw==
   dependencies:
     "@solana/web3.js" "^1.41.0"
     buffer "^6.0.3"
