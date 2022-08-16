@@ -543,6 +543,33 @@ async fn command_create_multisig(
     })
 }
 
+// HANA XXX ok im on the allhands so its hard to think ill just take notes
+// how does this flow. i want to add close mint support
+// it kinda looks like this moight work already?
+// i think i wanna move the auth_str shit into a Display impl
+//
+// so theres a giant block that only executes in not signonly
+// fetches the account, checks programid owner, gets the real programid
+// then parses the account to see if its a mint or a token account
+// for mints, it makes sure it not trying to change token account owner
+// then extracts the previous authority for later usage
+// for accounts, it likewise enforces auth type, then checks if its an ata
+// if it is it errors without a force flag (which is cleverly hidden)
+//
+// ok after all that, which is *not* performed in signonly... it does a lil printy
+// then it builds the instruction and handles it
+// so simple simple, swap out thet stuff for our client code
+// then clean up the display stuff and... i think the close impl is one line?
+//
+// ugh i need to start thinking about testing too
+// the client has no test but we have a good amount here, that tests the functions
+// doesnt test the external interface but uhhh save that for later lol
+// what do i want to test?
+// * setting a close authority allows mint to be closed
+// * close auth can be reassigned and close mint still works
+// * close mint without a close authority fails
+// * close authority cannot be set if it hasnt been
+// the latter two may not matter because the program itself should enforce (and have tests for it)
 #[allow(clippy::too_many_arguments)]
 async fn command_authorize(
     config: &Config<'_>,
@@ -563,6 +590,7 @@ async fn command_authorize(
         AuthorityType::WithheldWithdraw => "withdraw withheld authority",
         AuthorityType::InterestRate => "interest rate authority",
     };
+
     let (previous_authority, program_id) = if !config.sign_only {
         let target_account = config.rpc_client.get_account(&account).await?;
         config.check_owner(&account, &target_account.owner)?;
@@ -636,6 +664,7 @@ async fn command_authorize(
     } else {
         (COption::None, config.program_id)
     };
+
     println_display(
         config,
         format!(
@@ -644,6 +673,7 @@ async fn command_authorize(
             auth_str,
             previous_authority
                 .map(|pubkey| pubkey.to_string())
+                // XXX if signonly unknown else disabled
                 .unwrap_or_else(|| "disabled".to_string()),
             auth_str,
             new_authority
@@ -651,6 +681,9 @@ async fn command_authorize(
                 .unwrap_or_else(|| "disabled".to_string())
         ),
     );
+
+    // XXX should we sanity check that attempts to reassign a disabled auth dont happen?
+    // or just let it hit the program and fail is fine i guess
 
     let instructions = vec![set_authority(
         &program_id,
@@ -670,6 +703,7 @@ async fn command_authorize(
         instructions,
     )
     .await?;
+
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
