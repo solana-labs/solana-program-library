@@ -985,6 +985,7 @@ fn command_mint(
     let max_denom =10;
     let max_denom = u64::pow(max_denom, decimals.into());
     let max_supply = u64::MAX/max_denom;
+    //For decimals:  max(u64)/(10^decimals) with integer divsion will be the max token supply we can get
     if amount>max_supply {
         println!("WARNING: Max supply will be limited to {}",max_supply);
     };
