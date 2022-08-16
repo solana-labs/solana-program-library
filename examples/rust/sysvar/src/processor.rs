@@ -47,7 +47,7 @@ pub fn process_instruction(
 
 //Code for deserializing the SlotHash sysvar while remaining within the BPF compute limit 
 
-entrypoint!(process_instruction2);
+//entrypoint!(process_instruction2);
 fn process_instruction2(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],
