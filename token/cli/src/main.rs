@@ -950,6 +950,9 @@ fn check_if_amount_overflows_supply(
     token: Pubkey,
     amount : u64,
 ) -> bool {
+    if config.sign_only {
+        return false;
+    };
     let supply = config.rpc_client.get_token_supply(&token).unwrap();
     let amount = amount;
     let supply: u64 = supply.amount.parse().unwrap();
@@ -964,7 +967,7 @@ fn check_if_amount_overflows_supply(
 fn command_mint(
     config: &Config,
     token: Pubkey,
-    ui_amount: u64,
+    amount: u64,
     recipient: Pubkey,
     mint_decimals: Option<u8>,
     mint_authority: Pubkey,
@@ -975,17 +978,17 @@ fn command_mint(
         config,
         format!(
             "Minting {} tokens\n  Token: {}\n  Recipient: {}",
-            ui_amount, token, recipient
+            amount, token, recipient
         ),
     );
     let (_, decimals) = resolve_mint_info(config, &recipient, None, mint_decimals)?;
     let max_denom =10;
     let max_denom = u64::pow(max_denom, decimals.into());
     let max_supply = u64::MAX/max_denom;
-    if ui_amount>max_supply {
+    if amount>max_supply {
         println!("WARNING: Max supply will be limited to {}",max_supply);
     };
-    let amount = spl_token::ui_amount_to_amountmint(ui_amount, decimals);
+    let amount = spl_token::ui_amount_to_amountmint(amount, decimals);
 
     let instructions = if use_unchecked_instruction {
         vec![mint_to(
@@ -2187,8 +2190,8 @@ fn app<'a, 'b>(
                         ),
                 )
                 .arg(
-                    Arg::with_name("overmint")
-                        .long("overmint-tokens")
+                    Arg::with_name("allow-supply-overflow")
+                        .long("allow-supply-overflow-u64")
                         .value_name("FORMAT")
                         .global(false)
                         .takes_value(false)
@@ -2918,7 +2921,7 @@ fn process_command(
             );
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
-            let overmint_flag = arg_matches.is_present("overmint");
+            let overmint_flag = arg_matches.is_present("allow-supply-overflow");
             //Disable overflow check - change flag name.
 
             if overmint_flag {
