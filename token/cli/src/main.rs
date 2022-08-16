@@ -1145,7 +1145,6 @@ async fn command_transfer(
     fund_recipient: bool,
     mint_decimals: Option<u8>,
     no_recipient_is_ata_owner: bool,
-    recipient_is_ata_owner: bool,
     use_unchecked_instruction: bool,
     ui_fee: Option<f64>,
     memo: Option<String>,
@@ -1232,9 +1231,6 @@ async fn command_transfer(
     let maybe_fee =
         ui_fee.map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals));
 
-    if recipient_is_ata_owner {
-        println_display(config, format!("recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release."));
-    };
 
     // determine whether recipient is a token account or an expected owner of one
     let recipient_is_token_account = if !config.sign_only {
@@ -3150,6 +3146,7 @@ fn app<'a, 'b>(
                         .long("recipient-is-ata-owner")
                         .takes_value(false)
                         .hidden(true)
+                        .conflicts_with("no_recipient_is_ata_owner")
                         .requires("sign_only")
                         .help("recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release."),
                 )
@@ -4256,8 +4253,11 @@ async fn process_command<'a>(
             let allow_unfunded_recipient = arg_matches.is_present("allow_empty_recipient")
                 || arg_matches.is_present("allow_unfunded_recipient");
 
-            let no_recipient_is_ata_owner = arg_matches.is_present("no_recipient_is_ata_owner");
             let recipient_is_ata_owner = arg_matches.is_present("recipient_is_ata_owner");
+            let no_recipient_is_ata_owner = arg_matches.is_present("no_recipient_is_ata_owner") || !arg_matches.is_present("recipient_is_ata_owner");
+            if arg_matches.is_present("recipient_is_ata_owner") {
+                println_display(config, format!("recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release."));
+            }
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             let expected_fee = value_of::<f64>(arg_matches, "expected_fee");
             let memo = value_t!(arg_matches, "memo", String).ok();
@@ -4278,7 +4278,6 @@ async fn process_command<'a>(
                 fund_recipient,
                 mint_decimals,
                 no_recipient_is_ata_owner,
-                recipient_is_ata_owner,
                 use_unchecked_instruction,
                 expected_fee,
                 memo,
