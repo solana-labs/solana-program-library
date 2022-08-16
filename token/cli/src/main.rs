@@ -737,7 +737,7 @@ fn command_transfer(
 
     if recipient_is_ata_owner {
         println_display(config, format!("recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release."));
-    }
+    };
 
     let recipient_is_token_account = if !config.sign_only {
         let recipient_account_info = config
