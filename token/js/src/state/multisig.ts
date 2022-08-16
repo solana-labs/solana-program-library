@@ -1,6 +1,6 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { bool, publicKey } from '@solana/buffer-layout-utils';
-import { Commitment, Connection, PublicKey } from '@solana/web3.js';
+import { AccountInfo, Commitment, Connection, PublicKey } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { TokenAccountNotFoundError, TokenInvalidAccountOwnerError, TokenInvalidAccountSizeError } from '../errors';
 
@@ -69,11 +69,30 @@ export async function getMultisig(
     programId = TOKEN_PROGRAM_ID
 ): Promise<Multisig> {
     const info = await connection.getAccountInfo(address, commitment);
+    return unpackMultisig(address, info, programId);
+}
+
+/**
+ * Unpack a multisig
+ *
+ * @param address   Multisig account
+ * @param info      Multisig account data
+ * @param programId SPL Token program account
+ *
+ * @return Unpacked multisig
+ */
+export function unpackMultisig(
+    address: PublicKey,
+    info: AccountInfo<Buffer> | null,
+    programId = TOKEN_PROGRAM_ID
+): Multisig {
     if (!info) throw new TokenAccountNotFoundError();
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
     if (info.data.length != MULTISIG_SIZE) throw new TokenInvalidAccountSizeError();
 
-    return { address, ...MultisigLayout.decode(info.data) };
+    const multisig = MultisigLayout.decode(info.data);
+
+    return { address, ...multisig };
 }
 
 /** Get the minimum lamport balance for a multisig to be rent exempt
