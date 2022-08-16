@@ -119,7 +119,7 @@ export async function getMultipleAccounts(
     programId = TOKEN_PROGRAM_ID
 ): Promise<Account[]> {
     const infos = await connection.getMultipleAccountsInfo(addresses, commitment);
-    return addresses.map((address, i) => unpackAccount(address, infos[i], programId))
+    return addresses.map((address, i) => unpackAccount(address, infos[i], programId));
 }
 
 /** Get the minimum lamport balance for a base token account to be rent exempt

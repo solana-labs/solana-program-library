@@ -89,11 +89,7 @@ export async function getMint(
  *
  * @return Unpacked mint
  */
-export function unpackMint(
-    address: PublicKey,
-    info: AccountInfo<Buffer> | null,
-    programId = TOKEN_PROGRAM_ID
-): Mint {
+export function unpackMint(address: PublicKey, info: AccountInfo<Buffer> | null, programId = TOKEN_PROGRAM_ID): Mint {
     if (!info) throw new TokenAccountNotFoundError();
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
     if (info.data.length < MINT_SIZE) throw new TokenInvalidAccountSizeError();
