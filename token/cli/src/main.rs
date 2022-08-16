@@ -674,7 +674,6 @@ fn command_transfer(
     fund_recipient: bool,
     mint_decimals: Option<u8>,
     no_recipient_is_ata_owner: bool,
-    recipient_is_ata_owner: bool,
     use_unchecked_instruction: bool,
     memo: Option<String>,
     bulk_signers: BulkSigners,
@@ -735,9 +734,6 @@ fn command_transfer(
     let mut recipient_token_account = recipient;
     let mut minimum_balance_for_rent_exemption = 0;
 
-    if recipient_is_ata_owner {
-        println_display(config, format!("recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release."));
-    };
 
     let recipient_is_token_account = if !config.sign_only {
         let recipient_account_info = config
@@ -2103,6 +2099,7 @@ fn app<'a, 'b>(
                         .long("recipient-is-ata-owner")
                         .takes_value(false)
                         .hidden(true)
+                        .conflicts_with("no_recipient_is_ata_owner")
                         .requires("sign_only")
                         .help("recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release."),
                 )
@@ -2849,7 +2846,11 @@ fn process_command(
             let no_recipient_is_ata_owner = arg_matches.is_present("no_recipient_is_ata_owner");
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             let memo = value_t!(arg_matches, "memo", String).ok();
-            let recipient_is_ata_owner = arg_matches.is_present("recipient_is_ata_owner");
+            //let recipient_is_ata_owner = arg_matches.is_present("recipient_is_ata_owner");
+            let no_recipient_is_ata_owner = arg_matches.is_present("no_recipient_is_ata_owner") || !arg_matches.is_present("recipient_is_ata_owner");
+            if arg_matches.is_present("recipient_is_ata_owner") {
+                println_display(config, format!("recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release."));
+            }
             command_transfer(
                 config,
                 token,
@@ -2861,7 +2862,6 @@ fn process_command(
                 fund_recipient,
                 mint_decimals,
                 no_recipient_is_ata_owner,
-                recipient_is_ata_owner,
                 use_unchecked_instruction,
                 memo,
                 bulk_signers,
