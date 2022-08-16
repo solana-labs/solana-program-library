@@ -573,16 +573,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gummyroll"
-version = "0.1.0"
-dependencies = [
- "anchor-lang",
- "bytemuck",
- "spl-concurrent-merkle-tree",
- "wrapper",
-]
-
-[[package]]
 name = "hashbrown"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1206,6 +1196,16 @@ dependencies = [
  "quote",
  "rustversion",
  "syn",
+]
+
+[[package]]
+name = "spl-compression"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "bytemuck",
+ "spl-concurrent-merkle-tree",
+ "wrapper",
 ]
 
 [[package]]
