@@ -674,6 +674,7 @@ fn command_transfer(
     fund_recipient: bool,
     mint_decimals: Option<u8>,
     no_recipient_is_ata_owner: bool,
+    recipient_is_ata_owner: bool,
     use_unchecked_instruction: bool,
     memo: Option<String>,
     bulk_signers: BulkSigners,
@@ -685,6 +686,7 @@ fn command_transfer(
     } else {
         get_associated_token_address_with_program_id(&sender_owner, &token, &config.program_id)
     };
+
     let (mint_pubkey, decimals) = resolve_mint_info(config, &sender, Some(token), mint_decimals)?;
     let maybe_transfer_balance =
         ui_amount.map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, decimals));
@@ -732,6 +734,10 @@ fn command_transfer(
 
     let mut recipient_token_account = recipient;
     let mut minimum_balance_for_rent_exemption = 0;
+
+    if recipient_is_ata_owner {
+        println_display(config, format!("recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release."));
+    }
 
     let recipient_is_token_account = if !config.sign_only {
         let recipient_account_info = config
@@ -2092,6 +2098,15 @@ fn app<'a, 'b>(
                         .requires("sign_only")
                         .help("In sign-only mode, specifies that the recipient is the owner of the associated token account rather than an actual token account"),
                 )
+                .arg(
+                    Arg::with_name("recipient_is_ata_owner")
+                        .long("recipient-is-ata-owner")
+                        .takes_value(false)
+                        .hidden(true)
+                        .requires("sign_only")
+                        .help("recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release."),
+                )
+                
                 .arg(multisig_signer_arg())
                 .arg(mint_decimals_arg())
                 .nonce_args(true)
@@ -2834,7 +2849,7 @@ fn process_command(
             let no_recipient_is_ata_owner = arg_matches.is_present("no_recipient_is_ata_owner");
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             let memo = value_t!(arg_matches, "memo", String).ok();
-
+            let recipient_is_ata_owner = arg_matches.is_present("recipient_is_ata_owner");
             command_transfer(
                 config,
                 token,
@@ -2846,6 +2861,7 @@ fn process_command(
                 fund_recipient,
                 mint_decimals,
                 no_recipient_is_ata_owner,
+                recipient_is_ata_owner,
                 use_unchecked_instruction,
                 memo,
                 bulk_signers,
