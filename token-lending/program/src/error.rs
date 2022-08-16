@@ -167,6 +167,9 @@ pub enum LendingError {
     /// Insufficent protocol fees to redeem or no liquidity availible to process redeem
     #[error("Insufficent protocol fees to claim or no liquidity availible")]
     InsufficientProtocolFeesToRedeem,
+    /// Deprecated instruction
+    #[error("Instruction is deprecated")]
+    DeprecatedInstruction,
 }
 
 impl From<LendingError> for ProgramError {

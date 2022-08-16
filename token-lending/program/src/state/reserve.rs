@@ -327,8 +327,12 @@ impl Reserve {
         let bonus = amount_liquidated_wads.try_sub(amount_liquidated_wads.try_div(bonus_rate)?)?;
 
         // After deploying must update all reserves to set liquidation fee then redeploy with this line instead of hardcode
-        // let protocol_fee = max(bonus.try_mul(Rate::from_percent(self.config.protocol_liquidation_fee))?.try_ceil_u64()?, 1);
-        let protocol_fee = std::cmp::max(bonus.try_mul(Rate::from_percent(0))?.try_ceil_u64()?, 1);
+        let protocol_fee = std::cmp::max(
+            bonus
+                .try_mul(Rate::from_percent(self.config.protocol_liquidation_fee))?
+                .try_ceil_u64()?,
+            1,
+        );
         Ok(protocol_fee)
     }
 

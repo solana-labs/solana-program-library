@@ -1584,46 +1584,12 @@ fn process_repay_obligation_liquidity(
 
 #[inline(never)] // avoid stack frame limit
 fn process_liquidate_obligation(
-    program_id: &Pubkey,
-    liquidity_amount: u64,
-    accounts: &[AccountInfo],
+    _program_id: &Pubkey,
+    _liquidity_amount: u64,
+    _accounts: &[AccountInfo],
 ) -> ProgramResult {
-    if liquidity_amount == 0 {
-        msg!("Liquidity amount provided cannot be zero");
-        return Err(LendingError::InvalidAmount.into());
-    }
-
-    let account_info_iter = &mut accounts.iter();
-    let source_liquidity_info = next_account_info(account_info_iter)?;
-    let destination_collateral_info = next_account_info(account_info_iter)?;
-    let repay_reserve_info = next_account_info(account_info_iter)?;
-    let repay_reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
-    let withdraw_reserve_info = next_account_info(account_info_iter)?;
-    let withdraw_reserve_collateral_supply_info = next_account_info(account_info_iter)?;
-    let obligation_info = next_account_info(account_info_iter)?;
-    let lending_market_info = next_account_info(account_info_iter)?;
-    let lending_market_authority_info = next_account_info(account_info_iter)?;
-    let user_transfer_authority_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
-    let token_program_id = next_account_info(account_info_iter)?;
-
-    _liquidate_obligation(
-        program_id,
-        liquidity_amount,
-        source_liquidity_info,
-        destination_collateral_info,
-        repay_reserve_info,
-        repay_reserve_liquidity_supply_info,
-        withdraw_reserve_info,
-        withdraw_reserve_collateral_supply_info,
-        obligation_info,
-        lending_market_info,
-        lending_market_authority_info,
-        user_transfer_authority_info,
-        clock,
-        token_program_id,
-    )?;
-    Ok(())
+    msg!("method deprecated, please migrate to Liquidate Obligation and Redeem Reserve Collateral");
+    Err(LendingError::DeprecatedInstruction.into())
 }
 
 #[allow(clippy::too_many_arguments)]

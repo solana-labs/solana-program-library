@@ -17,7 +17,7 @@ use solend_program::{
 use spl_token::instruction::approve;
 
 #[tokio::test]
-async fn test_success() {
+async fn test_fail_deprecated() {
     let mut test = ProgramTest::new(
         "solend_program",
         solend_program::id(),
@@ -35,8 +35,8 @@ async fn test_success() {
     const USDC_LIQUIDATION_AMOUNT_FRACTIONAL: u64 =
         USDC_BORROW_AMOUNT_FRACTIONAL * (LIQUIDATION_CLOSE_FACTOR as u64) / 100;
     // 320 USDC / 20 USDC per SOL -> 16 SOL + 10% bonus -> 17.6 SOL (88/5)
-    const SOL_LIQUIDATION_AMOUNT_LAMPORTS: u64 =
-        LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO * 88 * (LIQUIDATION_CLOSE_FACTOR as u64) / 100;
+    // const SOL_LIQUIDATION_AMOUNT_LAMPORTS: u64 =
+    //     LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO * 88 * (LIQUIDATION_CLOSE_FACTOR as u64) / 100;
 
     const SOL_RESERVE_COLLATERAL_LAMPORTS: u64 = 2 * SOL_DEPOSIT_AMOUNT_LAMPORTS;
     const USDC_RESERVE_LIQUIDITY_FRACTIONAL: u64 = 2 * USDC_BORROW_AMOUNT_FRACTIONAL;
@@ -98,15 +98,6 @@ async fn test_success() {
 
     let (mut banks_client, payer, recent_blockhash) = test.start().await;
 
-    let initial_user_liquidity_balance =
-        get_token_balance(&mut banks_client, usdc_test_reserve.user_liquidity_pubkey).await;
-    let initial_liquidity_supply_balance =
-        get_token_balance(&mut banks_client, usdc_test_reserve.liquidity_supply_pubkey).await;
-    let initial_user_collateral_balance =
-        get_token_balance(&mut banks_client, sol_test_reserve.user_collateral_pubkey).await;
-    let initial_collateral_supply_balance =
-        get_token_balance(&mut banks_client, sol_test_reserve.collateral_supply_pubkey).await;
-
     let mut transaction = Transaction::new_with_payer(
         &[
             approve(
@@ -144,43 +135,5 @@ async fn test_success() {
         &[&payer, &user_accounts_owner, &user_transfer_authority],
         recent_blockhash,
     );
-    assert!(banks_client.process_transaction(transaction).await.is_ok());
-
-    let user_liquidity_balance =
-        get_token_balance(&mut banks_client, usdc_test_reserve.user_liquidity_pubkey).await;
-    assert_eq!(
-        user_liquidity_balance,
-        initial_user_liquidity_balance - USDC_LIQUIDATION_AMOUNT_FRACTIONAL
-    );
-
-    let liquidity_supply_balance =
-        get_token_balance(&mut banks_client, usdc_test_reserve.liquidity_supply_pubkey).await;
-    assert_eq!(
-        liquidity_supply_balance,
-        initial_liquidity_supply_balance + USDC_LIQUIDATION_AMOUNT_FRACTIONAL
-    );
-
-    let user_collateral_balance =
-        get_token_balance(&mut banks_client, sol_test_reserve.user_collateral_pubkey).await;
-    assert_eq!(
-        user_collateral_balance,
-        initial_user_collateral_balance + SOL_LIQUIDATION_AMOUNT_LAMPORTS
-    );
-
-    let collateral_supply_balance =
-        get_token_balance(&mut banks_client, sol_test_reserve.collateral_supply_pubkey).await;
-    assert_eq!(
-        collateral_supply_balance,
-        initial_collateral_supply_balance - SOL_LIQUIDATION_AMOUNT_LAMPORTS
-    );
-
-    let obligation = test_obligation.get_state(&mut banks_client).await;
-    assert_eq!(
-        obligation.deposits[0].deposited_amount,
-        SOL_DEPOSIT_AMOUNT_LAMPORTS - SOL_LIQUIDATION_AMOUNT_LAMPORTS
-    );
-    assert_eq!(
-        obligation.borrows[0].borrowed_amount_wads,
-        (USDC_BORROW_AMOUNT_FRACTIONAL - USDC_LIQUIDATION_AMOUNT_FRACTIONAL).into()
-    )
+    assert!(banks_client.process_transaction(transaction).await.is_err());
 }
