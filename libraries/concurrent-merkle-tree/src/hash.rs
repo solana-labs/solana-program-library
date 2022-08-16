@@ -1,6 +1,9 @@
 use crate::node::{empty_node, Node};
 use solana_program::keccak::hashv;
 
+#[cfg(feature = "sol-log")]
+use solana_program::msg;
+
 /// Recomputes root of the Merkle tree from Node & proof
 pub fn recompute(leaf: Node, proof: &[Node], index: u32) -> Node {
     let mut current_node = leaf;
