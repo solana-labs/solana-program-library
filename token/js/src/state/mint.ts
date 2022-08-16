@@ -77,20 +77,22 @@ export async function getMint(
     programId = TOKEN_PROGRAM_ID
 ): Promise<Mint> {
     const info = await connection.getAccountInfo(address, commitment);
-    return unpackMint(info, address, programId);
+    return unpackMint(address, info, programId);
 }
 
 /**
- * Unpacks a mint
- * @param info the mint on-chain account
- * @param address Mint
+ * Unpack a mint
+ *
+ * @param address   Mint account
+ * @param info      Mint account data
  * @param programId SPL Token program account
- * @returns
+ *
+ * @return Unpacked mint
  */
 export function unpackMint(
-    info: AccountInfo<Buffer> | null,
     address: PublicKey,
-    programId: PublicKey = TOKEN_PROGRAM_ID
+    info: AccountInfo<Buffer> | null,
+    programId = TOKEN_PROGRAM_ID
 ): Mint {
     if (!info) throw new TokenAccountNotFoundError();
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();

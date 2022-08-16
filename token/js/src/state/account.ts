@@ -99,7 +99,7 @@ export async function getAccount(
     programId = TOKEN_PROGRAM_ID
 ): Promise<Account> {
     const info = await connection.getAccountInfo(address, commitment);
-    return unpackAccount(info, address, programId);
+    return unpackAccount(address, info, programId);
 }
 
 /**
@@ -119,12 +119,7 @@ export async function getMultipleAccounts(
     programId = TOKEN_PROGRAM_ID
 ): Promise<Account[]> {
     const infos = await connection.getMultipleAccountsInfo(addresses, commitment);
-    const accounts = [];
-    for (let i = 0; i < infos.length; i++) {
-        const account = unpackAccount(infos[i], addresses[i], programId);
-        accounts.push(account);
-    }
-    return accounts;
+    return addresses.map((address, i) => unpackAccount(address, infos[i], programId))
 }
 
 /** Get the minimum lamport balance for a base token account to be rent exempt
@@ -158,16 +153,18 @@ export async function getMinimumBalanceForRentExemptAccountWithExtensions(
 }
 
 /**
- * Unpacks a token account
- * @param info the token account on-chain account
- * @param address TokenAccount
+ * Unpack a token account
+ *
+ * @param address   Token account
+ * @param info      Token account data
  * @param programId SPL Token program account
- * @returns
+ *
+ * @return Unpacked account
  */
 export function unpackAccount(
-    info: AccountInfo<Buffer> | null,
     address: PublicKey,
-    programId: PublicKey = TOKEN_PROGRAM_ID
+    info: AccountInfo<Buffer> | null,
+    programId = TOKEN_PROGRAM_ID
 ): Account {
     if (!info) throw new TokenAccountNotFoundError();
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();

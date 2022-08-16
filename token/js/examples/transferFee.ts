@@ -133,7 +133,7 @@ import {
     });
     const accountsToWithdrawFrom = [];
     for (const accountInfo of allAccounts) {
-        const account = unpackAccount(accountInfo.account, accountInfo.pubkey, TOKEN_2022_PROGRAM_ID);
+        const account = unpackAccount(accountInfo.pubkey, accountInfo.account, TOKEN_2022_PROGRAM_ID);
         const transferFeeAmount = getTransferFeeAmount(account);
         if (transferFeeAmount !== null && transferFeeAmount.withheldAmount > BigInt(0)) {
             accountsToWithdrawFrom.push(accountInfo.pubkey);
