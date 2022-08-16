@@ -83,13 +83,17 @@ pub fn process_instruction(
             msg!("Instruction: Withdraw Obligation Collateral");
             process_withdraw_obligation_collateral(program_id, collateral_amount, accounts)
         }
-        LendingInstruction::BorrowObligationLiquidity { liquidity_amount } => {
+        LendingInstruction::BorrowObligationLiquidity {
+            liquidity_amount,
+            slippage_limit,
+        } => {
             msg!("Instruction: Borrow Obligation Liquidity");
-            process_borrow_obligation_liquidity(program_id, liquidity_amount, 0_u64, accounts)
-        }
-        LendingInstruction::BorrowAllObligationLiquidity { slippage_limit } => {
-            msg!("Instruction: Borrow All Obligation Liquidity");
-            process_borrow_obligation_liquidity(program_id, u64::MAX, slippage_limit, accounts)
+            process_borrow_obligation_liquidity(
+                program_id,
+                liquidity_amount,
+                slippage_limit,
+                accounts,
+            )
         }
         LendingInstruction::RepayObligationLiquidity { liquidity_amount } => {
             msg!("Instruction: Repay Obligation Liquidity");
