@@ -1,6 +1,6 @@
 {
     "name": "@solana/spl-token",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "author": "Solana Maintainers <maintainers@solana.foundation>",
     "repository": "https://github.com/solana-labs/solana-program-library",
     "license": "Apache-2.0",
@@ -46,12 +46,12 @@
         "@solana/web3.js": "^1.41.0"
     },
     "devDependencies": {
-        "@solana/spl-memo": "^0.1.0",
+        "@solana/spl-memo": "^0.2.0",
         "@types/chai-as-promised": "^7.1.4",
         "@types/eslint": "^8.4.0",
         "@types/eslint-plugin-prettier": "^3.1.0",
         "@types/mocha": "^9.1.0",
-        "@types/node": "^16.11.21",
+        "@types/node": "^18.7.6",
         "@types/prettier": "^2.4.3",
         "@typescript-eslint/eslint-plugin": "^5.10.0",
         "@typescript-eslint/parser": "^5.10.0",
