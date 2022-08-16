@@ -159,7 +159,7 @@ export async function getMinimumBalanceForRentExemptAccountWithExtensions(
  * @param info      Token account data
  * @param programId SPL Token program account
  *
- * @return Unpacked account
+ * @return Unpacked token account
  */
 export function unpackAccount(
     address: PublicKey,
