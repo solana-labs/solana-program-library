@@ -372,7 +372,7 @@ impl LendingInstruction {
             }
             10 => {
                 let (liquidity_amount, rest) = Self::unpack_u64(rest)?;
-                let (slippage_limit, _rest) = Self::unpack_u64(rest)?;
+                let (slippage_limit, _rest) = Self::unpack_u64(rest).unwrap_or((0, &[]));
                 Self::BorrowObligationLiquidity {
                     liquidity_amount,
                     slippage_limit,
