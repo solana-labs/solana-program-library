@@ -13,10 +13,11 @@ use solana_program::{
     msg,
     program::set_return_data,
     program_error::ProgramError,
-    program_memory::{sol_memcmp, sol_memset},
+    program_memory::sol_memcmp,
     program_option::COption,
     program_pack::{IsInitialized, Pack},
     pubkey::{Pubkey, PUBKEY_BYTES},
+    system_program,
     sysvar::{rent::Rent, Sysvar},
 };
 
@@ -696,8 +697,7 @@ impl Processor {
             .ok_or(TokenError::Overflow)?;
 
         **source_account_info.lamports.borrow_mut() = 0;
-
-        sol_memset(*source_account_info.data.borrow_mut(), 0, Account::LEN);
+        delete_account(source_account_info)?;
 
         Ok(())
     }
@@ -1005,6 +1005,25 @@ impl Processor {
         }
         Ok(())
     }
+}
+
+/// Helper function to mostly delete an account in a test environment.  We could
+/// potentially muck around the bytes assuming that a vec is passed in, but that
+/// would be more trouble than it's worth.
+#[cfg(not(target_arch = "bpf"))]
+fn delete_account(account_info: &AccountInfo) -> Result<(), ProgramError> {
+    account_info.assign(&system_program::id());
+    let mut account_data = account_info.data.borrow_mut();
+    let data_len = account_data.len();
+    solana_program::program_memory::sol_memset(*account_data, 0, data_len);
+    Ok(())
+}
+
+/// Helper function to totally delete an account on-chain
+#[cfg(target_arch = "bpf")]
+fn delete_account(account_info: &AccountInfo) -> Result<(), ProgramError> {
+    account_info.assign(&system_program::id());
+    account_info.realloc(0, false)
 }
 
 #[cfg(test)]

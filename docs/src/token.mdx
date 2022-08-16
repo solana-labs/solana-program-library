@@ -383,9 +383,9 @@ import {clusterApiUrl, Connection, PublicKey} from "@solana/web3.js";
 
   console.log("Token                                         Balance");
   console.log("------------------------------------------------------------");
-  tokenAccounts.value.forEach((e) => {
-    const accountInfo = AccountLayout.decode(e.account.data);
-    console.log(`${new PublicKey(accountInfo.mint)}   ${accountInfo.amount}`);
+  tokenAccounts.value.forEach((tokenAccount) => {
+    const accountData = AccountLayout.decode(tokenAccount.account.data);
+    console.log(`${new PublicKey(accountData.mint)}   ${accountData.amount}`);
   })
 
 })();
@@ -1176,8 +1176,8 @@ try {
     multisigKey,
     1
   )
-} catch (e) {
-  console.log(e);
+} catch (error) {
+  console.log(error);
 }
 // Error: Signature verification failed
 ```

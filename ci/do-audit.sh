@@ -23,8 +23,14 @@ cargo_audit_ignores=(
 
   # memmap is officially deprecated/unmaintained, used by honggfuzz
   #
-  # Blcoked on honggfuzz, fixed in https://github.com/rust-fuzz/honggfuzz-rs/pull/55
+  # Blocked on honggfuzz, fixed in https://github.com/rust-fuzz/honggfuzz-rs/pull/55
   # need to update honggfuzz dependency whenever the next version is released
   --ignore RUSTSEC-2020-0077
+
+  # rocksdb: Out-of-bounds read when opening multiple column families with TTL
+  #
+  # Blocked on Solana 1.11, fixed in https://github.com/solana-labs/solana/pull/26949
+  # Once we update to 1.11, we can remove this
+  --ignore RUSTSEC-2022-0046
 )
 cargo +"$rust_stable" audit "${cargo_audit_ignores[@]}"

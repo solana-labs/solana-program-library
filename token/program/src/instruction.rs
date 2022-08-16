@@ -1431,7 +1431,7 @@ pub fn is_valid_signer_index(index: usize) -> bool {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use {super::*, proptest::prelude::*};
 
     #[test]
     fn test_instruction_packing() {
@@ -1682,6 +1682,16 @@ mod test {
                 data[0] = i;
                 let _no_panic = TokenInstruction::unpack(&data);
             }
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(1024))]
+        #[test]
+        fn test_instruction_unpack_proptest(
+            data in prop::collection::vec(any::<u8>(), 0..255)
+        ) {
+            let _no_panic = TokenInstruction::unpack(&data);
         }
     }
 }

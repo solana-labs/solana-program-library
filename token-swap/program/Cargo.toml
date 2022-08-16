@@ -19,16 +19,18 @@ num-derive = "0.3"
 num-traits = "0.2"
 solana-program = "1.10.33"
 spl-math = { version = "0.1", path = "../../libraries/math", features = [ "no-entrypoint" ] }
-spl-token = { version = "3.3", path = "../../token/program", features = [ "no-entrypoint" ] }
+spl-token = { version = "3.5", path = "../../token/program", features = [ "no-entrypoint" ] }
+spl-token-2022 = { version = "0.4", path = "../../token/program-2022", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 arbitrary = { version = "1.0", features = ["derive"], optional = true }
 roots = { version = "0.0.7", optional = true }
 
 [dev-dependencies]
-solana-sdk = "1.10.33"
 proptest = "1.0"
-sim =  { path = "./sim" }
 roots = "0.0.7"
+sim =  { path = "./sim" }
+solana-sdk = "1.10.33"
+test-case = "2.2"
 
 [lib]
 crate-type = ["cdylib", "lib"]

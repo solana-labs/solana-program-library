@@ -12,7 +12,12 @@ use {
     },
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
-        message::Message, native_token::Sol, program_pack::Pack, pubkey::Pubkey, signature::Signer,
+        message::Message,
+        native_token::Sol,
+        program_pack::Pack,
+        pubkey::Pubkey,
+        signature::{Signature, Signer, SignerError},
+        signers::Signers,
         system_instruction,
     },
     spl_associated_token_account::*,
@@ -23,6 +28,48 @@ use {
     },
     std::{sync::Arc, time::Instant},
 };
+
+// TODO: remove this newtype once `Signers` is implemented for `Vec<Arc<dyn Signer>>` upstream
+struct ArcSigner(Vec<Arc<dyn Signer>>);
+
+impl From<Vec<Arc<dyn Signer>>> for ArcSigner {
+    fn from(vec: Vec<Arc<dyn Signer>>) -> Self {
+        Self(vec)
+    }
+}
+
+impl Signers for ArcSigner {
+    fn pubkeys(&self) -> Vec<Pubkey> {
+        self.0.iter().map(|keypair| keypair.pubkey()).collect()
+    }
+
+    fn try_pubkeys(&self) -> Result<Vec<Pubkey>, SignerError> {
+        let mut pubkeys = Vec::new();
+        for keypair in self.0.iter() {
+            pubkeys.push(keypair.try_pubkey()?);
+        }
+        Ok(pubkeys)
+    }
+
+    fn sign_message(&self, message: &[u8]) -> Vec<Signature> {
+        self.0
+            .iter()
+            .map(|keypair| keypair.sign_message(message))
+            .collect()
+    }
+
+    fn try_sign_message(&self, message: &[u8]) -> Result<Vec<Signature>, SignerError> {
+        let mut signatures = Vec::new();
+        for keypair in self.0.iter() {
+            signatures.push(keypair.try_sign_message(message)?);
+        }
+        Ok(signatures)
+    }
+
+    fn is_interactive(&self) -> bool {
+        self.0.iter().any(|s| s.is_interactive())
+    }
+}
 
 pub(crate) trait BenchSubCommand {
     fn bench_subcommand(self) -> Self;
@@ -168,7 +215,7 @@ impl BenchSubCommand for App<'_, '_> {
 pub(crate) async fn bench_process_command(
     matches: &ArgMatches<'_>,
     config: &Config<'_>,
-    mut signers: Vec<Box<dyn Signer>>,
+    mut signers: Vec<Arc<dyn Signer>>,
     wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
 ) -> CommandResult {
     assert!(!config.sign_only);
@@ -273,7 +320,7 @@ async fn get_valid_mint_program_id(
 
 async fn command_create_accounts(
     config: &Config<'_>,
-    signers: Vec<Box<dyn Signer>>,
+    signers: Vec<Arc<dyn Signer>>,
     token: &Pubkey,
     n: usize,
     owner: &Pubkey,
@@ -323,7 +370,7 @@ async fn command_create_accounts(
 
 async fn command_close_accounts(
     config: &Config<'_>,
-    signers: Vec<Box<dyn Signer>>,
+    signers: Vec<Arc<dyn Signer>>,
     token: &Pubkey,
     n: usize,
     owner: &Pubkey,
@@ -376,7 +423,7 @@ async fn command_close_accounts(
 #[allow(clippy::too_many_arguments)]
 async fn command_deposit_into_or_withdraw_from(
     config: &Config<'_>,
-    signers: Vec<Box<dyn Signer>>,
+    signers: Vec<Arc<dyn Signer>>,
     token: &Pubkey,
     n: usize,
     owner: &Pubkey,
@@ -430,7 +477,7 @@ async fn send_messages(
     config: &Config<'_>,
     messages: &[Message],
     mut lamports_required: u64,
-    signers: Vec<Box<dyn Signer>>,
+    signers: Vec<Arc<dyn Signer>>,
 ) -> Result<(), Error> {
     if messages.is_empty() {
         println!("Nothing to do");
@@ -464,8 +511,8 @@ async fn send_messages(
         &config.websocket_url,
         TpuClientConfig::default(),
     )?;
-    let transaction_errors =
-        tpu_client.send_and_confirm_messages_with_spinner(messages, &signers)?;
+    let transaction_errors = tpu_client
+        .send_and_confirm_messages_with_spinner::<ArcSigner>(messages, &signers.into())?;
     for (i, transaction_error) in transaction_errors.into_iter().enumerate() {
         if let Some(transaction_error) = transaction_error {
             println!("Message {} failed with {:?}", i, transaction_error);

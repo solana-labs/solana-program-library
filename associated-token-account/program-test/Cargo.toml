@@ -1,0 +1,19 @@
+[package]
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+description = "SPL Associated Token Account Program Tests"
+edition = "2018"
+license = "Apache-2.0"
+name = "spl-associated-token-account-test"
+repository = "https://github.com/solana-labs/solana-program-library"
+version = "0.0.1"
+
+[features]
+test-bpf = []
+
+[dev-dependencies]
+solana-program = "1.10.33"
+solana-program-test = "1.10.33"
+solana-sdk = "1.10.33"
+spl-associated-token-account = { version = "1.1", path = "../program", features = ["no-entrypoint"] }
+spl-token = { version = "3.5", path = "../../token/program", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "0.4", path = "../../token/program-2022", features = ["no-entrypoint"] }
