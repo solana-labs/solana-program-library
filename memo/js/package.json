@@ -1,18 +1,29 @@
 {
   "name": "@solana/spl-memo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "SPL Memo Program JS API",
   "files": [
-    "dist",
-    "src"
+    "lib",
+    "src",
+    "LICENSE",
+    "README.md"
   ],
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "lib/cjs/index.js",
+  "module": "lib/esm/index.mjs",
+  "types": "lib/types/index.d.ts",
   "type": "module",
   "sideEffects": false,
+  "exports": {
+    "import": "./lib/esm/index.mjs",
+    "require": "./lib/cjs/index.js",
+    "types": "./lib/types/index.d.ts"
+  },
   "scripts": {
-    "build": "npm run clean && tsc",
-    "clean": "rimraf ./dist",
+    "build": "yarn clean && tsc -p tsconfig.json && tsc-esm -p tsconfig.json && tsc -p tsconfig.cjs.json",
+    "postbuild": "echo '{\"type\":\"commonjs\"}' > lib/cjs/package.json && echo '{\"type\":\"module\"}' > lib/esm/package.json",
+    "clean": "rimraf ./lib",
+    "deploy": "yarn docs && gh-pages --dist docs --dest memo/ts --dotfiles",
+    "docs": "rimraf docs && NODE_OPTIONS=--max_old_space_size=4096 typedoc",
     "lint": "eslint --max-warnings 0 . && npm run pretty",
     "lint:fix": "eslint . --fix && npm run pretty:fix",
     "pretty": "prettier --check '{,{src,test}/**/}*.{j,t}s'",
@@ -29,7 +40,7 @@
     "access": "public"
   },
   "author": "Solana Maintainers <maintainers@solana.com>",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "devDependencies": {
     "@types/chai": "^4.3.1",
     "@types/jest": "^28.1.1",
@@ -44,10 +55,13 @@
     "jest": "^28.1.1",
     "prettier": "^2.7.0",
     "process": "^0.11.10",
+    "rimraf": "^3.0.2",
     "start-server-and-test": "^1.14.0",
     "ts-jest": "^28.0.5",
     "ts-node": "^10.8.1",
-    "typescript": "^4.7.3"
+    "typedoc": "^0.23.10",
+    "typescript": "^4.7.3",
+    "typescript-esm": "^2.0.0"
   },
   "dependencies": {
     "@solana/web3.js": "^1.41.0",
