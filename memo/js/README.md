@@ -23,7 +23,7 @@ git clone https://github.com/solana-labs/solana-program-library.git
 
 2. Navigate to the library:
 ```shell
-cd solana-program-library/memo/ts
+cd solana-program-library/memo/js
 ```
 
 3. Install the dependencies:
