@@ -1,4 +1,10 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{
+    prelude::*,
+    solana_program::{msg, program_error::ProgramError},
+};
+use bytemuck::PodCastError;
+use std::any::type_name;
+use std::mem::size_of;
 use spl_concurrent_merkle_tree::error::ConcurrentMerkleTreeError;
 
 /// Errors related to misconfiguration or misuse of the Merkle tree
@@ -29,5 +35,17 @@ pub enum AccountCompressionError {
 impl From<&ConcurrentMerkleTreeError> for AccountCompressionError {
     fn from(_error: &ConcurrentMerkleTreeError) -> Self {
         AccountCompressionError::ConcurrentMerkleTreeError
+    }
+}
+
+pub fn error_msg<T>(data_len: usize) -> impl Fn(PodCastError) -> ProgramError {
+    move |_: PodCastError| -> ProgramError {
+        msg!(
+            "Failed to load {}. Size is {}, expected {}",
+            type_name::<T>(),
+            data_len,
+            size_of::<T>(),
+        );
+        ProgramError::InvalidAccountData
     }
 }

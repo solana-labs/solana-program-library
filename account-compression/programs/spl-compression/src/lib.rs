@@ -28,11 +28,15 @@ use std::mem::size_of;
 
 pub mod error;
 pub mod state;
-pub mod utils;
+pub mod zero_copy;
+pub mod data_wrapper;
+pub mod events;
 
 use crate::error::AccountCompressionError;
-use crate::state::{ChangeLogEvent, ConcurrentMerkleTreeHeader, Wrapper};
-use crate::utils::{wrap_event, ZeroCopy};
+use crate::state::ConcurrentMerkleTreeHeader; 
+use crate::events::ChangeLogEvent;
+use crate::data_wrapper::{wrap_event, Wrapper};
+use crate::zero_copy::ZeroCopy;
 
 /// Exported for Anchor / Solita
 pub use spl_concurrent_merkle_tree::{
