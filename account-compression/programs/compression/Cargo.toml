@@ -16,10 +16,10 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = { path="../../../deps/anchor/lang" }
+anchor-lang = "0.25.0"
 bytemuck = "1.8.0"
-concurrent-merkle-tree = { path="../../../lib/concurrent-merkle-tree", features = [ "sol-log" ]}
-candy-wrapper = { path="../candy-wrapper", features = [ "no-entrypoint" ]}
+spl-concurrent-merkle-tree = { path="../../../libraries/concurrent-merkle-tree", features = [ "sol-log" ]}
+wrapper = { path="../wrapper", features = [ "no-entrypoint" ]}
 
 [profile.release]
 overflow-checks = true

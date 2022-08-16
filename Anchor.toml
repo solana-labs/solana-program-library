@@ -9,6 +9,9 @@ members = [
   "token/program",
   "token/program-2022",
 ]
+exclude = [
+  "account-compression/"
+]
 
 [provider]
 cluster = "mainnet"

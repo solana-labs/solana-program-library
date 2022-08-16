@@ -1,12 +1,12 @@
 [programs.localnet]
-gummyroll = "GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU"
+compression = "GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU"
 
 [programs.testnet]
-gummyroll = "GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD"
+compression = "GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD"
 
 [[test.genesis]]
 address = "WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh"
-program = "./target/deploy/candy_wrapper.so"
+program = "./target/deploy/wrapper.so"
 
 [registry]
 url = "https://anchor.projectserum.com"

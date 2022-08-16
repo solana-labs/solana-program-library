@@ -23,17 +23,21 @@ use anchor_lang::{
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 use bytemuck::cast_slice_mut;
-use concurrent_merkle_tree::{state::EMPTY, utils::empty_node_cached};
+use spl_concurrent_merkle_tree::node::{empty_node_cached, EMPTY};
 use std::mem::size_of;
 
 pub mod error;
 pub mod state;
 pub mod utils;
 
-use crate::error::GummyrollError;
-use crate::state::{CandyWrapper, ChangeLogEvent, MerkleRollHeader};
+use crate::error::AccountCompressionError;
+use crate::state::{ChangeLogEvent, ConcurrentMerkleTreeHeader, Wrapper};
 use crate::utils::{wrap_event, ZeroCopy};
-pub use concurrent_merkle_tree::{error::CMTError, merkle_roll::MerkleRoll, state::Node};
+
+/// Exported for Anchor / Solita
+pub use spl_concurrent_merkle_tree::{
+    concurrent_merkle_tree::ConcurrentMerkleTree, error::ConcurrentMerkleTreeError, node::Node,
+};
 
 declare_id!("GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU");
 
@@ -50,7 +54,7 @@ pub struct Initialize<'info> {
 
     /// Program used to emit changelogs as instruction data.
     /// See `WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh`
-    pub candy_wrapper: Program<'info, CandyWrapper>,
+    pub candy_wrapper: Program<'info, Wrapper>,
 }
 
 /// Context for inserting, appending, or replacing a leaf in the tree
@@ -66,7 +70,7 @@ pub struct Modify<'info> {
 
     /// Program used to emit changelogs as instruction data.
     /// See `WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh`
-    pub candy_wrapper: Program<'info, CandyWrapper>,
+    pub candy_wrapper: Program<'info, Wrapper>,
 }
 
 /// Context for validating a provided proof against the Merkle tree.
@@ -97,7 +101,7 @@ fn check_canopy_bytes(canopy_bytes: &mut [u8]) -> Result<()> {
             canopy_bytes.len(),
             size_of::<Node>()
         );
-        err!(GummyrollError::CanopyLengthMismatch)
+        err!(AccountCompressionError::CanopyLengthMismatch)
     } else {
         Ok(())
     }
@@ -119,14 +123,14 @@ fn get_cached_path_length(canopy: &mut [Node], max_depth: u32) -> Result<u32> {
                 closest_power_of_2 - 2,
                 (1 << (max_depth + 1)) - 2
             );
-            return err!(GummyrollError::CanopyLengthMismatch);
+            return err!(AccountCompressionError::CanopyLengthMismatch);
         }
     } else {
         msg!(
             "Canopy length {} is not 2 less than a power of 2",
             canopy.len()
         );
-        return err!(GummyrollError::CanopyLengthMismatch);
+        return err!(AccountCompressionError::CanopyLengthMismatch);
     }
     // 1 is subtracted from the trailing zeros because the root is not stored in the canopy
     Ok(closest_power_of_2.trailing_zeros() - 1)
@@ -195,7 +199,7 @@ fn fill_in_proof_from_canopy(
 /// needed to sync the merkle tree state with off-chain indexers.
 macro_rules! merkle_roll_depth_size_apply_fn {
     ($max_depth:literal, $max_size:literal, $id:ident, $bytes:ident, $func:ident, $($arg:tt)*) => {
-        match MerkleRoll::<$max_depth, $max_size>::load_mut_bytes($bytes) {
+        match ConcurrentMerkleTree::<$max_depth, $max_size>::load_mut_bytes($bytes) {
             Ok(merkle_roll) => {
                 match merkle_roll.$func($($arg)*) {
                     Ok(_) => {
@@ -203,13 +207,13 @@ macro_rules! merkle_roll_depth_size_apply_fn {
                     }
                     Err(err) => {
                         msg!("Error using concurrent merkle tree: {}", err);
-                        err!(GummyrollError::ConcurrentMerkleTreeError)
+                        err!(AccountCompressionError::ConcurrentMerkleTreeError)
                     }
                 }
             }
             Err(err) => {
                 msg!("Error zero copying merkle roll: {}", err);
-                err!(GummyrollError::ZeroCopyError)
+                err!(AccountCompressionError::ZeroCopyError)
             }
         }
     }
@@ -222,34 +226,34 @@ macro_rules! merkle_roll_get_size {
     ($header:ident) => {
         // Note: max_buffer_size MUST be a power of 2
         match ($header.max_depth, $header.max_buffer_size) {
-            (3, 8) => Ok(size_of::<MerkleRoll<3, 8>>()),
-            (5, 8) => Ok(size_of::<MerkleRoll<5, 8>>()),
-            (14, 64) => Ok(size_of::<MerkleRoll<14, 64>>()),
-            (14, 256) => Ok(size_of::<MerkleRoll<14, 256>>()),
-            (14, 1024) => Ok(size_of::<MerkleRoll<14, 1024>>()),
-            (14, 2048) => Ok(size_of::<MerkleRoll<14, 2048>>()),
-            (20, 64) => Ok(size_of::<MerkleRoll<20, 64>>()),
-            (20, 256) => Ok(size_of::<MerkleRoll<20, 256>>()),
-            (20, 1024) => Ok(size_of::<MerkleRoll<20, 1024>>()),
-            (20, 2048) => Ok(size_of::<MerkleRoll<20, 2048>>()),
-            (24, 64) => Ok(size_of::<MerkleRoll<24, 64>>()),
-            (24, 256) => Ok(size_of::<MerkleRoll<24, 256>>()),
-            (24, 512) => Ok(size_of::<MerkleRoll<24, 512>>()),
-            (24, 1024) => Ok(size_of::<MerkleRoll<24, 1024>>()),
-            (24, 2048) => Ok(size_of::<MerkleRoll<24, 2048>>()),
-            (26, 512) => Ok(size_of::<MerkleRoll<26, 512>>()),
-            (26, 1024) => Ok(size_of::<MerkleRoll<26, 1024>>()),
-            (26, 2048) => Ok(size_of::<MerkleRoll<26, 2048>>()),
-            (30, 512) => Ok(size_of::<MerkleRoll<30, 512>>()),
-            (30, 1024) => Ok(size_of::<MerkleRoll<30, 1024>>()),
-            (30, 2048) => Ok(size_of::<MerkleRoll<30, 2048>>()),
+            (3, 8) => Ok(size_of::<ConcurrentMerkleTree<3, 8>>()),
+            (5, 8) => Ok(size_of::<ConcurrentMerkleTree<5, 8>>()),
+            (14, 64) => Ok(size_of::<ConcurrentMerkleTree<14, 64>>()),
+            (14, 256) => Ok(size_of::<ConcurrentMerkleTree<14, 256>>()),
+            (14, 1024) => Ok(size_of::<ConcurrentMerkleTree<14, 1024>>()),
+            (14, 2048) => Ok(size_of::<ConcurrentMerkleTree<14, 2048>>()),
+            (20, 64) => Ok(size_of::<ConcurrentMerkleTree<20, 64>>()),
+            (20, 256) => Ok(size_of::<ConcurrentMerkleTree<20, 256>>()),
+            (20, 1024) => Ok(size_of::<ConcurrentMerkleTree<20, 1024>>()),
+            (20, 2048) => Ok(size_of::<ConcurrentMerkleTree<20, 2048>>()),
+            (24, 64) => Ok(size_of::<ConcurrentMerkleTree<24, 64>>()),
+            (24, 256) => Ok(size_of::<ConcurrentMerkleTree<24, 256>>()),
+            (24, 512) => Ok(size_of::<ConcurrentMerkleTree<24, 512>>()),
+            (24, 1024) => Ok(size_of::<ConcurrentMerkleTree<24, 1024>>()),
+            (24, 2048) => Ok(size_of::<ConcurrentMerkleTree<24, 2048>>()),
+            (26, 512) => Ok(size_of::<ConcurrentMerkleTree<26, 512>>()),
+            (26, 1024) => Ok(size_of::<ConcurrentMerkleTree<26, 1024>>()),
+            (26, 2048) => Ok(size_of::<ConcurrentMerkleTree<26, 2048>>()),
+            (30, 512) => Ok(size_of::<ConcurrentMerkleTree<30, 512>>()),
+            (30, 1024) => Ok(size_of::<ConcurrentMerkleTree<30, 1024>>()),
+            (30, 2048) => Ok(size_of::<ConcurrentMerkleTree<30, 2048>>()),
             _ => {
                 msg!(
                     "Failed to get size of max depth {} and max buffer size {}",
                     $header.max_depth,
                     $header.max_buffer_size
                 );
-                err!(GummyrollError::MerkleRollConstantsError)
+                err!(AccountCompressionError::ConcurrentMerkleTreeConstantsError)
             }
         }
     };
@@ -285,7 +289,7 @@ macro_rules! merkle_roll_apply_fn {
             (30, 2048) => merkle_roll_depth_size_apply_fn!(30, 2048, $id, $bytes, $func, $($arg)*),
             _ => {
                 msg!("Failed to apply {} on merkle roll with max depth {} and max buffer size {}", stringify!($func), $header.max_depth, $header.max_buffer_size);
-                err!(GummyrollError::MerkleRollConstantsError)
+                err!(AccountCompressionError::ConcurrentMerkleTreeConstantsError)
             }
         }
     };
@@ -313,9 +317,9 @@ pub mod gummyroll {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
 
         let (mut header_bytes, rest) =
-            merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
+            merkle_roll_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
 
-        let mut header = Box::new(MerkleRollHeader::try_from_slice(&header_bytes)?);
+        let mut header = Box::new(ConcurrentMerkleTreeHeader::try_from_slice(&header_bytes)?);
         header.initialize(
             max_depth,
             max_buffer_size,
@@ -351,9 +355,9 @@ pub mod gummyroll {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
 
         let (mut header_bytes, rest) =
-            merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
+            merkle_roll_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
 
-        let mut header = Box::new(MerkleRollHeader::try_from_slice(&header_bytes)?);
+        let mut header = Box::new(ConcurrentMerkleTreeHeader::try_from_slice(&header_bytes)?);
         header.initialize(
             max_depth,
             max_buffer_size,
@@ -373,7 +377,7 @@ pub mod gummyroll {
         assert_eq!(proof.len(), max_depth as usize);
 
         let id = ctx.accounts.merkle_roll.key();
-        // A call is made to MerkleRoll::initialize_with_root(root, leaf, proof, index)
+        // A call is made to ConcurrentMerkleTree::initialize_with_root(root, leaf, proof, index)
         let change_log = merkle_roll_apply_fn!(
             header,
             id,
@@ -400,9 +404,10 @@ pub mod gummyroll {
         index: u32,
     ) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
-        let (header_bytes, rest) = merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
+        let (header_bytes, rest) =
+            merkle_roll_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
 
-        let header = Box::new(MerkleRollHeader::try_from_slice(header_bytes)?);
+        let header = Box::new(ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?);
         assert_eq!(header.authority, ctx.accounts.authority.key());
         let merkle_roll_size = merkle_roll_get_size!(header)?;
         let (roll_bytes, canopy_bytes) = rest.split_at_mut(merkle_roll_size);
@@ -413,7 +418,7 @@ pub mod gummyroll {
         }
         fill_in_proof_from_canopy(canopy_bytes, header.max_depth, index, &mut proof)?;
         let id = ctx.accounts.merkle_roll.key();
-        // A call is made to MerkleRoll::set_leaf(root, previous_leaf, new_leaf, proof, index)
+        // A call is made to ConcurrentMerkleTree::set_leaf(root, previous_leaf, new_leaf, proof, index)
         let change_log = merkle_roll_apply_fn!(
             header,
             id,
@@ -437,9 +442,10 @@ pub mod gummyroll {
         new_authority: Pubkey,
     ) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
-        let (mut header_bytes, _) = merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
+        let (mut header_bytes, _) =
+            merkle_roll_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
 
-        let mut header = Box::new(MerkleRollHeader::try_from_slice(header_bytes)?);
+        let mut header = Box::new(ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?);
         assert_eq!(header.authority, ctx.accounts.authority.key());
 
         header.authority = new_authority;
@@ -458,8 +464,9 @@ pub mod gummyroll {
         index: u32,
     ) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
-        let (header_bytes, rest) = merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
-        let header = Box::new(MerkleRollHeader::try_from_slice(header_bytes)?);
+        let (header_bytes, rest) =
+            merkle_roll_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
+        let header = Box::new(ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?);
         let merkle_roll_size = merkle_roll_get_size!(header)?;
         let (roll_bytes, canopy_bytes) = rest.split_at_mut(merkle_roll_size);
 
@@ -481,9 +488,10 @@ pub mod gummyroll {
     /// valid proof, and then updating the rightmost_proof for the next leaf if possible.
     pub fn append(ctx: Context<Modify>, leaf: [u8; 32]) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
-        let (header_bytes, rest) = merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
+        let (header_bytes, rest) =
+            merkle_roll_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
 
-        let header = Box::new(MerkleRollHeader::try_from_slice(header_bytes)?);
+        let header = Box::new(ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?);
         assert_eq!(header.authority, ctx.accounts.authority.key());
 
         let id = ctx.accounts.merkle_roll.key();
@@ -506,8 +514,9 @@ pub mod gummyroll {
         index: u32,
     ) -> Result<()> {
         let mut merkle_roll_bytes = ctx.accounts.merkle_roll.try_borrow_mut_data()?;
-        let (header_bytes, rest) = merkle_roll_bytes.split_at_mut(size_of::<MerkleRollHeader>());
-        let header = Box::new(MerkleRollHeader::try_from_slice(header_bytes)?);
+        let (header_bytes, rest) =
+            merkle_roll_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
+        let header = Box::new(ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?);
         assert_eq!(header.authority, ctx.accounts.authority.key());
         let merkle_roll_size = merkle_roll_get_size!(header)?;
         let (roll_bytes, canopy_bytes) = rest.split_at_mut(merkle_roll_size);
@@ -517,7 +526,7 @@ pub mod gummyroll {
             proof.push(node.key().to_bytes());
         }
         fill_in_proof_from_canopy(canopy_bytes, header.max_depth, index, &mut proof)?;
-        // A call is made to MerkleRoll::fill_empty_or_append
+        // A call is made to ConcurrentMerkleTree::fill_empty_or_append
         let id = ctx.accounts.merkle_roll.key();
         let change_log = merkle_roll_apply_fn!(
             header,

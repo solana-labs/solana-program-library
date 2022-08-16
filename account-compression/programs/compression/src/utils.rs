@@ -1,21 +1,21 @@
 //! Various utilities for Gummyroll trees
 //!
-use crate::state::CandyWrapper;
+use crate::state::Wrapper;
 use anchor_lang::{
     prelude::*,
     solana_program::{msg, program::invoke, program_error::ProgramError},
 };
 use bytemuck::{Pod, PodCastError};
-use concurrent_merkle_tree::merkle_roll::MerkleRoll;
+use spl_concurrent_merkle_tree::concurrent_merkle_tree::ConcurrentMerkleTree;
 use std::any::type_name;
 use std::mem::size_of;
 
 pub fn wrap_event<'info>(
     data: Vec<u8>,
-    candy_wrapper_program: &Program<'info, CandyWrapper>,
+    candy_wrapper_program: &Program<'info, Wrapper>,
 ) -> Result<()> {
     invoke(
-        &candy_wrapper::wrap_instruction(data),
+        &wrapper::wrap_instruction(data),
         &[candy_wrapper_program.to_account_info()],
     )?;
     Ok(())
@@ -33,7 +33,7 @@ pub trait ZeroCopy: Pod {
 }
 
 impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> ZeroCopy
-    for MerkleRoll<MAX_DEPTH, MAX_BUFFER_SIZE>
+    for ConcurrentMerkleTree<MAX_DEPTH, MAX_BUFFER_SIZE>
 {
 }
 

@@ -2,7 +2,7 @@
 //!
 use anchor_lang::prelude::*;
 use borsh::{BorshDeserialize, BorshSerialize};
-use concurrent_merkle_tree::state::{ChangeLog, Node};
+use spl_concurrent_merkle_tree::{changelog::ChangeLog, node::Node};
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug)]
 pub struct PathNode {
@@ -83,7 +83,7 @@ impl<const MAX_DEPTH: usize> From<(Box<ChangeLog<MAX_DEPTH>>, Pubkey, u64)>
 ///
 #[derive(BorshDeserialize, BorshSerialize)]
 #[repr(C)]
-pub struct MerkleRollHeader {
+pub struct ConcurrentMerkleTreeHeader {
     /// Buffer of changelogs stored on-chain.
     /// Must be a power of 2; see above table for valid combinations.
     pub max_buffer_size: u32,
@@ -102,7 +102,7 @@ pub struct MerkleRollHeader {
     pub creation_slot: u64,
 }
 
-impl MerkleRollHeader {
+impl ConcurrentMerkleTreeHeader {
     pub fn initialize(
         &mut self,
         max_depth: u32,
@@ -121,10 +121,10 @@ impl MerkleRollHeader {
 }
 
 #[derive(Clone)]
-pub struct CandyWrapper;
+pub struct Wrapper;
 
-impl anchor_lang::Id for CandyWrapper {
+impl anchor_lang::Id for Wrapper {
     fn id() -> Pubkey {
-        candy_wrapper::id()
+        wrapper::id()
     }
 }

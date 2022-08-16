@@ -1,9 +1,9 @@
 use anchor_lang::prelude::*;
-use concurrent_merkle_tree::error::CMTError;
+use spl_concurrent_merkle_tree::error::ConcurrentMerkleTreeError;
 
 /// Errors related to misconfiguration or misuse of the Merkle tree
 #[error_code]
-pub enum GummyrollError {
+pub enum AccountCompressionError {
     /// This error is currently not used.
     #[msg("Incorrect leaf length. Expected vec of 32 bytes")]
     IncorrectLeafLength,
@@ -17,17 +17,17 @@ pub enum GummyrollError {
     #[msg("Issue zero copying concurrent merkle tree data")]
     ZeroCopyError,
 
-    /// See [MerkleRollHeader](/gummyroll/state/struct.MerkleRollHeader.html) for valid configuration options.
+    /// See [ConcurrentMerkleTreeHeader](/gummyroll/state/struct.ConcurrentMerkleTreeHeader.html) for valid configuration options.
     #[msg("An unsupported max depth or max buffer size constant was provided")]
-    MerkleRollConstantsError,
+    ConcurrentMerkleTreeConstantsError,
 
     /// When using Canopy, the stored byte length should a multiple of the node's byte length (32 bytes)
     #[msg("Expected a different byte length for the merkle roll canopy")]
     CanopyLengthMismatch,
 }
 
-impl From<&CMTError> for GummyrollError {
-    fn from(_error: &CMTError) -> Self {
-        GummyrollError::ConcurrentMerkleTreeError
+impl From<&ConcurrentMerkleTreeError> for AccountCompressionError {
+    fn from(_error: &ConcurrentMerkleTreeError) -> Self {
+        AccountCompressionError::ConcurrentMerkleTreeError
     }
 }
