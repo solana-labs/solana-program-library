@@ -80,6 +80,7 @@ jobs:
           if-no-files-found: error
 
   cargo-test-bpf-twoxtx:
+    if: ${{ false }}  # disable for now
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2

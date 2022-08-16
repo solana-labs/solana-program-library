@@ -70,5 +70,5 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: ~/.cache/yarn
-          key: yarn-${{ hashFiles('memo/ts/yarn.lock') }}
-      - run: ./ci/ts-test-memo.sh
+          key: yarn-${{ hashFiles('memo/js/yarn.lock') }}
+      - run: ./ci/js-test-memo.sh
