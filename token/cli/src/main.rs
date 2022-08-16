@@ -385,7 +385,6 @@ async fn command_create_token(
         .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
-
     Ok(match tx_return {
         TransactionReturnData::CliSignature(cli_signature) => format_output(
             CliMint {
@@ -681,6 +680,10 @@ async fn command_authorize(
         (COption::None, config.program_id)
     };
 
+    if program_id != config.program_id {
+        return Err(format!("Token program `{}` provided, but token belongs to `{}`", config.program_id, program_id).into());
+    }
+
     println_display(
         config,
         format!(
@@ -697,28 +700,9 @@ async fn command_authorize(
         ),
     );
 
-    // XXX TODO NEXT i need to change set_authority in the client to return properly
-    // and then i can cut out handle_tx here... cool yea good this actually works as is
+    let res = token.set_authority(&account, &authority, new_authority.as_ref(), authority_type, &bulk_signers).await?;
 
-    let instructions = vec![set_authority(
-        &program_id,
-        &account,
-        new_authority.as_ref(),
-        authority_type,
-        &authority,
-        &config.multisigner_pubkeys,
-    )?];
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        instructions,
-    )
-    .await?;
-
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)

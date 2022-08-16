@@ -536,26 +536,26 @@ where
     }
 
     /// Assign a new authority to the account.
-    pub async fn set_authority<S: Signer>(
+    pub async fn set_authority<S: Signers>(
         &self,
         account: &Pubkey,
+        authority: &Pubkey,
         new_authority: Option<&Pubkey>,
         authority_type: instruction::AuthorityType,
-        owner: &S,
-    ) -> TokenResult<()> {
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
         self.process_ixs(
             &[instruction::set_authority(
                 &self.program_id,
                 account,
                 new_authority,
                 authority_type,
-                &owner.pubkey(),
+                authority,
                 &[],
             )?],
-            &[owner],
+            signing_keypairs,
         )
         .await
-        .map(|_| ())
     }
 
     /// Mint new tokens
