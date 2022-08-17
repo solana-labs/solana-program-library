@@ -139,30 +139,34 @@ impl Processor {
     }
 
     /// Issue a spl_token `Transfer` instruction.
+    #[allow(clippy::too_many_arguments)]
     pub fn token_transfer<'a>(
         swap: &Pubkey,
         token_program: AccountInfo<'a>,
         source: AccountInfo<'a>,
+        mint: AccountInfo<'a>,
         destination: AccountInfo<'a>,
         authority: AccountInfo<'a>,
         bump_seed: u8,
         amount: u64,
+        decimals: u8,
     ) -> Result<(), ProgramError> {
         let swap_bytes = swap.to_bytes();
         let authority_signature_seeds = [&swap_bytes[..32], &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
-        #[allow(deprecated)]
-        let ix = spl_token_2022::instruction::transfer(
+        let ix = spl_token_2022::instruction::transfer_checked(
             token_program.key,
             source.key,
+            mint.key,
             destination.key,
             authority.key,
             &[],
             amount,
+            decimals,
         )?;
         invoke_signed_wrapper::<TokenError>(
             &ix,
-            &[source, destination, authority, token_program],
+            &[source, mint, destination, authority, token_program],
             signers,
         )
     }
@@ -442,10 +446,12 @@ impl Processor {
             swap_info.key,
             source_token_program_info.clone(),
             source_info.clone(),
+            source_token_mint_info.clone(),
             swap_source_info.clone(),
             user_transfer_authority_info.clone(),
             token_swap.bump_seed(),
             to_u64(result.source_amount_swapped)?,
+            Self::unpack_mint(source_token_mint_info, token_swap.token_program_id())?.decimals,
         )?;
 
         let mut pool_token_amount = token_swap
@@ -509,10 +515,12 @@ impl Processor {
             swap_info.key,
             destination_token_program_info.clone(),
             swap_destination_info.clone(),
+            destination_token_mint_info.clone(),
             destination_info.clone(),
             authority_info.clone(),
             token_swap.bump_seed(),
             to_u64(result.destination_amount_swapped)?,
+            Self::unpack_mint(destination_token_mint_info, token_swap.token_program_id())?.decimals,
         )?;
 
         Ok(())
@@ -601,19 +609,23 @@ impl Processor {
             swap_info.key,
             token_a_program_info.clone(),
             source_a_info.clone(),
+            token_a_mint_info.clone(),
             token_a_info.clone(),
             user_transfer_authority_info.clone(),
             token_swap.bump_seed(),
             token_a_amount,
+            Self::unpack_mint(token_a_mint_info, token_swap.token_program_id())?.decimals,
         )?;
         Self::token_transfer(
             swap_info.key,
             token_b_program_info.clone(),
             source_b_info.clone(),
+            token_b_mint_info.clone(),
             token_b_info.clone(),
             user_transfer_authority_info.clone(),
             token_swap.bump_seed(),
             token_b_amount,
+            Self::unpack_mint(token_b_mint_info, token_swap.token_program_id())?.decimals,
         )?;
         Self::token_mint_to(
             swap_info.key,
@@ -723,10 +735,12 @@ impl Processor {
                 swap_info.key,
                 pool_token_program_info.clone(),
                 source_info.clone(),
+                pool_mint_info.clone(),
                 pool_fee_account_info.clone(),
                 user_transfer_authority_info.clone(),
                 token_swap.bump_seed(),
                 to_u64(withdraw_fee)?,
+                pool_mint.decimals,
             )?;
         }
         Self::token_burn(
@@ -744,10 +758,12 @@ impl Processor {
                 swap_info.key,
                 token_a_program_info.clone(),
                 token_a_info.clone(),
+                token_a_mint_info.clone(),
                 dest_token_a_info.clone(),
                 authority_info.clone(),
                 token_swap.bump_seed(),
                 token_a_amount,
+                Self::unpack_mint(token_a_mint_info, token_swap.token_program_id())?.decimals,
             )?;
         }
         if token_b_amount > 0 {
@@ -755,10 +771,12 @@ impl Processor {
                 swap_info.key,
                 token_b_program_info.clone(),
                 token_b_info.clone(),
+                token_b_mint_info.clone(),
                 dest_token_b_info.clone(),
                 authority_info.clone(),
                 token_swap.bump_seed(),
                 token_b_amount,
+                Self::unpack_mint(token_b_mint_info, token_swap.token_program_id())?.decimals,
             )?;
         }
         Ok(())
@@ -855,10 +873,13 @@ impl Processor {
                     swap_info.key,
                     source_token_program_info.clone(),
                     source_info.clone(),
+                    source_token_mint_info.clone(),
                     swap_token_a_info.clone(),
                     user_transfer_authority_info.clone(),
                     token_swap.bump_seed(),
                     source_token_amount,
+                    Self::unpack_mint(source_token_mint_info, token_swap.token_program_id())?
+                        .decimals,
                 )?;
             }
             TradeDirection::BtoA => {
@@ -866,10 +887,13 @@ impl Processor {
                     swap_info.key,
                     source_token_program_info.clone(),
                     source_info.clone(),
+                    source_token_mint_info.clone(),
                     swap_token_b_info.clone(),
                     user_transfer_authority_info.clone(),
                     token_swap.bump_seed(),
                     source_token_amount,
+                    Self::unpack_mint(source_token_mint_info, token_swap.token_program_id())?
+                        .decimals,
                 )?;
             }
         }
@@ -988,10 +1012,12 @@ impl Processor {
                 swap_info.key,
                 pool_token_program_info.clone(),
                 source_info.clone(),
+                pool_mint_info.clone(),
                 pool_fee_account_info.clone(),
                 user_transfer_authority_info.clone(),
                 token_swap.bump_seed(),
                 to_u64(withdraw_fee)?,
+                pool_mint.decimals,
             )?;
         }
         Self::token_burn(
@@ -1010,10 +1036,13 @@ impl Processor {
                     swap_info.key,
                     destination_token_program_info.clone(),
                     swap_token_a_info.clone(),
+                    destination_token_mint_info.clone(),
                     destination_info.clone(),
                     authority_info.clone(),
                     token_swap.bump_seed(),
                     destination_token_amount,
+                    Self::unpack_mint(destination_token_mint_info, token_swap.token_program_id())?
+                        .decimals,
                 )?;
             }
             TradeDirection::BtoA => {
@@ -1021,10 +1050,13 @@ impl Processor {
                     swap_info.key,
                     destination_token_program_info.clone(),
                     swap_token_b_info.clone(),
+                    destination_token_mint_info.clone(),
                     destination_info.clone(),
                     authority_info.clone(),
                     token_swap.bump_seed(),
                     destination_token_amount,
+                    Self::unpack_mint(destination_token_mint_info, token_swap.token_program_id())?
+                        .decimals,
                 )?;
             }
         }
@@ -6635,13 +6667,8 @@ mod tests {
                 _pool_key,
                 _pool_account,
             ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
-            let expected_error: ProgramError = if token_a_account.owner == token_b_account.owner {
-                TokenError::MintMismatch.into()
-            } else {
-                ProgramError::IncorrectProgramId
-            };
             assert_eq!(
-                Err(expected_error),
+                Err(TokenError::MintMismatch.into()),
                 accounts.swap(
                     &swapper_key,
                     &token_b_key,
