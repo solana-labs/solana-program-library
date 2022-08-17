@@ -160,6 +160,9 @@ pub enum LendingError {
     #[error("Not enough liquidity after flash loan")]
     NotEnoughLiquidityAfterFlashLoan,
     // 45
+    /// Lending instruction exceeds desired slippage limit
+    #[error("Amount smaller than desired slippage limit")]
+    ExceededSlippage,
 }
 
 impl From<LendingError> for ProgramError {
