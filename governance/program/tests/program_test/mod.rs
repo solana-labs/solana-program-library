@@ -1333,10 +1333,12 @@ impl GovernanceProgramTest {
         let path_buf = find_file("solana_bpf_rust_upgradeable.so").unwrap();
         let program_data = read_file(path_buf);
 
-        let program_buffer_rent = self
-            .bench
-            .rent
-            .minimum_balance(UpgradeableLoaderState::programdata_len(program_data.len()).unwrap());
+        let program_buffer_rent =
+            self.bench
+                .rent
+                .minimum_balance(UpgradeableLoaderState::size_of_programdata(
+                    program_data.len(),
+                ));
 
         let mut instructions = bpf_loader_upgradeable::create_buffer(
             &self.bench.payer.pubkey(),
@@ -1361,7 +1363,7 @@ impl GovernanceProgramTest {
         let program_account_rent = self
             .bench
             .rent
-            .minimum_balance(UpgradeableLoaderState::program_len().unwrap());
+            .minimum_balance(UpgradeableLoaderState::size_of_program());
 
         let deploy_ixs = bpf_loader_upgradeable::deploy_with_max_program_len(
             &self.bench.payer.pubkey(),
@@ -2368,10 +2370,12 @@ impl GovernanceProgramTest {
         let path_buf = find_file("solana_bpf_rust_upgraded.so").unwrap();
         let program_data = read_file(path_buf);
 
-        let program_buffer_rent = self
-            .bench
-            .rent
-            .minimum_balance(UpgradeableLoaderState::programdata_len(program_data.len()).unwrap());
+        let program_buffer_rent =
+            self.bench
+                .rent
+                .minimum_balance(UpgradeableLoaderState::size_of_programdata(
+                    program_data.len(),
+                ));
 
         let mut instructions = bpf_loader_upgradeable::create_buffer(
             &self.bench.payer.pubkey(),

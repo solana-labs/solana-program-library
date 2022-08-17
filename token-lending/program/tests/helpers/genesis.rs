@@ -42,7 +42,7 @@ impl GenesisAccounts {
 
         let programdata_address =
             Pubkey::find_program_address(&[program_id.as_ref()], &bpf_loader_upgradeable::id()).0;
-        let programdata_data_offset = UpgradeableLoaderState::programdata_data_offset().unwrap();
+        let programdata_data_offset = UpgradeableLoaderState::size_of_programdata_metadata();
         let programdata_space = 2 * program_data.len() + programdata_data_offset;
         let mut programdata_account = Account::new_data_with_space(
             u32::MAX as u64,
