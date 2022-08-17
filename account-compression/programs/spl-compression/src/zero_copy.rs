@@ -1,12 +1,9 @@
-//! Various utilities for Gummyroll trees
-//!
-use anchor_lang::{
-    prelude::*,
-};
-use bytemuck::{Pod};
+//! Implements ZeroCopy over ConcurrrentMerkleTree generics
+use crate::error::error_msg;
+use anchor_lang::prelude::*;
+use bytemuck::Pod;
 use std::mem::size_of;
 use spl_concurrent_merkle_tree::concurrent_merkle_tree::ConcurrentMerkleTree;
-use crate::error::error_msg;
 
 pub trait ZeroCopy: Pod {
     fn load_mut_bytes<'a>(data: &'a mut [u8]) -> Result<&'a mut Self> {

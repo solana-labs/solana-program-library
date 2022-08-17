@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use borsh::{BorshDeserialize, BorshSerialize};
 
-/// Initialization parameters for a Gummyroll Merkle tree.
+/// Initialization parameters for an SPL ConcurrentMerkleTree.
 ///
 /// Only the following permutations are valid:
 ///
@@ -20,7 +20,7 @@ pub struct ConcurrentMerkleTreeHeader {
     /// Must be a power of 2; see above table for valid combinations.
     pub max_buffer_size: u32,
 
-    /// Depth of the Merkle tree to store.
+    /// Depth of the SPL ConcurrentMerkleTree to store.
     /// Tree capacity can be calculated as power(2, max_depth).
     /// See above table for valid options.
     pub max_depth: u32,

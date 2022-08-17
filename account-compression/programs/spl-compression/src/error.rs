@@ -3,9 +3,9 @@ use anchor_lang::{
     solana_program::{msg, program_error::ProgramError},
 };
 use bytemuck::PodCastError;
+use spl_concurrent_merkle_tree::error::ConcurrentMerkleTreeError;
 use std::any::type_name;
 use std::mem::size_of;
-use spl_concurrent_merkle_tree::error::ConcurrentMerkleTreeError;
 
 /// Errors related to misconfiguration or misuse of the Merkle tree
 #[error_code]
@@ -23,7 +23,7 @@ pub enum AccountCompressionError {
     #[msg("Issue zero copying concurrent merkle tree data")]
     ZeroCopyError,
 
-    /// See [ConcurrentMerkleTreeHeader](/gummyroll/state/struct.ConcurrentMerkleTreeHeader.html) for valid configuration options.
+    /// See [ConcurrentMerkleTreeHeader](/spl_compression/state/struct.ConcurrentMerkleTreeHeader.html) for valid configuration options.
     #[msg("An unsupported max depth or max buffer size constant was provided")]
     ConcurrentMerkleTreeConstantsError,
 

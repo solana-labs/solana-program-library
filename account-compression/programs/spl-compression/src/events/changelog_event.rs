@@ -1,13 +1,13 @@
+use crate::state::PathNode;
 use anchor_lang::prelude::*;
 use spl_concurrent_merkle_tree::changelog::ChangeLog;
-use crate::state::PathNode;
 
 #[event]
 pub struct ChangeLogEvent {
-    /// Public key of the Merkle Roll
+    /// Public key of the ConcurrentMerkleTree
     pub id: Pubkey,
 
-    /// Nodes of off-chain merkle tree
+    /// Nodes of off-chain merkle tree needed by indexer
     pub path: Vec<PathNode>,
 
     /// Index corresponding to the number of successful operations on this tree.

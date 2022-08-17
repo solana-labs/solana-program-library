@@ -1,20 +1,20 @@
-//! Gummyroll is an on-chain Merkle tree that supports concurrent writes.
+//! SPL Compression is an on-chain program that exposes an interface to manipulating SPL ConcurrentMerkleTrees 
 //!
 //! A buffer of proof-like changelogs is stored on-chain that allow multiple proof-based writes to succeed within the same slot.
 //! This is accomplished by fast-forwarding out-of-date (or possibly invalid) proofs based on information stored in the changelogs.
-//! See a copy of the whitepaper [here](https://google.com)
+//! See a copy of the whitepaper [here](https://drive.google.com/file/d/1BOpa5OFmara50fTvL0VIVYjtg-qzHCVc/view)
 //!
-//! While Gummyroll trees can generically store arbitrary information,
-//! one exemplified use-case is the [Bubblegum](https://google.com) contract,
-//! which uses Gummyroll trees to store encoded information about NFTs.
-//! The use of Gummyroll within Bubblegum allows for:
-//! - up to 1 billion NFTs to be stored in a single account on-chain (10,000x decrease in on-chain cost)
-//! - (by default) up to 1024 concurrent updates per slot (this number is not correct)
+//! While SPL ConcurrentMerkleTrees can generically store arbitrary information,
+//! one exemplified use-case is the [Bubblegum](https://github.com/metaplex-foundation/metaplex-program-library/tree/master/bubblegum) contract,
+//! which uses SPL-Compression to store encoded information about NFTs.
+//! The use of SPL-Compression within Bubblegum allows for:
+//! - up to 1 billion NFTs to be stored in a single account on-chain (>10,000x decrease in on-chain cost)
+//! - up to 2048 concurrent updates per slot
 //!
-//! Operationally, Gummyroll trees **must** be supplemented by off-chain indexers to cache information
+//! Operationally, SPL ConcurrentMerkleTrees **must** be supplemented by off-chain indexers to cache information
 //! about leafs and to power an API that can supply up-to-date proofs to allow updates to the tree.
-//! All modifications to Gummyroll trees are settled on the Solana ledger via instructions against the Gummyroll contract.
-//! A production-ready indexer (Plerkle) can be found in the [Metaplex program library](https://google.com)
+//! All modifications to SPL ConcurrentMerkleTrees are settled on the Solana ledger via instructions against the SPL Compression contract.
+//! A production-ready indexer (Plerkle) can be found in the [Metaplex program library](https://github.com/metaplex-foundation/digital-asset-validator-plugin)
 
 use anchor_lang::{
     emit,
@@ -26,16 +26,16 @@ use bytemuck::cast_slice_mut;
 use spl_concurrent_merkle_tree::node::{empty_node_cached, EMPTY};
 use std::mem::size_of;
 
+pub mod data_wrapper;
 pub mod error;
+pub mod events;
 pub mod state;
 pub mod zero_copy;
-pub mod data_wrapper;
-pub mod events;
 
-use crate::error::AccountCompressionError;
-use crate::state::ConcurrentMerkleTreeHeader; 
-use crate::events::ChangeLogEvent;
 use crate::data_wrapper::{wrap_event, Wrapper};
+use crate::error::AccountCompressionError;
+use crate::events::ChangeLogEvent;
+use crate::state::ConcurrentMerkleTreeHeader;
 use crate::zero_copy::ZeroCopy;
 
 /// Exported for Anchor / Solita
@@ -45,7 +45,7 @@ pub use spl_concurrent_merkle_tree::{
 
 declare_id!("GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU");
 
-/// Context for initializing a new Merkle tere
+/// Context for initializing a new SPL ConcurrentMerkleTree
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(zero)]
@@ -77,7 +77,7 @@ pub struct Modify<'info> {
     pub candy_wrapper: Program<'info, Wrapper>,
 }
 
-/// Context for validating a provided proof against the Merkle tree.
+/// Context for validating a provided proof against the SPL ConcurrentMerkleTree.
 /// Throws an error if provided proof is invalid.
 #[derive(Accounts)]
 pub struct VerifyLeaf<'info> {
@@ -164,11 +164,12 @@ fn fill_in_proof_from_canopy(
     index: u32,
     proof: &mut Vec<Node>,
 ) -> Result<()> {
-    // 26 is hard coded as it is the current max depth that Gummyroll supports
+    // 30 is hard coded as it is the current max depth that SPL Compression supports
     let mut empty_node_cache = Box::new([EMPTY; 30]);
     check_canopy_bytes(canopy_bytes)?;
     let canopy = cast_slice_mut::<u8, Node>(canopy_bytes);
     let path_len = get_cached_path_length(canopy, max_depth)?;
+
     // We want to compute the node index (w.r.t. the canopy) where the current path
     // intersects the leaves of the canopy
     let mut node_idx = ((1 << max_depth) + index) >> (max_depth - path_len);
@@ -300,7 +301,7 @@ macro_rules! merkle_roll_apply_fn {
 }
 
 #[program]
-pub mod gummyroll {
+pub mod spl_compression {
     use super::*;
 
     /// Creates a new merkle tree with maximum leaf capacity of `power(2, max_depth)`
@@ -312,7 +313,7 @@ pub mod gummyroll {
     /// generated for the next replace instruction.
     ///
     /// Concurrency limit should be determined by empirically testing the demand for
-    /// state built on top of gummyroll.
+    /// state built on top of SPL Compression.
     pub fn init_empty_gummyroll(
         ctx: Context<Initialize>,
         max_depth: u32,
@@ -439,7 +440,7 @@ pub mod gummyroll {
         update_canopy(canopy_bytes, header.max_depth, Some(change_log))
     }
 
-    /// Transfers `authority`
+    /// Transfers `authority`.
     /// Requires `authority` to sign
     pub fn transfer_authority(
         ctx: Context<TransferAuthority>,

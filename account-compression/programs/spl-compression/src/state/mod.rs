@@ -1,5 +1,4 @@
-//! State related to storing a buffer of Merkle tree roots on-chain.
-//!
+//! State needed to manipulate SPL ConcurrentMerkleTrees
 mod concurrent_merkle_tree_header;
 mod path_node;
 
