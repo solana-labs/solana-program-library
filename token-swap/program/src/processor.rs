@@ -357,6 +357,8 @@ impl Processor {
         let destination_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
+        let source_token_mint_info = next_account_info(account_info_iter)?;
+        let destination_token_mint_info = next_account_info(account_info_iter)?;
         let source_token_program_info = next_account_info(account_info_iter)?;
         let destination_token_program_info = next_account_info(account_info_iter)?;
         let pool_token_program_info = next_account_info(account_info_iter)?;
@@ -534,6 +536,8 @@ impl Processor {
         let token_b_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let dest_info = next_account_info(account_info_iter)?;
+        let token_a_mint_info = next_account_info(account_info_iter)?;
+        let token_b_mint_info = next_account_info(account_info_iter)?;
         let token_a_program_info = next_account_info(account_info_iter)?;
         let token_b_program_info = next_account_info(account_info_iter)?;
         let pool_token_program_info = next_account_info(account_info_iter)?;
@@ -643,6 +647,8 @@ impl Processor {
         let dest_token_a_info = next_account_info(account_info_iter)?;
         let dest_token_b_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
+        let token_a_mint_info = next_account_info(account_info_iter)?;
+        let token_b_mint_info = next_account_info(account_info_iter)?;
         let pool_token_program_info = next_account_info(account_info_iter)?;
         let token_a_program_info = next_account_info(account_info_iter)?;
         let token_b_program_info = next_account_info(account_info_iter)?;
@@ -774,6 +780,7 @@ impl Processor {
         let swap_token_b_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let destination_info = next_account_info(account_info_iter)?;
+        let source_token_mint_info = next_account_info(account_info_iter)?;
         let source_token_program_info = next_account_info(account_info_iter)?;
         let pool_token_program_info = next_account_info(account_info_iter)?;
 
@@ -896,6 +903,7 @@ impl Processor {
         let swap_token_b_info = next_account_info(account_info_iter)?;
         let destination_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
+        let destination_token_mint_info = next_account_info(account_info_iter)?;
         let pool_token_program_info = next_account_info(account_info_iter)?;
         let destination_token_program_info = next_account_info(account_info_iter)?;
 
@@ -1145,7 +1153,10 @@ mod tests {
             withdraw_all_token_types, withdraw_single_token_type_exact_amount_out,
         },
     };
-    use solana_program::{clock::Clock, entrypoint::SUCCESS, instruction::Instruction, program_pack::Pack, program_stubs, rent::Rent};
+    use solana_program::{
+        clock::Clock, entrypoint::SUCCESS, instruction::Instruction, program_pack::Pack,
+        program_stubs, rent::Rent,
+    };
     use solana_sdk::account::{
         create_account_for_test, create_is_signer_account_infos, Account as SolanaAccount,
     };
@@ -1421,22 +1432,44 @@ mod tests {
             )
         }
 
+        fn get_swap_key(&self, mint_key: &Pubkey) -> &Pubkey {
+            if *mint_key == self.token_a_mint_key {
+                &self.token_a_key
+            } else if *mint_key == self.token_b_mint_key {
+                &self.token_b_key
+            } else {
+                panic!("Could not find matching swap token account");
+            }
+        }
+
         fn get_token_program_id(&self, account_key: &Pubkey) -> &Pubkey {
             if *account_key == self.token_a_key {
-                return &self.token_a_program_id;
+                &self.token_a_program_id
             } else if *account_key == self.token_b_key {
-                return &self.token_b_program_id;
+                &self.token_b_program_id
+            } else {
+                panic!("Could not find matching swap token account");
             }
-            panic!("Could not find matching swap token account");
+        }
+
+        fn get_token_mint(&self, account_key: &Pubkey) -> (Pubkey, SolanaAccount) {
+            if *account_key == self.token_a_key {
+                (self.token_a_mint_key, self.token_a_mint_account.clone())
+            } else if *account_key == self.token_b_key {
+                (self.token_b_mint_key, self.token_b_mint_account.clone())
+            } else {
+                panic!("Could not find matching swap token account");
+            }
         }
 
         fn get_token_account(&self, account_key: &Pubkey) -> &SolanaAccount {
             if *account_key == self.token_a_key {
-                return &self.token_a_account;
+                &self.token_a_account
             } else if *account_key == self.token_b_key {
-                return &self.token_b_account;
+                &self.token_b_account
+            } else {
+                panic!("Could not find matching swap token account");
             }
-            panic!("Could not find matching swap token account");
         }
 
         fn set_token_account(&mut self, account_key: &Pubkey, account: SolanaAccount) {
@@ -1485,6 +1518,9 @@ mod tests {
             )
             .unwrap();
 
+            let (source_mint_key, mut source_mint_account) = self.get_token_mint(swap_source_key);
+            let (destination_mint_key, mut destination_mint_account) =
+                self.get_token_mint(swap_destination_key);
             let mut swap_source_account = self.get_token_account(swap_source_key).clone();
             let mut swap_destination_account = self.get_token_account(swap_destination_key).clone();
 
@@ -1504,6 +1540,8 @@ mod tests {
                     user_destination_key,
                     &self.pool_mint_key,
                     &self.pool_fee_key,
+                    &source_mint_key,
+                    &destination_mint_key,
                     None,
                     Swap {
                         amount_in,
@@ -1521,6 +1559,8 @@ mod tests {
                     user_destination_account,
                     &mut self.pool_mint_account,
                     &mut self.pool_fee_account,
+                    &mut source_mint_account,
+                    &mut destination_mint_account,
                     &mut SolanaAccount::default(),
                     &mut SolanaAccount::default(),
                     &mut SolanaAccount::default(),
@@ -1602,6 +1642,8 @@ mod tests {
                     &self.token_b_key,
                     &self.pool_mint_key,
                     depositor_pool_key,
+                    &self.token_a_mint_key,
+                    &self.token_b_mint_key,
                     DepositAllTokenTypes {
                         pool_token_amount,
                         maximum_token_a_amount,
@@ -1619,6 +1661,8 @@ mod tests {
                     &mut self.token_b_account,
                     &mut self.pool_mint_account,
                     depositor_pool_account,
+                    &mut self.token_a_mint_account,
+                    &mut self.token_b_mint_account,
                     &mut SolanaAccount::default(),
                     &mut SolanaAccount::default(),
                     &mut SolanaAccount::default(),
@@ -1680,6 +1724,8 @@ mod tests {
                     &self.token_b_key,
                     token_a_key,
                     token_b_key,
+                    &self.token_a_mint_key,
+                    &self.token_b_mint_key,
                     WithdrawAllTokenTypes {
                         pool_token_amount,
                         minimum_token_a_amount,
@@ -1698,6 +1744,8 @@ mod tests {
                     token_a_account,
                     token_b_account,
                     &mut self.pool_fee_account,
+                    &mut self.token_a_mint_account,
+                    &mut self.token_b_mint_account,
                     &mut SolanaAccount::default(),
                     &mut SolanaAccount::default(),
                     &mut SolanaAccount::default(),
@@ -1736,6 +1784,14 @@ mod tests {
             )
             .unwrap();
 
+            let source_mint_key =
+                StateWithExtensions::<Account>::unpack(&deposit_token_account.data)
+                    .unwrap()
+                    .base
+                    .mint;
+            let swap_source_key = self.get_swap_key(&source_mint_key);
+            let (source_mint_key, mut source_mint_account) = self.get_token_mint(swap_source_key);
+
             let pool_token_program_id = deposit_pool_account.owner;
             do_process_instruction(
                 deposit_single_token_type_exact_amount_in(
@@ -1750,6 +1806,7 @@ mod tests {
                     &self.token_b_key,
                     &self.pool_mint_key,
                     deposit_pool_key,
+                    &source_mint_key,
                     DepositSingleTokenTypeExactAmountIn {
                         source_token_amount,
                         minimum_pool_token_amount,
@@ -1765,6 +1822,7 @@ mod tests {
                     &mut self.token_b_account,
                     &mut self.pool_mint_account,
                     deposit_pool_account,
+                    &mut source_mint_account,
                     &mut SolanaAccount::default(),
                     &mut SolanaAccount::default(),
                 ],
@@ -1803,6 +1861,15 @@ mod tests {
             )
             .unwrap();
 
+            let destination_mint_key =
+                StateWithExtensions::<Account>::unpack(&destination_account.data)
+                    .unwrap()
+                    .base
+                    .mint;
+            let swap_destination_key = self.get_swap_key(&destination_mint_key);
+            let (destination_mint_key, mut destination_mint_account) =
+                self.get_token_mint(swap_destination_key);
+
             let destination_token_program_id = destination_account.owner;
             do_process_instruction(
                 withdraw_single_token_type_exact_amount_out(
@@ -1818,6 +1885,7 @@ mod tests {
                     &self.token_a_key,
                     &self.token_b_key,
                     destination_key,
+                    &destination_mint_key,
                     WithdrawSingleTokenTypeExactAmountOut {
                         destination_token_amount,
                         maximum_pool_token_amount,
@@ -1834,6 +1902,7 @@ mod tests {
                     &mut self.token_b_account,
                     destination_account,
                     &mut self.pool_fee_account,
+                    &mut destination_mint_account,
                     &mut SolanaAccount::default(),
                     &mut SolanaAccount::default(),
                 ],
@@ -3373,6 +3442,8 @@ mod tests {
                         &accounts.token_b_key,
                         &accounts.pool_mint_key,
                         &pool_key,
+                        &accounts.token_a_mint_key,
+                        &accounts.token_b_mint_key,
                         DepositAllTokenTypes {
                             pool_token_amount: pool_amount.try_into().unwrap(),
                             maximum_token_a_amount: deposit_a,
@@ -3390,6 +3461,8 @@ mod tests {
                         &mut accounts.token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
+                        &mut accounts.token_a_mint_account,
+                        &mut accounts.token_b_mint_account,
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
@@ -3426,6 +3499,8 @@ mod tests {
                         &accounts.token_b_key,
                         &accounts.pool_mint_key,
                         &pool_key,
+                        &accounts.token_a_mint_key,
+                        &accounts.token_b_mint_key,
                         DepositAllTokenTypes {
                             pool_token_amount: pool_amount.try_into().unwrap(),
                             maximum_token_a_amount: deposit_a,
@@ -3443,6 +3518,8 @@ mod tests {
                         &mut accounts.token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
+                        &mut accounts.token_a_mint_account,
+                        &mut accounts.token_b_mint_account,
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
@@ -4065,6 +4142,8 @@ mod tests {
                         &accounts.token_b_key,
                         &token_a_key,
                         &token_b_key,
+                        &accounts.token_a_mint_key,
+                        &accounts.token_b_mint_key,
                         WithdrawAllTokenTypes {
                             pool_token_amount: withdraw_amount.try_into().unwrap(),
                             minimum_token_a_amount,
@@ -4083,6 +4162,8 @@ mod tests {
                         &mut token_a_account,
                         &mut token_b_account,
                         &mut accounts.pool_fee_account,
+                        &mut accounts.token_a_mint_account,
+                        &mut accounts.token_b_mint_account,
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
@@ -4126,6 +4207,8 @@ mod tests {
                         &accounts.token_b_key,
                         &token_a_key,
                         &token_b_key,
+                        &accounts.token_a_mint_key,
+                        &accounts.token_b_mint_key,
                         WithdrawAllTokenTypes {
                             pool_token_amount: withdraw_amount.try_into().unwrap(),
                             minimum_token_a_amount,
@@ -4144,6 +4227,8 @@ mod tests {
                         &mut token_a_account,
                         &mut token_b_account,
                         &mut accounts.pool_fee_account,
+                        &mut accounts.token_a_mint_account,
+                        &mut accounts.token_b_mint_account,
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
@@ -4780,6 +4865,7 @@ mod tests {
                         &accounts.token_b_key,
                         &accounts.pool_mint_key,
                         &pool_key,
+                        &accounts.token_a_mint_key,
                         DepositSingleTokenTypeExactAmountIn {
                             source_token_amount: deposit_a,
                             minimum_pool_token_amount: pool_amount,
@@ -4795,6 +4881,7 @@ mod tests {
                         &mut accounts.token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
+                        &mut accounts.token_a_mint_account,
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                     ],
@@ -4828,6 +4915,7 @@ mod tests {
                         &accounts.token_b_key,
                         &accounts.pool_mint_key,
                         &pool_key,
+                        &accounts.token_a_mint_key,
                         DepositSingleTokenTypeExactAmountIn {
                             source_token_amount: deposit_a,
                             minimum_pool_token_amount: pool_amount,
@@ -4843,6 +4931,7 @@ mod tests {
                         &mut accounts.token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut pool_account,
+                        &mut accounts.token_a_mint_account,
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                     ],
@@ -5371,6 +5460,7 @@ mod tests {
                         &accounts.token_a_key,
                         &accounts.token_b_key,
                         &token_a_key,
+                        &accounts.token_a_mint_key,
                         WithdrawSingleTokenTypeExactAmountOut {
                             destination_token_amount: destination_a_amount,
                             maximum_pool_token_amount,
@@ -5387,6 +5477,7 @@ mod tests {
                         &mut accounts.token_b_account,
                         &mut token_a_account,
                         &mut accounts.pool_fee_account,
+                        &mut accounts.token_a_mint_account,
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                     ],
@@ -5427,6 +5518,7 @@ mod tests {
                         &accounts.token_a_key,
                         &accounts.token_b_key,
                         &token_a_key,
+                        &accounts.token_a_mint_key,
                         WithdrawSingleTokenTypeExactAmountOut {
                             destination_token_amount: destination_a_amount,
                             maximum_pool_token_amount,
@@ -5443,6 +5535,7 @@ mod tests {
                         &mut accounts.token_b_account,
                         &mut token_a_account,
                         &mut accounts.pool_fee_account,
+                        &mut accounts.token_a_mint_account,
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                     ],
@@ -6203,6 +6296,8 @@ mod tests {
                 &token_b_key,
                 &accounts.pool_mint_key,
                 &accounts.pool_fee_key,
+                &accounts.token_a_mint_key,
+                &accounts.token_b_mint_key,
                 Some(&pool_key),
                 Swap {
                     amount_in,
@@ -6220,6 +6315,8 @@ mod tests {
                 &mut token_b_account,
                 &mut accounts.pool_mint_account,
                 &mut accounts.pool_fee_account,
+                &mut accounts.token_a_mint_account,
+                &mut accounts.token_b_mint_account,
                 &mut SolanaAccount::default(),
                 &mut SolanaAccount::default(),
                 &mut SolanaAccount::default(),
@@ -6416,6 +6513,8 @@ mod tests {
                         &token_b_key,
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
+                        &accounts.token_a_mint_key,
+                        &accounts.token_b_mint_key,
                         None,
                         Swap {
                             amount_in: initial_a,
@@ -6433,6 +6532,8 @@ mod tests {
                         &mut token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
+                        &mut accounts.token_a_mint_account,
+                        &mut accounts.token_b_mint_account,
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
@@ -6495,6 +6596,8 @@ mod tests {
                         &token_b_key,
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
+                        &accounts.token_a_mint_key,
+                        &accounts.token_b_mint_key,
                         None,
                         Swap {
                             amount_in: initial_a,
@@ -6512,6 +6615,8 @@ mod tests {
                         &mut token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
+                        &mut accounts.token_a_mint_account,
+                        &mut accounts.token_b_mint_account,
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
@@ -6673,6 +6778,8 @@ mod tests {
                         &token_b_key,
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
+                        &accounts.token_a_mint_key,
+                        &accounts.token_b_mint_key,
                         None,
                         Swap {
                             amount_in: initial_a,
@@ -6690,6 +6797,8 @@ mod tests {
                         &mut token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
+                        &mut accounts.token_a_mint_account,
+                        &mut accounts.token_b_mint_account,
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
@@ -6835,6 +6944,8 @@ mod tests {
                     &token_b_key,
                     &accounts.pool_mint_key,
                     &accounts.pool_fee_key,
+                    &accounts.token_a_mint_key,
+                    &accounts.token_b_mint_key,
                     None,
                     Swap {
                         amount_in: initial_a,
@@ -6852,6 +6963,8 @@ mod tests {
                     &mut token_b_account,
                     &mut accounts.pool_mint_account,
                     &mut accounts.pool_fee_account,
+                    &mut accounts.token_a_mint_account,
+                    &mut accounts.token_b_mint_account,
                     &mut SolanaAccount::default(),
                     &mut SolanaAccount::default(),
                     &mut SolanaAccount::default(),
@@ -6913,6 +7026,8 @@ mod tests {
                         &token_b_key,
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
+                        &accounts.token_a_mint_key,
+                        &accounts.token_b_mint_key,
                         Some(&bad_token_a_key),
                         Swap {
                             amount_in: initial_a,
@@ -6930,6 +7045,8 @@ mod tests {
                         &mut token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
+                        &mut accounts.token_a_mint_account,
+                        &mut accounts.token_b_mint_account,
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
                         &mut SolanaAccount::default(),
@@ -7587,6 +7704,8 @@ mod tests {
                 &accounts.token_b_key,
                 &token_a_key,
                 &token_b_key,
+                &accounts.token_a_mint_key,
+                &accounts.token_b_mint_key,
                 WithdrawAllTokenTypes {
                     pool_token_amount,
                     minimum_token_a_amount,
@@ -7605,6 +7724,8 @@ mod tests {
                 &mut token_a_account,
                 &mut token_b_account,
                 &mut accounts.pool_fee_account,
+                &mut accounts.token_a_mint_account,
+                &mut accounts.token_b_mint_account,
                 &mut SolanaAccount::default(),
                 &mut SolanaAccount::default(),
                 &mut SolanaAccount::default(),
@@ -7735,6 +7856,7 @@ mod tests {
                 &accounts.token_a_key,
                 &accounts.token_b_key,
                 &token_a_key,
+                &accounts.token_a_mint_key,
                 WithdrawSingleTokenTypeExactAmountOut {
                     destination_token_amount: destination_a_amount,
                     maximum_pool_token_amount,
@@ -7751,6 +7873,7 @@ mod tests {
                 &mut accounts.token_b_account,
                 &mut token_a_account,
                 &mut accounts.pool_fee_account,
+                &mut accounts.token_a_mint_account,
                 &mut SolanaAccount::default(),
                 &mut SolanaAccount::default(),
             ],
@@ -7890,6 +8013,8 @@ mod tests {
                 &token_b_key,
                 &accounts.pool_mint_key,
                 &accounts.pool_fee_key,
+                &accounts.token_a_mint_key,
+                &accounts.token_b_mint_key,
                 Some(&pool_key),
                 Swap {
                     amount_in: token_a_amount / 2,
@@ -7907,6 +8032,8 @@ mod tests {
                 &mut token_b_account,
                 &mut accounts.pool_mint_account,
                 &mut accounts.pool_fee_account,
+                &mut accounts.token_a_mint_account,
+                &mut accounts.token_b_mint_account,
                 &mut SolanaAccount::default(),
                 &mut SolanaAccount::default(),
                 &mut SolanaAccount::default(),
