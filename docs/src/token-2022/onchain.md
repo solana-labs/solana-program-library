@@ -477,8 +477,147 @@ It's tedious, but at this point, we have updated our program to use both Token
 and Token-2022 simultaneously. Congratulations! You're ready to be part of the
 next stage of DeFi on Solana.
 
-## Part III: Support Specific Extensions
+## Part III: Support All Extensions
 
-### Update from `transfer` to `transfer_checked`
+It seems like our program is working perfectly and that it won't have any issues
+processing Token-2022 mints.
 
-### Take fee into account when calculating slippage
+Unfortunately, there's one more bit of work required for full compatibility in
+token-swap. Since the program is using `transfer` instead of `transfer_checked`,
+it will fail for certain mints.
+
+We must upgrade to using `transfer_checked` if we want to support all extensions
+in Token-2022. As always, let's start by making our tests fail.
+
+### Step 1: Add transfer fee extension to Token-2022 tests
+
+The Token-2022 tests currently initialize the `MintCloseAuthority` extension.
+Let's add the `TransferFeeConfig` extension to the mint, and the `TransferFeeAmount`
+extension to the token accounts.
+
+Instead of:
+
+```rust
+let mint_space = ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]);
+let account_space = ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]);
+```
+
+We'll do:
+
+```rust
+let mint_space = ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority, ExtensionType::TransferFeeConfig]);
+let account_space = ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner, ExtensionType::TransferFeeAmount]);
+```
+
+And during initialization of the mint, we'll add in the instruction to initialize
+the transfer fee config to the initialization transaction:
+
+```rust
+let rate_authority = Keypair::new();
+let withdraw_authority = Keypair::new();
+
+let instruction = spl_token_2022::extension::transfer_fee::instruction::initialize_transfer_fee_config(
+    program_id, &mint_key, rate_authority.pubkey(), withdraw_authority.pubkey(), 0, 0
+).unwrap();
+```
+
+With this step, some of the Token-2022 test variants fail with: "Mint required 
+for this account to transfer tokens, use `transfer_checked` or 
+`transfer_checked_with_fee`".
+
+### Step 2: Add mints to instructions that use `transfer`
+
+The biggest difference between `transfer` and `transfer_checked` is the presence
+of the mint for the tokens. First, we must provide the mint account for every
+instruction that uses `transfer`.
+
+For example, the swap instruction becomes:
+
+```rust
+///   Swap the tokens in the pool.
+///
+///   0. `[]` Token-swap
+///   1. `[]` swap authority
+///   2. `[]` user transfer authority
+///   3. `[writable]` token_(A|B) SOURCE Account, amount is transferable by user transfer authority,
+///   4. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
+///   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
+///   6. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
+///   7. `[writable]` Pool token mint, to generate trading fees
+///   8. `[writable]` Fee account, to receive trading fees
+///   9. `[]` Token (A|B) SOURCE mint
+///   10. `[]` Token (A|B) DESTINATION mint
+///   11. `[]` Token (A|B) SOURCE program id
+///   12. `[]` Token (A|B) DESTINATION program id
+///   13. `[]` Pool Token program id
+///   14. `[optional, writable]` Host fee account to receive additional trading fees
+Swap(...),
+```
+
+Note the addition of `Token (A|B) SOURCE mint` and `Token (A|B) DESTINATION mint`.
+The pool token mint is already included, so we're safe there.
+
+Next, in the processor code, we'll extract these additional accounts, but we
+won't use them yet.
+
+For swap, the beginning becomes:
+
+```rust
+let account_info_iter = &mut accounts.iter();
+let swap_info = next_account_info(account_info_iter)?;
+let authority_info = next_account_info(account_info_iter)?;
+let user_transfer_authority_info = next_account_info(account_info_iter)?;
+let source_info = next_account_info(account_info_iter)?;
+let swap_source_info = next_account_info(account_info_iter)?;
+let swap_destination_info = next_account_info(account_info_iter)?;
+let destination_info = next_account_info(account_info_iter)?;
+let pool_mint_info = next_account_info(account_info_iter)?;
+let pool_fee_account_info = next_account_info(account_info_iter)?;
+let source_token_mint_info = next_account_info(account_info_iter)?;
+let destination_token_mint_info = next_account_info(account_info_iter)?;
+let source_token_program_info = next_account_info(account_info_iter)?;
+let destination_token_program_info = next_account_info(account_info_iter)?;
+let pool_token_program_info = next_account_info(account_info_iter)?;
+```
+
+Note the addition of `source_token_mint_info` and `destination_token_mint_info`.
+
+We'll go through every instruction that uses `transfer`, which for token-swap,
+includes `swap`, `deposit_all_token_types`, `withdraw_all_token_types`,
+`deposit_single_token_type_exact_amount_in`, and
+`withdraw_single_token_type_exact_amount_out`.
+
+By the end of this, some of the Token-2022 tests still fail, but the Token
+tests all pass.
+
+### Step 3: Change `transfer` to `transfer_checked` instruction
+
+Everything's in place to use `transfer_checked`, so the next step will thankfully
+be quite simple and get all of our tests to pass.
+
+Where we normally use `spl_token_2022::instruction::transfer`, we'll instead use
+`spl_token_2022::instruction::transfer_checked`, also providing the mint account
+info and decimals.
+
+For example, we can do:
+
+```rust
+let decimals = StateWithExtensions::<Mint>::unpack(&mint.data.borrow()).map(|m| m.base)?.decimals;
+let ix = spl_token_2022::instruction::transfer_checked(
+  token_program.key,
+  source.key,
+  mint.key,
+  destination.key,
+  authority.key,
+  &[],
+  amount,
+  decimals,
+)?;
+invoke(
+  &ix,
+  &[source, mint, destination, authority, token_program],
+)
+```
+
+After this step, all of your tests should pass once again, so congratulations
+again!
