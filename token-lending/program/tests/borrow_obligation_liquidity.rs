@@ -431,7 +431,7 @@ async fn test_borrow_max_receive_minimum() {
     const SOL_BORROW_AMOUNT_LAMPORTS: u64 = 50 * LAMPORTS_TO_SOL;
     const USDC_RESERVE_COLLATERAL_FRACTIONAL: u64 = 2 * USDC_DEPOSIT_AMOUNT_FRACTIONAL;
     const SOL_RESERVE_LIQUIDITY_LAMPORTS: u64 = 2 * SOL_BORROW_AMOUNT_LAMPORTS;
-    const SLIPPAGE_LIMIT: u64 = SOL_BORROW_AMOUNT_LAMPORTS - FEE_AMOUNT - 1;
+    const SLIPPAGE_LIMIT: u64 = SOL_BORROW_AMOUNT_LAMPORTS - FEE_AMOUNT;
 
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
@@ -566,12 +566,14 @@ async fn test_borrow_max_receive_less_than_slippage() {
     // limit to track compute unit increase
     test.set_compute_max_units(60_000);
 
+    const FEE_AMOUNT: u64 = 5000;
+
     const USDC_DEPOSIT_AMOUNT_FRACTIONAL: u64 =
         2_000 * FRACTIONAL_TO_USDC * INITIAL_COLLATERAL_RATIO;
     const SOL_BORROW_AMOUNT_LAMPORTS: u64 = 50 * LAMPORTS_TO_SOL;
     const USDC_RESERVE_COLLATERAL_FRACTIONAL: u64 = 2 * USDC_DEPOSIT_AMOUNT_FRACTIONAL;
     const SOL_RESERVE_LIQUIDITY_LAMPORTS: u64 = 2 * SOL_BORROW_AMOUNT_LAMPORTS;
-    const SLIPPAGE_LIMIT: u64 = SOL_BORROW_AMOUNT_LAMPORTS + 1;
+    const SLIPPAGE_LIMIT: u64 = SOL_BORROW_AMOUNT_LAMPORTS - FEE_AMOUNT + 1;
 
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
