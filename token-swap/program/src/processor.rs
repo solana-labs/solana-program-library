@@ -1145,13 +1145,13 @@ mod tests {
             withdraw_all_token_types, withdraw_single_token_type_exact_amount_out,
         },
     };
-    use solana_program::{instruction::Instruction, program_pack::Pack, program_stubs, rent::Rent};
+    use solana_program::{clock::Clock, entrypoint::SUCCESS, instruction::Instruction, program_pack::Pack, program_stubs, rent::Rent};
     use solana_sdk::account::{
         create_account_for_test, create_is_signer_account_infos, Account as SolanaAccount,
     };
     use spl_token_2022::{
         error::TokenError,
-        extension::ExtensionType,
+        extension::{transfer_fee::instruction::initialize_transfer_fee_config, ExtensionType},
         instruction::{
             approve, close_account, freeze_account, initialize_account, initialize_immutable_owner,
             initialize_mint, initialize_mint_close_authority, mint_to, revoke, set_authority,
@@ -1215,6 +1215,13 @@ mod tests {
             } else {
                 Err(ProgramError::IncorrectProgramId)
             }
+        }
+
+        fn sol_get_clock_sysvar(&self, var_addr: *mut u8) -> u64 {
+            unsafe {
+                *(var_addr as *mut _ as *mut Clock) = Clock::default();
+            }
+            SUCCESS
         }
     }
 
@@ -1920,7 +1927,10 @@ mod tests {
     ) -> (Pubkey, SolanaAccount) {
         let account_key = Pubkey::new_unique();
         let space = if *program_id == spl_token_2022::id() {
-            ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner])
+            ExtensionType::get_account_len::<Account>(&[
+                ExtensionType::ImmutableOwner,
+                ExtensionType::TransferFeeAmount,
+            ])
         } else {
             Account::get_packed_len()
         };
@@ -1977,11 +1987,12 @@ mod tests {
     ) -> (Pubkey, SolanaAccount) {
         let mint_key = Pubkey::new_unique();
         let space = if *program_id == spl_token_2022::id() {
-            ExtensionType::get_account_len::<spl_token_2022::state::Mint>(&[
+            ExtensionType::get_account_len::<Mint>(&[
                 ExtensionType::MintCloseAuthority,
+                ExtensionType::TransferFeeConfig,
             ])
         } else {
-            spl_token_2022::state::Mint::get_packed_len()
+            Mint::get_packed_len()
         };
         let minimum_balance = Rent::default().minimum_balance(space);
         let mut mint_account = SolanaAccount::new(minimum_balance, space, program_id);
@@ -1990,6 +2001,19 @@ mod tests {
         if *program_id == spl_token_2022::id() {
             do_process_instruction(
                 initialize_mint_close_authority(program_id, &mint_key, freeze_authority).unwrap(),
+                vec![&mut mint_account],
+            )
+            .unwrap();
+            do_process_instruction(
+                initialize_transfer_fee_config(
+                    program_id,
+                    &mint_key,
+                    freeze_authority,
+                    freeze_authority,
+                    0,
+                    0,
+                )
+                .unwrap(),
                 vec![&mut mint_account],
             )
             .unwrap();
