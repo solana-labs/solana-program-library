@@ -84,13 +84,12 @@ pub(crate) fn get_stake_pools(
     rpc_client
         .get_program_accounts_with_config(
             &spl_stake_pool::id(),
-            #[allow(deprecated)] // TODO figure out what encoding to use
             RpcProgramAccountsConfig {
-                filters: Some(vec![RpcFilterType::Memcmp(Memcmp {
-                    offset: 0, // 0 is the account type
-                    bytes: MemcmpEncodedBytes::Base58("2".to_string()),
-                    encoding: None,
-                })]),
+                // 0 is the account type
+                filters: Some(vec![RpcFilterType::Memcmp(Memcmp::new_raw_bytes(
+                    0,
+                    vec![1],
+                ))]),
                 account_config: RpcAccountInfoConfig {
                     encoding: Some(UiAccountEncoding::Base64),
                     ..RpcAccountInfoConfig::default()
@@ -128,15 +127,13 @@ pub(crate) fn get_all_stake(
 ) -> Result<HashSet<Pubkey>, ClientError> {
     let all_stake_accounts = rpc_client.get_program_accounts_with_config(
         &stake::program::id(),
-        #[allow(deprecated)] // TODO figure out what encoding to use
         RpcProgramAccountsConfig {
             filters: Some(vec![
                 // Filter by `Meta::authorized::staker`, which begins at byte offset 12
-                RpcFilterType::Memcmp(Memcmp {
-                    offset: 12,
-                    bytes: MemcmpEncodedBytes::Base58(authorized_staker.to_string()),
-                    encoding: Some(MemcmpEncoding::Binary),
-                }),
+                RpcFilterType::Memcmp(Memcmp::new_base58_encoded(
+                    12,
+                    &authorized_staker.to_bytes(),
+                )),
             ]),
             account_config: RpcAccountInfoConfig {
                 encoding: Some(solana_account_decoder::UiAccountEncoding::Base64),
