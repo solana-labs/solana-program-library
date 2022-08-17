@@ -106,6 +106,9 @@ pub enum SwapError {
     /// The operation cannot be performed on the given curve
     #[error("The operation cannot be performed on the given curve")]
     UnsupportedCurveOperation,
+    /// The pool fee account is invalid.
+    #[error("The pool fee account is invalid")]
+    InvalidFeeAccount,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {
@@ -185,6 +188,9 @@ impl PrintProgramError for SwapError {
             }
             SwapError::UnsupportedCurveOperation => {
                 msg!("Error: The operation cannot be performed on the given curve")
+            }
+            SwapError::InvalidFeeAccount => {
+                msg!("Error: The pool fee account is invalid")
             }
         }
     }
