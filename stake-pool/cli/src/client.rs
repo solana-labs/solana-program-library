@@ -130,10 +130,7 @@ pub(crate) fn get_all_stake(
         RpcProgramAccountsConfig {
             filters: Some(vec![
                 // Filter by `Meta::authorized::staker`, which begins at byte offset 12
-                RpcFilterType::Memcmp(Memcmp::new_base58_encoded(
-                    12,
-                    authorized_staker.as_ref(),
-                )),
+                RpcFilterType::Memcmp(Memcmp::new_base58_encoded(12, authorized_staker.as_ref())),
             ]),
             account_config: RpcAccountInfoConfig {
                 encoding: Some(solana_account_decoder::UiAccountEncoding::Base64),
