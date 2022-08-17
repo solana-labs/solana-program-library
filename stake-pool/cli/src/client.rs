@@ -5,7 +5,7 @@ use {
         client_error::ClientError,
         rpc_client::RpcClient,
         rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
-        rpc_filter::{Memcmp, MemcmpEncodedBytes, MemcmpEncoding, RpcFilterType},
+        rpc_filter::{Memcmp, RpcFilterType},
     },
     solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey, stake},
     spl_stake_pool::{
@@ -132,7 +132,7 @@ pub(crate) fn get_all_stake(
                 // Filter by `Meta::authorized::staker`, which begins at byte offset 12
                 RpcFilterType::Memcmp(Memcmp::new_base58_encoded(
                     12,
-                    &authorized_staker.to_bytes(),
+                    authorized_staker.as_ref(),
                 )),
             ]),
             account_config: RpcAccountInfoConfig {
