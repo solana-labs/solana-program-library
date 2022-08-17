@@ -354,6 +354,7 @@ fn run_fuzz_instruction(
             let pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
             token_swap.deposit_single_token_type_exact_amount_in(
                 source_token_account,
+                trade_direction,
                 pool_account,
                 instruction,
             )
@@ -371,6 +372,7 @@ fn run_fuzz_instruction(
             let pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
             token_swap.withdraw_single_token_type_exact_amount_out(
                 pool_account,
+                trade_direction,
                 destination_token_account,
                 instruction,
             )
