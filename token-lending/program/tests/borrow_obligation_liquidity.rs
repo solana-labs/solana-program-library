@@ -759,5 +759,5 @@ async fn test_borrow_less_than_max_with_slippage() {
     transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
 
     // check that transaction succeeds
-    assert!(banks_client.process_transaction(transaction).await.is_ok());
+    banks_client.process_transaction(transaction).await.unwrap();
 }
