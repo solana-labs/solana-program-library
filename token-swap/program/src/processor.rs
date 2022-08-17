@@ -7547,7 +7547,7 @@ mod tests {
         )
         .unwrap();
 
-        assert!(do_process_instruction(
+        do_process_instruction(
             withdraw_all_token_types(
                 &SWAP_PROGRAM_ID,
                 &pool_token_program_id,
@@ -7586,7 +7586,7 @@ mod tests {
                 &mut SolanaAccount::default(),
             ],
         )
-        .is_ok());
+        .unwrap();
     }
 
     #[test_case(spl_token::id(), spl_token::id(), spl_token::id(); "all-token")]
@@ -7697,7 +7697,7 @@ mod tests {
         )
         .unwrap();
 
-        assert!(do_process_instruction(
+        do_process_instruction(
             withdraw_single_token_type_exact_amount_out(
                 &SWAP_PROGRAM_ID,
                 &pool_token_program_id,
@@ -7731,7 +7731,7 @@ mod tests {
                 &mut SolanaAccount::default(),
             ],
         )
-        .is_ok());
+        .unwrap();
     }
 
     #[test_case(spl_token::id(), spl_token::id(), spl_token::id(); "all-token")]
@@ -7851,7 +7851,7 @@ mod tests {
         )
         .unwrap();
 
-        assert!(do_process_instruction_with_fee_constraints(
+        do_process_instruction_with_fee_constraints(
             swap(
                 &SWAP_PROGRAM_ID,
                 &token_a_program_id,
@@ -7890,6 +7890,6 @@ mod tests {
             ],
             &constraints,
         )
-        .is_ok());
+        .unwrap();
     }
 }
