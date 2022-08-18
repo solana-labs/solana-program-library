@@ -127,6 +127,9 @@ pub fn process_set_realm_config(
     realm_data.config.min_community_weight_to_create_governance =
         realm_config_args.min_community_weight_to_create_governance;
 
+    realm_data.config.legacy1 = 0;
+    realm_data.config.legacy2 = 0;
+
     realm_data.serialize(&mut *realm_info.data.borrow_mut())?;
 
     Ok(())
