@@ -1010,7 +1010,7 @@ impl Processor {
 /// Helper function to mostly delete an account in a test environment.  We could
 /// potentially muck around the bytes assuming that a vec is passed in, but that
 /// would be more trouble than it's worth.
-#[cfg(not(target_arch = "bpf"))]
+#[cfg(not(target_os = "solana"))]
 fn delete_account(account_info: &AccountInfo) -> Result<(), ProgramError> {
     account_info.assign(&system_program::id());
     let mut account_data = account_info.data.borrow_mut();
@@ -1020,7 +1020,7 @@ fn delete_account(account_info: &AccountInfo) -> Result<(), ProgramError> {
 }
 
 /// Helper function to totally delete an account on-chain
-#[cfg(target_arch = "bpf")]
+#[cfg(target_os = "solana")]
 fn delete_account(account_info: &AccountInfo) -> Result<(), ProgramError> {
     account_info.assign(&system_program::id());
     account_info.realloc(0, false)
