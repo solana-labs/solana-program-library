@@ -1,4 +1,4 @@
-import { AccountInfo, LAMPORTS_PER_SOL, PublicKey, StakeProgram } from '@solana/web3.js';
+import { AccountInfo, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { ValidatorStakeInfo } from '../src';
 import { ValidatorStakeInfoStatus, AccountLayout, ValidatorListLayout } from '../src/layouts';
@@ -132,29 +132,65 @@ export function mockTokenAccount(amount = 0) {
   };
 }
 
-export function mockStakeAccount(amount = 0) {
-  const data = Buffer.alloc(1024);
-  AccountLayout.encode(
-    {
-      state: 0,
-      mint: stakePoolMock.poolMint,
-      owner: StakeProgram.programId,
-      amount: new BN(amount),
-      delegate: new PublicKey(14),
-      // delegatedAmount: new BN(0),
-      // isNative: new BN(0),
-      // isNativeOption:0,
-      // closeAuthority: 0,
-      // delegateOption:0,
-      // closeAuthorityOption:0
-    },
+const mockRpc = (data: any) => {
+  const value = {
+    owner: 'Stake11111111111111111111111111111111',
+    lamports: LAMPORTS_PER_SOL,
     data,
-  );
+    executable: false,
+    rentEpoch: 0,
+  };
+  const result = {
+    context: {
+      slot: 11,
+    },
+    value: value,
+  };
+  return result;
+};
 
+export function mockStakeAccount(): any {
+  const data = {
+    program: 'stake',
+    parsed: {
+      type: 'delegated',
+      info: {
+        meta: {
+          rentExemptReserve: new BN(1),
+          lockup: {
+            epoch: 32,
+            unixTimestamp: 2,
+            custodian: new PublicKey(12),
+          },
+          authorized: {
+            staker: new PublicKey(12),
+            withdrawer: new PublicKey(12),
+          },
+        },
+        stake: {
+          delegation: {
+            voter: new PublicKey(
+              new BN('e4e37d6f2e80c0bb0f3da8a06304e57be5cda6efa2825b86780aa320d9784cf8', 'hex'),
+            ),
+            stake: new BN(0),
+            activationEpoch: new BN(1),
+            deactivationEpoch: new BN(1),
+            warmupCooldownRate: 1.2,
+          },
+          creditsObserved: 1,
+        },
+      },
+    },
+  };
+  return mockRpc(data);
+}
+
+export function mockVotersStakeAccount() {
+  const data = Buffer.alloc(1024);
   return <AccountInfo<any>>{
     executable: true,
-    owner: StakeProgram.programId,
-    lamports: amount,
+    owner: new PublicKey(0),
+    lamports: 3000000000,
     data,
   };
 }

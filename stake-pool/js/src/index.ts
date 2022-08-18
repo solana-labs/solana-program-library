@@ -9,12 +9,7 @@ import {
   SystemProgram,
   TransactionInstruction,
 } from '@solana/web3.js';
-import {
-  ASSOCIATED_TOKEN_PROGRAM_ID,
-  TOKEN_PROGRAM_ID,
-  Token,
-  AccountInfo as Account,
-} from '@solana/spl-token';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, Token } from '@solana/spl-token';
 import {
   ValidatorAccount,
   addAssociatedTokenAccount,
@@ -32,14 +27,16 @@ import {
 } from './utils';
 import { StakePoolInstruction } from './instructions';
 import {
-  AccountLayout,
+  StakeAccount,
   StakePool,
   StakePoolLayout,
   ValidatorList,
   ValidatorListLayout,
   ValidatorStakeInfo,
+  ParsedInfo,
 } from './layouts';
 import { MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE, STAKE_POOL_PROGRAM_ID } from './constants';
+import { create } from 'superstruct';
 
 export type { StakePool, AccountType, ValidatorList, ValidatorStakeInfo } from './layouts';
 export { STAKE_POOL_PROGRAM_ID } from './constants';
@@ -59,11 +56,6 @@ export interface WithdrawAccount {
   stakeAddress: PublicKey;
   voteAddress?: PublicKey;
   poolAmount: number;
-}
-
-export interface StakeAccount {
-  pubkey: PublicKey;
-  account: AccountInfo<Account>;
 }
 
 /**
@@ -110,21 +102,19 @@ export async function getStakeAccount(
   connection: Connection,
   stakeAccount: PublicKey,
 ): Promise<StakeAccount> {
-  const account = await connection.getAccountInfo(stakeAccount);
-
-  if (!account) {
+  const result = (await connection.getParsedAccountInfo(stakeAccount)).value;
+  console.log(result);
+  if (!result || !('parsed' in result.data)) {
     throw new Error('Invalid stake account');
   }
+  const program = result.data.program;
+  if (program != 'stake') {
+    throw new Error('Not a stake account');
+  }
+  const info = create(result.data.parsed, ParsedInfo);
+  const parsed = create(info, StakeAccount);
 
-  return {
-    pubkey: stakeAccount,
-    account: {
-      data: AccountLayout.decode(account.data),
-      executable: account.executable,
-      lamports: account.lamports,
-      owner: account.owner,
-    },
-  };
+  return parsed;
 }
 
 /**
@@ -362,7 +352,6 @@ export async function withdrawStake(
       tokenOwner,
     );
   }
-
   const tokenAccount = await getTokenAccount(
     connection,
     poolTokenAccount,
@@ -389,6 +378,11 @@ export async function withdrawStake(
     stakePoolAddress,
   );
 
+  let stakeReceiverAccount = null;
+  if (stakeReceiver) {
+    stakeReceiverAccount = await getStakeAccount(connection, stakeReceiver);
+  }
+
   const withdrawAccounts: WithdrawAccount[] = [];
 
   if (useReserve) {
@@ -397,6 +391,48 @@ export async function withdrawStake(
       voteAddress: undefined,
       poolAmount,
     });
+  } else if (stakeReceiverAccount && stakeReceiverAccount?.type == 'delegated') {
+    const voteAccount = stakeReceiverAccount.info.stake?.delegation.voter;
+    if (!voteAccount) throw new Error('Invalid stake reciever delegation');
+
+    const validatorListAcc = await connection.getAccountInfo(stakePool.account.data.validatorList);
+    const validatorList = ValidatorListLayout.decode(validatorListAcc?.data) as ValidatorList;
+    const isValidVoter = validatorList.validators.find(
+      (val) => val.voteAccountAddress.toBase58() === voteAccount.toBase58(),
+    );
+    if (voteAccountAddress && voteAccountAddress !== voteAccount) {
+      throw new Error('Vote account provided is Invalid !');
+    }
+    if (isValidVoter) {
+      const stakeAccountAddress = await findStakeProgramAddress(
+        STAKE_POOL_PROGRAM_ID,
+        voteAccount,
+        stakePoolAddress,
+      );
+      const stakeAccount = await connection.getAccountInfo(stakeAccountAddress);
+      if (!stakeAccount) {
+        throw new Error('Invalid Stake Account');
+      }
+
+      const availableForWithdrawal = calcLamportsWithdrawAmount(
+        stakePool.account.data,
+        stakeAccount.lamports - MINIMUM_ACTIVE_STAKE - stakeAccountRentExemption,
+      );
+
+      if (availableForWithdrawal < poolAmount) {
+        throw new Error(
+          `Not enough lamports available for withdrawal from ${stakeAccountAddress},
+            ${poolAmount} asked, ${availableForWithdrawal} available.`,
+        );
+      }
+      withdrawAccounts.push({
+        stakeAddress: stakeAccountAddress,
+        voteAddress: voteAccount,
+        poolAmount,
+      });
+    } else {
+      throw new Error('Vote account does not exists in the stake pool.');
+    }
   } else if (voteAccountAddress) {
     const stakeAccountAddress = await findStakeProgramAddress(
       STAKE_POOL_PROGRAM_ID,
@@ -480,11 +516,16 @@ export async function withdrawStake(
     }
 
     console.info(infoMsg);
+    let stakeToReceive;
 
-    const stakeKeypair = newStakeAccount(tokenOwner, instructions, stakeAccountRentExemption);
-    signers.push(stakeKeypair);
-    totalRentFreeBalances += stakeAccountRentExemption;
-    const stakeToReceive = stakeKeypair.publicKey;
+    if (!stakeReceiver || (stakeReceiverAccount && stakeReceiverAccount.type === 'delegated')) {
+      const stakeKeypair = newStakeAccount(tokenOwner, instructions, stakeAccountRentExemption);
+      signers.push(stakeKeypair);
+      totalRentFreeBalances += stakeAccountRentExemption;
+      stakeToReceive = stakeKeypair.publicKey;
+    } else {
+      stakeToReceive = stakeReceiver;
+    }
 
     instructions.push(
       StakePoolInstruction.withdrawStake({
@@ -503,23 +544,17 @@ export async function withdrawStake(
     );
     i++;
   }
-  if (stakeReceiver) {
-    const account = (await getStakeAccount(connection, stakeReceiver)).account;
+  if (stakeReceiver && stakeReceiverAccount && stakeReceiverAccount.type === 'delegated') {
     // check if stake reciever is a stake account and delegated to same validator
-    if (
-      account.data.owner.toBase58() == StakeProgram.programId.toBase58() &&
-      account.data.delegate?.toBase58() == stakePool.account.data.validatorList.toBase58()
-    ) {
-      signers.forEach((newStakeKeypair) => {
-        instructions.concat(
-          StakeProgram.merge({
-            stakePubkey: stakeReceiver,
-            sourceStakePubKey: newStakeKeypair.publicKey,
-            authorizedPubkey: withdrawAuthority,
-          }).instructions,
-        );
-      });
-    }
+    signers.forEach((newStakeKeypair) => {
+      instructions.concat(
+        StakeProgram.merge({
+          stakePubkey: stakeReceiver,
+          sourceStakePubKey: newStakeKeypair.publicKey,
+          authorizedPubkey: tokenOwner,
+        }).instructions,
+      );
+    });
   }
 
   return {

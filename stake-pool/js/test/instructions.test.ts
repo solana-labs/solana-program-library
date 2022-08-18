@@ -19,7 +19,13 @@ import {
 
 import { decodeData } from '../src/utils';
 
-import { mockStakeAccount, mockTokenAccount, mockValidatorList, stakePoolMock } from './mocks';
+import {
+  mockStakeAccount,
+  mockTokenAccount,
+  mockValidatorList,
+  mockVotersStakeAccount,
+  stakePoolMock,
+} from './mocks';
 
 describe('StakePoolProgram', () => {
   const connection = new Connection('http://127.0.0.1:8899');
@@ -258,16 +264,23 @@ describe('StakePoolProgram', () => {
         if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
-        if (pubKey.toBase58() == 'GQkqTamwqjaNDfsbNm7r3aXPJ4oTSqKC3d5t2PF9Smqd') {
+        if (pubKey.toBase58() == '1111111111111111111111111111111Z') {
           return mockTokenAccount(LAMPORTS_PER_SOL * 2);
         }
         if (pubKey.toBase58() == stakePoolMock.validatorList.toBase58()) {
           return mockValidatorList();
         }
+        if (pubKey.toBase58() == new PublicKey(32).toBase58()) return mockVotersStakeAccount();
+        return null;
+      });
+      connection.getParsedAccountInfo = jest.fn(async (pubKey: PublicKey) => {
         if (pubKey.toBase58() == stakeReceiver.toBase58()) {
           return mockStakeAccount();
         }
         return null;
+      });
+      PublicKey.findProgramAddress = jest.fn(async (): Promise<[PublicKey, number]> => {
+        return [new PublicKey(32), 32];
       });
       const res = await withdrawStake(
         connection,
@@ -279,7 +292,8 @@ describe('StakePoolProgram', () => {
         stakeReceiver,
       );
 
-      expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(5);
+      expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(4);
+      expect((connection.getParsedAccountInfo as jest.Mock).mock.calls.length).toBe(1);
       expect(res.instructions).toHaveLength(3);
       expect(res.signers).toHaveLength(2);
       expect(res.stakeReceiver).toEqual(stakeReceiver);

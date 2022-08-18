@@ -16,11 +16,12 @@ create_keypair () {
 }
 
 create_stake_account () {
+  authority=$1
   while read -r validator
   do
     solana-keygen new --no-passphrase -o "$keys_dir/stake_account_$validator.json"
-    solana create-stake-account "$keys_dir/stake_account_$validator.json" 2 --withdraw-authority "$keys_dir/stake_account_$validator.json" --stake-authority "$keys_dir/stake_account_$validator.json"
-    solana delegate-stake --force "$keys_dir/stake_account_$validator.json"  "$validator" --stake-authority "$keys_dir/stake_account_$validator.json"
+    solana create-stake-account "$keys_dir/stake_account_$validator.json" 2 
+    solana delegate-stake --force "$keys_dir/stake_account_$validator.json"  "$validator" 
   done < "$validator_list"
 }
 
@@ -51,14 +52,16 @@ spl_stake_pool=spl-stake-pool
 
 stake_pool_pubkey=$(solana-keygen pubkey "$stake_pool_keyfile")
 keys_dir=keys
-create_stake_account
-echo "Waiting for stakes to activate, this may take awhile depending on the network!"
-echo "If you are running on localnet with 32 slots per epoch, wait 12 seconds..."
-sleep 12
 
 echo "Setting up keys directory $keys_dir"
 mkdir -p $keys_dir
 authority=$keys_dir/authority.json
+
+create_stake_account $authority
+echo "Waiting for stakes to activate, this may take awhile depending on the network!"
+echo "If you are running on localnet with 32 slots per epoch, wait 12 seconds..."
+sleep 12
+
 echo "Setting up authority for withdrawn stake accounts at $authority"
 create_keypair $authority
 
