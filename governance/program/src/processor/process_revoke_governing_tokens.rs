@@ -61,14 +61,10 @@ pub fn process_revoke_governing_tokens(
         governing_token_mint_info.key,
     )?;
 
-    if amount > token_owner_record_data.governing_token_deposit_amount {
-        return Err(GovernanceError::InvalidRevokeAmount.into());
-    }
-
     token_owner_record_data.governing_token_deposit_amount = token_owner_record_data
         .governing_token_deposit_amount
         .checked_sub(amount)
-        .unwrap();
+        .ok_or(GovernanceError::InvalidRevokeAmount)?;
 
     token_owner_record_data.serialize(&mut *token_owner_record_info.data.borrow_mut())?;
 
