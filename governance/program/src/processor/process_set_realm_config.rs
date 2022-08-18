@@ -87,13 +87,13 @@ pub fn process_set_realm_config(
     // 6, 7
     let community_token_config = resolve_governing_token_config(
         account_info_iter,
-        realm_config_args.community_token_config_args.clone(),
+        &realm_config_args.community_token_config_args,
     )?;
 
     // 8, 9
     let council_token_config = resolve_governing_token_config(
         account_info_iter,
-        realm_config_args.council_token_config_args.clone(),
+        &realm_config_args.council_token_config_args,
     )?;
 
     realm_config_data.community_token_config = community_token_config;

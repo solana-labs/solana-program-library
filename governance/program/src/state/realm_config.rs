@@ -275,7 +275,7 @@ pub fn get_realm_config_address(program_id: &Pubkey, realm: &Pubkey) -> Pubkey {
 /// Resolves GoverningTokenConfig from GoverningTokenConfigArgs and instruction accounts
 pub fn resolve_governing_token_config(
     account_info_iter: &mut Iter<AccountInfo>,
-    governing_token_config_args: GoverningTokenConfigArgs,
+    governing_token_config_args: &GoverningTokenConfigArgs,
 ) -> Result<GoverningTokenConfig, ProgramError> {
     let voter_weight_addin = if governing_token_config_args.use_voter_weight_addin {
         let voter_weight_addin_info = next_account_info(account_info_iter)?;
@@ -294,7 +294,7 @@ pub fn resolve_governing_token_config(
     Ok(GoverningTokenConfig {
         voter_weight_addin,
         max_voter_weight_addin,
-        token_type: governing_token_config_args.token_type,
+        token_type: governing_token_config_args.token_type.clone(),
         reserved: [0; 8],
     })
 }

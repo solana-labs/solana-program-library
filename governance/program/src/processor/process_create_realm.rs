@@ -94,13 +94,13 @@ pub fn process_create_realm(
     // 11, 12
     let community_token_config = resolve_governing_token_config(
         account_info_iter,
-        realm_config_args.community_token_config_args.clone(),
+        &realm_config_args.community_token_config_args,
     )?;
 
     // 13, 14
     let council_token_config = resolve_governing_token_config(
         account_info_iter,
-        realm_config_args.council_token_config_args.clone(),
+        &realm_config_args.council_token_config_args,
     )?;
 
     let realm_config_data = RealmConfigAccount {
