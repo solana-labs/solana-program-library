@@ -35,7 +35,14 @@ pub enum GoverningTokenType {
     Membership,
 
     /// Dormant token is a token which is only a placeholder and its deposits are not accepted and not used for governance power within the Realm
+    ///
+    /// The Dormant token type is used when only a single voting population is operational. For example a Multisig starter DAO uses Council only
+    /// and sets Community as Dormant to indicate its not utilised for any governance power.
+    /// Once the starter DAO decides to decentralise then it can change the Community token to Liquid
+    ///
     /// Note: When an external voter weight plugin which takes deposits of the token is used then the type should be set to Dormant
+    /// to make the intention explicit
+    ///
     /// Deposit - no, dormant tokens can't be deposited into the Realm
     /// Withdraw - yes, tokens can still be withdrawn from Realm to support scenario where the config is changed while some tokens are still deposited
     /// Revoke - no, Realm authority cannot revoke dormant tokens
@@ -178,6 +185,8 @@ impl RealmConfigAccount {
 
         match governing_token_type {
             GoverningTokenType::Membership | GoverningTokenType::Liquid => Ok(()),
+            // Note: Preventing deposits of the Dormant type tokens is not a direct security concern
+            // It only makes the intention of not using deposited tokens as governnace power stronger
             GoverningTokenType::Dormant => Err(GovernanceError::CannotDepositDormantTokens.into()),
         }
     }
