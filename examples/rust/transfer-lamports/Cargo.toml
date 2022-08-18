@@ -9,14 +9,14 @@ edition = "2018"
 
 [features]
 no-entrypoint = []
-test-bpf = []
+test-sbf = []
 
 [dependencies]
-solana-program = "1.10.35"
+solana-program = "1.11.6"
 
 [dev-dependencies]
-solana-program-test = "1.10.35"
-solana-sdk = "1.10.35"
+solana-program-test = "1.11.6"
+solana-sdk = "1.11.6"
 
 [lib]
 crate-type = ["cdylib", "lib"]

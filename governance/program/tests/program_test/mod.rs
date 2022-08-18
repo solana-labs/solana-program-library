@@ -130,7 +130,7 @@ impl GovernanceProgramTest {
         // We only ensure the addin mock program is built but it doesn't detect changes
         // If the addin is changed then it needs to be manually rebuilt
         // Note: The crate of the mock is built when spl-governance is built but we also need spl_governance_addin_mock.so
-        //       And we can't use build.rs script because cargo build-bpf hangs when executed from the script
+        //       And we can't use build.rs script because cargo build-sbf hangs when executed from the script
         ensure_addin_mock_is_built();
 
         Self::start_impl(use_voter_weight_addin, use_max_voter_weight_addin).await
@@ -1333,10 +1333,12 @@ impl GovernanceProgramTest {
         let path_buf = find_file("solana_bpf_rust_upgradeable.so").unwrap();
         let program_data = read_file(path_buf);
 
-        let program_buffer_rent = self
-            .bench
-            .rent
-            .minimum_balance(UpgradeableLoaderState::programdata_len(program_data.len()).unwrap());
+        let program_buffer_rent =
+            self.bench
+                .rent
+                .minimum_balance(UpgradeableLoaderState::size_of_programdata(
+                    program_data.len(),
+                ));
 
         let mut instructions = bpf_loader_upgradeable::create_buffer(
             &self.bench.payer.pubkey(),
@@ -1361,7 +1363,7 @@ impl GovernanceProgramTest {
         let program_account_rent = self
             .bench
             .rent
-            .minimum_balance(UpgradeableLoaderState::program_len().unwrap());
+            .minimum_balance(UpgradeableLoaderState::size_of_program());
 
         let deploy_ixs = bpf_loader_upgradeable::deploy_with_max_program_len(
             &self.bench.payer.pubkey(),
@@ -2368,10 +2370,12 @@ impl GovernanceProgramTest {
         let path_buf = find_file("solana_bpf_rust_upgraded.so").unwrap();
         let program_data = read_file(path_buf);
 
-        let program_buffer_rent = self
-            .bench
-            .rent
-            .minimum_balance(UpgradeableLoaderState::programdata_len(program_data.len()).unwrap());
+        let program_buffer_rent =
+            self.bench
+                .rent
+                .minimum_balance(UpgradeableLoaderState::size_of_programdata(
+                    program_data.len(),
+                ));
 
         let mut instructions = bpf_loader_upgradeable::create_buffer(
             &self.bench.payer.pubkey(),

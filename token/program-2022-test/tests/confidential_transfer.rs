@@ -1,4 +1,4 @@
-#![cfg(feature = "test-bpf")]
+#![cfg(feature = "test-sbf")]
 #![cfg(twoxtx)]
 
 mod program_test;

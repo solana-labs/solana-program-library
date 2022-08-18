@@ -16,7 +16,7 @@ on:
     - 'ci/*-version.sh'
 
 jobs:
-  cargo-test-bpf:
+  cargo-test-sbf:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -45,7 +45,7 @@ jobs:
         with:
           path: |
             ~/.cargo/bin/rustfilt
-          key: cargo-bpf-bins-${{ runner.os }}
+          key: cargo-sbf-bins-${{ runner.os }}
 
       - uses: actions/cache@v2
         with:
@@ -59,14 +59,14 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Build and test
-        run: ./ci/cargo-test-bpf.sh token-swap
+        run: ./ci/cargo-test-sbf.sh token-swap
 
       - name: Build production version
         run: |
-          cargo +"$RUST_STABLE" build-bpf \
+          cargo +"$RUST_STABLE" build-sbf \
             --manifest-path=token-swap/program/Cargo.toml \
             --features production \
-            --bpf-out-dir target/deploy-production
+            --sbf-out-dir target/deploy-production
         env:
           SWAP_PROGRAM_OWNER_FEE_ADDRESS: HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN
 
@@ -85,7 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 14.x
-    needs: cargo-test-bpf
+    needs: cargo-test-sbf
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}

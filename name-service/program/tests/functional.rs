@@ -1,4 +1,4 @@
-#![cfg(feature = "test-bpf")]
+#![cfg(feature = "test-sbf")]
 use std::str::FromStr;
 
 use solana_program::{instruction::Instruction, program_pack::Pack, pubkey::Pubkey};
