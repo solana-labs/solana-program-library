@@ -31,7 +31,7 @@ use crate::{
 use crate::state::realm_config::get_realm_config_data_for_realm;
 
 /// Realm Config instruction args
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfigArgs {
     /// Indicates whether council_mint should be used
     /// If yes then council_mint account must also be passed to the instruction
@@ -51,7 +51,7 @@ pub struct RealmConfigArgs {
 }
 
 /// Realm Config instruction args
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, Default)]
 pub struct GoverningTokenConfigArgs {
     /// Indicates whether an external addin program should be used to provide voters weights
     /// If yes then the voters weight program account must be passed to the instruction
@@ -66,7 +66,7 @@ pub struct GoverningTokenConfigArgs {
 }
 
 /// Realm Config instruction args with account parametres
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, Default)]
 pub struct GoverningTokenConfigAccountArgs {
     /// Specifies an external plugin program which should be used to provide voters weights
     /// for the given goventing token
@@ -81,7 +81,7 @@ pub struct GoverningTokenConfigAccountArgs {
 }
 
 /// SetRealmAuthority instruction action
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum SetRealmAuthorityAction {
     /// Sets realm authority without any checks
     /// Uncheck option allows to set the realm authority to non governance accounts
@@ -97,7 +97,7 @@ pub enum SetRealmAuthorityAction {
 }
 
 /// Realm Config defining Realm parameters.
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfig {
     /// Legacy field introdcued and used in V2 as use_community_voter_weight_addin: bool
     /// If the field is going to be reused in future version it must be taken under consideration
@@ -124,7 +124,7 @@ pub struct RealmConfig {
 
 /// Governance Realm Account
 /// Account PDA seeds" ['governance', name]
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmV2 {
     /// Governance account type
     pub account_type: GovernanceAccountType,
@@ -487,7 +487,7 @@ mod test {
     }
 
     /// Realm Config instruction args
-    #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+    #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
     pub struct RealmConfigArgsV1 {
         /// Indicates whether council_mint should be used
         /// If yes then council_mint account must also be passed to the instruction
@@ -501,7 +501,7 @@ mod test {
     }
 
     /// Instructions supported by the Governance program
-    #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+    #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
     pub enum GovernanceInstructionV1 {
         /// Creates Governance Realm account which aggregates governances for given Community Mint and optional Council Mint
         CreateRealm {

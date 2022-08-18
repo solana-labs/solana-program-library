@@ -25,7 +25,7 @@ use solana_program::{
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
 /// InstructionData wrapper. It can be removed once Borsh serialization for Instruction is supported in the SDK
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct InstructionData {
     /// Pubkey of the instruction processor that executes this instruction
     pub program_id: Pubkey,
@@ -36,7 +36,7 @@ pub struct InstructionData {
 }
 
 /// Account metadata used to define Instructions
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct AccountMetaData {
     /// An account's public key
     pub pubkey: Pubkey,
@@ -83,7 +83,7 @@ impl From<&InstructionData> for Instruction {
 }
 
 /// Account for an instruction to be executed for Proposal
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ProposalTransactionV2 {
     /// Governance Account type
     pub account_type: GovernanceAccountType,

@@ -32,7 +32,7 @@ use solana_program::{
 };
 
 /// Instructions supported by the Governance program
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 #[allow(clippy::large_enum_variant)]
 pub enum GovernanceInstruction {
     /// Creates Governance Realm account which aggregates governances for given Community Mint and optional Council Mint

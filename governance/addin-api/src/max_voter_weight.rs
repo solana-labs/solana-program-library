@@ -6,7 +6,7 @@ use spl_governance_tools::account::AccountMaxSize;
 
 /// MaxVoterWeightRecord account
 /// The account is used as an api interface to provide max voting power to the governance program from external addin contracts
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct MaxVoterWeightRecord {
     /// VoterWeightRecord discriminator sha256("account:MaxVoterWeightRecord")[..8]
     /// Note: The discriminator size must match the addin implementing program discriminator size

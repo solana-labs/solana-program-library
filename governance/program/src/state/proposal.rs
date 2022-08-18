@@ -40,7 +40,7 @@ use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use crate::state::realm_config::RealmConfigAccount;
 
 /// Proposal option vote result
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum OptionVoteResult {
     /// Vote on the option is not resolved yet
     None,
@@ -53,7 +53,7 @@ pub enum OptionVoteResult {
 }
 
 /// Proposal Option
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ProposalOption {
     /// Option label
     pub label: String,
@@ -75,7 +75,7 @@ pub struct ProposalOption {
 }
 
 /// Proposal vote type
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoteType {
     /// Single choice vote with mutually exclusive choices
     /// In the SingeChoice mode there can ever be a single winner
@@ -104,7 +104,7 @@ pub enum VoteType {
 }
 
 /// Governance Proposal
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ProposalV2 {
     /// Governance account type
     pub account_type: GovernanceAccountType,

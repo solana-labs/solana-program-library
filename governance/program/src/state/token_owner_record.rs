@@ -30,7 +30,7 @@ use crate::state::realm_config::RealmConfigAccount;
 
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct TokenOwnerRecordV2 {
     /// Governance account type
     pub account_type: GovernanceAccountType,

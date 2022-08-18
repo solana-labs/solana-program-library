@@ -20,7 +20,7 @@ use crate::state::realm::{RealmConfigArgs, RealmV2};
 /// The type of the governing token defines:
 /// 1) Who retains the authority over deposited tokens
 /// 2) Which token instructions Deposit, Withdraw and Revoke (burn) are allowed
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum GoverningTokenType {
     /// Liquid token is a token which is fully liquid and the token owner retains full authority over it
     /// Deposit - Yes
@@ -58,7 +58,7 @@ impl Default for GoverningTokenType {
 }
 
 /// GoverningTokenConfig specifies configuration for Realm governing token (Community or Council)
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, Default)]
 pub struct GoverningTokenConfig {
     /// Plugin providing voter weights for the governing token
     pub voter_weight_addin: Option<Pubkey>,
@@ -74,7 +74,7 @@ pub struct GoverningTokenConfig {
 }
 
 /// Reserved 110 bytes
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct Reserved110 {
     /// Reserved 64 bytes
     pub reserved64: [u8; 64],
@@ -96,7 +96,7 @@ impl Default for Reserved110 {
 
 /// RealmConfig account
 /// The account is an optional extension to RealmConfig stored on Realm account
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfigAccount {
     /// Governance account type
     pub account_type: GovernanceAccountType,
