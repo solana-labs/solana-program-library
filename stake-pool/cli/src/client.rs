@@ -5,7 +5,7 @@ use {
         client_error::ClientError,
         rpc_client::RpcClient,
         rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
-        rpc_filter::{Memcmp, RpcFilterType},
+        rpc_filter::{Memcmp, MemcmpEncodedBytes, MemcmpEncoding, RpcFilterType},
     },
     solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey, stake},
     spl_stake_pool::{
@@ -84,12 +84,13 @@ pub(crate) fn get_stake_pools(
     rpc_client
         .get_program_accounts_with_config(
             &spl_stake_pool::id(),
+            #[allow(deprecated)] // TODO figure out what encoding to use
             RpcProgramAccountsConfig {
-                // 0 is the account type
-                filters: Some(vec![RpcFilterType::Memcmp(Memcmp::new_raw_bytes(
-                    0,
-                    vec![1],
-                ))]),
+                filters: Some(vec![RpcFilterType::Memcmp(Memcmp {
+                    offset: 0, // 0 is the account type
+                    bytes: MemcmpEncodedBytes::Base58("2".to_string()),
+                    encoding: None,
+                })]),
                 account_config: RpcAccountInfoConfig {
                     encoding: Some(UiAccountEncoding::Base64),
                     ..RpcAccountInfoConfig::default()
@@ -127,10 +128,15 @@ pub(crate) fn get_all_stake(
 ) -> Result<HashSet<Pubkey>, ClientError> {
     let all_stake_accounts = rpc_client.get_program_accounts_with_config(
         &stake::program::id(),
+        #[allow(deprecated)] // TODO figure out what encoding to use
         RpcProgramAccountsConfig {
             filters: Some(vec![
                 // Filter by `Meta::authorized::staker`, which begins at byte offset 12
-                RpcFilterType::Memcmp(Memcmp::new_base58_encoded(12, authorized_staker.as_ref())),
+                RpcFilterType::Memcmp(Memcmp {
+                    offset: 12,
+                    bytes: MemcmpEncodedBytes::Base58(authorized_staker.to_string()),
+                    encoding: Some(MemcmpEncoding::Binary),
+                }),
             ]),
             account_config: RpcAccountInfoConfig {
                 encoding: Some(solana_account_decoder::UiAccountEncoding::Base64),
