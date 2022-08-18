@@ -51,7 +51,7 @@ pub struct RealmConfigArgs {
 }
 
 /// Realm Config instruction args
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema, Default)]
 pub struct GoverningTokenConfigArgs {
     /// Indicates whether an external addin program should be used to provide voters weights
     /// If yes then the voters weight program account must be passed to the instruction
@@ -65,19 +65,8 @@ pub struct GoverningTokenConfigArgs {
     pub token_type: GoverningTokenType,
 }
 
-#[allow(clippy::derivable_impls)]
-impl Default for GoverningTokenConfigArgs {
-    fn default() -> Self {
-        Self {
-            use_voter_weight_addin: false,
-            use_max_voter_weight_addin: false,
-            token_type: GoverningTokenType::default(),
-        }
-    }
-}
-
 /// Realm Config instruction args with account parametres
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema, Default)]
 pub struct GoverningTokenConfigAccountArgs {
     /// Specifies an external plugin program which should be used to provide voters weights
     /// for the given goventing token
@@ -89,17 +78,6 @@ pub struct GoverningTokenConfigAccountArgs {
 
     /// Governing token type defines how the token is used for governance power
     pub token_type: GoverningTokenType,
-}
-
-#[allow(clippy::derivable_impls)]
-impl Default for GoverningTokenConfigAccountArgs {
-    fn default() -> Self {
-        Self {
-            voter_weight_addin: None,
-            max_voter_weight_addin: None,
-            token_type: GoverningTokenType::default(),
-        }
-    }
 }
 
 /// SetRealmAuthority instruction action

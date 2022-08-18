@@ -57,7 +57,7 @@ impl Default for GoverningTokenType {
 }
 
 /// GoverningTokenConfig specifies configuration for Realm governing token (Community or Council)
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema, Default)]
 pub struct GoverningTokenConfig {
     /// Plugin providing voter weights for the governing token
     pub voter_weight_addin: Option<Pubkey>,
@@ -70,18 +70,6 @@ pub struct GoverningTokenConfig {
 
     /// Reserved space for future versions
     pub reserved: [u8; 8],
-}
-
-#[allow(clippy::derivable_impls)]
-impl Default for GoverningTokenConfig {
-    fn default() -> Self {
-        Self {
-            voter_weight_addin: None,
-            max_voter_weight_addin: None,
-            token_type: GoverningTokenType::default(),
-            reserved: [0; 8],
-        }
-    }
 }
 
 /// Reserved 110 bytes
