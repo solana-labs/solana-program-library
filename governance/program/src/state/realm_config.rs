@@ -23,15 +23,16 @@ use crate::state::realm::{RealmConfigArgs, RealmV2};
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum GoverningTokenType {
     /// Liquid token is a token which is fully liquid and the token owner retains full authority over it
-    /// Deposit - yes
-    /// Withdraw - yes  
-    /// Revoke - no, Realm authority cannot revoke liquid tokens
+    /// Deposit - Yes
+    /// Withdraw - Yes  
+    /// Revoke - No, Realm authority cannot revoke liquid tokens
     Liquid,
 
     /// Membership token is a token controlled by Realm authority
-    /// Deposit - yes, membership tokens can be deposited to gain governance power
-    /// Withdraw - no, after membership tokens are deposited they are no longer transferable and can't be withdrawn
-    /// Revoke - yes, Realm authority can Revoke (burn) membership tokens
+    /// Deposit - Yes, membership tokens can be deposited to gain governance power
+    ///           The membership tokens are conventionally minted into the holding account to keep them out of members possesion  
+    /// Withdraw - No, after membership tokens are deposited they are no longer transferable and can't be withdrawn
+    /// Revoke - Yes, Realm authority can Revoke (burn) membership tokens
     Membership,
 
     /// Dormant token is a token which is only a placeholder and its deposits are not accepted and not used for governance power within the Realm
@@ -43,9 +44,9 @@ pub enum GoverningTokenType {
     /// Note: When an external voter weight plugin which takes deposits of the token is used then the type should be set to Dormant
     /// to make the intention explicit
     ///
-    /// Deposit - no, dormant tokens can't be deposited into the Realm
-    /// Withdraw - yes, tokens can still be withdrawn from Realm to support scenario where the config is changed while some tokens are still deposited
-    /// Revoke - no, Realm authority cannot revoke dormant tokens
+    /// Deposit - No, dormant tokens can't be deposited into the Realm
+    /// Withdraw - Yes, tokens can still be withdrawn from Realm to support scenario where the config is changed while some tokens are still deposited
+    /// Revoke - No, Realm authority cannot revoke dormant tokens
     Dormant,
 }
 
