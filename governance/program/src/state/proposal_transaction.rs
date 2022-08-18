@@ -13,6 +13,7 @@ use crate::{
     PROGRAM_AUTHORITY_SEED,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use shank::ShankAccount;
 use solana_program::{
     account_info::AccountInfo,
     borsh::try_from_slice_unchecked,
@@ -83,7 +84,9 @@ impl From<&InstructionData> for Instruction {
 }
 
 /// Account for an instruction to be executed for Proposal
-#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, ShankAccount,
+)]
 pub struct ProposalTransactionV2 {
     /// Governance Account type
     pub account_type: GovernanceAccountType,

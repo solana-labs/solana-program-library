@@ -1,6 +1,7 @@
 //! ProgramMetadata Account
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use shank::ShankAccount;
 use solana_program::{
     account_info::AccountInfo, clock::Slot, program_error::ProgramError,
     program_pack::IsInitialized, pubkey::Pubkey,
@@ -10,7 +11,9 @@ use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 use crate::state::enums::GovernanceAccountType;
 
 /// Program metadata account. It stores information about the particular SPL-Governance program instance
-#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, ShankAccount,
+)]
 pub struct ProgramMetadata {
     /// Governance account type
     pub account_type: GovernanceAccountType,

@@ -36,6 +36,7 @@ use crate::{
     PROGRAM_AUTHORITY_SEED,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use shank::ShankAccount;
 
 use crate::state::realm_config::RealmConfigAccount;
 
@@ -104,7 +105,9 @@ pub enum VoteType {
 }
 
 /// Governance Proposal
-#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, ShankAccount,
+)]
 pub struct ProposalV2 {
     /// Governance account type
     pub account_type: GovernanceAccountType,

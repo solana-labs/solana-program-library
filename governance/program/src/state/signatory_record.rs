@@ -3,6 +3,7 @@
 use borsh::maybestd::io::Write;
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use shank::ShankAccount;
 use solana_program::borsh::try_from_slice_unchecked;
 use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
@@ -15,7 +16,9 @@ use crate::{error::GovernanceError, PROGRAM_AUTHORITY_SEED};
 use crate::state::{enums::GovernanceAccountType, legacy::SignatoryRecordV1};
 
 /// Account PDA seeds: ['governance', proposal, signatory]
-#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, ShankAccount,
+)]
 pub struct SignatoryRecordV2 {
     /// Governance account type
     pub account_type: GovernanceAccountType,

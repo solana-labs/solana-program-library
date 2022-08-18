@@ -10,6 +10,7 @@ use crate::state::{
     realm::RealmConfig,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use shank::ShankAccount;
 use solana_program::{
     clock::{Slot, UnixTimestamp},
     program_pack::IsInitialized,
@@ -18,7 +19,9 @@ use solana_program::{
 
 /// Governance Realm Account
 /// Account PDA seeds" ['governance', name]
-#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, ShankAccount,
+)]
 pub struct RealmV1 {
     /// Governance account type
     pub account_type: GovernanceAccountType,
@@ -53,7 +56,9 @@ impl IsInitialized for RealmV1 {
 
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
-#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, ShankAccount,
+)]
 pub struct TokenOwnerRecordV1 {
     /// Governance account type
     pub account_type: GovernanceAccountType,
@@ -101,7 +106,9 @@ impl IsInitialized for TokenOwnerRecordV1 {
 }
 
 /// Governance Account
-#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, ShankAccount,
+)]
 pub struct GovernanceV1 {
     /// Account type. It can be Uninitialized, Governance, ProgramGovernance, TokenGovernance or MintGovernance
     pub account_type: GovernanceAccountType,
@@ -171,7 +178,9 @@ impl IsInitialized for GovernanceV1 {
 }
 
 /// Governance Proposal
-#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, ShankAccount,
+)]
 pub struct ProposalV1 {
     /// Governance account type
     pub account_type: GovernanceAccountType,
@@ -260,7 +269,9 @@ impl IsInitialized for ProposalV1 {
 }
 
 /// Account PDA seeds: ['governance', proposal, signatory]
-#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, ShankAccount,
+)]
 pub struct SignatoryRecordV1 {
     /// Governance account type
     pub account_type: GovernanceAccountType,
@@ -282,7 +293,9 @@ impl IsInitialized for SignatoryRecordV1 {
 }
 
 /// Proposal instruction V1
-#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, ShankAccount,
+)]
 pub struct ProposalInstructionV1 {
     /// Governance Account type
     pub account_type: GovernanceAccountType,
@@ -325,7 +338,9 @@ pub enum VoteWeightV1 {
 }
 
 /// Proposal VoteRecord
-#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, ShankAccount,
+)]
 pub struct VoteRecordV1 {
     /// Governance account type
     pub account_type: GovernanceAccountType,

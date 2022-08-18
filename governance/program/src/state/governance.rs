@@ -11,6 +11,7 @@ use crate::{
     },
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use shank::ShankAccount;
 use solana_program::{
     account_info::AccountInfo, borsh::try_from_slice_unchecked, program_error::ProgramError,
     program_pack::IsInitialized, pubkey::Pubkey,
@@ -57,7 +58,9 @@ pub struct GovernanceConfig {
 }
 
 /// Governance Account
-#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, ShankAccount,
+)]
 pub struct GovernanceV2 {
     /// Account type. It can be Uninitialized, Governance, ProgramGovernance, TokenGovernance or MintGovernance
     pub account_type: GovernanceAccountType,

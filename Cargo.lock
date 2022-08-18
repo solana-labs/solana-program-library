@@ -2614,7 +2614,7 @@ dependencies = [
  "mpl-token-vault",
  "num-derive",
  "num-traits",
- "shank",
+ "shank 0.0.5",
  "solana-program",
  "spl-associated-token-account 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-token 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -4237,7 +4237,16 @@ version = "0.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a9986b297e6f42bcbe41f95ca2a881e7a75bd091549e95ecf495fa8178c0c1b"
 dependencies = [
- "shank_macro",
+ "shank_macro 0.0.5",
+]
+
+[[package]]
+name = "shank"
+version = "0.0.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b54c657cbe18aaff6d5042a4d48f643fdd2a826dfc7161de98ee28e5bd7e85e0"
+dependencies = [
+ "shank_macro 0.0.9",
 ]
 
 [[package]]
@@ -4248,7 +4257,19 @@ checksum = "5dd835154aa943dfc958f5a208f2e82b7d2a2c52b024229168c211ecc2d2bfd1"
 dependencies = [
  "proc-macro2 1.0.43",
  "quote 1.0.21",
- "shank_macro_impl",
+ "shank_macro_impl 0.0.5",
+ "syn 1.0.99",
+]
+
+[[package]]
+name = "shank_macro"
+version = "0.0.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b43a02ae007b64b177f4dbb21d322f276458e4860f9fefbd8b9b791c21644ab"
+dependencies = [
+ "proc-macro2 1.0.43",
+ "quote 1.0.21",
+ "shank_macro_impl 0.0.9",
  "syn 1.0.99",
 ]
 
@@ -4257,6 +4278,19 @@ name = "shank_macro_impl"
 version = "0.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d99ad9d5137704e86e2e4a54a121b9c443c37b60ce6638a7723ab700dbd2232a"
+dependencies = [
+ "anyhow",
+ "proc-macro2 1.0.43",
+ "quote 1.0.21",
+ "serde",
+ "syn 1.0.99",
+]
+
+[[package]]
+name = "shank_macro_impl"
+version = "0.0.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d36cdf68202db080a13ef0300c369fc691695265e3d0ab0fa08d4734b0cfb66"
 dependencies = [
  "anyhow",
  "proc-macro2 1.0.43",
@@ -5848,6 +5882,7 @@ dependencies = [
  "proptest",
  "serde",
  "serde_derive",
+ "shank 0.0.9",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
@@ -5959,7 +5994,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "borsh",
- "shank",
+ "shank 0.0.5",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
