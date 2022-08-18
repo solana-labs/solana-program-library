@@ -45,7 +45,7 @@ jobs:
         with:
           path: |
             ~/.cargo/bin/rustfilt
-          key: cargo-bpf-bins-${{ runner.os }}
+          key: cargo-sbf-bins-${{ runner.os }}
 
       - uses: actions/cache@v2
         with:

@@ -45,7 +45,7 @@ jobs:
         with:
           path: |
             ~/.cargo/bin/rustfilt
-          key: cargo-bpf-bins-${{ runner.os }}
+          key: cargo-sbf-bins-${{ runner.os }}
 
       - uses: actions/cache@v2
         with:
@@ -66,7 +66,7 @@ jobs:
           cargo +"$RUST_STABLE" build-sbf \
             --manifest-path=token-swap/program/Cargo.toml \
             --features production \
-            --bpf-out-dir target/deploy-production
+            --sbf-out-dir target/deploy-production
         env:
           SWAP_PROGRAM_OWNER_FEE_ADDRESS: HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN
 
