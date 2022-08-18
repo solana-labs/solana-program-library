@@ -16,7 +16,7 @@ on:
     - '.github/workflows/pull-request-token.yml'
 
 jobs:
-  cargo-test-bpf:
+  cargo-test-sbf:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -59,10 +59,10 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Build and test token
-        run: ./ci/cargo-test-bpf.sh token
+        run: ./ci/cargo-test-sbf.sh token
 
       - name: Build and test ATA
-        run: ./ci/cargo-test-bpf.sh associated-token-account
+        run: ./ci/cargo-test-sbf.sh associated-token-account
 
       - name: Build and test token-2022 with "serde" activated
         run: |
@@ -79,7 +79,7 @@ jobs:
           path: "target/deploy/*.so"
           if-no-files-found: error
 
-  cargo-test-bpf-twoxtx:
+  cargo-test-sbf-twoxtx:
     if: ${{ false }}  # disable for now
     runs-on: ubuntu-latest
     steps:
@@ -115,13 +115,13 @@ jobs:
       - name: Build and test token-2022 twoxtx (TEMPORARY)
         run: |
           ./token/twoxtx-setup.sh
-          ./ci/cargo-test-bpf.sh token/program-2022-test
+          ./ci/cargo-test-sbf.sh token/program-2022-test
 
   js-test:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 14.x
-    needs: cargo-test-bpf
+    needs: cargo-test-sbf
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}

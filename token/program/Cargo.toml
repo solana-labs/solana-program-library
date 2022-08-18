@@ -10,7 +10,7 @@ exclude = ["js/**"]
 
 [features]
 no-entrypoint = []
-test-bpf = []
+test-sbf = []
 
 [dependencies]
 arrayref = "0.3.6"

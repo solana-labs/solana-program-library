@@ -6,7 +6,7 @@ license = "WTFPL"
 
 [features]
 no-entrypoint = []
-test-bpf = []
+test-sbf = []
 
 [dependencies]
 solana-program = "1.11.6"

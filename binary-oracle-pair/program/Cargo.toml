@@ -8,7 +8,7 @@ license = "Apache-2.0"
 edition = "2018"
 
 [features]
-test-bpf = []
+test-sbf = []
 
 [dependencies]
 num-derive = "0.3"

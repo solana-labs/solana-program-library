@@ -130,7 +130,7 @@ impl GovernanceProgramTest {
         // We only ensure the addin mock program is built but it doesn't detect changes
         // If the addin is changed then it needs to be manually rebuilt
         // Note: The crate of the mock is built when spl-governance is built but we also need spl_governance_addin_mock.so
-        //       And we can't use build.rs script because cargo build-bpf hangs when executed from the script
+        //       And we can't use build.rs script because cargo build-sbf hangs when executed from the script
         ensure_addin_mock_is_built();
 
         Self::start_impl(use_voter_weight_addin, use_max_voter_weight_addin).await

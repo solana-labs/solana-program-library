@@ -16,7 +16,7 @@ on:
     - 'ci/*-version.sh'
 
 jobs:
-  cargo-test-bpf:
+  cargo-test-sbf:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -59,11 +59,11 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Build and test
-        run: ./ci/cargo-test-bpf.sh token-swap
+        run: ./ci/cargo-test-sbf.sh token-swap
 
       - name: Build production version
         run: |
-          cargo +"$RUST_STABLE" build-bpf \
+          cargo +"$RUST_STABLE" build-sbf \
             --manifest-path=token-swap/program/Cargo.toml \
             --features production \
             --bpf-out-dir target/deploy-production
@@ -85,7 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 14.x
-    needs: cargo-test-bpf
+    needs: cargo-test-sbf
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}

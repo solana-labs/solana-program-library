@@ -31,11 +31,11 @@ TypeDocs: https://solana-labs.github.io/solana-program-library/token/js/
 
 ```bash
 # To build all on-chain programs
-$ cargo build-bpf
+$ cargo build-sbf
 
 # To build a specific on-chain program
 $ cd <program_name>/program
-$ cargo build-bpf
+$ cargo build-sbf
 ```
 
 ### Build clients
@@ -54,14 +54,14 @@ $ cargo build
 Unit tests contained within all projects can be run with:
 ```bash
 $ cargo test      # <-- runs host-based tests
-$ cargo test-bpf  # <-- runs BPF program tests
+$ cargo test-sbf  # <-- runs BPF program tests
 ```
 
 To run a specific program's tests, such as SPL Token:
 ```bash
 $ cd token/program
 $ cargo test      # <-- runs host-based tests
-$ cargo test-bpf  # <-- runs BPF program tests
+$ cargo test-sbf  # <-- runs BPF program tests
 ```
 
 Integration testing may be performed via the per-project .js bindings.  See the
@@ -72,7 +72,7 @@ Solutions to a few issues you might run into are mentioned here.
 
 1. `Failed to open: ../../deploy/spl_<program-name>.so`
     
-    Update your Rust and Cargo to the latest versions and re-run `cargo build-bpf` in the relevant `<program-name>` directory,
+    Update your Rust and Cargo to the latest versions and re-run `cargo build-sbf` in the relevant `<program-name>` directory,
     or run it at the repository root to rebuild all on-chain programs.
 
 2. [Error while loading shared libraries. (libssl.so.1.1)](https://github.com/project-serum/anchor/issues/1831)
@@ -118,7 +118,7 @@ master. Once a program is tested and deemed ready for release:
 
   * Increment the version number in the program's Cargo.toml
   * Generate a new program ID and replace in `<program>/program-id.md` and `<program>/src/lib.rs`
-  * Run `cargo build-bpf <program>` to update relevant C bindings. (Note the
+  * Run `cargo build-sbf <program>` to update relevant C bindings. (Note the
     location of the generated `spl_<program>.so` for attaching to the Github
     release.)
   * Open a PR with these version changes and merge after passing CI.

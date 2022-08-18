@@ -8,7 +8,7 @@ license = "Apache-2.0"
 edition = "2018"
 
 [features]
-test-bpf = []
+test-sbf = []
 
 [dependencies]
 arrayref = "0.3.6"

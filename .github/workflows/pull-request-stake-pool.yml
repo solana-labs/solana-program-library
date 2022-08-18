@@ -14,7 +14,7 @@ on:
     - 'ci/*-version.sh'
 
 jobs:
-  cargo-test-bpf:
+  cargo-test-sbf:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -57,7 +57,7 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Build and test
-        run: ./ci/cargo-test-bpf.sh stake-pool
+        run: ./ci/cargo-test-sbf.sh stake-pool
 
       - name: Upload programs
         uses: actions/upload-artifact@v2
@@ -70,7 +70,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 16.x
-    needs: cargo-test-bpf
+    needs: cargo-test-sbf
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
@@ -92,7 +92,7 @@ jobs:
 
   py-test:
     runs-on: ubuntu-latest
-    needs: cargo-test-bpf
+    needs: cargo-test-sbf
     steps:
       - uses: actions/checkout@v2
 

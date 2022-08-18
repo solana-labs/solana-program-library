@@ -12,7 +12,7 @@ on:
     - 'ci/*-version.sh'
 
 jobs:
-  cargo-test-bpf:
+  cargo-test-sbf:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -55,4 +55,4 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Build and test
-        run: ./ci/cargo-test-bpf.sh libraries
+        run: ./ci/cargo-test-sbf.sh libraries
