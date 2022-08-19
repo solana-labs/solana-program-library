@@ -19,8 +19,5 @@ pub fn process_instruction(
         TokenUpgradeInstruction::UpgradeTokens => {
             unimplemented!()
         }
-        TokenUpgradeInstruction::SetDestinationMintAuthority => {
-            unimplemented!()
-        }
     }
 }
