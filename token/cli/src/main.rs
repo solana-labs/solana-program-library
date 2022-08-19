@@ -42,12 +42,12 @@ use spl_associated_token_account::{
     get_associated_token_address_with_program_id, instruction::create_associated_token_account,
 };
 use spl_token_2022::{
-    extension::{StateWithExtensionsOwned, mint_close_authority::MintCloseAuthority},
+    extension::{mint_close_authority::MintCloseAuthority, StateWithExtensionsOwned},
     instruction::*,
     state::{Account, Mint, Multisig},
 };
 use spl_token_client::{
-    client::{RpcClientResponse, ProgramRpcClientSendTransaction},
+    client::{ProgramRpcClientSendTransaction, RpcClientResponse},
     token::{ExtensionInitializationParams, Token},
 };
 use std::{
@@ -328,7 +328,10 @@ pub fn signers_of(
     }
 }
 
-fn token_client_from_config(config: &Config<'_>, token_pubkey: &Pubkey) -> Token<ProgramRpcClientSendTransaction> {
+fn token_client_from_config(
+    config: &Config<'_>,
+    token_pubkey: &Pubkey,
+) -> Token<ProgramRpcClientSendTransaction> {
     let token = Token::new(
         config.program_client.clone(),
         &config.program_id,
@@ -614,12 +617,16 @@ async fn command_authorize(
                 AuthorityType::FreezeAccount => Ok(mint.base.freeze_authority),
                 AuthorityType::CloseMint => {
                     if let Ok(mint_close_authority) = mint.get_extension::<MintCloseAuthority>() {
-                        Ok(COption::<Pubkey>::from(mint_close_authority.close_authority))
+                        Ok(COption::<Pubkey>::from(
+                            mint_close_authority.close_authority,
+                        ))
+                    } else {
+                        Err(format!(
+                            "Mint `{}` does not support close authority",
+                            account
+                        ))
                     }
-                    else {
-                        Err(format!("Mint `{}` does not support close authority", account))
-                    }
-                },
+                }
                 AuthorityType::TransferFeeConfig => unimplemented!(),
                 AuthorityType::WithheldWithdraw => unimplemented!(),
                 AuthorityType::InterestRate => unimplemented!(),
@@ -681,7 +688,11 @@ async fn command_authorize(
     };
 
     if program_id != config.program_id {
-        return Err(format!("Token program `{}` provided, but token belongs to `{}`", config.program_id, program_id).into());
+        return Err(format!(
+            "Token program `{}` provided, but token belongs to `{}`",
+            config.program_id, program_id
+        )
+        .into());
     }
 
     println_display(
@@ -692,7 +703,11 @@ async fn command_authorize(
             auth_str,
             previous_authority
                 .map(|pubkey| pubkey.to_string())
-                .unwrap_or_else(|| if config.sign_only { "unknown".to_string() } else { "disabled".to_string() }),
+                .unwrap_or_else(|| if config.sign_only {
+                    "unknown".to_string()
+                } else {
+                    "disabled".to_string()
+                }),
             auth_str,
             new_authority
                 .map(|pubkey| pubkey.to_string())
@@ -700,7 +715,15 @@ async fn command_authorize(
         ),
     );
 
-    let res = token.set_authority(&account, &authority, new_authority.as_ref(), authority_type, &bulk_signers).await?;
+    let res = token
+        .set_authority(
+            &account,
+            &authority,
+            new_authority.as_ref(),
+            authority_type,
+            &bulk_signers,
+        )
+        .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
