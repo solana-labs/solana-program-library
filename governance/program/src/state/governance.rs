@@ -21,7 +21,7 @@ use spl_governance_tools::{
 };
 
 /// Governance config
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GovernanceConfig {
     /// The type of the vote threshold used for community vote
     /// Note: In the current version only YesVotePercentage and Disabled thresholds are supported
@@ -56,7 +56,7 @@ pub struct GovernanceConfig {
 }
 
 /// Governance Account
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GovernanceV2 {
     /// Account type. It can be Uninitialized, Governance, ProgramGovernance, TokenGovernance or MintGovernance
     pub account_type: GovernanceAccountType,

@@ -11,7 +11,7 @@ use spl_governance::instruction::with_realm_config_accounts;
 use crate::state::MessageBody;
 
 /// Instructions supported by the GovernanceChat program
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 #[allow(clippy::large_enum_variant)]
 pub enum GovernanceChatInstruction {
     /// Posts a message with a comment for a Proposal

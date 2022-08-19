@@ -3,7 +3,7 @@
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
 /// Defines all Governance accounts types
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum GovernanceAccountType {
     /// Default uninitialized account state
     Uninitialized,
@@ -96,7 +96,7 @@ impl Default for GovernanceAccountType {
 }
 
 /// What state a Proposal is in
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum ProposalState {
     /// Draft - Proposal enters Draft state when it's created
     Draft,
@@ -141,7 +141,7 @@ impl Default for ProposalState {
 /// The type of the vote threshold used to resolve a vote on a Proposal
 ///
 /// Note: In the current version only YesVotePercentage and Disabled thresholds are supported
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoteThreshold {
     /// Voting threshold of Yes votes in % required to tip the vote (Approval Quorum)
     /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
@@ -173,7 +173,7 @@ pub enum VoteThreshold {
 /// The type of vote tipping to use on a Proposal.
 ///
 /// Vote tipping means that under some conditions voting will complete early.
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoteTipping {
     /// Tip when there is no way for another option to win and the vote threshold
     /// has been reached. This ignores voters withdrawing their votes.
@@ -192,7 +192,7 @@ pub enum VoteTipping {
 }
 
 /// The status of instruction execution
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum TransactionExecutionStatus {
     /// Transaction was not executed yet
     None,
@@ -205,7 +205,7 @@ pub enum TransactionExecutionStatus {
 }
 
 /// Transaction execution flags defining how instructions are executed for a Proposal
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum InstructionExecutionFlags {
     /// No execution flags are specified
     /// Instructions can be executed individually, in any order, as soon as they hold_up time expires
@@ -224,7 +224,7 @@ pub enum InstructionExecutionFlags {
 
 /// The source of max vote weight used for voting
 /// Values below 100% mint supply can be used when the governing token is fully minted but not distributed yet
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum MintMaxVoteWeightSource {
     /// Fraction (10^10 precision) of the governing mint supply is used as max vote weight
     /// The default is 100% (10^10) to use all available mint supply for voting

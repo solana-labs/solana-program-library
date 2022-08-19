@@ -5,7 +5,7 @@ use solana_program::{clock::Slot, program_pack::IsInitialized, pubkey::Pubkey};
 use spl_governance_tools::account::AccountMaxSize;
 
 /// The governance action VoterWeight is evaluated for
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoterWeightAction {
     /// Cast vote for a proposal. Target: Proposal
     CastVote,
@@ -26,7 +26,7 @@ pub enum VoterWeightAction {
 
 /// VoterWeightRecord account
 /// The account is used as an api interface to provide voting power to the governance program from external addin contracts
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct VoterWeightRecord {
     /// VoterWeightRecord discriminator sha256("account:VoterWeightRecord")[..8]
     /// Note: The discriminator size must match the addin implementing program discriminator size

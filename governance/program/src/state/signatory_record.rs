@@ -15,7 +15,7 @@ use crate::{error::GovernanceError, PROGRAM_AUTHORITY_SEED};
 use crate::state::{enums::GovernanceAccountType, legacy::SignatoryRecordV1};
 
 /// Account PDA seeds: ['governance', proposal, signatory]
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct SignatoryRecordV2 {
     /// Governance account type
     pub account_type: GovernanceAccountType,

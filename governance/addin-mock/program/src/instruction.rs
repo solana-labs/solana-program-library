@@ -11,7 +11,7 @@ use spl_governance_addin_api::voter_weight::VoterWeightAction;
 
 /// Instructions supported by the VoterWeight addin program
 /// This program is a mock program used by spl-governance for testing and not real addin
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 #[allow(clippy::large_enum_variant)]
 pub enum VoterWeightAddinInstruction {
     /// Sets up VoterWeightRecord owned by the program

@@ -21,14 +21,17 @@ use crate::{
     state::{
         enums::{GovernanceAccountType, MintMaxVoteWeightSource},
         legacy::RealmV1,
+        realm_config::GoverningTokenType,
         token_owner_record::get_token_owner_record_data_for_realm,
         vote_record::VoteKind,
     },
     PROGRAM_AUTHORITY_SEED,
 };
 
+use crate::state::realm_config::get_realm_config_data_for_realm;
+
 /// Realm Config instruction args
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfigArgs {
     /// Indicates whether council_mint should be used
     /// If yes then council_mint account must also be passed to the instruction
@@ -40,17 +43,45 @@ pub struct RealmConfigArgs {
     /// The source used for community mint max vote weight source
     pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
 
-    /// Indicates whether an external addin program should be used to provide community voters weights
-    /// If yes then the voters weight program account must be passed to the instruction
-    pub use_community_voter_weight_addin: bool,
+    /// Community token config args
+    pub community_token_config_args: GoverningTokenConfigArgs,
 
-    /// Indicates whether an external addin program should be used to provide max voters weight for the community mint
+    /// Council token config args
+    pub council_token_config_args: GoverningTokenConfigArgs,
+}
+
+/// Realm Config instruction args
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, Default)]
+pub struct GoverningTokenConfigArgs {
+    /// Indicates whether an external addin program should be used to provide voters weights
+    /// If yes then the voters weight program account must be passed to the instruction
+    pub use_voter_weight_addin: bool,
+
+    /// Indicates whether an external addin program should be used to provide max voters weight for the token
     /// If yes then the max voter weight program account must be passed to the instruction
-    pub use_max_community_voter_weight_addin: bool,
+    pub use_max_voter_weight_addin: bool,
+
+    /// Governing token type defines how the token is used for governance
+    pub token_type: GoverningTokenType,
+}
+
+/// Realm Config instruction args with account parametres
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, Default)]
+pub struct GoverningTokenConfigAccountArgs {
+    /// Specifies an external plugin program which should be used to provide voters weights
+    /// for the given goventing token
+    pub voter_weight_addin: Option<Pubkey>,
+
+    /// Specifies an external an external plugin program should be used to provide max voters weight
+    /// for the given goventing token
+    pub max_voter_weight_addin: Option<Pubkey>,
+
+    /// Governing token type defines how the token is used for governance power
+    pub token_type: GoverningTokenType,
 }
 
 /// SetRealmAuthority instruction action
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum SetRealmAuthorityAction {
     /// Sets realm authority without any checks
     /// Uncheck option allows to set the realm authority to non governance accounts
@@ -66,13 +97,17 @@ pub enum SetRealmAuthorityAction {
 }
 
 /// Realm Config defining Realm parameters.
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfig {
-    /// Indicates whether an external addin program should be used to provide voters weights for the community mint
-    pub use_community_voter_weight_addin: bool,
+    /// Legacy field introdcued and used in V2 as use_community_voter_weight_addin: bool
+    /// If the field is going to be reused in future version it must be taken under consideration
+    /// that for some Realms it might be already set to 1
+    pub legacy1: u8,
 
-    /// Indicates whether an external addin program should be used to provide max voter weight for the community mint
-    pub use_max_community_voter_weight_addin: bool,
+    /// Legacy field introdcued and used in V2 as use_max_community_voter_weight_addin: bool
+    /// If the field is going to be reused in future version it must be taken under consideration
+    /// that for some Realms it might be already set to 1
+    pub legacy2: u8,
 
     /// Reserved space for future versions
     pub reserved: [u8; 6],
@@ -89,7 +124,7 @@ pub struct RealmConfig {
 
 /// Governance Realm Account
 /// Account PDA seeds" ['governance', name]
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmV2 {
     /// Governance account type
     pub account_type: GovernanceAccountType,
@@ -251,13 +286,13 @@ impl RealmV2 {
         token_owner_record_data.assert_token_owner_or_delegate_is_signer(create_authority_info)?;
 
         let realm_config_info = next_account_info(account_info_iter)?;
+        let realm_config_data =
+            get_realm_config_data_for_realm(program_id, realm_config_info, realm)?;
 
         let voter_weight = token_owner_record_data.resolve_voter_weight(
-            program_id,
-            realm_config_info,
             account_info_iter,
-            realm,
             self,
+            &realm_config_data,
             VoterWeightAction::CreateGovernance,
             realm,
         )?;
@@ -399,8 +434,10 @@ pub fn get_governing_token_holding_address(
 }
 
 /// Asserts given realm config args are correct
-pub fn assert_valid_realm_config_args(config_args: &RealmConfigArgs) -> Result<(), ProgramError> {
-    match config_args.community_mint_max_vote_weight_source {
+pub fn assert_valid_realm_config_args(
+    realm_config_args: &RealmConfigArgs,
+) -> Result<(), ProgramError> {
+    match realm_config_args.community_mint_max_vote_weight_source {
         MintMaxVoteWeightSource::SupplyFraction(fraction) => {
             if !(1..=MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE).contains(&fraction) {
                 return Err(GovernanceError::InvalidMaxVoteWeightSupplyFraction.into());
@@ -433,8 +470,8 @@ mod test {
             name: "test-realm".to_string(),
             config: RealmConfig {
                 council_mint: Some(Pubkey::new_unique()),
-                use_community_voter_weight_addin: false,
-                use_max_community_voter_weight_addin: false,
+                legacy1: 0,
+                legacy2: 0,
                 reserved: [0; 6],
                 community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Absolute(100),
                 min_community_weight_to_create_governance: 10,
@@ -450,7 +487,7 @@ mod test {
     }
 
     /// Realm Config instruction args
-    #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+    #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
     pub struct RealmConfigArgsV1 {
         /// Indicates whether council_mint should be used
         /// If yes then council_mint account must also be passed to the instruction
@@ -464,7 +501,7 @@ mod test {
     }
 
     /// Instructions supported by the Governance program
-    #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+    #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
     pub enum GovernanceInstructionV1 {
         /// Creates Governance Realm account which aggregates governances for given Community Mint and optional Council Mint
         CreateRealm {
@@ -495,8 +532,8 @@ mod test {
                 min_community_weight_to_create_governance: 100,
                 community_mint_max_vote_weight_source:
                     MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
-                use_community_voter_weight_addin: false,
-                use_max_community_voter_weight_addin: false,
+                community_token_config_args: GoverningTokenConfigArgs::default(),
+                council_token_config_args: GoverningTokenConfigArgs::default(),
             },
         };
 

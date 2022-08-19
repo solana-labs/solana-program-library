@@ -11,7 +11,7 @@ use solana_program::{
 use crate::state::{
     governance::get_governance_data_for_realm,
     proposal::get_proposal_data_for_governance_and_governing_mint,
-    realm::get_realm_data_for_governing_token_mint,
+    realm::get_realm_data_for_governing_token_mint, realm_config::get_realm_config_data_for_realm,
     token_owner_record::get_token_owner_record_data_for_proposal_owner, vote_record::VoteKind,
 };
 
@@ -43,15 +43,16 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         governing_token_mint_info.key,
     )?;
 
-    let realm_config_info = next_account_info(account_info_iter)?; // 5
+    let realm_config_info = next_account_info(account_info_iter)?; //5
+    let realm_config_data =
+        get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
 
     let max_voter_weight = proposal_data.resolve_max_voter_weight(
-        program_id,
-        realm_config_info,
-        governing_token_mint_info,
         account_info_iter, // *6
         realm_info.key,
         &realm_data,
+        &realm_config_data,
+        governing_token_mint_info,
         &VoteKind::Electorate,
     )?;
 

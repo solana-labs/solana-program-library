@@ -10,7 +10,7 @@ use crate::{
     error::GovernanceError,
     state::{
         enums::GovernanceAccountType, governance::GovernanceConfig, legacy::TokenOwnerRecordV1,
-        realm::RealmV2, realm_config::get_realm_config_data_for_realm,
+        realm::RealmV2,
     },
     PROGRAM_AUTHORITY_SEED,
 };
@@ -26,9 +26,11 @@ use solana_program::{
 use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
+use crate::state::realm_config::RealmConfigAccount;
+
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct TokenOwnerRecordV2 {
     /// Governance account type
     pub account_type: GovernanceAccountType,
@@ -189,25 +191,22 @@ impl TokenOwnerRecordV2 {
     #[allow(clippy::too_many_arguments)]
     pub fn resolve_voter_weight(
         &self,
-        program_id: &Pubkey,
-        realm_config_info: &AccountInfo,
         account_info_iter: &mut Iter<AccountInfo>,
-        realm: &Pubkey,
         realm_data: &RealmV2,
+        realm_config_data: &RealmConfigAccount,
         weight_action: VoterWeightAction,
         weight_action_target: &Pubkey,
     ) -> Result<u64, ProgramError> {
-        // if the realm uses addin for community voter weight then use the externally provided weight
-        if realm_data.config.use_community_voter_weight_addin
-            && realm_data.community_mint == self.governing_token_mint
+        // if the Realm is configured to use voter weight plugin for our governing_token_mint then use the externally provided voter_weight
+        // instead of governing_token_deposit_amount
+        if let Some(voter_weight_addin) = realm_config_data
+            .get_token_config(realm_data, &self.governing_token_mint)?
+            .voter_weight_addin
         {
             let voter_weight_record_info = next_account_info(account_info_iter)?;
 
-            let realm_config_data =
-                get_realm_config_data_for_realm(program_id, realm_config_info, realm)?;
-
             let voter_weight_record_data = get_voter_weight_record_data_for_token_owner_record(
-                &realm_config_data.community_voter_weight_addin.unwrap(),
+                &voter_weight_addin,
                 voter_weight_record_info,
                 self,
             )?;
