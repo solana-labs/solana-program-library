@@ -103,7 +103,6 @@ export async function getStakeAccount(
   stakeAccount: PublicKey,
 ): Promise<StakeAccount> {
   const result = (await connection.getParsedAccountInfo(stakeAccount)).value;
-  console.log(result);
   if (!result || !('parsed' in result.data)) {
     throw new Error('Invalid stake account');
   }
@@ -352,11 +351,13 @@ export async function withdrawStake(
       tokenOwner,
     );
   }
+
   const tokenAccount = await getTokenAccount(
     connection,
     poolTokenAccount,
     stakePool.account.data.poolMint,
   );
+
   if (!tokenAccount) {
     throw new Error('Invalid token account');
   }
@@ -393,15 +394,17 @@ export async function withdrawStake(
     });
   } else if (stakeReceiverAccount && stakeReceiverAccount?.type == 'delegated') {
     const voteAccount = stakeReceiverAccount.info.stake?.delegation.voter;
-    if (!voteAccount) throw new Error('Invalid stake reciever delegation');
-
-    const validatorListAcc = await connection.getAccountInfo(stakePool.account.data.validatorList);
-    const validatorList = ValidatorListLayout.decode(validatorListAcc?.data) as ValidatorList;
-    const isValidVoter = validatorList.validators.find(
-      (val) => val.voteAccountAddress.toBase58() === voteAccount.toBase58(),
+    if (!voteAccount) throw new Error(`Invalid stake reciever ${stakeReceiver} delegation`);
+    const validatorListAccount = await connection.getAccountInfo(
+      stakePool.account.data.validatorList,
+    );
+    const validatorList = ValidatorListLayout.decode(validatorListAccount?.data) as ValidatorList;
+    const isValidVoter = validatorList.validators.find((val) =>
+      val.voteAccountAddress.equals(voteAccount),
     );
     if (voteAccountAddress && voteAccountAddress !== voteAccount) {
-      throw new Error('Vote account provided is Invalid !');
+      throw new Error(`Provided withdrawal vote account ${voteAccountAddress} does not match delegation on stake receiver account ${voteAccount}, 
+      remove this flag or provide a different stake account delegated to ${voteAccountAddress}`);
     }
     if (isValidVoter) {
       const stakeAccountAddress = await findStakeProgramAddress(
@@ -409,6 +412,7 @@ export async function withdrawStake(
         voteAccount,
         stakePoolAddress,
       );
+
       const stakeAccount = await connection.getAccountInfo(stakeAccountAddress);
       if (!stakeAccount) {
         throw new Error('Invalid Stake Account');
@@ -431,7 +435,9 @@ export async function withdrawStake(
         poolAmount,
       });
     } else {
-      throw new Error('Vote account does not exists in the stake pool.');
+      throw new Error(
+        `Provided stake account is delegated to a vote account ${voteAccount} which does not exist in the stake pool`,
+      );
     }
   } else if (voteAccountAddress) {
     const stakeAccountAddress = await findStakeProgramAddress(
@@ -545,7 +551,6 @@ export async function withdrawStake(
     i++;
   }
   if (stakeReceiver && stakeReceiverAccount && stakeReceiverAccount.type === 'delegated') {
-    // check if stake reciever is a stake account and delegated to same validator
     signers.forEach((newStakeKeypair) => {
       instructions.concat(
         StakeProgram.merge({

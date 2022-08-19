@@ -23,8 +23,9 @@ import {
   mockStakeAccount,
   mockTokenAccount,
   mockValidatorList,
-  mockVotersStakeAccount,
+  mockValidatorsStakeAccount,
   stakePoolMock,
+  CONSTANTS,
 } from './mocks';
 
 describe('StakePoolProgram', () => {
@@ -152,7 +153,7 @@ describe('StakePoolProgram', () => {
         if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
-        if (pubKey.toBase58() == '9q2rZU5RujvyD9dmYKhzJAZfG4aGBbvQ8rWY52jCNBai') {
+        if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
           return null;
         }
         return null;
@@ -168,7 +169,7 @@ describe('StakePoolProgram', () => {
         if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
-        if (pubKey.toBase58() == 'GQkqTamwqjaNDfsbNm7r3aXPJ4oTSqKC3d5t2PF9Smqd') {
+        if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
           return mockTokenAccount(0);
         }
         return null;
@@ -188,7 +189,7 @@ describe('StakePoolProgram', () => {
         if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
-        if (pubKey.toBase58() == 'GQkqTamwqjaNDfsbNm7r3aXPJ4oTSqKC3d5t2PF9Smqd') {
+        if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
           return mockTokenAccount(LAMPORTS_PER_SOL);
         }
         return null;
@@ -222,7 +223,7 @@ describe('StakePoolProgram', () => {
         if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
-        if (pubKey.toBase58() == 'GQkqTamwqjaNDfsbNm7r3aXPJ4oTSqKC3d5t2PF9Smqd') {
+        if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
           return mockTokenAccount(0);
         }
         return null;
@@ -241,10 +242,10 @@ describe('StakePoolProgram', () => {
         if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
-        if (pubKey.toBase58() == 'GQkqTamwqjaNDfsbNm7r3aXPJ4oTSqKC3d5t2PF9Smqd') {
+        if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
           return mockTokenAccount(LAMPORTS_PER_SOL * 2);
         }
-        if (pubKey.toBase58() == stakePoolMock.validatorList.toBase58()) {
+        if (pubKey.equals(stakePoolMock.validatorList)) {
           return mockValidatorList();
         }
         return null;
@@ -264,24 +265,23 @@ describe('StakePoolProgram', () => {
         if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
-        if (pubKey.toBase58() == '1111111111111111111111111111111Z') {
+        if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
           return mockTokenAccount(LAMPORTS_PER_SOL * 2);
         }
-        if (pubKey.toBase58() == stakePoolMock.validatorList.toBase58()) {
+        if (pubKey.equals(stakePoolMock.validatorList)) {
           return mockValidatorList();
         }
-        if (pubKey.toBase58() == new PublicKey(32).toBase58()) return mockVotersStakeAccount();
+        if (pubKey.equals(CONSTANTS.validatorStakeAccountAddress))
+          return mockValidatorsStakeAccount();
         return null;
       });
       connection.getParsedAccountInfo = jest.fn(async (pubKey: PublicKey) => {
-        if (pubKey.toBase58() == stakeReceiver.toBase58()) {
+        if (pubKey.equals(stakeReceiver)) {
           return mockStakeAccount();
         }
         return null;
       });
-      PublicKey.findProgramAddress = jest.fn(async (): Promise<[PublicKey, number]> => {
-        return [new PublicKey(32), 32];
-      });
+
       const res = await withdrawStake(
         connection,
         stakePoolAddress,

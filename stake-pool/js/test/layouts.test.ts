@@ -1,6 +1,13 @@
-import { StakePoolLayout, ValidatorListLayout, ValidatorList } from '../src/layouts';
+import { create } from 'superstruct';
+import {
+  StakePoolLayout,
+  ValidatorListLayout,
+  ValidatorList,
+  ParsedInfo,
+  StakeAccount,
+} from '../src/layouts';
 import { deepStrictEqualBN } from './equal';
-import { stakePoolMock, validatorListMock } from './mocks';
+import { stakePoolMock, validatorListMock, mockStakeAccount, stakeAccountData } from './mocks';
 
 describe('layouts', () => {
   describe('StakePoolAccount', () => {
@@ -30,6 +37,15 @@ describe('layouts', () => {
       ValidatorListLayout.encode(validatorListMock, encodedData);
       const decodedData = ValidatorListLayout.decode(encodedData);
       deepStrictEqualBN(decodedData, validatorListMock);
+    });
+  });
+
+  describe('StakeAccount', () => {
+    it('should succesfully return a typed response for json parsed stake account', () => {
+      const result = mockStakeAccount().value;
+      const info = create(result.data.parsed, ParsedInfo);
+      const parsed = create(info, StakeAccount);
+      expect(parsed).toEqual(stakeAccountData.parsed);
     });
   });
 });
