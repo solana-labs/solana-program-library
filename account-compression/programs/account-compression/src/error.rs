@@ -30,6 +30,10 @@ pub enum AccountCompressionError {
     /// When using Canopy, the stored byte length should a multiple of the node's byte length (32 bytes)
     #[msg("Expected a different byte length for the merkle roll canopy")]
     CanopyLengthMismatch,
+
+    /// Incorrect authority account provided
+    #[msg("Provided authority does not match expected tree authority")]
+    IncorrectAuthority,
 }
 
 impl From<&ConcurrentMerkleTreeError> for AccountCompressionError {
