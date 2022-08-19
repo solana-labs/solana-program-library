@@ -1,6 +1,24 @@
 use anchor_lang::prelude::*;
 use borsh::{BorshDeserialize, BorshSerialize};
 
+use crate::error::AccountCompressionError;
+
+#[derive(Debug, Copy, Clone, PartialEq, BorshDeserialize, BorshSerialize)]
+#[repr(u32)]
+pub enum CompressionAccountType {
+    /// Uninitialized
+    Uninitialized,
+
+    /// SPL ConcurrentMerkleTree data structure, may include a Canopy
+    ConcurrentMerkleTree,
+}
+
+impl std::fmt::Display for CompressionAccountType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", &self)
+    }
+}
+
 /// Initialization parameters for an SPL ConcurrentMerkleTree.
 ///
 /// Only the following permutations are valid:
@@ -16,6 +34,9 @@ use borsh::{BorshDeserialize, BorshSerialize};
 #[derive(BorshDeserialize, BorshSerialize)]
 #[repr(C)]
 pub struct ConcurrentMerkleTreeHeader {
+    /// Account type
+    pub account_type: CompressionAccountType,
+
     /// Buffer of changelogs stored on-chain.
     /// Must be a power of 2; see above table for valid combinations.
     pub max_buffer_size: u32,
@@ -45,9 +66,29 @@ impl ConcurrentMerkleTreeHeader {
         // Check header is empty
         assert_eq!(self.max_buffer_size, 0);
         assert_eq!(self.max_depth, 0);
+        self.account_type = CompressionAccountType::ConcurrentMerkleTree;
         self.max_buffer_size = max_buffer_size;
         self.max_depth = max_depth;
         self.authority = *authority;
         self.creation_slot = creation_slot;
+    }
+
+    pub fn assert_valid(&self) -> Result<()> {
+        require_eq!(
+            self.account_type,
+            CompressionAccountType::ConcurrentMerkleTree,
+            AccountCompressionError::IncorrectAccountType,
+        );
+        Ok(())
+    }
+
+    pub fn assert_valid_authority(&self, expected_authority: &Pubkey) -> Result<()> {
+        self.assert_valid()?;
+        require_eq!(
+            self.authority,
+            *expected_authority,
+            AccountCompressionError::IncorrectAuthority,
+        );
+        Ok(())
     }
 }

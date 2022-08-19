@@ -232,7 +232,7 @@ pub mod spl_compression {
         let (mut header_bytes, rest) =
             merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
 
-        let mut header = ConcurrentMerkleTreeHeader::try_from_slice(&header_bytes)?;
+        let mut header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
         header.initialize(
             max_depth,
             max_buffer_size,
@@ -334,11 +334,7 @@ pub mod spl_compression {
             merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
 
         let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
-        require_eq!(
-            header.authority,
-            ctx.accounts.authority.key(),
-            AccountCompressionError::IncorrectAuthority
-        );
+        header.assert_valid_authority(&ctx.accounts.authority.key())?;
 
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
@@ -381,12 +377,8 @@ pub mod spl_compression {
         let (mut header_bytes, _) =
             merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
 
-        let mut header = Box::new(ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?);
-        require_eq!(
-            header.authority,
-            ctx.accounts.authority.key(),
-            AccountCompressionError::IncorrectAuthority
-        );
+        let mut header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
+        header.assert_valid_authority(&ctx.accounts.authority.key())?;
 
         header.authority = new_authority;
         msg!("Authority transferred to: {:?}", header.authority);
@@ -411,7 +403,10 @@ pub mod spl_compression {
         let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
         let (header_bytes, rest) =
             merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
+
         let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
+        header.assert_valid()?;
+
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
 
@@ -443,11 +438,7 @@ pub mod spl_compression {
             merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
 
         let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
-        require_eq!(
-            header.authority,
-            ctx.accounts.authority.key(),
-            AccountCompressionError::IncorrectAuthority
-        );
+        header.assert_valid_authority(&ctx.accounts.authority.key())?;
 
         let id = ctx.accounts.merkle_tree.key();
         let merkle_tree_size = merkle_tree_get_size(&header)?;
@@ -476,12 +467,9 @@ pub mod spl_compression {
         let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
         let (header_bytes, rest) =
             merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
+
         let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
-        require_eq!(
-            header.authority,
-            ctx.accounts.authority.key(),
-            AccountCompressionError::IncorrectAuthority
-        );
+        header.assert_valid_authority(&ctx.accounts.authority.key())?;
 
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);

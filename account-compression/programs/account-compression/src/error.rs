@@ -38,6 +38,10 @@ pub enum AccountCompressionError {
     /// Incorrect account owner
     #[msg("Account is owned by a different program, expected it to be owned by this program")]
     IncorrectAccountOwner,
+
+    /// Incorrect account type
+    #[msg("Account provided has incorrect account type")]
+    IncorrectAccountType,
 }
 
 impl From<&ConcurrentMerkleTreeError> for AccountCompressionError {
