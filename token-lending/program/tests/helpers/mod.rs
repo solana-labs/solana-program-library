@@ -531,8 +531,8 @@ impl TestLendingMarket {
             Some(&payer.pubkey()),
         );
 
-        let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
-        transaction.sign(&[&payer, &lending_market_keypair], recent_blockhash);
+        let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
+        transaction.sign(&[payer, &lending_market_keypair], recent_blockhash);
         assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
 
         TestLendingMarket {
@@ -561,7 +561,7 @@ impl TestLendingMarket {
             Some(&payer.pubkey()),
         );
 
-        let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+        let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
         transaction.sign(&[payer], recent_blockhash);
 
         assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
@@ -602,7 +602,7 @@ impl TestLendingMarket {
             Some(&payer.pubkey()),
         );
 
-        let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+        let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
         transaction.sign(
             &[payer, user_accounts_owner, &user_transfer_authority],
             recent_blockhash,
@@ -661,7 +661,7 @@ impl TestLendingMarket {
             Some(&payer.pubkey()),
         );
 
-        let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+        let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
         transaction.sign(
             &[payer, user_accounts_owner, &user_transfer_authority],
             recent_blockhash,
@@ -713,7 +713,7 @@ impl TestLendingMarket {
             ],
             Some(&payer.pubkey()),
         );
-        let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+        let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
         transaction.sign(
             &[payer, user_accounts_owner, &user_transfer_authority],
             recent_blockhash,
@@ -764,9 +764,9 @@ impl TestLendingMarket {
             Some(&payer.pubkey()),
         );
 
-        let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+        let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
         transaction.sign(
-            &[&payer, &user_accounts_owner, &user_transfer_authority],
+            &[payer, user_accounts_owner, &user_transfer_authority],
             recent_blockhash,
         );
         assert!(banks_client.process_transaction(transaction).await.is_ok());
@@ -801,7 +801,7 @@ impl TestLendingMarket {
             Some(&payer.pubkey()),
         );
 
-        let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+        let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
         transaction.sign(&vec![payer, user_accounts_owner], recent_blockhash);
 
         assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
@@ -956,7 +956,7 @@ impl TestReserve {
             ],
             Some(&payer.pubkey()),
         );
-        let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+        let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
         transaction.sign(
             &vec![
                 payer,
@@ -966,7 +966,7 @@ impl TestReserve {
                 &collateral_mint_keypair,
                 &collateral_supply_keypair,
                 &liquidity_supply_keypair,
-                &liquidity_fee_receiver_keypair,
+                liquidity_fee_receiver_keypair,
                 &liquidity_host_keypair,
                 &user_collateral_token_keypair,
                 &user_transfer_authority_keypair,
@@ -977,11 +977,11 @@ impl TestReserve {
             .process_transaction(transaction)
             .await
             .map(|_| Self {
-                name: name,
+                name,
                 pubkey: reserve_pubkey,
                 lending_market_pubkey: lending_market.pubkey,
-                config: config,
-                liquidity_mint_pubkey: liquidity_mint_pubkey,
+                config,
+                liquidity_mint_pubkey,
                 liquidity_mint_decimals: liquidity_mint.decimals,
                 liquidity_supply_pubkey: liquidity_supply_keypair.pubkey(),
                 liquidity_host_pubkey: liquidity_host_keypair.pubkey(),
@@ -989,7 +989,7 @@ impl TestReserve {
                 liquidity_switchboard_oracle_pubkey: oracle.switchboard_feed_pubkey,
                 collateral_mint_pubkey: collateral_mint_keypair.pubkey(),
                 collateral_supply_pubkey: collateral_supply_keypair.pubkey(),
-                user_liquidity_pubkey: user_liquidity_pubkey,
+                user_liquidity_pubkey,
                 user_collateral_pubkey: user_collateral_token_keypair.pubkey(),
                 market_price: oracle.price,
             })
@@ -1088,7 +1088,7 @@ impl TestObligation {
             Some(&payer.pubkey()),
         );
 
-        let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+        let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
         transaction.sign(
             &vec![payer, &obligation.keypair, user_accounts_owner],
             recent_blockhash,
@@ -1276,12 +1276,12 @@ pub fn add_oracle(
             pyth_product_pubkey,
             u32::MAX as u64,
             oracle_program_id.pubkey(),
-            &format!("{}.bin", pyth_product_pubkey.to_string()),
+            &format!("{}.bin", pyth_product_pubkey),
         );
     }
     if pyth_price_pubkey.to_string() != NULL_PUBKEY {
         // Add Pyth price account after setting the price
-        let filename = &format!("{}.bin", pyth_price_pubkey.to_string());
+        let filename = &format!("{}.bin", pyth_price_pubkey);
         let mut pyth_price_data = read_file(find_file(filename).unwrap_or_else(|| {
             panic!("Unable to locate {}", filename);
         }));
@@ -1314,7 +1314,7 @@ pub fn add_oracle(
     }
 
     // Add Switchboard price feed account after setting the price
-    let filename2 = &format!("{}.bin", switchboard_feed_pubkey.to_string());
+    let filename2 = &format!("{}.bin", switchboard_feed_pubkey);
     // mut and set data here later
     let mut switchboard_feed_data = read_file(find_file(filename2).unwrap_or_else(|| {
         panic!("Unable tod locate {}", filename2);
@@ -1368,12 +1368,12 @@ pub async fn create_and_mint_to_token_account(
 ) -> Pubkey {
     if let Some(mint_authority) = mint_authority {
         let account_pubkey =
-            create_token_account(banks_client, mint_pubkey, &payer, Some(authority), None).await;
+            create_token_account(banks_client, mint_pubkey, payer, Some(authority), None).await;
 
         mint_to(
             banks_client,
             mint_pubkey,
-            &payer,
+            payer,
             account_pubkey,
             mint_authority,
             amount,
@@ -1385,7 +1385,7 @@ pub async fn create_and_mint_to_token_account(
         create_token_account(
             banks_client,
             mint_pubkey,
-            &payer,
+            payer,
             Some(authority),
             Some(amount),
         )
@@ -1426,8 +1426,8 @@ pub async fn create_token_account(
         Some(&payer.pubkey()),
     );
 
-    let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
-    transaction.sign(&[&payer, &token_keypair], recent_blockhash);
+    let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
+    transaction.sign(&[payer, &token_keypair], recent_blockhash);
 
     assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
 
@@ -1455,7 +1455,7 @@ pub async fn mint_to(
         Some(&payer.pubkey()),
     );
 
-    let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+    let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
     transaction.sign(&[payer, authority], recent_blockhash);
 
     assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));

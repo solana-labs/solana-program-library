@@ -6,7 +6,6 @@ use helpers::*;
 use solana_program_test::*;
 use solana_sdk::{
     account::Account,
-    pubkey::Pubkey,
     signature::{Keypair, Signer},
     system_instruction::create_account,
     transaction::Transaction,
@@ -32,7 +31,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(163_000);
+    test.set_compute_max_units(163_000);
 
     const FEE_AMOUNT: u64 = 100;
     const HOST_FEE_AMOUNT: u64 = 20;
@@ -291,7 +290,7 @@ async fn test_success2() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(158_000);
+    test.set_compute_max_units(158_000);
 
     const FEE_AMOUNT: u64 = 100;
     const HOST_FEE_AMOUNT: u64 = 20;

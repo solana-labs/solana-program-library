@@ -4,7 +4,7 @@ mod helpers;
 
 use helpers::*;
 use solana_program_test::*;
-use solana_sdk::{pubkey::Pubkey, signature::Keypair};
+use solana_sdk::signature::Keypair;
 use solend_program::processor::process_instruction;
 
 #[tokio::test]
@@ -16,7 +16,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(70_000);
+    test.set_compute_max_units(70_000);
 
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
@@ -62,5 +62,5 @@ async fn test_success() {
         .await;
 
     let usdc_reserve = usdc_test_reserve.get_state(&mut banks_client).await;
-    assert_eq!(usdc_reserve.last_update.stale, true);
+    assert!(usdc_reserve.last_update.stale);
 }

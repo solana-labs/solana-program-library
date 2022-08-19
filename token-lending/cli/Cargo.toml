@@ -10,12 +10,12 @@ version = "0.1.0"
 
 [dependencies]
 clap = "=2.34.0"
-solana-clap-utils = "=1.8.14"
-solana-cli-config = "=1.8.14"
-solana-client = "=1.8.14"
-solana-logger = "=1.8.14"
-solana-sdk = "=1.8.14"
-solana-program = "=1.8.14"
+solana-clap-utils = "=1.9.18"
+solana-cli-config = "=1.9.18"
+solana-client = "=1.9.18"
+solana-logger = "=1.9.18"
+solana-sdk = "=1.9.18"
+solana-program = "=1.9.18"
 solend-program = { path="../program", features = [ "no-entrypoint" ] }
 spl-token = { version = "3.2.0", features=["no-entrypoint"] }
 

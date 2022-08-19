@@ -6,7 +6,6 @@ use helpers::*;
 use solana_program_test::*;
 use solana_sdk::{
     instruction::InstructionError,
-    pubkey::Pubkey,
     signature::{Keypair, Signer},
     transaction::{Transaction, TransactionError},
 };
@@ -27,7 +26,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(70_000);
+    test.set_compute_max_units(70_000);
 
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
@@ -92,7 +91,7 @@ async fn test_init_reserve_null_oracles() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(70_000);
+    test.set_compute_max_units(70_000);
 
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
@@ -153,7 +152,7 @@ async fn test_null_switchboard() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(75_000);
+    test.set_compute_max_units(75_000);
 
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
@@ -465,7 +464,7 @@ async fn test_update_invalid_oracle_config() {
             liquidity_amount: 42,
             liquidity_mint_decimals: mint.decimals,
             liquidity_mint_pubkey: mint.pubkey,
-            config: config,
+            config,
             ..AddReserveArgs::default()
         },
     );

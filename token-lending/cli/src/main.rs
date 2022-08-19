@@ -10,7 +10,9 @@ use {
         keypair::signer_from_path,
     },
     solana_client::rpc_client::RpcClient,
-    solana_program::{native_token::lamports_to_sol, program_pack::Pack, pubkey::Pubkey},
+    solana_program::{
+        message::Message, native_token::lamports_to_sol, program_pack::Pack, pubkey::Pubkey,
+    },
     solana_sdk::{
         commitment_config::CommitmentConfig,
         signature::{Keypair, Signer},
@@ -824,7 +826,9 @@ fn command_create_lending_market(
         .rpc_client
         .get_minimum_balance_for_rent_exemption(LendingMarket::LEN)?;
 
-    let mut transaction = Transaction::new_with_payer(
+    let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
+
+    let message = Message::new_with_blockhash(
         &[
             // Account for the lending market
             create_account(
@@ -845,15 +849,17 @@ fn command_create_lending_market(
             ),
         ],
         Some(&config.fee_payer.pubkey()),
+        &recent_blockhash,
     );
 
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_fee_payer_balance(
         config,
-        lending_market_balance + fee_calculator.calculate_fee(transaction.message()),
+        lending_market_balance + config.rpc_client.get_fee_for_message(&message)?,
     )?;
-    transaction.sign(
+
+    let transaction = Transaction::new(
         &vec![config.fee_payer.as_ref(), &lending_market_keypair],
+        message,
         recent_blockhash,
     );
     send_transaction(config, transaction)?;
@@ -939,8 +945,9 @@ fn command_add_reserve(
         + user_collateral_balance
         + liquidity_supply_balance
         + liquidity_fee_receiver_balance;
+    let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
 
-    let mut transaction_1 = Transaction::new_with_payer(
+    let message_1 = Message::new_with_blockhash(
         &[
             create_account(
                 &config.fee_payer.pubkey(),
@@ -972,9 +979,10 @@ fn command_add_reserve(
             ),
         ],
         Some(&config.fee_payer.pubkey()),
+        &recent_blockhash,
     );
 
-    let mut transaction_2 = Transaction::new_with_payer(
+    let message_2 = Message::new_with_blockhash(
         &[
             create_account(
                 &config.fee_payer.pubkey(),
@@ -992,9 +1000,10 @@ fn command_add_reserve(
             ),
         ],
         Some(&config.fee_payer.pubkey()),
+        &recent_blockhash,
     );
 
-    let mut transaction_3 = Transaction::new_with_payer(
+    let message_3 = Message::new_with_blockhash(
         &[
             approve(
                 &spl_token::id(),
@@ -1032,17 +1041,18 @@ fn command_add_reserve(
             .unwrap(),
         ],
         Some(&config.fee_payer.pubkey()),
+        &recent_blockhash,
     );
 
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_fee_payer_balance(
         config,
         total_balance
-            + fee_calculator.calculate_fee(transaction_1.message())
-            + fee_calculator.calculate_fee(transaction_2.message())
-            + fee_calculator.calculate_fee(transaction_3.message()),
+            + config.rpc_client.get_fee_for_message(&message_1)?
+            + config.rpc_client.get_fee_for_message(&message_2)?
+            + config.rpc_client.get_fee_for_message(&message_3)?,
     )?;
-    transaction_1.sign(
+
+    let transaction_1 = Transaction::new(
         &vec![
             config.fee_payer.as_ref(),
             &reserve_keypair,
@@ -1050,27 +1060,30 @@ fn command_add_reserve(
             &collateral_supply_keypair,
             &user_collateral_keypair,
         ],
+        message_1,
         recent_blockhash,
     );
-    transaction_2.sign(
+    send_transaction(config, transaction_1)?;
+    let transaction_2 = Transaction::new(
         &vec![
             config.fee_payer.as_ref(),
             &liquidity_supply_keypair,
             &liquidity_fee_receiver_keypair,
         ],
+        message_2,
         recent_blockhash,
     );
-    transaction_3.sign(
+    send_transaction(config, transaction_2)?;
+    let transaction_3 = Transaction::new(
         &vec![
             config.fee_payer.as_ref(),
             &source_liquidity_owner_keypair,
             &lending_market_owner_keypair,
             &user_transfer_authority_keypair,
         ],
+        message_3,
         recent_blockhash,
     );
-    send_transaction(config, transaction_1)?;
-    send_transaction(config, transaction_2)?;
     send_transaction(config, transaction_3)?;
     Ok(())
 }
@@ -1252,7 +1265,9 @@ fn command_update_reserve(
         reserve.liquidity.switchboard_oracle_pubkey = switchboard_feed_pubkey.unwrap();
     }
 
-    let mut transaction = Transaction::new_with_payer(
+    let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
+
+    let message = Message::new_with_blockhash(
         &[update_reserve_config(
             config.lending_program_id,
             reserve.config,
@@ -1264,15 +1279,15 @@ fn command_update_reserve(
             reserve.liquidity.switchboard_oracle_pubkey,
         )],
         Some(&config.fee_payer.pubkey()),
+        &recent_blockhash,
     );
 
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(transaction.message()))?;
-
-    transaction.sign(
+    let transaction = Transaction::new(
         &vec![config.fee_payer.as_ref(), &lending_market_owner_keypair],
+        message,
         recent_blockhash,
     );
+
     send_transaction(config, transaction)?;
     Ok(())
 }

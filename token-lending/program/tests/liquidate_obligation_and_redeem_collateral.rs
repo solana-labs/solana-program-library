@@ -5,7 +5,6 @@ mod helpers;
 use helpers::*;
 use solana_program_test::*;
 use solana_sdk::{
-    pubkey::Pubkey,
     signature::{Keypair, Signer},
     transaction::Transaction,
 };
@@ -25,7 +24,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(101_000);
+    test.set_compute_max_units(101_000);
 
     // 100 SOL collateral
     const SOL_DEPOSIT_AMOUNT_LAMPORTS: u64 = 100 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO;
@@ -208,7 +207,7 @@ async fn test_success_insufficent_liquidity() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(101_000);
+    test.set_compute_max_units(101_000);
 
     // 100 SOL collateral
     const SOL_DEPOSIT_AMOUNT_LAMPORTS: u64 = 100 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO;
@@ -223,7 +222,7 @@ async fn test_success_insufficent_liquidity() {
 
     const SOL_RESERVE_COLLATERAL_LAMPORTS: u64 = 2 * SOL_DEPOSIT_AMOUNT_LAMPORTS;
     const USDC_RESERVE_LIQUIDITY_FRACTIONAL: u64 = 2 * USDC_BORROW_AMOUNT_FRACTIONAL;
-    const AVAILABLE_SOL_LIQUIDITY: u64 = 1 * LAMPORTS_TO_SOL / 2;
+    const AVAILABLE_SOL_LIQUIDITY: u64 = LAMPORTS_TO_SOL / 2;
 
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
