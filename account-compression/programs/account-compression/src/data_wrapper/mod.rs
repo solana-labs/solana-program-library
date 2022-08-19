@@ -4,7 +4,7 @@
 //! where the log data is serialized into the instruction data.
 //!
 //! This works because CPI instruction data is never truncated. Logging information is
-//! vital to the functioning of compression. When compression logs are truncated, indexers can fallback to 
+//! vital to the functioning of compression. When compression logs are truncated, indexers can fallback to
 //! deserializing the CPI instruction data.
 
 use anchor_lang::{prelude::*, solana_program::program::invoke};
@@ -20,11 +20,11 @@ impl anchor_lang::Id for Wrapper {
 
 pub fn wrap_event<'info>(
     data: Vec<u8>,
-    candy_wrapper_program: &Program<'info, Wrapper>,
+    log_wrapper_program: &Program<'info, Wrapper>,
 ) -> Result<()> {
     invoke(
         &wrapper::wrap_instruction(data),
-        &[candy_wrapper_program.to_account_info()],
+        &[log_wrapper_program.to_account_info()],
     )?;
     Ok(())
 }

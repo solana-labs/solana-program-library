@@ -203,7 +203,7 @@ fn fill_in_proof_from_canopy(
     Ok(())
 }
 
-/// This macro applies functions on a merkle roll and emits leaf information
+/// This macro applies functions on a ConcurrentMerkleT:ee and emits leaf information
 /// needed to sync the merkle tree state with off-chain indexers.
 macro_rules! merkle_tree_depth_size_apply_fn {
     ($max_depth:literal, $max_size:literal, $id:ident, $bytes:ident, $func:ident, $($arg:tt)*) => {
@@ -220,7 +220,7 @@ macro_rules! merkle_tree_depth_size_apply_fn {
                 }
             }
             Err(err) => {
-                msg!("Error zero copying merkle roll: {}", err);
+                msg!("Error zero copying concurrent merkle tree: {}", err);
                 err!(AccountCompressionError::ZeroCopyError)
             }
         }
@@ -262,7 +262,7 @@ fn merkle_tree_get_size(header: &ConcurrentMerkleTreeHeader) -> Result<usize> {
     }
 }
 
-/// This applies a given function on a merkle roll by
+/// This applies a given function on a ConcurrentMerkleTree by
 /// allowing the compiler to infer the size of the tree based
 /// upon the header information stored on-chain
 macro_rules! merkle_tree_apply_fn {
@@ -291,7 +291,7 @@ macro_rules! merkle_tree_apply_fn {
             (30, 1024) => merkle_tree_depth_size_apply_fn!(30, 1024, $id, $bytes, $func, $($arg)*),
             (30, 2048) => merkle_tree_depth_size_apply_fn!(30, 2048, $id, $bytes, $func, $($arg)*),
             _ => {
-                msg!("Failed to apply {} on merkle roll with max depth {} and max buffer size {}", stringify!($func), $header.max_depth, $header.max_buffer_size);
+                msg!("Failed to apply {} on concurrent merkle tree with max depth {} and max buffer size {}", stringify!($func), $header.max_depth, $header.max_buffer_size);
                 err!(AccountCompressionError::ConcurrentMerkleTreeConstantsError)
             }
         }
@@ -519,10 +519,11 @@ pub mod spl_compression {
     }
 
     /// This instruction allows the tree's `authority` to append a new leaf to the tree
-    /// without having to supply a valid proof.
+    /// without having to supply a proof.
     ///
-    /// This is accomplished by using the rightmost_proof of the merkle roll to construct a
-    /// valid proof, and then updating the rightmost_proof for the next leaf if possible.
+    /// Learn more about SPL
+    /// ConcurrentMerkleTree
+    /// [here](https://github.com/solana-labs/solana-program-library/tree/master/libraries/concurrent-merkle-tree)
     pub fn append(ctx: Context<Modify>, leaf: [u8; 32]) -> Result<()> {
         require_eq!(
             *ctx.accounts.merkle_tree.owner,
