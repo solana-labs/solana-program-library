@@ -27,10 +27,6 @@
     "ts-node": "^10.9.1",
     "typescript": "^4.7.4"
   },
-  "scripts": {
-    "update-deps": "cd deps/metaplex-program-library; git fetch; git checkout 7e2810a; cd ../solana-program-library; git fetch; cd ../..",
-    "build": "yarn update-deps && cargo build-bpf --manifest-path deps/metaplex-program-library/token-metadata/program/Cargo.toml && cargo build-bpf --manifest-path deps/solana-program-library/token/program/Cargo.toml && cargo build-bpf --manifest-path deps/solana-program-library/token/program-2022/Cargo.toml && cargo build-bpf --manifest-path deps/solana-program-library/associated-token-account/program/Cargo.toml",
-    "setup": "yarn build && anchor build && chmod +x configure-anchor.sh && ./configure-anchor.sh",
     "test": "anchor test"
   }
 }
