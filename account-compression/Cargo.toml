@@ -1,5 +1,5 @@
 [workspace]
 members = [
-    "programs/spl-compression",
+    "programs/account-compression",
     "programs/wrapper"
 ]
