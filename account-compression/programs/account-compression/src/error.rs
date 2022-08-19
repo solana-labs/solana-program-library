@@ -34,6 +34,10 @@ pub enum AccountCompressionError {
     /// Incorrect authority account provided
     #[msg("Provided authority does not match expected tree authority")]
     IncorrectAuthority,
+
+    /// Incorrect account owner
+    #[msg("Account is owned by a different program, expected it to be owned by this program")]
+    IncorrectAccountOwner,
 }
 
 impl From<&ConcurrentMerkleTreeError> for AccountCompressionError {

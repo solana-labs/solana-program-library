@@ -62,6 +62,9 @@ pub struct Initialize<'info> {
 }
 
 /// Context for inserting, appending, or replacing a leaf in the tree
+///
+/// Modification instructions also require the proof to the leaf to be provided
+/// as base58-encoded nodes as "remaining accounts"
 #[derive(Accounts)]
 pub struct Modify<'info> {
     #[account(mut)]
@@ -224,9 +227,6 @@ macro_rules! merkle_tree_depth_size_apply_fn {
     }
 }
 
-/// This applies a given function on a merkle roll by
-/// allowing the compiler to infer the size of the tree based
-/// upon the header information stored on-chain
 fn merkle_tree_get_size(header: &ConcurrentMerkleTreeHeader) -> Result<usize> {
     // Note: max_buffer_size MUST be a power of 2
     match (header.max_depth, header.max_buffer_size) {
@@ -317,6 +317,11 @@ pub mod spl_compression {
         max_depth: u32,
         max_buffer_size: u32,
     ) -> Result<()> {
+        require_eq!(
+            *ctx.accounts.merkle_tree.owner,
+            crate::id(),
+            AccountCompressionError::IncorrectAccountOwner
+        );
         let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
 
         let (mut header_bytes, rest) =
@@ -355,6 +360,11 @@ pub mod spl_compression {
         _changelog_db_uri: String,
         _metadata_db_uri: String,
     ) -> Result<()> {
+        require_eq!(
+            *ctx.accounts.merkle_tree.owner,
+            crate::id(),
+            AccountCompressionError::IncorrectAccountOwner
+        );
         let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
 
         let (mut header_bytes, rest) =
@@ -406,6 +416,11 @@ pub mod spl_compression {
         new_leaf: [u8; 32],
         index: u32,
     ) -> Result<()> {
+        require_eq!(
+            *ctx.accounts.merkle_tree.owner,
+            crate::id(),
+            AccountCompressionError::IncorrectAccountOwner
+        );
         let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
         let (header_bytes, rest) =
             merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
@@ -449,6 +464,11 @@ pub mod spl_compression {
         ctx: Context<TransferAuthority>,
         new_authority: Pubkey,
     ) -> Result<()> {
+        require_eq!(
+            *ctx.accounts.merkle_tree.owner,
+            crate::id(),
+            AccountCompressionError::IncorrectAccountOwner
+        );
         let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
         let (mut header_bytes, _) =
             merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
@@ -475,6 +495,11 @@ pub mod spl_compression {
         leaf: [u8; 32],
         index: u32,
     ) -> Result<()> {
+        require_eq!(
+            *ctx.accounts.merkle_tree.owner,
+            crate::id(),
+            AccountCompressionError::IncorrectAccountOwner
+        );
         let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
         let (header_bytes, rest) =
             merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
@@ -499,6 +524,11 @@ pub mod spl_compression {
     /// This is accomplished by using the rightmost_proof of the merkle roll to construct a
     /// valid proof, and then updating the rightmost_proof for the next leaf if possible.
     pub fn append(ctx: Context<Modify>, leaf: [u8; 32]) -> Result<()> {
+        require_eq!(
+            *ctx.accounts.merkle_tree.owner,
+            crate::id(),
+            AccountCompressionError::IncorrectAccountOwner
+        );
         let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
         let (header_bytes, rest) =
             merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
@@ -529,6 +559,11 @@ pub mod spl_compression {
         leaf: [u8; 32],
         index: u32,
     ) -> Result<()> {
+        require_eq!(
+            *ctx.accounts.merkle_tree.owner,
+            crate::id(),
+            AccountCompressionError::IncorrectAccountOwner
+        );
         let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
         let (header_bytes, rest) =
             merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
