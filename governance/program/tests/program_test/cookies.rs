@@ -161,6 +161,12 @@ pub struct SignatoryRecordCookie {
 }
 
 #[derive(Debug)]
+pub struct SignatoryRecordCookieWithoutKeypair {
+    pub address: Pubkey,
+    pub account: SignatoryRecordV2,
+}
+
+#[derive(Debug)]
 pub struct VoteRecordCookie {
     pub address: Pubkey,
     pub account: VoteRecordV2,

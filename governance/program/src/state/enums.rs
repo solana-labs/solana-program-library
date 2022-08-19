@@ -89,6 +89,9 @@ pub enum GovernanceAccountType {
     /// V2 adds extra reserved space reserved_v2
     SignatoryRecordV2,
 
+    /// Governance required signatory account
+    GovernanceRequiredSignatory,
+
     /// Proposal deposit account
     ProposalDeposit,
 }

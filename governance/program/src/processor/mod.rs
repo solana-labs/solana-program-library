@@ -1,5 +1,6 @@
 //! Program processor
 
+mod process_add_required_signatory_to_governance;
 mod process_add_signatory;
 mod process_cancel_proposal;
 mod process_cast_vote;
@@ -10,6 +11,7 @@ mod process_create_native_treasury;
 mod process_create_program_governance;
 mod process_create_proposal;
 mod process_create_realm;
+mod process_create_signatory_record_from_governance;
 mod process_create_token_governance;
 mod process_create_token_owner_record;
 mod process_deposit_governing_tokens;
@@ -32,6 +34,7 @@ mod process_withdraw_governing_tokens;
 
 use crate::instruction::GovernanceInstruction;
 
+use process_add_required_signatory_to_governance::*;
 use process_add_signatory::*;
 use process_cancel_proposal::*;
 use process_cast_vote::*;
@@ -42,6 +45,7 @@ use process_create_native_treasury::*;
 use process_create_program_governance::*;
 use process_create_proposal::*;
 use process_create_realm::*;
+use process_create_signatory_record_from_governance::*;
 use process_create_token_governance::*;
 use process_create_token_owner_record::*;
 use process_deposit_governing_tokens::*;
@@ -232,6 +236,13 @@ pub fn process_instruction(
 
         GovernanceInstruction::CompleteProposal {} => {
             process_complete_proposal(program_id, accounts)
+        }
+
+        GovernanceInstruction::AddRequiredSignatoryToGovernance { signatory } => {
+            process_add_required_signatory_to_governance(program_id, accounts, signatory)
+        }
+        GovernanceInstruction::CreateSignatoryRecordFromGovernance => {
+            process_create_signatory_record_from_governance(program_id, accounts)
         }
     }
 }

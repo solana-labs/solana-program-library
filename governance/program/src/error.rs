@@ -498,6 +498,14 @@ pub enum GovernanceError {
     /// Invalid multi choice proposal parameters
     #[error("Invalid multi choice proposal parameters")]
     InvalidMultiChoiceProposalParameters, // 620
+
+    /// Invalid Governance for GovernanceRequiredSignatory
+    #[error("Invalid Governance for GovernanceRequiredSignatory")]
+    InvalidGovernanceForGovernanceRequiredSignatory,
+
+    /// SignatoryRecord already exists
+    #[error("Signatory Record has already been created")]
+    SignatoryRecordAlreadyExists,
 }
 
 impl PrintProgramError for GovernanceError {

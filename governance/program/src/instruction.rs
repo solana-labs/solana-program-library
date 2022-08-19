@@ -4,7 +4,8 @@ use crate::{
     state::{
         enums::MintMaxVoterWeightSource,
         governance::{
-            get_governance_address, get_mint_governance_address, get_program_governance_address,
+            get_governance_address, get_governance_required_signatory_address,
+            get_mint_governance_address, get_program_governance_address,
             get_token_governance_address, GovernanceConfig,
         },
         native_treasury::get_native_treasury_address,
@@ -231,6 +232,18 @@ pub enum GovernanceInstruction {
     RemoveSignatory {
         #[allow(dead_code)]
         /// Signatory to remove from the Proposal
+        signatory: Pubkey,
+    },
+
+    /// Adds a required signatory to the Governance, which will be applied to all proposals created with it
+    ///
+    ///   0. `[writable, signer]` The Governance account the config is for
+    ///   1. `[writable]` GovernanceRequiredSignatory Account
+    ///   2. `[signer]` Payer
+    ///   3. `[]` System program
+    AddRequiredSignatoryToGovernance {
+        #[allow(dead_code)]
+        /// Required signatory to add to the Governance
         signatory: Pubkey,
     },
 
@@ -534,6 +547,16 @@ pub enum GovernanceInstruction {
     ///   1. `[]` TokenOwnerRecord account of the Proposal owner
     ///   2. `[signer]` CompleteProposal authority (Token Owner or Delegate)
     CompleteProposal {},
+
+    /// Creates a SignatoryRecord for a Proposal based on a Governance signoff requirement
+    ///
+    ///  0. `[]` Governance account the proposal belongs to
+    ///  1. `[]` GovernanceRequiredSignatory account for which the SignatoryRecord will be created
+    ///  2. `[]` Proposal account for which the SignatoryRecord will be created
+    ///  3. `[writable]` SignatoryRecord account to be created. PDA seeds: ['governance', proposal, signatory]
+    ///  4. `[signer]` Payer
+    ///  5. `[]` System
+    CreateSignatoryRecordFromGovernance,
 }
 
 /// Creates CreateRealm instruction
@@ -1607,6 +1630,37 @@ pub fn revoke_governing_tokens(
 
     let instruction = GovernanceInstruction::RevokeGoverningTokens { amount };
 
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates AddRequiredSignatoryToGovernance instruction
+pub fn add_required_signatory_to_governance(
+    program_id: &Pubkey,
+    // Accounts
+    governance: &Pubkey,
+    payer: &Pubkey,
+    // Args
+    signatory: &Pubkey,
+) -> Instruction {
+    let governance_required_signatory_address =
+        get_governance_required_signatory_address(program_id, governance, signatory);
+
+    let accounts = vec![
+        AccountMeta::new(*governance, true),
+        AccountMeta::new(governance_required_signatory_address, false),
+        AccountMeta::new(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::AddRequiredSignatoryToGovernance {
+        signatory: *signatory,
+    };
+
     Instruction {
         program_id: *program_id,
         accounts,
@@ -1687,6 +1741,39 @@ pub fn complete_proposal(
     ];
 
     let instruction = GovernanceInstruction::CompleteProposal {};
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates CreateSignatoryRecordFromGovernance instruction
+pub fn create_signatory_record_from_governance(
+    program_id: &Pubkey,
+    // Accounts
+    governance: &Pubkey,
+    proposal: &Pubkey,
+    payer: &Pubkey,
+    // Args
+    signatory: &Pubkey,
+) -> Instruction {
+    let governance_required_signatory_address =
+        get_governance_required_signatory_address(program_id, governance, signatory);
+
+    let signatory_record_address = get_signatory_record_address(program_id, proposal, signatory);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*governance, false),
+        AccountMeta::new_readonly(governance_required_signatory_address, false),
+        AccountMeta::new_readonly(*proposal, false),
+        AccountMeta::new(signatory_record_address, false),
+        AccountMeta::new(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::CreateSignatoryRecordFromGovernance;
 
     Instruction {
         program_id: *program_id,

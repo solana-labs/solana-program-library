@@ -9,7 +9,7 @@ use crate::{
         realm::{assert_is_valid_realm, RealmV2},
         vote_record::VoteKind,
     },
-    tools::structs::Reserved120,
+    tools::structs::Reserved119,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
@@ -75,6 +75,27 @@ pub const DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT: u8 = 10;
 /// or the Proposals is cancelled
 pub const SECURITY_DEPOSIT_BASE_LAMPORTS: u64 = 100_000_000; // 0.1 SOL
 
+/// Governance required signatory
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct GovernanceRequiredSignatory {
+    /// Account type
+    pub account_type: GovernanceAccountType,
+
+    /// Address of required signatory
+    pub address: Pubkey,
+
+    /// Governance this required signatory belongs to
+    pub governance: Pubkey,
+}
+
+impl AccountMaxSize for GovernanceRequiredSignatory {}
+
+impl IsInitialized for GovernanceRequiredSignatory {
+    fn is_initialized(&self) -> bool {
+        self.account_type == GovernanceAccountType::GovernanceRequiredSignatory
+    }
+}
+
 /// Governance Account
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GovernanceV2 {
@@ -104,7 +125,10 @@ pub struct GovernanceV2 {
     /// Reserved space for versions v2 and onwards
     /// Note 1: V1 accounts must be resized before using this space
     /// Note 2: The reserved space should be used from the end to also allow the config to grow if needed
-    pub reserved_v2: Reserved120,
+    pub reserved_v2: Reserved119,
+
+    /// The number of required signatories for proposals in the Governance
+    pub signatories_count: u8,
 
     /// The number of active proposals where active means Draft, SigningOff or Voting state
     ///
@@ -146,7 +170,8 @@ pub fn is_governance_v2_account_type(account_type: &GovernanceAccountType) -> bo
         | GovernanceAccountType::VoteRecordV1
         | GovernanceAccountType::VoteRecordV2
         | GovernanceAccountType::ProgramMetadata
-        | GovernanceAccountType::ProposalDeposit => false,
+        | GovernanceAccountType::ProposalDeposit
+        | GovernanceAccountType::GovernanceRequiredSignatory => false,
     }
 }
 
@@ -180,7 +205,8 @@ pub fn try_get_governance_v2_type_for_v1(
         | GovernanceAccountType::VoteRecordV1
         | GovernanceAccountType::VoteRecordV2
         | GovernanceAccountType::ProgramMetadata
-        | GovernanceAccountType::ProposalDeposit => None,
+        | GovernanceAccountType::ProposalDeposit
+        | GovernanceAccountType::GovernanceRequiredSignatory => None,
     }
 }
 
@@ -227,7 +253,8 @@ impl GovernanceV2 {
             | GovernanceAccountType::ProposalDeposit
             | GovernanceAccountType::RealmV2
             | GovernanceAccountType::TokenOwnerRecordV2
-            | GovernanceAccountType::SignatoryRecordV2 => {
+            | GovernanceAccountType::SignatoryRecordV2
+            | GovernanceAccountType::GovernanceRequiredSignatory => {
                 return Err(GovernanceToolsError::InvalidAccountType.into())
             }
         };
@@ -243,7 +270,7 @@ impl GovernanceV2 {
             // V1 account can't be resized and we have to translate it back to the original format
 
             // If reserved_v2 is used it must be individually assessed for GovernanceV1 account backward compatibility impact
-            if self.reserved_v2 != Reserved120::default() {
+            if self.reserved_v2 != Reserved119::default() {
                 panic!("Extended data not supported by GovernanceV1")
             }
 
@@ -388,7 +415,8 @@ pub fn get_governance_data(
             governed_account: governance_data_v1.governed_account,
             reserved1: 0,
             config: governance_data_v1.config,
-            reserved_v2: Reserved120::default(),
+            reserved_v2: Reserved119::default(),
+            signatories_count: 0,
             // GovernanceV1 layout doesn't support active_proposal_count
             // For any legacy GovernanceV1 account it's not preserved until the account layout is migrated to GovernanceV2 in CreateProposal
             active_proposal_count: 0,
@@ -446,6 +474,22 @@ pub fn get_governance_data_for_realm(
     }
 
     Ok(governance_data)
+}
+
+/// Deserializes GovernanceRequiredSignatory account, checks the owner program, and asserts that required signatory belongs to the given governance
+pub fn get_governance_required_signatory_data_for_governance(
+    program_id: &Pubkey,
+    governance_required_signatory: &AccountInfo,
+    governance: &Pubkey,
+) -> Result<GovernanceRequiredSignatory, ProgramError> {
+    let governance_required_signatory_data =
+        get_account_data::<GovernanceRequiredSignatory>(program_id, governance_required_signatory)?;
+
+    if governance_required_signatory_data.governance != *governance {
+        return Err(GovernanceError::InvalidGovernanceForGovernanceRequiredSignatory.into());
+    }
+
+    Ok(governance_required_signatory_data)
 }
 
 /// Checks the given account is a governance account and belongs to the given realm
@@ -556,6 +600,31 @@ pub fn get_governance_address<'a>(
     .0
 }
 
+/// Returns GovernanceRequiredSignatory PDA seeds
+pub fn get_governance_required_signatory_address_seeds<'a>(
+    governance: &'a Pubkey,
+    signatory: &'a Pubkey,
+) -> [&'a [u8]; 3] {
+    [
+        b"governance-required-signatory".as_ref(),
+        governance.as_ref(),
+        signatory.as_ref(),
+    ]
+}
+
+/// Returns GovernanceRequiredSignatory PDA address
+pub fn get_governance_required_signatory_address<'a>(
+    program_id: &Pubkey,
+    governance: &'a Pubkey,
+    signatory: &'a Pubkey,
+) -> Pubkey {
+    Pubkey::find_program_address(
+        &get_governance_required_signatory_address_seeds(governance, signatory),
+        program_id,
+    )
+    .0
+}
+
 /// Checks whether the Governance account exists, is initialized and owned by the Governance program
 pub fn assert_is_valid_governance(
     program_id: &Pubkey,
@@ -650,8 +719,9 @@ mod test {
             governed_account: Pubkey::new_unique(),
             reserved1: 0,
             config: create_test_governance_config(),
-            reserved_v2: Reserved120::default(),
+            reserved_v2: Reserved119::default(),
             active_proposal_count: 10,
+            signatories_count: 0,
         }
     }
 

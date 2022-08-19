@@ -18,14 +18,15 @@ use solana_sdk::signature::{Keypair, Signer};
 
 use spl_governance::{
     instruction::{
-        add_signatory, cancel_proposal, cast_vote, complete_proposal, create_governance,
-        create_mint_governance, create_native_treasury, create_program_governance, create_proposal,
-        create_realm, create_token_governance, create_token_owner_record, deposit_governing_tokens,
-        execute_transaction, finalize_vote, flag_transaction_error, insert_transaction,
-        refund_proposal_deposit, relinquish_vote, remove_signatory, remove_transaction,
-        revoke_governing_tokens, set_governance_config, set_governance_delegate,
-        set_realm_authority, set_realm_config, sign_off_proposal, upgrade_program_metadata,
-        withdraw_governing_tokens,
+        add_required_signatory_to_governance, add_signatory, cancel_proposal, cast_vote,
+        complete_proposal, create_governance, create_mint_governance, create_native_treasury,
+        create_program_governance, create_proposal, create_realm,
+        create_signatory_record_from_governance, create_token_governance,
+        create_token_owner_record, deposit_governing_tokens, execute_transaction, finalize_vote,
+        flag_transaction_error, insert_transaction, refund_proposal_deposit, relinquish_vote,
+        remove_signatory, remove_transaction, revoke_governing_tokens, set_governance_config,
+        set_governance_delegate, set_realm_authority, set_realm_config, sign_off_proposal,
+        upgrade_program_metadata, withdraw_governing_tokens,
     },
     processor::process_instruction,
     state::{
@@ -35,8 +36,8 @@ use spl_governance::{
         },
         governance::{
             get_governance_address, get_mint_governance_address, get_program_governance_address,
-            get_token_governance_address, GovernanceConfig, GovernanceV2,
-            DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
+            get_token_governance_address, GovernanceConfig, GovernanceRequiredSignatory,
+            GovernanceV2, DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
         },
         native_treasury::{get_native_treasury_address, NativeTreasury},
         program_metadata::{get_program_metadata_address, ProgramMetadata},
@@ -58,7 +59,7 @@ use spl_governance::{
     },
     tools::{
         bpf_loader_upgradeable::get_program_data_address,
-        structs::{Reserved110, Reserved120},
+        structs::{Reserved110, Reserved119},
     },
 };
 use spl_governance_addin_api::{
@@ -74,7 +75,8 @@ pub mod cookies;
 pub mod legacy;
 
 use crate::program_test::cookies::{
-    RealmConfigCookie, SignatoryRecordCookie, VoterWeightRecordCookie,
+    RealmConfigCookie, SignatoryRecordCookie, SignatoryRecordCookieWithoutKeypair,
+    VoterWeightRecordCookie,
 };
 
 use spl_governance_test_sdk::{
@@ -1501,7 +1503,8 @@ impl GovernanceProgramTest {
             governed_account: governed_account_cookie.address,
             config: governance_config.clone(),
             reserved1: 0,
-            reserved_v2: Reserved120::default(),
+            reserved_v2: Reserved119::default(),
+            signatories_count: 0,
             active_proposal_count: 0,
         };
 
@@ -1671,7 +1674,8 @@ impl GovernanceProgramTest {
             governed_account: governed_program_cookie.address,
             config,
             reserved1: 0,
-            reserved_v2: Reserved120::default(),
+            reserved_v2: Reserved119::default(),
+            signatories_count: 0,
             active_proposal_count: 0,
         };
 
@@ -1792,7 +1796,8 @@ impl GovernanceProgramTest {
             governed_account: governed_mint_cookie.address,
             config: governance_config.clone(),
             reserved1: 0,
-            reserved_v2: Reserved120::default(),
+            reserved_v2: Reserved119::default(),
+            signatories_count: 0,
             active_proposal_count: 0,
         };
 
@@ -1873,7 +1878,8 @@ impl GovernanceProgramTest {
             governed_account: governed_token_cookie.address,
             config,
             reserved1: 0,
-            reserved_v2: Reserved120::default(),
+            reserved_v2: Reserved119::default(),
+            signatories_count: 0,
             active_proposal_count: 0,
         };
 
@@ -2804,6 +2810,70 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    pub async fn with_governance_required_signatory_transaction(
+        &mut self,
+        proposal_cookie: &mut ProposalCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        governance: &GovernanceCookie,
+        signatory: &Pubkey,
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
+        let mut gwr_ix = add_required_signatory_to_governance(
+            &self.program_id,
+            &governance.address,
+            &self.bench.payer.pubkey(),
+            signatory,
+        );
+
+        self.with_proposal_transaction(
+            proposal_cookie,
+            token_owner_record_cookie,
+            0,
+            None,
+            &mut gwr_ix,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_signatory_record_from_governance(
+        &mut self,
+        proposal_cookie: &ProposalCookie,
+        governance: &GovernanceCookie,
+        signatory: &Pubkey,
+    ) -> Result<SignatoryRecordCookieWithoutKeypair, ProgramError> {
+        let create_signatory_record_ix = create_signatory_record_from_governance(
+            &self.program_id,
+            &governance.address,
+            &proposal_cookie.address,
+            &self.bench.payer.pubkey(),
+            &signatory,
+        );
+
+        self.bench
+            .process_transaction(&[create_signatory_record_ix], Some(&[]))
+            .await?;
+
+        let signatory_record_address =
+            get_signatory_record_address(&self.program_id, &proposal_cookie.address, &signatory);
+
+        let signatory_record_data = SignatoryRecordV2 {
+            account_type: GovernanceAccountType::SignatoryRecordV2,
+            proposal: proposal_cookie.address,
+            signatory: *signatory,
+            signed_off: false,
+            reserved_v2: [0; 8],
+        };
+
+        let signatory_record_cookie = SignatoryRecordCookieWithoutKeypair {
+            address: signatory_record_address,
+            account: signatory_record_data,
+        };
+
+        Ok(signatory_record_cookie)
+    }
+
+    #[allow(dead_code)]
     pub async fn remove_transaction(
         &mut self,
         proposal_cookie: &mut ProposalCookie,
@@ -2942,6 +3012,16 @@ impl GovernanceProgramTest {
     ) -> ProposalTransactionV2 {
         self.bench
             .get_borsh_account::<ProposalTransactionV2>(proposal_transaction_address)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_governance_required_signatory_account(
+        &mut self,
+        governance_required_signatory_address: &Pubkey,
+    ) -> GovernanceRequiredSignatory {
+        self.bench
+            .get_borsh_account::<GovernanceRequiredSignatory>(governance_required_signatory_address)
             .await
     }
 
