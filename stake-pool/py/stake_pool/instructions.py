@@ -674,7 +674,7 @@ def remove_validator_from_pool_with_vote(
 
 
 def deposit_stake(params: DepositStakeParams) -> TransactionInstruction:
-    """Creates a transaction instruction to deposit SOL into a stake pool."""
+    """Creates a transaction instruction to deposit a stake account into a stake pool."""
     keys = [
         AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
         AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
@@ -705,7 +705,7 @@ def deposit_stake(params: DepositStakeParams) -> TransactionInstruction:
 
 
 def withdraw_stake(params: WithdrawStakeParams) -> TransactionInstruction:
-    """Creates a transaction instruction to withdraw SOL from a stake pool."""
+    """Creates a transaction instruction to withdraw active stake from a stake pool."""
     return TransactionInstruction(
         keys=[
             AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),

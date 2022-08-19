@@ -416,7 +416,7 @@ export class StakePoolInstruction {
   }
 
   /**
-   * Creates a transaction instruction to deposit SOL into a stake pool.
+   * Creates a transaction instruction to deposit a stake account into a stake pool.
    */
   static depositStake(params: DepositStakeParams): TransactionInstruction {
     const {
@@ -462,7 +462,7 @@ export class StakePoolInstruction {
   }
 
   /**
-   * Creates a transaction instruction to withdraw SOL from a stake pool.
+   * Creates a transaction instruction to deposit SOL into a stake pool.
    */
   static depositSol(params: DepositSolParams): TransactionInstruction {
     const {
@@ -510,7 +510,7 @@ export class StakePoolInstruction {
   }
 
   /**
-   * Creates a transaction instruction to withdraw SOL from a stake pool.
+   * Creates a transaction instruction to withdraw active stake from a stake pool.
    */
   static withdrawStake(params: WithdrawStakeParams): TransactionInstruction {
     const {
