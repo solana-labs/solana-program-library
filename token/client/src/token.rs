@@ -30,6 +30,7 @@ use {
         state::{Account, AccountState, Mint},
     },
     std::{
+        borrow::Borrow,
         convert::TryInto,
         fmt, io,
         sync::{Arc, RwLock},
@@ -551,6 +552,8 @@ where
                 new_authority,
                 authority_type,
                 authority,
+                // XXX i think this is wrong and we need to supply all bulk signers for multisig to work
+                // leaving for now, theres a working example in close_account
                 &[],
             )?],
             signing_keypairs,
@@ -765,23 +768,39 @@ where
     }
 
     /// Close account into another
-    pub async fn close_account<S: Signer>(
+    pub async fn close_account<S: Signers>(
         &self,
         account: &Pubkey,
         destination: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        self.process_ixs(
-            &[instruction::close_account(
-                &self.program_id,
-                account,
-                destination,
-                &authority.pubkey(),
-                &[],
-            )?],
-            &[authority],
-        )
-        .await
+        // XXX i know this is stupid. but maybe it would feel less stupid buried in a helper function!
+        let signer_pubkeys = signing_keypairs.pubkeys();
+        let signer_pubkey_refs: &[&Pubkey] = &signer_pubkeys
+            .iter()
+            .map(Borrow::borrow)
+            .collect::<Vec<&Pubkey>>();
+
+        let mut instructions = vec![instruction::close_account(
+            &self.program_id,
+            account,
+            destination,
+            authority,
+            signer_pubkey_refs,
+        )?];
+
+        if let Ok(Some(destination_account)) = self.client.get_account(*destination).await {
+            if let Ok(destination_obj) =
+                StateWithExtensionsOwned::<Account>::unpack(destination_account.data)
+            {
+                if destination_obj.base.is_native() {
+                    instructions.push(instruction::sync_native(&self.program_id, &destination)?);
+                }
+            }
+        }
+
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Freeze a token account

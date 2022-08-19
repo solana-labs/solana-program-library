@@ -1628,7 +1628,7 @@ async fn fail_close_with_withheld() {
 
     // fail to close
     let error = token
-        .close_account(&account, &Pubkey::new_unique(), &alice)
+        .close_account(&account, &Pubkey::new_unique(), &alice.pubkey(), &[&alice])
         .await
         .unwrap_err();
     assert_eq!(
@@ -1649,7 +1649,7 @@ async fn fail_close_with_withheld() {
 
     // successfully close
     token
-        .close_account(&account, &Pubkey::new_unique(), &alice)
+        .close_account(&account, &Pubkey::new_unique(), &alice.pubkey(), &[&alice])
         .await
         .unwrap();
 }
