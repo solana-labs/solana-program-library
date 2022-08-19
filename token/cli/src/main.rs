@@ -572,10 +572,10 @@ async fn command_authorize(
         AuthorityType::InterestRate => "interest rate authority",
     };
 
-    let (previous_authority, program_id) = if !config.sign_only {
+    let previous_authority = if !config.sign_only {
         let target_account = config.rpc_client.get_account(&account).await?;
         config.check_owner(&account, &target_account.owner)?;
-        let program_id = target_account.owner;
+
         let previous_authority = if let Ok(mint) =
             StateWithExtensionsOwned::<Mint>::unpack(target_account.data.clone())
         {
@@ -609,7 +609,7 @@ async fn command_authorize(
                 let maybe_associated_token_account = get_associated_token_address_with_program_id(
                     &token_account.base.owner,
                     &token_account.base.mint,
-                    &program_id,
+                    &config.program_id,
                 );
                 if account == maybe_associated_token_account
                     && !force_authorize
@@ -653,18 +653,10 @@ async fn command_authorize(
             Err("Unsupported account data format".to_string())
         }?;
 
-        (previous_authority, program_id)
+        previous_authority
     } else {
-        (COption::None, config.program_id)
+        COption::None
     };
-
-    if program_id != config.program_id {
-        return Err(format!(
-            "Token program `{}` provided, but token belongs to `{}`",
-            config.program_id, program_id
-        )
-        .into());
-    }
 
     println_display(
         config,
@@ -1448,10 +1440,12 @@ async fn command_close(
     recipient: Pubkey,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let (is_recipient_wrapped, program_id) = if config.sign_only {
-        (false, config.program_id)
-    } else {
+    let token = token_client_from_config(config, &Pubkey::default());
+
+    if !config.sign_only {
         let source_account = config.rpc_client.get_account(&account).await?;
+        config.check_owner(&account, &source_account.owner)?;
+
         let source_state = StateWithExtensionsOwned::<Account>::unpack(source_account.data)
             .map_err(|_| format!("Could not deserialize token account {}", account))?;
         let source_amount = source_state.base.amount;
@@ -1463,35 +1457,13 @@ async fn command_close(
             )
             .into());
         }
-        config.check_owner(&account, &source_account.owner)?;
-
-        let recipient_account = config.rpc_client.get_token_account(&recipient).await?;
-        let is_recipient_wrapped = recipient_account.map(|x| x.is_native).unwrap_or(false);
-        (is_recipient_wrapped, source_account.owner)
-    };
-
-    let mut instructions = vec![close_account(
-        &program_id,
-        &account,
-        &recipient,
-        &close_authority,
-        &config.multisigner_pubkeys,
-    )?];
-
-    if is_recipient_wrapped {
-        instructions.push(sync_native(&program_id, &recipient)?);
     }
 
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        instructions,
-    )
-    .await?;
+    let res = token
+        .close_account(&account, &close_authority, &recipient, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
@@ -1503,6 +1475,18 @@ async fn command_close(
 }
 
 // HANA new command impl
+// XXX OK COOL WHAT NOW
+// use command_close as a guide
+// the first thing is we want to do sanity checks in online mode
+// that means fetch the mint, check supply is zero
+// check there exists a close authority? or, check the authority matches the one we expect
+// code to do the parse is in set_authority
+// the first thing to check is how close actually works
+// if it goes through the same instruction maybe reuse that
+// otherwise it might have its own shit idk
+//
+// alright cool it does in fact go through close account, this is easy
+// first step make command_close go through the client
 async fn command_close_mint(config: &Config<'_>) -> CommandResult {
     Ok("".to_string())
 }
