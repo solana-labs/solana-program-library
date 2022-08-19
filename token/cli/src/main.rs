@@ -549,34 +549,6 @@ async fn command_create_multisig(
     })
 }
 
-// HANA XXX ok im on the allhands so its hard to think ill just take notes
-// how does this flow. i want to add close mint support
-// it kinda looks like this moight work already?
-// i think i wanna move the auth_str shit into a Display impl
-// update: no its inside token22 itself and i dont want to pollute that
-//
-// so theres a giant block that only executes in not signonly
-// fetches the account, checks programid owner, gets the real programid
-// then parses the account to see if its a mint or a token account
-// for mints, it makes sure it not trying to change token account owner
-// then extracts the previous authority for later usage
-// for accounts, it likewise enforces auth type, then checks if its an ata
-// if it is it errors without a force flag (which is cleverly hidden)
-//
-// ok after all that, which is *not* performed in signonly... it does a lil printy
-// then it builds the instruction and handles it
-// so simple simple, swap out thet stuff for our client code
-// then clean up the display stuff and... i think the close impl is one line?
-//
-// ugh i need to start thinking about testing too
-// the client has no test but we have a good amount here, that tests the functions
-// doesnt test the external interface but uhhh save that for later lol
-// what do i want to test?
-// * setting a close authority allows mint to be closed
-// * close auth can be reassigned and close mint still works
-// * close mint without a close authority fails
-// * close authority cannot be set if it hasnt been
-// the latter two may not matter because the program itself should enforce (and have tests for it)
 #[allow(clippy::too_many_arguments)]
 async fn command_authorize(
     config: &Config<'_>,
@@ -587,7 +559,6 @@ async fn command_authorize(
     force_authorize: bool,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    // XXX i can get mint address out of the giant branch shit below but maybe doesnt matter
     let token = token_client_from_config(config, &Pubkey::default());
 
     let auth_str = match authority_type {
