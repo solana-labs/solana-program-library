@@ -1,17 +1,17 @@
 macro_rules! solana_logging {
     ($message:literal, $($arg:tt)*) => {
         #[cfg(feature = "log")]
-        msg!($message, $($arg)*);
+        ::solana_program::msg!($message, $($arg)*);
     };
     ($message:literal) => {
         #[cfg(feature = "log")]
-        msg!($message);
+        ::solana_program::msg!($message);
     };
 }
 
 macro_rules! log_compute {
     () => {
         #[cfg(all(feature = "sol-log", feature = "log"))]
-        sol_log_compute_units();
+        ::solana_program::log::sol_log_compute_units();
     };
 }
