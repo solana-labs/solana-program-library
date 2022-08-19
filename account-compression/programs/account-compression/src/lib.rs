@@ -312,7 +312,7 @@ pub mod spl_compression {
     ///
     /// Concurrency limit should be determined by empirically testing the demand for
     /// state built on top of SPL Compression.
-    pub fn init_empty_gummyroll(
+    pub fn init_empty_merkle_tree(
         ctx: Context<Initialize>,
         max_depth: u32,
         max_buffer_size: u32,
@@ -345,7 +345,7 @@ pub mod spl_compression {
     /// Indexing batched data in this way requires indexers to read in the `uri`s onto physical storage
     /// and then into their database. This opens up a DOS attack vector, whereby this instruction is
     /// repeatedly invoked, causing indexers to fail.
-    pub fn init_gummyroll_with_root(
+    pub fn init_merkle_tree_with_root(
         ctx: Context<Initialize>,
         max_depth: u32,
         max_buffer_size: u32,
