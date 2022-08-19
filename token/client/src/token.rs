@@ -30,7 +30,6 @@ use {
         state::{Account, AccountState, Mint},
     },
     std::{
-        borrow::Borrow,
         convert::TryInto,
         fmt, io,
         sync::{Arc, RwLock},
@@ -545,6 +544,13 @@ where
         authority_type: instruction::AuthorityType,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig = if signing_pubkeys == &[*authority] {
+            signing_pubkeys.iter().collect::<Vec<_>>()
+        } else {
+            vec![]
+        };
+
         self.process_ixs(
             &[instruction::set_authority(
                 &self.program_id,
@@ -552,9 +558,7 @@ where
                 new_authority,
                 authority_type,
                 authority,
-                // XXX i think this is wrong and we need to supply all bulk signers for multisig to work
-                // leaving for now, theres a working example in close_account
-                &[],
+                &multisig,
             )?],
             signing_keypairs,
         )
@@ -775,19 +779,19 @@ where
         authority: &Pubkey,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        // XXX i know this is stupid. but maybe it would feel less stupid buried in a helper function!
-        let signer_pubkeys = signing_keypairs.pubkeys();
-        let signer_pubkey_refs: &[&Pubkey] = &signer_pubkeys
-            .iter()
-            .map(Borrow::borrow)
-            .collect::<Vec<&Pubkey>>();
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig = if signing_pubkeys == &[*authority] {
+            signing_pubkeys.iter().collect::<Vec<_>>()
+        } else {
+            vec![]
+        };
 
         let mut instructions = vec![instruction::close_account(
             &self.program_id,
             account,
             destination,
             authority,
-            signer_pubkey_refs,
+            &multisig,
         )?];
 
         if let Ok(Some(destination_account)) = self.client.get_account(*destination).await {
