@@ -434,6 +434,10 @@ pub enum GovernanceError {
     /// Cannot change community TokenType to Memebership
     #[error("Cannot change community TokenType to Memebership")]
     CannotChangeCommunityTokenTypeToMemebership, // 604
+
+    /// Voter weight threshold disabled
+    #[error("Voter weight threshold disabled")]
+    VoterWeightThresholdDisabled, // 605
 }
 
 impl PrintProgramError for GovernanceError {
