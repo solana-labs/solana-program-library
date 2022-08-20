@@ -248,6 +248,23 @@ impl GovernanceV2 {
 
         Ok(vote_threshold.clone())
     }
+
+    /// Returns VoteTipping for the given governing_token_mint
+    pub fn get_vote_tipping(
+        &self,
+        realm_data: &RealmV2,
+        governing_token_mint: &Pubkey,
+    ) -> Result<&VoteTipping, ProgramError> {
+        let vote_tipping = if *governing_token_mint == realm_data.community_mint {
+            &self.config.community_vote_tipping
+        } else if Some(*governing_token_mint) == realm_data.config.council_mint {
+            &self.config.council_vote_tipping
+        } else {
+            return Err(GovernanceError::InvalidGoverningTokenMint.into());
+        };
+
+        Ok(vote_tipping)
+    }
 }
 
 /// Deserializes Governance account and checks owner program
