@@ -1409,9 +1409,10 @@ impl GovernanceProgramTest {
             min_transaction_hold_up_time: 10,
             max_voting_time: 10,
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
-            vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
+            community_vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(80),
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(55),
+            council_vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
         }
     }
 
@@ -1487,7 +1488,7 @@ impl GovernanceProgramTest {
             governed_account: governed_account_cookie.address,
             config: governance_config.clone(),
             proposals_count: 0,
-            reserved: [0; 6],
+            reserved: [0; 5],
             voting_proposal_count: 0,
             reserved_v2: [0; 128],
         };
@@ -1658,7 +1659,7 @@ impl GovernanceProgramTest {
             governed_account: governed_program_cookie.address,
             config,
             proposals_count: 0,
-            reserved: [0; 6],
+            reserved: [0; 5],
             voting_proposal_count: 0,
             reserved_v2: [0; 128],
         };
@@ -1782,7 +1783,7 @@ impl GovernanceProgramTest {
             governed_account: governed_mint_cookie.address,
             config: governance_config.clone(),
             proposals_count: 0,
-            reserved: [0; 6],
+            reserved: [0; 5],
             voting_proposal_count: 0,
             reserved_v2: [0; 128],
         };
@@ -1866,7 +1867,7 @@ impl GovernanceProgramTest {
             governed_account: governed_token_cookie.address,
             config,
             proposals_count: 0,
-            reserved: [0; 6],
+            reserved: [0; 5],
             voting_proposal_count: 0,
             reserved_v2: [0; 128],
         };

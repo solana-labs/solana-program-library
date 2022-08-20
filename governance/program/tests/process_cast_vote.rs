@@ -554,7 +554,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_succeeded() {
 
     let mut governance_config = governance_test.get_default_governance_config();
 
-    governance_config.vote_tipping = VoteTipping::Early;
+    governance_config.community_vote_tipping = VoteTipping::Early;
     governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(15);
 
     let token_owner_record_cookie1 = governance_test
@@ -718,7 +718,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_defeated() {
 
     let mut governance_config = governance_test.get_default_governance_config();
 
-    governance_config.vote_tipping = VoteTipping::Early;
+    governance_config.community_vote_tipping = VoteTipping::Early;
     governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(40);
 
     // 100 votes
@@ -892,7 +892,7 @@ async fn test_cast_vote_with_disabled_tipping_yes_votes() {
 
     let mut governance_config = governance_test.get_default_governance_config();
 
-    governance_config.vote_tipping = VoteTipping::Disabled;
+    governance_config.community_vote_tipping = VoteTipping::Disabled;
     governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(10);
 
     let token_owner_record_cookie1 = governance_test
@@ -963,7 +963,7 @@ async fn test_cast_vote_with_disabled_tipping_no_votes() {
 
     let mut governance_config = governance_test.get_default_governance_config();
 
-    governance_config.vote_tipping = VoteTipping::Disabled;
+    governance_config.community_vote_tipping = VoteTipping::Disabled;
     governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(10);
 
     let token_owner_record_cookie1 = governance_test
