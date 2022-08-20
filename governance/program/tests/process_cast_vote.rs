@@ -9,10 +9,12 @@ use program_test::*;
 use spl_governance::{
     error::GovernanceError,
     state::{
-        enums::{ProposalState, VoteThreshold, VoteTipping},
+        enums::{MintMaxVoteWeightSource, ProposalState, VoteThreshold, VoteTipping},
         vote_record::Vote,
     },
 };
+
+use crate::program_test::args::RealmSetupArgs;
 
 #[tokio::test]
 async fn test_cast_vote() {
@@ -1392,4 +1394,70 @@ async fn test_cast_vote_with_disabled_tipping_and_max_no_votes() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
     assert_eq!(ProposalState::Voting, proposal_account.state);
+}
+
+#[tokio::test]
+async fn test_cast_vote_with_strict_tipping_and_inflated_max_voter_weight_votes() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    // Reduce max voter weight to 50% for the cast vote to be above max_voter_weight
+    let mut realm_config_args = RealmSetupArgs::default();
+    realm_config_args.community_mint_max_vote_weight_source =
+        MintMaxVoteWeightSource::SupplyFraction(MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2);
+
+    let realm_cookie = governance_test
+        .with_realm_using_args(&realm_config_args)
+        .await;
+
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let governance_config = governance_test.get_default_governance_config();
+
+    // Mint and deposit 100 tokens to Member
+    let token_owner_record_cookie1 = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Mint 20 community tokens to increase total supply to 120
+    // It gives us max_voter_weight==60 which is below the cast vote weight of 100
+    governance_test
+        .mint_community_tokens(&realm_cookie, 20)
+        .await;
+
+    let mut _governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie1,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&token_owner_record_cookie1, &mut _governance_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    governance_test
+        .with_cast_yes_no_vote(
+            &proposal_cookie,
+            &token_owner_record_cookie1,
+            YesNoVote::Yes,
+        )
+        .await
+        .unwrap();
+
+    // Assert
+
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    assert_eq!(ProposalState::Succeeded, proposal_account.state);
+    // max_vote_weight should be coerced from 60 to 100
+    assert_eq!(proposal_account.max_vote_weight, Some(100))
 }
