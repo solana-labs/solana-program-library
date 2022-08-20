@@ -1184,9 +1184,10 @@ mod test {
             min_transaction_hold_up_time: 10,
             max_voting_time: 5,
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
-            vote_tipping: VoteTipping::Strict,
+            community_vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(60),
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
+            council_vote_tipping: VoteTipping::Strict,
         }
     }
 

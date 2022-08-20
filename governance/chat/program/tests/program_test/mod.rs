@@ -191,9 +191,10 @@ impl GovernanceChatProgramTest {
             min_transaction_hold_up_time: 10,
             max_voting_time: 10,
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
-            vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
+            community_vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(10),
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
+            council_vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
         };
 
         let token_owner_record_address = get_token_owner_record_address(
