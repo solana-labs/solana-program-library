@@ -1397,7 +1397,7 @@ async fn test_cast_vote_with_disabled_tipping_and_max_no_votes() {
 }
 
 #[tokio::test]
-async fn test_cast_vote_with_strict_tipping_and_inflated_max_voter_weight_votes() {
+async fn test_cast_vote_with_strict_tipping_and_inflated_max_vote_weight() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
