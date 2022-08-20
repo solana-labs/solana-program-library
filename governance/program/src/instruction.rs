@@ -78,7 +78,7 @@ pub enum GovernanceInstruction {
     ///      Tokens will be transferred or minted to the Holding account
     ///  3. `[signer]` Governing Token Owner account
     ///  4. `[signer]` Governing Token Source account authority
-    ///      It should be owner for TokenAccount and mint_auhtority for MintAccount
+    ///      It should be owner for TokenAccount and mint_authority for MintAccount
     ///  5. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
     ///  6. `[signer]` Payer
     ///  7. `[]` System

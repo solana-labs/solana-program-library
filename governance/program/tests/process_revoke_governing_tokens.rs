@@ -201,7 +201,7 @@ async fn test_revoke_council_tokens_with_invalid_mint_authority_error() {
         .await
         .unwrap();
 
-    // Try to use fake auhtority
+    // Try to use fake authority
     let mint_authority = Keypair::new();
 
     // Act
@@ -484,7 +484,7 @@ async fn test_revoke_council_tokens_with_community_mint_error() {
         .await
         .unwrap();
 
-    // Try to use mint and auhtority for Community to revoke Council token
+    // Try to use mint and authority for Community to revoke Council token
     let governing_token_mint = realm_cookie.account.community_mint.clone();
     let governing_token_mint_authority = clone_keypair(&realm_cookie.community_mint_authority);
     let governing_token_holding_address = get_governing_token_holding_address(
@@ -533,7 +533,7 @@ async fn test_revoke_council_tokens_with_not_matching_mint_and_authority_error()
         .await
         .unwrap();
 
-    // Try to use a valid mint and auhtority not matching the Council mint
+    // Try to use a valid mint and authority not matching the Council mint
     let governing_token_mint = realm_cookie.account.community_mint.clone();
     let governing_token_mint_authority = clone_keypair(&realm_cookie.community_mint_authority);
 

@@ -36,7 +36,7 @@ pub struct RealmCookie {
 }
 
 impl RealmCookie {
-    pub fn get_mint_auhtority(&self, governing_token_mint: &Pubkey) -> &Keypair {
+    pub fn get_mint_authority(&self, governing_token_mint: &Pubkey) -> &Keypair {
         if *governing_token_mint == self.account.community_mint {
             &self.community_mint_authority
         } else if Some(*governing_token_mint) == self.account.config.council_mint {
