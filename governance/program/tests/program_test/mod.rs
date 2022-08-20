@@ -1303,18 +1303,20 @@ impl GovernanceProgramTest {
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<(), ProgramError> {
+        let governing_token_mint_auhtority = realm_cookie.get_mint_auhtority(governing_token_mint);
+
         let mut revoke_governing_tokens_ix = revoke_governing_tokens(
             &self.program_id,
             &realm_cookie.address,
-            &realm_cookie.account.authority.unwrap(),
             &token_owner_record_cookie.account.governing_token_owner,
             governing_token_mint,
+            &governing_token_mint_auhtority.pubkey(),
             amount,
         );
 
         instruction_override(&mut revoke_governing_tokens_ix);
 
-        let default_signers = &[realm_cookie.realm_authority.as_ref().unwrap()];
+        let default_signers = &[governing_token_mint_auhtority];
         let signers = signers_override.unwrap_or(default_signers);
 
         self.bench

@@ -11,7 +11,7 @@ use spl_governance::{
     error::GovernanceError,
     state::{realm::get_governing_token_holding_address, realm_config::GoverningTokenType},
 };
-use spl_governance_test_sdk::tools::NopOverride;
+use spl_governance_test_sdk::tools::{clone_keypair, NopOverride};
 
 use crate::program_test::args::RealmSetupArgs;
 use solana_sdk::signature::{Keypair, Signer};
@@ -149,7 +149,7 @@ async fn test_revoke_community_tokens_with_cannot_revoke_dormant_token_error() {
 }
 
 #[tokio::test]
-async fn test_revoke_council_tokens_with_realm_authority_must_sign_error() {
+async fn test_revoke_council_tokens_with_mint_authority_must_sign_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -172,7 +172,7 @@ async fn test_revoke_council_tokens_with_realm_authority_must_sign_error() {
             &token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
             1,
-            |i| i.accounts[1].is_signer = false, // realm_authority
+            |i| i.accounts[4].is_signer = false, // mint_authority
             Some(&[]),
         )
         .await
@@ -181,11 +181,11 @@ async fn test_revoke_council_tokens_with_realm_authority_must_sign_error() {
 
     // Assert
 
-    assert_eq!(err, GovernanceError::RealmAuthorityMustSign.into());
+    assert_eq!(err, GovernanceError::MintAuthorityMustSign.into());
 }
 
 #[tokio::test]
-async fn test_revoke_council_tokens_with_invalid_realm_authority_error() {
+async fn test_revoke_council_tokens_with_invalid_mint_authority_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -202,7 +202,7 @@ async fn test_revoke_council_tokens_with_invalid_realm_authority_error() {
         .unwrap();
 
     // Try to use fake auhtority
-    let realm_authority = Keypair::new();
+    let mint_authority = Keypair::new();
 
     // Act
     let err = governance_test
@@ -211,8 +211,8 @@ async fn test_revoke_council_tokens_with_invalid_realm_authority_error() {
             &token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
             1,
-            |i| i.accounts[1].pubkey = realm_authority.pubkey(), // realm_authority
-            Some(&[&realm_authority]),
+            |i| i.accounts[4].pubkey = mint_authority.pubkey(), // mint_authority
+            Some(&[&mint_authority]),
         )
         .await
         .err()
@@ -220,7 +220,7 @@ async fn test_revoke_council_tokens_with_invalid_realm_authority_error() {
 
     // Assert
 
-    assert_eq!(err, GovernanceError::InvalidAuthorityForRealm.into());
+    assert_eq!(err, GovernanceError::InvalidMintAuthority.into());
 }
 
 #[tokio::test]
@@ -254,7 +254,7 @@ async fn test_revoke_council_tokens_with_invalid_token_holding_error() {
             &token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
             1,
-            |i| i.accounts[2].pubkey = governing_token_holding_address, // governing_token_holding_address
+            |i| i.accounts[1].pubkey = governing_token_holding_address, // governing_token_holding_address
             None,
         )
         .await
@@ -377,7 +377,7 @@ async fn test_revoke_council_tokens_with_token_owner_record_for_different_mint_e
             &token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
             1,
-            |i| i.accounts[3].pubkey = token_owner_record_cookie2.address, // token_owner_record_address
+            |i| i.accounts[2].pubkey = token_owner_record_cookie2.address, // token_owner_record_address
             None,
         )
         .await
@@ -465,4 +465,99 @@ async fn test_revoke_council_tokens_with_partial_revoke_amount() {
         .await;
 
     assert_eq!(token_owner_record.governing_token_deposit_amount, 95);
+}
+
+#[tokio::test]
+async fn test_revoke_council_tokens_with_community_mint_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_config_args = RealmSetupArgs::default();
+    realm_config_args.council_token_config_args.token_type = GoverningTokenType::Membership;
+
+    let realm_cookie = governance_test
+        .with_realm_using_args(&realm_config_args)
+        .await;
+
+    let token_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Try to use mint and auhtority for Community to revoke Council token
+    let governing_token_mint = realm_cookie.account.community_mint.clone();
+    let governing_token_mint_authority = clone_keypair(&realm_cookie.community_mint_authority);
+    let governing_token_holding_address = get_governing_token_holding_address(
+        &governance_test.program_id,
+        &realm_cookie.address,
+        &governing_token_mint,
+    );
+
+    // Act
+    let err = governance_test
+        .revoke_governing_tokens_using_instruction(
+            &realm_cookie,
+            &token_owner_record_cookie,
+            &realm_cookie.account.config.council_mint.unwrap(),
+            1,
+            |i| {
+                i.accounts[1].pubkey = governing_token_holding_address;
+                i.accounts[3].pubkey = governing_token_mint;
+                i.accounts[4].pubkey = governing_token_mint_authority.pubkey();
+            }, // mint_authority
+            Some(&[&governing_token_mint_authority]),
+        )
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(err, GovernanceError::CannotRevokeGoverningTokens.into());
+}
+
+#[tokio::test]
+async fn test_revoke_council_tokens_with_not_matching_mint_and_authority_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_config_args = RealmSetupArgs::default();
+    realm_config_args.council_token_config_args.token_type = GoverningTokenType::Membership;
+
+    let realm_cookie = governance_test
+        .with_realm_using_args(&realm_config_args)
+        .await;
+
+    let token_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Try to use a valid mint and auhtority not matching the Council mint
+    let governing_token_mint = realm_cookie.account.community_mint.clone();
+    let governing_token_mint_authority = clone_keypair(&realm_cookie.community_mint_authority);
+
+    // Act
+    let err = governance_test
+        .revoke_governing_tokens_using_instruction(
+            &realm_cookie,
+            &token_owner_record_cookie,
+            &realm_cookie.account.config.council_mint.unwrap(),
+            1,
+            |i| {
+                i.accounts[3].pubkey = governing_token_mint;
+                i.accounts[4].pubkey = governing_token_mint_authority.pubkey();
+            }, // mint_authority
+            Some(&[&governing_token_mint_authority]),
+        )
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(
+        err,
+        GovernanceError::InvalidGoverningTokenHoldingAccount.into()
+    );
 }
