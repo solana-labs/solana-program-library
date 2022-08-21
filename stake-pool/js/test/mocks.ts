@@ -141,6 +141,23 @@ export function mockTokenAccount(amount = 0) {
   };
 }
 
+export const mockRpc = (data: any): any => {
+  const value = {
+    owner: StakeProgram.programId,
+    lamports: LAMPORTS_PER_SOL,
+    data: data,
+    executable: false,
+    rentEpoch: 0,
+  };
+  const result = {
+    context: {
+      slot: 11,
+    },
+    value: value,
+  };
+  return result;
+};
+
 export const stakeAccountData = {
   program: 'stake',
   parsed: {
@@ -174,22 +191,12 @@ export const stakeAccountData = {
   },
 };
 
-export function mockStakeAccount(): any {
-  const value = {
-    owner: StakeProgram.programId,
-    lamports: LAMPORTS_PER_SOL,
-    data: stakeAccountData,
-    executable: false,
-    rentEpoch: 0,
-  };
-  const result = {
-    context: {
-      slot: 11,
-    },
-    value: value,
-  };
-  return result;
-}
+export const uninitializedStakeAccount = {
+  program: 'stake',
+  parsed: {
+    type: 'uninitialized',
+  },
+};
 
 export function mockValidatorsStakeAccount() {
   const data = Buffer.alloc(1024);

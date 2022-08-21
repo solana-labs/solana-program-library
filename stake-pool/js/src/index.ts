@@ -33,7 +33,6 @@ import {
   ValidatorList,
   ValidatorListLayout,
   ValidatorStakeInfo,
-  ParsedInfo,
 } from './layouts';
 import { MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE, STAKE_POOL_PROGRAM_ID } from './constants';
 import { create } from 'superstruct';
@@ -110,8 +109,7 @@ export async function getStakeAccount(
   if (program != 'stake') {
     throw new Error('Not a stake account');
   }
-  const info = create(result.data.parsed, ParsedInfo);
-  const parsed = create(info, StakeAccount);
+  const parsed = create(result.data.parsed, StakeAccount);
 
   return parsed;
 }
@@ -393,7 +391,7 @@ export async function withdrawStake(
       poolAmount,
     });
   } else if (stakeReceiverAccount && stakeReceiverAccount?.type == 'delegated') {
-    const voteAccount = stakeReceiverAccount.info.stake?.delegation.voter;
+    const voteAccount = stakeReceiverAccount.info?.stake?.delegation.voter;
     if (!voteAccount) throw new Error(`Invalid stake reciever ${stakeReceiver} delegation`);
     const validatorListAccount = await connection.getAccountInfo(
       stakePool.account.data.validatorList,
@@ -415,7 +413,7 @@ export async function withdrawStake(
 
       const stakeAccount = await connection.getAccountInfo(stakeAccountAddress);
       if (!stakeAccount) {
-        throw new Error('Invalid Stake Account');
+        throw new Error(`Preferred withdraw valdator's stake account is invalid`);
       }
 
       const availableForWithdrawal = calcLamportsWithdrawAmount(

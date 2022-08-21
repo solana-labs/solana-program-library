@@ -2,7 +2,17 @@ import { publicKey, struct, u32, u64, u8, option, vec } from '@project-serum/bor
 import { Lockup, PublicKey } from '@solana/web3.js';
 import { AccountInfo } from '@solana/spl-token';
 import BN from 'bn.js';
-import { Infer, number, nullable, enums, type, coerce, instance, string, any } from 'superstruct';
+import {
+  Infer,
+  number,
+  nullable,
+  enums,
+  type,
+  coerce,
+  instance,
+  string,
+  optional,
+} from 'superstruct';
 
 export interface Fee {
   denominator: BN;
@@ -48,12 +58,6 @@ export const PublicKeyFromString = coerce(
 export type StakeAccountType = Infer<typeof StakeAccountType>;
 export const StakeAccountType = enums(['uninitialized', 'initialized', 'delegated', 'rewardsPool']);
 
-export type ParsedInfo = Infer<typeof ParsedInfo>;
-export const ParsedInfo = type({
-  type: string(),
-  info: any(),
-});
-
 export type StakeMeta = Infer<typeof StakeMeta>;
 export const StakeMeta = type({
   rentExemptReserve: BigNumFromString,
@@ -88,7 +92,7 @@ export const StakeAccountInfo = type({
 export type StakeAccount = Infer<typeof StakeAccount>;
 export const StakeAccount = type({
   type: StakeAccountType,
-  info: StakeAccountInfo,
+  info: optional(StakeAccountInfo),
 });
 
 export interface StakePool {

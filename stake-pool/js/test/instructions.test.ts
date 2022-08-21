@@ -15,17 +15,20 @@ import {
   depositSol,
   withdrawSol,
   withdrawStake,
+  getStakeAccount,
 } from '../src';
 
 import { decodeData } from '../src/utils';
 
 import {
-  mockStakeAccount,
+  mockRpc,
   mockTokenAccount,
   mockValidatorList,
   mockValidatorsStakeAccount,
   stakePoolMock,
   CONSTANTS,
+  stakeAccountData,
+  uninitializedStakeAccount,
 } from './mocks';
 
 describe('StakePoolProgram', () => {
@@ -277,7 +280,7 @@ describe('StakePoolProgram', () => {
       });
       connection.getParsedAccountInfo = jest.fn(async (pubKey: PublicKey) => {
         if (pubKey.equals(stakeReceiver)) {
-          return mockStakeAccount();
+          return mockRpc(stakeAccountData);
         }
         return null;
       });
@@ -298,6 +301,20 @@ describe('StakePoolProgram', () => {
       expect(res.signers).toHaveLength(2);
       expect(res.stakeReceiver).toEqual(stakeReceiver);
       expect(res.totalRentFreeBalances).toEqual(10000);
+    });
+  });
+  describe('getStakeAccount', () => {
+    it.only('returns an uninitialized parsed stake account', async () => {
+      const stakeAccount = new PublicKey(20);
+      connection.getParsedAccountInfo = jest.fn(async (pubKey: PublicKey) => {
+        if (pubKey.equals(stakeAccount)) {
+          return mockRpc(uninitializedStakeAccount);
+        }
+        return null;
+      });
+      const parsedStakeAccount = await getStakeAccount(connection, stakeAccount);
+      expect((connection.getParsedAccountInfo as jest.Mock).mock.calls.length).toBe(1);
+      expect(parsedStakeAccount).toEqual(uninitializedStakeAccount.parsed);
     });
   });
 });
