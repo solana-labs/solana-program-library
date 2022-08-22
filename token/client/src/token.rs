@@ -545,7 +545,7 @@ where
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
-        let multisig = if signing_pubkeys == &[*authority] {
+        let multisig = if signing_pubkeys == [*authority] {
             vec![]
         } else {
             signing_pubkeys.iter().collect::<Vec<_>>()
@@ -780,7 +780,7 @@ where
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
-        let multisig = if signing_pubkeys == &[*authority] {
+        let multisig = if signing_pubkeys == [*authority] {
             vec![]
         } else {
             signing_pubkeys.iter().collect::<Vec<_>>()
@@ -799,7 +799,7 @@ where
                 StateWithExtensionsOwned::<Account>::unpack(destination_account.data)
             {
                 if destination_obj.base.is_native() {
-                    instructions.push(instruction::sync_native(&self.program_id, &destination)?);
+                    instructions.push(instruction::sync_native(&self.program_id, destination)?);
                 }
             }
         }
