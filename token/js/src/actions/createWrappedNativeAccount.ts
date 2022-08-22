@@ -1,20 +1,11 @@
-import {
-    ConfirmOptions,
-    Connection,
-    Keypair,
-    PublicKey,
-    sendAndConfirmTransaction,
-    Signer,
-    SystemProgram,
-    Transaction,
-} from '@solana/web3.js';
+import type { ConfirmOptions, Connection, Keypair, PublicKey, Signer } from '@solana/web3.js';
+import { sendAndConfirmTransaction, SystemProgram, Transaction } from '@solana/web3.js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, NATIVE_MINT, TOKEN_PROGRAM_ID } from '../constants.js';
-import {
-    createAssociatedTokenAccountInstruction,
-    createInitializeAccountInstruction,
-    createSyncNativeInstruction,
-} from '../instructions/index.js';
-import { ACCOUNT_SIZE, getAssociatedTokenAddress, getMinimumBalanceForRentExemptAccount } from '../state/index.js';
+import { createAssociatedTokenAccountInstruction } from '../instructions/associatedTokenAccount.js';
+import { createInitializeAccountInstruction } from '../instructions/initializeAccount.js';
+import { createSyncNativeInstruction } from '../instructions/syncNative.js';
+import { ACCOUNT_SIZE, getMinimumBalanceForRentExemptAccount } from '../state/account.js';
+import { getAssociatedTokenAddress } from '../state/mint.js';
 import { createAccount } from './createAccount.js';
 
 /**

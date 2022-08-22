@@ -1,18 +1,11 @@
-import {
-    ConfirmOptions,
-    Connection,
-    PublicKey,
-    sendAndConfirmTransaction,
-    Signer,
-    Transaction,
-    TransactionSignature,
-} from '@solana/web3.js';
+import type { ConfirmOptions, Connection, PublicKey, Signer, TransactionSignature } from '@solana/web3.js';
+import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
+import { getSigners } from '../../actions/internal.js';
 import { TOKEN_2022_PROGRAM_ID } from '../../constants.js';
 import {
-    createEnableRequiredMemoTransfersInstruction,
     createDisableRequiredMemoTransfersInstruction,
+    createEnableRequiredMemoTransfersInstruction,
 } from './instructions.js';
-import { getSigners } from '../../actions/internal.js';
 
 /**
  * Enable memo transfers on the given account

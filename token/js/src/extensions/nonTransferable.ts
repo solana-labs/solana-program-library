@@ -1,5 +1,5 @@
 import { struct } from '@solana/buffer-layout';
-import { Mint } from '../state/mint.js';
+import type { Mint } from '../state/mint.js';
 import { ExtensionType, getExtensionData } from './extensionType.js';
 
 /** Non-transferable state as stored by the program */

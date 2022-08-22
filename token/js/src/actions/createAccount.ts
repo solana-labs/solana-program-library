@@ -1,18 +1,10 @@
-import {
-    ConfirmOptions,
-    Connection,
-    Keypair,
-    PublicKey,
-    sendAndConfirmTransaction,
-    Signer,
-    SystemProgram,
-    Transaction,
-} from '@solana/web3.js';
+import type { ConfirmOptions, Connection, Keypair, PublicKey, Signer } from '@solana/web3.js';
+import { sendAndConfirmTransaction, SystemProgram, Transaction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants.js';
-import { createInitializeAccountInstruction } from '../instructions/index.js';
-import { getMint } from '../state/index.js';
-import { createAssociatedTokenAccount } from './createAssociatedTokenAccount.js';
 import { getAccountLenForMint } from '../extensions/extensionType.js';
+import { createInitializeAccountInstruction } from '../instructions/initializeAccount.js';
+import { getMint } from '../state/mint.js';
+import { createAssociatedTokenAccount } from './createAssociatedTokenAccount.js';
 
 /**
  * Create and initialize a new token account

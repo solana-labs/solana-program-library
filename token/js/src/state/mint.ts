@@ -1,6 +1,7 @@
 import { struct, u32, u8 } from '@solana/buffer-layout';
 import { bool, publicKey, u64 } from '@solana/buffer-layout-utils';
-import { AccountInfo, Commitment, Connection, PublicKey } from '@solana/web3.js';
+import type { AccountInfo, Commitment, Connection } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants.js';
 import {
     TokenAccountNotFoundError,
@@ -9,10 +10,11 @@ import {
     TokenInvalidMintError,
     TokenOwnerOffCurveError,
 } from '../errors.js';
+import { ACCOUNT_TYPE_SIZE, AccountType } from '../extensions/accountType.js';
+import type { ExtensionType } from '../extensions/extensionType.js';
+import { getMintLen } from '../extensions/extensionType.js';
 import { ACCOUNT_SIZE } from './account.js';
 import { MULTISIG_SIZE } from './multisig.js';
-import { AccountType, ACCOUNT_TYPE_SIZE } from '../extensions/accountType.js';
-import { ExtensionType, getMintLen } from '../extensions/extensionType.js';
 
 /** Information about a mint */
 export interface Mint {

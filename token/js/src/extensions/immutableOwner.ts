@@ -1,5 +1,5 @@
 import { struct } from '@solana/buffer-layout';
-import { Account } from '../state/account.js';
+import type { Account } from '../state/account.js';
 import { ExtensionType, getExtensionData } from './extensionType.js';
 
 /** ImmutableOwner as stored by the program */

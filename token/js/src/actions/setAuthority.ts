@@ -1,14 +1,8 @@
-import {
-    ConfirmOptions,
-    Connection,
-    PublicKey,
-    sendAndConfirmTransaction,
-    Signer,
-    Transaction,
-    TransactionSignature,
-} from '@solana/web3.js';
+import type { ConfirmOptions, Connection, PublicKey, Signer, TransactionSignature } from '@solana/web3.js';
+import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants.js';
-import { AuthorityType, createSetAuthorityInstruction } from '../instructions/index.js';
+import type { AuthorityType } from '../instructions/setAuthority.js';
+import { createSetAuthorityInstruction } from '../instructions/setAuthority.js';
 import { getSigners } from './internal.js';
 
 /**

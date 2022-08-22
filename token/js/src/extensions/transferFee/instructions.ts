@@ -1,15 +1,16 @@
-import { struct, u8, u16 } from '@solana/buffer-layout';
+import { struct, u16, u8 } from '@solana/buffer-layout';
 import { publicKey, u64 } from '@solana/buffer-layout-utils';
-import { AccountMeta, PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
+import type { AccountMeta, Signer } from '@solana/web3.js';
+import { PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { programSupportsExtensions, TOKEN_2022_PROGRAM_ID } from '../../constants.js';
 import {
-    TokenUnsupportedInstructionError,
     TokenInvalidInstructionDataError,
     TokenInvalidInstructionKeysError,
     TokenInvalidInstructionProgramError,
     TokenInvalidInstructionTypeError,
+    TokenUnsupportedInstructionError,
 } from '../../errors.js';
 import { TokenInstruction } from '../../instructions/types.js';
-import { programSupportsExtensions, TOKEN_2022_PROGRAM_ID } from '../../constants.js';
 
 export enum TransferFeeInstruction {
     InitializeTransferFeeConfig = 0,
@@ -31,7 +32,7 @@ export interface InitializeTransferFeeConfigInstructionData {
     withdrawWithheldAuthorityOption: 1 | 0;
     withdrawWithheldAuthority: PublicKey;
     transferFeeBasisPoints: number;
-    maximumFee: BigInt;
+    maximumFee: bigint;
 }
 
 /** TODO: docs */
@@ -63,7 +64,7 @@ export function createInitializeTransferFeeConfigInstruction(
     transferFeeConfigAuthority: PublicKey | null,
     withdrawWithheldAuthority: PublicKey | null,
     transferFeeBasisPoints: number,
-    maximumFee: BigInt,
+    maximumFee: bigint,
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
@@ -101,7 +102,7 @@ export interface DecodedInitializeTransferFeeConfigInstruction {
         transferFeeConfigAuthority: PublicKey | null;
         withdrawWithheldAuthority: PublicKey | null;
         transferFeeBasisPoints: number;
-        maximumFee: BigInt;
+        maximumFee: bigint;
     };
 }
 
@@ -153,7 +154,7 @@ export interface DecodedInitializeTransferFeeConfigInstructionUnchecked {
         transferFeeConfigAuthority: PublicKey | null;
         withdrawWithheldAuthority: PublicKey | null;
         transferFeeBasisPoints: number;
-        maximumFee: BigInt;
+        maximumFee: bigint;
     };
 }
 
@@ -200,9 +201,9 @@ export function decodeInitializeTransferFeeConfigInstructionUnchecked({
 export interface TransferCheckedWithFeeInstructionData {
     instruction: TokenInstruction.TransferFeeExtension;
     transferFeeInstruction: TransferFeeInstruction.TransferCheckedWithFee;
-    amount: BigInt;
+    amount: bigint;
     decimals: number;
-    fee: BigInt;
+    fee: bigint;
 }
 
 export const transferCheckedWithFeeInstructionData = struct<TransferCheckedWithFeeInstructionData>([
@@ -233,9 +234,9 @@ export function createTransferCheckedWithFeeInstruction(
     mint: PublicKey,
     destination: PublicKey,
     authority: PublicKey,
-    amount: BigInt,
+    amount: bigint,
     decimals: number,
-    fee: BigInt,
+    fee: bigint,
     multiSigners: Signer[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
@@ -277,9 +278,9 @@ export interface DecodedTransferCheckedWithFeeInstruction {
     data: {
         instruction: TokenInstruction.TransferFeeExtension;
         transferFeeInstruction: TransferFeeInstruction.TransferCheckedWithFee;
-        amount: BigInt;
+        amount: bigint;
         decimals: number;
-        fee: BigInt;
+        fee: bigint;
     };
 }
 
@@ -336,9 +337,9 @@ export interface DecodedTransferCheckedWithFeeInstructionUnchecked {
     data: {
         instruction: TokenInstruction.TransferFeeExtension;
         transferFeeInstruction: TransferFeeInstruction.TransferCheckedWithFee;
-        amount: BigInt;
+        amount: bigint;
         decimals: number;
-        fee: BigInt;
+        fee: bigint;
     };
 }
 

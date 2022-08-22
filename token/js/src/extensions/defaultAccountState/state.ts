@@ -1,6 +1,6 @@
 import { struct, u8 } from '@solana/buffer-layout';
-import { AccountState } from '../../state.js';
-import { Mint } from '../../state.js';
+import type { AccountState } from '../../state/account.js';
+import type { Mint } from '../../state/mint.js';
 import { ExtensionType, getExtensionData } from '../extensionType.js';
 
 /** DefaultAccountState as stored by the program */

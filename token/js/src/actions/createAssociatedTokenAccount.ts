@@ -1,7 +1,8 @@
-import { ConfirmOptions, Connection, PublicKey, sendAndConfirmTransaction, Signer, Transaction } from '@solana/web3.js';
+import type { ConfirmOptions, Connection, PublicKey, Signer } from '@solana/web3.js';
+import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants.js';
-import { createAssociatedTokenAccountInstruction } from '../instructions/index.js';
-import { getAssociatedTokenAddress } from '../state/index.js';
+import { createAssociatedTokenAccountInstruction } from '../instructions/associatedTokenAccount.js';
+import { getAssociatedTokenAddress } from '../state/mint.js';
 
 /**
  * Create and initialize a new associated token account

@@ -1,12 +1,5 @@
-import {
-    Commitment,
-    ConfirmOptions,
-    Connection,
-    PublicKey,
-    sendAndConfirmTransaction,
-    Signer,
-    Transaction,
-} from '@solana/web3.js';
+import type { Commitment, ConfirmOptions, Connection, PublicKey, Signer } from '@solana/web3.js';
+import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants.js';
 import {
     TokenAccountNotFoundError,
@@ -14,8 +7,10 @@ import {
     TokenInvalidMintError,
     TokenInvalidOwnerError,
 } from '../errors.js';
-import { createAssociatedTokenAccountInstruction } from '../instructions/index.js';
-import { Account, getAccount, getAssociatedTokenAddress } from '../state/index.js';
+import { createAssociatedTokenAccountInstruction } from '../instructions/associatedTokenAccount.js';
+import type { Account } from '../state/account.js';
+import { getAccount } from '../state/account.js';
+import { getAssociatedTokenAddress } from '../state/mint.js';
 
 /**
  * Retrieve the associated token account, or create it if it doesn't exist
