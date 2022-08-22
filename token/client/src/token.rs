@@ -781,9 +781,9 @@ where
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig = if signing_pubkeys == &[*authority] {
-            signing_pubkeys.iter().collect::<Vec<_>>()
-        } else {
             vec![]
+        } else {
+            signing_pubkeys.iter().collect::<Vec<_>>()
         };
 
         let mut instructions = vec![instruction::close_account(
