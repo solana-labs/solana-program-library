@@ -599,16 +599,6 @@ impl ProposalV2 {
         let yes_vote_weight = yes_option.vote_weight;
         let deny_vote_weight = self.deny_vote_weight.unwrap();
 
-        if yes_vote_weight == max_voter_weight {
-            yes_option.vote_result = OptionVoteResult::Succeeded;
-            return Some(ProposalState::Succeeded);
-        }
-
-        if deny_vote_weight == max_voter_weight {
-            yes_option.vote_result = OptionVoteResult::Defeated;
-            return Some(ProposalState::Defeated);
-        }
-
         match vote_tipping {
             VoteTipping::Disabled => {}
             VoteTipping::Strict => {
