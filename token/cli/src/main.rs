@@ -3154,7 +3154,9 @@ async fn process_command<'a>(
                 .unwrap();
             let (close_authority_signer, close_authority) =
                 config.signer_or_default(arg_matches, "close_authority", &mut wallet_manager);
-            bulk_signers.push(close_authority_signer);
+            if !bulk_signers.contains(&close_authority_signer) {
+                bulk_signers.push(close_authority_signer);
+            }
             let recipient = config.pubkey_or_default(arg_matches, "recipient", &mut wallet_manager);
 
             command_close_mint(config, token, close_authority, recipient, bulk_signers).await
