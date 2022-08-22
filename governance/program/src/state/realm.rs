@@ -226,9 +226,7 @@ impl RealmV2 {
             VoteKind::Veto => {
                 // When Community veto Council proposal then return council_token_mint as the Proposal governing_token_mint
                 if self.community_mint == *vote_governing_token_mint {
-                    // Community Veto is not supported in the current version
-                    return Err(GovernanceError::GoverningTokenMintNotAllowedToVote.into());
-                    //return Ok(self.config.council_mint.unwrap());
+                    return Ok(self.config.council_mint.unwrap());
                 }
 
                 // When Council veto Community proposal then return community_token_mint as the Proposal governing_token_mint

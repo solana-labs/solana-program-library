@@ -48,14 +48,12 @@ pub struct GovernanceConfig {
 
     /// Minimum council weight a governance token owner must possess to be able to create a proposal
     pub min_council_weight_to_create_proposal: u64,
-    //
-    // The threshold for Community Veto votes
-    // Note: Community Veto vote is not supported in the current version
-    // In order to use this threshold the space from GovernanceV2.reserved must be taken to expand GovernanceConfig size
-    // pub community_veto_vote_threshold: VoteThreshold,
-    //
+
     /// Conditions under which a Council vote will complete early
     pub council_vote_tipping: VoteTipping,
+
+    /// The threshold for Community Veto votes
+    pub community_veto_vote_threshold: VoteThreshold,
 }
 
 /// Governance Account
@@ -85,7 +83,7 @@ pub struct GovernanceV2 {
     pub config: GovernanceConfig,
 
     /// Reserved space for future versions
-    pub reserved: [u8; 5],
+    pub reserved: [u8; 4],
 
     /// The number of proposals in voting state in the Governance
     pub voting_proposal_count: u16,
@@ -228,10 +226,7 @@ impl GovernanceV2 {
         let vote_threshold = if realm_data.community_mint == *vote_governing_token_mint {
             match vote_kind {
                 VoteKind::Electorate => &self.config.community_vote_threshold,
-                VoteKind::Veto => {
-                    // Community Veto vote is not supported in current version
-                    return Err(GovernanceError::GoverningTokenMintNotAllowedToVote.into());
-                }
+                VoteKind::Veto => &self.config.community_veto_vote_threshold,
             }
         } else if realm_data.config.council_mint == Some(*vote_governing_token_mint) {
             match vote_kind {
@@ -289,7 +284,7 @@ pub fn get_governance_data(
             governed_account: governance_data_v1.governed_account,
             proposals_count: governance_data_v1.proposals_count,
             config: governance_data_v1.config,
-            reserved: [0; 5],
+            reserved: [0; 4],
             voting_proposal_count: governance_data_v1.voting_proposal_count,
 
             // Add the extra reserved_v2 padding
@@ -317,7 +312,10 @@ pub fn get_governance_data(
 
         // For legacy accounts default Council VoteTipping to the Community
         governance_data.config.council_vote_tipping =
-            governance_data.config.community_vote_tipping.clone()
+            governance_data.config.community_vote_tipping.clone();
+
+        // For legacy accoutns set the community Veto threshold to Disabled
+        governance_data.config.community_veto_vote_threshold = VoteThreshold::Disabled;
     }
 
     Ok(governance_data)
@@ -574,6 +572,7 @@ mod test {
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
+            community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
         };
 
         // Act
@@ -598,6 +597,7 @@ mod test {
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
+            community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
         };
 
         // Act
@@ -622,6 +622,7 @@ mod test {
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
+            community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
         };
 
         // Act
@@ -646,6 +647,7 @@ mod test {
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(0),
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
+            community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
         };
 
         // Act
