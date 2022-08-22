@@ -69,6 +69,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - uses: actions/cache@v2
         with:
-          path: ~/.cache/yarn
-          key: yarn-${{ hashFiles('memo/js/yarn.lock') }}
+          path: ~/.npm
+          key: node-${{ hashFiles('memo/js/package-lock.json') }}
+          restore-keys: |
+            node-
       - run: ./ci/js-test-memo.sh
