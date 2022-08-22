@@ -1,7 +1,7 @@
 {
     "name": "@solana/spl-memo",
     "description": "SPL Memo Program JS API",
-    "version": "0.3.1",
+    "version": "0.2.1",
     "author": "Solana Maintainers <maintainers@solana.foundation>",
     "repository": "https://github.com/solana-labs/solana-program-library",
     "license": "Apache-2.0",
