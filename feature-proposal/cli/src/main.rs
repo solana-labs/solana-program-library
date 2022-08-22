@@ -358,12 +358,12 @@ fn process_propose(
         the proposal by first looking up their token account address:"
     );
     println!(
-        "    $ spl-token --owner ~/validator-keypair.json accounts {}",
+        "    $ spl-token accounts --owner ~/validator-keypair.json {}",
         mint_address
     );
     println!("and then submit their vote by running:");
     println!(
-        "    $ spl-token --owner ~/validator-keypair.json transfer <TOKEN_ACCOUNT_ADDRESS> ALL {}",
+        "    $ spl-token transfer --owner ~/validator-keypair.json <TOKEN_ACCOUNT_ADDRESS> ALL {}",
         acceptance_token_address
     );
     println!();
