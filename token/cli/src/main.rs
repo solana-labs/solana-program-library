@@ -1,6 +1,6 @@
 use clap::{
-    crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings, Arg,
-    ArgMatches, SubCommand,
+    crate_description, crate_name, crate_version, value_t, value_t_or_exit, App,
+    AppSettings, Arg, ArgMatches, SubCommand,
 };
 use serde::Serialize;
 use solana_account_decoder::{
@@ -41,7 +41,7 @@ use spl_associated_token_account::{
     get_associated_token_address_with_program_id, instruction::create_associated_token_account,
 };
 use spl_token_2022::{
-    extension::{mint_close_authority::MintCloseAuthority, StateWithExtensionsOwned},
+    extension::{interest_bearing_mint, mint_close_authority::MintCloseAuthority, StateWithExtensionsOwned},
     instruction::*,
     state::{Account, Mint, Multisig},
 };
@@ -130,6 +130,7 @@ pub enum CommandName {
     CreateAccount,
     CreateMultisig,
     Authorize,
+    SetInterestRate,
     Transfer,
     Burn,
     Mint,
@@ -361,6 +362,8 @@ async fn command_create_token(
     enable_freeze: bool,
     enable_close: bool,
     memo: Option<String>,
+    rate_authority: Option<Pubkey>,
+    rate_bps: Option<i16>,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     println_display(config, format!("Creating token {}", token_pubkey));
@@ -375,6 +378,14 @@ async fn command_create_token(
         extensions.push(ExtensionInitializationParams::MintCloseAuthority {
             close_authority: Some(authority),
         });
+    }
+    if let Some(rate_bps) = rate_bps {
+        extensions.push(
+            spl_token_client::token::ExtensionInitializationParams::InterestBearingConfig {
+                rate_authority,
+                rate: rate_bps,
+            },
+        )
     }
 
     if let Some(text) = memo {
@@ -404,6 +415,54 @@ async fn command_create_token(
         ),
         TransactionReturnData::CliSignOnlyData(cli_sign_only_data) => {
             format_output(cli_sign_only_data, &CommandName::CreateToken, config)
+        }
+    })
+}
+
+async fn command_set_interest_rate(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    rate_authority: Pubkey,
+    rate_bps: i16,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    println_display(
+        config,
+        format!(
+            "Setting Interest Rate for {} to {} bps",
+            token_pubkey, rate_bps
+        ),
+    );
+
+    if !config.sign_only {
+        // TODO sanity checks
+    }
+
+    let instructions = vec![interest_bearing_mint::instruction::update_rate(
+        &config.program_id,
+        &token_pubkey,
+        &rate_authority,
+        &[&rate_authority],
+        rate_bps,
+    )?];
+
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        false,
+        0,
+        instructions,
+    )
+    .await?;
+
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
         }
     })
 }
@@ -2056,8 +2115,48 @@ fn app<'a, 'b>(
                             "Enable the mint authority to close this mint"
                         ),
                 )
+                .arg(
+                    Arg::with_name("interest_rate")
+                        .long("interest-rate")
+                        .value_name("RATE_BPS")
+                        .takes_value(true)
+                        .help(
+                            "Specify the interest rate in basis points. \
+                            Rate authority defaults to the mint authority."
+                        ),
+                )
                 .nonce_args(true)
                 .arg(memo_arg())
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::SetInterestRate.into())
+                .about("Set the interest rate for an interest-bearing token")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .help("The interest-bearing token address"),
+                )
+                .arg(
+                    Arg::with_name("rate")
+                        .value_name("RATE")
+                        .takes_value(true)
+                        .required(true)
+                        .help("The new interest rate in basis points"),
+                )
+                .arg(
+                    Arg::with_name("rate_authority")
+                    .long("rate-authority")
+                    .validator(is_valid_signer)
+                    .value_name("SIGNER")
+                    .takes_value(true)
+                    .help(
+                        "Specify the rate authority keypair. \
+                        Defaults to the client keypair address."
+                    )
+                )
         )
         .subcommand(
             SubCommand::with_name(CommandName::CreateAccount.into())
@@ -2833,6 +2932,7 @@ async fn process_command<'a>(
             let mint_authority =
                 config.pubkey_or_default(arg_matches, "mint_authority", &mut wallet_manager);
             let memo = value_t!(arg_matches, "memo", String).ok();
+            let rate_bps = value_t!(arg_matches, "interest_rate", i16).ok();
 
             let (token_signer, token) =
                 get_signer(arg_matches, "token_keypair", &mut wallet_manager)
@@ -2849,6 +2949,26 @@ async fn process_command<'a>(
                 arg_matches.is_present("enable_freeze"),
                 arg_matches.is_present("enable_close"),
                 memo,
+                Some(mint_authority),
+                rate_bps,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::SetInterestRate, arg_matches) => {
+            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let rate_bps = value_t_or_exit!(arg_matches, "rate", i16);
+            let (rate_authority_signer, rate_authority_pubkey) =
+                config.signer_or_default(arg_matches, "rate_authority", &mut wallet_manager);
+            let bulk_signers = vec![rate_authority_signer];
+
+            command_set_interest_rate(
+                config,
+                token_pubkey,
+                rate_authority_pubkey,
+                rate_bps,
                 bulk_signers,
             )
             .await
@@ -3496,6 +3616,36 @@ mod tests {
             false,
             false,
             None,
+            None,
+            None,
+            bulk_signers,
+        )
+        .await
+        .unwrap();
+        token_pubkey
+    }
+
+    async fn create_interest_bearing_token(
+        config: &Config<'_>,
+        payer: &Keypair,
+        rate_authority: Option<Pubkey>,
+        rate_bps: i16,
+    ) -> Pubkey {
+        let token = Keypair::new();
+        let token_pubkey = token.pubkey();
+        let bulk_signers: Vec<Arc<dyn Signer>> =
+            vec![Arc::new(clone_keypair(payer)), Arc::new(token)];
+
+        command_create_token(
+            config,
+            TEST_DECIMALS,
+            token_pubkey,
+            payer.pubkey(),
+            false,
+            false,
+            None,
+            rate_authority,
+            Some(rate_bps),
             bulk_signers,
         )
         .await
@@ -3634,6 +3784,79 @@ mod tests {
             let account = config.rpc_client.get_account(&mint).await.unwrap();
             assert_eq!(account.owner, program_id);
         }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn create_token_interest_bearing() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let config = test_config(&test_validator, &payer, &spl_token_2022::id());
+        let rate_bps: i16 = 100;
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::CreateToken.into(),
+                "--interest-rate",
+                &rate_bps.to_string(),
+            ],
+        )
+        .await;
+        let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+        let mint = Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
+        let account = config.rpc_client.get_account(&mint).await.unwrap();
+        let mint_account =
+            StateWithExtensionsOwned::<spl_token_2022::state::Mint>::unpack(account.data).unwrap();
+        let extension = mint_account
+            .get_extension::<interest_bearing_mint::InterestBearingConfig>()
+            .unwrap();
+        assert_eq!(account.owner, spl_token_2022::id());
+        assert_eq!(i16::from(extension.current_rate), rate_bps);
+        assert_eq!(
+            Option::<Pubkey>::from(extension.rate_authority),
+            Some(payer.pubkey())
+        );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn set_interest_rate() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let config = test_config(&test_validator, &payer, &spl_token_2022::id());
+        let initial_rate: i16 = 100;
+        let new_rate: i16 = 300;
+        let token =
+            create_interest_bearing_token(&config, &payer, Some(payer.pubkey()), initial_rate)
+                .await;
+        let account = config.rpc_client.get_account(&token).await.unwrap();
+        let mint_account =
+            StateWithExtensionsOwned::<spl_token_2022::state::Mint>::unpack(account.data).unwrap();
+        let extension = mint_account
+            .get_extension::<interest_bearing_mint::InterestBearingConfig>()
+            .unwrap();
+        assert_eq!(account.owner, spl_token_2022::id());
+        assert_eq!(i16::from(extension.current_rate), initial_rate);
+
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::SetInterestRate.into(),
+                &token.to_string(),
+                &new_rate.to_string(),
+            ],
+        )
+        .await;
+        let _value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+        let account = config.rpc_client.get_account(&token).await.unwrap();
+        let mint_account =
+            StateWithExtensionsOwned::<spl_token_2022::state::Mint>::unpack(account.data).unwrap();
+        let extension = mint_account
+            .get_extension::<interest_bearing_mint::InterestBearingConfig>()
+            .unwrap();
+        assert_eq!(i16::from(extension.current_rate), new_rate);
     }
 
     #[tokio::test]
@@ -4348,6 +4571,8 @@ mod tests {
             payer.pubkey(),
             false,
             true,
+            None,
+            None,
             None,
             bulk_signers,
         )
