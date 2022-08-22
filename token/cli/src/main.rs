@@ -4280,4 +4280,48 @@ mod tests {
             assert_eq!(ui_account.delegated_amount, None);
         }
     }
+
+    #[tokio::test]
+    #[serial]
+    async fn close_mint() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let config = test_config(&test_validator, &payer, &spl_token_2022::id());
+
+        let token_keypair = Keypair::new();
+        let token_pubkey = token_keypair.pubkey();
+        let bulk_signers: Vec<Arc<dyn Signer>> =
+            vec![Arc::new(clone_keypair(&payer)), Arc::new(token_keypair)];
+
+        command_create_token(
+            &config,
+            TEST_DECIMALS,
+            token_pubkey,
+            payer.pubkey(),
+            false,
+            true,
+            None,
+            bulk_signers,
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+        let test_mint = StateWithExtensionsOwned::<Mint>::unpack(account.data);
+        assert!(test_mint.is_ok());
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::CloseMint.into(),
+                &token_pubkey.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&token_pubkey).await;
+        assert!(account.is_err());
+    }
 }
