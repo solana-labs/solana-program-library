@@ -7,9 +7,9 @@ import {
     TokenInvalidInstructionKeysError,
     TokenInvalidInstructionProgramError,
     TokenInvalidInstructionTypeError,
-} from '../../errors';
-import { TokenInstruction } from '../../instructions/types';
-import { programSupportsExtensions, TOKEN_2022_PROGRAM_ID } from '../../constants';
+} from '../../errors.js';
+import { TokenInstruction } from '../../instructions/types.js';
+import { programSupportsExtensions, TOKEN_2022_PROGRAM_ID } from '../../constants.js';
 
 export enum TransferFeeInstruction {
     InitializeTransferFeeConfig = 0,

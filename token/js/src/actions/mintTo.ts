@@ -7,9 +7,9 @@ import {
     Transaction,
     TransactionSignature,
 } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants';
-import { createMintToInstruction } from '../instructions/index';
-import { getSigners } from './internal';
+import { TOKEN_PROGRAM_ID } from '../constants.js';
+import { createMintToInstruction } from '../instructions/index.js';
+import { getSigners } from './internal.js';
 
 /**
  * Mint tokens to an account

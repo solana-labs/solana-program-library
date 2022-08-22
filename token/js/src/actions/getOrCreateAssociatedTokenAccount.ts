@@ -7,15 +7,15 @@ import {
     Signer,
     Transaction,
 } from '@solana/web3.js';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants.js';
 import {
     TokenAccountNotFoundError,
     TokenInvalidAccountOwnerError,
     TokenInvalidMintError,
     TokenInvalidOwnerError,
-} from '../errors';
-import { createAssociatedTokenAccountInstruction } from '../instructions/index';
-import { Account, getAccount, getAssociatedTokenAddress } from '../state/index';
+} from '../errors.js';
+import { createAssociatedTokenAccountInstruction } from '../instructions/index.js';
+import { Account, getAccount, getAssociatedTokenAddress } from '../state/index.js';
 
 /**
  * Retrieve the associated token account, or create it if it doesn't exist

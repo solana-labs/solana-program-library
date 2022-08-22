@@ -1,8 +1,8 @@
 import { s16, ns64, struct } from '@solana/buffer-layout';
 import { publicKey } from '@solana/buffer-layout-utils';
 import { PublicKey } from '@solana/web3.js';
-import { Mint } from '../../state';
-import { ExtensionType, getExtensionData } from '../extensionType';
+import { Mint } from '../../state.js';
+import { ExtensionType, getExtensionData } from '../extensionType.js';
 
 export interface InterestBearingMintConfigState {
     rateAuthority: PublicKey;

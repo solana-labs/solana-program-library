@@ -7,9 +7,9 @@ import {
     Transaction,
     TransactionSignature,
 } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants';
-import { createApproveCheckedInstruction } from '../instructions/index';
-import { getSigners } from './internal';
+import { TOKEN_PROGRAM_ID } from '../constants.js';
+import { createApproveCheckedInstruction } from '../instructions/index.js';
+import { getSigners } from './internal.js';
 
 /**
  * Approve a delegate to transfer up to a maximum number of tokens from an account, asserting the token mint and

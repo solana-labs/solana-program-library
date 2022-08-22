@@ -7,12 +7,12 @@ import {
     Transaction,
     TransactionSignature,
 } from '@solana/web3.js';
-import { TOKEN_2022_PROGRAM_ID } from '../../constants';
+import { TOKEN_2022_PROGRAM_ID } from '../../constants.js';
 import {
     createEnableRequiredMemoTransfersInstruction,
     createDisableRequiredMemoTransfersInstruction,
-} from './instructions';
-import { getSigners } from '../../actions/internal';
+} from './instructions.js';
+import { getSigners } from '../../actions/internal.js';
 
 /**
  * Enable memo transfers on the given account

@@ -8,9 +8,9 @@ import {
     SystemProgram,
     Transaction,
 } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants';
-import { createInitializeMultisigInstruction } from '../instructions/index';
-import { getMinimumBalanceForRentExemptMultisig, MULTISIG_SIZE } from '../state/index';
+import { TOKEN_PROGRAM_ID } from '../constants.js';
+import { createInitializeMultisigInstruction } from '../instructions/index.js';
+import { getMinimumBalanceForRentExemptMultisig, MULTISIG_SIZE } from '../state/index.js';
 
 /**
  * Create and initialize a new multisig

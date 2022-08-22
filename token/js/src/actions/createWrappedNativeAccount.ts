@@ -8,14 +8,14 @@ import {
     SystemProgram,
     Transaction,
 } from '@solana/web3.js';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, NATIVE_MINT, TOKEN_PROGRAM_ID } from '../constants';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, NATIVE_MINT, TOKEN_PROGRAM_ID } from '../constants.js';
 import {
     createAssociatedTokenAccountInstruction,
     createInitializeAccountInstruction,
     createSyncNativeInstruction,
-} from '../instructions/index';
-import { ACCOUNT_SIZE, getAssociatedTokenAddress, getMinimumBalanceForRentExemptAccount } from '../state/index';
-import { createAccount } from './createAccount';
+} from '../instructions/index.js';
+import { ACCOUNT_SIZE, getAssociatedTokenAddress, getMinimumBalanceForRentExemptAccount } from '../state/index.js';
+import { createAccount } from './createAccount.js';
 
 /**
  * Create, initialize, and fund a new wrapped native SOL account

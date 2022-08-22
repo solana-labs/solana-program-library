@@ -7,9 +7,9 @@ import {
     TokenInvalidInstructionKeysError,
     TokenInvalidInstructionProgramError,
     TokenInvalidInstructionTypeError,
-} from '../errors';
-import { TokenInstruction } from './types';
-import { programSupportsExtensions } from '../constants';
+} from '../errors.js';
+import { TokenInstruction } from './types.js';
+import { programSupportsExtensions } from '../constants.js';
 
 /** TODO: docs */
 export interface InitializeMintCloseAuthorityInstructionData {

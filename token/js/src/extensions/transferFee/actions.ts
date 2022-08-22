@@ -7,14 +7,14 @@ import {
     Transaction,
     TransactionSignature,
 } from '@solana/web3.js';
-import { TOKEN_2022_PROGRAM_ID } from '../../constants';
+import { TOKEN_2022_PROGRAM_ID } from '../../constants.js';
 import {
     createTransferCheckedWithFeeInstruction,
     createHarvestWithheldTokensToMintInstruction,
     createWithdrawWithheldTokensFromAccountsInstruction,
     createWithdrawWithheldTokensFromMintInstruction,
-} from './instructions';
-import { getSigners } from '../../actions/internal';
+} from './instructions.js';
+import { getSigners } from '../../actions/internal.js';
 
 /**
  * Transfer tokens from one account to another, asserting the transfer fee, token mint, and decimals

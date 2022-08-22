@@ -1,14 +1,14 @@
-import { ACCOUNT_SIZE } from '../state/account';
-import { Mint, MINT_SIZE } from '../state/mint';
-import { MULTISIG_SIZE } from '../state/multisig';
-import { ACCOUNT_TYPE_SIZE } from './accountType';
-import { MEMO_TRANSFER_SIZE } from './memoTransfer';
-import { DEFAULT_ACCOUNT_STATE_SIZE } from './defaultAccountState';
-import { MINT_CLOSE_AUTHORITY_SIZE } from './mintCloseAuthority';
-import { IMMUTABLE_OWNER_SIZE } from './immutableOwner';
-import { TRANSFER_FEE_CONFIG_SIZE, TRANSFER_FEE_AMOUNT_SIZE } from './transferFee';
-import { NON_TRANSFERABLE_SIZE } from './nonTransferable';
-import { INTEREST_BEARING_MINT_CONFIG_STATE_SIZE } from './interestBearingMint/state';
+import { ACCOUNT_SIZE } from '../state/account.js';
+import { Mint, MINT_SIZE } from '../state/mint.js';
+import { MULTISIG_SIZE } from '../state/multisig.js';
+import { ACCOUNT_TYPE_SIZE } from './accountType.js';
+import { MEMO_TRANSFER_SIZE } from './memoTransfer.js';
+import { DEFAULT_ACCOUNT_STATE_SIZE } from './defaultAccountState.js';
+import { MINT_CLOSE_AUTHORITY_SIZE } from './mintCloseAuthority.js';
+import { IMMUTABLE_OWNER_SIZE } from './immutableOwner.js';
+import { TRANSFER_FEE_CONFIG_SIZE, TRANSFER_FEE_AMOUNT_SIZE } from './transferFee.js';
+import { NON_TRANSFERABLE_SIZE } from './nonTransferable.js';
+import { INTEREST_BEARING_MINT_CONFIG_STATE_SIZE } from './interestBearingMint/state.js';
 
 export enum ExtensionType {
     Uninitialized,

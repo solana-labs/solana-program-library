@@ -7,13 +7,13 @@ import {
     Transaction,
     TransactionSignature,
 } from '@solana/web3.js';
-import { TOKEN_2022_PROGRAM_ID } from '../../constants';
-import { AccountState } from '../../state';
+import { TOKEN_2022_PROGRAM_ID } from '../../constants.js';
+import { AccountState } from '../../state.js';
 import {
     createInitializeDefaultAccountStateInstruction,
     createUpdateDefaultAccountStateInstruction,
-} from './instructions';
-import { getSigners } from '../../actions/internal';
+} from './instructions.js';
+import { getSigners } from '../../actions/internal.js';
 
 /**
  * Initialize a default account state on a mint

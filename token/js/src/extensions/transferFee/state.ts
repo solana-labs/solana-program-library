@@ -1,9 +1,9 @@
 import { struct, u16, Layout } from '@solana/buffer-layout';
 import { publicKey, u64 } from '@solana/buffer-layout-utils';
 import { PublicKey } from '@solana/web3.js';
-import { Account } from '../../state';
-import { Mint } from '../../state/mint';
-import { ExtensionType, getExtensionData } from '../extensionType';
+import { Account } from '../../state.js';
+import { Mint } from '../../state/mint.js';
+import { ExtensionType, getExtensionData } from '../extensionType.js';
 
 export const MAX_FEE_BASIS_POINTS = 10_000;
 export const ONE_IN_BASIS_POINTS: BigInt = MAX_FEE_BASIS_POINTS as unknown as BigInt;

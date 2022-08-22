@@ -1,6 +1,6 @@
 import { struct } from '@solana/buffer-layout';
-import { Mint } from '../state/mint';
-import { ExtensionType, getExtensionData } from './extensionType';
+import { Mint } from '../state/mint.js';
+import { ExtensionType, getExtensionData } from './extensionType.js';
 
 /** Non-transferable state as stored by the program */
 export interface NonTransferable {} // eslint-disable-line

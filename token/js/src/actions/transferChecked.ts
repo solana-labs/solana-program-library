@@ -7,9 +7,9 @@ import {
     Transaction,
     TransactionSignature,
 } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants';
-import { createTransferCheckedInstruction } from '../instructions/index';
-import { getSigners } from './internal';
+import { TOKEN_PROGRAM_ID } from '../constants.js';
+import { createTransferCheckedInstruction } from '../instructions/index.js';
+import { getSigners } from './internal.js';
 
 /**
  * Transfer tokens from one account to another, asserting the token mint and decimals

@@ -1,7 +1,7 @@
 import { struct } from '@solana/buffer-layout';
 import { bool } from '@solana/buffer-layout-utils';
-import { Account } from '../../state';
-import { ExtensionType, getExtensionData } from '../extensionType';
+import { Account } from '../../state.js';
+import { ExtensionType, getExtensionData } from '../extensionType.js';
 
 /** MemoTransfer as stored by the program */
 export interface MemoTransfer {

@@ -1,9 +1,9 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { PublicKey, TransactionInstruction, SystemProgram } from '@solana/web3.js';
-import { TOKEN_2022_PROGRAM_ID, NATIVE_MINT_2022 } from '../constants';
-import { TokenInstruction } from './types';
-import { TokenUnsupportedInstructionError } from '../errors';
-import { programSupportsExtensions } from '../constants';
+import { TOKEN_2022_PROGRAM_ID, NATIVE_MINT_2022 } from '../constants.js';
+import { TokenInstruction } from './types.js';
+import { TokenUnsupportedInstructionError } from '../errors.js';
+import { programSupportsExtensions } from '../constants.js';
 
 /** TODO: docs */
 export interface CreateNativeMintInstructionData {

@@ -8,14 +8,14 @@ import {
     SystemProgram,
     Transaction,
 } from '@solana/web3.js';
-import { getSigners } from '../../actions/internal';
-import { TOKEN_2022_PROGRAM_ID } from '../../constants';
-import { createInitializeMintInstruction } from '../../instructions';
-import { ExtensionType, getMintLen } from '../extensionType';
+import { getSigners } from '../../actions/internal.js';
+import { TOKEN_2022_PROGRAM_ID } from '../../constants.js';
+import { createInitializeMintInstruction } from '../../instructions.js';
+import { ExtensionType, getMintLen } from '../extensionType.js';
 import {
     createInitializeInterestBearingMintInstruction,
     createUpdateRateInterestBearingMintInstruction,
-} from './instructions';
+} from './instructions.js';
 
 /**
  * Initialize an interest bearing account on a mint

@@ -7,9 +7,9 @@ import {
     Transaction,
     TransactionSignature,
 } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants';
-import { createFreezeAccountInstruction } from '../instructions/index';
-import { getSigners } from './internal';
+import { TOKEN_PROGRAM_ID } from '../constants.js';
+import { createFreezeAccountInstruction } from '../instructions/index.js';
+import { getSigners } from './internal.js';
 
 /**
  * Freeze a token account
