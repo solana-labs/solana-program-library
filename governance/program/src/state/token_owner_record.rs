@@ -124,6 +124,12 @@ impl TokenOwnerRecordV2 {
                 return Err(GovernanceError::InvalidGoverningTokenMint.into());
             };
 
+        // If the weight threshold is set to u64::MAX then it indicates explicitly Disabled value
+        // which should prevent any possiblity of using it
+        if min_weight_to_create_proposal == u64::MAX {
+            return Err(GovernanceError::VoterWeightThresholdDisabled.into());
+        }
+
         if voter_weight < min_weight_to_create_proposal {
             return Err(GovernanceError::NotEnoughTokensToCreateProposal.into());
         }
@@ -152,6 +158,12 @@ impl TokenOwnerRecordV2 {
             } else {
                 return Err(GovernanceError::InvalidGoverningTokenMint.into());
             };
+
+        // If the weight threshold is set to u64::MAX then it indicates explicitly Disabled value
+        // which should prevent any possiblity of using it
+        if min_weight_to_create_governance == u64::MAX {
+            return Err(GovernanceError::VoterWeightThresholdDisabled.into());
+        }
 
         if voter_weight < min_weight_to_create_governance {
             return Err(GovernanceError::NotEnoughTokensToCreateGovernance.into());
