@@ -78,7 +78,7 @@ pub enum GovernanceInstruction {
     ///      Tokens will be transferred or minted to the Holding account
     ///  3. `[signer]` Governing Token Owner account
     ///  4. `[signer]` Governing Token Source account authority
-    ///      It should be owner for TokenAccount and mint_auhtority for MintAccount
+    ///      It should be owner for TokenAccount and mint_authority for MintAccount
     ///  5. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
     ///  6. `[signer]` Payer
     ///  7. `[]` System
@@ -494,10 +494,10 @@ pub enum GovernanceInstruction {
     /// Note: If there are active votes for the TokenOwner then the vote weights won't be updated automatically
     ///
     ///  0. `[]` Realm account
-    ///  1. `[signer]`  Realm authority    
-    ///  2. `[writable]` Governing Token Holding account. PDA seeds: ['governance',realm, governing_token_mint]
-    ///  3. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
-    ///  4. `[writable]` GoverningTokenMint
+    ///  1. `[writable]` Governing Token Holding account. PDA seeds: ['governance',realm, governing_token_mint]
+    ///  2. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///  3. `[writable]` GoverningTokenMint
+    ///  4. `[signer]` GoverningTokenMint mint_authority
     ///  5. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///  6. `[]` SPL Token program
     RevokeGoverningTokens {
@@ -1545,9 +1545,9 @@ pub fn revoke_governing_tokens(
     program_id: &Pubkey,
     // Accounts
     realm: &Pubkey,
-    realm_authority: &Pubkey,
     governing_token_owner: &Pubkey,
     governing_token_mint: &Pubkey,
+    governing_token_mint_authority: &Pubkey,
     // Args
     amount: u64,
 ) -> Instruction {
@@ -1565,10 +1565,10 @@ pub fn revoke_governing_tokens(
 
     let accounts = vec![
         AccountMeta::new_readonly(*realm, false),
-        AccountMeta::new_readonly(*realm_authority, true),
         AccountMeta::new(governing_token_holding_address, false),
         AccountMeta::new(token_owner_record_address, false),
         AccountMeta::new(*governing_token_mint, false),
+        AccountMeta::new_readonly(*governing_token_mint_authority, true),
         AccountMeta::new_readonly(realm_config_address, false),
         AccountMeta::new_readonly(spl_token::id(), false),
     ];

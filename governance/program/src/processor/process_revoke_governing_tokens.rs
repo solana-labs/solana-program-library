@@ -9,11 +9,11 @@ use solana_program::{
 use crate::{
     error::GovernanceError,
     state::{
-        realm::{get_realm_address_seeds, get_realm_data_for_authority},
+        realm::{get_realm_address_seeds, get_realm_data},
         realm_config::get_realm_config_data_for_realm,
         token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint,
     },
-    tools::spl_token::burn_spl_tokens_signed,
+    tools::spl_token::{assert_spl_token_mint_authority_is_signer, burn_spl_tokens_signed},
 };
 
 /// Processes RevokeGoverningTokens instruction
@@ -25,27 +25,30 @@ pub fn process_revoke_governing_tokens(
     let account_info_iter = &mut accounts.iter();
 
     let realm_info = next_account_info(account_info_iter)?; // 0
-    let realm_authority_info = next_account_info(account_info_iter)?; // 1
 
-    let governing_token_holding_info = next_account_info(account_info_iter)?; // 2
-    let token_owner_record_info = next_account_info(account_info_iter)?; // 3
-    let governing_token_mint_info = next_account_info(account_info_iter)?; // 4
+    let governing_token_holding_info = next_account_info(account_info_iter)?; // 1
+    let token_owner_record_info = next_account_info(account_info_iter)?; // 2
+
+    let governing_token_mint_info = next_account_info(account_info_iter)?; // 3
+    let governing_token_mint_authority_info = next_account_info(account_info_iter)?; // 4
+
     let realm_config_info = next_account_info(account_info_iter)?; // 5
 
     let spl_token_info = next_account_info(account_info_iter)?; // 6
 
-    let realm_data =
-        get_realm_data_for_authority(program_id, realm_info, realm_authority_info.key)?;
-
-    if !realm_authority_info.is_signer {
-        return Err(GovernanceError::RealmAuthorityMustSign.into());
-    }
+    let realm_data = get_realm_data(program_id, realm_info)?;
 
     realm_data.assert_is_valid_governing_token_mint_and_holding(
         program_id,
         realm_info.key,
         governing_token_mint_info.key,
         governing_token_holding_info.key,
+    )?;
+
+    // The governing_token_mint_authority must sign the transaction to revoke Membership tokens
+    assert_spl_token_mint_authority_is_signer(
+        governing_token_mint_info,
+        governing_token_mint_authority_info,
     )?;
 
     let realm_config_data =

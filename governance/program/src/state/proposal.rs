@@ -599,16 +599,6 @@ impl ProposalV2 {
         let yes_vote_weight = yes_option.vote_weight;
         let deny_vote_weight = self.deny_vote_weight.unwrap();
 
-        if yes_vote_weight == max_voter_weight {
-            yes_option.vote_result = OptionVoteResult::Succeeded;
-            return Some(ProposalState::Succeeded);
-        }
-
-        if deny_vote_weight == max_voter_weight {
-            yes_option.vote_result = OptionVoteResult::Defeated;
-            return Some(ProposalState::Defeated);
-        }
-
         match vote_tipping {
             VoteTipping::Disabled => {}
             VoteTipping::Strict => {
@@ -1184,9 +1174,10 @@ mod test {
             min_transaction_hold_up_time: 10,
             max_voting_time: 5,
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
-            vote_tipping: VoteTipping::Strict,
+            community_vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(60),
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
+            council_vote_tipping: VoteTipping::Strict,
         }
     }
 
