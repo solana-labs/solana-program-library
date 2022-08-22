@@ -16,6 +16,11 @@ yarn add @solana/spl-memo
 
 ## Build from Source
 
+0. Prerequisites
+
+* Node 16+
+* NPM 8+
+
 1. Clone the project:
 ```shell
 git clone https://github.com/solana-labs/solana-program-library.git
@@ -28,15 +33,15 @@ cd solana-program-library/memo/js
 
 3. Install the dependencies:
 ```shell
-yarn install
+npm install
 ```
 
 4. Build the library:
 ```shell
-yarn build
+npm run build
 ```
 
 5. Run the tests:
 ```shell
-yarn test
+npm run test
 ```

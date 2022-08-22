@@ -1,9 +1,7 @@
-import {Buffer} from 'buffer';
-import {PublicKey, TransactionInstruction} from '@solana/web3.js';
+import { Buffer } from 'buffer';
+import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 
-export const MEMO_PROGRAM_ID: PublicKey = new PublicKey(
-  'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr',
-);
+export const MEMO_PROGRAM_ID: PublicKey = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
 
 /**
  * Creates and returns an instruction which validates a string of UTF-8
@@ -24,20 +22,17 @@ export const MEMO_PROGRAM_ID: PublicKey = new PublicKey(
  *        succeed.  null is allowed if there are no signers for the memo
  *        verification.
  **/
-export function createMemoInstruction(
-  memo: string,
-  signerPubkeys?: Array<PublicKey>,
-): TransactionInstruction {
-  const keys =
-    signerPubkeys == null
-      ? []
-      : signerPubkeys.map(function (key) {
-          return {pubkey: key, isSigner: true, isWritable: false};
-        });
+export function createMemoInstruction(memo: string, signerPubkeys?: Array<PublicKey>): TransactionInstruction {
+    const keys =
+        signerPubkeys == null
+            ? []
+            : signerPubkeys.map(function (key) {
+                  return { pubkey: key, isSigner: true, isWritable: false };
+              });
 
-  return new TransactionInstruction({
-    keys: keys,
-    programId: MEMO_PROGRAM_ID,
-    data: Buffer.from(memo, 'utf8'),
-  });
+    return new TransactionInstruction({
+        keys: keys,
+        programId: MEMO_PROGRAM_ID,
+        data: Buffer.from(memo, 'utf8'),
+    });
 }
