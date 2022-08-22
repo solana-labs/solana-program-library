@@ -2,7 +2,8 @@ import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
-import { Connection, Keypair, PublicKey, Signer, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
+import type { Connection, PublicKey, Signer } from '@solana/web3.js';
+import { Keypair, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
 
 import { ExtensionType, createAccount, createMint, createReallocateInstruction, getAccountLen } from '../../src';
 
