@@ -11,7 +11,11 @@ A TypeScript library for interacting with the SPL Memo program.
 ## Install
 
 ```shell
-yarn add @solana/spl-memo
+npm install --save @solana/spl-memo @solana/web3.js
+```
+_OR_
+```shell
+yarn add @solana/spl-memo @solana/web3.js
 ```
 
 ## Build from Source
