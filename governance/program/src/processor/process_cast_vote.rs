@@ -166,7 +166,7 @@ pub fn process_cast_vote(
 
     if proposal_data.try_tip_vote(
         max_voter_weight,
-        &governance_data.config.vote_tipping,
+        governance_data.get_vote_tipping(&realm_data, vote_governing_token_mint_info.key)?,
         clock.unix_timestamp,
         &vote_threshold,
         &vote_kind,
