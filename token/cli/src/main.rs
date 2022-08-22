@@ -1474,24 +1474,64 @@ async fn command_close(
     })
 }
 
-// HANA new command impl
-// XXX OK COOL WHAT NOW
-// use command_close as a guide
-// the first thing is we want to do sanity checks in online mode
-// that means fetch the mint, check supply is zero
-// check there exists a close authority? or, check the authority matches the one we expect
-// code to do the parse is in set_authority
-// the first thing to check is how close actually works
-// if it goes through the same instruction maybe reuse that
-// otherwise it might have its own shit idk
-//
-// alright cool it does in fact go through close account, this is easy
-// first step make command_close go through the client
-//
-// done. i needed to refactor some shit but close_account now handles native recipient and multisig
-// so close_mint is easy. i just need different sanity checks and then the close_account call
-async fn command_close_mint(config: &Config<'_>) -> CommandResult {
-    Ok("".to_string())
+async fn command_close_mint(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    close_authority: Pubkey,
+    recipient: Pubkey,
+    bulk_signers: BulkSigners,
+) -> CommandResult {
+    let token = token_client_from_config(config, &token_pubkey);
+
+    if !config.sign_only {
+        let mint_account = config.rpc_client.get_account(&token_pubkey).await?;
+        config.check_owner(&token_pubkey, &mint_account.owner)?;
+
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)
+            .map_err(|_| format!("Could not deserialize token mint {}", token_pubkey))?;
+        let mint_supply = mint_state.base.supply;
+
+        if mint_supply > 0 {
+            return Err(format!(
+                "Mint {} still has {} outstanding tokens; these must be burned before closing the mint.",
+                token_pubkey, mint_supply,
+            )
+            .into());
+        }
+
+        if let Ok(mint_close_authority) = mint_state.get_extension::<MintCloseAuthority>() {
+            let mint_close_authority_pubkey =
+                Option::<Pubkey>::from(mint_close_authority.close_authority);
+
+            if mint_close_authority_pubkey != Some(close_authority) {
+                return Err(format!(
+                    "Mint {} has close authority {}, but {} was provided",
+                    token_pubkey,
+                    mint_close_authority_pubkey
+                        .map(|pubkey| pubkey.to_string())
+                        .unwrap_or_else(|| "disabled".to_string()),
+                    close_authority
+                )
+                .into());
+            }
+        } else {
+            return Err(format!("Mint {} does not support close authority", token_pubkey).into());
+        }
+    }
+
+    let res = token
+        .close_account(&token_pubkey, &recipient, &close_authority, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 async fn command_balance(config: &Config<'_>, address: Pubkey) -> CommandResult {
@@ -2534,12 +2574,6 @@ fn app<'a, 'b>(
                 .nonce_args(true)
                 .offline_args(),
         )
-        // HANA new command entry
-        // XXX OK COOL what the fuck is my interface here
-        // by default, we take a mint address, just like close
-        // actually no we unconditionally take it
-        // we need --close-authority just like above
-        // and we need multisig nonce offline i think?
         .subcommand(
             SubCommand::with_name(CommandName::CloseMint.into())
                 .about("Close a token mint")
@@ -2551,6 +2585,15 @@ fn app<'a, 'b>(
                         .index(1)
                         .required(true)
                         .help("Token to close"),
+                )
+                .arg(owner_address_arg())
+                .arg(
+                    Arg::with_name("recipient")
+                        .long("recipient")
+                        .validator(is_valid_pubkey)
+                        .value_name("REFUND_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .help("The address of the account to receive remaining SOL [default: --owner]"),
                 )
                 .arg(
                     Arg::with_name("close_authority")
@@ -3105,8 +3148,17 @@ async fn process_command<'a>(
             let recipient = config.pubkey_or_default(arg_matches, "recipient", &mut wallet_manager);
             command_close(config, address, close_authority, recipient, bulk_signers).await
         }
-        // HANA new command invocation
-        (CommandName::CloseMint, arg_matches) => command_close_mint(config).await,
+        (CommandName::CloseMint, arg_matches) => {
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let (close_authority_signer, close_authority) =
+                config.signer_or_default(arg_matches, "close_authority", &mut wallet_manager);
+            bulk_signers.push(close_authority_signer);
+            let recipient = config.pubkey_or_default(arg_matches, "recipient", &mut wallet_manager);
+
+            command_close_mint(config, token, close_authority, recipient, bulk_signers).await
+        }
         (CommandName::Balance, arg_matches) => {
             let address = config
                 .associated_token_address_or_override(arg_matches, "address", &mut wallet_manager)
