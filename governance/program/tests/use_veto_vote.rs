@@ -846,3 +846,123 @@ async fn test_veto_vote_with_community_voter_weight_addin() {
 
     assert_eq!(proposal_account.state, ProposalState::Vetoed);
 }
+
+#[tokio::test]
+async fn test_veto_vote_with_community_max_voter_weight_addin() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_with_max_voter_weight_addin().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let realm_cookie = governance_test
+        .with_realm_using_addins(PluginSetupArgs::COMMUNITY_MAX_VOTER_WEIGHT)
+        .await;
+
+    // TokenOwnerRecord with voting power of 100
+    let mut token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Bump MaxVoterWeight to 200
+    governance_test
+        .with_max_voter_weight_addin_record(&mut token_owner_record_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.community_veto_vote_threshold = VoteThreshold::YesVotePercentage(50); // 50% Veto
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    // Create Proposal for Council vote
+    let proposal_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&proposal_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Veto)
+        .await
+        .unwrap();
+
+    // Assert
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    assert_eq!(proposal_account.state, ProposalState::Vetoed);
+}
+
+#[tokio::test]
+async fn test_veto_vote_with_community_max_voter_weight_addin_and_veto_not_tipped() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_with_max_voter_weight_addin().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let realm_cookie = governance_test
+        .with_realm_using_addins(PluginSetupArgs::COMMUNITY_MAX_VOTER_WEIGHT)
+        .await;
+
+    // TokenOwnerRecord with voting power of 100
+    let mut token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Bump MaxVoterWeight to 200
+    governance_test
+        .with_max_voter_weight_addin_record(&mut token_owner_record_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.community_veto_vote_threshold = VoteThreshold::YesVotePercentage(51); // 51% Veto
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    // Create Proposal for Council vote
+    let proposal_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&proposal_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Veto)
+        .await
+        .unwrap();
+
+    // Assert
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    assert_eq!(proposal_account.state, ProposalState::Voting);
+}
