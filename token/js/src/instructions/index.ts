@@ -1,6 +1,6 @@
-export * from './types.js';
-export * from './decode.js';
 export * from './associatedTokenAccount.js';
+export * from './decode.js';
+export * from './types.js';
 
 export * from './initializeMint.js'; //                 0
 export * from './initializeAccount.js'; //              1
