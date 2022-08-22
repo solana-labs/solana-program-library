@@ -1460,7 +1460,7 @@ async fn command_close(
     }
 
     let res = token
-        .close_account(&account, &close_authority, &recipient, &bulk_signers)
+        .close_account(&account, &recipient, &close_authority, &bulk_signers)
         .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -1487,6 +1487,9 @@ async fn command_close(
 //
 // alright cool it does in fact go through close account, this is easy
 // first step make command_close go through the client
+//
+// done. i needed to refactor some shit but close_account now handles native recipient and multisig
+// so close_mint is easy. i just need different sanity checks and then the close_account call
 async fn command_close_mint(config: &Config<'_>) -> CommandResult {
     Ok("".to_string())
 }
