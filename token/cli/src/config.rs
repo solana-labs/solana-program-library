@@ -159,7 +159,9 @@ impl<'a> Config<'a> {
                 eprintln!("error: {}", e);
                 exit(1);
             });
-        bulk_signers.push(signer);
+        if !bulk_signers.contains(&signer) {
+            bulk_signers.push(signer);
+        }
 
         let verbose = matches.is_present("verbose");
         let output_format = matches
@@ -198,7 +200,9 @@ impl<'a> Config<'a> {
                 eprintln!("error: {}", e);
                 exit(1);
             });
-            bulk_signers.push(signer);
+            if !bulk_signers.contains(&signer) {
+                bulk_signers.push(signer);
+            }
 
             Some(nonce_authority)
         } else {
