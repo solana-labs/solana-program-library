@@ -2705,7 +2705,9 @@ async fn process_command<'a>(
             let (token_signer, token) =
                 get_signer(arg_matches, "token_keypair", &mut wallet_manager)
                     .unwrap_or_else(new_throwaway_signer);
-            bulk_signers.push(token_signer);
+            if !bulk_signers.contains(&token_signer) {
+                bulk_signers.push(token_signer);
+            }
 
             command_create_token(
                 config,
@@ -2726,7 +2728,9 @@ async fn process_command<'a>(
             // No need to add a signer when creating an associated token account
             let account = get_signer(arg_matches, "account_keypair", &mut wallet_manager).map(
                 |(signer, account)| {
-                    bulk_signers.push(signer);
+                    if !bulk_signers.contains(&signer) {
+                        bulk_signers.push(signer);
+                    }
                     account
                 },
             );
@@ -2753,7 +2757,9 @@ async fn process_command<'a>(
 
             let (signer, account) = get_signer(arg_matches, "address_keypair", &mut wallet_manager)
                 .unwrap_or_else(new_throwaway_signer);
-            bulk_signers.push(signer);
+            if !bulk_signers.contains(&signer) {
+                bulk_signers.push(signer);
+            }
 
             command_create_multisig(
                 config,
@@ -2783,7 +2789,9 @@ async fn process_command<'a>(
 
             let (authority_signer, authority) =
                 config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
-            bulk_signers.push(authority_signer);
+            if !bulk_signers.contains(&authority_signer) {
+                bulk_signers.push(authority_signer);
+            }
 
             let new_authority =
                 pubkey_of_signer(arg_matches, "new_authority", &mut wallet_manager).unwrap();
@@ -2814,7 +2822,9 @@ async fn process_command<'a>(
 
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-            bulk_signers.push(owner_signer);
+            if !bulk_signers.contains(&owner_signer) {
+                bulk_signers.push(owner_signer);
+            }
 
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
             let fund_recipient = arg_matches.is_present("fund_recipient");
@@ -2851,7 +2861,9 @@ async fn process_command<'a>(
 
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-            bulk_signers.push(owner_signer);
+            if !bulk_signers.contains(&owner_signer) {
+                bulk_signers.push(owner_signer);
+            }
 
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
             let mint_address =
@@ -2875,7 +2887,9 @@ async fn process_command<'a>(
         (CommandName::Mint, arg_matches) => {
             let (mint_authority_signer, mint_authority) =
                 config.signer_or_default(arg_matches, "mint_authority", &mut wallet_manager);
-            bulk_signers.push(mint_authority_signer);
+            if !bulk_signers.contains(&mint_authority_signer) {
+                bulk_signers.push(mint_authority_signer);
+            }
 
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
@@ -2910,7 +2924,9 @@ async fn process_command<'a>(
         (CommandName::Freeze, arg_matches) => {
             let (freeze_authority_signer, freeze_authority) =
                 config.signer_or_default(arg_matches, "freeze_authority", &mut wallet_manager);
-            bulk_signers.push(freeze_authority_signer);
+            if !bulk_signers.contains(&freeze_authority_signer) {
+                bulk_signers.push(freeze_authority_signer);
+            }
 
             let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
                 .unwrap()
@@ -2929,7 +2945,9 @@ async fn process_command<'a>(
         (CommandName::Thaw, arg_matches) => {
             let (freeze_authority_signer, freeze_authority) =
                 config.signer_or_default(arg_matches, "freeze_authority", &mut wallet_manager);
-            bulk_signers.push(freeze_authority_signer);
+            if !bulk_signers.contains(&freeze_authority_signer) {
+                bulk_signers.push(freeze_authority_signer);
+            }
 
             let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
                 .unwrap()
@@ -2949,7 +2967,9 @@ async fn process_command<'a>(
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
             let account = if arg_matches.is_present("create_aux_account") {
                 let (signer, account) = new_throwaway_signer();
-                bulk_signers.push(signer);
+                if !bulk_signers.contains(&signer) {
+                    bulk_signers.push(signer);
+                }
                 Some(account)
             } else {
                 // No need to add a signer when creating an associated token account
@@ -2958,14 +2978,18 @@ async fn process_command<'a>(
 
             let (wallet_signer, wallet_address) =
                 config.signer_or_default(arg_matches, "wallet_keypair", &mut wallet_manager);
-            bulk_signers.push(wallet_signer);
+            if !bulk_signers.contains(&wallet_signer) {
+                bulk_signers.push(wallet_signer);
+            }
 
             command_wrap(config, amount, wallet_address, account, bulk_signers).await
         }
         (CommandName::Unwrap, arg_matches) => {
             let (wallet_signer, wallet_address) =
                 config.signer_or_default(arg_matches, "wallet_keypair", &mut wallet_manager);
-            bulk_signers.push(wallet_signer);
+            if !bulk_signers.contains(&wallet_signer) {
+                bulk_signers.push(wallet_signer);
+            }
 
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
             command_unwrap(config, wallet_address, address, bulk_signers).await
@@ -2973,7 +2997,9 @@ async fn process_command<'a>(
         (CommandName::Approve, arg_matches) => {
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-            bulk_signers.push(owner_signer);
+            if !bulk_signers.contains(&owner_signer) {
+                bulk_signers.push(owner_signer);
+            }
 
             let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
                 .unwrap()
@@ -3002,7 +3028,9 @@ async fn process_command<'a>(
         (CommandName::Revoke, arg_matches) => {
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-            bulk_signers.push(owner_signer);
+            if !bulk_signers.contains(&owner_signer) {
+                bulk_signers.push(owner_signer);
+            }
 
             let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
                 .unwrap()
@@ -3022,7 +3050,9 @@ async fn process_command<'a>(
         (CommandName::Close, arg_matches) => {
             let (close_authority_signer, close_authority) =
                 config.signer_or_default(arg_matches, "close_authority", &mut wallet_manager);
-            bulk_signers.push(close_authority_signer);
+            if !bulk_signers.contains(&close_authority_signer) {
+                bulk_signers.push(close_authority_signer);
+            }
 
             let address = config
                 .associated_token_address_or_override(arg_matches, "address", &mut wallet_manager)
@@ -3080,7 +3110,9 @@ async fn process_command<'a>(
 
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-            bulk_signers.push(owner_signer);
+            if !bulk_signers.contains(&owner_signer) {
+                bulk_signers.push(owner_signer);
+            }
 
             command_gc(
                 config,
