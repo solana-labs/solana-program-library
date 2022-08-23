@@ -1,5 +1,6 @@
-import { u8, struct, cstr} from '@solana/buffer-layout';
-import { AccountMeta, PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { u8, struct, blob } from '@solana/buffer-layout';
+import type { AccountMeta, PublicKey } from '@solana/web3.js';
+import { TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
 import {
     TokenInvalidInstructionDataError,
@@ -12,11 +13,10 @@ import { TokenInstruction } from './types';
 /** TODO: docs */
 export interface UiAmountToAmountInstructionData {
     instruction: TokenInstruction.UiAmountToAmount;
-    amount: string;
+    amount: Uint8Array;
 }
 
 /** TODO: docs */
-export const uiAmountToAmountInstructionData = struct<UiAmountToAmountInstructionData>([u8('instruction'),cstr('amount')]);
 
 /**
  * Construct a UiAmountToAmount instruction
@@ -32,13 +32,18 @@ export function createUiAmountToAmountInstruction(
     amount: string,
     programId = TOKEN_PROGRAM_ID
 ): TransactionInstruction {
-    const keys = [{ pubkey: mint, isSigner: false, isWritable: true }];
+    const keys = [{ pubkey: mint, isSigner: false, isWritable: false }];
+    const buf = Buffer.from(amount, 'utf8');
+    const uiAmountToAmountInstructionData = struct<UiAmountToAmountInstructionData>([
+        u8('instruction'),
+        blob(buf.length, 'amount'),
+    ]);
 
     const data = Buffer.alloc(uiAmountToAmountInstructionData.span);
     uiAmountToAmountInstructionData.encode(
         {
             instruction: TokenInstruction.UiAmountToAmount,
-            amount: amount,
+            amount: buf,
         },
         data
     );
@@ -54,7 +59,7 @@ export interface DecodedUiAmountToAmountInstruction {
     };
     data: {
         instruction: TokenInstruction.UiAmountToAmount;
-        amount: string;
+        amount: Uint8Array;
     };
 }
 
@@ -71,6 +76,10 @@ export function decodeUiAmountToAmountInstruction(
     programId = TOKEN_PROGRAM_ID
 ): DecodedUiAmountToAmountInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    const uiAmountToAmountInstructionData = struct<UiAmountToAmountInstructionData>([
+        u8('instruction'),
+        blob(instruction.data.length - 1, 'amount'),
+    ]);
     if (instruction.data.length !== uiAmountToAmountInstructionData.span) throw new TokenInvalidInstructionDataError();
 
     const {
@@ -97,7 +106,7 @@ export interface DecodedUiAmountToAmountInstructionUnchecked {
     };
     data: {
         instruction: number;
-        amount: string;
+        amount: Uint8Array;
     };
 }
 
@@ -113,6 +122,10 @@ export function decodeUiAmountToAmountInstructionUnchecked({
     keys: [mint],
     data,
 }: TransactionInstruction): DecodedUiAmountToAmountInstructionUnchecked {
+    const uiAmountToAmountInstructionData = struct<UiAmountToAmountInstructionData>([
+        u8('instruction'),
+        blob(data.length - 1, 'amount'),
+    ]);
     return {
         programId,
         keys: {

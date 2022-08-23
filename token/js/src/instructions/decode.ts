@@ -40,8 +40,11 @@ import type { DecodedTransferInstruction } from './transfer.js';
 import { decodeTransferInstruction } from './transfer.js';
 import type { DecodedTransferCheckedInstruction } from './transferChecked.js';
 import { decodeTransferCheckedInstruction } from './transferChecked.js';
-import { DecodedAmountToUiAmountInstruction, decodeAmountToUiAmountInstruction } from './amountToUiAmount';
-import { TokenInstruction } from './types.js';
+import type { DecodedAmountToUiAmountInstruction } from './amountToUiAmount';
+import { decodeAmountToUiAmountInstruction } from './amountToUiAmount';
+import type { DecodedUiAmountToAmountInstruction } from './uiAmountToAmount';
+import { decodeUiAmountToAmountInstruction } from './uiAmountToAmount';
+import { TokenInstruction } from './types';
 
 /** TODO: docs */
 export type DecodedInstruction =
@@ -65,6 +68,7 @@ export type DecodedInstruction =
     | DecodedSyncNativeInstruction
     | DecodedInitializeAccount3Instruction
     | DecodedAmountToUiAmountInstruction
+    | DecodedUiAmountToAmountInstruction
     // | DecodedInitializeMultisig2Instruction
     // | DecodedInitializeMint2Instruction
     // TODO: implement ^ and remove `never`
@@ -99,6 +103,7 @@ export function decodeInstruction(
         return decodeInitializeAccount2Instruction(instruction, programId);
     if (type === TokenInstruction.SyncNative) return decodeSyncNativeInstruction(instruction, programId);
     if (type === TokenInstruction.AmountToUiAmount) return decodeAmountToUiAmountInstruction(instruction, programId);
+    if (type === TokenInstruction.UiAmountToAmount) return decodeUiAmountToAmountInstruction(instruction, programId);
     // TODO: implement
     if (type === TokenInstruction.InitializeAccount3)
         return decodeInitializeAccount3Instruction(instruction, programId);
@@ -220,6 +225,13 @@ export function isAmountToUiAmountInstruction(
     decoded: DecodedInstruction
 ): decoded is DecodedAmountToUiAmountInstruction {
     return decoded.data.instruction === TokenInstruction.AmountToUiAmount;
+}
+
+/** TODO: docs */
+export function isUiamountToAmountInstruction(
+    decoded: DecodedInstruction
+): decoded is DecodedUiAmountToAmountInstruction {
+    return decoded.data.instruction === TokenInstruction.UiAmountToAmount;
 }
 
 /** TODO: docs, implement */

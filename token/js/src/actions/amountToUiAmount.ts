@@ -1,9 +1,5 @@
-import {
-    Connection,
-    PublicKey,
-    Signer,
-    Transaction,
-} from '@solana/web3.js';
+import type { Connection, PublicKey, Signer, TransactionError } from '@solana/web3.js';
+import { Transaction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { createAmountToUiAmountInstruction } from '../instructions/index';
 
@@ -16,7 +12,7 @@ import { createAmountToUiAmountInstruction } from '../instructions/index';
  * @param amount         Amount of tokens to be converted to Ui Amount
  * @param programId      SPL Token program account
  *
- * @return Ui Amount generated 
+ * @return Ui Amount generated
  */
 export async function amountToUiAmount(
     connection: Connection,
@@ -24,18 +20,11 @@ export async function amountToUiAmount(
     mint: PublicKey,
     amount: number | bigint,
     programId = TOKEN_PROGRAM_ID
-): Promise<string> {
-    const transaction = new Transaction().add(
-        createAmountToUiAmountInstruction(mint,amount,programId)
-    );
-    try{
-        const {returnData} = (await connection.simulateTransaction(transaction, [payer] , false)).value;
-        if(returnData?.data){
-            return Buffer.from(returnData.data[0],returnData.data[1]).toString();
-        }else{
-            throw new Error("Amount Cannot be converted to Ui Amount !");
-        }
-    }catch(error:unknown){
-       throw error;
+): Promise<string | TransactionError | null> {
+    const transaction = new Transaction().add(createAmountToUiAmountInstruction(mint, amount, programId));
+    const { returnData, err } = (await connection.simulateTransaction(transaction, [payer], false)).value;
+    if (returnData?.data) {
+        return Buffer.from(returnData.data[0], returnData.data[1]).toString('utf-8');
     }
+    return err;
 }

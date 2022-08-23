@@ -1,6 +1,7 @@
-import { struct, u8} from '@solana/buffer-layout';
+import { struct, u8 } from '@solana/buffer-layout';
 import { u64 } from '@solana/buffer-layout-utils';
-import { AccountMeta, PublicKey, TransactionInstruction } from '@solana/web3.js';
+import type { AccountMeta, PublicKey } from '@solana/web3.js';
+import { TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
 import {
     TokenInvalidInstructionDataError,
@@ -17,7 +18,10 @@ export interface AmountToUiAmountInstructionData {
 }
 
 /** TODO: docs */
-export const amountToUiAmountInstructionData = struct<AmountToUiAmountInstructionData>([u8('instruction'), u64('amount')]);
+export const amountToUiAmountInstructionData = struct<AmountToUiAmountInstructionData>([
+    u8('instruction'),
+    u64('amount'),
+]);
 
 /**
  * Construct a AmountToUiAmount instruction
@@ -33,7 +37,7 @@ export function createAmountToUiAmountInstruction(
     amount: number | bigint,
     programId = TOKEN_PROGRAM_ID
 ): TransactionInstruction {
-    const keys = [{ pubkey: mint, isSigner: false, isWritable: true }];
+    const keys = [{ pubkey: mint, isSigner: false, isWritable: false }];
 
     const data = Buffer.alloc(amountToUiAmountInstructionData.span);
     amountToUiAmountInstructionData.encode(
