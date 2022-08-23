@@ -330,11 +330,12 @@ pub fn signers_of(
 
 fn token_client_from_config(
     config: &Config<'_>,
+    program_id: &Pubkey,
     token_pubkey: &Pubkey,
 ) -> Token<ProgramRpcClientSendTransaction> {
     let token = Token::new(
         config.program_client.clone(),
-        &config.program_id,
+        program_id,
         token_pubkey,
         config.default_signer.clone(),
     );
@@ -361,7 +362,7 @@ async fn command_create_token(
 ) -> CommandResult {
     println_display(config, format!("Creating token {}", token_pubkey));
 
-    let token = token_client_from_config(config, &token_pubkey);
+    let token = token_client_from_config(config, &config.program_id, &token_pubkey);
 
     let freeze_authority = if enable_freeze { Some(authority) } else { None };
 
@@ -559,8 +560,6 @@ async fn command_authorize(
     force_authorize: bool,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let token = token_client_from_config(config, &Pubkey::default());
-
     let auth_str = match authority_type {
         AuthorityType::MintTokens => "mint authority",
         AuthorityType::FreezeAccount => "freeze authority",
@@ -572,8 +571,9 @@ async fn command_authorize(
         AuthorityType::InterestRate => "interest rate authority",
     };
 
-    let previous_authority = if !config.sign_only {
+    let (program_id, previous_authority) = if !config.sign_only {
         let target_account = config.rpc_client.get_account(&account).await?;
+        let program_id = target_account.owner;
         config.check_owner(&account, &target_account.owner)?;
 
         let previous_authority = if let Ok(mint) =
@@ -609,7 +609,7 @@ async fn command_authorize(
                 let maybe_associated_token_account = get_associated_token_address_with_program_id(
                     &token_account.base.owner,
                     &token_account.base.mint,
-                    &config.program_id,
+                    &program_id,
                 );
                 if account == maybe_associated_token_account
                     && !force_authorize
@@ -653,10 +653,12 @@ async fn command_authorize(
             Err("Unsupported account data format".to_string())
         }?;
 
-        previous_authority
+        (program_id, previous_authority)
     } else {
-        COption::None
+        (config.program_id, COption::None)
     };
+
+    let token = token_client_from_config(config, &program_id, &Pubkey::default());
 
     println_display(
         config,
@@ -1440,10 +1442,9 @@ async fn command_close(
     recipient: Pubkey,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let token = token_client_from_config(config, &Pubkey::default());
-
-    if !config.sign_only {
+    let program_id = if !config.sign_only {
         let source_account = config.rpc_client.get_account(&account).await?;
+        let program_id = source_account.owner;
         config.check_owner(&account, &source_account.owner)?;
 
         let source_state = StateWithExtensionsOwned::<Account>::unpack(source_account.data)
@@ -1457,8 +1458,13 @@ async fn command_close(
             )
             .into());
         }
-    }
 
+        program_id
+    } else {
+        config.program_id
+    };
+
+    let token = token_client_from_config(config, &program_id, &Pubkey::default());
     let res = token
         .close_account(&account, &recipient, &close_authority, &bulk_signers)
         .await?;
@@ -1481,10 +1487,9 @@ async fn command_close_mint(
     recipient: Pubkey,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let token = token_client_from_config(config, &token_pubkey);
-
-    if !config.sign_only {
+    let program_id = if !config.sign_only {
         let mint_account = config.rpc_client.get_account(&token_pubkey).await?;
+        let program_id = mint_account.owner;
         config.check_owner(&token_pubkey, &mint_account.owner)?;
 
         let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)
@@ -1517,8 +1522,13 @@ async fn command_close_mint(
         } else {
             return Err(format!("Mint {} does not support close authority", token_pubkey).into());
         }
-    }
 
+        program_id
+    } else {
+        config.program_id
+    };
+
+    let token = token_client_from_config(config, &program_id, &token_pubkey);
     let res = token
         .close_account(&token_pubkey, &recipient, &close_authority, &bulk_signers)
         .await?;
