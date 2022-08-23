@@ -1,5 +1,5 @@
 [package]
-name = "spl-account-compression"
+name = "spl-compression"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2018"

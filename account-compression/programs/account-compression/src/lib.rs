@@ -70,7 +70,7 @@ pub struct Initialize<'info> {
 /// Context for inserting, appending, or replacing a leaf in the tree
 ///
 /// Modification instructions also require the proof to the leaf to be provided
-/// as base58-encoded nodes as "remaining accounts".
+/// as 32-byte nodes via "remaining accounts".
 #[derive(Accounts)]
 pub struct Modify<'info> {
     #[account(mut)]
