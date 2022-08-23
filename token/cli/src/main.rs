@@ -1,4 +1,3 @@
-#![allow(deprecated)] // TODO: Remove when SPL upgrades to Solana 1.8
 use clap::{
     crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings, Arg,
     ArgMatches, SubCommand,
@@ -50,10 +49,8 @@ use spl_token_client::{
     client::{ProgramRpcClientSendTransaction, RpcClientResponse},
     token::{ExtensionInitializationParams, Token},
 };
-use std::{
-    collections::HashMap, fmt::Display, process::exit, str::FromStr, string::ToString, sync::Arc,
-};
-use strum_macros::{EnumString, IntoStaticStr, ToString};
+use std::{collections::HashMap, fmt, fmt::Display, process::exit, str::FromStr, sync::Arc};
+use strum_macros::{EnumString, IntoStaticStr};
 
 mod config;
 use config::{Config, MintInfo};
@@ -122,7 +119,7 @@ pub const MULTISIG_SIGNER_ARG: ArgConstant<'static> = ArgConstant {
     help: "Member signer of a multisig account",
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr, ToString)]
+#[derive(Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr)]
 #[strum(serialize_all = "kebab-case")]
 pub enum CommandName {
     CreateToken,
@@ -149,6 +146,11 @@ pub enum CommandName {
     MultisigInfo,
     Gc,
     SyncNative,
+}
+impl fmt::Display for CommandName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 pub fn owner_address_arg<'a, 'b>() -> Arg<'a, 'b> {
@@ -898,6 +900,7 @@ async fn command_transfer(
     }
 
     if use_unchecked_instruction {
+        #[allow(deprecated)]
         instructions.push(transfer(
             &mint_info.program_id,
             &sender,

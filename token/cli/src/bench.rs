@@ -12,12 +12,7 @@ use {
     },
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
-        message::Message,
-        native_token::Sol,
-        program_pack::Pack,
-        pubkey::Pubkey,
-        signature::{Signature, Signer, SignerError},
-        signers::Signers,
+        message::Message, native_token::Sol, program_pack::Pack, pubkey::Pubkey, signature::Signer,
         system_instruction,
     },
     spl_associated_token_account::*,
@@ -28,48 +23,6 @@ use {
     },
     std::{sync::Arc, time::Instant},
 };
-
-// TODO: remove this newtype once `Signers` is implemented for `Vec<Arc<dyn Signer>>` upstream
-struct ArcSigner(Vec<Arc<dyn Signer>>);
-
-impl From<Vec<Arc<dyn Signer>>> for ArcSigner {
-    fn from(vec: Vec<Arc<dyn Signer>>) -> Self {
-        Self(vec)
-    }
-}
-
-impl Signers for ArcSigner {
-    fn pubkeys(&self) -> Vec<Pubkey> {
-        self.0.iter().map(|keypair| keypair.pubkey()).collect()
-    }
-
-    fn try_pubkeys(&self) -> Result<Vec<Pubkey>, SignerError> {
-        let mut pubkeys = Vec::new();
-        for keypair in self.0.iter() {
-            pubkeys.push(keypair.try_pubkey()?);
-        }
-        Ok(pubkeys)
-    }
-
-    fn sign_message(&self, message: &[u8]) -> Vec<Signature> {
-        self.0
-            .iter()
-            .map(|keypair| keypair.sign_message(message))
-            .collect()
-    }
-
-    fn try_sign_message(&self, message: &[u8]) -> Result<Vec<Signature>, SignerError> {
-        let mut signatures = Vec::new();
-        for keypair in self.0.iter() {
-            signatures.push(keypair.try_sign_message(message)?);
-        }
-        Ok(signatures)
-    }
-
-    fn is_interactive(&self) -> bool {
-        self.0.iter().any(|s| s.is_interactive())
-    }
-}
 
 pub(crate) trait BenchSubCommand {
     fn bench_subcommand(self) -> Self;
@@ -484,16 +437,11 @@ async fn send_messages(
         return Ok(());
     }
 
-    let (_blockhash, fee_calculator, _last_valid_block_height) = config
-        .rpc_client
-        .get_recent_blockhash_with_commitment(config.rpc_client.commitment())
-        .await?
-        .value;
-
-    lamports_required += messages
-        .iter()
-        .map(|message| fee_calculator.calculate_fee(message))
-        .sum::<u64>();
+    let blockhash = config.rpc_client.get_latest_blockhash().await?;
+    let mut message = messages[0].clone();
+    message.recent_blockhash = blockhash;
+    lamports_required +=
+        config.rpc_client.get_fee_for_message(&message).await? * messages.len() as u64;
 
     println!(
         "Sending {:?} messages for ~{}",
@@ -511,8 +459,8 @@ async fn send_messages(
         &config.websocket_url,
         TpuClientConfig::default(),
     )?;
-    let transaction_errors = tpu_client
-        .send_and_confirm_messages_with_spinner::<ArcSigner>(messages, &signers.into())?;
+    let transaction_errors =
+        tpu_client.send_and_confirm_messages_with_spinner(messages, &signers)?;
     for (i, transaction_error) in transaction_errors.into_iter().enumerate() {
         if let Some(transaction_error) = transaction_error {
             println!("Message {} failed with {:?}", i, transaction_error);
