@@ -281,7 +281,21 @@ where
         ))))
     }
 
-    pub async fn construct_tx<S: Signers>(
+    fn get_multisig_signers<S: Signers>(
+        &self,
+        authority: &Pubkey,
+        signing_keypairs: &S,
+    ) -> Vec<Pubkey> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+
+        if signing_pubkeys == [*authority] {
+            vec![]
+        } else {
+            signing_pubkeys
+        }
+    }
+
+    async fn construct_tx<S: Signers>(
         &self,
         token_instructions: &[Instruction],
         signing_keypairs: &S,
@@ -544,12 +558,7 @@ where
         authority_type: instruction::AuthorityType,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let signing_pubkeys = signing_keypairs.pubkeys();
-        let multisig_signing_pubkeys = if signing_pubkeys == [*authority] {
-            vec![]
-        } else {
-            signing_pubkeys.iter().collect::<Vec<_>>()
-        };
+        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
 
         self.process_ixs(
             &[instruction::set_authority(
@@ -558,7 +567,7 @@ where
                 new_authority,
                 authority_type,
                 authority,
-                &multisig_signing_pubkeys,
+                &multisig_signers.iter().collect::<Vec<_>>(),
             )?],
             signing_keypairs,
         )
@@ -566,25 +575,38 @@ where
     }
 
     /// Mint new tokens
-    pub async fn mint_to<S: Signer>(
+    pub async fn mint_to<S: Signers>(
         &self,
         destination: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
         amount: u64,
-    ) -> TokenResult<()> {
-        self.process_ixs(
-            &[instruction::mint_to(
+        decimals: Option<u8>,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
+
+        let instructions = if let Some(decimals) = decimals {
+            [instruction::mint_to_checked(
                 &self.program_id,
                 &self.pubkey,
                 destination,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers.iter().collect::<Vec<_>>(),
                 amount,
-            )?],
-            &[authority],
-        )
-        .await
-        .map(|_| ())
+                decimals,
+            )?]
+        } else {
+            [instruction::mint_to(
+                &self.program_id,
+                &self.pubkey,
+                destination,
+                authority,
+                &multisig_signers.iter().collect::<Vec<_>>(),
+                amount,
+            )?]
+        };
+
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Transfer tokens to another account
@@ -779,19 +801,14 @@ where
         authority: &Pubkey,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let signing_pubkeys = signing_keypairs.pubkeys();
-        let multisig_signing_pubkeys = if signing_pubkeys == [*authority] {
-            vec![]
-        } else {
-            signing_pubkeys.iter().collect::<Vec<_>>()
-        };
+        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
 
         let mut instructions = vec![instruction::close_account(
             &self.program_id,
             account,
             destination,
             authority,
-            &multisig_signing_pubkeys,
+            &multisig_signers.iter().collect::<Vec<_>>(),
         )?];
 
         if let Ok(Some(destination_account)) = self.client.get_account(*destination).await {

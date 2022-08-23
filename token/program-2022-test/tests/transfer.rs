@@ -42,7 +42,13 @@ async fn run_basic_transfers(context: TestContext, test_mode: TestMode) {
     // mint a token
     let amount = 10;
     token
-        .mint_to(&alice_account, &mint_authority, amount)
+        .mint_to(
+            &alice_account,
+            &mint_authority.pubkey(),
+            amount,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .unwrap();
 
@@ -131,7 +137,13 @@ async fn run_self_transfers(context: TestContext, test_mode: TestMode) {
     // mint a token
     let amount = 10;
     token
-        .mint_to(&alice_account, &mint_authority, amount)
+        .mint_to(
+            &alice_account,
+            &mint_authority.pubkey(),
+            amount,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .unwrap();
 
@@ -208,7 +220,13 @@ async fn run_self_owned(context: TestContext, test_mode: TestMode) {
     // mint a token
     let amount = 10;
     token
-        .mint_to(&alice_account, &mint_authority, amount)
+        .mint_to(
+            &alice_account,
+            &mint_authority.pubkey(),
+            amount,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .unwrap();
 
@@ -282,7 +300,13 @@ async fn transfer_with_fee_on_mint_without_fee_configured() {
     // mint some tokens
     let amount = 10;
     token
-        .mint_to(&alice_account, &mint_authority, amount)
+        .mint_to(
+            &alice_account,
+            &mint_authority.pubkey(),
+            amount,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .unwrap();
 

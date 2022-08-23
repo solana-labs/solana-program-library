@@ -30,6 +30,7 @@ async fn test_memo_transfers(
     bob_account: Pubkey,
 ) {
     let TokenContext {
+        decimals,
         mint_authority,
         token,
         alice,
@@ -39,7 +40,13 @@ async fn test_memo_transfers(
 
     // mint tokens
     token
-        .mint_to(&alice_account, &mint_authority, 4242)
+        .mint_to(
+            &alice_account,
+            &mint_authority.pubkey(),
+            4242,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .unwrap();
 

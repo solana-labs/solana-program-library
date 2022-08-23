@@ -134,7 +134,13 @@ impl ConfidentialTokenAccountMeta {
         let meta = Self::new(token, owner).await;
 
         token
-            .mint_to(&meta.token_account, mint_authority, amount)
+            .mint_to(
+                &meta.token_account,
+                &mint_authority.pubkey(),
+                amount,
+                Some(decimals),
+                &vec![mint_authority],
+            )
             .await
             .unwrap();
 
@@ -447,7 +453,13 @@ async fn ct_deposit() {
     let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice).await;
 
     token
-        .mint_to(&alice_meta.token_account, &mint_authority, 65537)
+        .mint_to(
+            &alice_meta.token_account,
+            &mint_authority.pubkey(),
+            65537,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .unwrap();
 

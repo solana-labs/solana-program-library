@@ -67,7 +67,13 @@ async fn run_basic(
     // mint tokens
     let amount = 100;
     token
-        .mint_to(&alice_account, &mint_authority, amount)
+        .mint_to(
+            &alice_account,
+            &mint_authority.pubkey(),
+            amount,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .unwrap();
 

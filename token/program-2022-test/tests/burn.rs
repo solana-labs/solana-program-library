@@ -31,7 +31,13 @@ async fn run_basic(context: TestContext) {
     // mint a token
     let amount = 10;
     token
-        .mint_to(&alice_account, &mint_authority, amount)
+        .mint_to(
+            &alice_account,
+            &mint_authority.pubkey(),
+            amount,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .unwrap();
 
@@ -114,7 +120,13 @@ async fn run_self_owned(context: TestContext) {
     // mint a token
     let amount = 10;
     token
-        .mint_to(&alice_account, &mint_authority, amount)
+        .mint_to(
+            &alice_account,
+            &mint_authority.pubkey(),
+            amount,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .unwrap();
 
@@ -167,7 +179,13 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
 
     // mint a token
     token
-        .mint_to(&alice_account, &mint_authority, 1)
+        .mint_to(
+            &alice_account,
+            &mint_authority.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .unwrap();
 
