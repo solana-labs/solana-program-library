@@ -244,6 +244,7 @@ async fn fail_close_with_supply() {
         .await
         .unwrap();
     let TokenContext {
+        decimals,
         mint_authority,
         token,
         ..
@@ -256,7 +257,16 @@ async fn fail_close_with_supply() {
         .create_auxiliary_token_account(&account, &owner)
         .await
         .unwrap();
-    token.mint_to(&account, &mint_authority, 1).await.unwrap();
+    token
+        .mint_to(
+            &account,
+            &mint_authority.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
+        .await
+        .unwrap();
 
     // fail close
     let destination = Pubkey::new_unique();

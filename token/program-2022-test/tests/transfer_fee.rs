@@ -130,7 +130,13 @@ async fn create_mint_with_accounts(alice_amount: u64) -> TokenWithAccounts {
 
     // mint tokens
     token
-        .mint_to(&alice_account, &mint_authority, alice_amount)
+        .mint_to(
+            &alice_account,
+            &mint_authority.pubkey(),
+            alice_amount,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .unwrap();
     TokenWithAccounts {
