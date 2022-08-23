@@ -545,7 +545,7 @@ where
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
-        let multisig = if signing_pubkeys == [*authority] {
+        let multisig_signing_pubkeys = if signing_pubkeys == [*authority] {
             vec![]
         } else {
             signing_pubkeys.iter().collect::<Vec<_>>()
@@ -558,7 +558,7 @@ where
                 new_authority,
                 authority_type,
                 authority,
-                &multisig,
+                &multisig_signing_pubkeys,
             )?],
             signing_keypairs,
         )
@@ -780,7 +780,7 @@ where
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
-        let multisig = if signing_pubkeys == [*authority] {
+        let multisig_signing_pubkeys = if signing_pubkeys == [*authority] {
             vec![]
         } else {
             signing_pubkeys.iter().collect::<Vec<_>>()
@@ -791,7 +791,7 @@ where
             account,
             destination,
             authority,
-            &multisig,
+            &multisig_signing_pubkeys,
         )?];
 
         if let Ok(Some(destination_account)) = self.client.get_account(*destination).await {
