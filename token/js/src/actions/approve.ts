@@ -1,15 +1,8 @@
-import {
-    ConfirmOptions,
-    Connection,
-    PublicKey,
-    sendAndConfirmTransaction,
-    Signer,
-    Transaction,
-    TransactionSignature,
-} from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants';
-import { createApproveInstruction } from '../instructions/index';
-import { getSigners } from './internal';
+import type { ConfirmOptions, Connection, PublicKey, Signer, TransactionSignature } from '@solana/web3.js';
+import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '../constants.js';
+import { createApproveInstruction } from '../instructions/approve.js';
+import { getSigners } from './internal.js';
 
 /**
  * Approve a delegate to transfer up to a maximum number of tokens from an account

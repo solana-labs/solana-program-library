@@ -1,8 +1,8 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { bool, publicKey } from '@solana/buffer-layout-utils';
-import { AccountInfo, Commitment, Connection, PublicKey } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants';
-import { TokenAccountNotFoundError, TokenInvalidAccountOwnerError, TokenInvalidAccountSizeError } from '../errors';
+import type { AccountInfo, Commitment, Connection, PublicKey } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '../constants.js';
+import { TokenAccountNotFoundError, TokenInvalidAccountOwnerError, TokenInvalidAccountSizeError } from '../errors.js';
 
 /** Information about a multisig */
 export interface Multisig {

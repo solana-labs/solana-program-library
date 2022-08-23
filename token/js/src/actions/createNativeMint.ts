@@ -1,6 +1,7 @@
-import { ConfirmOptions, Connection, sendAndConfirmTransaction, Signer, Transaction } from '@solana/web3.js';
-import { TOKEN_2022_PROGRAM_ID, NATIVE_MINT_2022 } from '../constants';
-import { createCreateNativeMintInstruction } from '../instructions/index';
+import type { ConfirmOptions, Connection, Signer } from '@solana/web3.js';
+import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
+import { NATIVE_MINT_2022, TOKEN_2022_PROGRAM_ID } from '../constants.js';
+import { createCreateNativeMintInstruction } from '../instructions/createNativeMint.js';
 
 /**
  * Create native mint

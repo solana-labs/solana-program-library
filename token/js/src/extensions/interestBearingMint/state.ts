@@ -1,14 +1,14 @@
-import { s16, ns64, struct } from '@solana/buffer-layout';
+import { ns64, s16, struct } from '@solana/buffer-layout';
 import { publicKey } from '@solana/buffer-layout-utils';
-import { PublicKey } from '@solana/web3.js';
-import { Mint } from '../../state';
-import { ExtensionType, getExtensionData } from '../extensionType';
+import type { PublicKey } from '@solana/web3.js';
+import type { Mint } from '../../state/mint.js';
+import { ExtensionType, getExtensionData } from '../extensionType.js';
 
 export interface InterestBearingMintConfigState {
     rateAuthority: PublicKey;
-    initializationTimestamp: BigInt;
+    initializationTimestamp: bigint;
     preUpdateAverageRate: number;
-    lastUpdateTimestamp: BigInt;
+    lastUpdateTimestamp: bigint;
     currentRate: number;
 }
 

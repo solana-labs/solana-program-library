@@ -1,3 +1,3 @@
-export * from './actions';
-export * from './instructions';
-export * from './state';
+export * from './actions.js';
+export * from './instructions.js';
+export * from './state.js';

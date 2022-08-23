@@ -1,15 +1,8 @@
-import {
-    ConfirmOptions,
-    Connection,
-    PublicKey,
-    sendAndConfirmTransaction,
-    Signer,
-    Transaction,
-    TransactionSignature,
-} from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants';
-import { createCloseAccountInstruction } from '../instructions/index';
-import { getSigners } from './internal';
+import type { ConfirmOptions, Connection, PublicKey, Signer, TransactionSignature } from '@solana/web3.js';
+import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '../constants.js';
+import { createCloseAccountInstruction } from '../instructions/closeAccount.js';
+import { getSigners } from './internal.js';
 
 /**
  * Close a token account

@@ -1,15 +1,8 @@
-import {
-    ConfirmOptions,
-    Connection,
-    PublicKey,
-    sendAndConfirmTransaction,
-    Signer,
-    Transaction,
-    TransactionSignature,
-} from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants';
-import { createRevokeInstruction } from '../instructions/index';
-import { getSigners } from './internal';
+import type { ConfirmOptions, Connection, PublicKey, Signer, TransactionSignature } from '@solana/web3.js';
+import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '../constants.js';
+import { createRevokeInstruction } from '../instructions/revoke.js';
+import { getSigners } from './internal.js';
 
 /**
  * Revoke approval for the transfer of tokens from an account

@@ -1,27 +1,8 @@
 {
-    "include": ["src", "types"],
-    "exclude": ["node_modules"],
+    "extends": "./tsconfig.all.json",
+    "include": ["src", "test"],
     "compilerOptions": {
-        "target": "es2019",
-        "module": "esnext",
-        "outDir": "lib/esm",
-        "declarationDir": "lib/types",
-        "noEmit": false,
-        "declaration": true,
-        "sourceMap": true,
-        "noEmitOnError": true,
-        "stripInternal": true,
-        "moduleResolution": "node",
-        "jsx": "react",
-        "strict": true,
-        "esModuleInterop": true,
-        "resolveJsonModule": true,
-        "isolatedModules": true,
-        "typeRoots": ["node_modules/@types"]
-    },
-    "typedocOptions": {
-        "entryPoints": "src/index.ts",
-        "out": "docs",
-        "readme": "README.md"
+        "noEmit": true,
+        "skipLibCheck": true
     }
 }

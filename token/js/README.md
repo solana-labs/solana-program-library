@@ -25,10 +25,19 @@ Please see [upgrading from 0.1.x](#upgrading-from-0.1.x).
 ## Install
 
 ```shell
-yarn add @solana/spl-token
+npm install --save @solana/spl-token @solana/web3.js
+```
+_OR_
+```shell
+yarn add @solana/spl-token @solana/web3.js
 ```
 
 ## Build from Source
+
+0. Prerequisites
+
+* Node 16+
+* NPM 8+
 
 1. Clone the project:
 ```shell
@@ -42,27 +51,27 @@ cd solana-program-library/token/js
 
 3. Install the dependencies:
 ```shell
-yarn install
+npm install
 ```
 
 4. Build the library:
 ```shell
-yarn build
+npm run build
 ```
 
 5. Build the on-chain programs:
 ```shell
-yarn test:build-programs
+npm run test:build-programs
 ```
 
 6. Run the tests:
 ```shell
-yarn test
+npm run test
 ```
 
 7. Run the example:
 ```shell
-yarn example
+npm run example
 ```
 
 ## Upgrading

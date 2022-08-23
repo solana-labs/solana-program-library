@@ -1,4 +1,5 @@
-node_modules
-
 docs
 lib
+test-ledger
+
+package-lock.json

@@ -1,16 +1,17 @@
 import { struct, u32, u8 } from '@solana/buffer-layout';
 import { publicKey, u64 } from '@solana/buffer-layout-utils';
-import { Commitment, Connection, PublicKey, AccountInfo } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants';
+import type { AccountInfo, Commitment, Connection, PublicKey } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '../constants.js';
 import {
     TokenAccountNotFoundError,
     TokenInvalidAccountError,
     TokenInvalidAccountOwnerError,
     TokenInvalidAccountSizeError,
-} from '../errors';
-import { MULTISIG_SIZE } from './multisig';
-import { AccountType, ACCOUNT_TYPE_SIZE } from '../extensions/accountType';
-import { ExtensionType, getAccountLen } from '../extensions/extensionType';
+} from '../errors.js';
+import { ACCOUNT_TYPE_SIZE, AccountType } from '../extensions/accountType.js';
+import type { ExtensionType } from '../extensions/extensionType.js';
+import { getAccountLen } from '../extensions/extensionType.js';
+import { MULTISIG_SIZE } from './multisig.js';
 
 /** Information about a token account */
 export interface Account {

@@ -1,8 +1,8 @@
 import { struct } from '@solana/buffer-layout';
 import { publicKey } from '@solana/buffer-layout-utils';
-import { PublicKey } from '@solana/web3.js';
-import { Mint } from '../state/mint';
-import { ExtensionType, getExtensionData } from './extensionType';
+import type { PublicKey } from '@solana/web3.js';
+import type { Mint } from '../state/mint.js';
+import { ExtensionType, getExtensionData } from './extensionType.js';
 
 /** MintCloseAuthority as stored by the program */
 export interface MintCloseAuthority {

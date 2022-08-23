@@ -2,7 +2,8 @@ import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
-import { Connection, Keypair, PublicKey, Signer } from '@solana/web3.js';
+import type { Connection, PublicKey, Signer } from '@solana/web3.js';
+import { Keypair } from '@solana/web3.js';
 
 import { burn, createMint, createAccount, getAccount, freezeAccount, thawAccount, mintTo } from '../../src';
 import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
