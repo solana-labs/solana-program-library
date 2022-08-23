@@ -165,9 +165,10 @@ async fn set_authority() {
     token
         .set_authority(
             token.get_address(),
+            &mint_authority.pubkey(),
             None,
             instruction::AuthorityType::MintTokens,
-            &mint_authority,
+            &[&mint_authority],
         )
         .await
         .expect("failed to set authority");
@@ -188,9 +189,10 @@ async fn set_authority() {
     token
         .set_authority(
             &alice_vault,
+            &alice.pubkey(),
             Some(&bob.pubkey()),
             instruction::AuthorityType::AccountOwner,
-            &alice,
+            &[&alice],
         )
         .await
         .expect("failed to set_authority");

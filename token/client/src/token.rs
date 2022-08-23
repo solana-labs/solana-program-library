@@ -536,26 +536,33 @@ where
     }
 
     /// Assign a new authority to the account.
-    pub async fn set_authority<S: Signer>(
+    pub async fn set_authority<S: Signers>(
         &self,
         account: &Pubkey,
+        authority: &Pubkey,
         new_authority: Option<&Pubkey>,
         authority_type: instruction::AuthorityType,
-        owner: &S,
-    ) -> TokenResult<()> {
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signing_pubkeys = if signing_pubkeys == [*authority] {
+            vec![]
+        } else {
+            signing_pubkeys.iter().collect::<Vec<_>>()
+        };
+
         self.process_ixs(
             &[instruction::set_authority(
                 &self.program_id,
                 account,
                 new_authority,
                 authority_type,
-                &owner.pubkey(),
-                &[],
+                authority,
+                &multisig_signing_pubkeys,
             )?],
-            &[owner],
+            signing_keypairs,
         )
         .await
-        .map(|_| ())
     }
 
     /// Mint new tokens
@@ -765,23 +772,39 @@ where
     }
 
     /// Close account into another
-    pub async fn close_account<S: Signer>(
+    pub async fn close_account<S: Signers>(
         &self,
         account: &Pubkey,
         destination: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        self.process_ixs(
-            &[instruction::close_account(
-                &self.program_id,
-                account,
-                destination,
-                &authority.pubkey(),
-                &[],
-            )?],
-            &[authority],
-        )
-        .await
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signing_pubkeys = if signing_pubkeys == [*authority] {
+            vec![]
+        } else {
+            signing_pubkeys.iter().collect::<Vec<_>>()
+        };
+
+        let mut instructions = vec![instruction::close_account(
+            &self.program_id,
+            account,
+            destination,
+            authority,
+            &multisig_signing_pubkeys,
+        )?];
+
+        if let Ok(Some(destination_account)) = self.client.get_account(*destination).await {
+            if let Ok(destination_obj) =
+                StateWithExtensionsOwned::<Account>::unpack(destination_account.data)
+            {
+                if destination_obj.base.is_native() {
+                    instructions.push(instruction::sync_native(&self.program_id, destination)?);
+                }
+            }
+        }
+
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Freeze a token account
