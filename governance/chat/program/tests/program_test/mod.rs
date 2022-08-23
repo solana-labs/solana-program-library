@@ -195,6 +195,7 @@ impl GovernanceChatProgramTest {
             council_vote_threshold: VoteThreshold::YesVotePercentage(10),
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
             council_vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
+            community_veto_vote_threshold: VoteThreshold::YesVotePercentage(55),
         };
 
         let token_owner_record_address = get_token_owner_record_address(
