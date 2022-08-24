@@ -621,3 +621,146 @@ invoke(
 
 After this step, all of your tests should pass once again, so congratulations
 again!
+
+## Part IV: Support transfer fees in calculation
+
+Now that everything is in place to support every possible extension in Token-2022,
+we find that token-swap has some strange behavior for certain extensions.
+
+In token-swap, if a token has transfer fees, then the curve calculations will
+not be correct. For example, if you try to trade token A for B, and token A has
+a 1% transfer fee, then fewer tokens will arrive into the pool, which means that
+you should receive fewer tokens.
+
+We'll add logic to properly handle the transfer fee extension as an example in
+token-swap.
+
+### Step 1: Add a failing test swapping with transfer fees
+
+Let's start by adding a failing test where we swap between tokens that have
+non-zero transfer fees.
+
+For token-swap, we can reuse a previous test which checks that the curve calculation
+lines up with what is actually traded. The most important part is to add a transfer
+fee when initializing the mint, meaning we go from:
+
+```rust
+let rate_authority = Keypair::new();
+let withdraw_authority = Keypair::new();
+
+let instruction = spl_token_2022::extension::transfer_fee::instruction::initialize_transfer_fee_config(
+    program_id, &mint_key, rate_authority.pubkey(), withdraw_authority.pubkey(), 0, 0
+).unwrap();
+```
+
+To:
+
+```rust
+let rate_authority = Keypair::new();
+let withdraw_authority = Keypair::new();
+let transfer_fee_basis_points = 100;
+let maximum_transfer_fee = 1_000_000_000;
+
+let instruction = spl_token_2022::extension::transfer_fee::instruction::initialize_transfer_fee_config(
+    program_id, &mint_key, rate_authority.pubkey(), withdraw_authority.pubkey(), 
+    transfer_fee_basis_points, maximum_transfer_fee
+).unwrap();
+```
+
+### Step 2: Calculate the expected transfer fee
+
+Whenever the program moves tokens, it needs to check if the mint contains a
+transfer fee and account for them.
+
+To check if the mint has an extension, we simply need to get the extension for
+the desired type, and properly handle the valid error case.
+
+Roughly speaking that means changing the amount traded before calculation:
+
+```rust
+use solana_program::{clock::Clock, sysvar::Sysvar};
+use spl_token_2022::{extension::{StateWithExtensions, transfer_fee::TransferFeeConfig}, state::Mint};
+
+let mint_data = token_mint_info.data.borrow();
+let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+let actual_amount = if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
+    let fee = transfer_fee_config
+        .calculate_epoch_fee(Clock::get()?.epoch, amount)
+        .ok_or(ProgramError::InvalidArgument)?;
+    amount.saturating_sub(fee)
+} else {
+    amount
+};
+```
+
+After making these changes, our tests pass once again, congratulations!
+
+**Note**: in the case of token-swap, we need to reverse calculate the fee, which
+introduces extra complexity. Most likely, your program won't need that.
+
+## Part V: Prohibit closable mints
+
+In Token-2022, it's possible for certain mints to be closed if their supply is 0.
+Typically, this won't cause any damage, because all token accounts are empty if
+a mint is closable.
+
+If your program stores any information about mints, however, it can go out of
+sync if the mint is closed and re-created on that same address. Worse, the
+account can be used for something completely different. If your program is storing
+mint info, find a way to redesign your solution so it always uses the information
+from the mint directly.
+
+In token-swap, the program gracefully handles closed mints, but an empty pool
+can be rendered unusable if the pool mint is closed. No funds are at risk, since
+the pool is empty anyway, but for the sake of the tutorial, let's prohibit the
+pool mint from being closable.
+
+### Step 1: Add a failing test with a mint close authority
+
+Let's add a mint close authority to the pool token mint. During initialization,
+we'll do:
+
+```rust
+use spl_token_2022::{extension::ExtensionType, instruction::*, state::Mint};
+use solana_sdk::{system_instruction, transaction::Transaction};
+
+// Calculate the space required using the `ExtensionType`
+let space = ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]);
+
+// get the Rent object and calculate the rent required
+let rent_required = rent.minimum_balance(space);
+
+// and then create the account using those parameters
+let create_instruction = system_instruction::create_account(&payer.pubkey(), mint_pubkey, rent_required, space, token_program_id);
+
+// Important: you must initialize the mint close authority *BEFORE* initializing the mint,
+// and only when working with Token-2022, since the instruction is unsupported by Token.
+let initialize_close_authority_instruction = initialize_mint_close_authority(token_program_id, mint_pubkey, Some(close_authority)).unwrap();
+let initialize_mint_instruction = initialize_mint(token_program_id, mint_pubkey, mint_authority_pubkey, freeze_authority, 9).unwrap();
+
+// Make the transaction with all of these instructions
+let create_mint_transaction = Transaction::new(&[create_instruction, initialize_close_authority_instruction, initialize_mint_instruction], Some(&payer.pubkey));
+```
+
+And then try to initialize the token swap pool as normal, checking for a failure.
+Since there isn't any logic to prohibit a close authority, it should fail. Nice!
+
+### Step 2: Add processor check to prevent a mint close authority
+
+When processing the initialize code, we simply add a check to see if a non-`None`
+mint close authority exists.
+
+For example, that means:
+
+```rust
+let pool_mint_data = pool_mint_info.data.borrow();
+let pool_mint = StateWithExtensions::<Mint>::unpack(pool_mint_data)?;
+if let Ok(extension) = pool_mint.get_extension::<MintCloseAuthority>() {
+    let close_authority: Option<Pubkey> = extension.close_authority.into();
+    if close_authority.is_some() {
+        return Err(ProgramError::InvalidAccountData);
+    }
+}
+```
+
+Now the test should pass. Well done!
