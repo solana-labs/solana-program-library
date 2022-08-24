@@ -19,6 +19,3 @@ export const TRANSIENT_STAKE_SEED_PREFIX = Buffer.from('transient');
 // Minimum amount of staked SOL required in a validator stake account to allow
 // for merges without a mismatch on credits observed
 export const MINIMUM_ACTIVE_STAKE = LAMPORTS_PER_SOL;
-
-// Minimum amount of SOL in the reserve
-export const MINIMUM_RESERVE_LAMPORTS = LAMPORTS_PER_SOL;
