@@ -1417,6 +1417,7 @@ mod tests {
                 pool_token_program_id,
                 &authority_key,
                 None,
+                None,
                 &transfer_fees.pool_token,
             );
             let (pool_token_key, pool_token_account) = mint_token(
@@ -1435,8 +1436,13 @@ mod tests {
                 user_key,
                 0,
             );
-            let (token_a_mint_key, mut token_a_mint_account) =
-                create_mint(token_a_program_id, user_key, None, &transfer_fees.token_a);
+            let (token_a_mint_key, mut token_a_mint_account) = create_mint(
+                token_a_program_id,
+                user_key,
+                None,
+                None,
+                &transfer_fees.token_a,
+            );
             let (token_a_key, token_a_account) = mint_token(
                 token_a_program_id,
                 &token_a_mint_key,
@@ -1445,8 +1451,13 @@ mod tests {
                 &authority_key,
                 token_a_amount,
             );
-            let (token_b_mint_key, mut token_b_mint_account) =
-                create_mint(token_b_program_id, user_key, None, &transfer_fees.token_b);
+            let (token_b_mint_key, mut token_b_mint_account) = create_mint(
+                token_b_program_id,
+                user_key,
+                None,
+                None,
+                &transfer_fees.token_b,
+            );
             let (token_b_key, token_b_account) = mint_token(
                 token_b_program_id,
                 &token_b_mint_key,
@@ -2183,14 +2194,19 @@ mod tests {
         program_id: &Pubkey,
         authority_key: &Pubkey,
         freeze_authority: Option<&Pubkey>,
+        close_authority: Option<&Pubkey>,
         fees: &TransferFee,
     ) -> (Pubkey, SolanaAccount) {
         let mint_key = Pubkey::new_unique();
         let space = if *program_id == spl_token_2022::id() {
-            ExtensionType::get_account_len::<Mint>(&[
-                ExtensionType::MintCloseAuthority,
-                ExtensionType::TransferFeeConfig,
-            ])
+            if close_authority.is_some() {
+                ExtensionType::get_account_len::<Mint>(&[
+                    ExtensionType::MintCloseAuthority,
+                    ExtensionType::TransferFeeConfig,
+                ])
+            } else {
+                ExtensionType::get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig])
+            }
         } else {
             Mint::get_packed_len()
         };
@@ -2199,11 +2215,14 @@ mod tests {
         let mut rent_sysvar_account = create_account_for_test(&Rent::free());
 
         if *program_id == spl_token_2022::id() {
-            do_process_instruction(
-                initialize_mint_close_authority(program_id, &mint_key, freeze_authority).unwrap(),
-                vec![&mut mint_account],
-            )
-            .unwrap();
+            if close_authority.is_some() {
+                do_process_instruction(
+                    initialize_mint_close_authority(program_id, &mint_key, close_authority)
+                        .unwrap(),
+                    vec![&mut mint_account],
+                )
+                .unwrap();
+            }
             do_process_instruction(
                 initialize_transfer_fee_config(
                     program_id,
@@ -2516,6 +2535,7 @@ mod tests {
                 &pool_token_program_id,
                 &user_key,
                 None,
+                None,
                 &TransferFee::default(),
             );
             let old_mint = accounts.pool_mint_account;
@@ -2533,12 +2553,31 @@ mod tests {
                 &pool_token_program_id,
                 &accounts.authority_key,
                 Some(&user_key),
+                None,
                 &TransferFee::default(),
             );
             let old_mint = accounts.pool_mint_account;
             accounts.pool_mint_account = pool_mint_account;
             assert_eq!(
                 Err(SwapError::InvalidFreezeAuthority.into()),
+                accounts.initialize_swap()
+            );
+            accounts.pool_mint_account = old_mint;
+        }
+
+        // pool mint token has close authority
+        {
+            let (_pool_mint_key, pool_mint_account) = create_mint(
+                &pool_token_program_id,
+                &accounts.authority_key,
+                None,
+                Some(&user_key),
+                &TransferFee::default(),
+            );
+            let old_mint = accounts.pool_mint_account;
+            accounts.pool_mint_account = pool_mint_account;
+            assert_eq!(
+                Err(SwapError::InvalidCloseAuthority.into()),
                 accounts.initialize_swap()
             );
             accounts.pool_mint_account = old_mint;
@@ -2630,6 +2669,7 @@ mod tests {
             let (_pool_mint_key, pool_mint_account) = create_mint(
                 &pool_token_program_id,
                 &accounts.authority_key,
+                None,
                 None,
                 &TransferFee::default(),
             );
@@ -3755,6 +3795,7 @@ mod tests {
                 &pool_token_program_id,
                 &accounts.authority_key,
                 None,
+                None,
                 &TransferFee::default(),
             );
             let old_pool_key = accounts.pool_mint_key;
@@ -4481,6 +4522,7 @@ mod tests {
                 &pool_token_program_id,
                 &accounts.authority_key,
                 None,
+                None,
                 &TransferFee::default(),
             );
             let old_pool_key = accounts.pool_mint_key;
@@ -5170,6 +5212,7 @@ mod tests {
                 &pool_token_program_id,
                 &accounts.authority_key,
                 None,
+                None,
                 &TransferFee::default(),
             );
             let old_pool_key = accounts.pool_mint_key;
@@ -5790,6 +5833,7 @@ mod tests {
             let (pool_mint_key, pool_mint_account) = create_mint(
                 &pool_token_program_id,
                 &accounts.authority_key,
+                None,
                 None,
                 &TransferFee::default(),
             );
@@ -6882,6 +6926,7 @@ mod tests {
             let (pool_mint_key, pool_mint_account) = create_mint(
                 &pool_token_program_id,
                 &accounts.authority_key,
+                None,
                 None,
                 &TransferFee::default(),
             );
