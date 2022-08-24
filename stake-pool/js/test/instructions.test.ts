@@ -15,13 +15,21 @@ import {
   depositSol,
   withdrawSol,
   withdrawStake,
-  createPoolTokenMetadata,
-  updatePoolTokenMetadata,
+  getStakeAccount,
 } from '../src';
 
 import { decodeData } from '../src/utils';
 
-import { mockTokenAccount, mockValidatorList, stakePoolMock } from './mocks';
+import {
+  mockRpc,
+  mockTokenAccount,
+  mockValidatorList,
+  mockValidatorsStakeAccount,
+  stakePoolMock,
+  CONSTANTS,
+  stakeAccountData,
+  uninitializedStakeAccount,
+} from './mocks';
 
 describe('StakePoolProgram', () => {
   const connection = new Connection('http://127.0.0.1:8899');
@@ -148,7 +156,7 @@ describe('StakePoolProgram', () => {
         if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
-        if (pubKey.toBase58() == '9q2rZU5RujvyD9dmYKhzJAZfG4aGBbvQ8rWY52jCNBai') {
+        if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
           return null;
         }
         return null;
@@ -164,7 +172,7 @@ describe('StakePoolProgram', () => {
         if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
-        if (pubKey.toBase58() == 'GQkqTamwqjaNDfsbNm7r3aXPJ4oTSqKC3d5t2PF9Smqd') {
+        if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
           return mockTokenAccount(0);
         }
         return null;
@@ -184,7 +192,7 @@ describe('StakePoolProgram', () => {
         if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
-        if (pubKey.toBase58() == 'GQkqTamwqjaNDfsbNm7r3aXPJ4oTSqKC3d5t2PF9Smqd') {
+        if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
           return mockTokenAccount(LAMPORTS_PER_SOL);
         }
         return null;
@@ -218,7 +226,7 @@ describe('StakePoolProgram', () => {
         if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
-        if (pubKey.toBase58() == 'GQkqTamwqjaNDfsbNm7r3aXPJ4oTSqKC3d5t2PF9Smqd') {
+        if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
           return mockTokenAccount(0);
         }
         return null;
@@ -237,15 +245,14 @@ describe('StakePoolProgram', () => {
         if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
-        if (pubKey.toBase58() == 'GQkqTamwqjaNDfsbNm7r3aXPJ4oTSqKC3d5t2PF9Smqd') {
+        if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
           return mockTokenAccount(LAMPORTS_PER_SOL * 2);
         }
-        if (pubKey.toBase58() == stakePoolMock.validatorList.toBase58()) {
+        if (pubKey.equals(stakePoolMock.validatorList)) {
           return mockValidatorList();
         }
         return null;
       });
-
       const res = await withdrawStake(connection, stakePoolAddress, tokenOwner, 1);
 
       expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(4);
@@ -254,54 +261,60 @@ describe('StakePoolProgram', () => {
       expect(res.stakeReceiver).toEqual(undefined);
       expect(res.totalRentFreeBalances).toEqual(10000);
     });
-  });
 
-  describe('createPoolTokenMetadata', () => {
-    it.only('should create pool token metadata', async () => {
+    it.only('withdraw to a stake account provided', async () => {
+      const stakeReceiver = new PublicKey(20);
       connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
         if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
+        if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
+          return mockTokenAccount(LAMPORTS_PER_SOL * 2);
+        }
+        if (pubKey.equals(stakePoolMock.validatorList)) {
+          return mockValidatorList();
+        }
+        if (pubKey.equals(CONSTANTS.validatorStakeAccountAddress))
+          return mockValidatorsStakeAccount();
+        return null;
+      });
+      connection.getParsedAccountInfo = jest.fn(async (pubKey: PublicKey) => {
+        if (pubKey.equals(stakeReceiver)) {
+          return mockRpc(stakeAccountData);
+        }
         return null;
       });
 
-      const tokenMetadata = new PublicKey(0);
-
-      const res = await createPoolTokenMetadata(
+      const res = await withdrawStake(
         connection,
         stakePoolAddress,
-        tokenMetadata,
-        'test',
-        'TEST',
-        'https://example.com',
+        tokenOwner,
+        1,
+        undefined,
+        undefined,
+        stakeReceiver,
       );
 
-      const data = STAKE_POOL_INSTRUCTION_LAYOUTS.CreateTokenMetadata.layout.decode(
-        res.instructions[0].data,
-      );
-      expect(Buffer.from(data.name).toString().replace(/\0/g, '')).toBe('test');
-      expect(Buffer.from(data.symbol).toString().replace(/\0/g, '')).toBe('TEST');
-      expect(Buffer.from(data.uri).toString().replace(/\0/g, '')).toBe('https://example.com');
+      expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(4);
+      expect((connection.getParsedAccountInfo as jest.Mock).mock.calls.length).toBe(1);
+      expect(res.instructions).toHaveLength(3);
+      expect(res.signers).toHaveLength(2);
+      expect(res.stakeReceiver).toEqual(stakeReceiver);
+      expect(res.totalRentFreeBalances).toEqual(10000);
     });
-
-    it.only('should update pool token metadata', async () => {
-      const tokenMetadata = new PublicKey(0);
-
-      const res = await updatePoolTokenMetadata(
-        connection,
-        stakePoolAddress,
-        tokenMetadata,
-        'test',
-        'TEST',
-        'https://example.com',
-      );
-
-      const data = STAKE_POOL_INSTRUCTION_LAYOUTS.UpdateTokenMetadata.layout.decode(
-        res.instructions[0].data,
-      );
-      expect(Buffer.from(data.name).toString().replace(/\0/g, '')).toBe('test');
-      expect(Buffer.from(data.symbol).toString().replace(/\0/g, '')).toBe('TEST');
-      expect(Buffer.from(data.uri).toString().replace(/\0/g, '')).toBe('https://example.com');
+  });
+  describe('getStakeAccount', () => {
+    it.only('returns an uninitialized parsed stake account', async () => {
+      const stakeAccount = new PublicKey(20);
+      connection.getParsedAccountInfo = jest.fn(async (pubKey: PublicKey) => {
+        if (pubKey.equals(stakeAccount)) {
+          return mockRpc(uninitializedStakeAccount);
+        }
+        return null;
+      });
+      const parsedStakeAccount = await getStakeAccount(connection, stakeAccount);
+      expect((connection.getParsedAccountInfo as jest.Mock).mock.calls.length).toBe(1);
+      expect(parsedStakeAccount).toEqual(uninitializedStakeAccount.parsed);
     });
   });
 });
