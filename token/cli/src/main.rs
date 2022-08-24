@@ -4423,4 +4423,23 @@ mod tests {
             assert_eq!(ui_account.delegated_amount, None);
         }
     }
+
+    #[tokio::test]
+    #[serial]
+    async fn enable_required_transfer_memos() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let program_id = spl_token_2022::id();
+        let config = test_config(&test_validator, &payer, &program_id);
+        let token = create_token(&config, &payer).await;
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::EnableRequiredTransferMemos.into(),
+                &token.to_string(),
+            ],
+        ).await;
+        result.unwrap();
+    }
 }
