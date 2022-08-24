@@ -30,7 +30,6 @@ use crate::{
         governance::GovernanceConfig,
         proposal_transaction::ProposalTransactionV2,
         realm::RealmV2,
-        realm_config::get_realm_config_data_for_realm,
         vote_record::Vote,
         vote_record::VoteKind,
     },
@@ -38,8 +37,10 @@ use crate::{
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
+use crate::state::realm_config::RealmConfigAccount;
+
 /// Proposal option vote result
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum OptionVoteResult {
     /// Vote on the option is not resolved yet
     None,
@@ -52,7 +53,7 @@ pub enum OptionVoteResult {
 }
 
 /// Proposal Option
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ProposalOption {
     /// Option label
     pub label: String,
@@ -74,7 +75,7 @@ pub struct ProposalOption {
 }
 
 /// Proposal vote type
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoteType {
     /// Single choice vote with mutually exclusive choices
     /// In the SingeChoice mode there can ever be a single winner
@@ -103,7 +104,7 @@ pub enum VoteType {
 }
 
 /// Governance Proposal
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ProposalV2 {
     /// Governance account type
     pub account_type: GovernanceAccountType,
@@ -472,30 +473,28 @@ impl ProposalV2 {
         max_voter_weight.max(total_vote_weight)
     }
 
-    /// Resolves max voter weight
+    /// Resolves max voter weight using either 1) voting governing_token_mint supply or 2) max voter weight if configured for the token mint
     #[allow(clippy::too_many_arguments)]
     pub fn resolve_max_voter_weight(
         &mut self,
-        program_id: &Pubkey,
-        realm_config_info: &AccountInfo,
-        vote_governing_token_mint_info: &AccountInfo,
         account_info_iter: &mut Iter<AccountInfo>,
         realm: &Pubkey,
         realm_data: &RealmV2,
+        realm_config_data: &RealmConfigAccount,
+        vote_governing_token_mint_info: &AccountInfo,
         vote_kind: &VoteKind,
     ) -> Result<u64, ProgramError> {
-        // if the realm uses addin for max community voter weight then use the externally provided max weight
-        if realm_data.config.use_max_community_voter_weight_addin
-            && realm_data.community_mint == *vote_governing_token_mint_info.key
+        // if the Realm is configured to use max voter weight for the given voting governing_token_mint then use the externally provided max_voter_weight
+        // instead of the supply based max
+        if let Some(max_voter_weight_addin) = realm_config_data
+            .get_token_config(realm_data, vote_governing_token_mint_info.key)?
+            .max_voter_weight_addin
         {
-            let realm_config_data =
-                get_realm_config_data_for_realm(program_id, realm_config_info, realm)?;
-
             let max_voter_weight_record_info = next_account_info(account_info_iter)?;
 
             let max_voter_weight_record_data =
                 get_max_voter_weight_record_data_for_realm_and_governing_token_mint(
-                    &realm_config_data.max_community_voter_weight_addin.unwrap(),
+                    &max_voter_weight_addin,
                     max_voter_weight_record_info,
                     realm,
                     vote_governing_token_mint_info.key,
@@ -599,16 +598,6 @@ impl ProposalV2 {
 
         let yes_vote_weight = yes_option.vote_weight;
         let deny_vote_weight = self.deny_vote_weight.unwrap();
-
-        if yes_vote_weight == max_voter_weight {
-            yes_option.vote_result = OptionVoteResult::Succeeded;
-            return Some(ProposalState::Succeeded);
-        }
-
-        if deny_vote_weight == max_voter_weight {
-            yes_option.vote_result = OptionVoteResult::Defeated;
-            return Some(ProposalState::Defeated);
-        }
 
         match vote_tipping {
             VoteTipping::Disabled => {}
@@ -1166,8 +1155,8 @@ mod test {
             config: RealmConfig {
                 council_mint: Some(Pubkey::new_unique()),
                 reserved: [0; 6],
-                use_community_voter_weight_addin: false,
-                use_max_community_voter_weight_addin: false,
+                legacy1: 0,
+                legacy2: 0,
 
                 community_mint_max_vote_weight_source:
                     MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
@@ -1185,9 +1174,11 @@ mod test {
             min_transaction_hold_up_time: 10,
             max_voting_time: 5,
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
-            vote_tipping: VoteTipping::Strict,
+            community_vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(60),
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
+            council_vote_tipping: VoteTipping::Strict,
+            community_veto_vote_threshold: VoteThreshold::YesVotePercentage(40),
         }
     }
 

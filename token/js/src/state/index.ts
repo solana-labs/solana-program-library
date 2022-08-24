@@ -1,3 +1,3 @@
-export * from './account';
-export * from './mint';
-export * from './multisig';
+export * from './account.js';
+export * from './mint.js';
+export * from './multisig.js';

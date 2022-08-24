@@ -80,7 +80,7 @@ This is optional! You can skip these steps and use the [Token Lending CLI](./cli
 1. Build the program binaries:
    ```shell
    cargo build
-   cargo build-bpf
+   cargo build-sbf
    ```
 
 1. Prepare to deploy to devnet:

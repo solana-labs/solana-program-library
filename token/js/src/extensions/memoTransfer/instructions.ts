@@ -1,8 +1,9 @@
 import { struct, u8 } from '@solana/buffer-layout';
-import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
-import { TokenInstruction } from '../../instructions/types';
-import { programSupportsExtensions, TOKEN_2022_PROGRAM_ID } from '../../constants';
-import { TokenUnsupportedInstructionError } from '../../errors';
+import type { PublicKey, Signer } from '@solana/web3.js';
+import { TransactionInstruction } from '@solana/web3.js';
+import { programSupportsExtensions, TOKEN_2022_PROGRAM_ID } from '../../constants.js';
+import { TokenUnsupportedInstructionError } from '../../errors.js';
+import { TokenInstruction } from '../../instructions/types.js';
 
 export enum MemoTransferInstruction {
     Enable = 0,

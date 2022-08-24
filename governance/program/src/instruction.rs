@@ -11,8 +11,11 @@ use crate::{
         program_metadata::get_program_metadata_address,
         proposal::{get_proposal_address, VoteType},
         proposal_transaction::{get_proposal_transaction_address, InstructionData},
-        realm::SetRealmAuthorityAction,
-        realm::{get_governing_token_holding_address, get_realm_address, RealmConfigArgs},
+        realm::{
+            get_governing_token_holding_address, get_realm_address,
+            GoverningTokenConfigAccountArgs, RealmConfigArgs,
+        },
+        realm::{GoverningTokenConfigArgs, SetRealmAuthorityAction},
         realm_config::get_realm_config_address,
         signatory_record::get_signatory_record_address,
         token_owner_record::get_token_owner_record_address,
@@ -29,7 +32,7 @@ use solana_program::{
 };
 
 /// Instructions supported by the Governance program
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 #[allow(clippy::large_enum_variant)]
 pub enum GovernanceInstruction {
     /// Creates Governance Realm account which aggregates governances for given Community Mint and optional Council Mint
@@ -48,9 +51,13 @@ pub enum GovernanceInstruction {
     /// 9. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
     ///     The account will be created with the Realm PDA as its owner
 
-    /// 10. `[]` Optional Community Voter Weight Addin Program Id
-    /// 11. `[]` Optional Max Community Voter Weight Addin Program Id
-    /// 12. `[writable]` Optional RealmConfig account. PDA seeds: ['realm-config', realm]
+    /// 10. `[writable]` RealmConfig account. PDA seeds: ['realm-config', realm]
+
+    /// 11. `[]` Optional Community Voter Weight Addin Program Id
+    /// 12. `[]` Optional Max Community Voter Weight Addin Program Id
+    ///
+    /// 13. `[]` Optional Council Voter Weight Addin Program Id
+    /// 14. `[]` Optional Max Council Voter Weight Addin Program Id
     CreateRealm {
         #[allow(dead_code)]
         /// UTF-8 encoded Governance Realm name
@@ -65,16 +72,18 @@ pub enum GovernanceInstruction {
     /// Note: If subsequent (top up) deposit is made and there are active votes for the Voter then the vote weights won't be updated automatically
     /// It can be done by relinquishing votes on active Proposals and voting again with the new weight
     ///
-    ///  0. `[]` Governance Realm account
+    ///  0. `[]` Realm account
     ///  1. `[writable]` Governing Token Holding account. PDA seeds: ['governance',realm, governing_token_mint]
-    ///  2. `[writable]` Governing Token Source account. All tokens from the account will be transferred to the Holding account
+    ///  2. `[writable]` Governing Token Source account. It can be either spl-token TokenAccount or MintAccount
+    ///      Tokens will be transferred or minted to the Holding account
     ///  3. `[signer]` Governing Token Owner account
-    ///  4. `[signer]` Governing Token Transfer authority
-    ///  5. `[writable]` Token Owner Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///  4. `[signer]` Governing Token Source account authority
+    ///      It should be owner for TokenAccount and mint_authority for MintAccount
+    ///  5. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
     ///  6. `[signer]` Payer
     ///  7. `[]` System
-    ///  8. `[]` SPL Token
-    ///  9. `[]` Sysvar Rent
+    ///  8. `[]` SPL Token program
+    ///  9. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     DepositGoverningTokens {
         /// The amount to deposit into the realm
         #[allow(dead_code)]
@@ -85,12 +94,13 @@ pub enum GovernanceInstruction {
     /// Note: It's only possible to withdraw tokens if the Voter doesn't have any outstanding active votes
     /// If there are any outstanding votes then they must be relinquished before tokens could be withdrawn
     ///
-    ///  0. `[]` Governance Realm account
+    ///  0. `[]` Realm account
     ///  1. `[writable]` Governing Token Holding account. PDA seeds: ['governance',realm, governing_token_mint]
     ///  2. `[writable]` Governing Token Destination account. All tokens will be transferred to this account
     ///  3. `[signer]` Governing Token Owner account
-    ///  4. `[writable]` Token Owner  Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
-    ///  5. `[]` SPL Token
+    ///  4. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///  5. `[]` SPL Token program
+    ///  6. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     WithdrawGoverningTokens {},
 
     /// Sets Governance Delegate for the given Realm and Governing Token Mint (Community or Council)
@@ -117,7 +127,7 @@ pub enum GovernanceInstruction {
     ///   5. `[]` System program
     ///   6. `[]` Sysvar Rent
     ///   7. `[signer]` Governance authority
-    ///   8. `[]` Realm Config
+    ///   8. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///   9. `[]` Optional Voter Weight Record
     CreateGovernance {
         /// Governance config
@@ -138,7 +148,7 @@ pub enum GovernanceInstruction {
     ///   8. `[]` System program
     ///   9. `[]` Sysvar Rent
     ///   10. `[signer]` Governance authority
-    ///   11. `[]` Realm Config
+    ///   11. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///   12. `[]` Optional Voter Weight Record
     CreateProgramGovernance {
         /// Governance config
@@ -162,7 +172,7 @@ pub enum GovernanceInstruction {
     ///   5. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     ///   6. `[signer]` Payer
     ///   7. `[]` System program
-    ///   8. `[]` Realm Config
+    ///   8. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///   9. `[]` Optional Voter Weight Record
     CreateProposal {
         #[allow(dead_code)]
@@ -295,7 +305,7 @@ pub enum GovernanceInstruction {
     ///           Note: In the current version only Council veto is supported
     ///   8. `[signer]` Payer
     ///   9. `[]` System program
-    ///   10. `[]` Realm Config
+    ///   10. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///   11. `[]` Optional Voter Weight Record
     ///   12. `[]` Optional Max Voter Weight Record
     CastVote {
@@ -311,7 +321,7 @@ pub enum GovernanceInstruction {
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]` TokenOwnerRecord of the Proposal owner        
     ///   4. `[]` Governing Token Mint
-    ///   5. `[]` Realm Config
+    ///   5. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///   6. `[]` Optional Max Voter Weight Record
     FinalizeVote {},
 
@@ -355,7 +365,7 @@ pub enum GovernanceInstruction {
     ///   7. `[]` System program
     ///   8. `[]` Sysvar Rent
     ///   8. `[signer]` Governance authority
-    ///   9. `[]` Realm Config
+    ///   9. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///   10. `[]` Optional Voter Weight Record
     CreateMintGovernance {
         #[allow(dead_code)]
@@ -381,7 +391,7 @@ pub enum GovernanceInstruction {
     ///   7. `[]` System program
     ///   8. `[]` Sysvar Rent
     ///   9. `[signer]` Governance authority
-    ///   10. `[]` Realm Config
+    ///   10. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///   11. `[]` Optional Voter Weight Record   
     CreateTokenGovernance {
         #[allow(dead_code)]
@@ -438,10 +448,14 @@ pub enum GovernanceInstruction {
     ///       The account will be created with the Realm PDA as its owner
     ///   4. `[]` System
     ///   5. `[writable]` RealmConfig account. PDA seeds: ['realm-config', realm]
-
+    ///
     ///   6. `[]` Optional Community Voter Weight Addin Program Id    
     ///   7. `[]` Optional Max Community Voter Weight Addin Program Id    
-    ///   8. `[signer]` Optional Payer
+    ///
+    ///   8. `[]` Optional Council Voter Weight Addin Program Id    
+    ///   9. `[]` Optional Max Council Voter Weight Addin Program Id    
+    ///
+    ///   10. `[signer]` Optional Payer. Required if RealmConfig doesn't exist and needs to be created
     SetRealmConfig {
         #[allow(dead_code)]
         /// Realm config args
@@ -475,6 +489,22 @@ pub enum GovernanceInstruction {
     ///  2. `[signer]` Payer
     ///  3. `[]` System
     CreateNativeTreasury,
+
+    /// Revokes (burns) membership governing tokens for the given TokenOwnerRecord and hence takes away governance power from the TokenOwner
+    /// Note: If there are active votes for the TokenOwner then the vote weights won't be updated automatically
+    ///
+    ///  0. `[]` Realm account
+    ///  1. `[writable]` Governing Token Holding account. PDA seeds: ['governance',realm, governing_token_mint]
+    ///  2. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///  3. `[writable]` GoverningTokenMint
+    ///  4. `[signer]` GoverningTokenMint mint_authority
+    ///  5. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///  6. `[]` SPL Token program
+    RevokeGoverningTokens {
+        /// The amount to revoke
+        #[allow(dead_code)]
+        amount: u64,
+    },
 }
 
 /// Creates CreateRealm instruction
@@ -486,8 +516,9 @@ pub fn create_realm(
     community_token_mint: &Pubkey,
     payer: &Pubkey,
     council_token_mint: Option<Pubkey>,
-    community_voter_weight_addin: Option<Pubkey>,
-    max_community_voter_weight_addin: Option<Pubkey>,
+    // Accounts Args
+    community_token_config_args: Option<GoverningTokenConfigAccountArgs>,
+    council_token_config_args: Option<GoverningTokenConfigAccountArgs>,
     // Args
     name: String,
     min_community_weight_to_create_governance: u64,
@@ -519,40 +550,22 @@ pub fn create_realm(
         false
     };
 
-    let use_community_voter_weight_addin =
-        if let Some(community_voter_weight_addin) = community_voter_weight_addin {
-            accounts.push(AccountMeta::new_readonly(
-                community_voter_weight_addin,
-                false,
-            ));
-            true
-        } else {
-            false
-        };
+    let realm_config_address = get_realm_config_address(program_id, &realm_address);
+    accounts.push(AccountMeta::new(realm_config_address, false));
 
-    let use_max_community_voter_weight_addin =
-        if let Some(max_community_voter_weight_addin) = max_community_voter_weight_addin {
-            accounts.push(AccountMeta::new_readonly(
-                max_community_voter_weight_addin,
-                false,
-            ));
-            true
-        } else {
-            false
-        };
+    let community_token_config_args =
+        with_governing_token_config_args(&mut accounts, community_token_config_args);
 
-    if use_community_voter_weight_addin || use_max_community_voter_weight_addin {
-        let realm_config_address = get_realm_config_address(program_id, &realm_address);
-        accounts.push(AccountMeta::new(realm_config_address, false));
-    }
+    let council_token_config_args =
+        with_governing_token_config_args(&mut accounts, council_token_config_args);
 
     let instruction = GovernanceInstruction::CreateRealm {
         config_args: RealmConfigArgs {
             use_council_mint,
             min_community_weight_to_create_governance,
             community_mint_max_vote_weight_source,
-            use_community_voter_weight_addin,
-            use_max_community_voter_weight_addin,
+            community_token_config_args,
+            council_token_config_args,
         },
         name,
     };
@@ -572,7 +585,7 @@ pub fn deposit_governing_tokens(
     realm: &Pubkey,
     governing_token_source: &Pubkey,
     governing_token_owner: &Pubkey,
-    governing_token_transfer_authority: &Pubkey,
+    governing_token_source_authority: &Pubkey,
     payer: &Pubkey,
     // Args
     amount: u64,
@@ -588,16 +601,19 @@ pub fn deposit_governing_tokens(
     let governing_token_holding_address =
         get_governing_token_holding_address(program_id, realm, governing_token_mint);
 
+    let realm_config_address = get_realm_config_address(program_id, realm);
+
     let accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(governing_token_holding_address, false),
         AccountMeta::new(*governing_token_source, false),
         AccountMeta::new_readonly(*governing_token_owner, true),
-        AccountMeta::new_readonly(*governing_token_transfer_authority, true),
+        AccountMeta::new_readonly(*governing_token_source_authority, true),
         AccountMeta::new(token_owner_record_address, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(realm_config_address, false),
     ];
 
     let instruction = GovernanceInstruction::DepositGoverningTokens { amount };
@@ -629,6 +645,8 @@ pub fn withdraw_governing_tokens(
     let governing_token_holding_address =
         get_governing_token_holding_address(program_id, realm, governing_token_mint);
 
+    let realm_config_address = get_realm_config_address(program_id, realm);
+
     let accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(governing_token_holding_address, false),
@@ -636,6 +654,7 @@ pub fn withdraw_governing_tokens(
         AccountMeta::new_readonly(*governing_token_owner, true),
         AccountMeta::new(token_owner_record_address, false),
         AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(realm_config_address, false),
     ];
 
     let instruction = GovernanceInstruction::WithdrawGoverningTokens {};
@@ -1355,8 +1374,9 @@ pub fn set_realm_config(
     realm_authority: &Pubkey,
     council_token_mint: Option<Pubkey>,
     payer: &Pubkey,
-    community_voter_weight_addin: Option<Pubkey>,
-    max_community_voter_weight_addin: Option<Pubkey>,
+    // Accounts  Args
+    community_token_config_args: Option<GoverningTokenConfigAccountArgs>,
+    council_token_config_args: Option<GoverningTokenConfigAccountArgs>,
     // Args
     min_community_weight_to_create_governance: u64,
     community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
@@ -1384,39 +1404,21 @@ pub fn set_realm_config(
     let realm_config_address = get_realm_config_address(program_id, realm);
     accounts.push(AccountMeta::new(realm_config_address, false));
 
-    let use_community_voter_weight_addin =
-        if let Some(community_voter_weight_addin) = community_voter_weight_addin {
-            accounts.push(AccountMeta::new_readonly(
-                community_voter_weight_addin,
-                false,
-            ));
-            true
-        } else {
-            false
-        };
+    let community_token_config_args =
+        with_governing_token_config_args(&mut accounts, community_token_config_args);
 
-    let use_max_community_voter_weight_addin =
-        if let Some(max_community_voter_weight_addin) = max_community_voter_weight_addin {
-            accounts.push(AccountMeta::new_readonly(
-                max_community_voter_weight_addin,
-                false,
-            ));
-            true
-        } else {
-            false
-        };
+    let council_token_config_args =
+        with_governing_token_config_args(&mut accounts, council_token_config_args);
 
-    if use_community_voter_weight_addin || use_max_community_voter_weight_addin {
-        accounts.push(AccountMeta::new(*payer, true));
-    }
+    accounts.push(AccountMeta::new(*payer, true));
 
     let instruction = GovernanceInstruction::SetRealmConfig {
         config_args: RealmConfigArgs {
             use_council_mint,
             min_community_weight_to_create_governance,
             community_mint_max_vote_weight_source,
-            use_community_voter_weight_addin,
-            use_max_community_voter_weight_addin,
+            community_token_config_args,
+            council_token_config_args,
         },
     };
 
@@ -1534,5 +1536,79 @@ pub fn create_native_treasury(
         program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates RevokeGoverningTokens instruction
+#[allow(clippy::too_many_arguments)]
+pub fn revoke_governing_tokens(
+    program_id: &Pubkey,
+    // Accounts
+    realm: &Pubkey,
+    governing_token_owner: &Pubkey,
+    governing_token_mint: &Pubkey,
+    governing_token_mint_authority: &Pubkey,
+    // Args
+    amount: u64,
+) -> Instruction {
+    let token_owner_record_address = get_token_owner_record_address(
+        program_id,
+        realm,
+        governing_token_mint,
+        governing_token_owner,
+    );
+
+    let governing_token_holding_address =
+        get_governing_token_holding_address(program_id, realm, governing_token_mint);
+
+    let realm_config_address = get_realm_config_address(program_id, realm);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*realm, false),
+        AccountMeta::new(governing_token_holding_address, false),
+        AccountMeta::new(token_owner_record_address, false),
+        AccountMeta::new(*governing_token_mint, false),
+        AccountMeta::new_readonly(*governing_token_mint_authority, true),
+        AccountMeta::new_readonly(realm_config_address, false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::RevokeGoverningTokens { amount };
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Adds accounts specified by GoverningTokenConfigAccountArgs
+/// and returns GoverningTokenConfigArgs
+pub fn with_governing_token_config_args(
+    accounts: &mut Vec<AccountMeta>,
+    governing_token_config_args: Option<GoverningTokenConfigAccountArgs>,
+) -> GoverningTokenConfigArgs {
+    let governing_token_config_args = governing_token_config_args.unwrap_or_default();
+
+    let use_voter_weight_addin =
+        if let Some(voter_weight_addin) = governing_token_config_args.voter_weight_addin {
+            accounts.push(AccountMeta::new_readonly(voter_weight_addin, false));
+            true
+        } else {
+            false
+        };
+
+    let use_max_voter_weight_addin =
+        if let Some(max_voter_weight_addin) = governing_token_config_args.max_voter_weight_addin {
+            accounts.push(AccountMeta::new_readonly(max_voter_weight_addin, false));
+            true
+        } else {
+            false
+        };
+
+    GoverningTokenConfigArgs {
+        use_voter_weight_addin,
+        use_max_voter_weight_addin,
+        token_type: governing_token_config_args.token_type,
     }
 }

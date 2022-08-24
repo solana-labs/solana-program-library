@@ -25,10 +25,10 @@ use crate::state::{
 /// Voter choice for a proposal option
 /// In the current version only 1) Single choice and 2) Multiple choices proposals are supported
 /// In the future versions we can add support for 1) Quadratic voting, 2) Ranked choice voting and 3) Weighted voting
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct VoteChoice {
     /// The rank given to the choice by voter
-    /// Note: The filed is not used in the current version
+    /// Note: The field is not used in the current version
     pub rank: u8,
 
     /// The voter's weight percentage given by the voter to the choice
@@ -47,7 +47,7 @@ impl VoteChoice {
 }
 
 /// User's vote
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum Vote {
     /// Vote approving choices
     Approve(Vec<VoteChoice>),
@@ -64,7 +64,7 @@ pub enum Vote {
 }
 
 /// VoteKind defines the type of the vote being cast
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoteKind {
     /// Electorate vote is cast by the voting population identified by governing_token_mint
     /// Approve, Deny and Abstain votes are Electorate votes
@@ -83,7 +83,7 @@ pub fn get_vote_kind(vote: &Vote) -> VoteKind {
 }
 
 /// Proposal VoteRecord
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct VoteRecordV2 {
     /// Governance account type
     pub account_type: GovernanceAccountType,

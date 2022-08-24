@@ -1,4 +1,4 @@
-#![cfg(feature = "test-bpf")]
+#![cfg(feature = "test-sbf")]
 
 use solana_program::{instruction::AccountMeta, pubkey::Pubkey};
 use solana_program_test::*;
@@ -9,9 +9,12 @@ use program_test::*;
 use solana_sdk::signature::Signer;
 
 use spl_governance::{
-    error::GovernanceError, instruction::withdraw_governing_tokens,
-    state::token_owner_record::get_token_owner_record_address,
+    error::GovernanceError,
+    instruction::withdraw_governing_tokens,
+    state::{realm_config::GoverningTokenType, token_owner_record::get_token_owner_record_address},
 };
+
+use crate::program_test::args::RealmSetupArgs;
 
 #[tokio::test]
 async fn test_withdraw_community_tokens() {
@@ -419,4 +422,66 @@ async fn test_withdraw_governing_tokens_after_proposal_cancelled() {
         token_owner_record_cookie.token_source_amount,
         source_account.amount
     );
+}
+
+#[tokio::test]
+async fn test_withdraw_council_tokens_with_cannot_withdraw_membership_tokens_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_config_args = RealmSetupArgs::default();
+    realm_config_args.council_token_config_args.token_type = GoverningTokenType::Membership;
+
+    let realm_cookie = governance_test
+        .with_realm_using_args(&realm_config_args)
+        .await;
+
+    let token_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    let err = governance_test
+        .withdraw_council_tokens(&realm_cookie, &token_owner_record_cookie)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(err, GovernanceError::CannotWithdrawMembershipTokens.into());
+}
+
+#[tokio::test]
+async fn test_withdraw_dormant_community_tokens() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_cookie = governance_test.with_realm().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut realm_setup_args = RealmSetupArgs::default();
+    realm_setup_args.community_token_config_args.token_type = GoverningTokenType::Dormant;
+
+    governance_test
+        .set_realm_config(&mut realm_cookie, &realm_setup_args)
+        .await
+        .unwrap();
+
+    // Act
+    governance_test
+        .withdraw_community_tokens(&realm_cookie, &token_owner_record_cookie)
+        .await
+        .unwrap();
+
+    // Assert
+    let token_owner_record = governance_test
+        .get_token_owner_record_account(&token_owner_record_cookie.address)
+        .await;
+
+    assert_eq!(0, token_owner_record.governing_token_deposit_amount);
 }

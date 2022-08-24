@@ -12,7 +12,7 @@ on:
     - 'ci/*-version.sh'
 
 jobs:
-  cargo-test-bpf:
+  cargo-test-sbf:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -41,7 +41,7 @@ jobs:
         with:
           path: |
             ~/.cargo/bin/rustfilt
-          key: cargo-bpf-bins-${{ runner.os }}
+          key: cargo-sbf-bins-${{ runner.os }}
 
       - uses: actions/cache@v2
         with:
@@ -55,7 +55,7 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Build and test
-        run: ./ci/cargo-test-bpf.sh memo
+        run: ./ci/cargo-test-sbf.sh memo
 
   js-test:
     runs-on: ubuntu-latest
@@ -69,6 +69,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - uses: actions/cache@v2
         with:
-          path: ~/.cache/yarn
-          key: yarn-${{ hashFiles('memo/ts/yarn.lock') }}
-      - run: ./ci/ts-test-memo.sh
+          path: ~/.npm
+          key: node-${{ hashFiles('memo/js/package-lock.json') }}
+          restore-keys: |
+            node-
+      - run: ./ci/js-test-memo.sh

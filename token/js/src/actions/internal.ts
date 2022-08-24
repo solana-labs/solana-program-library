@@ -1,4 +1,5 @@
-import { PublicKey, Signer } from '@solana/web3.js';
+import type { Signer } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 
 /** @internal */
 export function getSigners(signerOrMultisig: Signer | PublicKey, multiSigners: Signer[]): [PublicKey, Signer[]] {

@@ -13,7 +13,7 @@ pub fn ensure_addin_mock_is_built() {
         if find_file("spl_governance_addin_mock.so").is_none() {
             assert!(Command::new("cargo")
                 .args(&[
-                    "build-bpf",
+                    "build-sbf",
                     "--manifest-path",
                     "../addin-mock/program/Cargo.toml",
                 ])

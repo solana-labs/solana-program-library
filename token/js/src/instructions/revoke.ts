@@ -1,14 +1,15 @@
 import { struct, u8 } from '@solana/buffer-layout';
-import { AccountMeta, PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants';
+import type { AccountMeta, PublicKey, Signer } from '@solana/web3.js';
+import { TransactionInstruction } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '../constants.js';
 import {
     TokenInvalidInstructionDataError,
     TokenInvalidInstructionKeysError,
     TokenInvalidInstructionProgramError,
     TokenInvalidInstructionTypeError,
-} from '../errors';
-import { addSigners } from './internal';
-import { TokenInstruction } from './types';
+} from '../errors.js';
+import { addSigners } from './internal.js';
+import { TokenInstruction } from './types.js';
 
 /** TODO: docs */
 export interface RevokeInstructionData {

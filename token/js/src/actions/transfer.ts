@@ -1,15 +1,8 @@
-import {
-    ConfirmOptions,
-    Connection,
-    PublicKey,
-    sendAndConfirmTransaction,
-    Signer,
-    Transaction,
-    TransactionSignature,
-} from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants';
-import { createTransferInstruction } from '../instructions/index';
-import { getSigners } from './internal';
+import type { ConfirmOptions, Connection, PublicKey, Signer, TransactionSignature } from '@solana/web3.js';
+import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '../constants.js';
+import { createTransferInstruction } from '../instructions/transfer.js';
+import { getSigners } from './internal.js';
 
 /**
  * Transfer tokens from one account to another

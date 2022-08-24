@@ -32,7 +32,19 @@ pub struct RealmCookie {
 
     pub realm_authority: Option<Keypair>,
 
-    pub realm_config: Option<RealmConfigCookie>,
+    pub realm_config: RealmConfigCookie,
+}
+
+impl RealmCookie {
+    pub fn get_mint_authority(&self, governing_token_mint: &Pubkey) -> &Keypair {
+        if *governing_token_mint == self.account.community_mint {
+            &self.community_mint_authority
+        } else if Some(*governing_token_mint) == self.account.config.council_mint {
+            &self.council_mint_authority.as_ref().unwrap()
+        } else {
+            panic!("Invalid governing_token_mint")
+        }
+    }
 }
 
 #[derive(Debug)]

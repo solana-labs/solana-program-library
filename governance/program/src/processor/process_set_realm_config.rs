@@ -13,10 +13,10 @@ use spl_governance_tools::account::create_and_serialize_account_signed;
 use crate::{
     error::GovernanceError,
     state::{
-        enums::GovernanceAccountType,
         realm::{assert_valid_realm_config_args, get_realm_data_for_authority, RealmConfigArgs},
         realm_config::{
-            get_realm_config_address_seeds, get_realm_config_data_for_realm, RealmConfigAccount,
+            get_realm_config_address_seeds, get_realm_config_data_for_realm,
+            resolve_governing_token_config, RealmConfigAccount,
         },
     },
 };
@@ -75,87 +75,60 @@ pub fn process_set_realm_config(
     }
 
     let system_info = next_account_info(account_info_iter)?; // 4
+
     let realm_config_info = next_account_info(account_info_iter)?; // 5
+    let mut realm_config_data =
+        get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
 
-    // Setup config for addins
+    realm_config_data.assert_can_change_config(&realm_config_args)?;
 
-    let community_voter_weight_addin = if realm_config_args.use_community_voter_weight_addin {
-        let community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 6
-        Some(*community_voter_weight_addin_info.key)
-    } else {
-        None
-    };
+    // Setup configs for tokens (plugins and token types)
 
-    let max_community_voter_weight_addin = if realm_config_args.use_max_community_voter_weight_addin
-    {
-        let max_community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 7
-        Some(*max_community_voter_weight_addin_info.key)
-    } else {
-        None
-    };
+    // 6, 7
+    let community_token_config = resolve_governing_token_config(
+        account_info_iter,
+        &realm_config_args.community_token_config_args,
+    )?;
 
-    // If any of the addins is needed then update or create (if doesn't exist yet)  RealmConfigAccount
-    let update_realm_config = if realm_config_args.use_community_voter_weight_addin
-        || realm_config_args.use_max_community_voter_weight_addin
-    {
+    // 8, 9
+    let council_token_config = resolve_governing_token_config(
+        account_info_iter,
+        &realm_config_args.council_token_config_args,
+    )?;
+
+    realm_config_data.community_token_config = community_token_config;
+    realm_config_data.council_token_config = council_token_config;
+
+    // Update or create RealmConfigAccount
+    if realm_config_info.data_is_empty() {
+        // For older Realms (pre v3) RealmConfigAccount might not exist yet and we have to create it
+
         // We need the payer to pay for the new account if it's created
-        let payer_info = next_account_info(account_info_iter)?; // 8
+        let payer_info = next_account_info(account_info_iter)?; // 10
+        let rent = Rent::get()?;
 
-        // If RealmConfigAccount doesn't exist yet then create it
-        if realm_config_info.data_is_empty() {
-            let realm_config_data = RealmConfigAccount {
-                account_type: GovernanceAccountType::RealmConfig,
-                realm: *realm_info.key,
-                community_voter_weight_addin,
-                max_community_voter_weight_addin,
-                council_voter_weight_addin: None,
-                council_max_vote_weight_addin: None,
-                reserved: [0; 128],
-            };
-
-            let rent = Rent::get()?;
-
-            create_and_serialize_account_signed::<RealmConfigAccount>(
-                payer_info,
-                realm_config_info,
-                &realm_config_data,
-                &get_realm_config_address_seeds(realm_info.key),
-                program_id,
-                system_info,
-                &rent,
-            )?;
-            false // RealmConfigAccount didn't exist and was created
-        } else {
-            true // RealmConfigAccount existed before and needs to be updated
-        }
+        create_and_serialize_account_signed::<RealmConfigAccount>(
+            payer_info,
+            realm_config_info,
+            &realm_config_data,
+            &get_realm_config_address_seeds(realm_info.key),
+            program_id,
+            system_info,
+            &rent,
+        )?;
     } else {
-        // True: If RealmConfigAccount existed before we have to update it to remove the addins which are not used any longer
-        // False: We don't want to setup the addins and RealmConfigAccount didn't exist before
-        realm_data.config.use_community_voter_weight_addin
-            || realm_data.config.use_max_community_voter_weight_addin
-    };
-
-    if update_realm_config {
-        let mut realm_config_data =
-            get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
-
-        realm_config_data.community_voter_weight_addin = community_voter_weight_addin;
-        realm_config_data.max_community_voter_weight_addin = max_community_voter_weight_addin;
-
         realm_config_data.serialize(&mut *realm_config_info.data.borrow_mut())?;
     }
 
+    // Update RealmConfig (Realm.config field)
     realm_data.config.community_mint_max_vote_weight_source =
         realm_config_args.community_mint_max_vote_weight_source;
 
     realm_data.config.min_community_weight_to_create_governance =
         realm_config_args.min_community_weight_to_create_governance;
 
-    realm_data.config.use_community_voter_weight_addin =
-        realm_config_args.use_community_voter_weight_addin;
-
-    realm_data.config.use_max_community_voter_weight_addin =
-        realm_config_args.use_max_community_voter_weight_addin;
+    realm_data.config.legacy1 = 0;
+    realm_data.config.legacy2 = 0;
 
     realm_data.serialize(&mut *realm_info.data.borrow_mut())?;
 

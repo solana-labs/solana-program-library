@@ -6,6 +6,7 @@ use {
         client::*,
         output::{CliStakePool, CliStakePoolDetails, CliStakePoolStakeAccountInfo, CliStakePools},
     },
+    bincode::deserialize,
     clap::{
         crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings,
         Arg, ArgGroup, ArgMatches, SubCommand,
@@ -1370,12 +1371,77 @@ fn command_withdraw_stake(
         .into());
     }
 
+    // Check for the delegated stake receiver
+    let maybe_stake_receiver_state = stake_receiver_param
+        .map(|stake_receiver_pubkey| {
+            let stake_account = config.rpc_client.get_account(&stake_receiver_pubkey).ok()?;
+            let stake_state: stake::state::StakeState = deserialize(stake_account.data.as_slice())
+                .map_err(|err| format!("Invalid stake account {}: {}", stake_receiver_pubkey, err))
+                .ok()?;
+            if stake_state.delegation().is_some() && stake_account.owner == stake::program::id() {
+                Some(stake_state)
+            } else {
+                None
+            }
+        })
+        .flatten();
+
     let withdraw_accounts = if use_reserve {
         vec![WithdrawAccount {
             stake_address: stake_pool.reserve_stake,
             vote_address: None,
             pool_amount,
         }]
+    } else if maybe_stake_receiver_state.is_some() {
+        let vote_account = maybe_stake_receiver_state
+            .unwrap()
+            .delegation()
+            .unwrap()
+            .voter_pubkey;
+        if let Some(vote_account_address) = vote_account_address {
+            if *vote_account_address != vote_account {
+                return Err(format!("Provided withdrawal vote account {} does not match delegation on stake receiver account {}, 
+                remove this flag or provide a different stake account delegated to {}", vote_account_address, vote_account, vote_account_address).into());
+            }
+        }
+        // Check if the vote account exists in the stake pool
+        let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
+        if validator_list
+            .validators
+            .into_iter()
+            .any(|x| x.vote_account_address == vote_account)
+        {
+            let (stake_account_address, _) = find_stake_program_address(
+                &spl_stake_pool::id(),
+                &vote_account,
+                stake_pool_address,
+            );
+            let stake_account = config.rpc_client.get_account(&stake_account_address)?;
+
+            let available_for_withdrawal = stake_pool
+                .calc_lamports_withdraw_amount(
+                    stake_account
+                        .lamports
+                        .saturating_sub(MINIMUM_ACTIVE_STAKE)
+                        .saturating_sub(stake_account_rent_exemption),
+                )
+                .unwrap();
+
+            if available_for_withdrawal < pool_amount {
+                return Err(format!(
+                    "Not enough lamports available for withdrawal from {}, {} asked, {} available",
+                    stake_account_address, pool_amount, available_for_withdrawal
+                )
+                .into());
+            }
+            vec![WithdrawAccount {
+                stake_address: stake_account_address,
+                vote_address: Some(vote_account),
+                pool_amount,
+            }]
+        } else {
+            return Err(format!("Provided stake account is delegated to a vote account {} which does not exist in the stake pool", vote_account).into());
+        }
     } else if let Some(vote_account_address) = vote_account_address {
         let (stake_account_address, _) = find_stake_program_address(
             &spl_stake_pool::id(),
@@ -1439,7 +1505,6 @@ fn command_withdraw_stake(
     );
 
     let mut total_rent_free_balances = 0;
-
     // Go through prepared accounts and withdraw/claim them
     for withdraw_account in withdraw_accounts {
         // Convert pool tokens amount to lamports
@@ -1463,19 +1528,21 @@ fn command_withdraw_stake(
                 withdraw_account.stake_address,
             );
         }
-
-        // Use separate mutable variable because withdraw might create a new account
-        let stake_receiver = stake_receiver_param.unwrap_or_else(|| {
-            let stake_keypair = new_stake_account(
-                &config.fee_payer.pubkey(),
-                &mut instructions,
-                stake_account_rent_exemption,
-            );
-            let stake_pubkey = stake_keypair.pubkey();
-            total_rent_free_balances += stake_account_rent_exemption;
-            new_stake_keypairs.push(stake_keypair);
-            stake_pubkey
-        });
+        let stake_receiver =
+            if (stake_receiver_param.is_none()) || (maybe_stake_receiver_state.is_some()) {
+                // Creating new account to split the stake into new account
+                let stake_keypair = new_stake_account(
+                    &config.fee_payer.pubkey(),
+                    &mut instructions,
+                    stake_account_rent_exemption,
+                );
+                let stake_pubkey = stake_keypair.pubkey();
+                total_rent_free_balances += stake_account_rent_exemption;
+                new_stake_keypairs.push(stake_keypair);
+                stake_pubkey
+            } else {
+                stake_receiver_param.unwrap()
+            };
 
         instructions.push(spl_stake_pool::instruction::withdraw_stake(
             &spl_stake_pool::id(),
@@ -1492,6 +1559,17 @@ fn command_withdraw_stake(
             &spl_token::id(),
             withdraw_account.pool_amount,
         ));
+    }
+
+    // Merging the stake with account provided by user
+    if maybe_stake_receiver_state.is_some() {
+        for new_stake_keypair in &new_stake_keypairs {
+            instructions.extend(stake::instruction::merge(
+                &stake_receiver_param.unwrap(),
+                &new_stake_keypair.pubkey(),
+                &config.fee_payer.pubkey(),
+            ));
+        }
     }
 
     let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;

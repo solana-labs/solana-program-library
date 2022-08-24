@@ -57,7 +57,7 @@ pub fn process_create_governance(
         governed_account: *governed_account_info.key,
         config,
         proposals_count: 0,
-        reserved: [0; 6],
+        reserved: [0; 3],
         voting_proposal_count: 0,
         reserved_v2: [0; 128],
     };

@@ -1,4 +1,4 @@
-#![cfg(feature = "test-bpf")]
+#![cfg(feature = "test-sbf")]
 
 mod program_test;
 use {
@@ -17,7 +17,7 @@ use {
 };
 
 async fn run_basic(
-    token: Token<ProgramBanksClientProcessTransaction, Keypair>,
+    token: Token<ProgramBanksClientProcessTransaction>,
     context: Arc<Mutex<ProgramTestContext>>,
     account: Pubkey,
 ) {

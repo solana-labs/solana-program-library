@@ -1,19 +1,12 @@
-import {
-    ConfirmOptions,
-    Connection,
-    PublicKey,
-    sendAndConfirmTransaction,
-    Signer,
-    Transaction,
-    TransactionSignature,
-} from '@solana/web3.js';
-import { TOKEN_2022_PROGRAM_ID } from '../../constants';
-import { AccountState } from '../../state';
+import type { ConfirmOptions, Connection, PublicKey, Signer, TransactionSignature } from '@solana/web3.js';
+import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
+import { getSigners } from '../../actions/internal.js';
+import { TOKEN_2022_PROGRAM_ID } from '../../constants.js';
+import type { AccountState } from '../../state/account.js';
 import {
     createInitializeDefaultAccountStateInstruction,
     createUpdateDefaultAccountStateInstruction,
-} from './instructions';
-import { getSigners } from '../../actions/internal';
+} from './instructions.js';
 
 /**
  * Initialize a default account state on a mint

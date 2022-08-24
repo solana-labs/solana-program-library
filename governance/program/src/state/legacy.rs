@@ -18,7 +18,7 @@ use solana_program::{
 
 /// Governance Realm Account
 /// Account PDA seeds" ['governance', name]
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmV1 {
     /// Governance account type
     pub account_type: GovernanceAccountType,
@@ -53,7 +53,7 @@ impl IsInitialized for RealmV1 {
 
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct TokenOwnerRecordV1 {
     /// Governance account type
     pub account_type: GovernanceAccountType,
@@ -101,7 +101,7 @@ impl IsInitialized for TokenOwnerRecordV1 {
 }
 
 /// Governance Account
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GovernanceV1 {
     /// Account type. It can be Uninitialized, Governance, ProgramGovernance, TokenGovernance or MintGovernance
     pub account_type: GovernanceAccountType,
@@ -171,7 +171,7 @@ impl IsInitialized for GovernanceV1 {
 }
 
 /// Governance Proposal
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ProposalV1 {
     /// Governance account type
     pub account_type: GovernanceAccountType,
@@ -260,7 +260,7 @@ impl IsInitialized for ProposalV1 {
 }
 
 /// Account PDA seeds: ['governance', proposal, signatory]
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct SignatoryRecordV1 {
     /// Governance account type
     pub account_type: GovernanceAccountType,
@@ -282,7 +282,7 @@ impl IsInitialized for SignatoryRecordV1 {
 }
 
 /// Proposal instruction V1
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ProposalInstructionV1 {
     /// Governance Account type
     pub account_type: GovernanceAccountType,
@@ -315,7 +315,7 @@ impl IsInitialized for ProposalInstructionV1 {
 }
 
 /// Vote  with number of votes
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoteWeightV1 {
     /// Yes vote
     Yes(u64),
@@ -325,7 +325,7 @@ pub enum VoteWeightV1 {
 }
 
 /// Proposal VoteRecord
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct VoteRecordV1 {
     /// Governance account type
     pub account_type: GovernanceAccountType,

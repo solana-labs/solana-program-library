@@ -1,4 +1,4 @@
-#![cfg(feature = "test-bpf")]
+#![cfg(feature = "test-sbf")]
 
 mod program_test;
 use {
@@ -74,7 +74,7 @@ fn test_transfer_fee_config_with_keypairs() -> TransferFeeConfigWithKeypairs {
 
 struct TokenWithAccounts {
     context: TestContext,
-    token: Token<ProgramBanksClientProcessTransaction, Keypair>,
+    token: Token<ProgramBanksClientProcessTransaction>,
     transfer_fee_config: TransferFeeConfig,
     withdraw_withheld_authority: Keypair,
     freeze_authority: Keypair,
@@ -502,9 +502,10 @@ async fn set_transfer_fee_config_authority() {
     let err = token
         .set_authority(
             token.get_address(),
+            &wrong.pubkey(),
             Some(&new_authority.pubkey()),
             instruction::AuthorityType::TransferFeeConfig,
-            &wrong,
+            &[&wrong],
         )
         .await
         .unwrap_err();
@@ -522,9 +523,10 @@ async fn set_transfer_fee_config_authority() {
     token
         .set_authority(
             token.get_address(),
+            &transfer_fee_config_authority.pubkey(),
             Some(&new_authority.pubkey()),
             instruction::AuthorityType::TransferFeeConfig,
-            &transfer_fee_config_authority,
+            &[&transfer_fee_config_authority],
         )
         .await
         .unwrap();
@@ -564,9 +566,10 @@ async fn set_transfer_fee_config_authority() {
     token
         .set_authority(
             token.get_address(),
+            &new_authority.pubkey(),
             None,
             instruction::AuthorityType::TransferFeeConfig,
-            &new_authority,
+            &[&new_authority],
         )
         .await
         .unwrap();
@@ -581,9 +584,10 @@ async fn set_transfer_fee_config_authority() {
     let err = token
         .set_authority(
             token.get_address(),
+            &new_authority.pubkey(),
             Some(&transfer_fee_config_authority.pubkey()),
             instruction::AuthorityType::TransferFeeConfig,
-            &new_authority,
+            &[&new_authority],
         )
         .await
         .unwrap_err();
@@ -642,9 +646,10 @@ async fn set_withdraw_withheld_authority() {
     let err = token
         .set_authority(
             token.get_address(),
+            &wrong.pubkey(),
             Some(&new_authority.pubkey()),
             instruction::AuthorityType::WithheldWithdraw,
-            &wrong,
+            &[&wrong],
         )
         .await
         .unwrap_err();
@@ -662,9 +667,10 @@ async fn set_withdraw_withheld_authority() {
     token
         .set_authority(
             token.get_address(),
+            &withdraw_withheld_authority.pubkey(),
             Some(&new_authority.pubkey()),
             instruction::AuthorityType::WithheldWithdraw,
-            &withdraw_withheld_authority,
+            &[&withdraw_withheld_authority],
         )
         .await
         .unwrap();
@@ -703,9 +709,10 @@ async fn set_withdraw_withheld_authority() {
     token
         .set_authority(
             token.get_address(),
+            &new_authority.pubkey(),
             None,
             instruction::AuthorityType::WithheldWithdraw,
-            &new_authority,
+            &[&new_authority],
         )
         .await
         .unwrap();
@@ -720,9 +727,10 @@ async fn set_withdraw_withheld_authority() {
     let err = token
         .set_authority(
             token.get_address(),
+            &new_authority.pubkey(),
             Some(&withdraw_withheld_authority.pubkey()),
             instruction::AuthorityType::WithheldWithdraw,
-            &new_authority,
+            &[&new_authority],
         )
         .await
         .unwrap_err();
@@ -1093,7 +1101,7 @@ async fn no_fees_from_self_transfer() {
 }
 
 async fn create_and_transfer_to_account(
-    token: &Token<ProgramBanksClientProcessTransaction, Keypair>,
+    token: &Token<ProgramBanksClientProcessTransaction>,
     source: &Pubkey,
     authority: &Keypair,
     owner: &Pubkey,
@@ -1409,9 +1417,10 @@ async fn withdraw_withheld_tokens_from_mint() {
     token
         .set_authority(
             token.get_address(),
+            &withdraw_withheld_authority.pubkey(),
             None,
             instruction::AuthorityType::WithheldWithdraw,
-            &withdraw_withheld_authority,
+            &[&withdraw_withheld_authority],
         )
         .await
         .unwrap();
@@ -1619,7 +1628,7 @@ async fn fail_close_with_withheld() {
 
     // fail to close
     let error = token
-        .close_account(&account, &Pubkey::new_unique(), &alice)
+        .close_account(&account, &Pubkey::new_unique(), &alice.pubkey(), &[&alice])
         .await
         .unwrap_err();
     assert_eq!(
@@ -1640,7 +1649,7 @@ async fn fail_close_with_withheld() {
 
     // successfully close
     token
-        .close_account(&account, &Pubkey::new_unique(), &alice)
+        .close_account(&account, &Pubkey::new_unique(), &alice.pubkey(), &[&alice])
         .await
         .unwrap();
 }

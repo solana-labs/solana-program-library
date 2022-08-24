@@ -1,16 +1,17 @@
 import { struct, u32, u8 } from '@solana/buffer-layout';
 import { publicKey, u64 } from '@solana/buffer-layout-utils';
-import { Commitment, Connection, PublicKey, AccountInfo } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants';
+import type { AccountInfo, Commitment, Connection, PublicKey } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '../constants.js';
 import {
     TokenAccountNotFoundError,
     TokenInvalidAccountError,
     TokenInvalidAccountOwnerError,
     TokenInvalidAccountSizeError,
-} from '../errors';
-import { MULTISIG_SIZE } from './multisig';
-import { AccountType, ACCOUNT_TYPE_SIZE } from '../extensions/accountType';
-import { ExtensionType, getAccountLen } from '../extensions/extensionType';
+} from '../errors.js';
+import { ACCOUNT_TYPE_SIZE, AccountType } from '../extensions/accountType.js';
+import type { ExtensionType } from '../extensions/extensionType.js';
+import { getAccountLen } from '../extensions/extensionType.js';
+import { MULTISIG_SIZE } from './multisig.js';
 
 /** Information about a token account */
 export interface Account {
@@ -99,7 +100,7 @@ export async function getAccount(
     programId = TOKEN_PROGRAM_ID
 ): Promise<Account> {
     const info = await connection.getAccountInfo(address, commitment);
-    return unpackAccount(info, address, programId);
+    return unpackAccount(address, info, programId);
 }
 
 /**
@@ -119,12 +120,7 @@ export async function getMultipleAccounts(
     programId = TOKEN_PROGRAM_ID
 ): Promise<Account[]> {
     const infos = await connection.getMultipleAccountsInfo(addresses, commitment);
-    const accounts = [];
-    for (let i = 0; i < infos.length; i++) {
-        const account = unpackAccount(infos[i], addresses[i], programId);
-        accounts.push(account);
-    }
-    return accounts;
+    return addresses.map((address, i) => unpackAccount(address, infos[i], programId));
 }
 
 /** Get the minimum lamport balance for a base token account to be rent exempt
@@ -157,7 +153,20 @@ export async function getMinimumBalanceForRentExemptAccountWithExtensions(
     return await connection.getMinimumBalanceForRentExemption(accountLen, commitment);
 }
 
-function unpackAccount(info: AccountInfo<Buffer> | null, address: PublicKey, programId: PublicKey) {
+/**
+ * Unpack a token account
+ *
+ * @param address   Token account
+ * @param info      Token account data
+ * @param programId SPL Token program account
+ *
+ * @return Unpacked token account
+ */
+export function unpackAccount(
+    address: PublicKey,
+    info: AccountInfo<Buffer> | null,
+    programId = TOKEN_PROGRAM_ID
+): Account {
     if (!info) throw new TokenAccountNotFoundError();
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
     if (info.data.length < ACCOUNT_SIZE) throw new TokenInvalidAccountSizeError();

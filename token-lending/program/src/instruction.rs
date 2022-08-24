@@ -219,7 +219,8 @@ pub enum LendingInstruction {
     BorrowObligationLiquidity {
         /// Amount of liquidity to borrow - u64::MAX for 100% of borrowing power
         liquidity_amount: u64,
-        // @TODO: slippage constraint - https://git.io/JmV67
+        /// Minimum amount of liquidity to receive, if borrowing 100% of borrowing power
+        slippage_limit: u64,
     },
 
     // 11
@@ -370,8 +371,12 @@ impl LendingInstruction {
                 Self::WithdrawObligationCollateral { collateral_amount }
             }
             10 => {
-                let (liquidity_amount, _rest) = Self::unpack_u64(rest)?;
-                Self::BorrowObligationLiquidity { liquidity_amount }
+                let (liquidity_amount, rest) = Self::unpack_u64(rest)?;
+                let (slippage_limit, _rest) = Self::unpack_u64(rest).unwrap_or((0, &[]));
+                Self::BorrowObligationLiquidity {
+                    liquidity_amount,
+                    slippage_limit,
+                }
             }
             11 => {
                 let (liquidity_amount, _rest) = Self::unpack_u64(rest)?;
@@ -525,9 +530,13 @@ impl LendingInstruction {
                 buf.push(9);
                 buf.extend_from_slice(&collateral_amount.to_le_bytes());
             }
-            Self::BorrowObligationLiquidity { liquidity_amount } => {
+            Self::BorrowObligationLiquidity {
+                liquidity_amount,
+                slippage_limit,
+            } => {
                 buf.push(10);
                 buf.extend_from_slice(&liquidity_amount.to_le_bytes());
+                buf.extend_from_slice(&slippage_limit.to_le_bytes());
             }
             Self::RepayObligationLiquidity { liquidity_amount } => {
                 buf.push(11);
@@ -860,6 +869,7 @@ pub fn withdraw_obligation_collateral(
 pub fn borrow_obligation_liquidity(
     program_id: Pubkey,
     liquidity_amount: u64,
+    slippage_limit: Option<u64>,
     source_liquidity_pubkey: Pubkey,
     destination_liquidity_pubkey: Pubkey,
     borrow_reserve_pubkey: Pubkey,
@@ -888,10 +898,15 @@ pub fn borrow_obligation_liquidity(
     if let Some(host_fee_receiver_pubkey) = host_fee_receiver_pubkey {
         accounts.push(AccountMeta::new(host_fee_receiver_pubkey, false));
     }
+    let slippage_limit = slippage_limit.unwrap_or(0);
     Instruction {
         program_id,
         accounts,
-        data: LendingInstruction::BorrowObligationLiquidity { liquidity_amount }.pack(),
+        data: LendingInstruction::BorrowObligationLiquidity {
+            liquidity_amount,
+            slippage_limit,
+        }
+        .pack(),
     }
 }
 
@@ -1309,6 +1324,7 @@ mod tests {
         let instruction = borrow_obligation_liquidity(
             program_id,
             liquidity_amount,
+            None,
             source_liquidity_pubkey,
             destination_liquidity_pubkey,
             borrow_reserve_pubkey,
@@ -1322,7 +1338,11 @@ mod tests {
         assert_eq!(instruction.accounts.len(), 11);
         assert_eq!(
             instruction.data,
-            LendingInstruction::BorrowObligationLiquidity { liquidity_amount }.pack()
+            LendingInstruction::BorrowObligationLiquidity {
+                liquidity_amount,
+                slippage_limit: 0
+            }
+            .pack()
         );
     }
 

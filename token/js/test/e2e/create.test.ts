@@ -1,4 +1,5 @@
-import { Connection, Keypair, PublicKey, Signer } from '@solana/web3.js';
+import type { Connection, PublicKey, Signer } from '@solana/web3.js';
+import { Keypair } from '@solana/web3.js';
 
 import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';

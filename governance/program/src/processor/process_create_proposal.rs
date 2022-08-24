@@ -21,6 +21,7 @@ use crate::{
             ProposalOption, ProposalV2, VoteType,
         },
         realm::get_realm_data_for_governing_token_mint,
+        realm_config::get_realm_config_data_for_realm,
         token_owner_record::get_token_owner_record_data_for_realm,
         vote_record::VoteKind,
     },
@@ -82,13 +83,13 @@ pub fn process_create_proposal(
         .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
     let realm_config_info = next_account_info(account_info_iter)?; // 10
+    let realm_config_data =
+        get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
 
     let voter_weight = proposal_owner_record_data.resolve_voter_weight(
-        program_id,
-        realm_config_info,
-        account_info_iter,
-        realm_info.key,
+        account_info_iter, // voter_weight_record  *11
         &realm_data,
+        &realm_config_data,
         VoterWeightAction::CreateProposal,
         governance_info.key,
     )?;

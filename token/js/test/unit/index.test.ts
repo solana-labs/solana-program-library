@@ -4,18 +4,22 @@ import chaiAsPromised from 'chai-as-promised';
 import {
     ASSOCIATED_TOKEN_PROGRAM_ID,
     createAssociatedTokenAccountInstruction,
+    createReallocateInstruction,
     createInitializeMintInstruction,
     createSyncNativeInstruction,
     createTransferCheckedInstruction,
     getAssociatedTokenAddress,
     TOKEN_PROGRAM_ID,
     TOKEN_2022_PROGRAM_ID,
+    TokenInstruction,
     TokenOwnerOffCurveError,
     getAccountLen,
     ExtensionType,
     getAssociatedTokenAddressSync,
     createInitializeAccount2Instruction,
     createInitializeAccount3Instruction,
+    createAmountToUiAmountInstruction,
+    createUiAmountToAmountInstruction,
 } from '../../src';
 
 chai.use(chaiAsPromised);
@@ -97,6 +101,30 @@ describe('spl-token-2022 instructions', () => {
 
     it('SyncNative', () => {
         const ix = createSyncNativeInstruction(Keypair.generate().publicKey, TOKEN_2022_PROGRAM_ID);
+        expect(ix.programId).to.eql(TOKEN_2022_PROGRAM_ID);
+        expect(ix.keys).to.have.length(1);
+    });
+
+    it('Reallocate', () => {
+        const publicKey = Keypair.generate().publicKey;
+        const extensionTypes = [ExtensionType.MintCloseAuthority, ExtensionType.TransferFeeConfig];
+        const ix = createReallocateInstruction(publicKey, publicKey, extensionTypes, publicKey);
+        expect(ix.programId).to.eql(TOKEN_2022_PROGRAM_ID);
+        expect(ix.keys).to.have.length(4);
+        console.error(ix.data);
+        expect(ix.data[0]).to.eql(TokenInstruction.Reallocate);
+        expect(ix.data[1]).to.eql(extensionTypes[0]);
+        expect(ix.data[3]).to.eql(extensionTypes[1]);
+    });
+
+    it('AmountToUiAmount', () => {
+        const ix = createAmountToUiAmountInstruction(Keypair.generate().publicKey, 22, TOKEN_2022_PROGRAM_ID);
+        expect(ix.programId).to.eql(TOKEN_2022_PROGRAM_ID);
+        expect(ix.keys).to.have.length(1);
+    });
+
+    it('UiAmountToAmount', () => {
+        const ix = createUiAmountToAmountInstruction(Keypair.generate().publicKey, '22', TOKEN_2022_PROGRAM_ID);
         expect(ix.programId).to.eql(TOKEN_2022_PROGRAM_ID);
         expect(ix.keys).to.have.length(1);
     });

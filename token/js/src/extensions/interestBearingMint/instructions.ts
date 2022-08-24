@@ -1,9 +1,10 @@
-import { struct, s16, u8 } from '@solana/buffer-layout';
+import { s16, struct, u8 } from '@solana/buffer-layout';
 import { publicKey } from '@solana/buffer-layout-utils';
-import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
-import { TOKEN_2022_PROGRAM_ID } from '../../constants';
-import { TokenInstruction } from '../../instructions';
-import { addSigners } from '../../instructions/internal';
+import type { PublicKey, Signer } from '@solana/web3.js';
+import { TransactionInstruction } from '@solana/web3.js';
+import { TOKEN_2022_PROGRAM_ID } from '../../constants.js';
+import { addSigners } from '../../instructions/internal.js';
+import { TokenInstruction } from '../../instructions/types.js';
 
 export enum InterestBearingMintInstruction {
     Initialize = 0,

@@ -9,17 +9,17 @@ edition = "2018"
 
 [features]
 no-entrypoint = []
-test-bpf = []
+test-sbf = []
 
 [dependencies]
 borsh = "0.9"
 borsh-derive = "0.9.0"
-solana-program = "1.10.33"
+solana-program = "1.11.6"
 spl-token = { version = "3.5", path = "../../token/program", features = ["no-entrypoint"] }
 
 [dev-dependencies]
-solana-program-test = "1.10.33"
-solana-sdk = "1.10.33"
+solana-program-test = "1.11.6"
+solana-sdk = "1.11.6"
 
 [lib]
 crate-type = ["cdylib", "lib"]

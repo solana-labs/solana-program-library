@@ -7,7 +7,7 @@ source ./ci/solana-version.sh install
 set -x
 cd token/js
 
-yarn install --pure-lockfile
-yarn lint
-yarn build
-yarn test
+npm install
+npm run lint
+npm run build
+npm test

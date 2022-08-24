@@ -12,7 +12,7 @@ To build a development version of the Token Swap program, you can use the normal
 build command for Solana programs:
 
 ```sh
-cargo build-bpf
+cargo build-sbf
 ```
 
 ## Building mainnet v2.0.0
@@ -32,7 +32,7 @@ You can build the production version of Token Swap running on devnet, testnet, a
 mainnet-beta using the following command:
 
 ```sh
-SWAP_PROGRAM_OWNER_FEE_ADDRESS=HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN cargo build-bpf --features=production
+SWAP_PROGRAM_OWNER_FEE_ADDRESS=HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN cargo build-sbf --features=production
 ```
 
 ## Testing

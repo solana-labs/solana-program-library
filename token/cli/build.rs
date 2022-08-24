@@ -32,11 +32,11 @@ fn rerun_if_changed(directory: &Path) {
 fn build_bpf(program_directory: &Path) {
     let toml_file = program_directory.join("Cargo.toml");
     let toml_file = format!("{}", toml_file.display());
-    let args = vec!["build-bpf", "--manifest-path", &toml_file];
+    let args = vec!["build-sbf", "--manifest-path", &toml_file];
     let output = Command::new("cargo")
         .args(&args)
         .output()
-        .expect("Error running cargo build-bpf");
+        .expect("Error running cargo build-sbf");
     if let Ok(output_str) = std::str::from_utf8(&output.stdout) {
         let subs = output_str.split('\n');
         for sub in subs {

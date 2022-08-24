@@ -1,4 +1,4 @@
-#![cfg(feature = "test-bpf")]
+#![cfg(feature = "test-sbf")]
 
 use solana_program::instruction::AccountMeta;
 use solana_program_test::*;
@@ -7,7 +7,12 @@ mod program_test;
 
 use program_test::*;
 use solana_sdk::signature::{Keypair, Signer};
-use spl_governance::{error::GovernanceError, instruction::deposit_governing_tokens};
+use spl_governance::{
+    error::GovernanceError, instruction::deposit_governing_tokens,
+    state::realm_config::GoverningTokenType,
+};
+
+use crate::program_test::args::*;
 
 #[tokio::test]
 async fn test_deposit_initial_community_tokens() {
@@ -235,55 +240,6 @@ async fn test_deposit_initial_community_tokens_with_owner_must_sign_error() {
     // Assert
     assert_eq!(error, GovernanceError::GoverningTokenOwnerMustSign.into());
 }
-#[tokio::test]
-async fn test_deposit_initial_community_tokens_with_invalid_owner_error() {
-    // Arrange
-    let mut governance_test = GovernanceProgramTest::start_new().await;
-    let realm_cookie = governance_test.with_realm().await;
-
-    let token_owner = Keypair::new();
-    let transfer_authority = Keypair::new();
-    let token_source = Keypair::new();
-
-    let invalid_owner = Keypair::new();
-
-    let amount = 10;
-
-    governance_test
-        .bench
-        .create_token_account_with_transfer_authority(
-            &token_source,
-            &realm_cookie.account.community_mint,
-            &realm_cookie.community_mint_authority,
-            amount,
-            &token_owner,
-            &transfer_authority.pubkey(),
-        )
-        .await;
-
-    let deposit_ix = deposit_governing_tokens(
-        &governance_test.program_id,
-        &realm_cookie.address,
-        &token_source.pubkey(),
-        &invalid_owner.pubkey(),
-        &transfer_authority.pubkey(),
-        &governance_test.bench.context.payer.pubkey(),
-        amount,
-        &realm_cookie.account.community_mint,
-    );
-
-    // // Act
-
-    let error = governance_test
-        .bench
-        .process_transaction(&[deposit_ix], Some(&[&transfer_authority, &invalid_owner]))
-        .await
-        .err()
-        .unwrap();
-
-    // Assert
-    assert_eq!(error, GovernanceError::GoverningTokenOwnerMustSign.into());
-}
 
 #[tokio::test]
 async fn test_deposit_community_tokens_with_malicious_holding_account_error() {
@@ -339,4 +295,63 @@ async fn test_deposit_community_tokens_with_malicious_holding_account_error() {
         err,
         GovernanceError::InvalidGoverningTokenHoldingAccount.into()
     );
+}
+
+#[tokio::test]
+async fn test_deposit_community_tokens_using_mint() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+    let realm_cookie = governance_test.with_realm().await;
+
+    // Act
+    let token_owner_record_cookie = governance_test
+        .with_initial_governing_token_deposit_using_mint(
+            &realm_cookie.address,
+            &realm_cookie.account.community_mint,
+            &realm_cookie.community_mint_authority,
+            10,
+            None,
+        )
+        .await
+        .unwrap();
+
+    // Assert
+
+    let token_owner_record = governance_test
+        .get_token_owner_record_account(&token_owner_record_cookie.address)
+        .await;
+
+    assert_eq!(token_owner_record_cookie.account, token_owner_record);
+
+    let holding_account = governance_test
+        .get_token_account(&realm_cookie.community_token_holding_account)
+        .await;
+
+    assert_eq!(
+        token_owner_record.governing_token_deposit_amount,
+        holding_account.amount
+    );
+}
+
+#[tokio::test]
+async fn test_deposit_comunity_tokens_with_cannot_deposit_dormant_tokens_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_config_args = RealmSetupArgs::default();
+    realm_config_args.council_token_config_args.token_type = GoverningTokenType::Dormant;
+
+    let realm_cookie = governance_test
+        .with_realm_using_args(&realm_config_args)
+        .await;
+
+    // Act
+    let err = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(err, GovernanceError::CannotDepositDormantTokens.into());
 }

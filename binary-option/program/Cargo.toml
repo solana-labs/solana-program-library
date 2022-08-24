@@ -6,10 +6,10 @@ license = "WTFPL"
 
 [features]
 no-entrypoint = []
-test-bpf = []
+test-sbf = []
 
 [dependencies]
-solana-program = "1.10.33"
+solana-program = "1.11.6"
 thiserror = "1.0"
 spl-token = {version = "3.1.1", path = "../../token/program", features = ["no-entrypoint"]}
 arrayref = "0.3.6"

@@ -1,20 +1,13 @@
+import type { ConfirmOptions, Connection, PublicKey, Signer, TransactionSignature } from '@solana/web3.js';
+import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
+import { getSigners } from '../../actions/internal.js';
+import { TOKEN_2022_PROGRAM_ID } from '../../constants.js';
 import {
-    ConfirmOptions,
-    Connection,
-    PublicKey,
-    sendAndConfirmTransaction,
-    Signer,
-    Transaction,
-    TransactionSignature,
-} from '@solana/web3.js';
-import { TOKEN_2022_PROGRAM_ID } from '../../constants';
-import {
-    createTransferCheckedWithFeeInstruction,
     createHarvestWithheldTokensToMintInstruction,
+    createTransferCheckedWithFeeInstruction,
     createWithdrawWithheldTokensFromAccountsInstruction,
     createWithdrawWithheldTokensFromMintInstruction,
-} from './instructions';
-import { getSigners } from '../../actions/internal';
+} from './instructions.js';
 
 /**
  * Transfer tokens from one account to another, asserting the transfer fee, token mint, and decimals

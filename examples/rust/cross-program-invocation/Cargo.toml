@@ -10,14 +10,14 @@ publish = false
 
 [features]
 no-entrypoint = []
-test-bpf = []
+test-sbf = []
 
 [dependencies]
-solana-program = "1.10.33"
+solana-program = "1.11.6"
 
 [dev-dependencies]
-solana-program-test = "1.10.33"
-solana-sdk = "1.10.33"
+solana-program-test = "1.11.6"
+solana-sdk = "1.11.6"
 
 [lib]
 crate-type = ["cdylib", "lib"]

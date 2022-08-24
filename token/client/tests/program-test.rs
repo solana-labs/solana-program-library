@@ -18,7 +18,7 @@ use {
 struct TestContext {
     pub decimals: u8,
     pub mint_authority: Keypair,
-    pub token: Token<ProgramBanksClientProcessTransaction, Keypair>,
+    pub token: Token<ProgramBanksClientProcessTransaction>,
 
     pub alice: Keypair,
     pub bob: Keypair,
@@ -44,18 +44,23 @@ impl TestContext {
         let mint_authority = Keypair::new();
         let mint_authority_pubkey = mint_authority.pubkey();
 
-        let token = Token::create_mint(
+        let token = Token::new(
             Arc::clone(&client),
             &spl_token_2022::id(),
-            keypair_clone(&payer),
-            &mint_account,
-            &mint_authority_pubkey,
-            None,
-            decimals,
-            vec![],
-        )
-        .await
-        .expect("failed to create mint");
+            &mint_account.pubkey(),
+            Arc::new(keypair_clone(&payer)),
+        );
+
+        token
+            .create_mint(
+                &mint_authority_pubkey,
+                None,
+                decimals,
+                vec![],
+                &[&mint_account],
+            )
+            .await
+            .expect("failed to create mint");
 
         Self {
             decimals,
@@ -160,9 +165,10 @@ async fn set_authority() {
     token
         .set_authority(
             token.get_address(),
+            &mint_authority.pubkey(),
             None,
             instruction::AuthorityType::MintTokens,
-            &mint_authority,
+            &[&mint_authority],
         )
         .await
         .expect("failed to set authority");
@@ -183,9 +189,10 @@ async fn set_authority() {
     token
         .set_authority(
             &alice_vault,
+            &alice.pubkey(),
             Some(&bob.pubkey()),
             instruction::AuthorityType::AccountOwner,
-            &alice,
+            &[&alice],
         )
         .await
         .expect("failed to set_authority");

@@ -1,4 +1,4 @@
-#![cfg(feature = "test-bpf")]
+#![cfg(feature = "test-sbf")]
 
 mod program_test;
 use {
@@ -188,7 +188,8 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
         .close_account(
             &non_owner_account,
             &solana_program::incinerator::id(),
-            &carlos,
+            &carlos.pubkey(),
+            &[&carlos],
         )
         .await
         .unwrap_err();
@@ -210,7 +211,12 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
 
     // closing fails if destination is not the incinerator
     let error = token
-        .close_account(&non_owner_account, &carlos.pubkey(), &carlos)
+        .close_account(
+            &non_owner_account,
+            &carlos.pubkey(),
+            &carlos.pubkey(),
+            &[&carlos],
+        )
         .await
         .unwrap_err();
     assert_eq!(
@@ -224,7 +230,8 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
         .close_account(
             &non_owner_account,
             &solana_program::system_program::id(),
-            &carlos,
+            &carlos.pubkey(),
+            &[&carlos],
         )
         .await
         .unwrap_err();
@@ -241,7 +248,8 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
         .close_account(
             &non_owner_account,
             &solana_program::incinerator::id(),
-            &carlos,
+            &carlos.pubkey(),
+            &[&carlos],
         )
         .await
         .unwrap();

@@ -19,7 +19,10 @@ async def test_rebalance_this_is_very_slow(async_client, validators, payer, stak
     (stake_pool_address, validator_list_address) = stake_pool_addresses
     resp = await async_client.get_minimum_balance_for_rent_exemption(STAKE_LEN)
     stake_rent_exemption = resp['result']
-    increase_amount = MINIMUM_ACTIVE_STAKE
+    # With minimum delegation at MINIMUM_DELEGATION + rent-exemption, when
+    # decreasing, we'll need rent exemption + minimum delegation delegated to
+    # cover all movements
+    increase_amount = MINIMUM_ACTIVE_STAKE + stake_rent_exemption
     deposit_amount = (increase_amount + stake_rent_exemption) * len(validators)
 
     resp = await async_client.get_account_info(stake_pool_address, commitment=Confirmed)
@@ -28,7 +31,7 @@ async def test_rebalance_this_is_very_slow(async_client, validators, payer, stak
     token_account = get_associated_token_address(payer.public_key, stake_pool.pool_mint)
     await deposit_sol(async_client, payer, stake_pool_address, token_account, deposit_amount)
 
-    # Test case 1: Increase
+    # Test case 1: Increase everywhere
     await rebalance(ENDPOINT, stake_pool_address, payer, 0.0)
 
     # should only have minimum left
@@ -43,7 +46,7 @@ async def test_rebalance_this_is_very_slow(async_client, validators, payer, stak
         assert validator.active_stake_lamports == 0
         assert validator.transient_stake_lamports == increase_amount + stake_rent_exemption
 
-    # Test case 2: Decrease
+    # Test case 2: Decrease everything back to reserve
     print('Waiting for next epoch')
     await waiter.wait_for_next_epoch(async_client)
     await rebalance(ENDPOINT, stake_pool_address, payer, deposit_amount / LAMPORTS_PER_SOL)

@@ -1,27 +1,50 @@
 import { u8 } from '@solana/buffer-layout';
-import { TransactionInstruction } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants';
-import { TokenInvalidInstructionDataError, TokenInvalidInstructionTypeError } from '../errors';
-import { decodeApproveInstruction, DecodedApproveInstruction } from './approve';
-import { decodeApproveCheckedInstruction, DecodedApproveCheckedInstruction } from './approveChecked';
-import { decodeBurnInstruction, DecodedBurnInstruction } from './burn';
-import { decodeBurnCheckedInstruction, DecodedBurnCheckedInstruction } from './burnChecked';
-import { decodeCloseAccountInstruction, DecodedCloseAccountInstruction } from './closeAccount';
-import { DecodedFreezeAccountInstruction, decodeFreezeAccountInstruction } from './freezeAccount';
-import { DecodedInitializeAccountInstruction, decodeInitializeAccountInstruction } from './initializeAccount';
-import { DecodedInitializeAccount2Instruction, decodeInitializeAccount2Instruction } from './initializeAccount2';
-import { DecodedInitializeAccount3Instruction, decodeInitializeAccount3Instruction } from './initializeAccount3';
-import { DecodedInitializeMintInstruction, decodeInitializeMintInstruction } from './initializeMint';
-import { DecodedInitializeMultisigInstruction, decodeInitializeMultisigInstruction } from './initializeMultisig';
-import { DecodedMintToInstruction, decodeMintToInstruction } from './mintTo';
-import { DecodedMintToCheckedInstruction, decodeMintToCheckedInstruction } from './mintToChecked';
-import { DecodedRevokeInstruction, decodeRevokeInstruction } from './revoke';
-import { DecodedSetAuthorityInstruction, decodeSetAuthorityInstruction } from './setAuthority';
-import { DecodedSyncNativeInstruction, decodeSyncNativeInstruction } from './syncNative';
-import { DecodedThawAccountInstruction, decodeThawAccountInstruction } from './thawAccount';
-import { DecodedTransferInstruction, decodeTransferInstruction } from './transfer';
-import { DecodedTransferCheckedInstruction, decodeTransferCheckedInstruction } from './transferChecked';
-import { TokenInstruction } from './types';
+import type { TransactionInstruction } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '../constants.js';
+import { TokenInvalidInstructionDataError, TokenInvalidInstructionTypeError } from '../errors.js';
+import type { DecodedAmountToUiAmountInstruction } from './amountToUiAmount.js';
+import { decodeAmountToUiAmountInstruction } from './amountToUiAmount.js';
+import type { DecodedApproveInstruction } from './approve.js';
+import { decodeApproveInstruction } from './approve.js';
+import type { DecodedApproveCheckedInstruction } from './approveChecked.js';
+import { decodeApproveCheckedInstruction } from './approveChecked.js';
+import type { DecodedBurnInstruction } from './burn.js';
+import { decodeBurnInstruction } from './burn.js';
+import type { DecodedBurnCheckedInstruction } from './burnChecked.js';
+import { decodeBurnCheckedInstruction } from './burnChecked.js';
+import type { DecodedCloseAccountInstruction } from './closeAccount.js';
+import { decodeCloseAccountInstruction } from './closeAccount.js';
+import type { DecodedFreezeAccountInstruction } from './freezeAccount.js';
+import { decodeFreezeAccountInstruction } from './freezeAccount.js';
+import type { DecodedInitializeAccountInstruction } from './initializeAccount.js';
+import { decodeInitializeAccountInstruction } from './initializeAccount.js';
+import type { DecodedInitializeAccount2Instruction } from './initializeAccount2.js';
+import { decodeInitializeAccount2Instruction } from './initializeAccount2.js';
+import type { DecodedInitializeAccount3Instruction } from './initializeAccount3.js';
+import { decodeInitializeAccount3Instruction } from './initializeAccount3.js';
+import type { DecodedInitializeMintInstruction } from './initializeMint.js';
+import { decodeInitializeMintInstruction } from './initializeMint.js';
+import type { DecodedInitializeMultisigInstruction } from './initializeMultisig.js';
+import { decodeInitializeMultisigInstruction } from './initializeMultisig.js';
+import type { DecodedMintToInstruction } from './mintTo.js';
+import { decodeMintToInstruction } from './mintTo.js';
+import type { DecodedMintToCheckedInstruction } from './mintToChecked.js';
+import { decodeMintToCheckedInstruction } from './mintToChecked.js';
+import type { DecodedRevokeInstruction } from './revoke.js';
+import { decodeRevokeInstruction } from './revoke.js';
+import type { DecodedSetAuthorityInstruction } from './setAuthority.js';
+import { decodeSetAuthorityInstruction } from './setAuthority.js';
+import type { DecodedSyncNativeInstruction } from './syncNative.js';
+import { decodeSyncNativeInstruction } from './syncNative.js';
+import type { DecodedThawAccountInstruction } from './thawAccount.js';
+import { decodeThawAccountInstruction } from './thawAccount.js';
+import type { DecodedTransferInstruction } from './transfer.js';
+import { decodeTransferInstruction } from './transfer.js';
+import type { DecodedTransferCheckedInstruction } from './transferChecked.js';
+import { decodeTransferCheckedInstruction } from './transferChecked.js';
+import { TokenInstruction } from './types.js';
+import type { DecodedUiAmountToAmountInstruction } from './uiAmountToAmount.js';
+import { decodeUiAmountToAmountInstruction } from './uiAmountToAmount.js';
 
 /** TODO: docs */
 export type DecodedInstruction =
@@ -44,6 +67,8 @@ export type DecodedInstruction =
     | DecodedInitializeAccount2Instruction
     | DecodedSyncNativeInstruction
     | DecodedInitializeAccount3Instruction
+    | DecodedAmountToUiAmountInstruction
+    | DecodedUiAmountToAmountInstruction
     // | DecodedInitializeMultisig2Instruction
     // | DecodedInitializeMint2Instruction
     // TODO: implement ^ and remove `never`
@@ -77,6 +102,8 @@ export function decodeInstruction(
     if (type === TokenInstruction.InitializeAccount2)
         return decodeInitializeAccount2Instruction(instruction, programId);
     if (type === TokenInstruction.SyncNative) return decodeSyncNativeInstruction(instruction, programId);
+    if (type === TokenInstruction.AmountToUiAmount) return decodeAmountToUiAmountInstruction(instruction, programId);
+    if (type === TokenInstruction.UiAmountToAmount) return decodeUiAmountToAmountInstruction(instruction, programId);
     // TODO: implement
     if (type === TokenInstruction.InitializeAccount3)
         return decodeInitializeAccount3Instruction(instruction, programId);
@@ -191,6 +218,20 @@ export function isInitializeAccount3Instruction(
     decoded: DecodedInstruction
 ): decoded is DecodedInitializeAccount3Instruction {
     return decoded.data.instruction === TokenInstruction.InitializeAccount3;
+}
+
+/** TODO: docs */
+export function isAmountToUiAmountInstruction(
+    decoded: DecodedInstruction
+): decoded is DecodedAmountToUiAmountInstruction {
+    return decoded.data.instruction === TokenInstruction.AmountToUiAmount;
+}
+
+/** TODO: docs */
+export function isUiamountToAmountInstruction(
+    decoded: DecodedInstruction
+): decoded is DecodedUiAmountToAmountInstruction {
+    return decoded.data.instruction === TokenInstruction.UiAmountToAmount;
 }
 
 /** TODO: docs, implement */

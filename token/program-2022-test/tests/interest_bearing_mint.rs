@@ -1,4 +1,4 @@
-#![cfg(feature = "test-bpf")]
+#![cfg(feature = "test-sbf")]
 
 mod program_test;
 use {
@@ -165,9 +165,10 @@ async fn set_authority() {
     token
         .set_authority(
             token.get_address(),
+            &rate_authority.pubkey(),
             Some(&new_rate_authority.pubkey()),
             AuthorityType::InterestRate,
-            &rate_authority,
+            &[&rate_authority],
         )
         .await
         .unwrap();
@@ -199,9 +200,10 @@ async fn set_authority() {
     token
         .set_authority(
             token.get_address(),
+            &new_rate_authority.pubkey(),
             None,
             AuthorityType::InterestRate,
-            &new_rate_authority,
+            &[&new_rate_authority],
         )
         .await
         .unwrap();

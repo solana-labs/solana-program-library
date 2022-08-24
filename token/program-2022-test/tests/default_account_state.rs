@@ -1,4 +1,4 @@
-#![cfg(feature = "test-bpf")]
+#![cfg(feature = "test-sbf")]
 
 mod program_test;
 use {
@@ -234,9 +234,10 @@ async fn end_to_end_default_account_state() {
     token
         .set_authority(
             token.get_address(),
+            &freeze_authority.pubkey(),
             Some(&new_authority.pubkey()),
             AuthorityType::FreezeAccount,
-            &freeze_authority,
+            &[&freeze_authority],
         )
         .await
         .unwrap();
@@ -269,9 +270,10 @@ async fn end_to_end_default_account_state() {
     token
         .set_authority(
             token.get_address(),
+            &new_authority.pubkey(),
             None,
             AuthorityType::FreezeAccount,
-            &new_authority,
+            &[&new_authority],
         )
         .await
         .unwrap();

@@ -1,4 +1,4 @@
-#![cfg(feature = "test-bpf")]
+#![cfg(feature = "test-sbf")]
 
 use borsh::de::BorshDeserialize;
 use solana_program::{hash::Hash, program_pack::Pack, pubkey::Pubkey, system_instruction};

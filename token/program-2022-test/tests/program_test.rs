@@ -14,7 +14,7 @@ use {
 pub struct TokenContext {
     pub decimals: u8,
     pub mint_authority: Keypair,
-    pub token: Token<ProgramBanksClientProcessTransaction, Keypair>,
+    pub token: Token<ProgramBanksClientProcessTransaction>,
     pub alice: Keypair,
     pub bob: Keypair,
     pub freeze_authority: Option<Keypair>,
@@ -75,17 +75,23 @@ impl TestContext {
             .as_ref()
             .map(|authority| authority.pubkey());
 
-        let token = Token::create_mint(
+        let token = Token::new(
             Arc::clone(&client),
             &id(),
-            payer,
-            &mint_account,
-            &mint_authority_pubkey,
-            freeze_authority_pubkey.as_ref(),
-            decimals,
-            extension_init_params,
-        )
-        .await?;
+            &mint_account.pubkey(),
+            Arc::new(payer),
+        );
+
+        token
+            .create_mint(
+                &mint_authority_pubkey,
+                freeze_authority_pubkey.as_ref(),
+                decimals,
+                extension_init_params,
+                &[&mint_account],
+            )
+            .await?;
+
         self.token_context = Some(TokenContext {
             decimals,
             mint_authority,
@@ -106,7 +112,7 @@ impl TestContext {
                 ProgramBanksClientProcessTransaction,
             ));
 
-        let token = Token::create_native_mint(Arc::clone(&client), &id(), payer).await?;
+        let token = Token::create_native_mint(Arc::clone(&client), &id(), Arc::new(payer)).await?;
         self.token_context = Some(TokenContext {
             decimals: native_mint::DECIMALS,
             mint_authority: Keypair::new(), /*bogus*/

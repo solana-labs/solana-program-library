@@ -35,7 +35,7 @@
     "start-with-test-validator": "start-server-and-test 'solana-test-validator --bpf-program SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw ../../target/deploy/spl_token_swap.so --reset --quiet' http://localhost:8899/health test",
     "lint": "npm run pretty && eslint --max-warnings 0 .",
     "lint:fix": "npm run pretty:fix && eslint . --fix",
-    "build:program": "cargo build-bpf --manifest-path ../program/Cargo.toml",
+    "build:program": "cargo build-sbf --manifest-path ../program/Cargo.toml",
     "pretty": "prettier --check '{,???/**/}*.ts'",
     "pretty:fix": "prettier --write '{,???/**/}*.ts'"
   },

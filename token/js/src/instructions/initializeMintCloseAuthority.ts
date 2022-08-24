@@ -1,15 +1,16 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { publicKey } from '@solana/buffer-layout-utils';
-import { AccountMeta, PublicKey, TransactionInstruction } from '@solana/web3.js';
+import type { AccountMeta } from '@solana/web3.js';
+import { PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { programSupportsExtensions } from '../constants.js';
 import {
-    TokenUnsupportedInstructionError,
     TokenInvalidInstructionDataError,
     TokenInvalidInstructionKeysError,
     TokenInvalidInstructionProgramError,
     TokenInvalidInstructionTypeError,
-} from '../errors';
-import { TokenInstruction } from './types';
-import { programSupportsExtensions } from '../constants';
+    TokenUnsupportedInstructionError,
+} from '../errors.js';
+import { TokenInstruction } from './types.js';
 
 /** TODO: docs */
 export interface InitializeMintCloseAuthorityInstructionData {
