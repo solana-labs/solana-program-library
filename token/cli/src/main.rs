@@ -797,7 +797,7 @@ async fn command_transfer(
             .value
             .map(|account| {
                 (
-                    account.owner == mint_info.program_id && account.data.len() == Account::LEN,
+                    account.owner == mint_info.program_id,
                     account.owner == system_program::id(),
                 )
             });
