@@ -31,7 +31,10 @@ use solana_program::{
 use spl_token_2022::{
     check_spl_token_program_account,
     error::TokenError,
-    extension::{transfer_fee::TransferFeeConfig, StateWithExtensions},
+    extension::{
+        mint_close_authority::MintCloseAuthority, transfer_fee::TransferFeeConfig,
+        StateWithExtensions,
+    },
     state::{Account, Mint},
 };
 use std::{convert::TryInto, error::Error};
@@ -270,7 +273,21 @@ impl Processor {
         let token_b = Self::unpack_token_account(token_b_info, &token_program_id)?;
         let fee_account = Self::unpack_token_account(fee_account_info, &token_program_id)?;
         let destination = Self::unpack_token_account(destination_info, &token_program_id)?;
-        let pool_mint = Self::unpack_mint(pool_mint_info, &token_program_id)?;
+        let pool_mint = {
+            let pool_mint_data = pool_mint_info.data.borrow();
+            let pool_mint = Self::unpack_mint_with_extensions(
+                &pool_mint_data,
+                pool_mint_info.owner,
+                &token_program_id,
+            )?;
+            if let Ok(extension) = pool_mint.get_extension::<MintCloseAuthority>() {
+                let close_authority: Option<Pubkey> = extension.close_authority.into();
+                if close_authority.is_some() {
+                    return Err(SwapError::InvalidCloseAuthority.into());
+                }
+            }
+            pool_mint.base
+        };
         if *authority_info.key != token_a.owner {
             return Err(SwapError::InvalidOwner.into());
         }
@@ -2565,8 +2582,8 @@ mod tests {
             accounts.pool_mint_account = old_mint;
         }
 
-        // pool mint token has close authority
-        {
+        // pool mint token has close authority, only available in token-2022
+        if pool_token_program_id == spl_token_2022::id() {
             let (_pool_mint_key, pool_mint_account) = create_mint(
                 &pool_token_program_id,
                 &accounts.authority_key,
