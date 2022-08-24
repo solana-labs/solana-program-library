@@ -1,14 +1,14 @@
-import { u8, struct, blob } from '@solana/buffer-layout';
+import { blob, struct, u8 } from '@solana/buffer-layout';
 import type { AccountMeta, PublicKey } from '@solana/web3.js';
 import { TransactionInstruction } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants';
+import { TOKEN_PROGRAM_ID } from '../constants.js';
 import {
     TokenInvalidInstructionDataError,
     TokenInvalidInstructionKeysError,
     TokenInvalidInstructionProgramError,
     TokenInvalidInstructionTypeError,
-} from '../errors';
-import { TokenInstruction } from './types';
+} from '../errors.js';
+import { TokenInstruction } from './types.js';
 
 /** TODO: docs */
 export interface UiAmountToAmountInstructionData {

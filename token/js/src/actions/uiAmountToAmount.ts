@@ -1,8 +1,8 @@
+import { u64 } from '@solana/buffer-layout-utils';
 import type { Connection, PublicKey, Signer, TransactionError } from '@solana/web3.js';
 import { Transaction } from '@solana/web3.js';
-import { u64 } from '@solana/buffer-layout-utils';
-import { TOKEN_PROGRAM_ID } from '../constants';
-import { createUiAmountToAmountInstruction } from '../instructions/index';
+import { TOKEN_PROGRAM_ID } from '../constants.js';
+import { createUiAmountToAmountInstruction } from '../instructions/uiAmountToAmount.js';
 
 /**
  * Amount as a string using mint-prescribed decimals

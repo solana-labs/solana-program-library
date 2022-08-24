@@ -1,7 +1,7 @@
 import type { Connection, PublicKey, Signer, TransactionError } from '@solana/web3.js';
 import { Transaction } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants';
-import { createAmountToUiAmountInstruction } from '../instructions/index';
+import { TOKEN_PROGRAM_ID } from '../constants.js';
+import { createAmountToUiAmountInstruction } from '../instructions/amountToUiAmount.js';
 
 /**
  * Amount as a string using mint-prescribed decimals

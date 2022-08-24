@@ -2,6 +2,8 @@ import { u8 } from '@solana/buffer-layout';
 import type { TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants.js';
 import { TokenInvalidInstructionDataError, TokenInvalidInstructionTypeError } from '../errors.js';
+import type { DecodedAmountToUiAmountInstruction } from './amountToUiAmount.js';
+import { decodeAmountToUiAmountInstruction } from './amountToUiAmount.js';
 import type { DecodedApproveInstruction } from './approve.js';
 import { decodeApproveInstruction } from './approve.js';
 import type { DecodedApproveCheckedInstruction } from './approveChecked.js';
@@ -40,11 +42,9 @@ import type { DecodedTransferInstruction } from './transfer.js';
 import { decodeTransferInstruction } from './transfer.js';
 import type { DecodedTransferCheckedInstruction } from './transferChecked.js';
 import { decodeTransferCheckedInstruction } from './transferChecked.js';
-import type { DecodedAmountToUiAmountInstruction } from './amountToUiAmount';
-import { decodeAmountToUiAmountInstruction } from './amountToUiAmount';
-import type { DecodedUiAmountToAmountInstruction } from './uiAmountToAmount';
-import { decodeUiAmountToAmountInstruction } from './uiAmountToAmount';
-import { TokenInstruction } from './types';
+import { TokenInstruction } from './types.js';
+import type { DecodedUiAmountToAmountInstruction } from './uiAmountToAmount.js';
+import { decodeUiAmountToAmountInstruction } from './uiAmountToAmount.js';
 
 /** TODO: docs */
 export type DecodedInstruction =
