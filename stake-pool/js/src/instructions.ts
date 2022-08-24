@@ -10,8 +10,14 @@ import {
 } from '@solana/web3.js';
 import * as BufferLayout from '@solana/buffer-layout';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { STAKE_POOL_PROGRAM_ID } from './constants';
 import { InstructionType, encodeData, decodeData } from './utils';
+import {
+  METADATA_MAX_NAME_LENGTH,
+  METADATA_MAX_SYMBOL_LENGTH,
+  METADATA_MAX_URI_LENGTH,
+  METADATA_PROGRAM_ID,
+  STAKE_POOL_PROGRAM_ID,
+} from './constants';
 
 /**
  * An enumeration of valid StakePoolInstructionType's
@@ -25,7 +31,9 @@ export type StakePoolInstructionType =
   | 'DepositStake'
   | 'DepositSol'
   | 'WithdrawStake'
-  | 'WithdrawSol';
+  | 'WithdrawSol'
+  | 'UpdateTokenMetadata'
+  | 'CreateTokenMetadata';
 
 const MOVE_STAKE_LAYOUT = BufferLayout.struct<any>([
   BufferLayout.u8('instruction'),
@@ -39,6 +47,12 @@ const UPDATE_VALIDATOR_LIST_BALANCE_LAYOUT = BufferLayout.struct<any>([
   BufferLayout.u8('noMerge'),
 ]);
 
+const TOKEN_METADATA_LAYOUT = BufferLayout.struct<any>([
+  BufferLayout.u8('instruction'),
+  BufferLayout.blob(METADATA_MAX_NAME_LENGTH, 'name'),
+  BufferLayout.blob(METADATA_MAX_SYMBOL_LENGTH, 'symbol'),
+  BufferLayout.blob(METADATA_MAX_URI_LENGTH, 'uri'),
+]);
 /**
  * An enumeration of valid stake InstructionType's
  * @internal
@@ -95,6 +109,18 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
       BufferLayout.u8('instruction'),
       BufferLayout.ns64('poolTokens'),
     ]),
+  },
+  /// Create token metadata for the stake-pool token in the
+  /// metaplex-token program
+  CreateTokenMetadata: {
+    index: 17,
+    layout: TOKEN_METADATA_LAYOUT,
+  },
+  /// Update token metadata for the stake-pool token in the
+  /// metaplex-token program
+  UpdateTokenMetadata: {
+    index: 18,
+    layout: TOKEN_METADATA_LAYOUT,
   },
 });
 
@@ -232,6 +258,27 @@ export type DepositSolParams = {
   lamports: number;
 };
 
+export type CreateTokenMetadataParams = {
+  stakePool: PublicKey;
+  manager: PublicKey;
+  tokenMetadata: PublicKey;
+  withdrawAuthority: PublicKey;
+  poolMint: PublicKey;
+  payer: PublicKey;
+  name: string;
+  symbol: string;
+  uri: string;
+};
+
+export type UpdateTokenMetadataParams = {
+  stakePool: PublicKey;
+  manager: PublicKey;
+  tokenMetadata: PublicKey;
+  withdrawAuthority: PublicKey;
+  name: string;
+  symbol: string;
+  uri: string;
+};
 /**
  * Stake Pool Instruction class
  */
@@ -595,6 +642,76 @@ export class StakePoolInstruction {
         isWritable: false,
       });
     }
+
+    return new TransactionInstruction({
+      programId: STAKE_POOL_PROGRAM_ID,
+      keys,
+      data,
+    });
+  }
+
+  /**
+   * Creates an instruction to create metadata
+   * using the mpl token metadata program for the pool token
+   */
+  static createTokenMetadata(params: CreateTokenMetadataParams): TransactionInstruction {
+    const {
+      stakePool,
+      withdrawAuthority,
+      tokenMetadata,
+      manager,
+      payer,
+      poolMint,
+      name,
+      symbol,
+      uri,
+    } = params;
+
+    const keys = [
+      { pubkey: stakePool, isSigner: false, isWritable: false },
+      { pubkey: manager, isSigner: true, isWritable: false },
+      { pubkey: withdrawAuthority, isSigner: false, isWritable: false },
+      { pubkey: poolMint, isSigner: false, isWritable: false },
+      { pubkey: payer, isSigner: true, isWritable: true },
+      { pubkey: tokenMetadata, isSigner: false, isWritable: true },
+      { pubkey: METADATA_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+    ];
+
+    const data = encodeData(STAKE_POOL_INSTRUCTION_LAYOUTS.CreateTokenMetadata, {
+      name: new TextEncoder().encode(name.padEnd(METADATA_MAX_NAME_LENGTH, '\0')),
+      symbol: new TextEncoder().encode(symbol.padEnd(METADATA_MAX_SYMBOL_LENGTH, '\0')),
+      uri: new TextEncoder().encode(uri.padEnd(METADATA_MAX_URI_LENGTH, '\0')),
+    });
+
+    return new TransactionInstruction({
+      programId: STAKE_POOL_PROGRAM_ID,
+      keys,
+      data,
+    });
+  }
+
+  /**
+   * Creates an instruction to update metadata
+   * in the mpl token metadata program account for the pool token
+   */
+  static updateTokenMetadata(params: UpdateTokenMetadataParams): TransactionInstruction {
+    const { stakePool, withdrawAuthority, tokenMetadata, manager, name, symbol, uri } = params;
+
+    const keys = [
+      { pubkey: stakePool, isSigner: false, isWritable: false },
+      { pubkey: manager, isSigner: true, isWritable: false },
+      { pubkey: withdrawAuthority, isSigner: false, isWritable: false },
+      { pubkey: tokenMetadata, isSigner: false, isWritable: true },
+      { pubkey: METADATA_PROGRAM_ID, isSigner: false, isWritable: false },
+    ];
+
+    const data = encodeData(STAKE_POOL_INSTRUCTION_LAYOUTS.UpdateTokenMetadata, {
+      name: new TextEncoder().encode(name.padEnd(METADATA_MAX_NAME_LENGTH, '\0')),
+      symbol: new TextEncoder().encode(symbol.padEnd(METADATA_MAX_SYMBOL_LENGTH, '\0')),
+      uri: new TextEncoder().encode(uri.padEnd(METADATA_MAX_URI_LENGTH, '\0')),
+    });
 
     return new TransactionInstruction({
       programId: STAKE_POOL_PROGRAM_ID,
