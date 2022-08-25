@@ -1,0 +1,19 @@
+[programs.localnet]
+spl-compression = "GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU"
+
+[programs.testnet]
+spl-compression = "GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD"
+
+[[test.genesis]]
+address = "WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh"
+program = "./target/deploy/wrapper.so"
+
+[registry]
+url = "https://anchor.projectserum.com"
+
+[provider]
+cluster = "testnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -t 1000000 tests/**/*-test.ts"
