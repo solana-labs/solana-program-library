@@ -1061,40 +1061,22 @@ async fn command_burn(
     let mint_address = config.check_account(&source, mint_address).await?;
     let mint_info = config.get_mint_info(&mint_address, mint_decimals).await?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals);
-
-    let mut instructions = if use_unchecked_instruction {
-        vec![burn(
-            &mint_info.program_id,
-            &source,
-            &mint_info.address,
-            &source_owner,
-            &config.multisigner_pubkeys,
-            amount,
-        )?]
+    let decimals = if use_unchecked_instruction {
+        None
     } else {
-        vec![burn_checked(
-            &mint_info.program_id,
-            &source,
-            &mint_info.address,
-            &source_owner,
-            &config.multisigner_pubkeys,
-            amount,
-            mint_info.decimals,
-        )?]
+        Some(mint_info.decimals)
     };
+
+    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
     if let Some(text) = memo {
-        instructions.push(spl_memo::build_memo(text.as_bytes(), &[&config.fee_payer]));
+        token.with_memo(text);
     }
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        instructions,
-    )
-    .await?;
+
+    let res = token
+        .burn(&source, &source_owner, amount, decimals, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)

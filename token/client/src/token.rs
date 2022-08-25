@@ -685,47 +685,38 @@ where
     }
 
     /// Burn tokens from account
-    pub async fn burn<S: Signer>(
+    pub async fn burn<S: Signers>(
         &self,
         source: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
         amount: u64,
+        decimals: Option<u8>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        self.process_ixs(
-            &[instruction::burn(
-                &self.program_id,
-                source,
-                &self.pubkey,
-                &authority.pubkey(),
-                &[],
-                amount,
-            )?],
-            &[authority],
-        )
-        .await
-    }
+        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
 
-    /// Burn tokens from account
-    pub async fn burn_checked<S: Signer>(
-        &self,
-        source: &Pubkey,
-        authority: &S,
-        amount: u64,
-        decimals: u8,
-    ) -> TokenResult<T::Output> {
-        self.process_ixs(
-            &[instruction::burn_checked(
+        let instructions = if let Some(decimals) = decimals {
+            [instruction::burn_checked(
                 &self.program_id,
                 source,
                 &self.pubkey,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers.iter().collect::<Vec<_>>(),
                 amount,
                 decimals,
-            )?],
-            &[authority],
-        )
-        .await
+            )?]
+        } else {
+            [instruction::burn(
+                &self.program_id,
+                source,
+                &self.pubkey,
+                authority,
+                &multisig_signers.iter().collect::<Vec<_>>(),
+                amount,
+            )?]
+        };
+
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Approve a delegate to spend tokens
