@@ -131,9 +131,18 @@ async fn run_basic(
         .unwrap();
 
     // burn is ok
-    token.burn(&alice_account, &bob, 1).await.unwrap();
     token
-        .burn_checked(&alice_account, &bob, 1, decimals)
+        .burn(&alice_account, &bob.pubkey(), 1, None, &vec![&bob])
+        .await
+        .unwrap();
+    token
+        .burn(
+            &alice_account,
+            &bob.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&bob],
+        )
         .await
         .unwrap();
 
