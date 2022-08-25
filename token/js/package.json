@@ -58,7 +58,7 @@
         "buffer": "^6.0.3"
     },
     "devDependencies": {
-        "@solana/spl-memo": "^0.2.1",
+        "@solana/spl-memo": "^0.2.2",
         "@solana/web3.js": "^1.47.4",
         "@types/chai-as-promised": "^7.1.4",
         "@types/chai": "^4.3.3",
