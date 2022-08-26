@@ -1378,38 +1378,18 @@ async fn command_approve(
     let mint_address = config.check_account(&account, mint_address).await?;
     let mint_info = config.get_mint_info(&mint_address, mint_decimals).await?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals);
-
-    let instructions = if use_unchecked_instruction {
-        vec![approve(
-            &mint_info.program_id,
-            &account,
-            &delegate,
-            &owner,
-            &config.multisigner_pubkeys,
-            amount,
-        )?]
+    let decimals = if use_unchecked_instruction {
+        None
     } else {
-        vec![approve_checked(
-            &mint_info.program_id,
-            &account,
-            &mint_info.address,
-            &delegate,
-            &owner,
-            &config.multisigner_pubkeys,
-            amount,
-            mint_info.decimals,
-        )?]
+        Some(mint_info.decimals)
     };
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        instructions,
-    )
-    .await?;
+
+    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    let res = token
+        .approve(&account, &delegate, &owner, amount, decimals, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
