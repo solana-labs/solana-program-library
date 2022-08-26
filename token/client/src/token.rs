@@ -192,15 +192,6 @@ impl<T> fmt::Debug for Token<T> {
     }
 }
 
-// HANA XXX OK what are we doing
-//these are all the remaining "normal" methods to rework:
-// X transfer
-// X approve
-// X revoke
-// X close
-// * freeze
-// * thaw
-// and then just a bunch of extension ones. this isnt hard
 impl<T> Token<T>
 where
     T: SendTransaction,
