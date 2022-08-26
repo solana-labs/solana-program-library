@@ -1430,7 +1430,11 @@ async fn withdraw_withheld_tokens_from_mint() {
     )
     .await;
     token
-        .freeze_account(&account, &freeze_authority)
+        .freeze(
+            &account,
+            &freeze_authority.pubkey(),
+            &vec![&freeze_authority],
+        )
         .await
         .unwrap();
     let error = token
