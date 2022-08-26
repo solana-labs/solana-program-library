@@ -282,11 +282,14 @@ pub(crate) async fn check_fee_payer_balance(
     config: &Config<'_>,
     required_balance: u64,
 ) -> Result<(), Error> {
-    let balance = config.rpc_client.get_balance(&config.fee_payer).await?;
+    let balance = config
+        .rpc_client
+        .get_balance(&config.fee_payer.pubkey())
+        .await?;
     if balance < required_balance {
         Err(format!(
             "Fee payer, {}, has insufficient balance: {} required, {} available",
-            config.fee_payer,
+            config.fee_payer.pubkey(),
             lamports_to_sol(required_balance),
             lamports_to_sol(balance)
         )
@@ -344,7 +347,7 @@ fn token_client_from_config(
         config.program_client.clone(),
         program_id,
         token_pubkey,
-        config.default_signer.clone(),
+        config.fee_payer.clone(),
     );
 
     if let (Some(nonce_account), Some(nonce_authority)) =
@@ -520,7 +523,7 @@ async fn command_create_account(
             false,
             vec![
                 system_instruction::create_account(
-                    &config.fee_payer,
+                    &config.fee_payer.pubkey(),
                     &account,
                     minimum_balance_for_rent_exemption,
                     Account::LEN as u64,
@@ -537,7 +540,7 @@ async fn command_create_account(
             account,
             true,
             vec![create_associated_token_account(
-                &config.fee_payer,
+                &config.fee_payer.pubkey(),
                 &owner,
                 &token,
                 &mint_info.program_id,
@@ -607,7 +610,7 @@ async fn command_create_multisig(
 
     let instructions = vec![
         system_instruction::create_account(
-            &config.fee_payer,
+            &config.fee_payer.pubkey(),
             &multisig,
             minimum_balance_for_rent_exemption,
             Multisig::LEN as u64,
@@ -981,7 +984,7 @@ async fn command_transfer(
                     );
                 }
                 instructions.push(create_associated_token_account(
-                    &config.fee_payer,
+                    &config.fee_payer.pubkey(),
                     &recipient,
                     &mint_info.address,
                     &mint_info.program_id,
@@ -1019,7 +1022,10 @@ async fn command_transfer(
         )?);
     }
     if let Some(text) = memo {
-        instructions.push(spl_memo::build_memo(text.as_bytes(), &[&config.fee_payer]));
+        instructions.push(spl_memo::build_memo(
+            text.as_bytes(),
+            &[&config.fee_payer.pubkey()],
+        ));
     }
     let tx_return = handle_tx(
         &CliSignerInfo {
@@ -1266,7 +1272,7 @@ async fn command_wrap(
         vec![
             system_instruction::transfer(&wallet_address, &account, lamports),
             create_associated_token_account(
-                &config.fee_payer,
+                &config.fee_payer.pubkey(),
                 &wallet_address,
                 &native_mint,
                 &config.program_id,
@@ -1771,7 +1777,7 @@ async fn command_gc(
         if total_balance > 0 && !accounts.contains_key(&associated_token_account) {
             // Create the associated token account
             instructions.push(vec![create_associated_token_account(
-                &config.fee_payer,
+                &config.fee_payer.pubkey(),
                 &owner,
                 &token,
                 &config.program_id,
@@ -3379,7 +3385,8 @@ async fn handle_tx<'a>(
     minimum_balance_for_rent_exemption: u64,
     instructions: Vec<Instruction>,
 ) -> Result<TransactionReturnData, Error> {
-    let fee_payer = Some(&config.fee_payer);
+    let fee_payer_pubkey = config.fee_payer.pubkey();
+    let fee_payer = Some(&fee_payer_pubkey);
 
     let recent_blockhash = config.program_client.get_latest_blockhash().await?;
     let message = if let Some(nonce_account) = config.nonce_account.as_ref() {
@@ -3525,7 +3532,7 @@ mod tests {
             program_client,
             websocket_url,
             output_format: OutputFormat::JsonCompact,
-            fee_payer: payer.pubkey(),
+            fee_payer: Arc::new(clone_keypair(payer)),
             default_signer: Arc::new(clone_keypair(payer)),
             nonce_account: None,
             nonce_authority: None,

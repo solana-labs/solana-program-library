@@ -33,7 +33,7 @@ pub(crate) struct Config<'a> {
     pub(crate) program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>>,
     pub(crate) websocket_url: String,
     pub(crate) output_format: OutputFormat,
-    pub(crate) fee_payer: Pubkey,
+    pub(crate) fee_payer: Arc<dyn Signer>,
     pub(crate) nonce_account: Option<Pubkey>,
     pub(crate) nonce_authority: Option<Pubkey>,
     pub(crate) sign_only: bool,
@@ -146,21 +146,17 @@ impl<'a> Config<'a> {
             exit(1);
         });
 
-        let (signer, fee_payer) = matches
+        let fee_payer = matches
             .value_of("fee_payer")
             .map_or(Ok(default_signer.clone()), |path| {
                 signer_from_path(matches, path, "fee_payer", wallet_manager).map(Arc::from)
-            })
-            .map(|s: Arc<dyn Signer>| {
-                let p = s.pubkey();
-                (s, p)
             })
             .unwrap_or_else(|e| {
                 eprintln!("error: {}", e);
                 exit(1);
             });
-        if !bulk_signers.contains(&signer) {
-            bulk_signers.push(signer);
+        if !bulk_signers.contains(&fee_payer) {
+            bulk_signers.push(fee_payer.clone());
         }
 
         let verbose = matches.is_present("verbose");
