@@ -15,7 +15,7 @@ use {
     },
     spl_stake_pool::{
         error::StakePoolError, find_transient_stake_program_address, id, instruction,
-        MINIMUM_ACTIVE_STAKE, MINIMUM_RESERVE_LAMPORTS,
+        MINIMUM_RESERVE_LAMPORTS,
     },
 };
 
@@ -48,13 +48,16 @@ async fn setup() -> (
     )
     .await;
 
+    let current_minimum_delegation =
+        stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
+
     let _deposit_info = simple_deposit_stake(
         &mut banks_client,
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
         &validator_stake_account,
-        MINIMUM_ACTIVE_STAKE,
+        current_minimum_delegation,
     )
     .await
     .unwrap();
@@ -354,6 +357,9 @@ async fn fail_with_small_lamport_amount() {
         _reserve_lamports,
     ) = setup().await;
 
+    let current_minimum_delegation =
+        stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
+
     let error = stake_pool_accounts
         .increase_validator_stake(
             &mut banks_client,
@@ -362,7 +368,7 @@ async fn fail_with_small_lamport_amount() {
             &validator_stake.transient_stake_account,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
-            MINIMUM_ACTIVE_STAKE - 1,
+            current_minimum_delegation - 1,
             validator_stake.transient_stake_seed,
         )
         .await

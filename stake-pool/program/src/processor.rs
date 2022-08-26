@@ -5,12 +5,12 @@ use {
         error::StakePoolError,
         find_deposit_authority_program_address,
         instruction::{FundingType, PreferredValidatorType, StakePoolInstruction},
-        minimum_reserve_lamports, minimum_stake_lamports,
+        minimum_delegation, minimum_reserve_lamports, minimum_stake_lamports,
         state::{
             AccountType, Fee, FeeType, StakePool, StakeStatus, ValidatorList, ValidatorListHeader,
             ValidatorStakeInfo,
         },
-        AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MINIMUM_ACTIVE_STAKE, TRANSIENT_STAKE_SEED_PREFIX,
+        AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, TRANSIENT_STAKE_SEED_PREFIX,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     mpl_token_metadata::{
@@ -26,7 +26,7 @@ use {
         decode_error::DecodeError,
         entrypoint::ProgramResult,
         msg,
-        program::{invoke, invoke_signed},
+        program::{get_return_data, invoke, invoke_signed},
         program_error::{PrintProgramError, ProgramError},
         program_pack::Pack,
         pubkey::Pubkey,
@@ -35,6 +35,7 @@ use {
         sysvar::Sysvar,
     },
     spl_token::state::Mint,
+    std::convert::TryInto,
 };
 
 /// Deserialize the stake state from AccountInfo
@@ -514,6 +515,26 @@ impl Processor {
         )
     }
 
+    /// Issue stake::instruction::get_minimum_delegation instruction to get the
+    /// minimum stake delegation
+    fn stake_program_minimum_delegation(
+        stake_program_info: AccountInfo,
+    ) -> Result<u64, ProgramError> {
+        let instruction = stake::instruction::get_minimum_delegation();
+        let stake_program_id = stake_program_info.key;
+        invoke(&instruction, &[stake_program_info])?;
+        get_return_data()
+            .ok_or(ProgramError::InvalidInstructionData)
+            .and_then(|(key, data)| {
+                if key != *stake_program_id {
+                    return Err(ProgramError::IncorrectProgramId);
+                }
+                data.try_into()
+                    .map(u64::from_le_bytes)
+                    .map_err(|_| ProgramError::InvalidInstructionData)
+            })
+    }
+
     /// Issue a spl_token `Burn` instruction.
     #[allow(clippy::too_many_arguments)]
     fn token_burn<'a>(
@@ -907,7 +928,10 @@ impl Processor {
 
         // Fund the stake account with the minimum + rent-exempt balance
         let space = std::mem::size_of::<stake::state::StakeState>();
-        let required_lamports = MINIMUM_ACTIVE_STAKE + rent.minimum_balance(space);
+        let stake_minimum_delegation =
+            Self::stake_program_minimum_delegation(stake_program_info.clone())?;
+        let required_lamports =
+            minimum_delegation(stake_minimum_delegation) + rent.minimum_balance(space);
 
         // Create new stake account
         create_pda_account(
@@ -1031,7 +1055,9 @@ impl Processor {
         let mut validator_stake_info = maybe_validator_stake_info.unwrap();
 
         let stake_lamports = **stake_account_info.lamports.borrow();
-        let required_lamports = minimum_stake_lamports(&meta);
+        let stake_minimum_delegation =
+            Self::stake_program_minimum_delegation(stake_program_info.clone())?;
+        let required_lamports = minimum_stake_lamports(&meta, stake_minimum_delegation);
         if stake_lamports != required_lamports {
             msg!(
                 "Attempting to remove validator account with {} lamports, must have {} lamports",
@@ -1041,11 +1067,12 @@ impl Processor {
             return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
         }
 
-        if stake.delegation.stake != MINIMUM_ACTIVE_STAKE {
+        let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
+        if stake.delegation.stake != current_minimum_delegation {
             msg!(
                 "Error: attempting to remove stake with delegation of {} lamports, must have {} lamports",
                 stake.delegation.stake,
-                MINIMUM_ACTIVE_STAKE
+                current_minimum_delegation
             );
             return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
         }
@@ -1224,7 +1251,9 @@ impl Processor {
             .lamports()
             .checked_sub(lamports)
             .ok_or(ProgramError::InsufficientFunds)?;
-        let required_lamports = minimum_stake_lamports(&meta);
+        let stake_minimum_delegation =
+            Self::stake_program_minimum_delegation(stake_program_info.clone())?;
+        let required_lamports = minimum_stake_lamports(&meta, stake_minimum_delegation);
         if remaining_lamports < required_lamports {
             msg!("Need at least {} lamports in the stake account after decrease, {} requested, {} is the current possible maximum",
                 required_lamports,
@@ -1394,10 +1423,13 @@ impl Processor {
         }
 
         let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
-        if lamports < MINIMUM_ACTIVE_STAKE {
+        let stake_minimum_delegation =
+            Self::stake_program_minimum_delegation(stake_program_info.clone())?;
+        let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
+        if lamports < current_minimum_delegation {
             msg!(
                 "Need more than {} lamports for transient stake to be rent-exempt and mergeable, {} provided",
-                MINIMUM_ACTIVE_STAKE,
+                current_minimum_delegation,
                 lamports
             );
             return Err(ProgramError::AccountNotRentExempt);
@@ -1577,6 +1609,9 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
+        let stake_minimum_delegation =
+            Self::stake_program_minimum_delegation(stake_program_info.clone())?;
+        let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
         let validator_iter = &mut validator_slice
             .iter_mut()
             .zip(validator_stake_accounts.chunks_exact(2));
@@ -1750,7 +1785,7 @@ impl Processor {
                         active_stake_lamports = stake
                             .delegation
                             .stake
-                            .checked_sub(MINIMUM_ACTIVE_STAKE)
+                            .checked_sub(current_minimum_delegation)
                             .ok_or(StakePoolError::CalculationFailure)?;
                     } else {
                         msg!("Validator stake account no longer part of the pool, ignoring");
@@ -2195,10 +2230,13 @@ impl Processor {
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
+        let stake_minimum_delegation =
+            Self::stake_program_minimum_delegation(stake_program_info.clone())?;
+        let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
         validator_stake_info.active_stake_lamports = post_validator_stake
             .delegation
             .stake
-            .checked_sub(MINIMUM_ACTIVE_STAKE)
+            .checked_sub(current_minimum_delegation)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         Ok(())
@@ -2508,8 +2546,11 @@ impl Processor {
             }
 
             let remaining_lamports = stake.delegation.stake.saturating_sub(withdraw_lamports);
-            if remaining_lamports < MINIMUM_ACTIVE_STAKE {
-                msg!("Attempting to withdraw {} lamports from validator account with {} stake lamports, {} must remain", withdraw_lamports, stake.delegation.stake, MINIMUM_ACTIVE_STAKE);
+            let stake_minimum_delegation =
+                Self::stake_program_minimum_delegation(stake_program_info.clone())?;
+            let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
+            if remaining_lamports < current_minimum_delegation {
+                msg!("Attempting to withdraw {} lamports from validator account with {} stake lamports, {} must remain", withdraw_lamports, stake.delegation.stake, current_minimum_delegation);
                 return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
             }
             Some((validator_stake_info, withdrawing_from_transient_stake))
