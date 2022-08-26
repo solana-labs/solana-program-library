@@ -1152,23 +1152,12 @@ async fn command_freeze(
         ),
     );
 
-    let instructions = vec![freeze_account(
-        &mint_info.program_id,
-        &account,
-        &mint_info.address,
-        &freeze_authority,
-        &config.multisigner_pubkeys,
-    )?];
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        instructions,
-    )
-    .await?;
+    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    let res = token
+        .freeze(&account, &freeze_authority, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
@@ -1197,23 +1186,12 @@ async fn command_thaw(
         ),
     );
 
-    let instructions = vec![thaw_account(
-        &mint_info.program_id,
-        &account,
-        &mint_info.address,
-        &freeze_authority,
-        &config.multisigner_pubkeys,
-    )?];
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        instructions,
-    )
-    .await?;
+    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    let res = token
+        .thaw(&account, &freeze_authority, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
@@ -1478,22 +1456,10 @@ async fn command_revoke(
         return Err(format!("No delegate on account {}", account).into());
     }
 
-    let instructions = vec![revoke(
-        &program_id,
-        &account,
-        &owner,
-        &config.multisigner_pubkeys,
-    )?];
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        instructions,
-    )
-    .await?;
+    let token = token_client_from_config(config, &program_id, &Pubkey::default());
+    let res = token.revoke(&account, &owner, &bulk_signers).await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
