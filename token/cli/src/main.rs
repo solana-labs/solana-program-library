@@ -1096,6 +1096,7 @@ async fn command_mint(
     mint_info: MintInfo,
     mint_authority: Pubkey,
     use_unchecked_instruction: bool,
+    memo: Option<String>,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
     println_display(
@@ -1114,6 +1115,10 @@ async fn command_mint(
     };
 
     let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    if let Some(text) = memo {
+        token.with_memo(text);
+    }
+
     let res = token
         .mint_to(&recipient, &mint_authority, amount, decimals, &bulk_signers)
         .await?;
@@ -2457,6 +2462,7 @@ fn app<'a, 'b>(
                 .arg(mint_decimals_arg())
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
+                .arg(memo_arg())
                 .offline_args_config(&SignOnlyNeedsMintDecimals{}),
         )
         .subcommand(
@@ -3161,6 +3167,7 @@ async fn process_command<'a>(
             };
             config.check_account(&recipient, Some(token)).await?;
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
+            let memo = value_t!(arg_matches, "memo", String).ok();
             command_mint(
                 config,
                 token,
@@ -3169,6 +3176,7 @@ async fn process_command<'a>(
                 mint_info,
                 mint_authority,
                 use_unchecked_instruction,
+                memo,
                 bulk_signers,
             )
             .await
@@ -3696,6 +3704,7 @@ mod tests {
             },
             payer.pubkey(),
             false,
+            None,
             bulk_signers,
         )
         .await
