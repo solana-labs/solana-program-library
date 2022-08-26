@@ -98,12 +98,13 @@ async fn run_basic(
 
     // transfer too much is not ok
     let error = token
-        .transfer_checked(
+        .transfer(
             &alice_account,
             &bob_account,
-            &bob,
+            &bob.pubkey(),
             delegated_amount + 1,
-            decimals,
+            Some(decimals),
+            &vec![&bob],
         )
         .await
         .unwrap_err();
@@ -120,13 +121,27 @@ async fn run_basic(
     // transfer is ok
     if transfer_mode == TransferMode::All {
         token
-            .transfer_unchecked(&alice_account, &bob_account, &bob, 1)
+            .transfer(
+                &alice_account,
+                &bob_account,
+                &bob.pubkey(),
+                1,
+                None,
+                &vec![&bob],
+            )
             .await
             .unwrap();
     }
 
     token
-        .transfer_checked(&alice_account, &bob_account, &bob, 1, decimals)
+        .transfer(
+            &alice_account,
+            &bob_account,
+            &bob.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&bob],
+        )
         .await
         .unwrap();
 
@@ -147,8 +162,16 @@ async fn run_basic(
         .unwrap();
 
     // wrong signer
+    let keypair = &Keypair::new();
     let error = token
-        .transfer_checked(&alice_account, &bob_account, &Keypair::new(), 1, decimals)
+        .transfer(
+            &alice_account,
+            &bob_account,
+            &keypair.pubkey(),
+            1,
+            Some(decimals),
+            &vec![keypair],
+        )
         .await
         .unwrap_err();
     assert_eq!(
@@ -166,7 +189,14 @@ async fn run_basic(
 
     // now fails
     let error = token
-        .transfer_checked(&alice_account, &bob_account, &bob, 2, decimals)
+        .transfer(
+            &alice_account,
+            &bob_account,
+            &bob.pubkey(),
+            2,
+            Some(decimals),
+            &vec![&bob],
+        )
         .await
         .unwrap_err();
     assert_eq!(

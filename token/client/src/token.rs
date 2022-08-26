@@ -192,6 +192,15 @@ impl<T> fmt::Debug for Token<T> {
     }
 }
 
+// HANA XXX OK what are we doing
+//these are all the remaining "normal" methods to rework:
+// * transfer
+// * approve
+// * revoke
+// * close
+// * freeze
+// * thaw
+// and then just a bunch of extension ones. this isnt hard
 impl<T> Token<T>
 where
     T: SendTransaction,
@@ -610,76 +619,70 @@ where
     }
 
     /// Transfer tokens to another account
-    pub async fn transfer_unchecked<S: Signer>(
+    pub async fn transfer<S: Signers>(
         &self,
         source: &Pubkey,
         destination: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
         amount: u64,
+        decimals: Option<u8>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        self.process_ixs(
-            #[allow(deprecated)]
-            &[instruction::transfer(
-                &self.program_id,
-                source,
-                destination,
-                &authority.pubkey(),
-                &[],
-                amount,
-            )?],
-            &[authority],
-        )
-        .await
-    }
+        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
 
-    /// Transfer tokens to another account
-    pub async fn transfer_checked<S: Signer>(
-        &self,
-        source: &Pubkey,
-        destination: &Pubkey,
-        authority: &S,
-        amount: u64,
-        decimals: u8,
-    ) -> TokenResult<T::Output> {
-        self.process_ixs(
-            &[instruction::transfer_checked(
+        let instructions = if let Some(decimals) = decimals {
+            [instruction::transfer_checked(
                 &self.program_id,
                 source,
                 &self.pubkey,
                 destination,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers.iter().collect::<Vec<_>>(),
                 amount,
                 decimals,
-            )?],
-            &[authority],
-        )
-        .await
+            )?]
+        } else {
+            #[allow(deprecated)]
+            [instruction::transfer(
+                &self.program_id,
+                source,
+                destination,
+                authority,
+                &multisig_signers.iter().collect::<Vec<_>>(),
+                amount,
+            )?]
+        };
+
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Transfer tokens to another account, given an expected fee
-    pub async fn transfer_checked_with_fee<S: Signer>(
+    #[allow(clippy::too_many_arguments)]
+    pub async fn transfer_with_fee<S: Signers>(
         &self,
         source: &Pubkey,
         destination: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
         amount: u64,
         decimals: u8,
         fee: u64,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
+
         self.process_ixs(
             &[transfer_fee::instruction::transfer_checked_with_fee(
                 &self.program_id,
                 source,
                 &self.pubkey,
                 destination,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers.iter().collect::<Vec<_>>(),
                 amount,
                 decimals,
                 fee,
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }

@@ -55,20 +55,41 @@ async fn run_basic_transfers(context: TestContext, test_mode: TestMode) {
     if test_mode == TestMode::All {
         // unchecked is ok
         token
-            .transfer_unchecked(&alice_account, &bob_account, &alice, 1)
+            .transfer(
+                &alice_account,
+                &bob_account,
+                &alice.pubkey(),
+                1,
+                None,
+                &vec![&alice],
+            )
             .await
             .unwrap();
     }
 
     // checked is ok
     token
-        .transfer_checked(&alice_account, &bob_account, &alice, 1, decimals)
+        .transfer(
+            &alice_account,
+            &bob_account,
+            &alice.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&alice],
+        )
         .await
         .unwrap();
 
     // transfer too much is not ok
     let error = token
-        .transfer_checked(&alice_account, &bob_account, &alice, amount, decimals)
+        .transfer(
+            &alice_account,
+            &bob_account,
+            &alice.pubkey(),
+            amount,
+            Some(decimals),
+            &vec![&alice],
+        )
         .await
         .unwrap_err();
     assert_eq!(
@@ -83,7 +104,14 @@ async fn run_basic_transfers(context: TestContext, test_mode: TestMode) {
 
     // wrong signer
     let error = token
-        .transfer_checked(&alice_account, &bob_account, &bob, 1, decimals)
+        .transfer(
+            &alice_account,
+            &bob_account,
+            &bob.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&bob],
+        )
         .await
         .unwrap_err();
     assert_eq!(
@@ -149,19 +177,40 @@ async fn run_self_transfers(context: TestContext, test_mode: TestMode) {
 
     // self transfer is ok
     token
-        .transfer_checked(&alice_account, &alice_account, &alice, 1, decimals)
+        .transfer(
+            &alice_account,
+            &alice_account,
+            &alice.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&alice],
+        )
         .await
         .unwrap();
     if test_mode == TestMode::All {
         token
-            .transfer_unchecked(&alice_account, &alice_account, &alice, 1)
+            .transfer(
+                &alice_account,
+                &alice_account,
+                &alice.pubkey(),
+                1,
+                None,
+                &vec![&alice],
+            )
             .await
             .unwrap();
     }
 
     // too much self transfer is not ok
     let error = token
-        .transfer_checked(&alice_account, &alice_account, &alice, amount + 1, decimals)
+        .transfer(
+            &alice_account,
+            &alice_account,
+            &alice.pubkey(),
+            amount + 1,
+            Some(decimals),
+            &vec![&alice],
+        )
         .await
         .unwrap_err();
     assert_eq!(
@@ -233,20 +282,41 @@ async fn run_self_owned(context: TestContext, test_mode: TestMode) {
     if test_mode == TestMode::All {
         // unchecked is ok
         token
-            .transfer_unchecked(&alice_account, &bob_account, &alice, 1)
+            .transfer(
+                &alice_account,
+                &bob_account,
+                &alice.pubkey(),
+                1,
+                None,
+                &vec![&alice],
+            )
             .await
             .unwrap();
     }
 
     // checked is ok
     token
-        .transfer_checked(&alice_account, &bob_account, &alice, 1, decimals)
+        .transfer(
+            &alice_account,
+            &bob_account,
+            &alice.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&alice],
+        )
         .await
         .unwrap();
 
     // self transfer is ok
     token
-        .transfer_checked(&alice_account, &alice_account, &alice, 1, decimals)
+        .transfer(
+            &alice_account,
+            &alice_account,
+            &alice.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&alice],
+        )
         .await
         .unwrap();
 }
@@ -312,13 +382,29 @@ async fn transfer_with_fee_on_mint_without_fee_configured() {
 
     // success if expected fee is 0
     token
-        .transfer_checked_with_fee(&alice_account, &bob_account, &alice, 1, decimals, 0)
+        .transfer_with_fee(
+            &alice_account,
+            &bob_account,
+            &alice.pubkey(),
+            1,
+            decimals,
+            0,
+            &vec![&alice],
+        )
         .await
         .unwrap();
 
     // fail for anything else
     let error = token
-        .transfer_checked_with_fee(&alice_account, &bob_account, &alice, 2, decimals, 1)
+        .transfer_with_fee(
+            &alice_account,
+            &bob_account,
+            &alice.pubkey(),
+            2,
+            decimals,
+            1,
+            &vec![&alice],
+        )
         .await
         .unwrap_err();
     assert_eq!(
