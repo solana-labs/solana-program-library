@@ -29,14 +29,22 @@ async fn basic() {
     assert_eq!(state.base.state, AccountState::Initialized);
 
     token
-        .freeze_account(&account, &freeze_authority)
+        .freeze(
+            &account,
+            &freeze_authority.pubkey(),
+            &vec![&freeze_authority],
+        )
         .await
         .unwrap();
     let state = token.get_account_info(&account).await.unwrap();
     assert_eq!(state.base.state, AccountState::Frozen);
 
     token
-        .thaw_account(&account, &freeze_authority)
+        .thaw(
+            &account,
+            &freeze_authority.pubkey(),
+            &vec![&freeze_authority],
+        )
         .await
         .unwrap();
     let state = token.get_account_info(&account).await.unwrap();

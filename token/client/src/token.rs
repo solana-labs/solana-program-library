@@ -195,9 +195,9 @@ impl<T> fmt::Debug for Token<T> {
 // HANA XXX OK what are we doing
 //these are all the remaining "normal" methods to rework:
 // X transfer
-// * approve
-// * revoke
-// * close
+// X approve
+// X revoke
+// X close
 // * freeze
 // * thaw
 // and then just a bunch of extension ones. this isnt hard
@@ -812,39 +812,45 @@ where
     }
 
     /// Freeze a token account
-    pub async fn freeze_account<S: Signer>(
+    pub async fn freeze<S: Signers>(
         &self,
         account: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
+
         self.process_ixs(
             &[instruction::freeze_account(
                 &self.program_id,
                 account,
                 &self.pubkey,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers.iter().collect::<Vec<_>>(),
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Thaw / unfreeze a token account
-    pub async fn thaw_account<S: Signer>(
+    pub async fn thaw<S: Signers>(
         &self,
         account: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
+
         self.process_ixs(
             &[instruction::thaw_account(
                 &self.program_id,
                 account,
                 &self.pubkey,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers.iter().collect::<Vec<_>>(),
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
