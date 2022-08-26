@@ -20,7 +20,7 @@ use {
     },
     spl_math::checked_ceil_div::CheckedCeilDiv,
     spl_token::state::{Account, AccountState},
-    std::{convert::TryFrom, fmt, matches},
+    std::{borrow::Borrow, convert::TryFrom, fmt, matches},
 };
 
 /// Enum representing the account type managed by the program
@@ -289,7 +289,7 @@ impl StakePool {
         &self,
         manager_fee_info: &AccountInfo,
     ) -> Result<(), ProgramError> {
-        let token_account = Account::unpack(&manager_fee_info.data.borrow())?;
+        let token_account = Account::unpack(&manager_fee_info.try_borrow_data()?)?;
         if manager_fee_info.owner != &self.token_program_id
             || token_account.state != AccountState::Initialized
             || token_account.mint != self.pool_mint
@@ -684,7 +684,7 @@ impl ValidatorListHeader {
 
     /// Extracts the validator list into its header and internal BigVec
     pub fn deserialize_vec(data: &mut [u8]) -> Result<(Self, BigVec), ProgramError> {
-        let mut data_mut = &data[..];
+        let mut data_mut = data.borrow();
         let header = ValidatorListHeader::deserialize(&mut data_mut)?;
         let length = get_instance_packed_len(&header)?;
 
