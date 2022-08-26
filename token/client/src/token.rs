@@ -194,7 +194,7 @@ impl<T> fmt::Debug for Token<T> {
 
 // HANA XXX OK what are we doing
 //these are all the remaining "normal" methods to rework:
-// * transfer
+// X transfer
 // * approve
 // * revoke
 // * close
@@ -723,66 +723,59 @@ where
     }
 
     /// Approve a delegate to spend tokens
-    pub async fn approve<S: Signer>(
+    pub async fn approve<S: Signers>(
         &self,
         source: &Pubkey,
         delegate: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
         amount: u64,
+        decimals: Option<u8>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        self.process_ixs(
-            &[instruction::approve(
-                &self.program_id,
-                source,
-                delegate,
-                &authority.pubkey(),
-                &[],
-                amount,
-            )?],
-            &[authority],
-        )
-        .await
-    }
+        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
 
-    /// Approve a delegate to spend tokens, with decimal check
-    pub async fn approve_checked<S: Signer>(
-        &self,
-        source: &Pubkey,
-        delegate: &Pubkey,
-        authority: &S,
-        amount: u64,
-        decimals: u8,
-    ) -> TokenResult<T::Output> {
-        self.process_ixs(
-            &[instruction::approve_checked(
+        let instructions = if let Some(decimals) = decimals {
+            [instruction::approve_checked(
                 &self.program_id,
                 source,
                 &self.pubkey,
                 delegate,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers.iter().collect::<Vec<_>>(),
                 amount,
                 decimals,
-            )?],
-            &[authority],
-        )
-        .await
+            )?]
+        } else {
+            [instruction::approve(
+                &self.program_id,
+                source,
+                delegate,
+                authority,
+                &multisig_signers.iter().collect::<Vec<_>>(),
+                amount,
+            )?]
+        };
+
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Revoke a delegate
-    pub async fn revoke<S: Signer>(
+    pub async fn revoke<S: Signers>(
         &self,
         source: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
+
         self.process_ixs(
             &[instruction::revoke(
                 &self.program_id,
                 source,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers.iter().collect::<Vec<_>>(),
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }

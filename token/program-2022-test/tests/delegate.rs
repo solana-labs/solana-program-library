@@ -81,16 +81,24 @@ async fn run_basic(
     let delegated_amount = 10;
     match approve_mode {
         ApproveMode::Unchecked => token
-            .approve(&alice_account, &bob.pubkey(), &alice, delegated_amount)
+            .approve(
+                &alice_account,
+                &bob.pubkey(),
+                &alice.pubkey(),
+                delegated_amount,
+                None,
+                &vec![&alice],
+            )
             .await
             .unwrap(),
         ApproveMode::Checked => token
-            .approve_checked(
+            .approve(
                 &alice_account,
                 &bob.pubkey(),
-                &alice,
+                &alice.pubkey(),
                 delegated_amount,
-                decimals,
+                Some(decimals),
+                &vec![&alice],
             )
             .await
             .unwrap(),
@@ -185,7 +193,10 @@ async fn run_basic(
     );
 
     // revoke
-    token.revoke(&alice_account, &alice).await.unwrap();
+    token
+        .revoke(&alice_account, &alice.pubkey(), &vec![&alice])
+        .await
+        .unwrap();
 
     // now fails
     let error = token
