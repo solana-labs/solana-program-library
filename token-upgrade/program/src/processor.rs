@@ -13,9 +13,6 @@ pub fn process_instruction(
     input: &[u8],
 ) -> ProgramResult {
     match decode_instruction_type(input)? {
-        TokenUpgradeInstruction::CreateFactory => {
-            unimplemented!()
-        }
         TokenUpgradeInstruction::UpgradeTokens => {
             unimplemented!()
         }
