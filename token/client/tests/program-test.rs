@@ -299,7 +299,14 @@ async fn transfer() {
 
     let transfer_amount = mint_amount.overflowing_div(3).0;
     token
-        .transfer_checked(&alice_vault, &bob_vault, &alice, transfer_amount, decimals)
+        .transfer(
+            &alice_vault,
+            &bob_vault,
+            &alice.pubkey(),
+            transfer_amount,
+            Some(decimals),
+            &vec![&alice],
+        )
         .await
         .expect("failed to transfer");
 

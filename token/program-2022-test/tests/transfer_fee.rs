@@ -799,7 +799,14 @@ async fn transfer_checked() {
 
     // fail unchecked always
     let error = token
-        .transfer_unchecked(&alice_account, &bob_account, &alice, maximum_fee)
+        .transfer(
+            &alice_account,
+            &bob_account,
+            &alice.pubkey(),
+            maximum_fee,
+            None,
+            &vec![&alice],
+        )
         .await
         .unwrap_err();
     assert_eq!(
@@ -814,12 +821,13 @@ async fn transfer_checked() {
 
     // fail because amount too high
     let error = token
-        .transfer_checked(
+        .transfer(
             &alice_account,
             &bob_account,
-            &alice,
+            &alice.pubkey(),
             alice_amount + 1,
-            decimals,
+            Some(decimals),
+            &vec![&alice],
         )
         .await
         .unwrap_err();
@@ -841,7 +849,14 @@ async fn transfer_checked() {
         .calculate_epoch_fee(0, maximum_fee)
         .unwrap();
     token
-        .transfer_checked(&alice_account, &bob_account, &alice, maximum_fee, decimals)
+        .transfer(
+            &alice_account,
+            &bob_account,
+            &alice.pubkey(),
+            maximum_fee,
+            Some(decimals),
+            &vec![&alice],
+        )
         .await
         .unwrap();
     alice_amount -= maximum_fee;
@@ -863,12 +878,13 @@ async fn transfer_checked() {
         .calculate_epoch_fee(0, transfer_amount)
         .unwrap();
     token
-        .transfer_checked(
+        .transfer(
             &alice_account,
             &bob_account,
-            &alice,
+            &alice.pubkey(),
             transfer_amount,
-            decimals,
+            Some(decimals),
+            &vec![&alice],
         )
         .await
         .unwrap();
@@ -896,12 +912,13 @@ async fn transfer_checked() {
         .unwrap();
     assert_eq!(fee, maximum_fee); // sanity
     token
-        .transfer_checked(
+        .transfer(
             &alice_account,
             &bob_account,
-            &alice,
+            &alice.pubkey(),
             transfer_amount,
-            decimals,
+            Some(decimals),
+            &vec![&alice],
         )
         .await
         .unwrap();
@@ -919,12 +936,13 @@ async fn transfer_checked() {
 
     // transfer down to 1 token
     token
-        .transfer_checked(
+        .transfer(
             &alice_account,
             &bob_account,
-            &alice,
+            &alice.pubkey(),
             alice_amount - 1,
-            decimals,
+            Some(decimals),
+            &vec![&alice],
         )
         .await
         .unwrap();
@@ -942,7 +960,14 @@ async fn transfer_checked() {
 
     // final transfer, only move tokens to withheld amount, nothing received
     token
-        .transfer_checked(&alice_account, &bob_account, &alice, 1, decimals)
+        .transfer(
+            &alice_account,
+            &bob_account,
+            &alice.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&alice],
+        )
         .await
         .unwrap();
     withheld_amount += 1;
@@ -977,13 +1002,14 @@ async fn transfer_checked_with_fee() {
         .unwrap()
         + 1;
     let error = token
-        .transfer_checked_with_fee(
+        .transfer_with_fee(
             &alice_account,
             &bob_account,
-            &alice,
+            &alice.pubkey(),
             transfer_amount,
             decimals,
             fee,
+            &vec![&alice],
         )
         .await
         .unwrap_err();
@@ -1003,13 +1029,14 @@ async fn transfer_checked_with_fee() {
         .unwrap()
         - 1;
     let error = token
-        .transfer_checked_with_fee(
+        .transfer_with_fee(
             &alice_account,
             &bob_account,
-            &alice,
+            &alice.pubkey(),
             transfer_amount,
             decimals,
             fee,
+            &vec![&alice],
         )
         .await
         .unwrap_err();
@@ -1029,13 +1056,14 @@ async fn transfer_checked_with_fee() {
         .unwrap()
         - 1;
     let error = token
-        .transfer_checked_with_fee(
+        .transfer_with_fee(
             &alice_account,
             &bob_account,
-            &alice,
+            &alice.pubkey(),
             alice_amount + 1,
             decimals,
             fee,
+            &vec![&alice],
         )
         .await
         .unwrap_err();
@@ -1054,13 +1082,14 @@ async fn transfer_checked_with_fee() {
         .calculate_epoch_fee(0, transfer_amount)
         .unwrap();
     token
-        .transfer_checked_with_fee(
+        .transfer_with_fee(
             &alice_account,
             &bob_account,
-            &alice,
+            &alice.pubkey(),
             transfer_amount,
             decimals,
             fee,
+            &vec![&alice],
         )
         .await
         .unwrap();
@@ -1090,13 +1119,14 @@ async fn no_fees_from_self_transfer() {
     // self transfer, no fee assessed
     let fee = transfer_fee_config.calculate_epoch_fee(0, amount).unwrap();
     token
-        .transfer_checked_with_fee(
+        .transfer_with_fee(
             &alice_account,
             &alice_account,
-            &alice,
+            &alice.pubkey(),
             amount,
             decimals,
             fee,
+            &vec![&alice],
         )
         .await
         .unwrap();
@@ -1119,7 +1149,14 @@ async fn create_and_transfer_to_account(
         .await
         .unwrap();
     token
-        .transfer_checked(source, &account, authority, amount, decimals)
+        .transfer(
+            source,
+            &account,
+            &authority.pubkey(),
+            amount,
+            Some(decimals),
+            &vec![authority],
+        )
         .await
         .unwrap();
     account
@@ -1628,7 +1665,14 @@ async fn fail_close_with_withheld() {
     // empty the account
     let fee = transfer_fee_config.calculate_epoch_fee(0, amount).unwrap();
     token
-        .transfer_checked(&account, &alice_account, &alice, amount - fee, decimals)
+        .transfer(
+            &account,
+            &alice_account,
+            &alice.pubkey(),
+            amount - fee,
+            Some(decimals),
+            &vec![&alice],
+        )
         .await
         .unwrap();
 

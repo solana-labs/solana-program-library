@@ -62,7 +62,14 @@ async fn test_memo_transfers(
 
     // attempt to transfer from alice to bob without memo
     let err = token
-        .transfer_unchecked(&alice_account, &bob_account, &alice, 10)
+        .transfer(
+            &alice_account,
+            &bob_account,
+            &alice.pubkey(),
+            10,
+            None,
+            &vec![&alice],
+        )
         .await
         .unwrap_err();
     assert_eq!(
@@ -125,7 +132,14 @@ async fn test_memo_transfers(
     // transfer with memo
     token
         .with_memo("🦖")
-        .transfer_unchecked(&alice_account, &bob_account, &alice, 10)
+        .transfer(
+            &alice_account,
+            &bob_account,
+            &alice.pubkey(),
+            10,
+            None,
+            &vec![&alice],
+        )
         .await
         .unwrap();
     let bob_state = token.get_account_info(&bob_account).await.unwrap();
@@ -166,7 +180,14 @@ async fn test_memo_transfers(
 
     // transfer from alice to bob without memo
     token
-        .transfer_unchecked(&alice_account, &bob_account, &alice, 12)
+        .transfer(
+            &alice_account,
+            &bob_account,
+            &alice.pubkey(),
+            12,
+            None,
+            &vec![&alice],
+        )
         .await
         .unwrap();
     let bob_state = token.get_account_info(&bob_account).await.unwrap();

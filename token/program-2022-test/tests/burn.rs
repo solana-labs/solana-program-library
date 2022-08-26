@@ -226,7 +226,14 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
         .await
         .unwrap();
     token
-        .transfer_checked(&alice_account, &non_owner_account, &alice, 1, decimals)
+        .transfer(
+            &alice_account,
+            &non_owner_account,
+            &alice.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&alice],
+        )
         .await
         .unwrap();
 
