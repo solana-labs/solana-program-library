@@ -1397,9 +1397,8 @@ where
     /// Deposit SPL Tokens into the pending balance of a confidential token account
     pub async fn confidential_transfer_deposit<S: Signer>(
         &self,
-        source_token_account: &Pubkey,
-        destination_token_account: &Pubkey,
-        source_token_authority: &S,
+        token_account: &Pubkey,
+        token_authority: &S,
         amount: u64,
         decimals: u8,
     ) -> TokenResult<T::Output> {
@@ -1410,15 +1409,14 @@ where
         self.process_ixs(
             &[confidential_transfer::instruction::deposit(
                 &self.program_id,
-                source_token_account,
+                token_account,
                 &self.pubkey,
-                destination_token_account,
                 amount,
                 decimals,
-                &source_token_authority.pubkey(),
+                &token_authority.pubkey(),
                 &[],
             )?],
-            &[source_token_authority],
+            &[token_authority],
         )
         .await
     }
