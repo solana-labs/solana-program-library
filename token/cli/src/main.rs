@@ -51,7 +51,7 @@ use spl_token_client::{
 };
 use std::{collections::HashMap, fmt, fmt::Display, process::exit, str::FromStr, sync::Arc};
 use solana_account_decoder::parse_token_extension::UiExtension;
-use strum_macros::{EnumString, IntoStaticStr, ToString};
+use strum_macros::{EnumString, IntoStaticStr};
 
 mod config;
 use config::{Config, MintInfo};
