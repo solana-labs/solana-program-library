@@ -9,9 +9,6 @@ use bytemuck::{Pod, Zeroable};
 use log_compute;
 use solana_logging;
 
-#[cfg(feature = "sol-log")]
-use solana_program::{log::sol_log_compute_units, msg};
-
 /// Enforce constraints on max depth and buffer size
 #[inline(always)]
 fn check_bounds(max_depth: usize, max_buffer_size: usize) {

@@ -1,7 +1,7 @@
 {
     "name": "@solana/spl-memo",
     "description": "SPL Memo Program JS API",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "author": "Solana Maintainers <maintainers@solana.foundation>",
     "repository": "https://github.com/solana-labs/solana-program-library",
     "license": "Apache-2.0",
@@ -32,6 +32,7 @@
         "reinstall": "npm run nuke && npm install",
         "clean": "shx rm -rf lib **/*.tsbuildinfo || true",
         "build": "tsc --build --verbose tsconfig.all.json",
+        "postbuild": "shx echo '{ \"type\": \"commonjs\" }' > lib/cjs/package.json",
         "watch": "tsc --build --verbose --watch tsconfig.all.json",
         "release": "npm run clean && npm run build",
         "fmt": "prettier --write '{*,**/*}.{ts,tsx,js,jsx,json}'",

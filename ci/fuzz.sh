@@ -28,7 +28,7 @@ fi
 # Temporary workaround using RUSTFLAGS and rust nightly due to:
 # https://github.com/rust-fuzz/honggfuzz-rs/issues/61
 # Once the issue is resolved, remove the RUSTFLAGS and nightly usage everywhere.
-RUSTFLAGS="-Znew-llvm-pass-manager=no" HFUZZ_RUN_ARGS="--run_time $run_time --exit_upon_crash" cargo +nightly-2022-02-24 hfuzz run $fuzz_target
+RUSTFLAGS="-Znew-llvm-pass-manager=no" HFUZZ_RUN_ARGS="--run_time $run_time --exit_upon_crash" cargo +"$rust_nightly" hfuzz run $fuzz_target
 
 # Until https://github.com/rust-fuzz/honggfuzz-rs/issues/16 is resolved,
 # hfuzz does not return an error code on crash, so look for a crash artifact

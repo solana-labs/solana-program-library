@@ -2,6 +2,8 @@ import { u8 } from '@solana/buffer-layout';
 import type { TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants.js';
 import { TokenInvalidInstructionDataError, TokenInvalidInstructionTypeError } from '../errors.js';
+import type { DecodedAmountToUiAmountInstruction } from './amountToUiAmount.js';
+import { decodeAmountToUiAmountInstruction } from './amountToUiAmount.js';
 import type { DecodedApproveInstruction } from './approve.js';
 import { decodeApproveInstruction } from './approve.js';
 import type { DecodedApproveCheckedInstruction } from './approveChecked.js';
@@ -41,6 +43,8 @@ import { decodeTransferInstruction } from './transfer.js';
 import type { DecodedTransferCheckedInstruction } from './transferChecked.js';
 import { decodeTransferCheckedInstruction } from './transferChecked.js';
 import { TokenInstruction } from './types.js';
+import type { DecodedUiAmountToAmountInstruction } from './uiAmountToAmount.js';
+import { decodeUiAmountToAmountInstruction } from './uiAmountToAmount.js';
 
 /** TODO: docs */
 export type DecodedInstruction =
@@ -63,6 +67,8 @@ export type DecodedInstruction =
     | DecodedInitializeAccount2Instruction
     | DecodedSyncNativeInstruction
     | DecodedInitializeAccount3Instruction
+    | DecodedAmountToUiAmountInstruction
+    | DecodedUiAmountToAmountInstruction
     // | DecodedInitializeMultisig2Instruction
     // | DecodedInitializeMint2Instruction
     // TODO: implement ^ and remove `never`
@@ -96,6 +102,8 @@ export function decodeInstruction(
     if (type === TokenInstruction.InitializeAccount2)
         return decodeInitializeAccount2Instruction(instruction, programId);
     if (type === TokenInstruction.SyncNative) return decodeSyncNativeInstruction(instruction, programId);
+    if (type === TokenInstruction.AmountToUiAmount) return decodeAmountToUiAmountInstruction(instruction, programId);
+    if (type === TokenInstruction.UiAmountToAmount) return decodeUiAmountToAmountInstruction(instruction, programId);
     // TODO: implement
     if (type === TokenInstruction.InitializeAccount3)
         return decodeInitializeAccount3Instruction(instruction, programId);
@@ -210,6 +218,20 @@ export function isInitializeAccount3Instruction(
     decoded: DecodedInstruction
 ): decoded is DecodedInitializeAccount3Instruction {
     return decoded.data.instruction === TokenInstruction.InitializeAccount3;
+}
+
+/** TODO: docs */
+export function isAmountToUiAmountInstruction(
+    decoded: DecodedInstruction
+): decoded is DecodedAmountToUiAmountInstruction {
+    return decoded.data.instruction === TokenInstruction.AmountToUiAmount;
+}
+
+/** TODO: docs */
+export function isUiamountToAmountInstruction(
+    decoded: DecodedInstruction
+): decoded is DecodedUiAmountToAmountInstruction {
+    return decoded.data.instruction === TokenInstruction.UiAmountToAmount;
 }
 
 /** TODO: docs, implement */
