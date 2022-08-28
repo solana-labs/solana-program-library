@@ -181,6 +181,8 @@ pub enum ConfidentialTransferInstruction {
 
     /// Transfer tokens confidentially.
     ///
+    /// Fails if the associated mint is extended as `NonTransferable`.
+    ///
     ///   * Single owner/delegate
     ///   1. `[writable]` The source SPL Token account.
     ///   2. `[writable]` The destination SPL Token account.
