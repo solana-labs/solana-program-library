@@ -42,7 +42,7 @@ use spl_associated_token_account::{
     get_associated_token_address_with_program_id, instruction::create_associated_token_account,
 };
 use spl_token_2022::{
-    extension::StateWithExtensionsOwned,
+    extension::{StateWithExtensionsOwned, ExtensionType},
     instruction::*,
     state::{Account, Mint, Multisig},
 };
@@ -64,7 +64,6 @@ use sort::{is_supported_program, sort_and_parse_token_accounts};
 
 mod bench;
 use bench::*;
-use spl_token_2022::extension::{ExtensionType};
 
 struct CliSignerInfo {
     pub signers: Vec<Arc<dyn Signer>>,
@@ -4431,6 +4430,8 @@ mod tests {
         let program_id = spl_token_2022::id();
         let config = test_config(&test_validator, &payer, &program_id);
         let token = create_token(&config, &payer).await;
+        let token_account = create_associated_account(&config, &payer, token).await;
+        // Enabling required transfer memos using mint account as argument
         let result = process_test_command(
             &config,
             &payer,
@@ -4438,7 +4439,18 @@ mod tests {
                 "spl-token",
                 CommandName::EnableRequiredTransferMemos.into(),
                 &token.to_string(),
-            ],
+            ]
+        ).await;
+        result.unwrap();
+        // Disabling required transfer memos using token account as argument
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::DisableRequiredTransferMemos.into(),
+                &token_account.to_string(),
+            ]
         ).await;
         result.unwrap();
     }
