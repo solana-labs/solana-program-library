@@ -4,6 +4,7 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{instruction::*, *},
+            non_transferable::NonTransferable,
             StateWithExtensions, StateWithExtensionsMut,
         },
         instruction::{decode_instruction_data, decode_instruction_type},
@@ -495,8 +496,12 @@ fn process_transfer(
     check_program_account(mint_info.owner)?;
     let mint_data = &mint_info.data.borrow_mut();
     let mint = StateWithExtensions::<Mint>::unpack(mint_data)?;
-    let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
 
+    if mint.get_extension::<NonTransferable>().is_ok() {
+        return Err(TokenError::NonTransferable.into());
+    }
+
+    let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
     let previous_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
 
