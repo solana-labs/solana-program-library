@@ -63,6 +63,7 @@ use sort::{is_supported_program, sort_and_parse_token_accounts};
 
 mod bench;
 use bench::*;
+use spl_token_2022::generic_token_account::GenericTokenAccount;
 
 struct CliSignerInfo {
     pub signers: Vec<Arc<dyn Signer>>,
@@ -799,7 +800,8 @@ async fn command_transfer(
             .value
             .map(|account| {
                 (
-                    account.owner == mint_info.program_id && account.data.len() == Account::LEN,
+                    account.owner == mint_info.program_id
+                        && Account::valid_account_data(account.data.as_slice()),
                     account.owner == system_program::id(),
                 )
             });
