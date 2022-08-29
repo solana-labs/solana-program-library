@@ -1749,8 +1749,12 @@ pub fn add_validator_stake_account(
 
     let (stake_address, _) = find_stake_program_address(&id(), voter_pubkey, stake_pool_pubkey);
     program_test.add_account(stake_address, stake_account);
-    let active_stake_lamports = stake_amount - LAMPORTS_PER_SOL; // hack
-                                                                 // add to validator list
+
+    // Hack the active stake lamports to the current amount given by the runtime.
+    // Since program_test hasn't been started, there's no usable banks_client for
+    // fetching the minimum stake delegation.
+    let active_stake_lamports = stake_amount - LAMPORTS_PER_SOL;
+
     validator_list.validators.push(state::ValidatorStakeInfo {
         status: state::StakeStatus::Active,
         vote_account_address: *voter_pubkey,
