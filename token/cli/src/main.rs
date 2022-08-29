@@ -5,6 +5,7 @@ use clap::{
 use serde::Serialize;
 use solana_account_decoder::{
     parse_token::{TokenAccountType, UiAccountState},
+    parse_token_extension::UiExtension,
     UiAccountData,
 };
 use solana_clap_utils::{
@@ -41,7 +42,9 @@ use spl_associated_token_account::{
     get_associated_token_address_with_program_id, instruction::create_associated_token_account,
 };
 use spl_token_2022::{
-    extension::{mint_close_authority::MintCloseAuthority, StateWithExtensionsOwned, ExtensionType},
+    extension::{
+        mint_close_authority::MintCloseAuthority, ExtensionType, StateWithExtensionsOwned,
+    },
     instruction::*,
     state::{Account, Mint, Multisig},
 };
@@ -50,7 +53,6 @@ use spl_token_client::{
     token::{ExtensionInitializationParams, Token},
 };
 use std::{collections::HashMap, fmt, fmt::Display, process::exit, str::FromStr, sync::Arc};
-use solana_account_decoder::parse_token_extension::UiExtension;
 use strum_macros::{EnumString, IntoStaticStr};
 
 mod config;
@@ -154,7 +156,7 @@ pub enum CommandName {
     Gc,
     SyncNative,
     EnableRequiredTransferMemos,
-    DisableRequiredTransferMemos
+    DisableRequiredTransferMemos,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1915,7 +1917,7 @@ async fn command_required_transfer_memos(
     owner: Pubkey,
     bulk_signers: BulkSigners,
     enable: bool,
-    config: &Config<'_>
+    config: &Config<'_>,
 ) -> CommandResult {
     let program_id = if config.sign_only {
         config.program_id
@@ -1938,8 +1940,9 @@ async fn command_required_transfer_memos(
         &token_account_address,
         &owner,
         vec![ExtensionType::MemoTransfer],
-        config
-    ).await?;
+        config,
+    )
+    .await?;
     if let Some(instr) = reallocate_instruction {
         instructions.push(instr);
     }
@@ -1949,8 +1952,8 @@ async fn command_required_transfer_memos(
                 &program_id,
                 &token_account_address,
                 &owner,
-                &config.multisigner_pubkeys
-            )?
+                &config.multisigner_pubkeys,
+            )?,
         );
     } else {
         instructions.push(
@@ -1958,8 +1961,8 @@ async fn command_required_transfer_memos(
                 &program_id,
                 &token_account_address,
                 &owner,
-                &config.multisigner_pubkeys
-            )?
+                &config.multisigner_pubkeys,
+            )?,
         );
     }
     let tx_return = handle_tx(
@@ -1969,8 +1972,9 @@ async fn command_required_transfer_memos(
         config,
         false,
         0,
-        instructions
-    ).await?;
+        instructions,
+    )
+    .await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
@@ -1987,22 +1991,29 @@ async fn reallocate_if_needed(
     token_account_pubkey: &Pubkey,
     owner_pubkey: &Pubkey,
     new_extension_types: Vec<ExtensionType>,
-    config: &Config<'_>
+    config: &Config<'_>,
 ) -> Result<Option<Instruction>, Error> {
-    let token_account= config
+    let token_account = config
         .rpc_client
         .get_token_account(token_account_pubkey)
-        .await?.expect("Invalid token account pubkey");
-    let mut existing_extensions : Vec<ExtensionType>= token_account
+        .await?
+        .expect("Invalid token account pubkey");
+    let mut existing_extensions: Vec<ExtensionType> = token_account
         .extensions
-        .iter().map(|x| parse_ui_extension(x))
+        .iter()
+        .map(parse_ui_extension)
         .collect();
     existing_extensions.extend_from_slice(&new_extension_types);
     let needed_account_len = ExtensionType::get_account_len::<Account>(&existing_extensions);
-    let current_account_len = config.rpc_client.get_account(token_account_pubkey).await?.data.len();
+    let current_account_len = config
+        .rpc_client
+        .get_account(token_account_pubkey)
+        .await?
+        .data
+        .len();
     // If reallocation is not needed
     if needed_account_len <= current_account_len {
-        return Ok(None)
+        return Ok(None);
     }
     let instruction = reallocate(
         program_id,
@@ -2010,7 +2021,7 @@ async fn reallocate_if_needed(
         &config.fee_payer,
         owner_pubkey,
         &config.multisigner_pubkeys,
-        &existing_extensions
+        &existing_extensions,
     )?;
     Ok(Some(instruction))
 }
@@ -2028,7 +2039,7 @@ fn parse_ui_extension(ui_extension: &UiExtension) -> ExtensionType {
         UiExtension::MemoTransfer(_) => ExtensionType::MemoTransfer,
         UiExtension::NonTransferable => ExtensionType::NonTransferable,
         UiExtension::InterestBearingConfig(_) => ExtensionType::InterestBearingConfig,
-        UiExtension::UnparseableExtension => panic!("Unparsable extension")
+        UiExtension::UnparseableExtension => panic!("Unparsable extension"),
     }
 }
 
@@ -2037,10 +2048,11 @@ async fn parse_mint_or_token_account(
     program_id: &Pubkey,
     mint_or_token_account_pubkey: Pubkey,
     owner: &Pubkey,
-    config: &Config<'_>
+    config: &Config<'_>,
 ) -> Result<Pubkey, Error> {
     let get_mint = config
-        .get_mint_info(&mint_or_token_account_pubkey, None).await;
+        .get_mint_info(&mint_or_token_account_pubkey, None)
+        .await;
     if let Err(error) = get_mint {
         if !error.to_string().starts_with("Could not find mint account") {
             return Err(error);
@@ -2052,7 +2064,7 @@ async fn parse_mint_or_token_account(
         Ok(get_associated_token_address_with_program_id(
             owner,
             &mint_or_token_account_pubkey,
-            program_id
+            program_id,
         ))
     }
 }
@@ -3479,21 +3491,19 @@ async fn process_command<'a>(
                 bulk_signers.push(owner_signer);
             }
             // Since account-or-mint-address is required argument it will always be present
-            let token_account_or_mint_pubkey = config
-                .pubkey_or_default(arg_matches, "account-or-mint-address", &mut wallet_manager);
+            let token_account_or_mint_pubkey = config.pubkey_or_default(
+                arg_matches,
+                "account-or-mint-address",
+                &mut wallet_manager,
+            );
             let token_account = parse_mint_or_token_account(
                 &program_id,
                 token_account_or_mint_pubkey,
                 &owner,
-                config
-            ).await?;
-            command_required_transfer_memos(
-                token_account,
-                owner,
-                bulk_signers,
-                true,
-                config
-            ).await
+                config,
+            )
+            .await?;
+            command_required_transfer_memos(token_account, owner, bulk_signers, true, config).await
         }
         (CommandName::DisableRequiredTransferMemos, arg_matches) => {
             let program_id = config.program_id;
@@ -3503,21 +3513,19 @@ async fn process_command<'a>(
                 bulk_signers.push(owner_signer);
             }
             // Since account-or-mint-address is required argument it will always be present
-            let token_account_or_mint_pubkey = config
-                .pubkey_or_default(arg_matches, "account-or-mint-address", &mut wallet_manager);
+            let token_account_or_mint_pubkey = config.pubkey_or_default(
+                arg_matches,
+                "account-or-mint-address",
+                &mut wallet_manager,
+            );
             let token_account = parse_mint_or_token_account(
                 &program_id,
                 token_account_or_mint_pubkey,
                 &owner,
-                config
-            ).await?;
-            command_required_transfer_memos(
-                token_account,
-                owner,
-                bulk_signers,
-                false,
-                config
-            ).await
+                config,
+            )
+            .await?;
+            command_required_transfer_memos(token_account, owner, bulk_signers, false, config).await
         }
     }
 }
@@ -4628,8 +4636,9 @@ mod tests {
                 "spl-token",
                 CommandName::EnableRequiredTransferMemos.into(),
                 &token.to_string(),
-            ]
-        ).await;
+            ],
+        )
+        .await;
         result.unwrap();
         // Disabling required transfer memos using token account as argument
         let result = process_test_command(
@@ -4639,8 +4648,9 @@ mod tests {
                 "spl-token",
                 CommandName::DisableRequiredTransferMemos.into(),
                 &token_account.to_string(),
-            ]
-        ).await;
+            ],
+        )
+        .await;
         result.unwrap();
     }
 }
