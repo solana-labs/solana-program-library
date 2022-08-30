@@ -3,7 +3,7 @@ import { PROGRAM_ID } from ".";
 import { getMerkleRollAccountSize } from "./accounts";
 import * as anchor from "@project-serum/anchor";
 import { Gummyroll } from "./types";
-import { CANDY_WRAPPER_PROGRAM_ID } from "./utils";
+import { LOG_WRAPPER_PROGRAM_ID } from "./utils";
 
 export async function createAllocTreeIx(
     connection: Connection,
@@ -55,7 +55,7 @@ export async function getCreateTreeIxs(
             accounts: {
                 merkleRoll,
                 authority: authority.publicKey,
-                candyWrapper: CANDY_WRAPPER_PROGRAM_ID
+                candyWrapper: LOG_WRAPPER_PROGRAM_ID
             },
             signers: [authority],
         },

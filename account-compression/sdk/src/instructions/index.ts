@@ -1,7 +1,12 @@
 import { Program } from "@project-serum/anchor";
-import { Gummyroll } from "../types";
 import { Keypair, PublicKey, TransactionInstruction } from '@solana/web3.js';
-import { CANDY_WRAPPER_PROGRAM_ID } from "../utils";
+import { LOG_WRAPPER_PROGRAM_ID } from "../utils";
+import {
+    createReplaceLeafInstruction,
+    createAppendInstruction,
+    createTransferAuthorityInstruction,
+    createVerifyLeafInstruction
+} from "src/generated";
 
 /**
  * Modifies given instruction
@@ -23,85 +28,77 @@ export function addProof(
 }
 
 export function createReplaceIx(
-    gummyroll: Program<Gummyroll>,
     authority: Keypair,
-    merkleRoll: PublicKey,
+    merkleTree: PublicKey,
     treeRoot: Buffer,
     previousLeaf: Buffer,
     newLeaf: Buffer,
     index: number,
     proof: Buffer[]
 ): TransactionInstruction {
-    return addProof(gummyroll.instruction.replaceLeaf(
-        Array.from(treeRoot),
-        Array.from(previousLeaf),
-        Array.from(newLeaf),
-        index,
+    return addProof(createReplaceLeafInstruction(
         {
-            accounts: {
-                merkleRoll,
-                authority: authority.publicKey,
-                candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
-            },
-            signers: [authority],
+            merkleTree,
+            authority: authority.publicKey,
+            logWrapper: LOG_WRAPPER_PROGRAM_ID,
+        },
+        {
+            root: Array.from(treeRoot),
+            previousLeaf: Array.from(previousLeaf),
+            newLeaf: Array.from(newLeaf),
+            index,
         }
     ), proof);
 }
 
 export function createAppendIx(
-    gummyroll: Program<Gummyroll>,
     newLeaf: Buffer | ArrayLike<number>,
     authority: Keypair,
-    merkleRoll: PublicKey,
+    merkleTree: PublicKey,
 ): TransactionInstruction {
-    return gummyroll.instruction.append(
-        Array.from(newLeaf),
+    return createAppendInstruction(
         {
-            accounts: {
-                merkleRoll,
-                authority: authority.publicKey,
-                candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
-            },
-            signers: [authority],
+            merkleTree,
+            authority: authority.publicKey,
+            logWrapper: LOG_WRAPPER_PROGRAM_ID,
+        },
+        {
+            leaf: Array.from(newLeaf),
         }
-    );
+    )
 }
 
 export function createTransferAuthorityIx(
-    gummyroll: Program<Gummyroll>,
     authority: Keypair,
-    merkleRoll: PublicKey,
+    merkleTree: PublicKey,
     newAuthority: PublicKey,
 ): TransactionInstruction {
-    return gummyroll.instruction.transferAuthority(
-        newAuthority,
+    return createTransferAuthorityInstruction(
         {
-            accounts: {
-                merkleRoll,
-                authority: authority.publicKey,
-            },
-            signers: [authority],
+            merkleTree,
+            authority: authority.publicKey,
+        },
+        {
+            newAuthority,
         }
     );
 }
 
 export function createVerifyLeafIx(
-    gummyroll: Program<Gummyroll>,
-    merkleRoll: PublicKey,
+    merkleTree: PublicKey,
     root: Buffer,
     leaf: Buffer,
     index: number,
     proof: Buffer[],
 ): TransactionInstruction {
-    return addProof(gummyroll.instruction.verifyLeaf(
-        Array.from(root),
-        Array.from(leaf),
-        index,
+    return addProof(createVerifyLeafInstruction(
         {
-            accounts: {
-                merkleRoll
-            },
-            signers: [],
+            merkleTree
+        },
+        {
+            root: Array.from(root),
+            leaf: Array.from(leaf),
+            index,
         }
     ), proof);
 }
