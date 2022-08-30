@@ -66,6 +66,7 @@ pub fn minimum_stake_lamports(meta: &Meta, stake_program_minimum_delegation: u64
 }
 
 /// Get the minimum delegation required by a stake account in a stake pool
+#[inline]
 pub fn minimum_delegation(stake_program_minimum_delegation: u64) -> u64 {
     std::cmp::max(stake_program_minimum_delegation, MINIMUM_ACTIVE_STAKE)
 }

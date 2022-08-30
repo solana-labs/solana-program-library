@@ -908,8 +908,8 @@ impl Processor {
         // Fund the stake account with the minimum + rent-exempt balance
         let space = std::mem::size_of::<stake::state::StakeState>();
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
-        let required_lamports =
-            minimum_delegation(stake_minimum_delegation) + rent.minimum_balance(space);
+        let required_lamports = minimum_delegation(stake_minimum_delegation)
+            .saturating_add(rent.minimum_balance(space));
 
         // Create new stake account
         create_pda_account(
@@ -1407,7 +1407,9 @@ impl Processor {
                 current_minimum_delegation,
                 lamports
             );
-            return Err(ProgramError::AccountNotRentExempt);
+            return Err(ProgramError::Custom(
+                stake::instruction::StakeError::InsufficientDelegation as u32,
+            ));
         }
 
         // the stake account rent exemption is withdrawn after the merge, so
