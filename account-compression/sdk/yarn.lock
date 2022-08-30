@@ -40,15 +40,6 @@
     bs58 "^5.0.0"
     debug "^4.3.4"
 
-"@metaplex-foundation/beet@0.3.0":
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/@metaplex-foundation/beet/-/beet-0.3.0.tgz#e62dabbb93a9b4d0d87d5f1e5443c64c8c97abad"
-  integrity sha512-G/rNFbgK8py0PZe5oTHFNKzJTcPC859T4nV2ntDPQe8MHHlOv9SKjVShnYa0BH7uddJ9PYI+5mU8jX2G0mcxyw==
-  dependencies:
-    ansicolors "^0.3.2"
-    bn.js "^5.2.0"
-    debug "^4.3.3"
-
 "@metaplex-foundation/beet@>=0.1.0", "@metaplex-foundation/beet@^0.4.0":
   version "0.4.0"
   resolved "https://registry.yarnpkg.com/@metaplex-foundation/beet/-/beet-0.4.0.tgz#eb2a0a6eb084bb25d67dd9bed2f7387ee7e63a55"
@@ -141,16 +132,6 @@
     secp256k1 "^4.0.2"
     superstruct "^0.14.2"
     tweetnacl "^1.0.0"
-
-"@sorend-solana/utils@^0.0.5":
-  version "0.0.5"
-  resolved "https://registry.yarnpkg.com/@sorend-solana/utils/-/utils-0.0.5.tgz#d0e21445c59a7deba06bceea3ad3caff88b04ea3"
-  integrity sha512-ZFVuuekrRnNeRtHySPZXOpYBeFbGiwAAPVAfOUh7nu3ZM+a7ZRGgdc4HDczd3cmqcjOD/4prXTo6jXQXOvbB2w==
-  dependencies:
-    "@metaplex-foundation/beet" "0.3.0"
-    "@project-serum/anchor" "0.24.2"
-    "@solana/web3.js" "^1.50.1"
-    borsh "^0.7.0"
 
 "@types/chai@^4.3.0":
   version "4.3.1"

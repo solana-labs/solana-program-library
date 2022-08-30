@@ -13,3 +13,6 @@ test-ledger
 docker-target
 .idea
 .coderrect
+
+# Solita stores downloaded crates
+.crates
