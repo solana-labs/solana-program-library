@@ -3,7 +3,7 @@ import { PROGRAM_ID } from ".";
 import { getMerkleRollAccountSize } from "./accounts";
 import * as anchor from "@project-serum/anchor";
 import { Gummyroll } from "./types";
-import { CANDY_WRAPPER_PROGRAM_ID } from "@sorend-solana/utils";
+import { CANDY_WRAPPER_PROGRAM_ID } from "./utils";
 
 export async function createAllocTreeIx(
     connection: Connection,

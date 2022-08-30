@@ -2,7 +2,7 @@ import { PublicKey, Connection } from "@solana/web3.js";
 import * as borsh from "borsh";
 import { BN } from "@project-serum/anchor";
 import { assert } from "chai";
-import { readPublicKey } from "@sorend-solana/utils";
+import { readPublicKey } from "../utils";
 
 /**
  * Manually create a model for MerkleRoll in order to deserialize correctly
