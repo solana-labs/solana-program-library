@@ -1,3 +1,5 @@
-# Gummyroll SDK
+# Account Compression SDK
 
-Docs TBD.
+Currently just contains a typescript SDK to interact with on-chain SPL ConcurrentMerkleTrees.
+
+Used to test Account Compression program.

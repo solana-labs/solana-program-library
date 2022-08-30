@@ -1,9 +1,9 @@
 {
-  "name": "@sorend-solana/gummyroll",
-  "version": "0.0.5",
-  "description": "SDK for the Solana Labs Gummyroll contract",
+  "name": "@solana/account-compresion",
+  "version": "0.0.1",
+  "description": "SDK for the Solana Labs Account Compression program",
   "repository": {
-    "url": "https://github.com/jarry-xiao/candyland",
+    "url": "https://github.com/solana-labs/solana-program-library",
     "type": "git"
   },
   "license": "MIT",
@@ -23,7 +23,6 @@
   "dependencies": {
     "@project-serum/anchor": "0.24.2",
     "@solana/web3.js": "^1.50.1",
-    "@sorend-solana/utils": "^0.0.5",
     "borsh": "^0.7.0",
     "chai": "^4.3.4"
   },
