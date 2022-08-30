@@ -8,6 +8,7 @@ import {
   SystemProgram,
   Transaction,
   Connection as web3Connection,
+  TransactionInstruction,
 } from "@solana/web3.js";
 import { assert } from "chai";
 import * as crypto from "crypto";
@@ -28,7 +29,7 @@ import {
   createVerifyLeafIx,
   assertOnChainMerkleRollProperties,
   createAllocTreeIx,
-  LOG_WRAPPER_PROGRAM_ID, execute, logTx
+  LOG_WRAPPER_PROGRAM_ID, execute, logTx, createInitEmptyMerkleTreeInstruction
 } from "@solana/account-compression";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 
@@ -76,56 +77,39 @@ describe("gummyroll", () => {
       merkleRollKeypair.publicKey
     );
 
-    const ixs = [allocAccountIx];
-    if (numLeaves > 0) {
-      const root = Array.from(tree.root.map((x) => x));
-      const leaf = Array.from(leaves[numLeaves - 1]);
-      const proof = getProofOfLeaf(tree, numLeaves - 1).map((node) => {
-        return {
-          pubkey: new PublicKey(node.node),
-          isSigner: false,
-          isWritable: false,
-        };
-      });
-
-      ixs.push(
-        Gummyroll.instruction.initGummyrollWithRoot(
+    let ixs = [
+      allocAccountIx,
+      createInitEmptyMerkleTreeInstruction(
+        {
+          merkleTree: merkleRollKeypair.publicKey,
+          authority: payer.publicKey,
+          logWrapper: LOG_WRAPPER_PROGRAM_ID,
+        },
+        {
           maxDepth,
-          maxSize,
-          root,
-          leaf,
-          numLeaves - 1,
-          "https://arweave.net/<changelog_db_uri>",
-          "https://arweave.net/<metadata_db_id>",
-          {
-            accounts: {
-              merkleRoll: merkleRollKeypair.publicKey,
-              authority: payer.publicKey,
-              candyWrapper: LOG_WRAPPER_PROGRAM_ID,
-            },
-            signers: [payer],
-            remainingAccounts: proof,
-          }
-        )
-      );
-    } else {
-      ixs.push(
-        Gummyroll.instruction.initEmptyGummyroll(maxDepth, maxSize, {
-          accounts: {
-            merkleRoll: merkleRollKeypair.publicKey,
-            authority: payer.publicKey,
-            candyWrapper: LOG_WRAPPER_PROGRAM_ID,
-          },
-          signers: [payer],
-        })
-      );
-    }
+          maxBufferSize: maxSize,
+        }
+      )
+    ];
+
     let txId = await execute(Gummyroll.provider, ixs, [
       payer,
       merkleRollKeypair,
     ]);
     if (canopyDepth) {
       await logTx(Gummyroll.provider, txId as string);
+    }
+
+    if (numLeaves) {
+      const nonZeroLeaves = leaves.slice(0, numLeaves);
+      let appendIxs: TransactionInstruction[] = nonZeroLeaves.map((leaf) => {
+        return createAppendIx(leaf, payer, merkleRollKeypair.publicKey)
+      });
+      while (appendIxs.length) {
+        const batch = appendIxs.slice(0, 5);
+        await execute(Gummyroll.provider, batch, [payer]);
+        appendIxs = appendIxs.slice(5,);
+      }
     }
 
     await assertOnChainMerkleRollProperties(
@@ -152,7 +136,7 @@ describe("gummyroll", () => {
         skipPreflight: true,
       })
     );
-    Gummyroll = anchor.workspace.Gummyroll as Program<Gummyroll>;
+    Gummyroll = anchor.workspace.SplCompression as Program<Gummyroll>;
 
     await Gummyroll.provider.connection.confirmTransaction(
       await Gummyroll.provider.connection.requestAirdrop(payer.publicKey, 1e10),

@@ -7,41 +7,38 @@ import { readPublicKey } from "../utils";
 /**
  * Manually create a model for MerkleRoll in order to deserialize correctly
  */
-export class OnChainMerkleRoll {
+export type OnChainMerkleRoll = {
   header: MerkleRollHeader;
   roll: MerkleRoll;
+};
 
-  constructor(header: MerkleRollHeader, roll: MerkleRoll) {
-    this.header = header;
-    this.roll = roll;
-  }
-
-  getChangeLogsWithNodeIndex(): PathNode[][] {
-    const mask = this.header.maxBufferSize - 1;
-    let pathNodeList: PathNode[][] = [];
-    for (let j = 0; j < this.roll.bufferSize; j++) {
-      let pathNodes: PathNode[] = [];
-      let idx = (this.roll.activeIndex - j) & mask;
-      let changeLog = this.roll.changeLogs[idx];
-      let pathLen = changeLog.pathNodes.length;
-      for (const [lvl, key] of changeLog.pathNodes.entries()) {
-        let nodeIdx = (1 << (pathLen - lvl)) + (changeLog.index >> lvl);
-        pathNodes.push({
-          node: key,
-          index: nodeIdx,
-        });
-      }
+export function getChangeLogsWithNodeIndex(onChainMerkleRoll: OnChainMerkleRoll): PathNode[][] {
+  const mask = onChainMerkleRoll.header.maxBufferSize - 1;
+  let pathNodeList: PathNode[][] = [];
+  for (let j = 0; j < onChainMerkleRoll.roll.bufferSize; j++) {
+    let pathNodes: PathNode[] = [];
+    let idx = (onChainMerkleRoll.roll.activeIndex - j) & mask;
+    let changeLog = onChainMerkleRoll.roll.changeLogs[idx];
+    let pathLen = changeLog.pathNodes.length;
+    for (const [lvl, key] of changeLog.pathNodes.entries()) {
+      let nodeIdx = (1 << (pathLen - lvl)) + (changeLog.index >> lvl);
       pathNodes.push({
-        node: changeLog.root,
-        index: 1,
+        node: key,
+        index: nodeIdx,
       });
-      pathNodeList.push(pathNodes);
     }
-    return pathNodeList;
+    pathNodes.push({
+      node: changeLog.root,
+      index: 1,
+    });
+    pathNodeList.push(pathNodes);
   }
+  return pathNodeList;
 }
 
 type MerkleRollHeader = {
+  accountType: number,
+  _padding: number[]
   maxDepth: number; // u32
   maxBufferSize: number; // u32
   authority: PublicKey;
@@ -79,6 +76,8 @@ export function decodeMerkleRoll(buffer: Buffer): OnChainMerkleRoll {
   let reader = new borsh.BinaryReader(buffer);
 
   let header: MerkleRollHeader = {
+    accountType: reader.readU8(),
+    _padding: Array.from(reader.readFixedArray(7)),
     maxBufferSize: reader.readU32(),
     maxDepth: reader.readU32(),
     authority: readPublicKey(reader),
@@ -132,11 +131,12 @@ export function decodeMerkleRoll(buffer: Buffer): OnChainMerkleRoll {
     getMerkleRollAccountSize(header.maxDepth, header.maxBufferSize) !=
     reader.offset
   ) {
+
     throw new Error(
       "Failed to process whole buffer when deserializing Merkle Account Data"
     );
   }
-  return new OnChainMerkleRoll(header, roll);
+  return { header, roll };
 }
 
 export function getMerkleRollAccountSize(
@@ -144,15 +144,15 @@ export function getMerkleRollAccountSize(
   maxBufferSize: number,
   canopyDepth?: number
 ): number {
-  let headerSize = 8 + 32;
+  let headerSize = 8 + 8 + 8 + 32;
   let changeLogSize = (maxDepth * 32 + 32 + 4 + 4) * maxBufferSize;
   let rightMostPathSize = maxDepth * 32 + 32 + 4 + 4;
-  let merkleRollSize = 8 + 8 + 16 + changeLogSize + rightMostPathSize;
+  let merkleRollSize = 8 + 8 + 8 + changeLogSize + rightMostPathSize;
   let canopySize = 0;
   if (canopyDepth) {
     canopySize = ((1 << canopyDepth + 1) - 2) * 32
   }
-  return merkleRollSize + headerSize + canopySize;
+  return headerSize + merkleRollSize + canopySize;
 }
 
 export async function assertOnChainMerkleRollProperties(
@@ -185,8 +185,9 @@ export async function assertOnChainMerkleRollProperties(
     "Failed to write auth pubkey"
   );
 
+  const activeIndex = merkleRollAcct.roll.activeIndex;
   assert(
-    merkleRollAcct.roll.changeLogs[0].root.equals(expectedRoot),
+    merkleRollAcct.roll.changeLogs[activeIndex].root.equals(expectedRoot),
     "On chain root does not match root passed in instruction"
   );
 }
