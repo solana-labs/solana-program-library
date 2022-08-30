@@ -11,7 +11,6 @@ import {
 } from "@solana/web3.js";
 import { assert } from "chai";
 import * as crypto from "crypto";
-import { Gummyroll } from "../target/types/gummyroll";
 import {
   buildTree,
   hash,
@@ -25,12 +24,13 @@ import {
   createTransferAuthorityIx,
   decodeMerkleRoll,
   getMerkleRollAccountSize,
+  Gummyroll,
   createVerifyLeafIx,
   assertOnChainMerkleRollProperties,
   createAllocTreeIx,
-} from "@sorend-solana/gummyroll";
+  LOG_WRAPPER_PROGRAM_ID, execute, logTx
+} from "@solana/account-compression";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
-import { CANDY_WRAPPER_PROGRAM_ID, execute, logTx } from "@sorend-solana/utils";
 
 // @ts-ignore
 let Gummyroll;
@@ -101,7 +101,7 @@ describe("gummyroll", () => {
             accounts: {
               merkleRoll: merkleRollKeypair.publicKey,
               authority: payer.publicKey,
-              candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
+              candyWrapper: LOG_WRAPPER_PROGRAM_ID,
             },
             signers: [payer],
             remainingAccounts: proof,
@@ -114,7 +114,7 @@ describe("gummyroll", () => {
           accounts: {
             merkleRoll: merkleRollKeypair.publicKey,
             authority: payer.publicKey,
-            candyWrapper: CANDY_WRAPPER_PROGRAM_ID,
+            candyWrapper: LOG_WRAPPER_PROGRAM_ID,
           },
           signers: [payer],
         })
@@ -167,7 +167,6 @@ describe("gummyroll", () => {
     it("Append single leaf", async () => {
       const newLeaf = crypto.randomBytes(32);
       const appendIx = createAppendIx(
-        Gummyroll,
         newLeaf,
         payer,
         merkleRollKeypair.publicKey
@@ -199,7 +198,6 @@ describe("gummyroll", () => {
       });
 
       const verifyLeafIx = createVerifyLeafIx(
-        Gummyroll,
         merkleRollKeypair.publicKey,
         offChainTree.root,
         previousLeaf,
@@ -207,7 +205,6 @@ describe("gummyroll", () => {
         proof
       );
       const replaceLeafIx = createReplaceIx(
-        Gummyroll,
         payer,
         merkleRollKeypair.publicKey,
         offChainTree.root,
@@ -244,7 +241,6 @@ describe("gummyroll", () => {
 
       // Verify proof is invalid
       const verifyLeafIx = createVerifyLeafIx(
-        Gummyroll,
         merkleRollKeypair.publicKey,
         offChainTree.root,
         previousLeaf,
@@ -254,11 +250,10 @@ describe("gummyroll", () => {
       try {
         await execute(Gummyroll.provider, [verifyLeafIx], [payer]);
         assert(false, "Proof should have failed to verify");
-      } catch {}
+      } catch { }
 
       // Replace instruction with same proof fails
       const replaceLeafIx = createReplaceIx(
-        Gummyroll,
         payer,
         merkleRollKeypair.publicKey,
         offChainTree.root,
@@ -270,7 +265,7 @@ describe("gummyroll", () => {
       try {
         await execute(Gummyroll.provider, [replaceLeafIx], [payer]);
         assert(false, "Replace should have failed to verify");
-      } catch {}
+      } catch { }
       const merkleRollAccount =
         await Gummyroll.provider.connection.getAccountInfo(
           merkleRollKeypair.publicKey
@@ -290,7 +285,6 @@ describe("gummyroll", () => {
       const index = 0;
 
       const replaceLeafIx = createReplaceIx(
-        Gummyroll,
         payer,
         merkleRollKeypair.publicKey,
         offChainTree.root,
@@ -330,7 +324,6 @@ describe("gummyroll", () => {
       const index = 0;
 
       const replaceLeafIx = createReplaceIx(
-        Gummyroll,
         payer,
         merkleRollKeypair.publicKey,
         offChainTree.root,
@@ -382,7 +375,6 @@ describe("gummyroll", () => {
       });
       it("Can transfer authority", async () => {
         const transferAuthorityIx = createTransferAuthorityIx(
-          Gummyroll,
           authority,
           merkleRollKeypair.publicKey,
           randomSigner.publicKey
@@ -408,7 +400,6 @@ describe("gummyroll", () => {
         const replaceIndex = 0;
         const proof = getProofOfLeaf(offChainTree, replaceIndex);
         const replaceIx = createReplaceIx(
-          Gummyroll,
           randomSigner,
           merkleRollKeypair.publicKey,
           offChainTree.root,
@@ -426,7 +417,7 @@ describe("gummyroll", () => {
             false,
             "Transaction should have failed since incorrect authority cannot execute replaces"
           );
-        } catch {}
+        } catch { }
       });
     });
   });
@@ -455,7 +446,6 @@ describe("gummyroll", () => {
         leavesToUpdate.push(newLeaf);
         const proof = getProofOfLeaf(offChainTree, index);
         const replaceIx = createReplaceIx(
-          Gummyroll,
           payer,
           merkleRollKeypair.publicKey,
           offChainTree.root,
@@ -512,7 +502,6 @@ describe("gummyroll", () => {
       for (let i = 0; i < 2 ** DEPTH; i++) {
         const newLeaf = Array.from(Buffer.alloc(32, i + 1));
         const appendIx = createAppendIx(
-          Gummyroll,
           newLeaf,
           payer,
           merkleRollKeypair.publicKey
@@ -549,7 +538,6 @@ describe("gummyroll", () => {
 
       // Root - make this nonsense so it won't match what's in CL, and force proof autocompletion
       const replaceIx = createReplaceIx(
-        Gummyroll,
         payer,
         merkleRollKeypair.publicKey,
         Buffer.alloc(32),
@@ -565,7 +553,7 @@ describe("gummyroll", () => {
           false,
           "Attacker was able to succesfully write fake existence of a leaf"
         );
-      } catch (e) {}
+      } catch (e) { }
 
       const merkleRoll = decodeMerkleRoll(
         (
@@ -590,7 +578,6 @@ describe("gummyroll", () => {
 
       // Root - make this nonsense so it won't match what's in CL, and force proof autocompletion
       const replaceIx = createReplaceIx(
-        Gummyroll,
         payer,
         merkleRollKeypair.publicKey,
         Buffer.alloc(32),
@@ -606,7 +593,7 @@ describe("gummyroll", () => {
           false,
           "Attacker was able to succesfully write fake existence of a leaf"
         );
-      } catch (e) {}
+      } catch (e) { }
 
       const merkleRoll = decodeMerkleRoll(
         (
@@ -642,7 +629,6 @@ describe("gummyroll", () => {
           const newLeaf = Array.from(Buffer.alloc(32, i + 1));
           leaves.push(newLeaf);
           const appendIx = createAppendIx(
-            Gummyroll,
             newLeaf,
             payer,
             merkleRollKeypair.publicKey
@@ -673,7 +659,6 @@ describe("gummyroll", () => {
         const newLeaf = crypto.randomBytes(32);
         newLeaves[i] = newLeaf;
         const replaceIx = createReplaceIx(
-          Gummyroll,
           payer,
           merkleRollKeypair.publicKey,
           root.toBuffer(),
@@ -692,7 +677,7 @@ describe("gummyroll", () => {
       }
 
       let newLeafList = []
-      for (let i = 0; i < 32; ++i)  {
+      for (let i = 0; i < 32; ++i) {
         newLeafList.push(newLeaves[i])
       }
 
@@ -703,14 +688,13 @@ describe("gummyroll", () => {
         const newLeaf = crypto.randomBytes(32);
         let i = Math.floor(Math.random() * 32)
         const leaf = newLeaves[i];
-        
+
         let partialProof = getProofOfLeaf(tree, i).slice(0, proofSize).map((n) => n.node)
         console.log(`Replacing node ${i}, proof length = ${proofSize}`)
         for (const [level, node] of Object.entries(partialProof)) {
           console.log(` ${level}: ${bs58.encode(node)}`)
         }
         const replaceIx = createReplaceIx(
-          Gummyroll,
           payer,
           merkleRollKeypair.publicKey,
           root.toBuffer(),
@@ -721,7 +705,6 @@ describe("gummyroll", () => {
         );
         updateTree(tree, newLeaf, i);
         const replaceBackIx = createReplaceIx(
-          Gummyroll,
           payer,
           merkleRollKeypair.publicKey,
           tree.root,

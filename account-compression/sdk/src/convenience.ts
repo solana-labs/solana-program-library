@@ -1,5 +1,5 @@
 import { PublicKey, Keypair, TransactionInstruction, SystemProgram, Connection } from "@solana/web3.js";
-import { PROGRAM_ID } from ".";
+import { PROGRAM_ID } from "./generated";
 import { getMerkleRollAccountSize } from "./accounts";
 import * as anchor from "@project-serum/anchor";
 import { Gummyroll } from "./types";

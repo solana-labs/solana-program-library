@@ -3,6 +3,7 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "es2019",
-    "outDir": "dist/cjs/"
+    "outDir": "dist/cjs/",
+    "rootDir": "./src"
   }
 }

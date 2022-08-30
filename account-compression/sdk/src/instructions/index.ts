@@ -6,7 +6,7 @@ import {
     createAppendInstruction,
     createTransferAuthorityInstruction,
     createVerifyLeafInstruction
-} from "src/generated";
+} from "../generated";
 
 /**
  * Modifies given instruction

@@ -1,5 +1,7 @@
 {
-  "include": ["./src/**/*", "index.ts"],
+  "include": [
+    "./src/**/*",
+  ],
   "compilerOptions": {
     "sourceMap": true,
     "declaration": true,
