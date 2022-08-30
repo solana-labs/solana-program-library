@@ -11,11 +11,12 @@ use {
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
+        stake::instruction::StakeError,
         transaction::{Transaction, TransactionError},
     },
     spl_stake_pool::{
         error::StakePoolError, find_transient_stake_program_address, id, instruction,
-        MINIMUM_ACTIVE_STAKE, MINIMUM_RESERVE_LAMPORTS,
+        MINIMUM_RESERVE_LAMPORTS,
     },
 };
 
@@ -48,13 +49,16 @@ async fn setup() -> (
     )
     .await;
 
+    let current_minimum_delegation =
+        stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
+
     let _deposit_info = simple_deposit_stake(
         &mut banks_client,
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
         &validator_stake_account,
-        MINIMUM_ACTIVE_STAKE,
+        current_minimum_delegation,
     )
     .await
     .unwrap();
@@ -354,6 +358,9 @@ async fn fail_with_small_lamport_amount() {
         _reserve_lamports,
     ) = setup().await;
 
+    let current_minimum_delegation =
+        stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
+
     let error = stake_pool_accounts
         .increase_validator_stake(
             &mut banks_client,
@@ -362,7 +369,7 @@ async fn fail_with_small_lamport_amount() {
             &validator_stake.transient_stake_account,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
-            MINIMUM_ACTIVE_STAKE - 1,
+            current_minimum_delegation - 1,
             validator_stake.transient_stake_seed,
         )
         .await
@@ -370,7 +377,10 @@ async fn fail_with_small_lamport_amount() {
         .unwrap();
 
     match error {
-        TransactionError::InstructionError(_, InstructionError::AccountNotRentExempt) => {}
+        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
+            let program_error = StakeError::InsufficientDelegation as u32;
+            assert_eq!(error_index, program_error);
+        }
         _ => panic!("Wrong error"),
     }
 }

@@ -45,8 +45,9 @@ use {
         self, find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address,
         instruction::{FundingType, PreferredValidatorType},
+        minimum_delegation,
         state::{Fee, FeeType, StakePool, ValidatorList},
-        MINIMUM_ACTIVE_STAKE, MINIMUM_RESERVE_LAMPORTS,
+        MINIMUM_RESERVE_LAMPORTS,
     },
     std::cmp::Ordering,
     std::{process::exit, sync::Arc},
@@ -1219,9 +1220,11 @@ fn prepare_withdraw_accounts(
     stake_pool_address: &Pubkey,
     skip_fee: bool,
 ) -> Result<Vec<WithdrawAccount>, Error> {
+    let stake_minimum_delegation = rpc_client.get_stake_minimum_delegation()?;
+    let stake_pool_minimum_delegation = minimum_delegation(stake_minimum_delegation);
     let min_balance = rpc_client
         .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
-        .saturating_add(MINIMUM_ACTIVE_STAKE);
+        .saturating_add(stake_pool_minimum_delegation);
     let pool_mint = get_token_mint(rpc_client, &stake_pool.pool_mint)?;
     let validator_list: ValidatorList = get_validator_list(rpc_client, &stake_pool.validator_list)?;
 
@@ -1386,6 +1389,9 @@ fn command_withdraw_stake(
         })
         .flatten();
 
+    let stake_minimum_delegation = config.rpc_client.get_stake_minimum_delegation()?;
+    let stake_pool_minimum_delegation = minimum_delegation(stake_minimum_delegation);
+
     let withdraw_accounts = if use_reserve {
         vec![WithdrawAccount {
             stake_address: stake_pool.reserve_stake,
@@ -1400,7 +1406,7 @@ fn command_withdraw_stake(
             .voter_pubkey;
         if let Some(vote_account_address) = vote_account_address {
             if *vote_account_address != vote_account {
-                return Err(format!("Provided withdrawal vote account {} does not match delegation on stake receiver account {}, 
+                return Err(format!("Provided withdrawal vote account {} does not match delegation on stake receiver account {},
                 remove this flag or provide a different stake account delegated to {}", vote_account_address, vote_account, vote_account_address).into());
             }
         }
@@ -1422,7 +1428,7 @@ fn command_withdraw_stake(
                 .calc_lamports_withdraw_amount(
                     stake_account
                         .lamports
-                        .saturating_sub(MINIMUM_ACTIVE_STAKE)
+                        .saturating_sub(stake_pool_minimum_delegation)
                         .saturating_sub(stake_account_rent_exemption),
                 )
                 .unwrap();
@@ -1454,7 +1460,7 @@ fn command_withdraw_stake(
             .calc_lamports_withdraw_amount(
                 stake_account
                     .lamports
-                    .saturating_sub(MINIMUM_ACTIVE_STAKE)
+                    .saturating_sub(stake_pool_minimum_delegation)
                     .saturating_sub(stake_account_rent_exemption),
             )
             .unwrap();
