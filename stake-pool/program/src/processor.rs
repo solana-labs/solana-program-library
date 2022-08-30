@@ -1403,7 +1403,7 @@ impl Processor {
         let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
         if lamports < current_minimum_delegation {
             msg!(
-                "Need more than {} lamports for transient stake to be rent-exempt and mergeable, {} provided",
+                "Need more than {} lamports for transient stake to meet minimum delegation requirement, {} provided",
                 current_minimum_delegation,
                 lamports
             );

@@ -11,6 +11,7 @@ use {
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
+        stake::instruction::StakeError,
         transaction::{Transaction, TransactionError},
     },
     spl_stake_pool::{
@@ -376,7 +377,10 @@ async fn fail_with_small_lamport_amount() {
         .unwrap();
 
     match error {
-        TransactionError::InstructionError(_, InstructionError::AccountNotRentExempt) => {}
+        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
+            let program_error = StakeError::InsufficientDelegation as u32;
+            assert_eq!(error_index, program_error);
+        }
         _ => panic!("Wrong error"),
     }
 }
