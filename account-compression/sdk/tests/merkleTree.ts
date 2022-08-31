@@ -1,4 +1,5 @@
-import { keccak_256 } from "js-sha3";
+import pkg from "js-sha3";
+const { keccak_256 } = pkg;
 import * as Collections from 'typescript-collections';
 import { PublicKey } from "@solana/web3.js";
 
@@ -31,10 +32,10 @@ export function getRoot(tree: Tree): TreeNode {
 */
 export function bfs<T>(tree: Tree, iterFunc: (node: TreeNode, nodeIdx: number) => T): T[] {
     let toExplore = [getRoot(tree)];
-    const results = []
+    const results: T[] = []
     let idx = 0;
     while (toExplore.length) {
-        const nextLevel = [];
+        const nextLevel: TreeNode[] = [];
         for (let i = 0; i < toExplore.length; i++) {
             const node = toExplore[i];
             if (node.left) {
@@ -53,7 +54,7 @@ export function bfs<T>(tree: Tree, iterFunc: (node: TreeNode, nodeIdx: number) =
 
 export function emptyNode(level: number): Buffer {
     if (CACHE_EMPTY_NODE.has(level)) {
-        return CACHE_EMPTY_NODE.get(level);
+        return CACHE_EMPTY_NODE.get(level)!;
     }
     if (level == 0) {
         return Buffer.alloc(32)
@@ -77,7 +78,7 @@ function emptyTreeNode(level: number, id: number): TreeNode {
 
 function buildLeaves(leaves: Buffer[]): [Collections.Queue<TreeNode>, TreeNode[]] {
     let nodes = new Collections.Queue<TreeNode>();
-    let finalLeaves = [];
+    let finalLeaves: TreeNode[] = [];
     leaves.forEach((buffer, index) => {
         const treeNode = {
             node: buffer,
@@ -100,15 +101,15 @@ export function buildTree(leaves: Buffer[]): Tree {
     let [nodes, finalLeaves] = buildLeaves(leaves);
     let seqNum = leaves.length;
     while (nodes.size() > 1) {
-        let left = nodes.dequeue();
+        let left = nodes.dequeue()!;
         const level = left.level;
 
         let right: TreeNode;
-        if (level != nodes.peek().level) {
+        if (level != nodes.peek()!.level) {
             right = emptyTreeNode(level, seqNum);
             seqNum++;
         } else {
-            right = nodes.dequeue();
+            right = nodes.dequeue()!;
         }
 
         let parent: TreeNode = {
@@ -126,7 +127,7 @@ export function buildTree(leaves: Buffer[]): Tree {
     }
 
     return {
-        root: nodes.peek().node,
+        root: nodes.peek()!.node,
         leaves: finalLeaves,
     }
 }
@@ -148,19 +149,19 @@ export function getProofOfLeaf(tree: Tree, idx: number, minimizeProofHeight: boo
             console.log(`${node.level}: ${Uint8Array.from(node.node)}`);
         }
         let parent = node.parent;
-        if (parent.left.id === node.id) {
-            proof.push(parent.right);
+        if (parent.left!.id === node.id) {
+            proof.push(parent.right!);
 
-            const hashed = hash(node.node, parent.right.node);
+            const hashed = hash(node.node, parent.right!.node);
             if (!hashed.equals(parent.node)) {
                 console.log(hashed);
                 console.log(parent.node);
                 throw new Error("Invariant broken when hashing left node")
             }
         } else {
-            proof.push(parent.left);
+            proof.push(parent.left!);
 
-            const hashed = hash(parent.left.node, node.node);
+            const hashed = hash(parent.left!.node, node.node);
             if (!hashed.equals(parent.node)) {
                 console.log(hashed);
                 console.log(parent.node);
@@ -185,7 +186,7 @@ export function updateTree(tree: Tree, newNode: Buffer, index: number, verbose =
             console.log(`${i}: ${Uint8Array.from(node.node)}`);
         }
         node = node.parent;
-        node.node = hash(node.left.node, node.right.node);
+        node.node = hash(node.left!.node, node.right!.node);
         i++;
     }
     if (verbose) {

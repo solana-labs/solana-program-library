@@ -1,5 +1,6 @@
-import { BN, AnchorProvider } from "@project-serum/anchor";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
+import { BN } from 'bn.js';
+import { AnchorProvider } from "@project-serum/anchor";
 import {
   Connection,
   Signer,
@@ -31,7 +32,7 @@ import {
   createAllocTreeIx,
   createInitEmptyMerkleTreeInstruction,
   LOG_WRAPPER_PROGRAM_ID,
-} from "@solana/account-compression";
+} from "../src";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 
 /// Wait for a transaction of a certain id to confirm and optionally log its messages
@@ -116,7 +117,7 @@ describe("SPL Compression", () => {
       provider.connection,
       maxSize,
       maxDepth,
-      canopyDepth,
+      canopyDepth ?? 0,
       payer.publicKey,
       splCMTKeypair.publicKey
     );
@@ -427,10 +428,10 @@ describe("SPL Compression", () => {
       // Replace 64 leaves before syncing off-chain tree with on-chain tree
 
       // Cache all proofs so we can execute in single block
-      let ixArray = [];
-      let txList = [];
+      let ixArray: TransactionInstruction[] = [];
+      let txList: Promise<string>[] = [];
 
-      const leavesToUpdate = [];
+      const leavesToUpdate: Buffer[] = [];
       for (let i = 0; i < MAX_SIZE; i++) {
         const index = i;
         const newLeaf = hash(
@@ -512,7 +513,7 @@ describe("SPL Compression", () => {
     it("Random attacker fails to fake the existence of a leaf by autocompleting proof", async () => {
       const maliciousLeafHash = crypto.randomBytes(32);
       const maliciousLeafHash1 = crypto.randomBytes(32);
-      const nodeProof = [];
+      const nodeProof: Buffer[] = [];
       for (let i = 0; i < DEPTH; i++) {
         nodeProof.push(Buffer.alloc(32));
       }
@@ -546,7 +547,7 @@ describe("SPL Compression", () => {
     it("Random attacker fails to fake the existence of a leaf by autocompleting proof", async () => {
       const maliciousLeafHash = crypto.randomBytes(32);
       const maliciousLeafHash1 = crypto.randomBytes(32);
-      const nodeProof = [];
+      const nodeProof: Buffer[] = [];
       for (let i = 0; i < DEPTH; i++) {
         nodeProof.push(Buffer.alloc(32));
       }
@@ -589,11 +590,11 @@ describe("SPL Compression", () => {
         DEPTH // Store full tree on chain
       );
 
-      let leaves = [];
+      let leaves: Array<number>[] = [];
       let i = 0;
       let stepSize = 4;
       while (i < 2 ** DEPTH) {
-        let ixs = [];
+        let ixs: TransactionInstruction[] = [];
         for (let j = 0; j < stepSize; ++j) {
           const newLeaf = Array.from(Buffer.alloc(32, i + 1));
           leaves.push(newLeaf);
@@ -610,7 +611,7 @@ describe("SPL Compression", () => {
       }
 
       // Compare on-chain & off-chain roots
-      let ixs = [];
+      let ixs: TransactionInstruction[] = [];
       const splCMT = await getConcurrentMerkleTree(connection, splCMTKeypair.publicKey);
       const root = getCMTCurrentRoot(splCMT);
 
@@ -625,7 +626,7 @@ describe("SPL Compression", () => {
           payer,
           splCMTKeypair.publicKey,
           root,
-          leaf,
+          Buffer.from(leaf),
           newLeaf,
           i,
           [] // No proof necessary
@@ -639,7 +640,7 @@ describe("SPL Compression", () => {
         }
       }
 
-      let newLeafList = []
+      let newLeafList: Buffer[] = []
       for (let i = 0; i < 32; ++i) {
         newLeafList.push(newLeaves[i])
       }
