@@ -147,13 +147,7 @@ impl ConfidentialTokenAccountMeta {
             .unwrap();
 
         token
-            .confidential_transfer_deposit(
-                &meta.token_account,
-                &meta.token_account,
-                owner,
-                amount,
-                decimals,
-            )
+            .confidential_transfer_deposit(&meta.token_account, owner, amount, decimals)
             .await
             .unwrap();
 
@@ -490,13 +484,7 @@ async fn ct_deposit() {
     );
 
     token
-        .confidential_transfer_deposit(
-            &alice_meta.token_account,
-            &alice_meta.token_account,
-            &alice,
-            65537,
-            decimals,
-        )
+        .confidential_transfer_deposit(&alice_meta.token_account, &alice, 65537, decimals)
         .await
         .unwrap();
 
@@ -525,24 +513,12 @@ async fn ct_deposit() {
         .await;
 
     token
-        .confidential_transfer_deposit(
-            &alice_meta.token_account,
-            &alice_meta.token_account,
-            &alice,
-            0,
-            decimals,
-        )
+        .confidential_transfer_deposit(&alice_meta.token_account, &alice, 0, decimals)
         .await
         .unwrap();
 
     let err = token
-        .confidential_transfer_deposit(
-            &alice_meta.token_account,
-            &alice_meta.token_account,
-            &alice,
-            0,
-            decimals,
-        )
+        .confidential_transfer_deposit(&alice_meta.token_account, &alice, 0, decimals)
         .await
         .unwrap_err();
 
@@ -611,7 +587,6 @@ async fn ct_withdraw() {
     token
         .confidential_transfer_withdraw(
             &alice_meta.token_account,
-            &alice_meta.token_account,
             &alice,
             21,
             42,
@@ -644,7 +619,6 @@ async fn ct_withdraw() {
 
     token
         .confidential_transfer_withdraw(
-            &alice_meta.token_account,
             &alice_meta.token_account,
             &alice,
             21,
