@@ -590,7 +590,7 @@ pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::curve::{base::CurveType, stable::StableCurve};
+    use crate::curve::{base::CurveType, offset::OffsetCurve};
     use std::sync::Arc;
 
     #[test]
@@ -613,9 +613,9 @@ mod tests {
             host_fee_numerator,
             host_fee_denominator,
         };
-        let amp: u64 = 1;
-        let curve_type = CurveType::Stable;
-        let calculator = Arc::new(StableCurve { amp });
+        let token_b_offset: u64 = 1_000_000_000;
+        let curve_type = CurveType::Offset;
+        let calculator = Arc::new(OffsetCurve { token_b_offset });
         let swap_curve = SwapCurve {
             curve_type,
             calculator,
@@ -632,7 +632,7 @@ mod tests {
         expect.extend_from_slice(&host_fee_numerator.to_le_bytes());
         expect.extend_from_slice(&host_fee_denominator.to_le_bytes());
         expect.push(curve_type as u8);
-        expect.extend_from_slice(&amp.to_le_bytes());
+        expect.extend_from_slice(&token_b_offset.to_le_bytes());
         expect.extend_from_slice(&[0u8; 24]);
         assert_eq!(packed, expect);
         let unpacked = SwapInstruction::unpack(&expect).unwrap();
