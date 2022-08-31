@@ -132,6 +132,7 @@ pub enum ConfidentialTransferInstruction {
     /// into their available balance at a time of their choosing.
     ///
     /// Fails if the source or destination accounts are frozen.
+    /// Fails if the associated mint is extended as `NonTransferable`.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -156,6 +157,7 @@ pub enum ConfidentialTransferInstruction {
     /// Withdraw SPL Tokens from the available balance of a confidential token account.
     ///
     /// Fails if the source or destination accounts are frozen.
+    /// Fails if the associated mint is extended as `NonTransferable`.
     ///
     /// Accounts expected by this instruction:
     ///

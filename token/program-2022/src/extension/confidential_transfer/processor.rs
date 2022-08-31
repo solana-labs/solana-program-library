@@ -280,6 +280,10 @@ fn process_deposit(
         return Err(TokenError::MintDecimalsMismatch.into());
     }
 
+    if mint.get_extension::<NonTransferable>().is_ok() {
+        return Err(TokenError::NonTransferable.into());
+    }
+
     // Process source account
     {
         check_program_account(token_account_info.owner)?;
@@ -397,6 +401,10 @@ fn process_withdraw(
 
     if expected_decimals != mint.base.decimals {
         return Err(TokenError::MintDecimalsMismatch.into());
+    }
+
+    if mint.get_extension::<NonTransferable>().is_ok() {
+        return Err(TokenError::NonTransferable.into());
     }
 
     let previous_instruction =
