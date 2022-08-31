@@ -1,9 +1,8 @@
-import * as anchor from "@project-serum/anchor";
-import { BN, AnchorProvider, Program } from "@project-serum/anchor";
+import { BN, AnchorProvider } from "@project-serum/anchor";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import {
   Connection,
-  PublicKey,
+  Signer,
   Keypair,
   Transaction,
   Connection as web3Connection,
@@ -17,25 +16,69 @@ import {
   getProofOfLeaf,
   updateTree,
   Tree,
-} from "./merkle-tree";
+} from "./merkleTree";
 import {
   createReplaceIx,
   createAppendIx,
   createTransferAuthorityIx,
-  deserializeOnChainCMT,
   getCMTBufferSize,
   getCMTCurrentRoot,
-  getOnChainCMT,
+  getCMTAuthority,
+  getConcurrentMerkleTree,
   getCMTActiveIndex,
   createVerifyLeafIx,
-  assertOnChainCMTProperties,
+  assertCMTProperties,
   createAllocTreeIx,
-  execute,
-  logTx,
   createInitEmptyMerkleTreeInstruction,
   LOG_WRAPPER_PROGRAM_ID,
 } from "@solana/account-compression";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
+
+/// Wait for a transaction of a certain id to confirm and optionally log its messages
+export async function logTx(provider: AnchorProvider, txId: string, verbose: boolean = true) {
+  const tx = await provider.connection.confirmTransaction(txId, "confirmed");
+  if (tx.value.err || verbose) {
+    console.log(
+      (await provider.connection.getConfirmedTransaction(txId, "confirmed"))!.meta!
+        .logMessages
+    );
+  }
+  if (tx.value.err) {
+    console.log("Transaction failed");
+    throw new Error(JSON.stringify(tx.value.err));
+  }
+};
+
+/// Execute a series of instructions in a txn
+export async function execute(
+  provider: AnchorProvider,
+  instructions: TransactionInstruction[],
+  signers: Signer[],
+  skipPreflight: boolean = false,
+  verbose: boolean = false,
+): Promise<string> {
+  let tx = new Transaction();
+  instructions.map((ix) => { tx = tx.add(ix) });
+
+  let txid: string | null = null;
+  try {
+    txid = await provider.sendAndConfirm!(tx, signers, {
+      skipPreflight,
+    })
+  } catch (e: any) {
+    console.log("Tx error!", e.logs)
+    throw e;
+  }
+
+  if (verbose && txid) {
+    console.log(
+      (await provider.connection.getConfirmedTransaction(txid, "confirmed"))!.meta!
+        .logMessages
+    );
+  }
+
+  return txid;
+}
 
 describe("SPL Compression", () => {
   // Configure the client to use the local cluster.
@@ -113,7 +156,7 @@ describe("SPL Compression", () => {
       }
     }
 
-    await assertOnChainCMTProperties(
+    await assertCMTProperties(
       provider.connection,
       maxDepth,
       maxSize,
@@ -158,8 +201,8 @@ describe("SPL Compression", () => {
 
       updateTree(offChainTree, newLeaf, 1);
 
-      const onChainCMT = await getOnChainCMT(connection, splCMTKeypair.publicKey);
-      const onChainRoot = getCMTCurrentRoot(onChainCMT);
+      const splCMT = await getConcurrentMerkleTree(connection, splCMTKeypair.publicKey);
+      const onChainRoot = getCMTCurrentRoot(splCMT);
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
@@ -194,8 +237,8 @@ describe("SPL Compression", () => {
 
       updateTree(offChainTree, newLeaf, index);
 
-      const onChainCMT = await getOnChainCMT(connection, splCMTKeypair.publicKey);
-      const onChainRoot = getCMTCurrentRoot(onChainCMT);
+      const splCMT = await getConcurrentMerkleTree(connection, splCMTKeypair.publicKey);
+      const onChainRoot = getCMTCurrentRoot(splCMT);
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
@@ -239,8 +282,8 @@ describe("SPL Compression", () => {
         assert(false, "Replace should have failed to verify");
       } catch { }
 
-      const onChainCMT = await getOnChainCMT(connection, splCMTKeypair.publicKey);
-      const onChainRoot = getCMTCurrentRoot(onChainCMT);
+      const splCMT = await getConcurrentMerkleTree(connection, splCMTKeypair.publicKey);
+      const onChainRoot = getCMTCurrentRoot(splCMT);
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
@@ -272,8 +315,8 @@ describe("SPL Compression", () => {
 
       updateTree(offChainTree, newLeaf, index);
 
-      const onChainCMT = await getOnChainCMT(connection, splCMTKeypair.publicKey);
-      const onChainRoot = getCMTCurrentRoot(onChainCMT);
+      const splCMT = await getConcurrentMerkleTree(connection, splCMTKeypair.publicKey);
+      const onChainRoot = getCMTCurrentRoot(splCMT);
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
@@ -305,8 +348,8 @@ describe("SPL Compression", () => {
 
       updateTree(offChainTree, newLeaf, index);
 
-      const onChainCMT = await getOnChainCMT(connection, splCMTKeypair.publicKey);
-      const onChainRoot = getCMTCurrentRoot(onChainCMT);
+      const splCMT = await getConcurrentMerkleTree(connection, splCMTKeypair.publicKey);
+      const onChainRoot = getCMTCurrentRoot(splCMT);
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
@@ -339,18 +382,11 @@ describe("SPL Compression", () => {
         );
         await execute(provider, [transferAuthorityIx], [authority]);
 
-        const onChainCMT = deserializeOnChainCMT(
-          (
-            await provider.connection.getAccountInfo(
-              splCMTKeypair.publicKey
-            )
-          ).data
-        );
-        const onChainCMTInfo = onChainCMT.header;
+        const splCMT = await getConcurrentMerkleTree(connection, splCMTKeypair.publicKey);
 
         assert(
-          onChainCMTInfo.authority.equals(randomSigner.publicKey),
-          `Upon transfering authority, authority should be ${randomSigner.publicKey.toString()}, but was instead updated to ${onChainCMTInfo.authority.toString()}`
+          getCMTAuthority(splCMT).equals(randomSigner.publicKey),
+          `Upon transfering authority, authority should be ${randomSigner.publicKey.toString()}, but was instead updated to ${getCMTAuthority(splCMT)}`
         );
       });
       it("Attempting to replace with new authority now works", async () => {
@@ -430,8 +466,8 @@ describe("SPL Compression", () => {
       });
 
       // Compare on-chain & off-chain roots
-      const onChainCMT = await getOnChainCMT(connection, splCMTKeypair.publicKey);
-      const onChainRoot = getCMTCurrentRoot(onChainCMT);
+      const splCMT = await getConcurrentMerkleTree(connection, splCMTKeypair.publicKey);
+      const onChainRoot = getCMTCurrentRoot(splCMT);
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
@@ -461,20 +497,14 @@ describe("SPL Compression", () => {
       }
 
       // Compare on-chain & off-chain roots
-      const onChainCMT = deserializeOnChainCMT(
-        (
-          await provider.connection.getAccountInfo(
-            splCMTKeypair.publicKey
-          )
-        ).data
-      );
+      const splCMT = await getConcurrentMerkleTree(connection, splCMTKeypair.publicKey);
 
       assert(
-        getCMTBufferSize(onChainCMT) === 2 ** DEPTH,
+        getCMTBufferSize(splCMT) === 2 ** DEPTH,
         "Not all changes were processed"
       );
       assert(
-        getCMTActiveIndex(onChainCMT) === 0,
+        getCMTActiveIndex(splCMT) === 0,
         "Not all changes were processed"
       );
     });
@@ -487,7 +517,7 @@ describe("SPL Compression", () => {
         nodeProof.push(Buffer.alloc(32));
       }
 
-      // Root - make this nonsense so it won't match what's in CL, and force proof autocompletion
+      // Root - make this nonsense so it won't match what's in ChangeLog, thus forcing proof autocompletion
       const replaceIx = createReplaceIx(
         payer,
         splCMTKeypair.publicKey,
@@ -506,16 +536,10 @@ describe("SPL Compression", () => {
         );
       } catch (e) { }
 
-      const onChainCMT = deserializeOnChainCMT(
-        (
-          await provider.connection.getAccountInfo(
-            splCMTKeypair.publicKey
-          )
-        ).data
-      );
+      const splCMT = await getConcurrentMerkleTree(connection, splCMTKeypair.publicKey);
 
       assert(
-        getCMTActiveIndex(onChainCMT) === 0,
+        getCMTActiveIndex(splCMT) === 0,
         "CMT updated its active index after attacker's transaction, when it shouldn't have done anything"
       );
     });
@@ -546,10 +570,10 @@ describe("SPL Compression", () => {
         );
       } catch (e) { }
 
-      const onChainCMT = await getOnChainCMT(provider.connection, splCMTKeypair.publicKey);
+      const splCMT = await getConcurrentMerkleTree(provider.connection, splCMTKeypair.publicKey);
 
       assert(
-        getCMTActiveIndex(onChainCMT) === 0,
+        getCMTActiveIndex(splCMT) === 0,
         "CMT updated its active index after attacker's transaction, when it shouldn't have done anything"
       );
     });
@@ -587,8 +611,8 @@ describe("SPL Compression", () => {
 
       // Compare on-chain & off-chain roots
       let ixs = [];
-      const onChainCMT = await getOnChainCMT(connection, splCMTKeypair.publicKey);
-      const root = getCMTCurrentRoot(onChainCMT);
+      const splCMT = await getConcurrentMerkleTree(connection, splCMTKeypair.publicKey);
+      const root = getCMTCurrentRoot(splCMT);
 
       let leafList = Array.from(leaves.entries());
       leafList.sort(() => Math.random() - 0.5);

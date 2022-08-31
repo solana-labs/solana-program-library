@@ -3,6 +3,5 @@ export * from './generated';
 export * from './instructions';
 export * from './accounts';
 export { PathNode } from './accounts';
-export * from './types';
 export * from './utils';
 export * from './convenience';

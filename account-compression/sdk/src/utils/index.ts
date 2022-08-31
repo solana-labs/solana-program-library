@@ -1,65 +1,11 @@
 import {
-  TransactionInstruction,
-  Signer,
   PublicKey,
-  Keypair,
-  SystemProgram,
-  Transaction,
-  Connection as web3Connection,
-  LAMPORTS_PER_SOL,
-  Connection,
 } from "@solana/web3.js";
 import * as borsh from "borsh";
 import { bignum } from "@metaplex-foundation/beet";
-import { BN, Provider } from "@project-serum/anchor";
+import * as BN from 'bn.js';
 
 export const LOG_WRAPPER_PROGRAM_ID = new PublicKey("WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh");
-
-/// Wait for a transaction of a certain id to confirm and optionally log its messages
-export async function logTx(provider: Provider, txId: string, verbose: boolean = true) {
-  const tx = await provider.connection.confirmTransaction(txId, "confirmed");
-  if (tx.value.err || verbose) {
-    console.log(
-      (await provider.connection.getConfirmedTransaction(txId, "confirmed"))!.meta!
-        .logMessages
-    );
-  }
-  if (tx.value.err) {
-    console.log("Transaction failed");
-    throw new Error(JSON.stringify(tx.value.err));
-  }
-};
-
-/// Execute a series of instructions in a txn
-export async function execute(
-  provider: Provider,
-  instructions: TransactionInstruction[],
-  signers: Signer[],
-  skipPreflight: boolean = false,
-  verbose: boolean = false,
-): Promise<string> {
-  let tx = new Transaction();
-  instructions.map((ix) => { tx = tx.add(ix) });
-
-  let txid: string | null = null;
-  try {
-    txid = await provider.sendAndConfirm!(tx, signers, {
-      skipPreflight,
-    })
-  } catch (e: any) {
-    console.log("Tx error!", e.logs)
-    throw e;
-  }
-
-  if (verbose && txid) {
-    console.log(
-      (await provider.connection.getConfirmedTransaction(txid, "confirmed"))!.meta!
-        .logMessages
-    );
-  }
-
-  return txid;
-}
 
 /// Read in a public key from a BinaryReader
 export function readPublicKey(reader: borsh.BinaryReader): PublicKey {

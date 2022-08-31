@@ -1,6 +1,6 @@
 import { PublicKey, Connection } from "@solana/web3.js";
 import * as borsh from "borsh";
-import { BN } from "@project-serum/anchor";
+import * as BN from 'bn.js';
 import { assert } from "chai";
 import { readPublicKey } from "../utils";
 
@@ -84,12 +84,10 @@ export function deserializeConcurrentMerkleTree(buffer: Buffer): SplConcurrentMe
     creationSlot: reader.readU64(),
   };
 
-  // Decode MerkleRoll
   let sequenceNumber = reader.readU64();
   let activeIndex = reader.readU64().toNumber();
   let bufferSize = reader.readU64().toNumber();
 
-  // Decode ChangeLogs
   let changeLogs: ChangeLog[] = [];
   for (let i = 0; i < header.maxBufferSize; i++) {
     let root = readPublicKey(reader);

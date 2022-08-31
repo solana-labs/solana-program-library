@@ -1,4 +1,3 @@
-import { Program } from "@project-serum/anchor";
 import { Keypair, PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { LOG_WRAPPER_PROGRAM_ID } from "../utils";
 import {
