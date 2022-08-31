@@ -1,6 +1,6 @@
 use clap::{
-    crate_description, crate_name, crate_version, value_t, value_t_or_exit, App,
-    AppSettings, Arg, ArgMatches, SubCommand,
+    crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings, Arg,
+    ArgMatches, SubCommand,
 };
 use serde::Serialize;
 use solana_account_decoder::{
@@ -41,7 +41,10 @@ use spl_associated_token_account::{
     get_associated_token_address_with_program_id, instruction::create_associated_token_account,
 };
 use spl_token_2022::{
-    extension::{interest_bearing_mint, mint_close_authority::MintCloseAuthority, StateWithExtensionsOwned},
+    extension::{
+        interest_bearing_mint, interest_bearing_mint::InterestBearingConfig,
+        mint_close_authority::MintCloseAuthority, StateWithExtensionsOwned,
+    },
     instruction::*,
     state::{Account, Mint, Multisig},
 };
@@ -362,7 +365,6 @@ async fn command_create_token(
     enable_freeze: bool,
     enable_close: bool,
     memo: Option<String>,
-    rate_authority: Option<Pubkey>,
     rate_bps: Option<i16>,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
@@ -379,13 +381,12 @@ async fn command_create_token(
             close_authority: Some(authority),
         });
     }
+
     if let Some(rate_bps) = rate_bps {
-        extensions.push(
-            spl_token_client::token::ExtensionInitializationParams::InterestBearingConfig {
-                rate_authority,
-                rate: rate_bps,
-            },
-        )
+        extensions.push(ExtensionInitializationParams::InterestBearingConfig {
+            rate_authority: Some(authority),
+            rate: rate_bps,
+        })
     }
 
     if let Some(text) = memo {
@@ -426,6 +427,38 @@ async fn command_set_interest_rate(
     rate_bps: i16,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
+    let program_id = if !config.sign_only {
+        let mint_account = config.rpc_client.get_account(&token_pubkey).await?;
+        let program_id = mint_account.owner;
+        config.check_owner(&token_pubkey, &mint_account.owner)?;
+
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)
+            .map_err(|_| format!("Could not deserialize token mint {}", token_pubkey))?;
+
+        if let Ok(interest_rate_config) = mint_state.get_extension::<InterestBearingConfig>() {
+            let mint_rate_authority_pubkey =
+                Option::<Pubkey>::from(interest_rate_config.rate_authority);
+
+            if mint_rate_authority_pubkey != Some(rate_authority) {
+                return Err(format!(
+                    "Mint {} has interest rate authority {}, but {} was provided",
+                    token_pubkey,
+                    mint_rate_authority_pubkey
+                        .map(|pubkey| pubkey.to_string())
+                        .unwrap_or_else(|| "disabled".to_string()),
+                    rate_authority
+                )
+                .into());
+            }
+        } else {
+            return Err(format!("Mint {} is not interest-bearing", token_pubkey).into());
+        }
+
+        program_id
+    } else {
+        config.program_id
+    };
+
     println_display(
         config,
         format!(
@@ -434,12 +467,8 @@ async fn command_set_interest_rate(
         ),
     );
 
-    if !config.sign_only {
-        // TODO sanity checks
-    }
-
     let instructions = vec![interest_bearing_mint::instruction::update_rate(
-        &config.program_id,
+        &program_id,
         &token_pubkey,
         &rate_authority,
         &[&rate_authority],
@@ -662,7 +691,14 @@ async fn command_authorize(
                 }
                 AuthorityType::TransferFeeConfig => unimplemented!(),
                 AuthorityType::WithheldWithdraw => unimplemented!(),
-                AuthorityType::InterestRate => unimplemented!(),
+                AuthorityType::InterestRate => {
+                    if let Ok(interest_rate_config) = mint.get_extension::<InterestBearingConfig>()
+                    {
+                        Ok(COption::<Pubkey>::from(interest_rate_config.rate_authority))
+                    } else {
+                        Err(format!("Mint `{}` is not interest-bearing", account))
+                    }
+                }
             }
         } else if let Ok(token_account) =
             StateWithExtensionsOwned::<Account>::unpack(target_account.data)
@@ -2949,7 +2985,6 @@ async fn process_command<'a>(
                 arg_matches.is_present("enable_freeze"),
                 arg_matches.is_present("enable_close"),
                 memo,
-                Some(mint_authority),
                 rate_bps,
                 bulk_signers,
             )
@@ -3617,7 +3652,6 @@ mod tests {
             false,
             None,
             None,
-            None,
             bulk_signers,
         )
         .await
@@ -3628,7 +3662,6 @@ mod tests {
     async fn create_interest_bearing_token(
         config: &Config<'_>,
         payer: &Keypair,
-        rate_authority: Option<Pubkey>,
         rate_bps: i16,
     ) -> Pubkey {
         let token = Keypair::new();
@@ -3644,7 +3677,6 @@ mod tests {
             false,
             false,
             None,
-            rate_authority,
             Some(rate_bps),
             bulk_signers,
         )
@@ -3826,9 +3858,7 @@ mod tests {
         let config = test_config(&test_validator, &payer, &spl_token_2022::id());
         let initial_rate: i16 = 100;
         let new_rate: i16 = 300;
-        let token =
-            create_interest_bearing_token(&config, &payer, Some(payer.pubkey()), initial_rate)
-                .await;
+        let token = create_interest_bearing_token(&config, &payer, initial_rate).await;
         let account = config.rpc_client.get_account(&token).await.unwrap();
         let mint_account =
             StateWithExtensionsOwned::<spl_token_2022::state::Mint>::unpack(account.data).unwrap();
@@ -4571,7 +4601,6 @@ mod tests {
             payer.pubkey(),
             false,
             true,
-            None,
             None,
             None,
             bulk_signers,
