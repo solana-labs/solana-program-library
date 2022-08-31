@@ -1,6 +1,6 @@
 import { PublicKey, Keypair, TransactionInstruction, SystemProgram, Connection } from "@solana/web3.js";
 import { PROGRAM_ID } from "./generated";
-import { getMerkleRollAccountSize } from "./accounts";
+import { getConcurrentMerkleTreeSize } from "./accounts";
 import * as anchor from "@project-serum/anchor";
 import { Gummyroll } from "./types";
 import { LOG_WRAPPER_PROGRAM_ID } from "./utils";
@@ -13,7 +13,7 @@ export async function createAllocTreeIx(
     payer: PublicKey,
     merkleRoll: PublicKey,
 ): Promise<TransactionInstruction> {
-    const requiredSpace = getMerkleRollAccountSize(
+    const requiredSpace = getConcurrentMerkleTreeSize(
         maxDepth,
         maxBufferSize,
         canopyDepth ?? 0

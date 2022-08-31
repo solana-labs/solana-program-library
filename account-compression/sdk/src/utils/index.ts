@@ -9,25 +9,11 @@ import {
   LAMPORTS_PER_SOL,
   Connection,
 } from "@solana/web3.js";
-import {
-  decodeMerkleRoll,
-  getMerkleRollAccountSize,
-} from "../accounts";
-
 import * as borsh from "borsh";
 import { bignum } from "@metaplex-foundation/beet";
 import { BN, Provider } from "@project-serum/anchor";
 
 export const LOG_WRAPPER_PROGRAM_ID = new PublicKey("WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh");
-
-export async function getRootOfOnChainMerkleRoot(connection: Connection, merkleRollAccountKey: PublicKey): Promise<Buffer> {
-  const merkleRootAcct = await connection.getAccountInfo(merkleRollAccountKey);
-  if (!merkleRootAcct) {
-    throw new Error("Merkle Root account data unexpectedly null!");
-  }
-  const merkleRoll = decodeMerkleRoll(merkleRootAcct.data);
-  return merkleRoll.roll.changeLogs[merkleRoll.roll.activeIndex].root.toBuffer();
-}
 
 /// Wait for a transaction of a certain id to confirm and optionally log its messages
 export async function logTx(provider: Provider, txId: string, verbose: boolean = true) {

@@ -7,18 +7,18 @@ import { readPublicKey } from "../utils";
 /**
  * Manually create a model for MerkleRoll in order to deserialize correctly
  */
-export type OnChainMerkleRoll = {
-  header: MerkleRollHeader;
-  roll: MerkleRoll;
+export type SplConcurrentMerkleTree = {
+  header: ConcurrentMerkleTreeHeader;
+  tree: ConcurrentMerkleTree;
 };
 
-export function getChangeLogsWithNodeIndex(onChainMerkleRoll: OnChainMerkleRoll): PathNode[][] {
+export function getChangeLogsWithNodeIndex(onChainMerkleRoll: SplConcurrentMerkleTree): PathNode[][] {
   const mask = onChainMerkleRoll.header.maxBufferSize - 1;
   let pathNodeList: PathNode[][] = [];
-  for (let j = 0; j < onChainMerkleRoll.roll.bufferSize; j++) {
+  for (let j = 0; j < onChainMerkleRoll.tree.bufferSize; j++) {
     let pathNodes: PathNode[] = [];
-    let idx = (onChainMerkleRoll.roll.activeIndex - j) & mask;
-    let changeLog = onChainMerkleRoll.roll.changeLogs[idx];
+    let idx = (onChainMerkleRoll.tree.activeIndex - j) & mask;
+    let changeLog = onChainMerkleRoll.tree.changeLogs[idx];
     let pathLen = changeLog.pathNodes.length;
     for (const [lvl, key] of changeLog.pathNodes.entries()) {
       let nodeIdx = (1 << (pathLen - lvl)) + (changeLog.index >> lvl);
@@ -36,7 +36,7 @@ export function getChangeLogsWithNodeIndex(onChainMerkleRoll: OnChainMerkleRoll)
   return pathNodeList;
 }
 
-type MerkleRollHeader = {
+type ConcurrentMerkleTreeHeader = {
   accountType: number,
   _padding: number[]
   maxDepth: number; // u32
@@ -45,7 +45,7 @@ type MerkleRollHeader = {
   creationSlot: BN;
 };
 
-type MerkleRoll = {
+type ConcurrentMerkleTree = {
   sequenceNumber: BN; // u64
   activeIndex: number; // u64
   bufferSize: number; // u64
@@ -72,10 +72,10 @@ type Path = {
   _padding: number;
 };
 
-export function decodeMerkleRoll(buffer: Buffer): OnChainMerkleRoll {
+export function deserializeConcurrentMerkleTree(buffer: Buffer): SplConcurrentMerkleTree {
   let reader = new borsh.BinaryReader(buffer);
 
-  let header: MerkleRollHeader = {
+  let header: ConcurrentMerkleTreeHeader = {
     accountType: reader.readU8(),
     _padding: Array.from(reader.readFixedArray(7)),
     maxBufferSize: reader.readU32(),
@@ -119,7 +119,7 @@ export function decodeMerkleRoll(buffer: Buffer): OnChainMerkleRoll {
     _padding: reader.readU32(),
   };
 
-  const roll = {
+  const tree = {
     sequenceNumber,
     activeIndex,
     bufferSize,
@@ -128,7 +128,7 @@ export function decodeMerkleRoll(buffer: Buffer): OnChainMerkleRoll {
   };
 
   if (
-    getMerkleRollAccountSize(header.maxDepth, header.maxBufferSize) !=
+    getConcurrentMerkleTreeSize(header.maxDepth, header.maxBufferSize) !=
     reader.offset
   ) {
 
@@ -136,10 +136,10 @@ export function decodeMerkleRoll(buffer: Buffer): OnChainMerkleRoll {
       "Failed to process whole buffer when deserializing Merkle Account Data"
     );
   }
-  return { header, roll };
+  return { header, tree };
 }
 
-export function getMerkleRollAccountSize(
+export function getConcurrentMerkleTreeSize(
   maxDepth: number,
   maxBufferSize: number,
   canopyDepth?: number
@@ -155,39 +155,62 @@ export function getMerkleRollAccountSize(
   return headerSize + merkleRollSize + canopySize;
 }
 
-export async function assertOnChainMerkleRollProperties(
+export async function assertCMTProperties(
   connection: Connection,
   expectedMaxDepth: number,
   expectedMaxBufferSize: number,
   expectedAuthority: PublicKey,
-  expectedRoot: PublicKey,
-  merkleRollPubkey: PublicKey
+  expectedRoot: Buffer,
+  onChainCMTKey: PublicKey
 ) {
-  const merkleRoll = await connection.getAccountInfo(merkleRollPubkey);
-
-  if (!merkleRoll) {
-    throw new Error("Merkle Roll account data unexpectedly null!");
-  }
-
-  const merkleRollAcct = decodeMerkleRoll(merkleRoll.data);
+  const onChainCMT = await getConcurrentMerkleTree(connection, onChainCMTKey);
 
   assert(
-    merkleRollAcct.header.maxDepth === expectedMaxDepth,
-    `Max depth does not match ${merkleRollAcct.header.maxDepth}, expected ${expectedMaxDepth}`
+    getCMTMaxDepth(onChainCMT) === expectedMaxDepth,
+    `Max depth does not match ${getCMTMaxDepth(onChainCMT)}, expected ${expectedMaxDepth}`
   );
   assert(
-    merkleRollAcct.header.maxBufferSize === expectedMaxBufferSize,
-    `Max buffer size does not match ${merkleRollAcct.header.maxBufferSize}, expected ${expectedMaxBufferSize}`
+    getCMTMaxBufferSize(onChainCMT) === expectedMaxBufferSize,
+    `Max buffer size does not match ${getCMTMaxBufferSize(onChainCMT)}, expected ${expectedMaxBufferSize}`
   );
-
   assert(
-    merkleRollAcct.header.authority.equals(expectedAuthority),
+    getCMTAuthority(onChainCMT).equals(expectedAuthority),
     "Failed to write auth pubkey"
   );
-
-  const activeIndex = merkleRollAcct.roll.activeIndex;
   assert(
-    merkleRollAcct.roll.changeLogs[activeIndex].root.equals(expectedRoot),
+    getCMTCurrentRoot(onChainCMT).equals(expectedRoot),
     "On chain root does not match root passed in instruction"
   );
+}
+
+export function getCMTMaxBufferSize(onChainCMT: SplConcurrentMerkleTree): number {
+  return onChainCMT.header.maxBufferSize;
+}
+
+export function getCMTMaxDepth(onChainCMT: SplConcurrentMerkleTree): number {
+  return onChainCMT.header.maxDepth;
+}
+
+export function getCMTBufferSize(onChainCMT: SplConcurrentMerkleTree): number {
+  return onChainCMT.tree.bufferSize;
+}
+
+export function getCMTCurrentRoot(onChainCMT: SplConcurrentMerkleTree): Buffer {
+  return onChainCMT.tree.changeLogs[getCMTActiveIndex(onChainCMT)].root.toBuffer();
+}
+
+export function getCMTActiveIndex(onChainCMT: SplConcurrentMerkleTree): number {
+  return onChainCMT.tree.activeIndex
+}
+
+export function getCMTAuthority(onChainCMT: SplConcurrentMerkleTree): PublicKey {
+  return onChainCMT.header.authority;
+}
+
+export async function getConcurrentMerkleTree(connection: Connection, onChainCMTKey: PublicKey): Promise<SplConcurrentMerkleTree> {
+  const onChainCMTAccount = await connection.getAccountInfo(onChainCMTKey);
+  if (!onChainCMTAccount) {
+    throw new Error("CMT account data unexpectedly null!");
+  }
+  return deserializeConcurrentMerkleTree(onChainCMTAccount.data);
 }
