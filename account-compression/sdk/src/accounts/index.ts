@@ -12,30 +12,6 @@ export type SplConcurrentMerkleTree = {
   tree: ConcurrentMerkleTree;
 };
 
-export function getChangeLogsWithNodeIndex(onChainMerkleRoll: SplConcurrentMerkleTree): PathNode[][] {
-  const mask = onChainMerkleRoll.header.maxBufferSize - 1;
-  let pathNodeList: PathNode[][] = [];
-  for (let j = 0; j < onChainMerkleRoll.tree.bufferSize; j++) {
-    let pathNodes: PathNode[] = [];
-    let idx = (onChainMerkleRoll.tree.activeIndex - j) & mask;
-    let changeLog = onChainMerkleRoll.tree.changeLogs[idx];
-    let pathLen = changeLog.pathNodes.length;
-    for (const [lvl, key] of changeLog.pathNodes.entries()) {
-      let nodeIdx = (1 << (pathLen - lvl)) + (changeLog.index >> lvl);
-      pathNodes.push({
-        node: key,
-        index: nodeIdx,
-      });
-    }
-    pathNodes.push({
-      node: changeLog.root,
-      index: 1,
-    });
-    pathNodeList.push(pathNodes);
-  }
-  return pathNodeList;
-}
-
 type ConcurrentMerkleTreeHeader = {
   accountType: number,
   _padding: number[]
