@@ -281,17 +281,15 @@ where
         ))))
     }
 
-    fn get_multisig_signers<S: Signers>(
+    fn get_multisig_signers<'a, 'b>(
         &self,
-        authority: &Pubkey,
-        signing_keypairs: &S,
-    ) -> Vec<Pubkey> {
-        let signing_pubkeys = signing_keypairs.pubkeys();
-
-        if signing_pubkeys == [*authority] {
+        authority: &'b Pubkey,
+        signing_pubkeys: &'a Vec<Pubkey>,
+    ) -> Vec<&'a Pubkey> {
+        if signing_pubkeys.as_ref() == [*authority] {
             vec![]
         } else {
-            signing_pubkeys
+            signing_pubkeys.iter().collect::<Vec<_>>()
         }
     }
 
@@ -558,7 +556,8 @@ where
         authority_type: instruction::AuthorityType,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
         self.process_ixs(
             &[instruction::set_authority(
@@ -567,7 +566,7 @@ where
                 new_authority,
                 authority_type,
                 authority,
-                &multisig_signers.iter().collect::<Vec<_>>(),
+                &multisig_signers,
             )?],
             signing_keypairs,
         )
@@ -583,7 +582,8 @@ where
         decimals: Option<u8>,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
         let instructions = if let Some(decimals) = decimals {
             [instruction::mint_to_checked(
@@ -591,7 +591,7 @@ where
                 &self.pubkey,
                 destination,
                 authority,
-                &multisig_signers.iter().collect::<Vec<_>>(),
+                &multisig_signers,
                 amount,
                 decimals,
             )?]
@@ -601,7 +601,7 @@ where
                 &self.pubkey,
                 destination,
                 authority,
-                &multisig_signers.iter().collect::<Vec<_>>(),
+                &multisig_signers,
                 amount,
             )?]
         };
@@ -619,7 +619,8 @@ where
         decimals: Option<u8>,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
         let instructions = if let Some(decimals) = decimals {
             [instruction::transfer_checked(
@@ -628,7 +629,7 @@ where
                 &self.pubkey,
                 destination,
                 authority,
-                &multisig_signers.iter().collect::<Vec<_>>(),
+                &multisig_signers,
                 amount,
                 decimals,
             )?]
@@ -639,7 +640,7 @@ where
                 source,
                 destination,
                 authority,
-                &multisig_signers.iter().collect::<Vec<_>>(),
+                &multisig_signers,
                 amount,
             )?]
         };
@@ -659,7 +660,8 @@ where
         fee: u64,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
         self.process_ixs(
             &[transfer_fee::instruction::transfer_checked_with_fee(
@@ -668,7 +670,7 @@ where
                 &self.pubkey,
                 destination,
                 authority,
-                &multisig_signers.iter().collect::<Vec<_>>(),
+                &multisig_signers,
                 amount,
                 decimals,
                 fee,
@@ -687,7 +689,8 @@ where
         decimals: Option<u8>,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
         let instructions = if let Some(decimals) = decimals {
             [instruction::burn_checked(
@@ -695,7 +698,7 @@ where
                 source,
                 &self.pubkey,
                 authority,
-                &multisig_signers.iter().collect::<Vec<_>>(),
+                &multisig_signers,
                 amount,
                 decimals,
             )?]
@@ -705,7 +708,7 @@ where
                 source,
                 &self.pubkey,
                 authority,
-                &multisig_signers.iter().collect::<Vec<_>>(),
+                &multisig_signers,
                 amount,
             )?]
         };
@@ -723,7 +726,8 @@ where
         decimals: Option<u8>,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
         let instructions = if let Some(decimals) = decimals {
             [instruction::approve_checked(
@@ -732,7 +736,7 @@ where
                 &self.pubkey,
                 delegate,
                 authority,
-                &multisig_signers.iter().collect::<Vec<_>>(),
+                &multisig_signers,
                 amount,
                 decimals,
             )?]
@@ -742,7 +746,7 @@ where
                 source,
                 delegate,
                 authority,
-                &multisig_signers.iter().collect::<Vec<_>>(),
+                &multisig_signers,
                 amount,
             )?]
         };
@@ -757,14 +761,15 @@ where
         authority: &Pubkey,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
         self.process_ixs(
             &[instruction::revoke(
                 &self.program_id,
                 source,
                 authority,
-                &multisig_signers.iter().collect::<Vec<_>>(),
+                &multisig_signers,
             )?],
             signing_keypairs,
         )
@@ -779,14 +784,15 @@ where
         authority: &Pubkey,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
         let mut instructions = vec![instruction::close_account(
             &self.program_id,
             account,
             destination,
             authority,
-            &multisig_signers.iter().collect::<Vec<_>>(),
+            &multisig_signers,
         )?];
 
         if let Ok(Some(destination_account)) = self.client.get_account(*destination).await {
@@ -809,7 +815,8 @@ where
         authority: &Pubkey,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
         self.process_ixs(
             &[instruction::freeze_account(
@@ -817,7 +824,7 @@ where
                 account,
                 &self.pubkey,
                 authority,
-                &multisig_signers.iter().collect::<Vec<_>>(),
+                &multisig_signers,
             )?],
             signing_keypairs,
         )
@@ -831,7 +838,8 @@ where
         authority: &Pubkey,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let multisig_signers = self.get_multisig_signers(authority, signing_keypairs);
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
         self.process_ixs(
             &[instruction::thaw_account(
@@ -839,7 +847,7 @@ where
                 account,
                 &self.pubkey,
                 authority,
-                &multisig_signers.iter().collect::<Vec<_>>(),
+                &multisig_signers,
             )?],
             signing_keypairs,
         )

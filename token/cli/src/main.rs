@@ -665,15 +665,15 @@ async fn command_authorize(
         AuthorityType::InterestRate => "interest rate authority",
     };
 
-    let (program_id, previous_authority) = if !config.sign_only {
+    let (program_id, mint_pubkey, previous_authority) = if !config.sign_only {
         let target_account = config.rpc_client.get_account(&account).await?;
         let program_id = target_account.owner;
         config.check_owner(&account, &target_account.owner)?;
 
-        let previous_authority = if let Ok(mint) =
+        let (mint_pubkey, previous_authority) = if let Ok(mint) =
             StateWithExtensionsOwned::<Mint>::unpack(target_account.data.clone())
         {
-            match authority_type {
+            let previous_authority = match authority_type {
                 AuthorityType::AccountOwner | AuthorityType::CloseAccount => Err(format!(
                     "Authority type `{}` not supported for SPL Token mints",
                     auth_str
@@ -702,7 +702,9 @@ async fn command_authorize(
                         Err(format!("Mint `{}` is not interest-bearing", account))
                     }
                 }
-            }
+            }?;
+
+            Ok((account, previous_authority))
         } else if let Ok(token_account) =
             StateWithExtensionsOwned::<Account>::unpack(target_account.data)
         {
@@ -726,7 +728,7 @@ async fn command_authorize(
                 }
             };
 
-            match authority_type {
+            let previous_authority = match authority_type {
                 AuthorityType::MintTokens
                 | AuthorityType::FreezeAccount
                 | AuthorityType::CloseMint
@@ -749,17 +751,20 @@ async fn command_authorize(
                             .unwrap_or(token_account.base.owner),
                     ))
                 }
-            }
+            }?;
+
+            Ok((token_account.base.mint, previous_authority))
         } else {
             Err("Unsupported account data format".to_string())
         }?;
 
-        (program_id, previous_authority)
+        (program_id, mint_pubkey, previous_authority)
     } else {
-        (config.program_id, COption::None)
+        // default is safe here because authorize doesnt use it
+        (config.program_id, Pubkey::default(), COption::None)
     };
 
-    let token = token_client_from_config(config, &program_id, &Pubkey::default());
+    let token = token_client_from_config(config, &program_id, &mint_pubkey);
 
     println_display(
         config,
@@ -1413,7 +1418,7 @@ async fn command_revoke(
     delegate: Option<Pubkey>,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let (delegate, program_id) = if !config.sign_only {
+    let (program_id, mint_pubkey, delegate) = if !config.sign_only {
         let source_account = config.rpc_client.get_account(&account).await?;
         let source_state = StateWithExtensionsOwned::<Account>::unpack(source_account.data)
             .map_err(|_| format!("Could not deserialize token account {}", account))?;
@@ -1425,9 +1430,10 @@ async fn command_revoke(
         };
 
         config.check_owner(&account, &source_account.owner)?;
-        (delegate, source_account.owner)
+        (source_account.owner, source_state.base.mint, delegate)
     } else {
-        (delegate, config.program_id)
+        // default is safe here because revoke doesnt use it
+        (config.program_id, Pubkey::default(), delegate)
     };
 
     if let Some(delegate) = delegate {
@@ -1442,7 +1448,7 @@ async fn command_revoke(
         return Err(format!("No delegate on account {}", account).into());
     }
 
-    let token = token_client_from_config(config, &program_id, &Pubkey::default());
+    let token = token_client_from_config(config, &program_id, &mint_pubkey);
     let res = token.revoke(&account, &owner, &bulk_signers).await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -1463,7 +1469,7 @@ async fn command_close(
     recipient: Pubkey,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let program_id = if !config.sign_only {
+    let (program_id, mint_pubkey) = if !config.sign_only {
         let source_account = config.rpc_client.get_account(&account).await?;
         let program_id = source_account.owner;
         config.check_owner(&account, &source_account.owner)?;
@@ -1480,12 +1486,13 @@ async fn command_close(
             .into());
         }
 
-        program_id
+        (program_id, source_state.base.mint)
     } else {
-        config.program_id
+        // default is safe here because close doesnt use it
+        (config.program_id, Pubkey::default())
     };
 
-    let token = token_client_from_config(config, &program_id, &Pubkey::default());
+    let token = token_client_from_config(config, &program_id, &mint_pubkey);
     let res = token
         .close_account(&account, &recipient, &close_authority, &bulk_signers)
         .await?;
