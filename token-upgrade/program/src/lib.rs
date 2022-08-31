@@ -30,11 +30,31 @@ pub(crate) fn get_token_upgrade_authority_address_and_bump_seed(
     program_id: &Pubkey,
 ) -> (Pubkey, u8) {
     Pubkey::find_program_address(
-        &[
-            TOKEN_UPGRADE_AUTHORITY_SEED,
-            source_mint.as_ref(),
-            destination_mint.as_ref(),
-        ],
+        &get_token_upgrade_authority_seeds(source_mint, destination_mint),
         program_id,
     )
+}
+
+pub(crate) fn get_token_upgrade_authority_seeds<'a>(
+    source_mint: &'a Pubkey,
+    destination_mint: &'a Pubkey,
+) -> [&'a [u8]; 3] {
+    [
+        TOKEN_UPGRADE_AUTHORITY_SEED,
+        source_mint.as_ref(),
+        destination_mint.as_ref(),
+    ]
+}
+
+pub(crate) fn get_token_upgrade_authority_signer_seeds<'a>(
+    source_mint: &'a Pubkey,
+    destination_mint: &'a Pubkey,
+    bump_seed: &'a [u8],
+) -> [&'a [u8]; 4] {
+    [
+        TOKEN_UPGRADE_AUTHORITY_SEED,
+        source_mint.as_ref(),
+        destination_mint.as_ref(),
+        bump_seed,
+    ]
 }
