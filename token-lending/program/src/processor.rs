@@ -18,16 +18,20 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     decode_error::DecodeError,
     entrypoint::ProgramResult,
-    instruction::Instruction,
+    instruction::{get_stack_height, Instruction, TRANSACTION_LEVEL_STACK_HEIGHT},
     msg,
     program::{invoke, invoke_signed},
     program_error::{PrintProgramError, ProgramError},
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
-    sysvar::{clock::Clock, rent::Rent, Sysvar},
+    sysvar::instructions::{load_current_index_checked, load_instruction_at_checked},
+    sysvar::{
+        clock::{self, Clock},
+        rent::Rent,
+        Sysvar,
+    },
 };
-use spl_token::solana_program::instruction::AccountMeta;
-use spl_token::state::{Account, Mint};
+use spl_token::state::Mint;
 use std::{cmp::min, convert::TryInto, result::Result};
 use switchboard_program::{
     get_aggregator, get_aggregator_result, AggregatorState, RoundResult, SwitchboardAccountType,
@@ -110,9 +114,10 @@ pub fn process_instruction(
             msg!("Instruction: Liquidate Obligation");
             process_liquidate_obligation(program_id, liquidity_amount, accounts)
         }
-        LendingInstruction::FlashLoan { amount } => {
+        LendingInstruction::FlashLoan { .. } => {
             msg!("Instruction: Flash Loan");
-            process_flash_loan(program_id, amount, accounts)
+            msg!("This instruction has been deprecated. Use FlashBorrowReserveLiquidity instead");
+            Err(LendingError::DeprecatedInstruction.into())
         }
         LendingInstruction::DepositReserveLiquidityAndObligationCollateral { liquidity_amount } => {
             msg!("Instruction: Deposit Reserve Liquidity and Obligation Collateral");
@@ -147,6 +152,22 @@ pub fn process_instruction(
         LendingInstruction::RedeemFees => {
             msg!("Instruction: RedeemFees");
             process_redeem_fees(program_id, accounts)
+        }
+        LendingInstruction::FlashBorrowReserveLiquidity { liquidity_amount } => {
+            msg!("Instruction: Flash Borrow Reserve Liquidity");
+            process_flash_borrow_reserve_liquidity(program_id, liquidity_amount, accounts)
+        }
+        LendingInstruction::FlashRepayReserveLiquidity {
+            liquidity_amount,
+            borrow_instruction_index,
+        } => {
+            msg!("Instruction: Flash Repay Reserve Liquidity");
+            process_flash_repay_reserve_liquidity(
+                program_id,
+                liquidity_amount,
+                borrow_instruction_index,
+                accounts,
+            )
         }
     }
 }
@@ -241,7 +262,12 @@ fn process_init_reserve(
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let lending_market_owner_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+
+    let clock = &Clock::get()?;
+    if account_info_iter.peek().map(|a| a.key) == Some(&clock::ID) {
+        next_account_info(account_info_iter)?;
+    }
+
     let rent_info = next_account_info(account_info_iter)?;
     let rent = &Rent::from_account_info(rent_info)?;
     let token_program_id = next_account_info(account_info_iter)?;
@@ -401,7 +427,10 @@ fn process_refresh_reserve(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
     let reserve_info = next_account_info(account_info_iter)?;
     let pyth_price_info = next_account_info(account_info_iter)?;
     let switchboard_feed_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let clock = &Clock::get()?;
+    if account_info_iter.peek().map(|a| a.key) == Some(&clock::ID) {
+        next_account_info(account_info_iter)?;
+    }
     _refresh_reserve(
         program_id,
         reserve_info,
@@ -469,7 +498,7 @@ fn process_deposit_reserve_liquidity(
         return Err(LendingError::InvalidAmount.into());
     }
 
-    let account_info_iter = &mut accounts.iter();
+    let account_info_iter = &mut accounts.iter().peekable();
     let source_liquidity_info = next_account_info(account_info_iter)?;
     let destination_collateral_info = next_account_info(account_info_iter)?;
     let reserve_info = next_account_info(account_info_iter)?;
@@ -478,7 +507,10 @@ fn process_deposit_reserve_liquidity(
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let clock = &Clock::get()?;
+    if account_info_iter.peek().map(|a| a.key) == Some(&clock::ID) {
+        next_account_info(account_info_iter)?;
+    }
     let token_program_id = next_account_info(account_info_iter)?;
 
     _refresh_reserve_interest(program_id, reserve_info, clock)?;
@@ -612,7 +644,7 @@ fn process_redeem_reserve_collateral(
         return Err(LendingError::InvalidAmount.into());
     }
 
-    let account_info_iter = &mut accounts.iter();
+    let account_info_iter = &mut accounts.iter().peekable();
     let source_collateral_info = next_account_info(account_info_iter)?;
     let destination_liquidity_info = next_account_info(account_info_iter)?;
     let reserve_info = next_account_info(account_info_iter)?;
@@ -621,7 +653,10 @@ fn process_redeem_reserve_collateral(
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let clock = &Clock::get()?;
+    if account_info_iter.peek().map(|a| a.key) == Some(&clock::ID) {
+        next_account_info(account_info_iter)?;
+    }
     let token_program_id = next_account_info(account_info_iter)?;
 
     _refresh_reserve_interest(program_id, reserve_info, clock)?;
@@ -741,11 +776,14 @@ fn _redeem_reserve_collateral<'a>(
 
 #[inline(never)] // avoid stack frame limit
 fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
+    let account_info_iter = &mut accounts.iter().peekable();
     let obligation_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let obligation_owner_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let clock = &Clock::get()?;
+    if account_info_iter.peek().map(|a| a.key) == Some(&clock::ID) {
+        next_account_info(account_info_iter)?;
+    }
     let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
@@ -786,7 +824,10 @@ fn process_init_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
 fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter().peekable();
     let obligation_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let clock = &Clock::get()?;
+    if account_info_iter.peek().map(|a| a.key) == Some(&clock::ID) {
+        next_account_info(account_info_iter)?;
+    }
 
     let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
     if obligation_info.owner != program_id {
@@ -921,7 +962,7 @@ fn process_deposit_obligation_collateral(
         return Err(LendingError::InvalidAmount.into());
     }
 
-    let account_info_iter = &mut accounts.iter();
+    let account_info_iter = &mut accounts.iter().peekable();
     let source_collateral_info = next_account_info(account_info_iter)?;
     let destination_collateral_info = next_account_info(account_info_iter)?;
     let deposit_reserve_info = next_account_info(account_info_iter)?;
@@ -929,7 +970,10 @@ fn process_deposit_obligation_collateral(
     let lending_market_info = next_account_info(account_info_iter)?;
     let obligation_owner_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let clock = &Clock::get()?;
+    if account_info_iter.peek().map(|a| a.key) == Some(&clock::ID) {
+        next_account_info(account_info_iter)?;
+    }
     let token_program_id = next_account_info(account_info_iter)?;
     _refresh_reserve_interest(program_id, deposit_reserve_info, clock)?;
     _deposit_obligation_collateral(
@@ -1048,7 +1092,7 @@ fn process_deposit_reserve_liquidity_and_obligation_collateral(
         return Err(LendingError::InvalidAmount.into());
     }
 
-    let account_info_iter = &mut accounts.iter();
+    let account_info_iter = &mut accounts.iter().peekable();
     let source_liquidity_info = next_account_info(account_info_iter)?;
     let user_collateral_info = next_account_info(account_info_iter)?;
     let reserve_info = next_account_info(account_info_iter)?;
@@ -1062,7 +1106,10 @@ fn process_deposit_reserve_liquidity_and_obligation_collateral(
     let _pyth_price_info = next_account_info(account_info_iter)?;
     let _switchboard_feed_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let clock = &Clock::get()?;
+    if account_info_iter.peek().map(|a| a.key) == Some(&clock::ID) {
+        next_account_info(account_info_iter)?;
+    }
     let token_program_id = next_account_info(account_info_iter)?;
 
     _refresh_reserve_interest(program_id, reserve_info, clock)?;
@@ -1113,7 +1160,7 @@ fn process_withdraw_obligation_collateral(
         return Err(LendingError::InvalidAmount.into());
     }
 
-    let account_info_iter = &mut accounts.iter();
+    let account_info_iter = &mut accounts.iter().peekable();
     let source_collateral_info = next_account_info(account_info_iter)?;
     let destination_collateral_info = next_account_info(account_info_iter)?;
     let withdraw_reserve_info = next_account_info(account_info_iter)?;
@@ -1121,7 +1168,10 @@ fn process_withdraw_obligation_collateral(
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let obligation_owner_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let clock = &Clock::get()?;
+    if account_info_iter.peek().map(|a| a.key) == Some(&clock::ID) {
+        next_account_info(account_info_iter)?;
+    }
     let token_program_id = next_account_info(account_info_iter)?;
     _withdraw_obligation_collateral(
         program_id,
@@ -1298,7 +1348,7 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::InvalidAmount.into());
     }
 
-    let account_info_iter = &mut accounts.iter();
+    let account_info_iter = &mut accounts.iter().peekable();
     let source_liquidity_info = next_account_info(account_info_iter)?;
     let destination_liquidity_info = next_account_info(account_info_iter)?;
     let borrow_reserve_info = next_account_info(account_info_iter)?;
@@ -1307,7 +1357,10 @@ fn process_borrow_obligation_liquidity(
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let obligation_owner_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let clock = &Clock::get()?;
+    if account_info_iter.peek().map(|a| a.key) == Some(&clock::ID) {
+        next_account_info(account_info_iter)?;
+    }
     let token_program_id = next_account_info(account_info_iter)?;
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
@@ -1489,14 +1542,17 @@ fn process_repay_obligation_liquidity(
         msg!("Liquidity amount provided cannot be zero");
         return Err(LendingError::InvalidAmount.into());
     }
-    let account_info_iter = &mut accounts.iter();
+    let account_info_iter = &mut accounts.iter().peekable();
     let source_liquidity_info = next_account_info(account_info_iter)?;
     let destination_liquidity_info = next_account_info(account_info_iter)?;
     let repay_reserve_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let clock = &Clock::get()?;
+    if account_info_iter.peek().map(|a| a.key) == Some(&clock::ID) {
+        next_account_info(account_info_iter)?;
+    }
     let token_program_id = next_account_info(account_info_iter)?;
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
@@ -1867,191 +1923,12 @@ fn process_liquidate_obligation_and_redeem_reserve_collateral(
 }
 
 #[inline(never)] // avoid stack frame limit
-fn process_flash_loan(
-    program_id: &Pubkey,
-    liquidity_amount: u64,
-    accounts: &[AccountInfo],
-) -> ProgramResult {
-    if liquidity_amount == 0 {
-        msg!("Liquidity amount provided cannot be zero");
-        return Err(LendingError::InvalidAmount.into());
-    }
-
-    let account_info_iter = &mut accounts.iter();
-    let source_liquidity_info = next_account_info(account_info_iter)?;
-    let destination_liquidity_info = next_account_info(account_info_iter)?;
-    let reserve_info = next_account_info(account_info_iter)?;
-    let reserve_liquidity_fee_receiver_info = next_account_info(account_info_iter)?;
-    let host_fee_receiver_info = next_account_info(account_info_iter)?;
-    let lending_market_info = next_account_info(account_info_iter)?;
-    let lending_market_authority_info = next_account_info(account_info_iter)?;
-    let token_program_id = next_account_info(account_info_iter)?;
-    let flash_loan_receiver_program_id = next_account_info(account_info_iter)?;
-
-    if program_id == flash_loan_receiver_program_id.key {
-        msg!("Lending program cannot be used as the flash loan receiver program provided");
-        return Err(LendingError::InvalidFlashLoanReceiverProgram.into());
-    }
-
-    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
-    if lending_market_info.owner != program_id {
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &lending_market.token_program_id != token_program_id.key {
-        msg!("Lending market token program does not match the token program provided");
-        return Err(LendingError::InvalidTokenProgram.into());
-    }
-
-    let authority_signer_seeds = &[
-        lending_market_info.key.as_ref(),
-        &[lending_market.bump_seed],
-    ];
-    let lending_market_authority_pubkey =
-        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-    if &lending_market_authority_pubkey != lending_market_authority_info.key {
-        msg!(
-            "Derived lending market authority does not match the lending market authority provided"
-        );
-        return Err(LendingError::InvalidMarketAuthority.into());
-    }
-
-    let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
-    if reserve_info.owner != program_id {
-        msg!("Reserve provided is not owned by the lending program");
-        return Err(LendingError::InvalidAccountOwner.into());
-    }
-    if &reserve.lending_market != lending_market_info.key {
-        msg!("Invalid reserve lending market account");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if &reserve.liquidity.supply_pubkey != source_liquidity_info.key {
-        msg!("Reserve liquidity supply must be used as the source liquidity provided");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-    if &reserve.config.fee_receiver != reserve_liquidity_fee_receiver_info.key {
-        msg!("Reserve liquidity fee receiver does not match the reserve liquidity fee receiver provided");
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-
-    // @FIXME: if u64::MAX is flash loaned, fees should be inclusive as with ordinary borrows
-    let flash_loan_amount = if liquidity_amount == u64::MAX {
-        reserve.liquidity.available_amount
-    } else {
-        liquidity_amount
-    };
-
-    let flash_loan_amount_decimal = Decimal::from(flash_loan_amount);
-    let (origination_fee, host_fee) = reserve
-        .config
-        .fees
-        .calculate_flash_loan_fees(flash_loan_amount_decimal)?;
-
-    let balance_before_flash_loan = Account::unpack(&source_liquidity_info.data.borrow())?.amount;
-    let expected_balance_after_flash_loan = balance_before_flash_loan
-        .checked_add(origination_fee)
-        .ok_or(LendingError::MathOverflow)?;
-    let returned_amount_required = flash_loan_amount
-        .checked_add(origination_fee)
-        .ok_or(LendingError::MathOverflow)?;
-
-    let mut flash_loan_instruction_accounts = vec![
-        AccountMeta::new(*destination_liquidity_info.key, false),
-        AccountMeta::new(*source_liquidity_info.key, false),
-        AccountMeta::new_readonly(*token_program_id.key, false),
-    ];
-    let mut flash_loan_instruction_account_infos = vec![
-        destination_liquidity_info.clone(),
-        flash_loan_receiver_program_id.clone(),
-        source_liquidity_info.clone(),
-        token_program_id.clone(),
-    ];
-    for account_info in account_info_iter {
-        flash_loan_instruction_accounts.push(AccountMeta {
-            pubkey: *account_info.key,
-            is_signer: account_info.is_signer,
-            is_writable: account_info.is_writable,
-        });
-        flash_loan_instruction_account_infos.push(account_info.clone());
-    }
-
-    reserve.liquidity.borrow(flash_loan_amount_decimal)?;
-    Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
-
-    spl_token_transfer(TokenTransferParams {
-        source: source_liquidity_info.clone(),
-        destination: destination_liquidity_info.clone(),
-        amount: flash_loan_amount,
-        authority: lending_market_authority_info.clone(),
-        authority_signer_seeds,
-        token_program: token_program_id.clone(),
-    })?;
-
-    const RECEIVE_FLASH_LOAN_INSTRUCTION_DATA_SIZE: usize = 9;
-    // @FIXME: don't use 0 to indicate a flash loan receiver instruction https://git.io/JGzz9
-    const RECEIVE_FLASH_LOAN_INSTRUCTION_TAG: u8 = 0u8;
-
-    let mut data = Vec::with_capacity(RECEIVE_FLASH_LOAN_INSTRUCTION_DATA_SIZE);
-    data.push(RECEIVE_FLASH_LOAN_INSTRUCTION_TAG);
-    data.extend_from_slice(&returned_amount_required.to_le_bytes());
-
-    invoke(
-        &Instruction {
-            program_id: *flash_loan_receiver_program_id.key,
-            accounts: flash_loan_instruction_accounts,
-            data,
-        },
-        &flash_loan_instruction_account_infos[..],
-    )?;
-
-    reserve = Reserve::unpack(&reserve_info.data.borrow())?;
-    reserve
-        .liquidity
-        .repay(flash_loan_amount, flash_loan_amount_decimal)?;
-    Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
-
-    let actual_balance_after_flash_loan =
-        Account::unpack(&source_liquidity_info.data.borrow())?.amount;
-    if actual_balance_after_flash_loan < expected_balance_after_flash_loan {
-        msg!("Insufficient reserve liquidity after flash loan");
-        return Err(LendingError::NotEnoughLiquidityAfterFlashLoan.into());
-    }
-
-    let mut owner_fee = origination_fee;
-    if host_fee > 0 {
-        owner_fee = owner_fee
-            .checked_sub(host_fee)
-            .ok_or(LendingError::MathOverflow)?;
-        spl_token_transfer(TokenTransferParams {
-            source: source_liquidity_info.clone(),
-            destination: host_fee_receiver_info.clone(),
-            amount: host_fee,
-            authority: lending_market_authority_info.clone(),
-            authority_signer_seeds,
-            token_program: token_program_id.clone(),
-        })?;
-    }
-
-    if owner_fee > 0 {
-        spl_token_transfer(TokenTransferParams {
-            source: source_liquidity_info.clone(),
-            destination: reserve_liquidity_fee_receiver_info.clone(),
-            amount: owner_fee,
-            authority: lending_market_authority_info.clone(),
-            authority_signer_seeds,
-            token_program: token_program_id.clone(),
-        })?;
-    }
-
-    Ok(())
-}
-
-#[inline(never)] // avoid stack frame limit
 fn process_withdraw_obligation_collateral_and_redeem_reserve_liquidity(
     program_id: &Pubkey,
     collateral_amount: u64,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
+    let account_info_iter = &mut accounts.iter().peekable();
     let reserve_collateral_info = next_account_info(account_info_iter)?;
     let user_collateral_info = next_account_info(account_info_iter)?;
     let reserve_info = next_account_info(account_info_iter)?;
@@ -2063,7 +1940,10 @@ fn process_withdraw_obligation_collateral_and_redeem_reserve_liquidity(
     let reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
     let obligation_owner_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
-    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let clock = &Clock::get()?;
+    if account_info_iter.peek().map(|a| a.key) == Some(&clock::ID) {
+        next_account_info(account_info_iter)?;
+    }
     let token_program_id = next_account_info(account_info_iter)?;
 
     let liquidity_amount = _withdraw_obligation_collateral(
@@ -2257,6 +2137,370 @@ fn process_redeem_fees(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
+
+    Ok(())
+}
+
+fn process_flash_borrow_reserve_liquidity(
+    program_id: &Pubkey,
+    liquidity_amount: u64,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let source_liquidity_info = next_account_info(account_info_iter)?;
+    let destination_liquidity_info = next_account_info(account_info_iter)?;
+    let reserve_info = next_account_info(account_info_iter)?;
+    let lending_market_info = next_account_info(account_info_iter)?;
+    let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let sysvar_info = next_account_info(account_info_iter)?;
+    let token_program_id = next_account_info(account_info_iter)?;
+    let clock = Clock::get()?;
+
+    _refresh_reserve_interest(program_id, reserve_info, &clock)?;
+    _flash_borrow_reserve_liquidity(
+        program_id,
+        liquidity_amount,
+        source_liquidity_info,
+        destination_liquidity_info,
+        reserve_info,
+        lending_market_info,
+        lending_market_authority_info,
+        sysvar_info,
+        token_program_id,
+    )?;
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn _flash_borrow_reserve_liquidity<'a>(
+    program_id: &Pubkey,
+    liquidity_amount: u64,
+    source_liquidity_info: &AccountInfo<'a>,
+    destination_liquidity_info: &AccountInfo<'a>,
+    reserve_info: &AccountInfo<'a>,
+    lending_market_info: &AccountInfo<'a>,
+    lending_market_authority_info: &AccountInfo<'a>,
+    sysvar_info: &AccountInfo<'a>,
+    token_program_id: &AccountInfo<'a>,
+) -> ProgramResult {
+    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    if lending_market_info.owner != program_id {
+        msg!("Lending market provided is not owned by the lending program");
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &lending_market.token_program_id != token_program_id.key {
+        msg!("Lending market token program does not match the token program provided");
+        return Err(LendingError::InvalidTokenProgram.into());
+    }
+    let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
+    if reserve_info.owner != program_id {
+        msg!("Reserve provided is not owned by the lending program");
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &reserve.lending_market != lending_market_info.key {
+        msg!("Reserve lending market does not match the lending market provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &reserve.liquidity.supply_pubkey != source_liquidity_info.key {
+        msg!("Borrow reserve liquidity supply must be used as the source liquidity provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &reserve.liquidity.supply_pubkey == destination_liquidity_info.key {
+        msg!(
+            "Borrow reserve liquidity supply cannot be used as the destination liquidity provided"
+        );
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    let authority_signer_seeds = &[
+        lending_market_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+    let lending_market_authority_pubkey =
+        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
+    if &lending_market_authority_pubkey != lending_market_authority_info.key {
+        msg!(
+            "Derived lending market authority {} does not match the lending market authority provided {}",
+            &lending_market_authority_pubkey.to_string(),
+            &lending_market_authority_info.key.to_string(),
+        );
+        return Err(LendingError::InvalidMarketAuthority.into());
+    }
+
+    if reserve.config.fees.flash_loan_fee_wad == u64::MAX {
+        msg!("Flash loans are disabled for this reserve");
+        return Err(LendingError::FlashLoansDisabled.into());
+    }
+
+    if Decimal::from(liquidity_amount)
+        .try_add(reserve.liquidity.borrowed_amount_wads)?
+        .try_floor_u64()?
+        > reserve.config.borrow_limit
+    {
+        msg!("Cannot borrow above the borrow limit");
+        return Err(LendingError::InvalidAmount.into());
+    }
+
+    // Make sure this isnt a cpi call
+    let current_index = load_current_index_checked(sysvar_info)? as usize;
+    if is_cpi_call(program_id, current_index, sysvar_info)? {
+        msg!("Flash Borrow was called via CPI!");
+        return Err(LendingError::FlashBorrowCpi.into());
+    }
+
+    // Find and validate the flash repay instruction.
+    //
+    // 1. Ensure the instruction is for this program
+    // 2. Ensure the instruction can be unpacked into a LendingInstruction
+    // 3. Ensure that the reserve for the repay matches the borrow
+    // 4. Ensure that there are no other flash instructions in the rest of the transaction
+    // 5. Ensure that the repay amount matches the borrow amount
+    //
+    // If all of these conditions are not met, the flash borrow fails.
+    let mut i = current_index;
+    let mut found_repay_ix = false;
+
+    loop {
+        i += 1;
+
+        let ixn = match load_instruction_at_checked(i, sysvar_info) {
+            Ok(ix) => ix,
+            Err(ProgramError::InvalidArgument) => break, // out of bounds
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        if ixn.program_id != *program_id {
+            continue;
+        }
+
+        let unpacked = LendingInstruction::unpack(ixn.data.as_slice())?;
+        match unpacked {
+            LendingInstruction::FlashRepayReserveLiquidity {
+                liquidity_amount: repay_liquidity_amount,
+                borrow_instruction_index,
+            } => {
+                if found_repay_ix {
+                    msg!("Multiple flash repays not allowed");
+                    return Err(LendingError::MultipleFlashBorrows.into());
+                }
+                if ixn.accounts[4].pubkey != *reserve_info.key {
+                    msg!("Invalid reserve account on flash repay");
+                    return Err(LendingError::InvalidFlashRepay.into());
+                }
+                if repay_liquidity_amount != liquidity_amount {
+                    msg!("Liquidity amount for flash repay doesn't match borrow");
+                    return Err(LendingError::InvalidFlashRepay.into());
+                }
+                if (borrow_instruction_index as usize) != current_index {
+                    msg!("Borrow instruction index {} for flash repay doesn't match current index {}", borrow_instruction_index, current_index);
+                    return Err(LendingError::InvalidFlashRepay.into());
+                }
+
+                found_repay_ix = true;
+            }
+            LendingInstruction::FlashBorrowReserveLiquidity { .. } => {
+                msg!("Multiple flash borrows not allowed");
+                return Err(LendingError::MultipleFlashBorrows.into());
+            }
+            _ => (),
+        };
+    }
+
+    if !found_repay_ix {
+        msg!("No flash repay found");
+        return Err(LendingError::NoFlashRepayFound.into());
+    }
+
+    reserve.liquidity.borrow(Decimal::from(liquidity_amount))?;
+    reserve.last_update.mark_stale();
+    Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
+
+    spl_token_transfer(TokenTransferParams {
+        source: source_liquidity_info.clone(),
+        destination: destination_liquidity_info.clone(),
+        amount: liquidity_amount,
+        authority: lending_market_authority_info.clone(),
+        authority_signer_seeds,
+        token_program: token_program_id.clone(),
+    })?;
+
+    Ok(())
+}
+
+fn process_flash_repay_reserve_liquidity(
+    program_id: &Pubkey,
+    liquidity_amount: u64,
+    borrow_instruction_index: u8,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let source_liquidity_info = next_account_info(account_info_iter)?;
+    let destination_liquidity_info = next_account_info(account_info_iter)?;
+    let reserve_liquidity_fee_receiver_info = next_account_info(account_info_iter)?;
+    let host_fee_receiver_info = next_account_info(account_info_iter)?;
+    let reserve_info = next_account_info(account_info_iter)?;
+    let lending_market_info = next_account_info(account_info_iter)?;
+    let user_transfer_authority_info = next_account_info(account_info_iter)?;
+    let sysvar_info = next_account_info(account_info_iter)?;
+    let token_program_id = next_account_info(account_info_iter)?;
+
+    _flash_repay_reserve_liquidity(
+        program_id,
+        liquidity_amount,
+        borrow_instruction_index,
+        source_liquidity_info,
+        destination_liquidity_info,
+        reserve_liquidity_fee_receiver_info,
+        host_fee_receiver_info,
+        reserve_info,
+        lending_market_info,
+        user_transfer_authority_info,
+        sysvar_info,
+        token_program_id,
+    )?;
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn _flash_repay_reserve_liquidity<'a>(
+    program_id: &Pubkey,
+    liquidity_amount: u64,
+    borrow_instruction_index: u8,
+    source_liquidity_info: &AccountInfo<'a>,
+    destination_liquidity_info: &AccountInfo<'a>,
+    reserve_liquidity_fee_receiver_info: &AccountInfo<'a>,
+    host_fee_receiver_info: &AccountInfo<'a>,
+    reserve_info: &AccountInfo<'a>,
+    lending_market_info: &AccountInfo<'a>,
+    user_transfer_authority_info: &AccountInfo<'a>,
+    sysvar_info: &AccountInfo<'a>,
+    token_program_id: &AccountInfo<'a>,
+) -> ProgramResult {
+    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    if lending_market_info.owner != program_id {
+        msg!("Lending market provided is not owned by the lending program");
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &lending_market.token_program_id != token_program_id.key {
+        msg!("Lending market token program does not match the token program provided");
+        return Err(LendingError::InvalidTokenProgram.into());
+    }
+    let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
+    if reserve_info.owner != program_id {
+        msg!("Reserve provided is not owned by the lending program");
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &reserve.lending_market != lending_market_info.key {
+        msg!("Reserve lending market does not match the lending market provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &reserve.liquidity.supply_pubkey != destination_liquidity_info.key {
+        msg!("Reserve liquidity supply does not match the reserve liquidity supply provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &reserve.liquidity.supply_pubkey == source_liquidity_info.key {
+        msg!("Reserve liquidity supply cannot be used as the source liquidity provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &reserve.config.fee_receiver != reserve_liquidity_fee_receiver_info.key {
+        msg!("Reserve liquidity fee receiver does not match the reserve liquidity fee receiver provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    let flash_loan_amount = liquidity_amount;
+
+    let flash_loan_amount_decimal = Decimal::from(flash_loan_amount);
+    let (origination_fee, host_fee) = reserve
+        .config
+        .fees
+        .calculate_flash_loan_fees(flash_loan_amount_decimal)?;
+
+    // Make sure this isnt a cpi call
+    let current_index = load_current_index_checked(sysvar_info)? as usize;
+    if is_cpi_call(program_id, current_index, sysvar_info)? {
+        msg!("Flash Repay was called via CPI!");
+        return Err(LendingError::FlashRepayCpi.into());
+    }
+
+    // validate flash borrow
+    if (borrow_instruction_index as usize) > current_index {
+        msg!(
+            "Flash repay: borrow instruction index {} has to be less than current index {}",
+            borrow_instruction_index,
+            current_index
+        );
+        return Err(LendingError::InvalidFlashRepay.into());
+    }
+
+    let ixn = load_instruction_at_checked(borrow_instruction_index as usize, sysvar_info)?;
+    if ixn.program_id != *program_id {
+        msg!(
+            "Flash repay: supplied instruction index {} doesn't belong to program id {}",
+            borrow_instruction_index,
+            *program_id
+        );
+        return Err(LendingError::InvalidFlashRepay.into());
+    }
+
+    let unpacked = LendingInstruction::unpack(ixn.data.as_slice())?;
+    match unpacked {
+        LendingInstruction::FlashBorrowReserveLiquidity {
+            liquidity_amount: borrow_liquidity_amount,
+        } => {
+            // re-check everything here out of paranoia
+            if ixn.accounts[2].pubkey != *reserve_info.key {
+                msg!("Invalid reserve account on flash repay");
+                return Err(LendingError::InvalidFlashRepay.into());
+            }
+
+            if liquidity_amount != borrow_liquidity_amount {
+                msg!("Liquidity amount for flash repay doesn't match borrow");
+                return Err(LendingError::InvalidFlashRepay.into());
+            }
+        }
+        _ => {
+            msg!("Flash repay: Supplied borrow instruction index is not a flash borrow");
+            return Err(LendingError::InvalidFlashRepay.into());
+        }
+    };
+
+    reserve
+        .liquidity
+        .repay(flash_loan_amount, flash_loan_amount_decimal)?;
+    reserve.last_update.mark_stale();
+    Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
+
+    spl_token_transfer(TokenTransferParams {
+        source: source_liquidity_info.clone(),
+        destination: destination_liquidity_info.clone(),
+        amount: flash_loan_amount,
+        authority: user_transfer_authority_info.clone(),
+        authority_signer_seeds: &[],
+        token_program: token_program_id.clone(),
+    })?;
+
+    if host_fee > 0 {
+        spl_token_transfer(TokenTransferParams {
+            source: source_liquidity_info.clone(),
+            destination: host_fee_receiver_info.clone(),
+            amount: host_fee,
+            authority: user_transfer_authority_info.clone(),
+            authority_signer_seeds: &[],
+            token_program: token_program_id.clone(),
+        })?;
+    }
+
+    if origination_fee > 0 {
+        spl_token_transfer(TokenTransferParams {
+            source: source_liquidity_info.clone(),
+            destination: reserve_liquidity_fee_receiver_info.clone(),
+            amount: origination_fee,
+            authority: user_transfer_authority_info.clone(),
+            authority_signer_seeds: &[],
+            token_program: token_program_id.clone(),
+        })?;
+    }
 
     Ok(())
 }
@@ -2574,6 +2818,7 @@ fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult {
         &[source, destination, authority, token_program],
         authority_signer_seeds,
     );
+
     result.map_err(|_| LendingError::TokenTransferFailed.into())
 }
 
@@ -2745,6 +2990,35 @@ fn validate_switchboard_keys(
         return Err(LendingError::InvalidOracleConfig.into());
     }
     Ok(())
+}
+
+fn is_cpi_call(
+    program_id: &Pubkey,
+    current_index: usize,
+    sysvar_info: &AccountInfo,
+) -> Result<bool, ProgramError> {
+    // say the tx looks like:
+    // ix 0
+    //   - ix a
+    //   - ix b
+    //   - ix c
+    // ix 1
+    // and we call "load_current_index_checked" from b, we will get 0. And when we
+    // load_instruction_at_checked(0), we will get ix 0.
+    // tldr; instructions sysvar only stores top-level instructions, never CPI instructions.
+    let current_ixn = load_instruction_at_checked(current_index, sysvar_info)?;
+
+    // the current ixn must match the flash_* ix. otherwise, it's a CPI. Comparing program_ids is a
+    // cheaper way of verifying this property, bc token-lending doesn't allow re-entrancy anywhere.
+    if *program_id != current_ixn.program_id {
+        return Ok(true);
+    }
+
+    if get_stack_height() > TRANSACTION_LEVEL_STACK_HEIGHT {
+        return Ok(true);
+    }
+
+    Ok(false)
 }
 
 struct TokenInitializeMintParams<'a: 'b, 'b> {

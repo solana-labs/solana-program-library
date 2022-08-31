@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+pub mod flash_loan_proxy;
 pub mod flash_loan_receiver;
 pub mod genesis;
 

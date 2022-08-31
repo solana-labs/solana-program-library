@@ -167,6 +167,26 @@ pub enum LendingError {
     /// Insufficent protocol fees to redeem or no liquidity availible to process redeem
     #[error("Insufficent protocol fees to claim or no liquidity availible")]
     InsufficientProtocolFeesToRedeem,
+    /// No cpi flash borrows allowed
+    #[error("No cpi flash borrows allowed")]
+    FlashBorrowCpi,
+    /// No corresponding repay found for flash borrow
+    #[error("No corresponding repay found for flash borrow")]
+    NoFlashRepayFound,
+    /// Invalid flash repay found for borrow
+    #[error("Invalid repay found")]
+    InvalidFlashRepay,
+
+    // 50
+    /// No cpi flash repays allowed
+    #[error("No cpi flash repays allowed")]
+    FlashRepayCpi,
+    /// Multiple flash borrows not allowed in the same transaction
+    #[error("Multiple flash borrows not allowed in the same transaction")]
+    MultipleFlashBorrows,
+    /// Flash loans are disabled for this reserve
+    #[error("Flash loans are disabled for this reserve")]
+    FlashLoansDisabled,
     /// Deprecated instruction
     #[error("Instruction is deprecated")]
     DeprecatedInstruction,

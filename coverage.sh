@@ -54,7 +54,7 @@ for program in ${programs[@]}; do
   (
     set -ex
     cd $program
-    cargo +"$rust_nightly" test --features test-bpf --target-dir $here/target/cov
+    cargo +"$rust_nightly" test --features test-bpf --target-dir $here/target/cov -- --skip fail_repay_from_diff_reserve
   )
 done
 

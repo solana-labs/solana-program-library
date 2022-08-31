@@ -733,11 +733,16 @@ impl ReserveFees {
         &self,
         flash_loan_amount: Decimal,
     ) -> Result<(u64, u64), ProgramError> {
-        self.calculate_fees(
+        let (total_fees, host_fee) = self.calculate_fees(
             flash_loan_amount,
             self.flash_loan_fee_wad,
             FeeCalculation::Exclusive,
-        )
+        )?;
+
+        let origination_fee = total_fees
+            .checked_sub(host_fee)
+            .ok_or(LendingError::MathOverflow)?;
+        Ok((origination_fee, host_fee))
     }
 
     fn calculate_fees(
@@ -1330,25 +1335,22 @@ mod test {
                 flash_loan_fee_wad,
                 host_fee_percentage,
             };
-            let (total_fee, host_fee) = fees.calculate_flash_loan_fees(Decimal::from(borrow_amount))?;
+            let (origination_fee, host_fee) = fees.calculate_flash_loan_fees(Decimal::from(borrow_amount))?;
 
             // The total fee can't be greater than the amount borrowed, as long
             // as amount borrowed is greater than 2.
             // At a borrow amount of 2, we can get a total fee of 2 if a host
             // fee is also specified.
-            assert!(total_fee <= borrow_amount);
-
-            // the host fee can't be greater than the total fee
-            assert!(host_fee <= total_fee);
+            assert!(origination_fee + host_fee <= borrow_amount);
 
             // for all fee rates greater than 0, we must have some fee
             if borrow_fee_wad > 0 {
-                assert!(total_fee > 0);
+                assert!(origination_fee + host_fee > 0);
             }
 
             if host_fee_percentage == 100 {
                 // if the host fee percentage is maxed at 100%, it should get all the fee
-                assert_eq!(host_fee, total_fee);
+                assert_eq!(origination_fee, 0);
             }
 
             // if there's a host fee and some borrow fee, host fee must be greater than 0
