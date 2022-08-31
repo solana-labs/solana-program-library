@@ -13,18 +13,19 @@ pub enum TokenUpgradeInstruction {
     ///
     ///   0. `[writeable]` Source token account to burn from
     ///   1. `[writeable]` Source token mint
-    ///   2. `[writeable]` Destination token upgrade account, owned by:
+    ///   2. `[writeable]` Bag of destination tokens held by or delegated to program escrow:
     ///       `get_token_upgrade_authority_address(source_mint, destination_mint, program_id)`
     ///   3. `[writeable]` Destination token account to transfer into
     ///   4. `[]` Destination token mint
-    ///   5. `[signer]` Source token account transfer authority (owner or delegate)
-    ///   6. `[]` PDA owner of token upgrade account, given by:
+    ///   5. `[]` Transfer authority (owner or delegate) of destination token bag held in program escrow, must be:
     ///       `get_token_upgrade_authority_address(source_mint, destination_mint, program_id)`
-    ///   7. `[]` SPL Token program for source mint
-    ///   8. `[]` SPL Token program for destination mint
+    ///   6. `[]` SPL Token program for source mint
+    ///   7. `[]` SPL Token program for destination mint
+    ///   8. `[]` Source token account transfer authority (owner or delegate)
+    ///   9. ..9+M `[signer]` M multisig signer accounts
     ///
     /// Data expected by this instruction:
     ///   None
     ///
-    UpgradeTokens,
+    Exchange,
 }
