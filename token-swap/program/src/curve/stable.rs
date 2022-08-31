@@ -388,7 +388,6 @@ mod tests {
         RoundDirection, INITIAL_SWAP_POOL_AMOUNT,
     };
     use proptest::prelude::*;
-    use sim::StableSwapModel;
 
     #[test]
     fn initial_pool_amount() {
@@ -435,54 +434,6 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(result.source_amount_swapped, 0);
         assert_eq!(result.destination_amount_swapped, 0);
-    }
-
-    proptest! {
-        #[test]
-        fn swap_no_fee(
-            swap_source_amount in 100..1_000_000_000_000_000_000u128,
-            swap_destination_amount in 100..1_000_000_000_000_000_000u128,
-            source_amount in 100..100_000_000_000u128,
-            amp in 1..150u64
-        ) {
-            prop_assume!(source_amount < swap_source_amount);
-
-            let curve = StableCurve { amp };
-
-            let model: StableSwapModel = StableSwapModel::new(
-                curve.amp.into(),
-                vec![swap_source_amount, swap_destination_amount],
-                N_COINS,
-            );
-
-            let result = curve.swap_without_fees(
-                source_amount,
-                swap_source_amount,
-                swap_destination_amount,
-                TradeDirection::AtoB,
-            );
-
-            let result = result.unwrap();
-            let sim_result = model.sim_exchange(0, 1, source_amount);
-
-            let diff =
-                (sim_result as i128 - result.destination_amount_swapped as i128).abs();
-
-            // tolerate a difference of 2 because of the ceiling during calculation
-            let tolerance = std::cmp::max(2, sim_result as i128 / 1_000_000_000);
-
-            assert!(
-                diff <= tolerance,
-                "result={}, sim_result={}, amp={}, source_amount={}, swap_source_amount={}, swap_destination_amount={}, diff={}",
-                result.destination_amount_swapped,
-                sim_result,
-                amp,
-                source_amount,
-                swap_source_amount,
-                swap_destination_amount,
-                diff
-            );
-        }
     }
 
     #[test]
