@@ -13,7 +13,6 @@ use {
             constant_product::ConstantProductCurve,
             fees::Fees,
             offset::OffsetCurve,
-            stable::StableCurve,
         },
         error::SwapError,
         instruction::{
@@ -465,7 +464,6 @@ fn get_swap_curve(curve_type: CurveType) -> SwapCurve {
             CurveType::ConstantPrice => Arc::new(ConstantPriceCurve {
                 token_b_price: 10_000_000,
             }),
-            CurveType::Stable => Arc::new(StableCurve { amp: 100 }),
             CurveType::Offset => Arc::new(OffsetCurve {
                 token_b_offset: 100_000_000_000,
             }),

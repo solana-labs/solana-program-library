@@ -282,7 +282,7 @@ impl Pack for SwapV1 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::curve::stable::StableCurve;
+    use crate::curve::offset::OffsetCurve;
 
     use std::convert::TryInto;
 
@@ -307,8 +307,10 @@ mod tests {
     const TEST_POOL_FEE_ACCOUNT: Pubkey = Pubkey::new_from_array([7u8; 32]);
 
     const TEST_CURVE_TYPE: u8 = 2;
-    const TEST_AMP: u64 = 1;
-    const TEST_CURVE: StableCurve = StableCurve { amp: TEST_AMP };
+    const TEST_TOKEN_B_OFFSET: u64 = 1_000_000_000;
+    const TEST_CURVE: OffsetCurve = OffsetCurve {
+        token_b_offset: TEST_TOKEN_B_OFFSET,
+    };
 
     #[test]
     fn swap_version_pack() {
@@ -393,7 +395,7 @@ mod tests {
         packed.extend_from_slice(&TEST_FEES.host_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&TEST_FEES.host_fee_denominator.to_le_bytes());
         packed.push(TEST_CURVE_TYPE);
-        packed.extend_from_slice(&TEST_AMP.to_le_bytes());
+        packed.extend_from_slice(&TEST_TOKEN_B_OFFSET.to_le_bytes());
         packed.extend_from_slice(&[0u8; 24]);
         let unpacked = SwapV1::unpack(&packed).unwrap();
         assert_eq!(swap_info, unpacked);
