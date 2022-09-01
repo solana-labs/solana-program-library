@@ -3,7 +3,11 @@
 set -e
 cd "$(dirname "$0")/.."
 
-source ./ci/rust-version.sh nightly
+# honggfuzz uses a newer version of arbitrary, which requires a newer version of Rust
+# Once SPL upgrades to Rust 1.63.0, look into removing version specification
+RUST_STABLE_VERSION=1.63.0 source ./ci/rust-version.sh stable
+
+cargo +"$rust_stable" install honggfuzz --version=0.5.55 --force || true
 
 usage() {
   exitcode=0
@@ -25,10 +29,7 @@ if [[ -z $2 ]]; then
   usage "No runtime provided"
 fi
 
-# Temporary workaround using RUSTFLAGS and rust nightly due to:
-# https://github.com/rust-fuzz/honggfuzz-rs/issues/61
-# Once the issue is resolved, remove the RUSTFLAGS and nightly usage everywhere.
-RUSTFLAGS="-Znew-llvm-pass-manager=no" HFUZZ_RUN_ARGS="--run_time $run_time --exit_upon_crash" cargo +"$rust_nightly" hfuzz run $fuzz_target
+HFUZZ_RUN_ARGS="--run_time $run_time --exit_upon_crash" cargo +"$rust_stable" hfuzz run $fuzz_target
 
 # Until https://github.com/rust-fuzz/honggfuzz-rs/issues/16 is resolved,
 # hfuzz does not return an error code on crash, so look for a crash artifact
