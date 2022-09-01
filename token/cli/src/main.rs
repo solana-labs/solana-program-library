@@ -104,12 +104,6 @@ pub const MINT_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
     help: "Address of mint that token account is associated with. Required by --sign-only",
 };
 
-pub const ACCOUNT_OR_MIN_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
-    name: "account-or-mint-address",
-    long: "account-or-mint-address",
-    help: "Either a token account address or mint address",
-};
-
 pub const MINT_DECIMALS_ARG: ArgConstant<'static> = ArgConstant {
     name: "mint_decimals",
     long: "mint-decimals",
@@ -184,15 +178,6 @@ pub fn owner_keypair_arg_with_value_name<'a, 'b>(value_name: &'static str) -> Ar
 
 pub fn owner_keypair_arg<'a, 'b>() -> Arg<'a, 'b> {
     owner_keypair_arg_with_value_name("OWNER_KEYPAIR")
-}
-
-pub fn account_or_mint_address_arg<'a, 'b>() -> Arg<'a, 'b> {
-    Arg::with_name(ACCOUNT_OR_MIN_ADDRESS_ARG.name)
-        .long(ACCOUNT_OR_MIN_ADDRESS_ARG.long)
-        .takes_value(true)
-        .value_name("ACCOUNT_OR_MINT_ADDRESS")
-        .validator(is_valid_pubkey)
-        .help(ACCOUNT_OR_MIN_ADDRESS_ARG.help)
 }
 
 pub fn mint_address_arg<'a, 'b>() -> Arg<'a, 'b> {
@@ -2044,32 +2029,6 @@ fn parse_ui_extension(ui_extension: &UiExtension) -> ExtensionType {
     }
 }
 
-//Takes mint or token account pubkey. Returns token account pubkey
-async fn parse_mint_or_token_account(
-    program_id: &Pubkey,
-    mint_or_token_account_pubkey: Pubkey,
-    owner: &Pubkey,
-    config: &Config<'_>,
-) -> Result<Pubkey, Error> {
-    let get_mint = config
-        .get_mint_info(&mint_or_token_account_pubkey, None)
-        .await;
-    if let Err(error) = get_mint {
-        if !error.to_string().starts_with("Could not find mint account") {
-            return Err(error);
-        }
-        // It's a token account
-        Ok(mint_or_token_account_pubkey)
-    } else {
-        // It's a mint account
-        Ok(get_associated_token_address_with_program_id(
-            owner,
-            &mint_or_token_account_pubkey,
-            program_id,
-        ))
-    }
-}
-
 struct SignOnlyNeedsFullMintSpec {}
 impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
@@ -2954,27 +2913,39 @@ fn app<'a, 'b>(
             SubCommand::with_name(CommandName::EnableRequiredTransferMemos.into())
                 .about("Enable required transfer memos for token account")
                 .arg(
-                    account_or_mint_address_arg()
-                        .index(1)
+                    Arg::with_name("account")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
+                        .index(1)
                         .required(true)
+                        .help("The address of the token account to enable required transfer memos")
                 )
                 .arg(
                     owner_address_arg()
                 )
+                .arg(multisig_signer_arg())
+                .nonce_args(true)
+                .offline_args()
         )
         .subcommand(
             SubCommand::with_name(CommandName::DisableRequiredTransferMemos.into())
                 .about("Disable required transfer memos for token account")
                 .arg(
-                    account_or_mint_address_arg()
-                        .index(1)
+                    Arg::with_name("account")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
+                        .index(1)
                         .required(true)
+                        .help("The address of the token account to disable required transfer memos"),
                 )
                 .arg(
                     owner_address_arg()
                 )
+                .arg(multisig_signer_arg())
+                .nonce_args(true)
+                .offline_args()
         )
 }
 
@@ -3485,47 +3456,31 @@ async fn process_command<'a>(
             command_sync_native(address, bulk_signers, config).await
         }
         (CommandName::EnableRequiredTransferMemos, arg_matches) => {
-            let program_id = config.program_id;
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             if !bulk_signers.contains(&owner_signer) {
                 bulk_signers.push(owner_signer);
             }
-            // Since account-or-mint-address is required argument it will always be present
-            let token_account_or_mint_pubkey = config.pubkey_or_default(
+            // Since account is required argument it will always be present
+            let token_account = config.pubkey_or_default(
                 arg_matches,
-                "account-or-mint-address",
+                "account",
                 &mut wallet_manager,
             );
-            let token_account = parse_mint_or_token_account(
-                &program_id,
-                token_account_or_mint_pubkey,
-                &owner,
-                config,
-            )
-            .await?;
             command_required_transfer_memos(token_account, owner, bulk_signers, true, config).await
         }
         (CommandName::DisableRequiredTransferMemos, arg_matches) => {
-            let program_id = config.program_id;
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             if !bulk_signers.contains(&owner_signer) {
                 bulk_signers.push(owner_signer);
             }
-            // Since account-or-mint-address is required argument it will always be present
-            let token_account_or_mint_pubkey = config.pubkey_or_default(
+            // Since account is required argument it will always be present
+            let token_account = config.pubkey_or_default(
                 arg_matches,
-                "account-or-mint-address",
+                "account",
                 &mut wallet_manager,
             );
-            let token_account = parse_mint_or_token_account(
-                &program_id,
-                token_account_or_mint_pubkey,
-                &owner,
-                config,
-            )
-            .await?;
             command_required_transfer_memos(token_account, owner, bulk_signers, false, config).await
         }
     }
@@ -4629,19 +4584,18 @@ mod tests {
         let config = test_config(&test_validator, &payer, &program_id);
         let token = create_token(&config, &payer).await;
         let token_account = create_associated_account(&config, &payer, token).await;
-        // Enabling required transfer memos using mint account as argument
         let result = process_test_command(
             &config,
             &payer,
             &[
                 "spl-token",
                 CommandName::EnableRequiredTransferMemos.into(),
-                &token.to_string(),
+                &token_account.to_string(),
             ],
         )
         .await;
         result.unwrap();
-        // Disabling required transfer memos using token account as argument
+        // TODO Check if extension exists on account
         let result = process_test_command(
             &config,
             &payer,
@@ -4653,5 +4607,6 @@ mod tests {
         )
         .await;
         result.unwrap();
+        // TODO Check if extension disappeared on account
     }
 }
