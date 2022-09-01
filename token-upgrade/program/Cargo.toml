@@ -9,17 +9,22 @@ edition = "2018"
 
 [features]
 no-entrypoint = []
-test-bpf = []
+test-sbf = []
 
 [dependencies]
-bytemuck = { version = "1.7.2", features = ["derive"] }
 num-derive = "0.3"
 num-traits = "0.2"
 num_enum = "0.5.4"
 solana-program = "1.11.6"
-spl-token = { version = "3.5", path = "../../token/program", features = ["no-entrypoint"] }
 spl-token-2022 = { version = "0.4", path = "../../token/program-2022", features = ["no-entrypoint"] }
 thiserror = "1.0"
+
+[dev-dependencies]
+solana-program-test = "1.11.6"
+solana-sdk = "1.11.6"
+spl-token = { version = "3.5", path = "../../token/program", features = ["no-entrypoint"] }
+spl-token-client = { version = "0.1", path = "../../token/client" }
+test-case = "2.2"
 
 [lib]
 crate-type = ["cdylib", "lib"]

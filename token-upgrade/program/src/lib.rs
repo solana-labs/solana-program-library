@@ -17,44 +17,44 @@ const TOKEN_UPGRADE_AUTHORITY_SEED: &[u8] = b"token-account-authority";
 
 /// Get the upgrade token account authority
 pub fn get_token_upgrade_authority_address(
-    source_mint: &Pubkey,
-    destination_mint: &Pubkey,
+    original_mint: &Pubkey,
+    new_mint: &Pubkey,
     program_id: &Pubkey,
 ) -> Pubkey {
-    get_token_upgrade_authority_address_and_bump_seed(source_mint, destination_mint, program_id).0
+    get_token_upgrade_authority_address_and_bump_seed(original_mint, new_mint, program_id).0
 }
 
 pub(crate) fn get_token_upgrade_authority_address_and_bump_seed(
-    source_mint: &Pubkey,
-    destination_mint: &Pubkey,
+    original_mint: &Pubkey,
+    new_mint: &Pubkey,
     program_id: &Pubkey,
 ) -> (Pubkey, u8) {
     Pubkey::find_program_address(
-        &get_token_upgrade_authority_seeds(source_mint, destination_mint),
+        &get_token_upgrade_authority_seeds(original_mint, new_mint),
         program_id,
     )
 }
 
 pub(crate) fn get_token_upgrade_authority_seeds<'a>(
-    source_mint: &'a Pubkey,
-    destination_mint: &'a Pubkey,
+    original_mint: &'a Pubkey,
+    new_mint: &'a Pubkey,
 ) -> [&'a [u8]; 3] {
     [
         TOKEN_UPGRADE_AUTHORITY_SEED,
-        source_mint.as_ref(),
-        destination_mint.as_ref(),
+        original_mint.as_ref(),
+        new_mint.as_ref(),
     ]
 }
 
 pub(crate) fn get_token_upgrade_authority_signer_seeds<'a>(
-    source_mint: &'a Pubkey,
-    destination_mint: &'a Pubkey,
+    original_mint: &'a Pubkey,
+    new_mint: &'a Pubkey,
     bump_seed: &'a [u8],
 ) -> [&'a [u8]; 4] {
     [
         TOKEN_UPGRADE_AUTHORITY_SEED,
-        source_mint.as_ref(),
-        destination_mint.as_ref(),
+        original_mint.as_ref(),
+        new_mint.as_ref(),
         bump_seed,
     ]
 }
