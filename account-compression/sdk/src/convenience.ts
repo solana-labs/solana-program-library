@@ -1,6 +1,6 @@
 import { PublicKey, TransactionInstruction, SystemProgram, Connection } from "@solana/web3.js";
 import { PROGRAM_ID } from "./generated";
-import { getConcurrentMerkleTreeSize } from "./accounts";
+import { getConcurrentMerkleTreeAccountSize } from "./accounts";
 
 export async function createAllocTreeIx(
     connection: Connection,
@@ -10,7 +10,7 @@ export async function createAllocTreeIx(
     payer: PublicKey,
     merkleRoll: PublicKey,
 ): Promise<TransactionInstruction> {
-    const requiredSpace = getConcurrentMerkleTreeSize(
+    const requiredSpace = getConcurrentMerkleTreeAccountSize(
         maxDepth,
         maxBufferSize,
         canopyDepth ?? 0

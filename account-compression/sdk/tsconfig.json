@@ -5,6 +5,5 @@
     "module": "es2022",
     "target": "es2019",
     "outDir": "dist/esm/",
-    "rootDir": "./src"
   }
 }
