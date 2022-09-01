@@ -1,4 +1,4 @@
-// Mark this test as BPF-only due to current `ProgramTest` limitations when CPIing into the system program
+// Mark this test as SBF-only due to current `ProgramTest` limitations when CPIing into the system program
 #![cfg(feature = "test-sbf")]
 
 use {
@@ -94,11 +94,12 @@ async fn success(original_program_id: Pubkey, new_program_id: Pubkey) {
 
     let wallet = Keypair::new();
     let mint_authority = Keypair::new();
+    let mint_authority_pubkey = mint_authority.pubkey();
 
     let decimals = 2;
     let original_token = setup_mint(
         &original_program_id,
-        &mint_authority.pubkey(),
+        &mint_authority_pubkey,
         decimals,
         payer.clone(),
         client.clone(),
@@ -106,7 +107,7 @@ async fn success(original_program_id: Pubkey, new_program_id: Pubkey) {
     .await;
     let new_token = setup_mint(
         &new_program_id,
-        &mint_authority.pubkey(),
+        &mint_authority_pubkey,
         decimals,
         payer.clone(),
         client.clone(),
@@ -125,7 +126,13 @@ async fn success(original_program_id: Pubkey, new_program_id: Pubkey) {
         .unwrap();
     let token_amount = 1_000_000_000_000;
     original_token
-        .mint_to(&original_account, &mint_authority, token_amount)
+        .mint_to(
+            &original_account,
+            &mint_authority_pubkey,
+            token_amount,
+            Some(decimals),
+            &[&mint_authority],
+        )
         .await
         .unwrap();
 
@@ -138,7 +145,13 @@ async fn success(original_program_id: Pubkey, new_program_id: Pubkey) {
         .await
         .unwrap();
     new_token
-        .mint_to(&escrow_account, &mint_authority, token_amount)
+        .mint_to(
+            &escrow_account,
+            &mint_authority_pubkey,
+            token_amount,
+            Some(decimals),
+            &[&mint_authority],
+        )
         .await
         .unwrap();
 
@@ -188,11 +201,12 @@ async fn fail_incorrect_escrow_derivation(original_program_id: Pubkey, new_progr
 
     let wallet = Keypair::new();
     let mint_authority = Keypair::new();
+    let mint_authority_pubkey = mint_authority.pubkey();
 
     let decimals = 2;
     let original_token = setup_mint(
         &original_program_id,
-        &mint_authority.pubkey(),
+        &mint_authority_pubkey,
         decimals,
         payer.clone(),
         client.clone(),
@@ -200,7 +214,7 @@ async fn fail_incorrect_escrow_derivation(original_program_id: Pubkey, new_progr
     .await;
     let new_token = setup_mint(
         &new_program_id,
-        &mint_authority.pubkey(),
+        &mint_authority_pubkey,
         decimals,
         payer.clone(),
         client.clone(),
@@ -220,7 +234,13 @@ async fn fail_incorrect_escrow_derivation(original_program_id: Pubkey, new_progr
         .unwrap();
     let token_amount = 1_000_000_000_000;
     original_token
-        .mint_to(&original_account, &mint_authority, token_amount)
+        .mint_to(
+            &original_account,
+            &mint_authority_pubkey,
+            token_amount,
+            Some(decimals),
+            &[&mint_authority],
+        )
         .await
         .unwrap();
 
@@ -233,7 +253,13 @@ async fn fail_incorrect_escrow_derivation(original_program_id: Pubkey, new_progr
         .await
         .unwrap();
     new_token
-        .mint_to(&escrow_account, &mint_authority, token_amount)
+        .mint_to(
+            &escrow_account,
+            &mint_authority_pubkey,
+            token_amount,
+            Some(decimals),
+            &[&mint_authority],
+        )
         .await
         .unwrap();
 
