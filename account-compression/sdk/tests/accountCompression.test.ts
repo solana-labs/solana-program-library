@@ -6,7 +6,6 @@ import {
   Signer,
   Keypair,
   Transaction,
-  Connection as web3Connection,
   TransactionInstruction,
 } from "@solana/web3.js";
 import { assert } from "chai";
@@ -36,7 +35,7 @@ import {
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 
 /// Wait for a transaction of a certain id to confirm and optionally log its messages
-export async function logTx(provider: AnchorProvider, txId: string, verbose: boolean = true) {
+export async function confirmAndLogTx(provider: AnchorProvider, txId: string, verbose: boolean = true) {
   const tx = await provider.connection.confirmTransaction(txId, "confirmed");
   if (tx.value.err || verbose) {
     console.log(
@@ -81,7 +80,7 @@ export async function execute(
   return txid;
 }
 
-describe("SPL Compression", () => {
+describe("Account Compression", () => {
   // Configure the client to use the local cluster.
   let offChainTree: Tree;
   let splCMTKeypair: Keypair;
@@ -142,7 +141,7 @@ describe("SPL Compression", () => {
       splCMTKeypair,
     ]);
     if (canopyDepth) {
-      await logTx(provider, txId as string);
+      await confirmAndLogTx(provider, txId as string);
     }
 
     if (numLeaves) {
@@ -171,7 +170,7 @@ describe("SPL Compression", () => {
 
   beforeEach(async () => {
     payer = Keypair.generate();
-    connection = new web3Connection("http://localhost:8899", {
+    connection = new Connection("http://localhost:8899", {
       commitment: "confirmed",
     });
     const wallet = new NodeWallet(payer);
