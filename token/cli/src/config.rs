@@ -1,7 +1,7 @@
 use crate::{signers_of, Error, MULTISIG_SIGNER_ARG};
 use clap::ArgMatches;
 use solana_clap_utils::{
-    input_parsers::{pubkey_of, pubkey_of_signer, value_of},
+    input_parsers::{pubkey_of_signer, value_of},
     input_validators::normalize_to_url_if_moniker,
     keypair::{signer_from_path, signer_from_path_with_config, SignerFromPathConfig},
     nonce::{NONCE_ARG, NONCE_AUTHORITY_ARG},
@@ -43,12 +43,12 @@ pub(crate) struct Config<'a> {
 }
 
 impl<'a> Config<'a> {
-    pub(crate) fn new(
-        matches: &ArgMatches,
+    pub(crate) async fn new(
+        matches: &ArgMatches<'_>,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
         bulk_signers: &mut Vec<Arc<dyn Signer>>,
         multisigner_ids: &'a mut Vec<Pubkey>,
-    ) -> Self {
+    ) -> Config<'a> {
         let cli_config = if let Some(config_file) = matches.value_of("config_file") {
             solana_cli_config::Config::load(config_file).unwrap_or_else(|_| {
                 eprintln!("error: Could not find config file `{}`", config_file);
@@ -89,17 +89,18 @@ impl<'a> Config<'a> {
             program_client,
             websocket_url,
         )
+        .await
     }
 
-    pub(crate) fn new_with_clients_and_ws_url(
-        matches: &ArgMatches,
+    pub(crate) async fn new_with_clients_and_ws_url(
+        matches: &ArgMatches<'_>,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
         bulk_signers: &mut Vec<Arc<dyn Signer>>,
         multisigner_ids: &'a mut Vec<Pubkey>,
         rpc_client: Arc<RpcClient>,
         program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>>,
         websocket_url: String,
-    ) -> Self {
+    ) -> Config<'a> {
         let cli_config = if let Some(config_file) = matches.value_of("config_file") {
             solana_cli_config::Config::load(config_file).unwrap_or_else(|_| {
                 eprintln!("error: Could not find config file `{}`", config_file);
@@ -207,7 +208,26 @@ impl<'a> Config<'a> {
 
         let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
         let dump_transaction_message = matches.is_present(DUMP_TRANSACTION_MESSAGE.name);
-        let program_id = pubkey_of(matches, "program_id").unwrap();
+
+        let default_program_id = spl_token::id();
+        let program_id = if let Some(program_id) = value_of(matches, "program_id") {
+            program_id
+        } else if !sign_only {
+            if let Some(address) = value_of(matches, "token")
+                .or_else(|| value_of(matches, "account"))
+                .or_else(|| value_of(matches, "address"))
+            {
+                rpc_client
+                    .get_account(&address)
+                    .await
+                    .map(|account| account.owner)
+                    .unwrap_or(default_program_id)
+            } else {
+                default_program_id
+            }
+        } else {
+            default_program_id
+        };
 
         Self {
             default_signer,
