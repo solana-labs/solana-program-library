@@ -1911,12 +1911,13 @@ async fn command_sync_native(
     })
 }
 
-// Both enable-required_transfer-mesos and disable-required_transfer-mesos, switches with enable bool
+// Both enable_required_transfer_mesos and disable_required_transfer_mesos
+// Switches with enable_memos bool
 async fn command_required_transfer_memos(
     token_account_address: Pubkey,
     owner: Pubkey,
     bulk_signers: BulkSigners,
-    enable: bool,
+    enable_memos: bool,
     config: &Config<'_>,
 ) -> CommandResult {
     let program_id = if config.sign_only {
@@ -1946,7 +1947,7 @@ async fn command_required_transfer_memos(
     if let Some(instr) = reallocate_instruction {
         instructions.push(instr);
     }
-    if enable {
+    if enable_memos {
         instructions.push(
             spl_token_2022::extension::memo_transfer::instruction::enable_required_transfer_memos(
                 &program_id,
