@@ -32,11 +32,11 @@ program id.
 
 To safely code the transition, we'll follow a test-driven development approach:
 
-* add a dependency to `spl-token-2022`
-* change tests to use `spl_token::id()` or `spl_token_2022::id()`, see that all
-tests fail with Token-2022
-* update on-chain program code to always use the instruction and deserializers from 
-`spl_token_2022`, make all tests pass
+- add a dependency to `spl-token-2022`
+- change tests to use `spl_token::id()` or `spl_token_2022::id()`, see that all
+  tests fail with Token-2022
+- update on-chain program code to always use the instruction and deserializers from
+  `spl_token_2022`, make all tests pass
 
 Optionally, if an instruction uses more than one token mint, common to most DeFi,
 you must add an input token program account for each additional mint. Since it's
@@ -87,7 +87,7 @@ $ solana program dump TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb spl_token_2022
 If you're using `solana-test-validator` for your tests, you can include it using:
 
 ```console
-$ solana-test-validator -c TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb 
+$ solana-test-validator -c TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb
 ```
 
 **Note**: This step is temporary, until Token-2022 is included by default in
@@ -135,7 +135,7 @@ normal `Account::unpack` and `Mint::unpack` will fail if the size of the account
 is not exactly 165 and 82, respectively.
 
 Let's make the tests fail again by adding an extension to all mint and token
-accounts.  We'll add the `MintCloseAuthority` extension to mints, and the `ImmutableOwner`
+accounts. We'll add the `MintCloseAuthority` extension to mints, and the `ImmutableOwner`
 extension to accounts.
 
 When creating mint accounts, calculate the space required before allocating, then
@@ -293,7 +293,7 @@ Swap {
 }
 ```
 
-Note the clarification on `9.`, and the new inputs of `10.` and `11.`.
+Note the new inputs of `9.` and `10.`, and the clarification on `11`.
 
 All of these additional accounts may make you wonder: how big will transactions
 get with these new accounts? If you are using both Token and Token-2022,
@@ -346,11 +346,14 @@ in the `Swap` instruction processor, we'll go from:
 let account_info_iter = &mut accounts.iter();
 let swap_info = next_account_info(account_info_iter)?;
 let authority_info = next_account_info(account_info_iter)?;
-let user_transfer_authority_info = next_account_info(account_info_iter)?;                     let source_info = next_account_info(account_info_iter)?;
+let user_transfer_authority_info = next_account_info(account_info_iter)?;
+let source_info = next_account_info(account_info_iter)?;
 let swap_source_info = next_account_info(account_info_iter)?;
 let swap_destination_info = next_account_info(account_info_iter)?;
-let destination_info = next_account_info(account_info_iter)?;                                 let pool_mint_info = next_account_info(account_info_iter)?;                                   let pool_fee_account_info = next_account_info(account_info_iter)?;
-let token_program_info = next_account_info(account_info_iter)?;                       
+let destination_info = next_account_info(account_info_iter)?;
+let pool_mint_info = next_account_info(account_info_iter)?;
+let pool_fee_account_info = next_account_info(account_info_iter)?;
+let token_program_info = next_account_info(account_info_iter)?;
 ```
 
 To:
@@ -366,9 +369,9 @@ let swap_destination_info = next_account_info(account_info_iter)?;
 let destination_info = next_account_info(account_info_iter)?;
 let pool_mint_info = next_account_info(account_info_iter)?;
 let pool_fee_account_info = next_account_info(account_info_iter)?;
-let source_token_program_info = next_account_info(account_info_iter)?;
-let destination_token_program_info = next_account_info(account_info_iter)?;
-let pool_token_program_info = next_account_info(account_info_iter)?;
+let source_token_program_info = next_account_info(account_info_iter)?; // added
+let destination_token_program_info = next_account_info(account_info_iter)?; // added
+let pool_token_program_info = next_account_info(account_info_iter)?; // renamed
 ```
 
 For now, just use one of those. For example, we'll just use `pool_token_program_info`
@@ -386,10 +389,10 @@ Previously, our `test_case`s defined only provided one program id. Now it's
 time to mix them up and add more cases. For full coverage, we could do all
 permutations of different programs, but let's go with:
 
-* all mints belong to Token
-* all mints belong to Token-2022
-* the pool mint belongs to Token, but token A and B belong to Token-2022
-* the pool mint belongs to Token-2022, but token A and B are mixed
+- all mints belong to Token
+- all mints belong to Token-2022
+- the pool mint belongs to Token, but token A and B belong to Token-2022
+- the pool mint belongs to Token-2022, but token A and B are mixed
 
 Let's update test cases to pass in three different program ids, and then use them
 in the tests. For example, that means transforming:
