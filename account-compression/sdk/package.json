@@ -40,6 +40,7 @@
     "@project-serum/anchor": "^0.25.0",
     "@types/bn.js": "^5.1.1",
     "@types/chai": "^4.3.0",
+    "@types/jest": "^29.0.0",
     "bn.js": "^5.2.1",
     "chai": "^4.3.4",
     "jest": "^29.0.1",

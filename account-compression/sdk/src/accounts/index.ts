@@ -1,132 +1,160 @@
-import { PublicKey, Connection } from "@solana/web3.js";
+import type { PublicKey, Connection } from "@solana/web3.js";
 import * as borsh from "borsh";
 import * as BN from 'bn.js';
 import { assert } from "chai";
 import { readPublicKey } from "../utils";
+import * as beet from '@metaplex-foundation/beet';
+import * as beetSolana from '@metaplex-foundation/beet-solana';
 
 /**
- * Manually create a model for MerkleRoll in order to deserialize correctly
+ * These are all the fields needed to deserialize the solana account
+ * that the ConcurrentMerkleTree is stored in
  */
-export type SplConcurrentMerkleTree = {
+export type ConcurrentMerkleTreeAccount = {
   header: ConcurrentMerkleTreeHeader;
   tree: ConcurrentMerkleTree;
+  canopy: Canopy,
 };
 
 type ConcurrentMerkleTreeHeader = {
-  accountType: number,
-  _padding: number[]
-  maxDepth: number; // u32
+  accountType: number;
+  _padding: number[];
   maxBufferSize: number; // u32
+  maxDepth: number; // u32
   authority: PublicKey;
   creationSlot: BN;
 };
 
+const concurrentMerkleTreeHeaderBeet = new beet.BeetArgsStruct<ConcurrentMerkleTreeHeader>(
+  [
+    ['accountType', beet.u8],
+    ['_padding', beet.uniformFixedSizeArray(beet.u8, 7)],
+    ['maxBufferSize', beet.u32],
+    ['maxDepth', beet.u32],
+    ['authority', beetSolana.publicKey],
+    ['creationSlot', beet.u64],
+  ],
+  'ConcurrentMerkleTreeHeader'
+);
+
+type ChangeLog = {
+  root: PublicKey,
+  pathNodes: PublicKey[];
+  index: number; // u32
+  _padding: number; // u32
+};
+
+const changeLogBeetFactory = (maxDepth: number) => {
+  return new beet.BeetArgsStruct<ChangeLog>(
+    [
+      ['root', beetSolana.publicKey],
+      ['pathNodes', beet.uniformFixedSizeArray(beetSolana.publicKey, maxDepth)],
+      ['index', beet.u32],
+      ["_padding", beet.u32],
+    ],
+    'ChangeLog'
+  )
+}
+
+type Path = {
+  proof: PublicKey[];
+  leaf: PublicKey;
+  index: number; // u32
+  _padding: number; // u32
+};
+
+const pathBeetFactory = (maxDepth: number) => {
+  return new beet.BeetArgsStruct<Path>(
+    [
+      ['proof', beet.uniformFixedSizeArray(beetSolana.publicKey, maxDepth)],
+      ['leaf', beetSolana.publicKey],
+      ['index', beet.u32],
+      ["_padding", beet.u32],
+    ],
+    'Path'
+  )
+}
+
 type ConcurrentMerkleTree = {
-  sequenceNumber: BN; // u64
-  activeIndex: number; // u64
-  bufferSize: number; // u64
+  sequenceNumber: beet.bignum; // u64
+  activeIndex: beet.bignum; // u64
+  bufferSize: beet.bignum; // u64
   changeLogs: ChangeLog[];
   rightMostPath: Path;
 };
+
+export const concurrentMerkleTreeBeetFactory = (maxDepth: number, maxBufferSize: number) => {
+  return new beet.BeetArgsStruct<ConcurrentMerkleTree>(
+    [
+      ['sequenceNumber', beet.u64],
+      ['activeIndex', beet.u64],
+      ['bufferSize', beet.u64],
+      ['changeLogs', beet.uniformFixedSizeArray(changeLogBeetFactory(maxDepth), maxBufferSize)],
+      ['rightMostPath', pathBeetFactory(maxDepth)],
+    ],
+    'ConcurrentMerkleTree'
+  );
+}
 
 export type PathNode = {
   node: PublicKey;
   index: number;
 };
 
-type ChangeLog = {
-  root: PublicKey;
-  pathNodes: PublicKey[];
-  index: number; // u32
-  _padding: number; // u32
-};
+type Canopy = {
+  canopyBytes: number[];
+}
 
-type Path = {
-  leaf: PublicKey;
-  proof: PublicKey[];
-  index: number;
-  _padding: number;
-};
+const canopyBeetFactory = (canopyDepth: number) => {
+  return new beet.BeetArgsStruct<Canopy>(
+    [
+      ['canopyBytes', beet.uniformFixedSizeArray(beet.u8, Math.max(((1 << canopyDepth + 1) - 2) * 32, 0))],
+    ],
+    'Canopy'
+  );
+}
 
-export function deserializeConcurrentMerkleTree(buffer: Buffer): SplConcurrentMerkleTree {
-  let reader = new borsh.BinaryReader(buffer);
+function getCanopyDepth(canopyByteLength: number): number {
+  if (canopyByteLength === 0) {
+    return 0;
+  }
+  return Math.log2(canopyByteLength / 32 + 2) - 1
+}
 
-  let header: ConcurrentMerkleTreeHeader = {
-    accountType: reader.readU8(),
-    _padding: Array.from(reader.readFixedArray(7)),
-    maxBufferSize: reader.readU32(),
-    maxDepth: reader.readU32(),
-    authority: readPublicKey(reader),
-    creationSlot: reader.readU64(),
-  };
+export function deserializeConcurrentMerkleTree(buffer: Buffer): ConcurrentMerkleTreeAccount {
+  let offset = 0;
+  const [header, offsetIncr] = concurrentMerkleTreeHeaderBeet.deserialize(buffer);
+  offset = offsetIncr;
 
-  let sequenceNumber = reader.readU64();
-  let activeIndex = reader.readU64().toNumber();
-  let bufferSize = reader.readU64().toNumber();
+  const [tree, offsetIncr2] = concurrentMerkleTreeBeetFactory(header.maxDepth, header.maxBufferSize).deserialize(buffer, offset);
+  offset = offsetIncr2;
 
-  let changeLogs: ChangeLog[] = [];
-  for (let i = 0; i < header.maxBufferSize; i++) {
-    let root = readPublicKey(reader);
-
-    let pathNodes: PublicKey[] = [];
-    for (let j = 0; j < header.maxDepth; j++) {
-      pathNodes.push(readPublicKey(reader));
-    }
-    changeLogs.push({
-      pathNodes,
-      root,
-      index: reader.readU32(),
-      _padding: reader.readU32(),
-    });
+  const canopyDepth = getCanopyDepth(buffer.byteLength - offset);
+  let canopy: Canopy = {
+    canopyBytes: []
+  }
+  if (canopyDepth !== 0) {
+    const [deserializedCanopy, offsetIncr3] = canopyBeetFactory(canopyDepth).deserialize(buffer, offset);
+    canopy = deserializedCanopy;
+    offset = offsetIncr3;
   }
 
-  // Decode Right-Most Path
-  let leaf = readPublicKey(reader);
-  let proof: PublicKey[] = [];
-  for (let j = 0; j < header.maxDepth; j++) {
-    proof.push(readPublicKey(reader));
-  }
-  const rightMostPath = {
-    proof,
-    leaf,
-    index: reader.readU32(),
-    _padding: reader.readU32(),
-  };
-
-  const tree = {
-    sequenceNumber,
-    activeIndex,
-    bufferSize,
-    changeLogs,
-    rightMostPath,
-  };
-
-  if (
-    getConcurrentMerkleTreeSize(header.maxDepth, header.maxBufferSize) !=
-    reader.offset
-  ) {
-
+  if (buffer.byteLength !== offset) {
     throw new Error(
       "Failed to process whole buffer when deserializing Merkle Account Data"
     );
   }
-  return { header, tree };
+  return { header, tree, canopy };
 }
 
-export function getConcurrentMerkleTreeSize(
+export function getConcurrentMerkleTreeAccountSize(
   maxDepth: number,
   maxBufferSize: number,
   canopyDepth?: number
 ): number {
-  let headerSize = 8 + 8 + 8 + 32;
-  let changeLogSize = (maxDepth * 32 + 32 + 4 + 4) * maxBufferSize;
-  let rightMostPathSize = maxDepth * 32 + 32 + 4 + 4;
-  let merkleRollSize = 8 + 8 + 8 + changeLogSize + rightMostPathSize;
-  let canopySize = 0;
-  if (canopyDepth) {
-    canopySize = ((1 << canopyDepth + 1) - 2) * 32
-  }
-  return headerSize + merkleRollSize + canopySize;
+  return concurrentMerkleTreeHeaderBeet.byteSize +
+    concurrentMerkleTreeBeetFactory(maxDepth, maxBufferSize).byteSize +
+    (canopyDepth ? canopyBeetFactory(canopyDepth).byteSize : 0);
 }
 
 export async function assertCMTProperties(
@@ -157,31 +185,31 @@ export async function assertCMTProperties(
   );
 }
 
-export function getCMTMaxBufferSize(onChainCMT: SplConcurrentMerkleTree): number {
+export function getCMTMaxBufferSize(onChainCMT: ConcurrentMerkleTreeAccount): number {
   return onChainCMT.header.maxBufferSize;
 }
 
-export function getCMTMaxDepth(onChainCMT: SplConcurrentMerkleTree): number {
+export function getCMTMaxDepth(onChainCMT: ConcurrentMerkleTreeAccount): number {
   return onChainCMT.header.maxDepth;
 }
 
-export function getCMTBufferSize(onChainCMT: SplConcurrentMerkleTree): number {
-  return onChainCMT.tree.bufferSize;
+export function getCMTBufferSize(onChainCMT: ConcurrentMerkleTreeAccount): number {
+  return new BN.BN(onChainCMT.tree.bufferSize).toNumber();
 }
 
-export function getCMTCurrentRoot(onChainCMT: SplConcurrentMerkleTree): Buffer {
+export function getCMTCurrentRoot(onChainCMT: ConcurrentMerkleTreeAccount): Buffer {
   return onChainCMT.tree.changeLogs[getCMTActiveIndex(onChainCMT)].root.toBuffer();
 }
 
-export function getCMTActiveIndex(onChainCMT: SplConcurrentMerkleTree): number {
-  return onChainCMT.tree.activeIndex
+export function getCMTActiveIndex(onChainCMT: ConcurrentMerkleTreeAccount): number {
+  return new BN.BN(onChainCMT.tree.activeIndex).toNumber();
 }
 
-export function getCMTAuthority(onChainCMT: SplConcurrentMerkleTree): PublicKey {
+export function getCMTAuthority(onChainCMT: ConcurrentMerkleTreeAccount): PublicKey {
   return onChainCMT.header.authority;
 }
 
-export async function getConcurrentMerkleTree(connection: Connection, onChainCMTKey: PublicKey): Promise<SplConcurrentMerkleTree> {
+export async function getConcurrentMerkleTree(connection: Connection, onChainCMTKey: PublicKey): Promise<ConcurrentMerkleTreeAccount> {
   const onChainCMTAccount = await connection.getAccountInfo(onChainCMTKey);
   if (!onChainCMTAccount) {
     throw new Error("CMT account data unexpectedly null!");
