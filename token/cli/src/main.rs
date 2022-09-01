@@ -1960,7 +1960,6 @@ fn multisig_member_help_string() -> String {
 
 fn app<'a, 'b>(
     default_decimals: &'a str,
-    default_program_id: &'a str,
     minimum_signers_help: &'b str,
     multisig_member_help: &'b str,
 ) -> App<'a, 'b> {
@@ -2001,7 +2000,6 @@ fn app<'a, 'b>(
                 .value_name("ADDRESS")
                 .takes_value(true)
                 .global(true)
-                .default_value(default_program_id)
                 .validator(is_valid_pubkey)
                 .help("SPL Token program id"),
         )
@@ -2842,12 +2840,10 @@ fn app<'a, 'b>(
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let default_decimals = format!("{}", spl_token_2022::native_mint::DECIMALS);
-    let default_program_id = spl_token::id().to_string();
     let minimum_signers_help = minimum_signers_help_string();
     let multisig_member_help = multisig_member_help_string();
     let app_matches = app(
         &default_decimals,
-        &default_program_id,
         &minimum_signers_help,
         &multisig_member_help,
     )
@@ -2866,7 +2862,8 @@ async fn main() -> Result<(), Error> {
         &mut wallet_manager,
         &mut bulk_signers,
         &mut multisigner_ids,
-    );
+    )
+    .await;
 
     solana_logger::setup_with_default("solana=info");
     let result =
@@ -3677,13 +3674,11 @@ mod tests {
         args: &[&str],
     ) -> CommandResult {
         let default_decimals = format!("{}", spl_token_2022::native_mint::DECIMALS);
-        let default_program_id = spl_token::id().to_string();
         let minimum_signers_help = minimum_signers_help_string();
         let multisig_member_help = multisig_member_help_string();
 
         let app_matches = app(
             &default_decimals,
-            &default_program_id,
             &minimum_signers_help,
             &multisig_member_help,
         )
@@ -3699,13 +3694,11 @@ mod tests {
 
     async fn exec_test_cmd(config: &Config<'_>, args: &[&str]) -> CommandResult {
         let default_decimals = format!("{}", spl_token_2022::native_mint::DECIMALS);
-        let default_program_id = spl_token::id().to_string();
         let minimum_signers_help = minimum_signers_help_string();
         let multisig_member_help = multisig_member_help_string();
 
         let app_matches = app(
             &default_decimals,
-            &default_program_id,
             &minimum_signers_help,
             &multisig_member_help,
         )
@@ -3726,7 +3719,8 @@ mod tests {
             config.rpc_client.clone(),
             config.program_client.clone(),
             config.websocket_url.clone(),
-        );
+        )
+        .await;
 
         process_command(&sub_command, matches, &config, wallet_manager, bulk_signers).await
     }
