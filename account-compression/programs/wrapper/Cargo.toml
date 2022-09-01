@@ -16,4 +16,4 @@ default = []
 
 
 [dependencies]
-solana-program = "1.10.35"
+solana-program = "1.10.29"
