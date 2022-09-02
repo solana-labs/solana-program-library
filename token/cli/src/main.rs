@@ -5,7 +5,6 @@ use clap::{
 use serde::Serialize;
 use solana_account_decoder::{
     parse_token::{TokenAccountType, UiAccountState},
-    parse_token_extension::UiExtension,
     UiAccountData,
 };
 use solana_clap_utils::{
@@ -43,7 +42,8 @@ use spl_associated_token_account::{
 };
 use spl_token_2022::{
     extension::{
-        mint_close_authority::MintCloseAuthority, ExtensionType, StateWithExtensionsOwned,
+        memo_transfer::MemoTransfer, mint_close_authority::MintCloseAuthority, ExtensionType,
+        StateWithExtensionsOwned,
     },
     instruction::*,
     state::{Account, Mint, Multisig},
@@ -1905,32 +1905,55 @@ async fn command_required_transfer_memos(
     enable_memos: bool,
     config: &Config<'_>,
 ) -> CommandResult {
-    let program_id = if config.sign_only {
-        config.program_id
-    } else {
-        config
-            .rpc_client
-            .get_account(&token_account_address)
-            .await
-            .map_err(|err| {
-                format!(
-                    "Token account {} does not exist: {}",
-                    token_account_address, err
-                )
-            })?
-            .owner
-    };
+    if config.sign_only {
+        panic!("Config can not be sign only for enabling/disabling required transfer memos.");
+    }
+    let account_fetch = config
+        .rpc_client
+        .get_account(&token_account_address)
+        .await
+        .map_err(|err| {
+            format!(
+                "Token account {} does not exist: {}",
+                token_account_address, err
+            )
+        })?;
+    let program_id = account_fetch.owner;
     let mut instructions: Vec<Instruction> = Vec::new();
-    let reallocate_instruction = reallocate_if_needed(
-        &program_id,
-        &token_account_address,
-        &owner,
-        vec![ExtensionType::MemoTransfer],
-        config,
-    )
-    .await?;
-    if let Some(instr) = reallocate_instruction {
-        instructions.push(instr);
+    // Reallocation (if needed)
+    let current_account_len = account_fetch.data.len();
+    let state_with_extension =
+        StateWithExtensionsOwned::<Account>::unpack(account_fetch.data.clone())?;
+    let mut existing_extensions: Vec<ExtensionType> = state_with_extension.get_extension_types()?;
+    if existing_extensions.contains(&ExtensionType::MemoTransfer) {
+        let extension_data: bool = state_with_extension
+            .get_extension::<MemoTransfer>()?
+            .require_incoming_transfer_memos
+            .into();
+        if extension_data == enable_memos {
+            return Ok(format!(
+                "Required memo transfer was already {}",
+                if extension_data {
+                    "enabled"
+                } else {
+                    "disabled"
+                }
+            )
+            .to_string());
+        }
+    } else {
+        existing_extensions.extend_from_slice(&[ExtensionType::MemoTransfer]);
+        let needed_account_len = ExtensionType::get_account_len::<Account>(&existing_extensions);
+        if needed_account_len > current_account_len {
+            instructions.push(reallocate(
+                &program_id,
+                &token_account_address,
+                &config.fee_payer,
+                &owner,
+                &config.multisigner_pubkeys,
+                &existing_extensions,
+            )?);
+        }
     }
     if enable_memos {
         instructions.push(
@@ -1969,64 +1992,6 @@ async fn command_required_transfer_memos(
             config.output_format.formatted_string(&sign_only_data)
         }
     })
-}
-
-// Checks if reallocation needed for new specified extensions. If needed returns reallocate instruction
-async fn reallocate_if_needed(
-    program_id: &Pubkey,
-    token_account_pubkey: &Pubkey,
-    owner_pubkey: &Pubkey,
-    new_extension_types: Vec<ExtensionType>,
-    config: &Config<'_>,
-) -> Result<Option<Instruction>, Error> {
-    let token_account = config
-        .rpc_client
-        .get_token_account(token_account_pubkey)
-        .await?
-        .expect("Invalid token account pubkey");
-    let mut existing_extensions: Vec<ExtensionType> = token_account
-        .extensions
-        .iter()
-        .map(parse_ui_extension)
-        .collect();
-    existing_extensions.extend_from_slice(&new_extension_types);
-    let needed_account_len = ExtensionType::get_account_len::<Account>(&existing_extensions);
-    let current_account_len = config
-        .rpc_client
-        .get_account(token_account_pubkey)
-        .await?
-        .data
-        .len();
-    // If reallocation is not needed
-    if needed_account_len <= current_account_len {
-        return Ok(None);
-    }
-    let instruction = reallocate(
-        program_id,
-        token_account_pubkey,
-        &config.fee_payer,
-        owner_pubkey,
-        &config.multisigner_pubkeys,
-        &existing_extensions,
-    )?;
-    Ok(Some(instruction))
-}
-
-fn parse_ui_extension(ui_extension: &UiExtension) -> ExtensionType {
-    match &ui_extension {
-        UiExtension::Uninitialized => ExtensionType::Uninitialized,
-        UiExtension::TransferFeeConfig(_) => ExtensionType::TransferFeeConfig,
-        UiExtension::TransferFeeAmount(_) => ExtensionType::TransferFeeAmount,
-        UiExtension::MintCloseAuthority(_) => ExtensionType::MintCloseAuthority,
-        UiExtension::ConfidentialTransferMint(_) => ExtensionType::ConfidentialTransferMint,
-        UiExtension::ConfidentialTransferAccount(_) => ExtensionType::ConfidentialTransferAccount,
-        UiExtension::DefaultAccountState(_) => ExtensionType::DefaultAccountState,
-        UiExtension::ImmutableOwner => ExtensionType::ImmutableOwner,
-        UiExtension::MemoTransfer(_) => ExtensionType::MemoTransfer,
-        UiExtension::NonTransferable => ExtensionType::NonTransferable,
-        UiExtension::InterestBearingConfig(_) => ExtensionType::InterestBearingConfig,
-        UiExtension::UnparseableExtension => panic!("Unparsable extension"),
-    }
 }
 
 struct SignOnlyNeedsFullMintSpec {}
@@ -3462,11 +3427,8 @@ async fn process_command<'a>(
                 bulk_signers.push(owner_signer);
             }
             // Since account is required argument it will always be present
-            let token_account = config.pubkey_or_default(
-                arg_matches,
-                "account",
-                &mut wallet_manager,
-            );
+            let token_account =
+                config.pubkey_or_default(arg_matches, "account", &mut wallet_manager);
             command_required_transfer_memos(token_account, owner, bulk_signers, true, config).await
         }
         (CommandName::DisableRequiredTransferMemos, arg_matches) => {
@@ -3476,11 +3438,8 @@ async fn process_command<'a>(
                 bulk_signers.push(owner_signer);
             }
             // Since account is required argument it will always be present
-            let token_account = config.pubkey_or_default(
-                arg_matches,
-                "account",
-                &mut wallet_manager,
-            );
+            let token_account =
+                config.pubkey_or_default(arg_matches, "account", &mut wallet_manager);
             command_required_transfer_memos(token_account, owner, bulk_signers, false, config).await
         }
     }
@@ -4578,7 +4537,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn enable_required_transfer_memos() {
+    async fn required_transfer_memos() {
         let (test_validator, payer) = new_validator_for_test().await;
         let program_id = spl_token_2022::id();
         let config = test_config(&test_validator, &payer, &program_id);
@@ -4595,7 +4554,18 @@ mod tests {
         )
         .await;
         result.unwrap();
-        // TODO Check if extension exists on account
+        let extensions = StateWithExtensionsOwned::<Account>::unpack(
+            config
+                .rpc_client
+                .get_account(&token_account)
+                .await
+                .unwrap()
+                .data,
+        )
+        .unwrap();
+        let memo_transfer = extensions.get_extension::<MemoTransfer>().unwrap();
+        let enabled: bool = memo_transfer.require_incoming_transfer_memos.into();
+        assert!(enabled);
         let result = process_test_command(
             &config,
             &payer,
@@ -4607,6 +4577,17 @@ mod tests {
         )
         .await;
         result.unwrap();
-        // TODO Check if extension disappeared on account
+        let extensions = StateWithExtensionsOwned::<Account>::unpack(
+            config
+                .rpc_client
+                .get_account(&token_account)
+                .await
+                .unwrap()
+                .data,
+        )
+        .unwrap();
+        let memo_transfer = extensions.get_extension::<MemoTransfer>().unwrap();
+        let enabled: bool = memo_transfer.require_incoming_transfer_memos.into();
+        assert!(!enabled);
     }
 }
