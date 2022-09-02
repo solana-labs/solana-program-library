@@ -1,10 +1,12 @@
-import { Keypair, PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, SystemProgram, TransactionInstruction } from '@solana/web3.js';
 import { LOG_WRAPPER_PROGRAM_ID } from "../utils";
+import { getConcurrentMerkleTreeAccountSize } from '../accounts';
 import {
     createReplaceLeafInstruction,
     createAppendInstruction,
     createTransferAuthorityInstruction,
-    createVerifyLeafInstruction
+    createVerifyLeafInstruction,
+    PROGRAM_ID
 } from "../generated";
 
 /**
@@ -100,4 +102,29 @@ export function createVerifyLeafIx(
             index,
         }
     ), proof);
+}
+
+export async function createAllocTreeIx(
+    connection: Connection,
+    maxBufferSize: number,
+    maxDepth: number,
+    canopyDepth: number,
+    payer: PublicKey,
+    merkleRoll: PublicKey,
+): Promise<TransactionInstruction> {
+    const requiredSpace = getConcurrentMerkleTreeAccountSize(
+        maxDepth,
+        maxBufferSize,
+        canopyDepth ?? 0
+    );
+    return SystemProgram.createAccount({
+        fromPubkey: payer,
+        newAccountPubkey: merkleRoll,
+        lamports:
+            await connection.getMinimumBalanceForRentExemption(
+                requiredSpace
+            ),
+        space: requiredSpace,
+        programId: PROGRAM_ID
+    });
 }
