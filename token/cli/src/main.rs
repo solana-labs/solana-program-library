@@ -1971,7 +1971,7 @@ async fn command_required_transfer_memos(
             instructions.push(reallocate(
                 &program_id,
                 &token_account_address,
-                &config.fee_payer,
+                &config.fee_payer.pubkey(),
                 &owner,
                 &config.multisigner_pubkeys,
                 &existing_extensions,
