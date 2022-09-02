@@ -31,22 +31,43 @@ async fn run_basic(context: TestContext) {
     // mint a token
     let amount = 10;
     token
-        .mint_to(&alice_account, &mint_authority, amount)
+        .mint_to(
+            &alice_account,
+            &mint_authority.pubkey(),
+            amount,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .unwrap();
 
     // unchecked is ok
-    token.burn(&alice_account, &alice, 1).await.unwrap();
+    token
+        .burn(&alice_account, &alice.pubkey(), 1, None, &vec![&alice])
+        .await
+        .unwrap();
 
     // checked is ok
     token
-        .burn_checked(&alice_account, &alice, 1, decimals)
+        .burn(
+            &alice_account,
+            &alice.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&alice],
+        )
         .await
         .unwrap();
 
     // burn too much is not ok
     let error = token
-        .burn_checked(&alice_account, &alice, amount, decimals)
+        .burn(
+            &alice_account,
+            &alice.pubkey(),
+            amount,
+            Some(decimals),
+            &vec![&alice],
+        )
         .await
         .unwrap_err();
     assert_eq!(
@@ -61,7 +82,13 @@ async fn run_basic(context: TestContext) {
 
     // wrong signer
     let error = token
-        .burn_checked(&alice_account, &bob, 1, decimals)
+        .burn(
+            &alice_account,
+            &bob.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&bob],
+        )
         .await
         .unwrap_err();
     assert_eq!(
@@ -114,16 +141,31 @@ async fn run_self_owned(context: TestContext) {
     // mint a token
     let amount = 10;
     token
-        .mint_to(&alice_account, &mint_authority, amount)
+        .mint_to(
+            &alice_account,
+            &mint_authority.pubkey(),
+            amount,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .unwrap();
 
     // unchecked is ok
-    token.burn(&alice_account, &alice, 1).await.unwrap();
+    token
+        .burn(&alice_account, &alice.pubkey(), 1, None, &vec![&alice])
+        .await
+        .unwrap();
 
     // checked is ok
     token
-        .burn_checked(&alice_account, &alice, 1, decimals)
+        .burn(
+            &alice_account,
+            &alice.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&alice],
+        )
         .await
         .unwrap();
 }
@@ -167,7 +209,13 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
 
     // mint a token
     token
-        .mint_to(&alice_account, &mint_authority, 1)
+        .mint_to(
+            &alice_account,
+            &mint_authority.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .unwrap();
 
@@ -178,7 +226,14 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
         .await
         .unwrap();
     token
-        .transfer_checked(&alice_account, &non_owner_account, &alice, 1, decimals)
+        .transfer(
+            &alice_account,
+            &non_owner_account,
+            &alice.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&alice],
+        )
         .await
         .unwrap();
 
@@ -205,7 +260,13 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
 
     // but anyone can burn it
     token
-        .burn_checked(&non_owner_account, &carlos, 1, decimals)
+        .burn(
+            &non_owner_account,
+            &carlos.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&carlos],
+        )
         .await
         .unwrap();
 

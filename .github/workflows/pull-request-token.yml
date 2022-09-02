@@ -80,14 +80,13 @@ jobs:
           if-no-files-found: error
 
   cargo-test-sbf-twoxtx:
-    if: ${{ false }}  # disable for now
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
 
       - name: Set env vars
         run: |
-          echo "RUST_STABLE_VERSION=1.60.0" >> $GITHUB_ENV
+          echo "RUST_STABLE_VERSION=1.63.0" >> $GITHUB_ENV
           source ci/rust-version.sh
           echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
           source ci/solana-version.sh
@@ -104,7 +103,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE}}
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE }}
 
       - name: Install dependencies
         run: |

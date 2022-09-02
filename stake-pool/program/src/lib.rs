@@ -15,7 +15,7 @@ pub mod entrypoint;
 pub use solana_program;
 use {
     crate::state::Fee,
-    solana_program::{native_token::LAMPORTS_PER_SOL, pubkey::Pubkey, stake::state::Meta},
+    solana_program::{pubkey::Pubkey, stake::state::Meta},
 };
 
 /// Seed for deposit authority seed
@@ -29,10 +29,12 @@ const TRANSIENT_STAKE_SEED_PREFIX: &[u8] = b"transient";
 
 /// Minimum amount of staked SOL required in a validator stake account to allow
 /// for merges without a mismatch on credits observed
-pub const MINIMUM_ACTIVE_STAKE: u64 = LAMPORTS_PER_SOL;
+pub const MINIMUM_ACTIVE_STAKE: u64 = 1_000_000;
 
 /// Minimum amount of SOL in the reserve
-pub const MINIMUM_RESERVE_LAMPORTS: u64 = LAMPORTS_PER_SOL;
+/// NOTE: This can be changed to 0 once the `stake_allow_zero_undelegated_amount`
+/// feature is enabled on all clusters
+pub const MINIMUM_RESERVE_LAMPORTS: u64 = 1;
 
 /// Maximum amount of validator stake accounts to update per
 /// `UpdateValidatorListBalance` instruction, based on compute limits
@@ -58,9 +60,15 @@ pub const MAX_TRANSIENT_STAKE_ACCOUNTS: usize = 10;
 /// Get the stake amount under consideration when calculating pool token
 /// conversions
 #[inline]
-pub fn minimum_stake_lamports(meta: &Meta) -> u64 {
+pub fn minimum_stake_lamports(meta: &Meta, stake_program_minimum_delegation: u64) -> u64 {
     meta.rent_exempt_reserve
-        .saturating_add(MINIMUM_ACTIVE_STAKE)
+        .saturating_add(minimum_delegation(stake_program_minimum_delegation))
+}
+
+/// Get the minimum delegation required by a stake account in a stake pool
+#[inline]
+pub fn minimum_delegation(stake_program_minimum_delegation: u64) -> u64 {
+    std::cmp::max(stake_program_minimum_delegation, MINIMUM_ACTIVE_STAKE)
 }
 
 /// Get the stake amount under consideration when calculating pool token

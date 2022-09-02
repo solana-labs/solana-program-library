@@ -5,7 +5,7 @@ use crate::native_processor::do_process_instruction;
 use crate::native_token;
 
 use spl_token_swap::{
-    curve::{base::SwapCurve, fees::Fees},
+    curve::{base::SwapCurve, calculator::TradeDirection, fees::Fees},
     instruction::{
         self, DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Swap,
         WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
@@ -189,6 +189,8 @@ impl NativeTokenSwap {
             &token_b_account.key,
             &self.pool_mint_account.key,
             &self.pool_fee_account.key,
+            &self.token_a_mint_account.key,
+            &self.token_b_mint_account.key,
             Some(&self.pool_token_account.key),
             instruction,
         )
@@ -206,6 +208,8 @@ impl NativeTokenSwap {
                 token_b_account.as_account_info(),
                 self.pool_mint_account.as_account_info(),
                 self.pool_fee_account.as_account_info(),
+                self.token_a_mint_account.as_account_info(),
+                self.token_b_mint_account.as_account_info(),
                 self.token_a_program_account.as_account_info(),
                 self.token_b_program_account.as_account_info(),
                 self.pool_token_program_account.as_account_info(),
@@ -254,6 +258,8 @@ impl NativeTokenSwap {
             &token_a_account.key,
             &self.pool_mint_account.key,
             &self.pool_fee_account.key,
+            &self.token_b_mint_account.key,
+            &self.token_a_mint_account.key,
             Some(&self.pool_token_account.key),
             instruction,
         )
@@ -271,6 +277,8 @@ impl NativeTokenSwap {
                 token_a_account.as_account_info(),
                 self.pool_mint_account.as_account_info(),
                 self.pool_fee_account.as_account_info(),
+                self.token_b_mint_account.as_account_info(),
+                self.token_a_mint_account.as_account_info(),
                 self.token_b_program_account.as_account_info(),
                 self.token_a_program_account.as_account_info(),
                 self.pool_token_program_account.as_account_info(),
@@ -344,6 +352,8 @@ impl NativeTokenSwap {
             &self.token_b_account.key,
             &self.pool_mint_account.key,
             &pool_account.key,
+            &self.token_a_mint_account.key,
+            &self.token_b_mint_account.key,
             instruction,
         )
         .unwrap();
@@ -360,6 +370,8 @@ impl NativeTokenSwap {
                 self.token_b_account.as_account_info(),
                 self.pool_mint_account.as_account_info(),
                 pool_account.as_account_info(),
+                self.token_a_mint_account.as_account_info(),
+                self.token_b_mint_account.as_account_info(),
                 self.token_a_program_account.as_account_info(),
                 self.token_b_program_account.as_account_info(),
                 self.pool_token_program_account.as_account_info(),
@@ -415,6 +427,8 @@ impl NativeTokenSwap {
             &self.token_b_account.key,
             &token_a_account.key,
             &token_b_account.key,
+            &self.token_a_mint_account.key,
+            &self.token_b_mint_account.key,
             instruction,
         )
         .unwrap();
@@ -432,6 +446,8 @@ impl NativeTokenSwap {
                 token_a_account.as_account_info(),
                 token_b_account.as_account_info(),
                 self.pool_fee_account.as_account_info(),
+                self.token_a_mint_account.as_account_info(),
+                self.token_b_mint_account.as_account_info(),
                 self.pool_token_program_account.as_account_info(),
                 self.token_a_program_account.as_account_info(),
                 self.token_b_program_account.as_account_info(),
@@ -442,14 +458,19 @@ impl NativeTokenSwap {
     pub fn deposit_single_token_type_exact_amount_in(
         &mut self,
         source_token_account: &mut NativeAccountData,
+        trade_direction: TradeDirection,
         pool_account: &mut NativeAccountData,
         mut instruction: DepositSingleTokenTypeExactAmountIn,
     ) -> ProgramResult {
         let mut user_transfer_account = NativeAccountData::new(0, system_program::id());
         user_transfer_account.is_signer = true;
+        let source_token_program = match trade_direction {
+            TradeDirection::AtoB => &mut self.token_a_program_account,
+            TradeDirection::BtoA => &mut self.token_b_program_account,
+        };
         do_process_instruction(
             approve(
-                &self.token_a_program_account.key,
+                &source_token_program.key,
                 &source_token_account.key,
                 &user_transfer_account.key,
                 &self.user_account.key,
@@ -471,6 +492,11 @@ impl NativeTokenSwap {
             instruction.minimum_pool_token_amount = 2;
         }
 
+        let source_token_mint_account = match trade_direction {
+            TradeDirection::AtoB => &mut self.token_a_mint_account,
+            TradeDirection::BtoA => &mut self.token_b_mint_account,
+        };
+
         let deposit_instruction = instruction::deposit_single_token_type_exact_amount_in(
             &spl_token_swap::id(),
             &spl_token::id(),
@@ -483,6 +509,7 @@ impl NativeTokenSwap {
             &self.token_b_account.key,
             &self.pool_mint_account.key,
             &pool_account.key,
+            &source_token_mint_account.key,
             instruction,
         )
         .unwrap();
@@ -498,6 +525,7 @@ impl NativeTokenSwap {
                 self.token_b_account.as_account_info(),
                 self.pool_mint_account.as_account_info(),
                 pool_account.as_account_info(),
+                source_token_mint_account.as_account_info(),
                 self.token_a_program_account.as_account_info(),
                 self.pool_token_program_account.as_account_info(),
             ],
@@ -507,6 +535,7 @@ impl NativeTokenSwap {
     pub fn withdraw_single_token_type_exact_amount_out(
         &mut self,
         pool_account: &mut NativeAccountData,
+        trade_direction: TradeDirection,
         destination_token_account: &mut NativeAccountData,
         mut instruction: WithdrawSingleTokenTypeExactAmountOut,
     ) -> ProgramResult {
@@ -536,6 +565,14 @@ impl NativeTokenSwap {
         )
         .unwrap();
 
+        let destination_token_program = match trade_direction {
+            TradeDirection::AtoB => &mut self.token_a_program_account,
+            TradeDirection::BtoA => &mut self.token_b_program_account,
+        };
+        let destination_token_mint_account = match trade_direction {
+            TradeDirection::AtoB => &mut self.token_a_mint_account,
+            TradeDirection::BtoA => &mut self.token_b_mint_account,
+        };
         let withdraw_instruction = instruction::withdraw_single_token_type_exact_amount_out(
             &spl_token_swap::id(),
             &spl_token::id(),
@@ -549,6 +586,7 @@ impl NativeTokenSwap {
             &self.token_a_account.key,
             &self.token_b_account.key,
             &destination_token_account.key,
+            &destination_token_mint_account.key,
             instruction,
         )
         .unwrap();
@@ -565,8 +603,9 @@ impl NativeTokenSwap {
                 self.token_b_account.as_account_info(),
                 destination_token_account.as_account_info(),
                 self.pool_fee_account.as_account_info(),
+                destination_token_mint_account.as_account_info(),
                 self.pool_token_program_account.as_account_info(),
-                self.token_a_program_account.as_account_info(),
+                destination_token_program.as_account_info(),
             ],
         )
     }

@@ -248,8 +248,14 @@ async fn success() {
     let stake_state =
         deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
+    let stake_minimum_delegation = stake_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
     assert_eq!(
-        validator_stake_account.lamports - minimum_stake_lamports(&meta),
+        validator_stake_account.lamports - minimum_stake_lamports(&meta, stake_minimum_delegation),
         post_validator_stake_item.stake_lamports()
     );
     assert_eq!(post_validator_stake_item.transient_stake_lamports, 0);
@@ -443,8 +449,14 @@ async fn success_with_extra_stake_lamports() {
     let stake_state =
         deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
+    let stake_minimum_delegation = stake_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
     assert_eq!(
-        validator_stake_account.lamports - minimum_stake_lamports(&meta),
+        validator_stake_account.lamports - minimum_stake_lamports(&meta, stake_minimum_delegation),
         post_validator_stake_item.stake_lamports()
     );
     assert_eq!(post_validator_stake_item.transient_stake_lamports, 0);

@@ -15,6 +15,7 @@ use {
     solana_sdk::{
         account::{Account, WritableAccount},
         clock::{Clock, Epoch},
+        native_token::LAMPORTS_PER_SOL,
         signature::{Keypair, Signer},
         transaction::Transaction,
         transport::TransportError,
@@ -26,11 +27,12 @@ use {
     spl_stake_pool::{
         find_deposit_authority_program_address, find_stake_program_address,
         find_transient_stake_program_address, find_withdraw_authority_program_address, id,
-        instruction,
+        instruction, minimum_delegation,
         processor::Processor,
         state::{self, FeeType, ValidatorList},
-        MINIMUM_ACTIVE_STAKE, MINIMUM_RESERVE_LAMPORTS,
+        MINIMUM_RESERVE_LAMPORTS,
     },
+    std::convert::TryInto,
 };
 
 pub const TEST_STAKE_AMOUNT: u64 = 1_500_000_000;
@@ -546,6 +548,39 @@ pub async fn delegate_stake_account(
     banks_client.process_transaction(transaction).await.unwrap();
 }
 
+pub async fn stake_get_minimum_delegation(
+    banks_client: &mut BanksClient,
+    payer: &Keypair,
+    recent_blockhash: &Hash,
+) -> u64 {
+    let transaction = Transaction::new_signed_with_payer(
+        &[stake::instruction::get_minimum_delegation()],
+        Some(&payer.pubkey()),
+        &[payer],
+        *recent_blockhash,
+    );
+    let mut data = banks_client
+        .simulate_transaction(transaction)
+        .await
+        .unwrap()
+        .simulation_details
+        .unwrap()
+        .return_data
+        .unwrap()
+        .data;
+    data.resize(8, 0);
+    data.try_into().map(u64::from_le_bytes).unwrap()
+}
+
+pub async fn stake_pool_get_minimum_delegation(
+    banks_client: &mut BanksClient,
+    payer: &Keypair,
+    recent_blockhash: &Hash,
+) -> u64 {
+    let stake_minimum = stake_get_minimum_delegation(banks_client, payer, recent_blockhash).await;
+    minimum_delegation(stake_minimum)
+}
+
 pub async fn authorize_stake_account(
     banks_client: &mut BanksClient,
     payer: &Keypair,
@@ -586,6 +621,9 @@ pub async fn create_unknown_validator_stake(
     .await;
     let user = Keypair::new();
     let fake_validator_stake = Keypair::new();
+    let stake_minimum_delegation =
+        stake_get_minimum_delegation(banks_client, payer, recent_blockhash).await;
+    let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
     create_independent_stake_account(
         banks_client,
         payer,
@@ -596,7 +634,7 @@ pub async fn create_unknown_validator_stake(
             withdrawer: user.pubkey(),
         },
         &stake::state::Lockup::default(),
-        MINIMUM_ACTIVE_STAKE,
+        current_minimum_delegation,
     )
     .await;
     delegate_stake_account(
@@ -1711,8 +1749,12 @@ pub fn add_validator_stake_account(
 
     let (stake_address, _) = find_stake_program_address(&id(), voter_pubkey, stake_pool_pubkey);
     program_test.add_account(stake_address, stake_account);
-    let active_stake_lamports = stake_amount - MINIMUM_ACTIVE_STAKE;
-    // add to validator list
+
+    // Hack the active stake lamports to the current amount given by the runtime.
+    // Since program_test hasn't been started, there's no usable banks_client for
+    // fetching the minimum stake delegation.
+    let active_stake_lamports = stake_amount - LAMPORTS_PER_SOL;
+
     validator_list.validators.push(state::ValidatorStakeInfo {
         status: state::StakeStatus::Active,
         vote_account_address: *voter_pubkey,

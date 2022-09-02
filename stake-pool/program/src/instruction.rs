@@ -83,7 +83,7 @@ pub enum StakePoolInstruction {
     ///   list of managed validators.
     ///
     ///   The stake account will have the rent-exempt amount plus
-    ///   `crate::MINIMUM_ACTIVE_STAKE` (currently 0.001 SOL).
+    ///   `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[s]` Staker
@@ -103,8 +103,8 @@ pub enum StakePoolInstruction {
     ///   (Staker only) Removes validator from the pool
     ///
     ///   Only succeeds if the validator stake account has the minimum of
-    ///   `crate::MINIMUM_ACTIVE_STAKE` (currently 0.001 SOL) plus the rent-exempt
-    ///   amount.
+    ///   `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    ///   plus the rent-exempt amount.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[s]` Staker
@@ -158,9 +158,8 @@ pub enum StakePoolInstruction {
     /// will do the work of merging once it's ready.
     ///
     /// This instruction only succeeds if the transient stake account does not exist.
-    /// The minimum amount to move is rent-exemption plus `crate::MINIMUM_ACTIVE_STAKE`
-    /// (currently 0.001 SOL) in order to avoid issues on credits observed when
-    /// merging active stakes later.
+    /// The minimum amount to move is rent-exemption plus
+    /// `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
@@ -281,7 +280,8 @@ pub enum StakePoolInstruction {
     ///
     ///   Succeeds if the stake account has enough SOL to cover the desired amount
     ///   of pool tokens, and if the withdrawal keeps the total staked amount
-    ///   above the minimum of rent-exempt amount + 0.001 SOL.
+    ///   above the minimum of rent-exempt amount +
+    ///   `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
     ///
     ///   When allowing withdrawals, the order of priority goes:
     ///

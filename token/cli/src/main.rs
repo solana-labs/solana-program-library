@@ -42,8 +42,9 @@ use spl_associated_token_account::{
 };
 use spl_token_2022::{
     extension::{
-        memo_transfer::MemoTransfer, mint_close_authority::MintCloseAuthority, ExtensionType,
-        StateWithExtensionsOwned,
+        interest_bearing_mint, interest_bearing_mint::InterestBearingConfig,
+        mint_close_authority::MintCloseAuthority, StateWithExtensionsOwned,
+        memo_transfer::MemoTransfer, ExtensionType,
     },
     instruction::*,
     state::{Account, Mint, Multisig},
@@ -66,6 +67,7 @@ use sort::{is_supported_program, sort_and_parse_token_accounts};
 
 mod bench;
 use bench::*;
+use spl_token_2022::generic_token_account::GenericTokenAccount;
 
 struct CliSignerInfo {
     pub signers: Vec<Arc<dyn Signer>>,
@@ -132,6 +134,7 @@ pub enum CommandName {
     CreateAccount,
     CreateMultisig,
     Authorize,
+    SetInterestRate,
     Transfer,
     Burn,
     Mint,
@@ -282,11 +285,14 @@ pub(crate) async fn check_fee_payer_balance(
     config: &Config<'_>,
     required_balance: u64,
 ) -> Result<(), Error> {
-    let balance = config.rpc_client.get_balance(&config.fee_payer).await?;
+    let balance = config
+        .rpc_client
+        .get_balance(&config.fee_payer.pubkey())
+        .await?;
     if balance < required_balance {
         Err(format!(
             "Fee payer, {}, has insufficient balance: {} required, {} available",
-            config.fee_payer,
+            config.fee_payer.pubkey(),
             lamports_to_sol(required_balance),
             lamports_to_sol(balance)
         )
@@ -344,7 +350,7 @@ fn token_client_from_config(
         config.program_client.clone(),
         program_id,
         token_pubkey,
-        config.default_signer.clone(),
+        config.fee_payer.clone(),
     );
 
     if let (Some(nonce_account), Some(nonce_authority)) =
@@ -365,6 +371,7 @@ async fn command_create_token(
     enable_freeze: bool,
     enable_close: bool,
     memo: Option<String>,
+    rate_bps: Option<i16>,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     println_display(config, format!("Creating token {}", token_pubkey));
@@ -379,6 +386,13 @@ async fn command_create_token(
         extensions.push(ExtensionInitializationParams::MintCloseAuthority {
             close_authority: Some(authority),
         });
+    }
+
+    if let Some(rate_bps) = rate_bps {
+        extensions.push(ExtensionInitializationParams::InterestBearingConfig {
+            rate_authority: Some(authority),
+            rate: rate_bps,
+        })
     }
 
     if let Some(text) = memo {
@@ -412,6 +426,82 @@ async fn command_create_token(
     })
 }
 
+async fn command_set_interest_rate(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    rate_authority: Pubkey,
+    rate_bps: i16,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    let program_id = if !config.sign_only {
+        let mint_account = config.rpc_client.get_account(&token_pubkey).await?;
+        let program_id = mint_account.owner;
+        config.check_owner(&token_pubkey, &mint_account.owner)?;
+
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)
+            .map_err(|_| format!("Could not deserialize token mint {}", token_pubkey))?;
+
+        if let Ok(interest_rate_config) = mint_state.get_extension::<InterestBearingConfig>() {
+            let mint_rate_authority_pubkey =
+                Option::<Pubkey>::from(interest_rate_config.rate_authority);
+
+            if mint_rate_authority_pubkey != Some(rate_authority) {
+                return Err(format!(
+                    "Mint {} has interest rate authority {}, but {} was provided",
+                    token_pubkey,
+                    mint_rate_authority_pubkey
+                        .map(|pubkey| pubkey.to_string())
+                        .unwrap_or_else(|| "disabled".to_string()),
+                    rate_authority
+                )
+                .into());
+            }
+        } else {
+            return Err(format!("Mint {} is not interest-bearing", token_pubkey).into());
+        }
+
+        program_id
+    } else {
+        config.program_id
+    };
+
+    println_display(
+        config,
+        format!(
+            "Setting Interest Rate for {} to {} bps",
+            token_pubkey, rate_bps
+        ),
+    );
+
+    let instructions = vec![interest_bearing_mint::instruction::update_rate(
+        &program_id,
+        &token_pubkey,
+        &rate_authority,
+        &[&rate_authority],
+        rate_bps,
+    )?];
+
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        false,
+        0,
+        instructions,
+    )
+    .await?;
+
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
 async fn command_create_account(
     config: &Config<'_>,
     token: Pubkey,
@@ -436,7 +526,7 @@ async fn command_create_account(
             false,
             vec![
                 system_instruction::create_account(
-                    &config.fee_payer,
+                    &config.fee_payer.pubkey(),
                     &account,
                     minimum_balance_for_rent_exemption,
                     Account::LEN as u64,
@@ -453,7 +543,7 @@ async fn command_create_account(
             account,
             true,
             vec![create_associated_token_account(
-                &config.fee_payer,
+                &config.fee_payer.pubkey(),
                 &owner,
                 &token,
                 &mint_info.program_id,
@@ -523,7 +613,7 @@ async fn command_create_multisig(
 
     let instructions = vec![
         system_instruction::create_account(
-            &config.fee_payer,
+            &config.fee_payer.pubkey(),
             &multisig,
             minimum_balance_for_rent_exemption,
             Multisig::LEN as u64,
@@ -578,15 +668,15 @@ async fn command_authorize(
         AuthorityType::InterestRate => "interest rate authority",
     };
 
-    let (program_id, previous_authority) = if !config.sign_only {
+    let (program_id, mint_pubkey, previous_authority) = if !config.sign_only {
         let target_account = config.rpc_client.get_account(&account).await?;
         let program_id = target_account.owner;
         config.check_owner(&account, &target_account.owner)?;
 
-        let previous_authority = if let Ok(mint) =
+        let (mint_pubkey, previous_authority) = if let Ok(mint) =
             StateWithExtensionsOwned::<Mint>::unpack(target_account.data.clone())
         {
-            match authority_type {
+            let previous_authority = match authority_type {
                 AuthorityType::AccountOwner | AuthorityType::CloseAccount => Err(format!(
                     "Authority type `{}` not supported for SPL Token mints",
                     auth_str
@@ -607,8 +697,17 @@ async fn command_authorize(
                 }
                 AuthorityType::TransferFeeConfig => unimplemented!(),
                 AuthorityType::WithheldWithdraw => unimplemented!(),
-                AuthorityType::InterestRate => unimplemented!(),
-            }
+                AuthorityType::InterestRate => {
+                    if let Ok(interest_rate_config) = mint.get_extension::<InterestBearingConfig>()
+                    {
+                        Ok(COption::<Pubkey>::from(interest_rate_config.rate_authority))
+                    } else {
+                        Err(format!("Mint `{}` is not interest-bearing", account))
+                    }
+                }
+            }?;
+
+            Ok((account, previous_authority))
         } else if let Ok(token_account) =
             StateWithExtensionsOwned::<Account>::unpack(target_account.data)
         {
@@ -632,7 +731,7 @@ async fn command_authorize(
                 }
             };
 
-            match authority_type {
+            let previous_authority = match authority_type {
                 AuthorityType::MintTokens
                 | AuthorityType::FreezeAccount
                 | AuthorityType::CloseMint
@@ -655,17 +754,20 @@ async fn command_authorize(
                             .unwrap_or(token_account.base.owner),
                     ))
                 }
-            }
+            }?;
+
+            Ok((token_account.base.mint, previous_authority))
         } else {
             Err("Unsupported account data format".to_string())
         }?;
 
-        (program_id, previous_authority)
+        (program_id, mint_pubkey, previous_authority)
     } else {
-        (config.program_id, COption::None)
+        // default is safe here because authorize doesnt use it
+        (config.program_id, Pubkey::default(), COption::None)
     };
 
-    let token = token_client_from_config(config, &program_id, &Pubkey::default());
+    let token = token_client_from_config(config, &program_id, &mint_pubkey);
 
     println_display(
         config,
@@ -804,7 +906,8 @@ async fn command_transfer(
             .value
             .map(|account| {
                 (
-                    account.owner == mint_info.program_id && account.data.len() == Account::LEN,
+                    account.owner == mint_info.program_id
+                        && Account::valid_account_data(account.data.as_slice()),
                     account.owner == system_program::id(),
                 )
             });
@@ -889,7 +992,7 @@ async fn command_transfer(
                     );
                 }
                 instructions.push(create_associated_token_account(
-                    &config.fee_payer,
+                    &config.fee_payer.pubkey(),
                     &recipient,
                     &mint_info.address,
                     &mint_info.program_id,
@@ -927,7 +1030,10 @@ async fn command_transfer(
         )?);
     }
     if let Some(text) = memo {
-        instructions.push(spl_memo::build_memo(text.as_bytes(), &[&config.fee_payer]));
+        instructions.push(spl_memo::build_memo(
+            text.as_bytes(),
+            &[&config.fee_payer.pubkey()],
+        ));
     }
     let tx_return = handle_tx(
         &CliSignerInfo {
@@ -969,40 +1075,22 @@ async fn command_burn(
     let mint_address = config.check_account(&source, mint_address).await?;
     let mint_info = config.get_mint_info(&mint_address, mint_decimals).await?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals);
-
-    let mut instructions = if use_unchecked_instruction {
-        vec![burn(
-            &mint_info.program_id,
-            &source,
-            &mint_info.address,
-            &source_owner,
-            &config.multisigner_pubkeys,
-            amount,
-        )?]
+    let decimals = if use_unchecked_instruction {
+        None
     } else {
-        vec![burn_checked(
-            &mint_info.program_id,
-            &source,
-            &mint_info.address,
-            &source_owner,
-            &config.multisigner_pubkeys,
-            amount,
-            mint_info.decimals,
-        )?]
+        Some(mint_info.decimals)
     };
+
+    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
     if let Some(text) = memo {
-        instructions.push(spl_memo::build_memo(text.as_bytes(), &[&config.fee_payer]));
+        token.with_memo(text);
     }
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        instructions,
-    )
-    .await?;
+
+    let res = token
+        .burn(&source, &source_owner, amount, decimals, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
@@ -1022,6 +1110,7 @@ async fn command_mint(
     mint_info: MintInfo,
     mint_authority: Pubkey,
     use_unchecked_instruction: bool,
+    memo: Option<String>,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
     println_display(
@@ -1033,36 +1122,22 @@ async fn command_mint(
     );
 
     let amount = spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals);
-    let instructions = if use_unchecked_instruction {
-        vec![mint_to(
-            &mint_info.program_id,
-            &token,
-            &recipient,
-            &mint_authority,
-            &config.multisigner_pubkeys,
-            amount,
-        )?]
+    let decimals = if use_unchecked_instruction {
+        None
     } else {
-        vec![mint_to_checked(
-            &mint_info.program_id,
-            &token,
-            &recipient,
-            &mint_authority,
-            &config.multisigner_pubkeys,
-            amount,
-            mint_info.decimals,
-        )?]
+        Some(mint_info.decimals)
     };
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        instructions,
-    )
-    .await?;
+
+    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    if let Some(text) = memo {
+        token.with_memo(text);
+    }
+
+    let res = token
+        .mint_to(&recipient, &mint_authority, amount, decimals, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
@@ -1091,23 +1166,12 @@ async fn command_freeze(
         ),
     );
 
-    let instructions = vec![freeze_account(
-        &mint_info.program_id,
-        &account,
-        &mint_info.address,
-        &freeze_authority,
-        &config.multisigner_pubkeys,
-    )?];
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        instructions,
-    )
-    .await?;
+    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    let res = token
+        .freeze(&account, &freeze_authority, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
@@ -1136,23 +1200,12 @@ async fn command_thaw(
         ),
     );
 
-    let instructions = vec![thaw_account(
-        &mint_info.program_id,
-        &account,
-        &mint_info.address,
-        &freeze_authority,
-        &config.multisigner_pubkeys,
-    )?];
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        instructions,
-    )
-    .await?;
+    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    let res = token
+        .thaw(&account, &freeze_authority, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
@@ -1227,7 +1280,7 @@ async fn command_wrap(
         vec![
             system_instruction::transfer(&wallet_address, &account, lamports),
             create_associated_token_account(
-                &config.fee_payer,
+                &config.fee_payer.pubkey(),
                 &wallet_address,
                 &native_mint,
                 &config.program_id,
@@ -1339,38 +1392,18 @@ async fn command_approve(
     let mint_address = config.check_account(&account, mint_address).await?;
     let mint_info = config.get_mint_info(&mint_address, mint_decimals).await?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals);
-
-    let instructions = if use_unchecked_instruction {
-        vec![approve(
-            &mint_info.program_id,
-            &account,
-            &delegate,
-            &owner,
-            &config.multisigner_pubkeys,
-            amount,
-        )?]
+    let decimals = if use_unchecked_instruction {
+        None
     } else {
-        vec![approve_checked(
-            &mint_info.program_id,
-            &account,
-            &mint_info.address,
-            &delegate,
-            &owner,
-            &config.multisigner_pubkeys,
-            amount,
-            mint_info.decimals,
-        )?]
+        Some(mint_info.decimals)
     };
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        instructions,
-    )
-    .await?;
+
+    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    let res = token
+        .approve(&account, &delegate, &owner, amount, decimals, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
@@ -1388,7 +1421,7 @@ async fn command_revoke(
     delegate: Option<Pubkey>,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let (delegate, program_id) = if !config.sign_only {
+    let (program_id, mint_pubkey, delegate) = if !config.sign_only {
         let source_account = config.rpc_client.get_account(&account).await?;
         let source_state = StateWithExtensionsOwned::<Account>::unpack(source_account.data)
             .map_err(|_| format!("Could not deserialize token account {}", account))?;
@@ -1400,9 +1433,10 @@ async fn command_revoke(
         };
 
         config.check_owner(&account, &source_account.owner)?;
-        (delegate, source_account.owner)
+        (source_account.owner, source_state.base.mint, delegate)
     } else {
-        (delegate, config.program_id)
+        // default is safe here because revoke doesnt use it
+        (config.program_id, Pubkey::default(), delegate)
     };
 
     if let Some(delegate) = delegate {
@@ -1417,22 +1451,10 @@ async fn command_revoke(
         return Err(format!("No delegate on account {}", account).into());
     }
 
-    let instructions = vec![revoke(
-        &program_id,
-        &account,
-        &owner,
-        &config.multisigner_pubkeys,
-    )?];
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        instructions,
-    )
-    .await?;
+    let token = token_client_from_config(config, &program_id, &mint_pubkey);
+    let res = token.revoke(&account, &owner, &bulk_signers).await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
@@ -1450,7 +1472,7 @@ async fn command_close(
     recipient: Pubkey,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let program_id = if !config.sign_only {
+    let (program_id, mint_pubkey) = if !config.sign_only {
         let source_account = config.rpc_client.get_account(&account).await?;
         let program_id = source_account.owner;
         config.check_owner(&account, &source_account.owner)?;
@@ -1467,12 +1489,13 @@ async fn command_close(
             .into());
         }
 
-        program_id
+        (program_id, source_state.base.mint)
     } else {
-        config.program_id
+        // default is safe here because close doesnt use it
+        (config.program_id, Pubkey::default())
     };
 
-    let token = token_client_from_config(config, &program_id, &Pubkey::default());
+    let token = token_client_from_config(config, &program_id, &mint_pubkey);
     let res = token
         .close_account(&account, &recipient, &close_authority, &bulk_signers)
         .await?;
@@ -1764,7 +1787,7 @@ async fn command_gc(
         if total_balance > 0 && !accounts.contains_key(&associated_token_account) {
             // Create the associated token account
             instructions.push(vec![create_associated_token_account(
-                &config.fee_payer,
+                &config.fee_payer.pubkey(),
                 &owner,
                 &token,
                 &config.program_id,
@@ -2157,8 +2180,48 @@ fn app<'a, 'b>(
                             "Enable the mint authority to close this mint"
                         ),
                 )
+                .arg(
+                    Arg::with_name("interest_rate")
+                        .long("interest-rate")
+                        .value_name("RATE_BPS")
+                        .takes_value(true)
+                        .help(
+                            "Specify the interest rate in basis points. \
+                            Rate authority defaults to the mint authority."
+                        ),
+                )
                 .nonce_args(true)
                 .arg(memo_arg())
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::SetInterestRate.into())
+                .about("Set the interest rate for an interest-bearing token")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .help("The interest-bearing token address"),
+                )
+                .arg(
+                    Arg::with_name("rate")
+                        .value_name("RATE")
+                        .takes_value(true)
+                        .required(true)
+                        .help("The new interest rate in basis points"),
+                )
+                .arg(
+                    Arg::with_name("rate_authority")
+                    .long("rate-authority")
+                    .validator(is_valid_signer)
+                    .value_name("SIGNER")
+                    .takes_value(true)
+                    .help(
+                        "Specify the rate authority keypair. \
+                        Defaults to the client keypair address."
+                    )
+                )
         )
         .subcommand(
             SubCommand::with_name(CommandName::CreateAccount.into())
@@ -2459,6 +2522,7 @@ fn app<'a, 'b>(
                 .arg(mint_decimals_arg())
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
+                .arg(memo_arg())
                 .offline_args_config(&SignOnlyNeedsMintDecimals{}),
         )
         .subcommand(
@@ -2972,6 +3036,7 @@ async fn process_command<'a>(
             let mint_authority =
                 config.pubkey_or_default(arg_matches, "mint_authority", &mut wallet_manager);
             let memo = value_t!(arg_matches, "memo", String).ok();
+            let rate_bps = value_t!(arg_matches, "interest_rate", i16).ok();
 
             let (token_signer, token) =
                 get_signer(arg_matches, "token_keypair", &mut wallet_manager)
@@ -2988,6 +3053,25 @@ async fn process_command<'a>(
                 arg_matches.is_present("enable_freeze"),
                 arg_matches.is_present("enable_close"),
                 memo,
+                rate_bps,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::SetInterestRate, arg_matches) => {
+            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let rate_bps = value_t_or_exit!(arg_matches, "rate", i16);
+            let (rate_authority_signer, rate_authority_pubkey) =
+                config.signer_or_default(arg_matches, "rate_authority", &mut wallet_manager);
+            let bulk_signers = vec![rate_authority_signer];
+
+            command_set_interest_rate(
+                config,
+                token_pubkey,
+                rate_authority_pubkey,
+                rate_bps,
                 bulk_signers,
             )
             .await
@@ -3181,6 +3265,7 @@ async fn process_command<'a>(
             };
             config.check_account(&recipient, Some(token)).await?;
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
+            let memo = value_t!(arg_matches, "memo", String).ok();
             command_mint(
                 config,
                 token,
@@ -3189,6 +3274,7 @@ async fn process_command<'a>(
                 mint_info,
                 mint_authority,
                 use_unchecked_instruction,
+                memo,
                 bulk_signers,
             )
             .await
@@ -3467,7 +3553,8 @@ async fn handle_tx<'a>(
     minimum_balance_for_rent_exemption: u64,
     instructions: Vec<Instruction>,
 ) -> Result<TransactionReturnData, Error> {
-    let fee_payer = Some(&config.fee_payer);
+    let fee_payer_pubkey = config.fee_payer.pubkey();
+    let fee_payer = Some(&fee_payer_pubkey);
 
     let recent_blockhash = config.program_client.get_latest_blockhash().await?;
     let message = if let Some(nonce_account) = config.nonce_account.as_ref() {
@@ -3613,7 +3700,7 @@ mod tests {
             program_client,
             websocket_url,
             output_format: OutputFormat::JsonCompact,
-            fee_payer: payer.pubkey(),
+            fee_payer: Arc::new(clone_keypair(payer)),
             default_signer: Arc::new(clone_keypair(payer)),
             nonce_account: None,
             nonce_authority: None,
@@ -3657,6 +3744,33 @@ mod tests {
             false,
             false,
             None,
+            None,
+            bulk_signers,
+        )
+        .await
+        .unwrap();
+        token_pubkey
+    }
+
+    async fn create_interest_bearing_token(
+        config: &Config<'_>,
+        payer: &Keypair,
+        rate_bps: i16,
+    ) -> Pubkey {
+        let token = Keypair::new();
+        let token_pubkey = token.pubkey();
+        let bulk_signers: Vec<Arc<dyn Signer>> =
+            vec![Arc::new(clone_keypair(payer)), Arc::new(token)];
+
+        command_create_token(
+            config,
+            TEST_DECIMALS,
+            token_pubkey,
+            payer.pubkey(),
+            false,
+            false,
+            None,
+            Some(rate_bps),
             bulk_signers,
         )
         .await
@@ -3711,6 +3825,7 @@ mod tests {
             },
             payer.pubkey(),
             false,
+            None,
             bulk_signers,
         )
         .await
@@ -3795,6 +3910,77 @@ mod tests {
             let account = config.rpc_client.get_account(&mint).await.unwrap();
             assert_eq!(account.owner, program_id);
         }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn create_token_interest_bearing() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let config = test_config(&test_validator, &payer, &spl_token_2022::id());
+        let rate_bps: i16 = 100;
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::CreateToken.into(),
+                "--interest-rate",
+                &rate_bps.to_string(),
+            ],
+        )
+        .await;
+        let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+        let mint = Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
+        let account = config.rpc_client.get_account(&mint).await.unwrap();
+        let mint_account =
+            StateWithExtensionsOwned::<spl_token_2022::state::Mint>::unpack(account.data).unwrap();
+        let extension = mint_account
+            .get_extension::<interest_bearing_mint::InterestBearingConfig>()
+            .unwrap();
+        assert_eq!(account.owner, spl_token_2022::id());
+        assert_eq!(i16::from(extension.current_rate), rate_bps);
+        assert_eq!(
+            Option::<Pubkey>::from(extension.rate_authority),
+            Some(payer.pubkey())
+        );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn set_interest_rate() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let config = test_config(&test_validator, &payer, &spl_token_2022::id());
+        let initial_rate: i16 = 100;
+        let new_rate: i16 = 300;
+        let token = create_interest_bearing_token(&config, &payer, initial_rate).await;
+        let account = config.rpc_client.get_account(&token).await.unwrap();
+        let mint_account =
+            StateWithExtensionsOwned::<spl_token_2022::state::Mint>::unpack(account.data).unwrap();
+        let extension = mint_account
+            .get_extension::<interest_bearing_mint::InterestBearingConfig>()
+            .unwrap();
+        assert_eq!(account.owner, spl_token_2022::id());
+        assert_eq!(i16::from(extension.current_rate), initial_rate);
+
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::SetInterestRate.into(),
+                &token.to_string(),
+                &new_rate.to_string(),
+            ],
+        )
+        .await;
+        let _value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+        let account = config.rpc_client.get_account(&token).await.unwrap();
+        let mint_account =
+            StateWithExtensionsOwned::<spl_token_2022::state::Mint>::unpack(account.data).unwrap();
+        let extension = mint_account
+            .get_extension::<interest_bearing_mint::InterestBearingConfig>()
+            .unwrap();
+        assert_eq!(i16::from(extension.current_rate), new_rate);
     }
 
     #[tokio::test]
@@ -4509,6 +4695,7 @@ mod tests {
             payer.pubkey(),
             false,
             true,
+            None,
             None,
             bulk_signers,
         )

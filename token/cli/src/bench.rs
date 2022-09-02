@@ -302,7 +302,7 @@ async fn command_create_accounts(
                 messages.push(Message::new(
                     &[
                         system_instruction::create_account_with_seed(
-                            &config.fee_payer,
+                            &config.fee_payer.pubkey(),
                             address,
                             owner,
                             seed,
@@ -312,7 +312,7 @@ async fn command_create_accounts(
                         ),
                         instruction::initialize_account(&program_id, address, token, owner)?,
                     ],
-                    Some(&config.fee_payer),
+                    Some(&config.fee_payer.pubkey()),
                 ));
             }
         }
@@ -358,7 +358,7 @@ async fn command_close_accounts(
                                     owner,
                                     &[],
                                 )?],
-                                Some(&config.fee_payer),
+                                Some(&config.fee_payer.pubkey()),
                             ));
                         }
                     }
@@ -415,7 +415,7 @@ async fn command_deposit_into_or_withdraw_from(
                         amount,
                         mint_info.decimals,
                     )?],
-                    Some(&config.fee_payer),
+                    Some(&config.fee_payer.pubkey()),
                 ));
             } else {
                 eprintln!("Token account does not exist: {}", address)

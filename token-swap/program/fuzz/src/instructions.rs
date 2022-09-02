@@ -13,7 +13,6 @@ use {
             constant_product::ConstantProductCurve,
             fees::Fees,
             offset::OffsetCurve,
-            stable::StableCurve,
         },
         error::SwapError,
         instruction::{
@@ -354,6 +353,7 @@ fn run_fuzz_instruction(
             let pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
             token_swap.deposit_single_token_type_exact_amount_in(
                 source_token_account,
+                trade_direction,
                 pool_account,
                 instruction,
             )
@@ -371,6 +371,7 @@ fn run_fuzz_instruction(
             let pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
             token_swap.withdraw_single_token_type_exact_amount_out(
                 pool_account,
+                trade_direction,
                 destination_token_account,
                 instruction,
             )
@@ -465,7 +466,6 @@ fn get_swap_curve(curve_type: CurveType) -> SwapCurve {
             CurveType::ConstantPrice => Arc::new(ConstantPriceCurve {
                 token_b_price: 10_000_000,
             }),
-            CurveType::Stable => Arc::new(StableCurve { amp: 100 }),
             CurveType::Offset => Arc::new(OffsetCurve {
                 token_b_offset: 100_000_000_000,
             }),

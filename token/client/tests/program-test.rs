@@ -145,6 +145,7 @@ async fn get_or_create_associated_token_account() {
 #[tokio::test]
 async fn set_authority() {
     let TestContext {
+        decimals,
         mint_authority,
         token,
         alice,
@@ -158,7 +159,13 @@ async fn set_authority() {
         .expect("failed to create associated token account");
 
     token
-        .mint_to(&alice_vault, &mint_authority, 1)
+        .mint_to(
+            &alice_vault,
+            &mint_authority.pubkey(),
+            1,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .expect("failed to mint token");
 
@@ -182,7 +189,13 @@ async fn set_authority() {
     // TODO: compare
     // Err(Client(TransactionError(InstructionError(0, Custom(5)))))
     assert!(token
-        .mint_to(&alice_vault, &mint_authority, 2)
+        .mint_to(
+            &alice_vault,
+            &mint_authority.pubkey(),
+            2,
+            Some(decimals),
+            &vec![&mint_authority]
+        )
         .await
         .is_err());
 
@@ -228,7 +241,13 @@ async fn mint_to() {
 
     let mint_amount = 10 * u64::pow(10, decimals as u32);
     token
-        .mint_to(&alice_vault, &mint_authority, mint_amount)
+        .mint_to(
+            &alice_vault,
+            &mint_authority.pubkey(),
+            mint_amount,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .expect("failed to mint token");
 
@@ -268,13 +287,26 @@ async fn transfer() {
 
     let mint_amount = 10 * u64::pow(10, decimals as u32);
     token
-        .mint_to(&alice_vault, &mint_authority, mint_amount)
+        .mint_to(
+            &alice_vault,
+            &mint_authority.pubkey(),
+            mint_amount,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .expect("failed to mint token");
 
     let transfer_amount = mint_amount.overflowing_div(3).0;
     token
-        .transfer_checked(&alice_vault, &bob_vault, &alice, transfer_amount, decimals)
+        .transfer(
+            &alice_vault,
+            &bob_vault,
+            &alice.pubkey(),
+            transfer_amount,
+            Some(decimals),
+            &vec![&alice],
+        )
         .await
         .expect("failed to transfer");
 

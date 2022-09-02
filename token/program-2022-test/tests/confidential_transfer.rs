@@ -89,7 +89,7 @@ struct ConfidentialTokenAccountMeta {
 }
 
 impl ConfidentialTokenAccountMeta {
-    async fn new<T>(token: &Token<T, Keypair>, owner: &Keypair) -> Self
+    async fn new<T>(token: &Token<T>, owner: &Keypair) -> Self
     where
         T: SendTransaction,
     {
@@ -122,7 +122,7 @@ impl ConfidentialTokenAccountMeta {
     }
 
     async fn with_tokens<T>(
-        token: &Token<T, Keypair>,
+        token: &Token<T>,
         owner: &Keypair,
         mint_authority: &Keypair,
         amount: u64,
@@ -134,7 +134,13 @@ impl ConfidentialTokenAccountMeta {
         let meta = Self::new(token, owner).await;
 
         token
-            .mint_to(&meta.token_account, mint_authority, amount)
+            .mint_to(
+                &meta.token_account,
+                &mint_authority.pubkey(),
+                amount,
+                Some(decimals),
+                &vec![mint_authority],
+            )
             .await
             .unwrap();
 
@@ -156,11 +162,8 @@ impl ConfidentialTokenAccountMeta {
         meta
     }
 
-    async fn check_balances<T>(
-        &self,
-        token: &Token<T, Keypair>,
-        expected: ConfidentialTokenAccountBalances,
-    ) where
+    async fn check_balances<T>(&self, token: &Token<T>, expected: ConfidentialTokenAccountBalances)
+    where
         T: SendTransaction,
     {
         let state = token.get_account_info(&self.token_account).await.unwrap();
@@ -206,7 +209,7 @@ struct ConfidentialTokenAccountBalances {
 }
 
 async fn check_withheld_amount_in_mint<T>(
-    token: &Token<T, Keypair>,
+    token: &Token<T>,
     withdraw_withheld_authority_encryption_keypair: &ElGamalKeypair,
     expected: u64,
 ) where
@@ -450,7 +453,13 @@ async fn ct_deposit() {
     let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice).await;
 
     token
-        .mint_to(&alice_meta.token_account, &mint_authority, 65537)
+        .mint_to(
+            &alice_meta.token_account,
+            &mint_authority.pubkey(),
+            65537,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
         .await
         .unwrap();
 

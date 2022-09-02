@@ -281,7 +281,19 @@ where
         ))))
     }
 
-    pub async fn construct_tx<S: Signers>(
+    fn get_multisig_signers<'a, 'b>(
+        &self,
+        authority: &'b Pubkey,
+        signing_pubkeys: &'a Vec<Pubkey>,
+    ) -> Vec<&'a Pubkey> {
+        if signing_pubkeys.as_ref() == [*authority] {
+            vec![]
+        } else {
+            signing_pubkeys.iter().collect::<Vec<_>>()
+        }
+    }
+
+    async fn construct_tx<S: Signers>(
         &self,
         token_instructions: &[Instruction],
         signing_keypairs: &S,
@@ -545,11 +557,7 @@ where
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
-        let multisig_signing_pubkeys = if signing_pubkeys == [*authority] {
-            vec![]
-        } else {
-            signing_pubkeys.iter().collect::<Vec<_>>()
-        };
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
         self.process_ixs(
             &[instruction::set_authority(
@@ -558,7 +566,7 @@ where
                 new_authority,
                 authority_type,
                 authority,
-                &multisig_signing_pubkeys,
+                &multisig_signers,
             )?],
             signing_keypairs,
         )
@@ -566,207 +574,204 @@ where
     }
 
     /// Mint new tokens
-    pub async fn mint_to<S: Signer>(
+    pub async fn mint_to<S: Signers>(
         &self,
         destination: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
         amount: u64,
-    ) -> TokenResult<()> {
-        self.process_ixs(
-            &[instruction::mint_to(
+        decimals: Option<u8>,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        let instructions = if let Some(decimals) = decimals {
+            [instruction::mint_to_checked(
                 &self.program_id,
                 &self.pubkey,
                 destination,
-                &authority.pubkey(),
-                &[],
-                amount,
-            )?],
-            &[authority],
-        )
-        .await
-        .map(|_| ())
-    }
-
-    /// Transfer tokens to another account
-    pub async fn transfer_unchecked<S: Signer>(
-        &self,
-        source: &Pubkey,
-        destination: &Pubkey,
-        authority: &S,
-        amount: u64,
-    ) -> TokenResult<T::Output> {
-        self.process_ixs(
-            #[allow(deprecated)]
-            &[instruction::transfer(
-                &self.program_id,
-                source,
-                destination,
-                &authority.pubkey(),
-                &[],
-                amount,
-            )?],
-            &[authority],
-        )
-        .await
-    }
-
-    /// Transfer tokens to another account
-    pub async fn transfer_checked<S: Signer>(
-        &self,
-        source: &Pubkey,
-        destination: &Pubkey,
-        authority: &S,
-        amount: u64,
-        decimals: u8,
-    ) -> TokenResult<T::Output> {
-        self.process_ixs(
-            &[instruction::transfer_checked(
-                &self.program_id,
-                source,
-                &self.pubkey,
-                destination,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers,
                 amount,
                 decimals,
-            )?],
-            &[authority],
-        )
-        .await
+            )?]
+        } else {
+            [instruction::mint_to(
+                &self.program_id,
+                &self.pubkey,
+                destination,
+                authority,
+                &multisig_signers,
+                amount,
+            )?]
+        };
+
+        self.process_ixs(&instructions, signing_keypairs).await
+    }
+
+    /// Transfer tokens to another account
+    pub async fn transfer<S: Signers>(
+        &self,
+        source: &Pubkey,
+        destination: &Pubkey,
+        authority: &Pubkey,
+        amount: u64,
+        decimals: Option<u8>,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        let instructions = if let Some(decimals) = decimals {
+            [instruction::transfer_checked(
+                &self.program_id,
+                source,
+                &self.pubkey,
+                destination,
+                authority,
+                &multisig_signers,
+                amount,
+                decimals,
+            )?]
+        } else {
+            #[allow(deprecated)]
+            [instruction::transfer(
+                &self.program_id,
+                source,
+                destination,
+                authority,
+                &multisig_signers,
+                amount,
+            )?]
+        };
+
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Transfer tokens to another account, given an expected fee
-    pub async fn transfer_checked_with_fee<S: Signer>(
+    #[allow(clippy::too_many_arguments)]
+    pub async fn transfer_with_fee<S: Signers>(
         &self,
         source: &Pubkey,
         destination: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
         amount: u64,
         decimals: u8,
         fee: u64,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[transfer_fee::instruction::transfer_checked_with_fee(
                 &self.program_id,
                 source,
                 &self.pubkey,
                 destination,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers,
                 amount,
                 decimals,
                 fee,
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Burn tokens from account
-    pub async fn burn<S: Signer>(
+    pub async fn burn<S: Signers>(
         &self,
         source: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
         amount: u64,
+        decimals: Option<u8>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        self.process_ixs(
-            &[instruction::burn(
-                &self.program_id,
-                source,
-                &self.pubkey,
-                &authority.pubkey(),
-                &[],
-                amount,
-            )?],
-            &[authority],
-        )
-        .await
-    }
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-    /// Burn tokens from account
-    pub async fn burn_checked<S: Signer>(
-        &self,
-        source: &Pubkey,
-        authority: &S,
-        amount: u64,
-        decimals: u8,
-    ) -> TokenResult<T::Output> {
-        self.process_ixs(
-            &[instruction::burn_checked(
+        let instructions = if let Some(decimals) = decimals {
+            [instruction::burn_checked(
                 &self.program_id,
                 source,
                 &self.pubkey,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers,
                 amount,
                 decimals,
-            )?],
-            &[authority],
-        )
-        .await
+            )?]
+        } else {
+            [instruction::burn(
+                &self.program_id,
+                source,
+                &self.pubkey,
+                authority,
+                &multisig_signers,
+                amount,
+            )?]
+        };
+
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Approve a delegate to spend tokens
-    pub async fn approve<S: Signer>(
+    pub async fn approve<S: Signers>(
         &self,
         source: &Pubkey,
         delegate: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
         amount: u64,
+        decimals: Option<u8>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        self.process_ixs(
-            &[instruction::approve(
-                &self.program_id,
-                source,
-                delegate,
-                &authority.pubkey(),
-                &[],
-                amount,
-            )?],
-            &[authority],
-        )
-        .await
-    }
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-    /// Approve a delegate to spend tokens, with decimal check
-    pub async fn approve_checked<S: Signer>(
-        &self,
-        source: &Pubkey,
-        delegate: &Pubkey,
-        authority: &S,
-        amount: u64,
-        decimals: u8,
-    ) -> TokenResult<T::Output> {
-        self.process_ixs(
-            &[instruction::approve_checked(
+        let instructions = if let Some(decimals) = decimals {
+            [instruction::approve_checked(
                 &self.program_id,
                 source,
                 &self.pubkey,
                 delegate,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers,
                 amount,
                 decimals,
-            )?],
-            &[authority],
-        )
-        .await
+            )?]
+        } else {
+            [instruction::approve(
+                &self.program_id,
+                source,
+                delegate,
+                authority,
+                &multisig_signers,
+                amount,
+            )?]
+        };
+
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Revoke a delegate
-    pub async fn revoke<S: Signer>(
+    pub async fn revoke<S: Signers>(
         &self,
         source: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[instruction::revoke(
                 &self.program_id,
                 source,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers,
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
@@ -780,18 +785,14 @@ where
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
-        let multisig_signing_pubkeys = if signing_pubkeys == [*authority] {
-            vec![]
-        } else {
-            signing_pubkeys.iter().collect::<Vec<_>>()
-        };
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
         let mut instructions = vec![instruction::close_account(
             &self.program_id,
             account,
             destination,
             authority,
-            &multisig_signing_pubkeys,
+            &multisig_signers,
         )?];
 
         if let Ok(Some(destination_account)) = self.client.get_account(*destination).await {
@@ -808,39 +809,47 @@ where
     }
 
     /// Freeze a token account
-    pub async fn freeze_account<S: Signer>(
+    pub async fn freeze<S: Signers>(
         &self,
         account: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[instruction::freeze_account(
                 &self.program_id,
                 account,
                 &self.pubkey,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers,
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Thaw / unfreeze a token account
-    pub async fn thaw_account<S: Signer>(
+    pub async fn thaw<S: Signers>(
         &self,
         account: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[instruction::thaw_account(
                 &self.program_id,
                 account,
                 &self.pubkey,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers,
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }

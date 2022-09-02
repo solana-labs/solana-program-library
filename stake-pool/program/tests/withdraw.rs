@@ -21,7 +21,7 @@ use {
     },
     spl_stake_pool::{
         error::StakePoolError, id, instruction, minimum_stake_lamports, state,
-        MINIMUM_ACTIVE_STAKE, MINIMUM_RESERVE_LAMPORTS,
+        MINIMUM_RESERVE_LAMPORTS,
     },
     spl_token::error::TokenError,
 };
@@ -57,13 +57,16 @@ async fn setup() -> (
     )
     .await;
 
+    let current_minimum_delegation =
+        stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
+
     let deposit_info = simple_deposit_stake(
         &mut banks_client,
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
         &validator_stake_account,
-        MINIMUM_ACTIVE_STAKE * 3,
+        current_minimum_delegation * 3,
     )
     .await
     .unwrap();
@@ -306,8 +309,10 @@ async fn _success(test_type: SuccessTestType) {
     let stake_state =
         deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
+    let stake_minimum_delegation =
+        stake_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
     assert_eq!(
-        validator_stake_account.lamports - minimum_stake_lamports(&meta),
+        validator_stake_account.lamports - minimum_stake_lamports(&meta, stake_minimum_delegation),
         validator_stake_item.active_stake_lamports
     );
 
@@ -876,7 +881,13 @@ async fn success_with_reserve() {
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
-    let deposit_lamports = (MINIMUM_ACTIVE_STAKE + stake_rent) * 2;
+    let current_minimum_delegation = stake_pool_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
+    let deposit_lamports = (current_minimum_delegation + stake_rent) * 2;
 
     let deposit_info = simple_deposit_stake(
         &mut context.banks_client,
@@ -1252,7 +1263,13 @@ async fn fail_withdraw_from_transient() {
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
-    let deposit_lamports = (MINIMUM_ACTIVE_STAKE + stake_rent) * 2;
+    let current_minimum_delegation = stake_pool_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
+    let deposit_lamports = (current_minimum_delegation + stake_rent) * 2;
 
     let deposit_info = simple_deposit_stake(
         &mut context.banks_client,
@@ -1373,7 +1390,13 @@ async fn success_withdraw_from_transient() {
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
 
     // compensate for the fee and the minimum balance in the transient stake account
-    let deposit_lamports = (MINIMUM_ACTIVE_STAKE + stake_rent) * 3;
+    let current_minimum_delegation = stake_pool_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
+    let deposit_lamports = (current_minimum_delegation + stake_rent) * 3;
 
     let deposit_info = simple_deposit_stake(
         &mut context.banks_client,
@@ -1581,7 +1604,10 @@ async fn success_empty_out_stake_with_fee() {
     let stake_state =
         deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
-    let lamports_to_withdraw = validator_stake_account.lamports - minimum_stake_lamports(&meta);
+    let stake_minimum_delegation =
+        stake_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
+    let lamports_to_withdraw =
+        validator_stake_account.lamports - minimum_stake_lamports(&meta, stake_minimum_delegation);
     let stake_pool_account =
         get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool =
@@ -1621,6 +1647,6 @@ async fn success_empty_out_stake_with_fee() {
     let meta = stake_state.meta().unwrap();
     assert_eq!(
         validator_stake_account.lamports,
-        minimum_stake_lamports(&meta)
+        minimum_stake_lamports(&meta, stake_minimum_delegation)
     );
 }

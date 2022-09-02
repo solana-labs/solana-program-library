@@ -534,8 +534,8 @@ impl Default for StakeStatus {
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorStakeInfo {
     /// Amount of active stake delegated to this validator, minus the minimum
-    /// required stake amount of rent-exemption + `crate::MINIMUM_ACTIVE_STAKE`
-    /// (currently 1 SOL).
+    /// required stake amount of rent-exemption +
+    /// `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
     ///
     /// Note that if `last_update_epoch` does not match the current epoch then
     /// this field may not be accurate
