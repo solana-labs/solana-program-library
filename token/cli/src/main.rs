@@ -43,8 +43,8 @@ use spl_associated_token_account::{
 use spl_token_2022::{
     extension::{
         interest_bearing_mint, interest_bearing_mint::InterestBearingConfig,
-        mint_close_authority::MintCloseAuthority, StateWithExtensionsOwned,
-        memo_transfer::MemoTransfer, ExtensionType,
+        memo_transfer::MemoTransfer, mint_close_authority::MintCloseAuthority, ExtensionType,
+        StateWithExtensionsOwned,
     },
     instruction::*,
     state::{Account, Mint, Multisig},
@@ -1962,8 +1962,7 @@ async fn command_required_transfer_memos(
                 } else {
                     "disabled"
                 }
-            )
-            .to_string());
+            ));
         }
     } else {
         existing_extensions.extend_from_slice(&[ExtensionType::MemoTransfer]);
