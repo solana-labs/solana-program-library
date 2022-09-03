@@ -1942,6 +1942,7 @@ async fn command_required_transfer_memos(
             )
         })?;
     let program_id = account_fetch.owner;
+    config.check_owner(&token_account_address, &program_id)?;
     let mut instructions: Vec<Instruction> = Vec::new();
     // Reallocation (if needed)
     let current_account_len = account_fetch.data.len();
