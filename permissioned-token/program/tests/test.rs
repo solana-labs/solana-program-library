@@ -74,12 +74,8 @@ async fn test_permissioned_token_basic() {
             .unwrap();
     }
 
-    let create_eve = create_associated_token_account(
-        &authority.pubkey(),
-        &eve_key,
-        &mint_key,
-        &spl_token::id(),
-    );
+    let create_eve =
+        create_associated_token_account(&authority.pubkey(), &eve_key, &mint_key, &spl_token::id());
     lwc.sign_send_instructions(vec![create_eve], vec![&authority])
         .await
         .unwrap();
@@ -112,9 +108,10 @@ async fn test_permissioned_token_basic() {
         .await
     {
         Ok(_) => panic!("transfer should fail"),
-        Err(e) => { println!("{:?}", e)}
+        Err(e) => {
+            println!("{:?}", e)
+        }
     };
-
 
     let successful_transfer_ix =
         create_transfer_instruction(&alice_key, &bob_key, &mint_key, &authority.pubkey(), 100)
