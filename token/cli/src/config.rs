@@ -10,7 +10,10 @@ use solana_clap_utils::{
 use solana_cli_output::OutputFormat;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_remote_wallet::remote_wallet::RemoteWalletManager;
-use solana_sdk::{commitment_config::CommitmentConfig, pubkey::Pubkey, signature::Signer};
+use solana_sdk::{
+    account::Account as RawAccount, commitment_config::CommitmentConfig, pubkey::Pubkey,
+    signature::Signer,
+};
 use spl_associated_token_account::*;
 use spl_token_2022::{
     extension::StateWithExtensionsOwned,
@@ -347,6 +350,25 @@ impl<'a> Config<'a> {
         (authority, authority_address)
     }
 
+    pub(crate) async fn get_account_checked(
+        &self,
+        account_pubkey: &Pubkey,
+    ) -> Result<RawAccount, Error> {
+        if let Ok(Some(account)) = self.program_client.get_account(*account_pubkey).await {
+            if self.program_id == account.owner {
+                Ok(account)
+            } else {
+                Err(format!(
+                    "Account {} is owned by {}, not configured program id {}",
+                    account_pubkey, account.owner, self.program_id
+                )
+                .into())
+            }
+        } else {
+            Err(format!("Account {} not found", account_pubkey).into())
+        }
+    }
+
     pub(crate) async fn get_mint_info(
         &self,
         mint: &Pubkey,
@@ -359,8 +381,7 @@ impl<'a> Config<'a> {
                 decimals: mint_decimals.unwrap_or_default(),
             })
         } else {
-            let account = self.rpc_client.get_account(mint).await?;
-            self.check_owner(mint, &account.owner)?;
+            let account = self.get_account_checked(mint).await?;
             let mint_account = StateWithExtensionsOwned::<Mint>::unpack(account.data)
                 .map_err(|_| format!("Could not find mint account {}", mint))?;
             if let Some(decimals) = mint_decimals {
@@ -380,25 +401,13 @@ impl<'a> Config<'a> {
         }
     }
 
-    pub(crate) fn check_owner(&self, account: &Pubkey, owner: &Pubkey) -> Result<(), Error> {
-        if self.program_id != *owner {
-            Err(format!(
-                "Account {:?} is owned by {}, not configured program id {}",
-                account, owner, self.program_id
-            )
-            .into())
-        } else {
-            Ok(())
-        }
-    }
-
     pub(crate) async fn check_account(
         &self,
         token_account: &Pubkey,
         mint_address: Option<Pubkey>,
     ) -> Result<Pubkey, Error> {
         if !self.sign_only {
-            let account = self.rpc_client.get_account(token_account).await?;
+            let account = self.get_account_checked(token_account).await?;
             let source_account = StateWithExtensionsOwned::<Account>::unpack(account.data)
                 .map_err(|_| format!("Could not find token account {}", token_account))?;
             let source_mint = source_account.base.mint;
@@ -411,7 +420,6 @@ impl<'a> Config<'a> {
                     .into());
                 }
             }
-            self.check_owner(token_account, &account.owner)?;
             Ok(source_mint)
         } else {
             Ok(mint_address.unwrap_or_default())
