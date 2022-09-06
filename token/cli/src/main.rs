@@ -431,9 +431,8 @@ async fn command_set_interest_rate(
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     let program_id = if !config.sign_only {
-        let mint_account = config.rpc_client.get_account(&token_pubkey).await?;
+        let mint_account = config.get_account_checked(&token_pubkey).await?;
         let program_id = mint_account.owner;
-        config.check_owner(&token_pubkey, &mint_account.owner)?;
 
         let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)
             .map_err(|_| format!("Could not deserialize token mint {}", token_pubkey))?;
@@ -666,9 +665,8 @@ async fn command_authorize(
     };
 
     let (program_id, mint_pubkey, previous_authority) = if !config.sign_only {
-        let target_account = config.rpc_client.get_account(&account).await?;
+        let target_account = config.get_account_checked(&account).await?;
         let program_id = target_account.owner;
-        config.check_owner(&account, &target_account.owner)?;
 
         let (mint_pubkey, previous_authority) = if let Ok(mint) =
             StateWithExtensionsOwned::<Mint>::unpack(target_account.data.clone())
@@ -808,12 +806,7 @@ async fn command_authorize(
 }
 
 async fn validate_mint(config: &Config<'_>, token: Pubkey) -> Result<Pubkey, Error> {
-    let mint = config
-        .rpc_client
-        .get_account(&token)
-        .await
-        .map_err(|_| format!("Mint account not found {:?}", token))?;
-    config.check_owner(&token, &mint.owner)?;
+    let mint = config.get_account_checked(&token).await?;
     if StateWithExtensionsOwned::<Mint>::unpack(mint.data).is_err() {
         return Err(format!("Invalid mint account {:?}", token).into());
     }
@@ -1419,7 +1412,7 @@ async fn command_revoke(
     bulk_signers: BulkSigners,
 ) -> CommandResult {
     let (program_id, mint_pubkey, delegate) = if !config.sign_only {
-        let source_account = config.rpc_client.get_account(&account).await?;
+        let source_account = config.get_account_checked(&account).await?;
         let source_state = StateWithExtensionsOwned::<Account>::unpack(source_account.data)
             .map_err(|_| format!("Could not deserialize token account {}", account))?;
 
@@ -1429,7 +1422,6 @@ async fn command_revoke(
             None
         };
 
-        config.check_owner(&account, &source_account.owner)?;
         (source_account.owner, source_state.base.mint, delegate)
     } else {
         // default is safe here because revoke doesnt use it
@@ -1470,9 +1462,8 @@ async fn command_close(
     bulk_signers: BulkSigners,
 ) -> CommandResult {
     let (program_id, mint_pubkey) = if !config.sign_only {
-        let source_account = config.rpc_client.get_account(&account).await?;
+        let source_account = config.get_account_checked(&account).await?;
         let program_id = source_account.owner;
-        config.check_owner(&account, &source_account.owner)?;
 
         let source_state = StateWithExtensionsOwned::<Account>::unpack(source_account.data)
             .map_err(|_| format!("Could not deserialize token account {}", account))?;
@@ -1516,9 +1507,8 @@ async fn command_close_mint(
     bulk_signers: BulkSigners,
 ) -> CommandResult {
     let program_id = if !config.sign_only {
-        let mint_account = config.rpc_client.get_account(&token_pubkey).await?;
+        let mint_account = config.get_account_checked(&token_pubkey).await?;
         let program_id = mint_account.owner;
-        config.check_owner(&token_pubkey, &mint_account.owner)?;
 
         let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)
             .map_err(|_| format!("Could not deserialize token mint {}", token_pubkey))?;
