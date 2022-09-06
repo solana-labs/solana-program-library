@@ -51,7 +51,7 @@ impl TransferFee {
         } else {
             let numerator = (pre_fee_amount as u128).checked_mul(transfer_fee_basis_points)?;
             let raw_fee = Self::ceil_div(numerator, ONE_IN_BASIS_POINTS)?
-                .try_into() // guaranteed to be oky
+                .try_into() // guaranteed to be okay
                 .ok()?;
 
             Some(cmp::min(raw_fee, u64::from(self.maximum_fee)))
