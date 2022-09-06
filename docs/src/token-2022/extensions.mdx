@@ -73,7 +73,7 @@ import {
     const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
 
     const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
-    await connection.confirmTransaction(airdropSignature);
+    await connection.confirmTransaction({ signature: airdropSignature, ...(await connection.getLatestBlockhash()) });
 
     const extensions = [ExtensionType.MintCloseAuthority];
     const mintLen = getMintLen(extensions);
@@ -210,7 +210,7 @@ import {
     const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
 
     const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
-    await connection.confirmTransaction(airdropSignature);
+    await connection.confirmTransaction({ signature: airdropSignature, ...(await connection.getLatestBlockhash()) });
 
     const mintLamports = await connection.getMinimumBalanceForRentExemption(mintLen);
     const mintTransaction = new Transaction().add(
@@ -496,7 +496,7 @@ import {
     const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
 
     const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
-    await connection.confirmTransaction(airdropSignature);
+    await connection.confirmTransaction({ signature: airdropSignature, ...(await connection.getLatestBlockhash()) });
 
     const defaultState = AccountState.Frozen;
 
@@ -605,7 +605,7 @@ import {
 
     const payer = Keypair.generate();
     const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
-    await connection.confirmTransaction(airdropSignature);
+    await connection.confirmTransaction({ signature: airdropSignature, ...(await connection.getLatestBlockhash()) });
 
     const mintAuthority = Keypair.generate();
     const decimals = 9;
@@ -715,7 +715,7 @@ import {
 
     const payer = Keypair.generate();
     const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
-    await connection.confirmTransaction(airdropSignature);
+    await connection.confirmTransaction({ signature: airdropSignature, ...(await connection.getLatestBlockhash()) });
 
     const mintAuthority = Keypair.generate();
     const decimals = 9;
@@ -791,7 +791,7 @@ import {
 
     const payer = Keypair.generate();
     const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
-    await connection.confirmTransaction(airdropSignature);
+    await connection.confirmTransaction({ signature: airdropSignature, ...(await connection.getLatestBlockhash()) });
 
     const mintAuthority = Keypair.generate();
     const decimals = 9;
@@ -900,7 +900,7 @@ import {
 
     const payer = Keypair.generate();
     const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
-    await connection.confirmTransaction(airdropSignature);
+    await connection.confirmTransaction({ signature: airdropSignature, ...(await connection.getLatestBlockhash()) });
 
     const mintAuthority = Keypair.generate();
     const decimals = 9;
@@ -984,7 +984,7 @@ import { createInterestBearingMint, updateRateInterestBearingMint, TOKEN_2022_PR
 
     const payer = Keypair.generate();
     const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
-    await connection.confirmTransaction(airdropSignature);
+    await connection.confirmTransaction({ signature: airdropSignature, ...(await connection.getLatestBlockhash()) });
 
     const mintAuthority = Keypair.generate();
     const freezeAuthority = Keypair.generate();
