@@ -18,18 +18,18 @@ default = []
 test = []
 
 [dependencies]
-solana-program = "1.10.32"
+solana-program = "1.11.6"
 shank = "^0.0.5"
-spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
+spl-token = { version = "3.5.0", features = ["no-entrypoint"] }
 spl-associated-token-account = { version = "1.1.1", features = [ "no-entrypoint", ] }
 thiserror = "^1.0.24"
 borsh = "0.9.3"
 
 [dev-dependencies]
-solana-program-test = "1.10.32"
-solana-sdk = "1.10.32"
+solana-program-test = "1.11.6"
+solana-sdk = "1.11.6"
 tokio = { version = "1.8.4", features = ["full"] }
-lightweight-solana-client = "0.1.2"
+anyhow = "1.0.52"
 
 [profile.release]
 lto = "fat"
