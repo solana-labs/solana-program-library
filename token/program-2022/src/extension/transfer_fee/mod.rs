@@ -314,10 +314,12 @@ pub(crate) mod test {
         };
         let maximum_fee = u64::from(transfer_fee.maximum_fee);
         // hit maximum fee
-        // assert_eq!(
-        //     maximum_fee,
-        //     transfer_fee.calculate_inverse_fee(u64::MAX).unwrap()
-        // );
+        assert_eq!(
+            maximum_fee,
+            transfer_fee
+                .calculate_inverse_fee(u64::MAX - maximum_fee)
+                .unwrap()
+        );
         // at exactly the max
         assert_eq!(
             maximum_fee,
@@ -364,8 +366,8 @@ pub(crate) mod test {
             minimum_fee + 1,
             transfer_fee.calculate_inverse_fee(one).unwrap()
         );
-        // zero is 1 token
-        // assert_eq!(minimum_fee, transfer_fee.calculate_inverse_fee(0).unwrap());
+        // zero is zero token
+        assert_eq!(0, transfer_fee.calculate_inverse_fee(0).unwrap());
     }
 
     proptest! {
