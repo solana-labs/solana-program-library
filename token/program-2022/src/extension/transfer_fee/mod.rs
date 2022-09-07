@@ -35,7 +35,10 @@ pub struct TransferFee {
     pub transfer_fee_basis_points: PodU16,
 }
 impl TransferFee {
-    /// Calculate ceiled division
+    /// Calculate ceiling-division
+    ///
+    /// Ceiling-division `ceil[ dividend / divisor ]` can be represented as a floor-division
+    /// `floor[ dividend + (divisor - 1) / divisor ]`
     fn ceil_div(dividend: u128, divisor: u128) -> Option<u128> {
         dividend
             .checked_add(divisor)?
