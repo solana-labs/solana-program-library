@@ -108,13 +108,21 @@ async fn test_permissioned_token_basic() {
     )
     .unwrap();
 
-    assert!(process_transaction(lwc, vec![failed_transfer_ix], vec![&alice]).await.is_err());
+    assert!(
+        process_transaction(lwc, vec![failed_transfer_ix], vec![&alice])
+            .await
+            .is_err()
+    );
 
     let eve_ix =
         create_transfer_instruction(&alice_key, &eve_key, &mint_key, &authority.pubkey(), 100)
             .unwrap();
 
-    assert!(process_transaction(lwc, vec![eve_ix], vec![&alice, &authority]).await.is_err());
+    assert!(
+        process_transaction(lwc, vec![eve_ix], vec![&alice, &authority])
+            .await
+            .is_err()
+    );
 
     let successful_transfer_ix =
         create_transfer_instruction(&alice_key, &bob_key, &mint_key, &authority.pubkey(), 100)
