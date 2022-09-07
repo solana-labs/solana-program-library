@@ -60,6 +60,8 @@ pub enum TokenError {
     AccountDecryption,
     #[error("not enough funds in account")]
     NotEnoughFunds,
+    #[error("missing memo signer")]
+    MissingMemoSigner,
 }
 impl PartialEq for TokenError {
     fn eq(&self, other: &Self) -> bool {
@@ -77,6 +79,7 @@ impl PartialEq for TokenError {
             ) => true,
             (Self::AccountDecryption, Self::AccountDecryption) => true,
             (Self::NotEnoughFunds, Self::NotEnoughFunds) => true,
+            (Self::MissingMemoSigner, Self::MissingMemoSigner) => true,
             _ => false,
         }
     }
@@ -172,6 +175,20 @@ impl ExtensionInitializationParams {
 
 pub type TokenResult<T> = Result<T, TokenError>;
 
+#[derive(Debug)]
+struct TokenMemo {
+    text: String,
+    signers: Vec<Pubkey>,
+}
+impl TokenMemo {
+    pub fn to_instruction(&self) -> Instruction {
+        spl_memo::build_memo(
+            self.text.as_bytes(),
+            &self.signers.iter().collect::<Vec<_>>(),
+        )
+    }
+}
+
 pub struct Token<T> {
     client: Arc<dyn ProgramClient<T>>,
     pubkey: Pubkey, /*token mint*/
@@ -179,7 +196,7 @@ pub struct Token<T> {
     program_id: Pubkey,
     nonce_account: Option<Pubkey>,
     nonce_authority: Option<Pubkey>,
-    memo: Arc<RwLock<Option<String>>>,
+    memo: Arc<RwLock<Option<TokenMemo>>>,
 }
 
 impl<T> fmt::Debug for Token<T> {
@@ -187,6 +204,9 @@ impl<T> fmt::Debug for Token<T> {
         f.debug_struct("Token")
             .field("pubkey", &self.pubkey)
             .field("payer", &self.payer.pubkey())
+            .field("program_id", &self.program_id)
+            .field("nonce_account", &self.nonce_account)
+            .field("nonce_authority", &self.nonce_authority)
             .field("memo", &self.memo.read().unwrap())
             .finish()
     }
@@ -242,9 +262,12 @@ where
         }
     }
 
-    pub fn with_memo<M: AsRef<str>>(&self, memo: M) -> &Self {
+    pub fn with_memo<M: AsRef<str>>(&self, memo: M, signers: Vec<Pubkey>) -> &Self {
         let mut w_memo = self.memo.write().unwrap();
-        *w_memo = Some(memo.as_ref().to_string());
+        *w_memo = Some(TokenMemo {
+            text: memo.as_ref().to_string(),
+            signers,
+        });
         self
     }
 
@@ -305,7 +328,16 @@ where
         {
             let mut w_memo = self.memo.write().unwrap();
             if let Some(memo) = w_memo.take() {
-                instructions.push(spl_memo::build_memo(memo.as_bytes(), &[&payer_key]));
+                let signing_pubkeys = signing_keypairs.pubkeys();
+                if !memo
+                    .signers
+                    .iter()
+                    .all(|signer| signing_pubkeys.contains(signer))
+                {
+                    return Err(TokenError::MissingMemoSigner);
+                }
+
+                instructions.push(memo.to_instruction());
             }
         }
 
