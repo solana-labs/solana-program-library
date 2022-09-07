@@ -132,12 +132,10 @@ async fn test_permissioned_token_basic() {
         create_transfer_instruction(&alice_key, &bob_key, &mint_key, &authority.pubkey(), 100)
             .unwrap();
     let burn_ix = create_burn_instruction(&mint_key, &alice_key, &authority.pubkey(), 900).unwrap();
-    let close_ix =
-        create_close_account_instruction(&mint_key, &alice_key, &authority.pubkey()).unwrap();
 
     process_transaction(
         lwc,
-        vec![successful_transfer_ix, burn_ix, close_ix],
+        vec![successful_transfer_ix, burn_ix],
         vec![&alice, &authority],
     )
     .await
