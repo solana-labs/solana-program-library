@@ -31,7 +31,7 @@ impl<'a, 'info> InitializeMint<'a, 'info> {
         assert_with_msg(
             ctx.mint.owner == &system_program::id(),
             ProgramError::IllegalOwner,
-            "Mint account must be owned by the Token Program",
+            "Mint account must be owned by the System Program when uninitialized",
         )?;
         assert_with_msg(
             ctx.token_program.key == &spl_token::id(),
@@ -51,7 +51,7 @@ impl<'a, 'info> InitializeMint<'a, 'info> {
         assert_with_msg(
             ctx.payer.is_writable,
             ProgramError::InvalidInstructionData,
-            "Payer account must be writable",
+            "Payer account must be writable (lamport balance will change)",
         )?;
         assert_with_msg(
             ctx.payer.is_signer,
@@ -94,6 +94,11 @@ impl<'a, 'info> InitializeAccount<'a, 'info> {
             "Token account must be uninitialized",
         )?;
         assert_with_msg(
+            ctx.token_account.owner == &system_program::id(),
+            ProgramError::IllegalOwner,
+            "Token account must be owned by System Program when uninitialized",
+        )?;
+        assert_with_msg(
             ctx.mint.owner == ctx.token_program.key,
             ProgramError::IllegalOwner,
             "Mint account must be owned by the Token Program",
@@ -126,7 +131,7 @@ impl<'a, 'info> InitializeAccount<'a, 'info> {
         assert_with_msg(
             ctx.payer.is_writable,
             ProgramError::InvalidInstructionData,
-            "Payer account must be writable",
+            "Payer account must be writable (lamport balance will change)",
         )?;
         assert_with_msg(
             ctx.payer.is_signer,
