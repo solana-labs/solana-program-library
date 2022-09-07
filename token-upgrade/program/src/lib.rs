@@ -11,9 +11,9 @@ pub mod processor;
 pub use solana_program;
 use solana_program::pubkey::Pubkey;
 
-solana_program::declare_id!("TokuPsq2wbFopRYJ44C3Gcg63TzG7z951vTVU3eYarC");
+solana_program::declare_id!("TkupDoNseygccBCjSsrSpMccjwHfTYwcrjpnDSrFDhC");
 
-const TOKEN_UPGRADE_AUTHORITY_SEED: &[u8] = b"token-account-authority";
+const TOKEN_ESCROW_AUTHORITY_SEED: &[u8] = b"token-escrow-authority";
 
 /// Get the upgrade token account authority
 pub fn get_token_upgrade_authority_address(
@@ -40,7 +40,7 @@ pub(crate) fn get_token_upgrade_authority_seeds<'a>(
     new_mint: &'a Pubkey,
 ) -> [&'a [u8]; 3] {
     [
-        TOKEN_UPGRADE_AUTHORITY_SEED,
+        TOKEN_ESCROW_AUTHORITY_SEED,
         original_mint.as_ref(),
         new_mint.as_ref(),
     ]
@@ -52,7 +52,7 @@ pub(crate) fn get_token_upgrade_authority_signer_seeds<'a>(
     bump_seed: &'a [u8],
 ) -> [&'a [u8]; 4] {
     [
-        TOKEN_UPGRADE_AUTHORITY_SEED,
+        TOKEN_ESCROW_AUTHORITY_SEED,
         original_mint.as_ref(),
         new_mint.as_ref(),
         bump_seed,
