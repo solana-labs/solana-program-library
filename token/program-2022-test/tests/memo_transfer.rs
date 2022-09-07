@@ -131,7 +131,7 @@ async fn test_memo_transfers(
 
     // transfer with memo
     token
-        .with_memo("🦖")
+        .with_memo("🦖", vec![alice.pubkey()])
         .transfer(
             &alice_account,
             &bob_account,

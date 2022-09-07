@@ -393,7 +393,7 @@ async fn command_create_token(
     }
 
     if let Some(text) = memo {
-        token.with_memo(text);
+        token.with_memo(text, vec![config.default_signer.pubkey()]);
     }
 
     let res = token
@@ -1080,7 +1080,7 @@ async fn command_burn(
 
     let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
     if let Some(text) = memo {
-        token.with_memo(text);
+        token.with_memo(text, vec![config.default_signer.pubkey()]);
     }
 
     let res = token
@@ -1127,7 +1127,7 @@ async fn command_mint(
 
     let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
     if let Some(text) = memo {
-        token.with_memo(text);
+        token.with_memo(text, vec![config.default_signer.pubkey()]);
     }
 
     let res = token
