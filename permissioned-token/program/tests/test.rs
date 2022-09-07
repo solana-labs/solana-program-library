@@ -48,7 +48,7 @@ pub async fn airdrop(
 }
 
 pub fn permissioned_token_test() -> ProgramTest {
-    ProgramTest::new("permissioned_token", permissioned_token::id(), None)
+    ProgramTest::new("permissioned_token", permissioned_token::id(), processor!(permissioned_token::process_instruction))
 }
 
 #[tokio::test]
