@@ -80,7 +80,7 @@ async fn test_permissioned_token_basic() {
     let eve_key = eve.pubkey();
 
     for k in [&alice_key, &bob_key] {
-        airdrop(lwc, &authority, k, sol(1.0)).await.unwrap();
+        airdrop(lwc, &context.payer, k, sol(1.0)).await.unwrap();
         let create_ata = create_initialize_account_instruction(
             &mint_key,
             k,
