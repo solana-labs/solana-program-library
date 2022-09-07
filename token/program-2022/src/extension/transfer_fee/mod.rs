@@ -58,7 +58,7 @@ impl TransferFee {
         }
     }
 
-    /// Calculate the net transfer amount after deducting fees
+    /// Calculate the gross transfer amount after deducting fees
     pub fn calculate_post_fee_amount(&self, pre_fee_amount: u64) -> Option<u64> {
         pre_fee_amount.checked_sub(self.calculate_fee(pre_fee_amount)?)
     }
