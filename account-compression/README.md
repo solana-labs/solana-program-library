@@ -13,6 +13,11 @@ The typescript SDK for this contract will be generated using Metaplex Foundation
 
 ## Testing
 
-Testing contracts locally requires the SDK to be built. Then you can run: `anchor test`
+Testing contracts locally requires the SDK to be built. 
+See the SDK folder for instructions.
 
-Testing contracts against indexer + api: `anchor test --skip-build --skip-local-validator --skip-deploy` and limit the test script to only the continuous test.
+With a built local SDK, the test suite can be ran with:
+
+1. `yarn link @solana/account-compression`
+2. `yarn`
+3. `anchor test`

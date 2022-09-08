@@ -3,10 +3,20 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 use crate::error::AccountCompressionError;
 
-pub mod compression_account_type {
-    // Currently not explicitly used.
-    pub const _UNINITIALIZED: u64 = 0;
-    pub const CONCURRENT_MERKLE_TREE: u64 = 1;
+#[derive(Debug, Copy, Clone, PartialEq, BorshDeserialize, BorshSerialize)]
+#[repr(u8)]
+pub enum CompressionAccountType {
+    /// Uninitialized
+    Uninitialized,
+
+    /// SPL ConcurrentMerkleTree data structure, may include a Canopy
+    ConcurrentMerkleTree,
+}
+
+impl std::fmt::Display for CompressionAccountType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", &self)
+    }
 }
 
 /// Initialization parameters for an SPL ConcurrentMerkleTree.
@@ -25,7 +35,11 @@ pub mod compression_account_type {
 #[repr(C)]
 pub struct ConcurrentMerkleTreeHeader {
     /// Account type
-    pub account_type: u64,
+    pub account_type: CompressionAccountType,
+
+    /// Needs padding for the account to be 8-byte aligned
+    /// 8-byte alignment is necessary to zero-copy the SPL ConcurrentMerkleTree
+    pub _padding: [u8; 7],
 
     /// Buffer of changelogs stored on-chain.
     /// Must be a power of 2; see above table for valid combinations.
@@ -56,7 +70,7 @@ impl ConcurrentMerkleTreeHeader {
         // Check header is empty
         assert_eq!(self.max_buffer_size, 0);
         assert_eq!(self.max_depth, 0);
-        self.account_type = compression_account_type::CONCURRENT_MERKLE_TREE;
+        self.account_type = CompressionAccountType::ConcurrentMerkleTree;
         self.max_buffer_size = max_buffer_size;
         self.max_depth = max_depth;
         self.authority = *authority;
@@ -66,7 +80,7 @@ impl ConcurrentMerkleTreeHeader {
     pub fn assert_valid(&self) -> Result<()> {
         require_eq!(
             self.account_type,
-            compression_account_type::CONCURRENT_MERKLE_TREE,
+            CompressionAccountType::ConcurrentMerkleTree,
             AccountCompressionError::IncorrectAccountType,
         );
         Ok(())
