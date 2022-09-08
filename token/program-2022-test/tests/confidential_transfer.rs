@@ -123,6 +123,41 @@ impl ConfidentialTokenAccountMeta {
         }
     }
 
+    async fn new_with_memo<T>(token: &Token<T>, owner: &Keypair) -> Self
+    where
+        T: SendTransaction,
+    {
+        let token_account = token
+            .create_auxiliary_token_account_with_extension_space(
+                &Keypair::new(),
+                &owner.pubkey(),
+                vec![
+                    ExtensionType::ConfidentialTransferAccount,
+                    ExtensionType::MemoTransfer,
+                ],
+            )
+            .await
+            .unwrap();
+
+        let elgamal_keypair = ElGamalKeypair::new(owner, &token_account).unwrap();
+        let ae_key = AeKey::new(owner, &token_account).unwrap();
+
+        token
+            .confidential_transfer_configure_token_account_with_pending_counter(
+                &token_account,
+                owner,
+                TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER,
+            )
+            .await
+            .unwrap();
+
+        Self {
+            token_account,
+            elgamal_keypair,
+            ae_key,
+        }
+    }
+
     async fn with_tokens<T>(
         token: &Token<T>,
         owner: &Keypair,
@@ -1354,4 +1389,53 @@ async fn ct_withdraw_withheld_tokens_from_accounts() {
             },
         )
         .await;
+}
+
+#[tokio::test]
+async fn ct_transfer_memo() {
+    let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
+        ConfidentialTransferMintWithKeypairs::new();
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+        ])
+        .await
+        .unwrap();
+
+    let TokenContext {
+        token,
+        alice,
+        bob,
+        mint_authority,
+        decimals,
+        ..
+    } = context.token_context.unwrap();
+    let alice_meta =
+        ConfidentialTokenAccountMeta::with_tokens(&token, &alice, &mint_authority, 42, decimals)
+            .await;
+    let bob_meta = ConfidentialTokenAccountMeta::new_with_memo(&token, &bob).await;
+
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+
+    // Self-transfer of N tokens
+    token
+        .confidential_transfer_transfer(
+            &alice_meta.token_account,
+            &alice_meta.token_account,
+            &alice,
+            42, // amount
+            42,
+            &extension.available_balance.try_into().unwrap(),
+            &alice_meta.elgamal_keypair.public,
+            &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
+        )
+        .await
+        .unwrap();
 }
