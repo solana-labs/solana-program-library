@@ -37,6 +37,8 @@ pub struct ConcurrentMerkleTreeHeader {
     /// Account type
     pub account_type: CompressionAccountType,
 
+    /// Needs padding for the account to be 8-byte aligned
+    /// 8-byte alignment is necessary to zero-copy the SPL ConcurrentMerkleTree
     pub _padding: [u8; 7],
 
     /// Buffer of changelogs stored on-chain.
