@@ -46,23 +46,28 @@ async fn run_basic(
     } = context.token_context.unwrap();
 
     let alice_account = match owner_mode {
-        OwnerMode::SelfOwned => token
-            .create_auxiliary_token_account(&alice, &alice.pubkey())
-            .await
-            .unwrap(),
+        OwnerMode::SelfOwned => {
+            token
+                .create_auxiliary_token_account(&alice, &alice.pubkey())
+                .await
+                .unwrap();
+            alice.pubkey()
+        }
         OwnerMode::External => {
             let alice_account = Keypair::new();
             token
                 .create_auxiliary_token_account(&alice_account, &alice.pubkey())
                 .await
-                .unwrap()
+                .unwrap();
+            alice_account.pubkey()
         }
     };
     let bob_account = Keypair::new();
-    let bob_account = token
+    token
         .create_auxiliary_token_account(&bob_account, &bob.pubkey())
         .await
         .unwrap();
+    let bob_account = bob_account.pubkey();
 
     // mint tokens
     let amount = 100;

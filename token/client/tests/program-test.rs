@@ -84,10 +84,11 @@ fn keypair_clone(kp: &Keypair) -> Keypair {
 async fn associated_token_account() {
     let TestContext { token, alice, .. } = TestContext::new().await;
 
-    let alice_vault = token
+    token
         .create_associated_token_account(&alice.pubkey())
         .await
         .expect("failed to create associated token account");
+    let alice_vault = token.get_associated_token_address(&alice.pubkey());
 
     assert_eq!(
         token.get_associated_token_address(&alice.pubkey()),
@@ -153,10 +154,11 @@ async fn set_authority() {
         ..
     } = TestContext::new().await;
 
-    let alice_vault = token
+    token
         .create_associated_token_account(&alice.pubkey())
         .await
         .expect("failed to create associated token account");
+    let alice_vault = token.get_associated_token_address(&alice.pubkey());
 
     token
         .mint_to(
@@ -234,10 +236,11 @@ async fn mint_to() {
         ..
     } = TestContext::new().await;
 
-    let alice_vault = token
+    token
         .create_associated_token_account(&alice.pubkey())
         .await
         .expect("failed to create associated token account");
+    let alice_vault = token.get_associated_token_address(&alice.pubkey());
 
     let mint_amount = 10 * u64::pow(10, decimals as u32);
     token
@@ -276,14 +279,16 @@ async fn transfer() {
         ..
     } = TestContext::new().await;
 
-    let alice_vault = token
+    token
         .create_associated_token_account(&alice.pubkey())
         .await
         .expect("failed to create associated token account");
-    let bob_vault = token
+    let alice_vault = token.get_associated_token_address(&alice.pubkey());
+    token
         .create_associated_token_account(&bob.pubkey())
         .await
         .expect("failed to create associated token account");
+    let bob_vault = token.get_associated_token_address(&bob.pubkey());
 
     let mint_amount = 10 * u64::pow(10, decimals as u32);
     token

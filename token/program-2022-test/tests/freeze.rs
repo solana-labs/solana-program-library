@@ -21,10 +21,11 @@ async fn basic() {
     let freeze_authority = freeze_authority.unwrap();
 
     let account = Keypair::new();
-    let account = token
+    token
         .create_auxiliary_token_account(&account, &alice.pubkey())
         .await
         .unwrap();
+    let account = account.pubkey();
     let state = token.get_account_info(&account).await.unwrap();
     assert_eq!(state.base.state, AccountState::Initialized);
 
