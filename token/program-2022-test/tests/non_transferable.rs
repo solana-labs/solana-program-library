@@ -5,29 +5,19 @@ use {
     program_test::{TestContext, TokenContext},
     solana_program_test::tokio,
     solana_sdk::{
-        instruction::InstructionError, program_option::COption, pubkey::Pubkey, signature::Signer,
-        signer::keypair::Keypair, transaction::TransactionError, transport::TransportError,
+        instruction::InstructionError, signature::Signer, signer::keypair::Keypair,
+        transaction::TransactionError, transport::TransportError,
     },
     spl_token_2022::{
         error::TokenError,
-        extension::{
-            transfer_fee::{
-                TransferFee, TransferFeeAmount, TransferFeeConfig, MAX_FEE_BASIS_POINTS,
-            },
-            ExtensionType,
-        },
-        instruction,
+        extension::{transfer_fee::TransferFee, ExtensionType},
     },
-    spl_token_client::{
-        client::ProgramBanksClientProcessTransaction,
-        token::{ExtensionInitializationParams, Token, TokenError as TokenClientError},
-    },
-    std::convert::TryInto,
+    spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
 };
 
 #[tokio::test]
 async fn transfer_checked() {
-    let test_amount = 100;
+    let test_transfer_amount = 100;
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![ExtensionInitializationParams::NonTransferable])
@@ -63,7 +53,7 @@ async fn transfer_checked() {
         .mint_to(
             &alice_account,
             &mint_authority.pubkey(),
-            test_amount,
+            test_transfer_amount,
             Some(decimals),
             &vec![&mint_authority],
         )
@@ -85,7 +75,7 @@ async fn transfer_checked() {
         .mint_to(
             &bob_account,
             &mint_authority.pubkey(),
-            test_amount,
+            test_transfer_amount,
             Some(decimals),
             &vec![&mint_authority],
         )
@@ -98,7 +88,7 @@ async fn transfer_checked() {
             &bob_account,
             &bob_account,
             &bob.pubkey(),
-            test_amount,
+            test_transfer_amount,
             Some(decimals),
             &vec![&bob],
         )
@@ -121,9 +111,174 @@ async fn transfer_checked() {
             &bob_account,
             &alice_account,
             &bob.pubkey(),
-            test_amount,
+            test_transfer_amount,
             Some(decimals),
             &vec![&bob],
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::NonTransferable as u32)
+            )
+        )))
+    );
+}
+
+#[tokio::test]
+async fn transfer_checked_with_fee() {
+    let test_transfer_amount = 100;
+    let maximum_fee = 10;
+    let transfer_fee_basis_points = 100;
+
+    let transfer_fee_config_authority = Keypair::new();
+    let withdraw_withheld_authority = Keypair::new();
+
+    let transfer_fee = TransferFee {
+        epoch: 0.into(),
+        transfer_fee_basis_points: transfer_fee_basis_points.into(),
+        maximum_fee: maximum_fee.into(),
+    };
+
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
+                withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
+                transfer_fee_basis_points,
+                maximum_fee,
+            },
+            ExtensionInitializationParams::NonTransferable,
+        ])
+        .await
+        .unwrap();
+
+    let TokenContext {
+        decimals,
+        mint_authority,
+        token,
+        alice,
+        bob,
+        ..
+    } = context.token_context.unwrap();
+
+    // create token accounts
+    let alice_account = token
+        .create_auxiliary_token_account_with_extension_space(
+            &alice,
+            &alice.pubkey(),
+            vec![ExtensionType::ImmutableOwner],
+        )
+        .await
+        .unwrap();
+
+    let bob_account = token
+        .create_auxiliary_token_account_with_extension_space(
+            &bob,
+            &bob.pubkey(),
+            vec![ExtensionType::ImmutableOwner],
+        )
+        .await
+        .unwrap();
+
+    token
+        .mint_to(
+            &alice_account,
+            &mint_authority.pubkey(),
+            test_transfer_amount,
+            Some(decimals),
+            &vec![&mint_authority],
+        )
+        .await
+        .unwrap();
+
+    // self-transfer fails
+    let error = token
+        .transfer(
+            &alice_account,
+            &alice_account,
+            &alice.pubkey(),
+            test_transfer_amount,
+            Some(decimals),
+            &vec![&alice],
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::NonTransferable as u32)
+            )
+        )))
+    );
+
+    // regular transfer fails
+    let error = token
+        .transfer(
+            &alice_account,
+            &bob_account,
+            &alice.pubkey(),
+            test_transfer_amount,
+            Some(decimals),
+            &vec![&alice],
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::NonTransferable as u32)
+            )
+        )))
+    );
+
+    // self-transfer checked with fee fails
+    let fee = transfer_fee.calculate_fee(test_transfer_amount).unwrap();
+    let error = token
+        .transfer_with_fee(
+            &alice_account,
+            &alice_account,
+            &alice.pubkey(),
+            test_transfer_amount,
+            decimals,
+            fee,
+            &vec![&alice],
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::NonTransferable as u32)
+            )
+        )))
+    );
+
+    // transfer checked with fee fails
+    let fee = transfer_fee.calculate_fee(test_transfer_amount).unwrap();
+    let error = token
+        .transfer_with_fee(
+            &alice_account,
+            &bob_account,
+            &alice.pubkey(),
+            test_transfer_amount,
+            decimals,
+            fee,
+            &vec![&alice],
         )
         .await
         .unwrap_err();
