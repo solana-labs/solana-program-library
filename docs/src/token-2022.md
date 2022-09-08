@@ -44,7 +44,7 @@ Token-2022 are a strict superset of Token.
 
 Token-2022 supports the exact same instruction layouts as Token, byte for
 byte. For example, if you want to transfer 100 tokens on a mint with 2 decimals,
-you create a `TransferChecked` instruction, with this byte-representated data:
+you create a `TransferChecked` instruction, with this byte-represented data:
 
 ```
 [12, 100, 0, 0, 0, 0, 0, 0, 0, 2]
@@ -89,11 +89,13 @@ Mint extensions currently include:
 * transfer fees
 * closing mint
 * interest-bearing tokens
+* non-transferable tokens
 
 Account extensions currently include:
 
 * memo required on incoming transfers
 * immutable ownership
+* default account state
 
 Extensions can be mixed and matched, which means it's possible to create a mint
 with only transfer fees, only interest-bearing tokens, both, or neither!
