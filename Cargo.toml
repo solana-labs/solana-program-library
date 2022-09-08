@@ -31,6 +31,7 @@ members = [
   "token-lending/program",
   "token-swap/program",
   "token-swap/program/fuzz",
+  "token-upgrade/cli",
   "token-upgrade/program",
   "token/cli",
   "token/program",
