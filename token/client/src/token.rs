@@ -107,6 +107,7 @@ pub enum ExtensionInitializationParams {
         rate_authority: Option<Pubkey>,
         rate: i16,
     },
+    NonTransferable,
 }
 impl ExtensionInitializationParams {
     /// Get the extension type associated with the init params
@@ -117,6 +118,7 @@ impl ExtensionInitializationParams {
             Self::MintCloseAuthority { .. } => ExtensionType::MintCloseAuthority,
             Self::TransferFeeConfig { .. } => ExtensionType::TransferFeeConfig,
             Self::InterestBearingConfig { .. } => ExtensionType::InterestBearingConfig,
+            Self::NonTransferable => ExtensionType::NonTransferable,
         }
     }
     /// Generate an appropriate initialization instruction for the given mint
@@ -169,6 +171,9 @@ impl ExtensionInitializationParams {
                 rate_authority,
                 rate,
             ),
+            Self::NonTransferable => {
+                instruction::initialize_non_transferable_mint(token_program_id, mint)
+            }
         }
     }
 }
