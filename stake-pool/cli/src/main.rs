@@ -1718,7 +1718,7 @@ fn command_withdraw_sol(
 fn command_set_manager(
     config: &Config,
     stake_pool_address: &Pubkey,
-    new_manager: &Box<dyn Signer>,
+    new_manager: Box<dyn Signer>,
     new_fee_receiver: &Option<Pubkey>,
 ) -> CommandResult {
     if !config.no_update {
@@ -2947,12 +2947,7 @@ fn main() {
                 },
             );
             let new_fee_receiver: Option<Pubkey> = pubkey_of(arg_matches, "new_fee_receiver");
-            command_set_manager(
-                &config,
-                &stake_pool_address,
-                &new_manager,
-                &new_fee_receiver,
-            )
+            command_set_manager(&config, &stake_pool_address, new_manager, &new_fee_receiver)
         }
         ("set-staker", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
