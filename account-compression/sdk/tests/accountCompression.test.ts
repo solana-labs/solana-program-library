@@ -5,6 +5,7 @@ import {
   Connection,
   Signer,
   Keypair,
+  PublicKey,
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
@@ -27,15 +28,47 @@ import {
   getConcurrentMerkleTree,
   getCMTActiveIndex,
   createVerifyLeafIx,
-  assertCMTProperties,
   createAllocTreeIx,
   createInitEmptyMerkleTreeInstruction,
   LOG_WRAPPER_PROGRAM_ID,
 } from "../src";
+import {
+  getCMTMaxBufferSize,
+  getCMTMaxDepth,
+} from '../src/accounts';
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 
+async function assertCMTProperties(
+  connection: Connection,
+  expectedMaxDepth: number,
+  expectedMaxBufferSize: number,
+  expectedAuthority: PublicKey,
+  expectedRoot: Buffer,
+  onChainCMTKey: PublicKey
+) {
+  const onChainCMT = await getConcurrentMerkleTree(connection, onChainCMTKey);
+
+  assert(
+    getCMTMaxDepth(onChainCMT) === expectedMaxDepth,
+    `Max depth does not match ${getCMTMaxDepth(onChainCMT)}, expected ${expectedMaxDepth}`,
+  );
+  assert(
+    getCMTMaxBufferSize(onChainCMT) === expectedMaxBufferSize,
+    `Max buffer size does not match ${getCMTMaxBufferSize(onChainCMT)}, expected ${expectedMaxBufferSize}`,
+  );
+  assert(
+    getCMTAuthority(onChainCMT).equals(expectedAuthority),
+    "Failed to write auth pubkey",
+  );
+  assert(
+    getCMTCurrentRoot(onChainCMT).equals(expectedRoot),
+    "On chain root does not match root passed in instruction",
+  );
+}
+
+
 /// Wait for a transaction of a certain id to confirm and optionally log its messages
-export async function confirmAndLogTx(provider: AnchorProvider, txId: string, verbose: boolean = true) {
+export async function confirmAndLogTx(provider: AnchorProvider, txId: string, verbose: boolean = false) {
   const tx = await provider.connection.confirmTransaction(txId, "confirmed");
   if (tx.value.err || verbose) {
     console.log(
@@ -358,79 +391,78 @@ describe("Account Compression", () => {
     });
   });
 
-  describe("Examples tranferring appendAuthority", () => {
+  describe("Examples transferring authority", () => {
     const authority = Keypair.generate();
     const randomSigner = Keypair.generate();
-    describe("Examples transferring authority", () => {
-      it("... initializing tree ...", async () => {
-        await provider.connection.confirmTransaction(
-          await (connection as Connection).requestAirdrop(
-            authority.publicKey,
-            1e10
-          )
-        );
-        [cmtKeypair, offChainTree] = await createTreeOnChain(
-          authority,
-          1
-        );
-      });
-      it("Attempting to replace with random authority fails", async () => {
-        const newLeaf = crypto.randomBytes(32);
-        const replaceIndex = 0;
-        const proof = getProofOfLeaf(offChainTree, replaceIndex);
-        const replaceIx = createReplaceIx(
-          randomSigner,
-          cmtKeypair.publicKey,
-          offChainTree.root,
-          offChainTree.leaves[replaceIndex].node,
-          newLeaf,
-          replaceIndex,
-          proof.map((treeNode) => {
-            return treeNode.node;
-          })
-        );
 
-        try {
-          await execute(provider, [replaceIx], [randomSigner]);
-          assert(
-            false,
-            "Transaction should have failed since incorrect authority cannot execute replaces"
-          );
-        } catch { }
-      });
-      it("Can transfer authority", async () => {
-        const transferAuthorityIx = createTransferAuthorityIx(
-          authority,
-          cmtKeypair.publicKey,
-          randomSigner.publicKey
-        );
-        await execute(provider, [transferAuthorityIx], [authority]);
+    beforeEach(async () => {
+      await provider.connection.confirmTransaction(
+        await (connection as Connection).requestAirdrop(
+          authority.publicKey,
+          1e10
+        )
+      );
+      [cmtKeypair, offChainTree] = await createTreeOnChain(
+        authority,
+        1
+      );
+    });
+    it("Attempting to replace with random authority fails", async () => {
+      const newLeaf = crypto.randomBytes(32);
+      const replaceIndex = 0;
+      const proof = getProofOfLeaf(offChainTree, replaceIndex);
+      const replaceIx = createReplaceIx(
+        randomSigner,
+        cmtKeypair.publicKey,
+        offChainTree.root,
+        offChainTree.leaves[replaceIndex].node,
+        newLeaf,
+        replaceIndex,
+        proof.map((treeNode) => {
+          return treeNode.node;
+        })
+      );
 
-        const splCMT = await getConcurrentMerkleTree(connection, cmtKeypair.publicKey);
-
-        assert(
-          getCMTAuthority(splCMT).equals(randomSigner.publicKey),
-          `Upon transfering authority, authority should be ${randomSigner.publicKey.toString()}, but was instead updated to ${getCMTAuthority(splCMT)}`
-        );
-      });
-      it("Attempting to replace with new authority now works", async () => {
-        const newLeaf = crypto.randomBytes(32);
-        const replaceIndex = 0;
-        const proof = getProofOfLeaf(offChainTree, replaceIndex);
-        const replaceIx = createReplaceIx(
-          randomSigner,
-          cmtKeypair.publicKey,
-          offChainTree.root,
-          offChainTree.leaves[replaceIndex].node,
-          newLeaf,
-          replaceIndex,
-          proof.map((treeNode) => {
-            return treeNode.node;
-          })
-        );
-
+      try {
         await execute(provider, [replaceIx], [randomSigner]);
-      });
+        assert(
+          false,
+          "Transaction should have failed since incorrect authority cannot execute replaces"
+        );
+      } catch { }
+    });
+    it("Can transfer authority", async () => {
+      const transferAuthorityIx = createTransferAuthorityIx(
+        authority,
+        cmtKeypair.publicKey,
+        randomSigner.publicKey
+      );
+      await execute(provider, [transferAuthorityIx], [authority]);
+
+      const splCMT = await getConcurrentMerkleTree(connection, cmtKeypair.publicKey);
+
+      assert(
+        getCMTAuthority(splCMT).equals(randomSigner.publicKey),
+        `Upon transfering authority, authority should be ${randomSigner.publicKey.toString()}, but was instead updated to ${getCMTAuthority(splCMT)}`
+      );
+
+      // Attempting to replace with new authority now works
+      const newLeaf = crypto.randomBytes(32);
+      const replaceIndex = 0;
+      const proof = getProofOfLeaf(offChainTree, replaceIndex);
+      const replaceIx = createReplaceIx(
+        randomSigner,
+        cmtKeypair.publicKey,
+        offChainTree.root,
+        offChainTree.leaves[replaceIndex].node,
+        newLeaf,
+        replaceIndex,
+        proof.map((treeNode) => {
+          return treeNode.node;
+        })
+      );
+
+      await execute(provider, [replaceIx], [randomSigner]);
     });
   });
 

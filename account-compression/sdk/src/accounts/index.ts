@@ -1,8 +1,6 @@
 import type { PublicKey, Connection } from "@solana/web3.js";
 import * as borsh from "borsh";
 import * as BN from 'bn.js';
-import { assert } from "chai";
-import { readPublicKey } from "../utils";
 import * as beet from '@metaplex-foundation/beet';
 import * as beetSolana from '@metaplex-foundation/beet-solana';
 
@@ -155,34 +153,6 @@ export function getConcurrentMerkleTreeAccountSize(
   return concurrentMerkleTreeHeaderBeet.byteSize +
     concurrentMerkleTreeBeetFactory(maxDepth, maxBufferSize).byteSize +
     (canopyDepth ? canopyBeetFactory(canopyDepth).byteSize : 0);
-}
-
-export async function assertCMTProperties(
-  connection: Connection,
-  expectedMaxDepth: number,
-  expectedMaxBufferSize: number,
-  expectedAuthority: PublicKey,
-  expectedRoot: Buffer,
-  onChainCMTKey: PublicKey
-) {
-  const onChainCMT = await getConcurrentMerkleTree(connection, onChainCMTKey);
-
-  assert(
-    getCMTMaxDepth(onChainCMT) === expectedMaxDepth,
-    `Max depth does not match ${getCMTMaxDepth(onChainCMT)}, expected ${expectedMaxDepth}`
-  );
-  assert(
-    getCMTMaxBufferSize(onChainCMT) === expectedMaxBufferSize,
-    `Max buffer size does not match ${getCMTMaxBufferSize(onChainCMT)}, expected ${expectedMaxBufferSize}`
-  );
-  assert(
-    getCMTAuthority(onChainCMT).equals(expectedAuthority),
-    "Failed to write auth pubkey"
-  );
-  assert(
-    getCMTCurrentRoot(onChainCMT).equals(expectedRoot),
-    "On chain root does not match root passed in instruction"
-  );
 }
 
 export function getCMTMaxBufferSize(onChainCMT: ConcurrentMerkleTreeAccount): number {

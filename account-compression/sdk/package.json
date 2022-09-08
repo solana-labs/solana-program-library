@@ -29,6 +29,9 @@
     "test": "start-server-and-test start-validator http://localhost:8899/health run-tests"
   },
   "dependencies": {
+    "@metaplex-foundation/beet": "^0.6.1",
+    "@types/bn.js": "^5.1.1",
+    "bn.js": "^5.2.1",
     "borsh": "^0.7.0"
   },
   "peerDependencies": {
@@ -38,10 +41,8 @@
     "@metaplex-foundation/rustbin": "^0.3.1",
     "@metaplex-foundation/solita": "^0.12.2",
     "@project-serum/anchor": "^0.25.0",
-    "@types/bn.js": "^5.1.1",
     "@types/chai": "^4.3.0",
     "@types/jest": "^29.0.0",
-    "bn.js": "^5.2.1",
     "chai": "^4.3.4",
     "jest": "^29.0.1",
     "jest-config": "^29.0.1",
