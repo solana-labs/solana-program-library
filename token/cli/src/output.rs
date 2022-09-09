@@ -148,6 +148,7 @@ impl fmt::Display for CliWalletAddress {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CliMultisig {
     pub(crate) address: String,
+    pub(crate) program_id: String,
     pub(crate) m: u8,
     pub(crate) n: u8,
     pub(crate) signers: Vec<String>,
@@ -159,7 +160,9 @@ impl VerboseDisplay for CliMultisig {}
 impl fmt::Display for CliMultisig {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f)?;
+        writeln_name_value(f, "Type:", "Multisig")?;
         writeln_name_value(f, "Address:", &self.address)?;
+        writeln_name_value(f, "Program:", &self.program_id)?;
         writeln_name_value(f, "M/N:", &format!("{}/{}", self.m, self.n))?;
         writeln_name_value(f, "Signers:", " ")?;
         let width = if self.n >= 9 { 4 } else { 3 };

@@ -1643,33 +1643,45 @@ async fn command_account_info(config: &Config<'_>, address: Pubkey) -> CommandRe
     Ok(config.output_format.formatted_string(&cli_token_account))
 }
 
-async fn get_multisig(config: &Config<'_>, address: &Pubkey) -> Result<Multisig, Error> {
-    let account = config.rpc_client.get_account(address).await?;
-    Multisig::unpack(&account.data).map_err(|e| e.into())
-}
+async fn command_display(config: &Config<'_>, address: Pubkey) -> CommandResult {
+    let account = config.get_account_checked(&address).await?;
 
-async fn command_multisig(config: &Config<'_>, address: Pubkey) -> CommandResult {
-    let multisig = get_multisig(config, &address).await?;
-    let n = multisig.n as usize;
-    assert!(n <= multisig.signers.len());
-    let cli_multisig = CliMultisig {
-        address: address.to_string(),
-        m: multisig.m,
-        n: multisig.n,
-        signers: multisig
-            .signers
-            .iter()
-            .enumerate()
-            .filter_map(|(i, signer)| {
-                if i < n {
-                    Some(signer.to_string())
-                } else {
-                    None
-                }
-            })
-            .collect(),
+    let cli_output = if let Ok(multisig) = Multisig::unpack(&account.data) {
+        let n = multisig.n as usize;
+
+        if n > multisig.signers.len() {
+            return Err(format!(
+                "Multisig {} malformed: {} signers required, but only {} declared",
+                address,
+                n,
+                multisig.signers.len()
+            )
+            .into());
+        }
+
+        CliMultisig {
+            address: address.to_string(),
+            program_id: config.program_id.to_string(),
+            m: multisig.m,
+            n: multisig.n,
+            signers: multisig
+                .signers
+                .iter()
+                .enumerate()
+                .filter_map(|(i, signer)| {
+                    if i < n {
+                        Some(signer.to_string())
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
+        }
+    } else {
+        panic!("unimplemented");
     };
-    Ok(config.output_format.formatted_string(&cli_multisig))
+
+    Ok(config.output_format.formatted_string(&cli_output))
 }
 
 async fn command_gc(
@@ -2723,7 +2735,8 @@ fn app<'a, 'b>(
         )
         .subcommand(
             SubCommand::with_name(CommandName::AccountInfo.into())
-                .about("Query details of an SPL Token account by address")
+                .about("Query details of an SPL Token account by address (DEPRECATED: use `spl-token display`)")
+                .setting(AppSettings::Hidden)
                 .arg(
                     Arg::with_name("token")
                         .validator(is_valid_pubkey)
@@ -2755,7 +2768,8 @@ fn app<'a, 'b>(
         )
         .subcommand(
             SubCommand::with_name(CommandName::MultisigInfo.into())
-                .about("Query details about and SPL Token multisig account by address")
+                .about("Query details about and SPL Token multisig account by address (DEPRECATED: use `spl-token display`)")
+                .setting(AppSettings::Hidden)
                 .arg(
                     Arg::with_name("address")
                     .validator(is_valid_pubkey)
@@ -3284,7 +3298,7 @@ async fn process_command<'a>(
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            command_multisig(config, address).await
+            command_display(config, address).await
         }
         (CommandName::Gc, arg_matches) => {
             match config.output_format {
