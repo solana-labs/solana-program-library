@@ -340,12 +340,11 @@ pub fn signers_of(
 
 fn token_client_from_config(
     config: &Config<'_>,
-    program_id: &Pubkey,
     token_pubkey: &Pubkey,
 ) -> Token<ProgramRpcClientSendTransaction> {
     let token = Token::new(
         config.program_client.clone(),
-        program_id,
+        &config.program_id,
         token_pubkey,
         config.fee_payer.clone(),
     );
@@ -373,7 +372,7 @@ async fn command_create_token(
 ) -> CommandResult {
     println_display(config, format!("Creating token {}", token_pubkey));
 
-    let token = token_client_from_config(config, &config.program_id, &token_pubkey);
+    let token = token_client_from_config(config, &token_pubkey);
 
     let freeze_authority = if enable_freeze { Some(authority) } else { None };
 
@@ -430,9 +429,8 @@ async fn command_set_interest_rate(
     rate_bps: i16,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
-    let program_id = if !config.sign_only {
+    if !config.sign_only {
         let mint_account = config.get_account_checked(&token_pubkey).await?;
-        let program_id = mint_account.owner;
 
         let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)
             .map_err(|_| format!("Could not deserialize token mint {}", token_pubkey))?;
@@ -455,11 +453,7 @@ async fn command_set_interest_rate(
         } else {
             return Err(format!("Mint {} is not interest-bearing", token_pubkey).into());
         }
-
-        program_id
-    } else {
-        config.program_id
-    };
+    }
 
     println_display(
         config,
@@ -470,7 +464,7 @@ async fn command_set_interest_rate(
     );
 
     let instructions = vec![interest_bearing_mint::instruction::update_rate(
-        &program_id,
+        &config.program_id,
         &token_pubkey,
         &rate_authority,
         &[&rate_authority],
@@ -664,9 +658,8 @@ async fn command_authorize(
         AuthorityType::InterestRate => "interest rate authority",
     };
 
-    let (program_id, mint_pubkey, previous_authority) = if !config.sign_only {
+    let (mint_pubkey, previous_authority) = if !config.sign_only {
         let target_account = config.get_account_checked(&account).await?;
-        let program_id = target_account.owner;
 
         let (mint_pubkey, previous_authority) = if let Ok(mint) =
             StateWithExtensionsOwned::<Mint>::unpack(target_account.data.clone())
@@ -710,7 +703,7 @@ async fn command_authorize(
                 let maybe_associated_token_account = get_associated_token_address_with_program_id(
                     &token_account.base.owner,
                     &token_account.base.mint,
-                    &program_id,
+                    &config.program_id,
                 );
                 if account == maybe_associated_token_account
                     && !force_authorize
@@ -756,13 +749,13 @@ async fn command_authorize(
             Err("Unsupported account data format".to_string())
         }?;
 
-        (program_id, mint_pubkey, previous_authority)
+        (mint_pubkey, previous_authority)
     } else {
         // default is safe here because authorize doesnt use it
-        (config.program_id, Pubkey::default(), COption::None)
+        (Pubkey::default(), COption::None)
     };
 
-    let token = token_client_from_config(config, &program_id, &mint_pubkey);
+    let token = token_client_from_config(config, &mint_pubkey);
 
     println_display(
         config,
@@ -1071,7 +1064,7 @@ async fn command_burn(
         Some(mint_info.decimals)
     };
 
-    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    let token = token_client_from_config(config, &mint_info.address);
     if let Some(text) = memo {
         token.with_memo(text, vec![config.default_signer.pubkey()]);
     }
@@ -1118,7 +1111,7 @@ async fn command_mint(
         Some(mint_info.decimals)
     };
 
-    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    let token = token_client_from_config(config, &mint_info.address);
     if let Some(text) = memo {
         token.with_memo(text, vec![config.default_signer.pubkey()]);
     }
@@ -1156,7 +1149,7 @@ async fn command_freeze(
         ),
     );
 
-    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    let token = token_client_from_config(config, &mint_info.address);
     let res = token
         .freeze(&account, &freeze_authority, &bulk_signers)
         .await?;
@@ -1190,7 +1183,7 @@ async fn command_thaw(
         ),
     );
 
-    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    let token = token_client_from_config(config, &mint_info.address);
     let res = token
         .thaw(&account, &freeze_authority, &bulk_signers)
         .await?;
@@ -1388,7 +1381,7 @@ async fn command_approve(
         Some(mint_info.decimals)
     };
 
-    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    let token = token_client_from_config(config, &mint_info.address);
     let res = token
         .approve(&account, &delegate, &owner, amount, decimals, &bulk_signers)
         .await?;
@@ -1411,7 +1404,7 @@ async fn command_revoke(
     delegate: Option<Pubkey>,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let (program_id, mint_pubkey, delegate) = if !config.sign_only {
+    let (mint_pubkey, delegate) = if !config.sign_only {
         let source_account = config.get_account_checked(&account).await?;
         let source_state = StateWithExtensionsOwned::<Account>::unpack(source_account.data)
             .map_err(|_| format!("Could not deserialize token account {}", account))?;
@@ -1422,10 +1415,10 @@ async fn command_revoke(
             None
         };
 
-        (source_account.owner, source_state.base.mint, delegate)
+        (source_state.base.mint, delegate)
     } else {
         // default is safe here because revoke doesnt use it
-        (config.program_id, Pubkey::default(), delegate)
+        (Pubkey::default(), delegate)
     };
 
     if let Some(delegate) = delegate {
@@ -1440,7 +1433,7 @@ async fn command_revoke(
         return Err(format!("No delegate on account {}", account).into());
     }
 
-    let token = token_client_from_config(config, &program_id, &mint_pubkey);
+    let token = token_client_from_config(config, &mint_pubkey);
     let res = token.revoke(&account, &owner, &bulk_signers).await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -1461,9 +1454,8 @@ async fn command_close(
     recipient: Pubkey,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let (program_id, mint_pubkey) = if !config.sign_only {
+    let mint_pubkey = if !config.sign_only {
         let source_account = config.get_account_checked(&account).await?;
-        let program_id = source_account.owner;
 
         let source_state = StateWithExtensionsOwned::<Account>::unpack(source_account.data)
             .map_err(|_| format!("Could not deserialize token account {}", account))?;
@@ -1477,13 +1469,13 @@ async fn command_close(
             .into());
         }
 
-        (program_id, source_state.base.mint)
+        source_state.base.mint
     } else {
         // default is safe here because close doesnt use it
-        (config.program_id, Pubkey::default())
+        Pubkey::default()
     };
 
-    let token = token_client_from_config(config, &program_id, &mint_pubkey);
+    let token = token_client_from_config(config, &mint_pubkey);
     let res = token
         .close_account(&account, &recipient, &close_authority, &bulk_signers)
         .await?;
@@ -1506,9 +1498,8 @@ async fn command_close_mint(
     recipient: Pubkey,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let program_id = if !config.sign_only {
+    if !config.sign_only {
         let mint_account = config.get_account_checked(&token_pubkey).await?;
-        let program_id = mint_account.owner;
 
         let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)
             .map_err(|_| format!("Could not deserialize token mint {}", token_pubkey))?;
@@ -1540,13 +1531,9 @@ async fn command_close_mint(
         } else {
             return Err(format!("Mint {} does not support close authority", token_pubkey).into());
         }
+    }
 
-        program_id
-    } else {
-        config.program_id
-    };
-
-    let token = token_client_from_config(config, &program_id, &token_pubkey);
+    let token = token_client_from_config(config, &token_pubkey);
     let res = token
         .close_account(&token_pubkey, &recipient, &close_authority, &bulk_signers)
         .await?;
@@ -1583,18 +1570,16 @@ async fn command_accounts(
     token: Option<Pubkey>,
     owner: Pubkey,
 ) -> CommandResult {
-    let program_id = if let Some(token) = token {
-        validate_mint(config, token).await?
-    } else {
-        config.program_id
-    };
+    if let Some(token) = token {
+        validate_mint(config, token).await?;
+    }
     let accounts = config
         .rpc_client
         .get_token_accounts_by_owner(
             &owner,
             match token {
                 Some(token) => TokenAccountsFilter::Mint(token),
-                None => TokenAccountsFilter::ProgramId(program_id),
+                None => TokenAccountsFilter::ProgramId(config.program_id),
             },
         )
         .await?;
@@ -1604,7 +1589,7 @@ async fn command_accounts(
     }
 
     let (mint_accounts, unsupported_accounts, max_len_balance, includes_aux) =
-        sort_and_parse_token_accounts(&owner, accounts, &program_id);
+        sort_and_parse_token_accounts(&owner, accounts, &config.program_id);
     let aux_len = if includes_aux { 10 } else { 0 };
 
     let cli_token_accounts = CliTokenAccounts {
@@ -1630,9 +1615,9 @@ async fn command_address(
         ..CliWalletAddress::default()
     };
     if let Some(token) = token {
-        let program_id = validate_mint(config, token).await?;
+        validate_mint(config, token).await?;
         let associated_token_address =
-            get_associated_token_address_with_program_id(&owner, &token, &program_id);
+            get_associated_token_address_with_program_id(&owner, &token, &config.program_id);
         cli_address.associated_token_address = Some(associated_token_address.to_string());
     }
     Ok(config.output_format.formatted_string(&cli_address))
@@ -1870,21 +1855,9 @@ async fn command_sync_native(
     bulk_signers: Vec<Arc<dyn Signer>>,
     config: &Config<'_>,
 ) -> CommandResult {
-    let program_id = if config.sign_only {
-        config.program_id
-    } else {
-        config
-            .rpc_client
-            .get_account(&native_account_address)
-            .await
-            .map_err(|err| {
-                format!(
-                    "Token account {} does not exist: {}",
-                    native_account_address, err
-                )
-            })?
-            .owner
-    };
+    if !config.sign_only {
+        config.get_account_checked(&native_account_address).await?;
+    }
 
     let tx_return = handle_tx(
         &CliSignerInfo {
@@ -1893,7 +1866,7 @@ async fn command_sync_native(
         config,
         false,
         0,
-        vec![sync_native(&program_id, &native_account_address)?],
+        vec![sync_native(&config.program_id, &native_account_address)?],
     )
     .await?;
     Ok(match tx_return {
