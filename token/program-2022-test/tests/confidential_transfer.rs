@@ -1456,7 +1456,7 @@ async fn ct_transfer_memo() {
 
     // transfer with memo
     token
-        .with_memo("🦖")
+        .with_memo("🦖", vec![alice.pubkey()])
         .confidential_transfer_transfer(
             &alice_meta.token_account,
             &bob_meta.token_account,
@@ -1568,7 +1568,7 @@ async fn ct_transfer_with_fee_memo() {
     );
 
     token
-        .with_memo("🦖")
+        .with_memo("🦖", vec![alice.pubkey()])
         .confidential_transfer_transfer_with_fee(
             &alice_meta.token_account,
             &bob_meta.token_account,
