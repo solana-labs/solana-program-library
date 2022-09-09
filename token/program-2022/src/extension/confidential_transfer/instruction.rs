@@ -160,17 +160,17 @@ pub enum ConfidentialTransferInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
-    ///   1. `[writable]` The SPL Token account.
-    ///   2. `[]` The token mint.
-    ///   3. `[]` Instructions sysvar.
-    ///   4. `[signer]` The single source account owner.
+    ///   0. `[writable]` The SPL Token account.
+    ///   1. `[]` The token mint.
+    ///   2. `[]` Instructions sysvar.
+    ///   3. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
-    ///   1. `[writable]` The SPL Token account.
-    ///   2. `[]` The token mint.
-    ///   3. `[]` Instructions sysvar.
-    ///   4. `[]` The multisig  source account owner.
-    ///   5.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   0. `[writable]` The SPL Token account.
+    ///   1. `[]` The token mint.
+    ///   2. `[]` Instructions sysvar.
+    ///   3. `[]` The multisig  source account owner.
+    ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
     /// Data expected by this instruction:
     ///   `WithdrawInstructionData`
