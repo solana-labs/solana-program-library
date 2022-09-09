@@ -4,7 +4,7 @@ use clap::{
 };
 use serde::Serialize;
 use solana_account_decoder::{
-    parse_token::{parse_token, TokenAccountType, UiAccountState},
+    parse_token::{get_token_account_mint, parse_token, TokenAccountType, UiAccountState},
     UiAccountData,
 };
 use solana_clap_utils::{
@@ -149,6 +149,7 @@ pub enum CommandName {
     Address,
     AccountInfo,
     MultisigInfo,
+    Display,
     Gc,
     SyncNative,
 }
@@ -1623,40 +1624,47 @@ async fn command_address(
     Ok(config.output_format.formatted_string(&cli_address))
 }
 
-async fn command_account_info(config: &Config<'_>, address: Pubkey) -> CommandResult {
-    let account = config
-        .rpc_client
-        .get_token_account(&address)
-        .await
-        .map_err(|_| format!("Could not find token account {}", address))?
-        .unwrap();
-    let mint = Pubkey::from_str(&account.mint).unwrap();
-    let owner = Pubkey::from_str(&account.owner).unwrap();
-    let program_id = config.rpc_client.get_account(&address).await?.owner;
-    let is_associated =
-        get_associated_token_address_with_program_id(&owner, &mint, &program_id) == address;
-    let cli_token_account = CliTokenAccount {
-        address: address.to_string(),
-        is_associated,
-        account,
-    };
-    Ok(config.output_format.formatted_string(&cli_token_account))
-}
-
 async fn command_display(config: &Config<'_>, address: Pubkey) -> CommandResult {
-    let account = config.get_account_checked(&address).await?;
-    let token_data = parse_token(&account.data, None);
+    let account_data = config.get_account_checked(&address).await?;
 
-    if let Ok(TokenAccountType::Multisig(multisig)) = token_data {
-        let cli_output = CliMultisig {
-            address: address.to_string(),
-            program_id: config.program_id.to_string(),
-            multisig,
-        };
-
-        Ok(config.output_format.formatted_string(&cli_output))
+    let decimals = if let Some(mint_address) = get_token_account_mint(&account_data.data) {
+        Some(config.get_mint_info(&mint_address, None).await?.decimals)
     } else {
-        panic!("unimplemented");
+        None
+    };
+
+    let token_data = parse_token(&account_data.data, decimals);
+
+    match token_data {
+        Ok(TokenAccountType::Account(account)) => {
+            let mint_address = Pubkey::from_str(&account.mint)?;
+            let owner = Pubkey::from_str(&account.owner)?;
+            let associated_address = get_associated_token_address_with_program_id(
+                &owner,
+                &mint_address,
+                &config.program_id,
+            );
+
+            let cli_output = CliTokenAccount {
+                address: address.to_string(),
+                program_id: config.program_id.to_string(),
+                is_associated: associated_address == address,
+                account,
+            };
+
+            Ok(config.output_format.formatted_string(&cli_output))
+        }
+        Ok(TokenAccountType::Mint(_mint)) => unimplemented!(),
+        Ok(TokenAccountType::Multisig(multisig)) => {
+            let cli_output = CliMultisig {
+                address: address.to_string(),
+                program_id: config.program_id.to_string(),
+                multisig,
+            };
+
+            Ok(config.output_format.formatted_string(&cli_output))
+        }
+        Err(_) => panic!("err here"),
     }
 }
 
@@ -2744,7 +2752,7 @@ fn app<'a, 'b>(
         )
         .subcommand(
             SubCommand::with_name(CommandName::MultisigInfo.into())
-                .about("Query details about and SPL Token multisig account by address (DEPRECATED: use `spl-token display`)")
+                .about("Query details of an SPL Token multisig account by address (DEPRECATED: use `spl-token display`)")
                 .setting(AppSettings::Hidden)
                 .arg(
                     Arg::with_name("address")
@@ -2754,6 +2762,19 @@ fn app<'a, 'b>(
                     .index(1)
                     .required(true)
                     .help("The address of the SPL Token multisig account to query"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::Display.into())
+                .about("Query details of an SPL Token mint, account, or multisig by address")
+                .arg(
+                    Arg::with_name("address")
+                    .validator(is_valid_pubkey)
+                    .value_name("TOKEN_ADDRESS")
+                    .takes_value(true)
+                    .index(1)
+                    .required(true)
+                    .help("The address of the SPL Token mint, account, or multisig to query"),
                 ),
         )
         .subcommand(
@@ -3268,9 +3289,15 @@ async fn process_command<'a>(
             let address = config
                 .associated_token_address_or_override(arg_matches, "address", &mut wallet_manager)
                 .await;
-            command_account_info(config, address).await
+            command_display(config, address).await
         }
         (CommandName::MultisigInfo, arg_matches) => {
+            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            command_display(config, address).await
+        }
+        (CommandName::Display, arg_matches) => {
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
