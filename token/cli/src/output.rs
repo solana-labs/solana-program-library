@@ -1,7 +1,9 @@
 use crate::{config::Config, sort::UnsupportedAccount};
 use console::Emoji;
 use serde::{Deserialize, Serialize, Serializer};
-use solana_account_decoder::parse_token::{UiAccountState, UiTokenAccount, UiTokenAmount};
+use solana_account_decoder::parse_token::{
+    UiAccountState, UiMultisig, UiTokenAccount, UiTokenAmount,
+};
 use solana_cli_output::{display::writeln_name_value, OutputFormat, QuietDisplay, VerboseDisplay};
 use std::fmt::{self, Display};
 
@@ -149,9 +151,8 @@ impl fmt::Display for CliWalletAddress {
 pub(crate) struct CliMultisig {
     pub(crate) address: String,
     pub(crate) program_id: String,
-    pub(crate) m: u8,
-    pub(crate) n: u8,
-    pub(crate) signers: Vec<String>,
+    #[serde(flatten)]
+    pub(crate) multisig: UiMultisig,
 }
 
 impl QuietDisplay for CliMultisig {}
@@ -159,16 +160,18 @@ impl VerboseDisplay for CliMultisig {}
 
 impl fmt::Display for CliMultisig {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let m = self.multisig.num_required_signers;
+        let n = self.multisig.num_valid_signers;
         writeln!(f)?;
         writeln_name_value(f, "Type:", "Multisig")?;
         writeln_name_value(f, "Address:", &self.address)?;
         writeln_name_value(f, "Program:", &self.program_id)?;
-        writeln_name_value(f, "M/N:", &format!("{}/{}", self.m, self.n))?;
+        writeln_name_value(f, "M/N:", &format!("{}/{}", m, n))?;
         writeln_name_value(f, "Signers:", " ")?;
-        let width = if self.n >= 9 { 4 } else { 3 };
-        for i in 0..self.n as usize {
+        let width = if n >= 9 { 4 } else { 3 };
+        for i in 0..n as usize {
             let title = format!("{1:>0$}:", width, i + 1);
-            let pubkey = &self.signers[i];
+            let pubkey = &self.multisig.signers[i];
             writeln_name_value(f, &title, pubkey)?;
         }
         Ok(())
