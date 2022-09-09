@@ -4,7 +4,7 @@ use clap::{
 };
 use serde::Serialize;
 use solana_account_decoder::{
-    parse_token::{TokenAccountType, UiAccountState},
+    parse_token::{parse_token, TokenAccountType, UiAccountState},
     UiAccountData,
 };
 use solana_clap_utils::{
@@ -1645,43 +1645,19 @@ async fn command_account_info(config: &Config<'_>, address: Pubkey) -> CommandRe
 
 async fn command_display(config: &Config<'_>, address: Pubkey) -> CommandResult {
     let account = config.get_account_checked(&address).await?;
+    let token_data = parse_token(&account.data, None);
 
-    let cli_output = if let Ok(multisig) = Multisig::unpack(&account.data) {
-        let n = multisig.n as usize;
-
-        if n > multisig.signers.len() {
-            return Err(format!(
-                "Multisig {} malformed: {} signers required, but only {} declared",
-                address,
-                n,
-                multisig.signers.len()
-            )
-            .into());
-        }
-
-        CliMultisig {
+    if let Ok(TokenAccountType::Multisig(multisig)) = token_data {
+        let cli_output = CliMultisig {
             address: address.to_string(),
             program_id: config.program_id.to_string(),
-            m: multisig.m,
-            n: multisig.n,
-            signers: multisig
-                .signers
-                .iter()
-                .enumerate()
-                .filter_map(|(i, signer)| {
-                    if i < n {
-                        Some(signer.to_string())
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        }
+            multisig,
+        };
+
+        Ok(config.output_format.formatted_string(&cli_output))
     } else {
         panic!("unimplemented");
-    };
-
-    Ok(config.output_format.formatted_string(&cli_output))
+    }
 }
 
 async fn command_gc(
