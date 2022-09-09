@@ -82,14 +82,14 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
     }
 
     pub fn is_initialized(&self) -> bool {
-        !(self.buffer_size == 0 && self.sequence_number == 0 && self.active_index == 0) 
+        !(self.buffer_size == 0 && self.sequence_number == 0 && self.active_index == 0)
     }
 
     /// This is the trustless initialization method that should be used in most cases.
     pub fn initialize(&mut self) -> Result<Node, ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
         if self.is_initialized() {
-            return Err(ConcurrentMerkleTreeError::TreeAlreadyInitialized)
+            return Err(ConcurrentMerkleTreeError::TreeAlreadyInitialized);
         }
         let mut rightmost_proof = Path::default();
         let mut empty_node_cache = Box::new([Node::default(); MAX_DEPTH]);
@@ -124,7 +124,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
     ) -> Result<Node, ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
         if self.is_initialized() {
-            return Err(ConcurrentMerkleTreeError::TreeAlreadyInitialized)
+            return Err(ConcurrentMerkleTreeError::TreeAlreadyInitialized);
         }
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
         proof.copy_from_slice(proof_vec);
@@ -150,8 +150,17 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         Box::new(self.change_logs[self.active_index as usize])
     }
 
-    /// This method will fail if the proof cannot be verified for
-    /// the current tree root.
+    /// This method will fail if the leaf cannot be proven
+    /// to exist in the current tree root.
+    ///
+    /// This method will attempts to prove the leaf first
+    /// using the proof nodes provided. However if this fails,
+    /// then a proof will be constructed by inferring a proof
+    /// from the changelog buffer.
+    ///
+    /// Note: this is *not* the same as verifying that a (proof, leaf)
+    /// combination is valid for the given root. That functionality
+    /// is provided by `check_valid_proof`.
     pub fn prove_leaf(
         &self,
         current_root: Node,
@@ -397,7 +406,17 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         if !proof_leaf_unchanged {
             return Err(ConcurrentMerkleTreeError::LeafContentsModified);
         }
-        Ok(recompute(updatable_leaf_node, proof, leaf_index) == self.get_change_log().root)
+        Ok(self.check_valid_proof(updatable_leaf_node, proof, leaf_index))
+    }
+
+    /// Checks that the proof provided is valid for the current root.
+    pub fn check_valid_proof(
+        &self,
+        leaf: Node,
+        proof: &[Node; MAX_DEPTH],
+        leaf_index: u32,
+    ) -> bool {
+        recompute(leaf, proof, leaf_index) == self.get_change_log().root
     }
 
     /// Note: Enabling `allow_inferred_proof` will fast forward the given proof
