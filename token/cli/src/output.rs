@@ -182,6 +182,7 @@ impl fmt::Display for CliMultisig {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CliTokenAccount {
     pub(crate) address: String,
+    pub(crate) program_id: String,
     pub(crate) is_associated: bool,
     #[serde(flatten)]
     pub(crate) account: UiTokenAccount,
@@ -193,11 +194,13 @@ impl VerboseDisplay for CliTokenAccount {}
 impl fmt::Display for CliTokenAccount {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f)?;
+        writeln_name_value(f, "Type:", "Account")?;
         if self.is_associated {
             writeln_name_value(f, "Address:", &self.address)?;
         } else {
             writeln_name_value(f, "Address:", &format!("{}  (Aux*)", self.address))?;
         }
+        writeln_name_value(f, "Program:", &self.program_id)?;
         writeln_name_value(
             f,
             "Balance:",
