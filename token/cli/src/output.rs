@@ -1,8 +1,9 @@
 use crate::{config::Config, sort::UnsupportedAccount};
 use console::Emoji;
 use serde::{Deserialize, Serialize, Serializer};
-use solana_account_decoder::parse_token::{
-    UiAccountState, UiMint, UiMultisig, UiTokenAccount, UiTokenAmount,
+use solana_account_decoder::{
+    parse_token::{UiAccountState, UiMint, UiMultisig, UiTokenAccount, UiTokenAmount},
+    parse_token_extension::{UiExtension, UiMintCloseAuthority},
 };
 use solana_cli_output::{display::writeln_name_value, OutputFormat, QuietDisplay, VerboseDisplay};
 use std::fmt::{self, Display};
@@ -162,15 +163,16 @@ impl fmt::Display for CliMultisig {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let m = self.multisig.num_required_signers;
         let n = self.multisig.num_valid_signers;
+
         writeln!(f)?;
-        writeln_name_value(f, "Type:", "Multisig")?;
-        writeln_name_value(f, "Address:", &self.address)?;
-        writeln_name_value(f, "Program:", &self.program_id)?;
-        writeln_name_value(f, "M/N:", &format!("{}/{}", m, n))?;
-        writeln_name_value(f, "Signers:", " ")?;
+        writeln_name_value(f, "SPL Token Multisig", " ")?;
+        writeln_name_value(f, "  Address:", &self.address)?;
+        writeln_name_value(f, "  Program:", &self.program_id)?;
+        writeln_name_value(f, "  M/N:", &format!("{}/{}", m, n))?;
+        writeln_name_value(f, "  Signers:", " ")?;
         let width = if n >= 9 { 4 } else { 3 };
         for i in 0..n as usize {
-            let title = format!("{1:>0$}:", width, i + 1);
+            let title = format!("  {1:>0$}:", width, i + 1);
             let pubkey = &self.multisig.signers[i];
             writeln_name_value(f, &title, pubkey)?;
         }
@@ -195,21 +197,21 @@ impl VerboseDisplay for CliTokenAccount {}
 impl fmt::Display for CliTokenAccount {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f)?;
-        writeln_name_value(f, "Type:", "Account")?;
+        writeln_name_value(f, "SPL Token Account", " ")?;
         if self.is_associated {
-            writeln_name_value(f, "Address:", &self.address)?;
+            writeln_name_value(f, "  Address:", &self.address)?;
         } else {
-            writeln_name_value(f, "Address:", &format!("{}  (Aux*)", self.address))?;
+            writeln_name_value(f, "  Address:", &format!("{}  (Aux*)", self.address))?;
         }
-        writeln_name_value(f, "Program:", &self.program_id)?;
+        writeln_name_value(f, "  Program:", &self.program_id)?;
         writeln_name_value(
             f,
-            "Balance:",
+            "  Balance:",
             &self.account.token_amount.real_number_string_trimmed(),
         )?;
         writeln_name_value(
             f,
-            "Decimals:",
+            "  Decimals:",
             if self.decimals.is_some() {
                 self.decimals.unwrap().to_string()
             } else {
@@ -226,29 +228,38 @@ impl fmt::Display for CliTokenAccount {
                 ""
             }
         );
-        writeln_name_value(f, "Mint:", &mint)?;
-        writeln_name_value(f, "Owner:", &self.account.owner)?;
-        writeln_name_value(f, "State:", &format!("{:?}", self.account.state))?;
+        writeln_name_value(f, "  Mint:", &mint)?;
+        writeln_name_value(f, "  Owner:", &self.account.owner)?;
+        writeln_name_value(f, "  State:", &format!("{:?}", self.account.state))?;
         if let Some(delegate) = &self.account.delegate {
-            writeln!(f, "Delegation:")?;
-            writeln_name_value(f, "  Delegate:", delegate)?;
+            writeln!(f, "  Delegation:")?;
+            writeln_name_value(f, "    Delegate:", delegate)?;
             let allowance = self.account.delegated_amount.as_ref().unwrap();
-            writeln_name_value(f, "  Allowance:", &allowance.real_number_string_trimmed())?;
+            writeln_name_value(f, "    Allowance:", &allowance.real_number_string_trimmed())?;
         } else {
-            writeln_name_value(f, "Delegation:", "")?;
+            writeln_name_value(f, "  Delegation:", "")?;
         }
         writeln_name_value(
             f,
-            "Close authority:",
+            "  Close authority:",
             self.account
                 .close_authority
                 .as_ref()
                 .unwrap_or(&String::new()),
         )?;
+
+        if !self.account.extensions.is_empty() {
+            writeln_name_value(f, "Extensions", " ")?;
+            for extension in &self.account.extensions {
+                display_ui_extension(f, extension)?;
+            }
+        }
+
         if !self.is_associated {
             writeln!(f)?;
             writeln!(f, "* Please run `spl-token gc` to clean up Aux accounts")?;
         }
+
         Ok(())
     }
 }
@@ -268,24 +279,33 @@ impl VerboseDisplay for CliMint {}
 impl fmt::Display for CliMint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f)?;
-        writeln_name_value(f, "Type:", "Mint")?;
-        writeln_name_value(f, "Address:", &self.address)?;
-        writeln_name_value(f, "Program:", &self.program_id)?;
-        writeln_name_value(f, "Supply:", &self.mint.supply)?;
-        writeln_name_value(f, "Decimals:", &self.mint.decimals.to_string())?;
+        writeln_name_value(f, "SPL Token Mint", " ")?;
+
+        writeln_name_value(f, "  Address:", &self.address)?;
+        writeln_name_value(f, "  Program:", &self.program_id)?;
+        writeln_name_value(f, "  Supply:", &self.mint.supply)?;
+        writeln_name_value(f, "  Decimals:", &self.mint.decimals.to_string())?;
         writeln_name_value(
             f,
-            "Mint authority:",
+            "  Mint authority:",
             self.mint.mint_authority.as_ref().unwrap_or(&String::new()),
         )?;
         writeln_name_value(
             f,
-            "Freeze authority:",
+            "  Freeze authority:",
             self.mint
                 .freeze_authority
                 .as_ref()
                 .unwrap_or(&String::new()),
         )?;
+
+        if !self.mint.extensions.is_empty() {
+            writeln_name_value(f, "Extensions", " ")?;
+            for extension in &self.mint.extensions {
+                display_ui_extension(f, extension)?;
+            }
+        }
+
         Ok(())
     }
 }
@@ -453,6 +473,20 @@ impl fmt::Display for CliTokenAccounts {
             writeln!(f, "* Please run `spl-token gc` to clean up Aux accounts")?;
         }
         Ok(())
+    }
+}
+
+fn display_ui_extension(f: &mut fmt::Formatter, ui_extension: &UiExtension) -> fmt::Result {
+    match ui_extension {
+        UiExtension::MintCloseAuthority(UiMintCloseAuthority { close_authority }) => {
+            writeln_name_value(
+                f,
+                "  Close authority:",
+                close_authority.as_ref().unwrap_or(&String::new()),
+            )
+        }
+        UiExtension::ImmutableOwner => writeln_name_value(f, "  Immutable owner:", "Enabled"),
+        _ => unimplemented!(),
     }
 }
 
