@@ -81,9 +81,16 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         Self::default()
     }
 
+    pub fn is_initialized(&self) -> bool {
+        !(self.buffer_size == 0 && self.sequence_number == 0 && self.active_index == 0) 
+    }
+
     /// This is the trustless initialization method that should be used in most cases.
     pub fn initialize(&mut self) -> Result<Node, ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
+        if self.is_initialized() {
+            return Err(ConcurrentMerkleTreeError::TreeAlreadyInitialized)
+        }
         let mut rightmost_proof = Path::default();
         let mut empty_node_cache = Box::new([Node::default(); MAX_DEPTH]);
         for (i, node) in rightmost_proof.proof.iter_mut().enumerate() {
@@ -116,6 +123,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         index: u32,
     ) -> Result<Node, ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
+        if self.is_initialized() {
+            return Err(ConcurrentMerkleTreeError::TreeAlreadyInitialized)
+        }
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
         proof.copy_from_slice(proof_vec);
         let rightmost_proof = Path {
