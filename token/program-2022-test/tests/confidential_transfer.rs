@@ -814,7 +814,7 @@ async fn ct_transfer() {
         err,
         TokenClientError::Client(Box::new(TransportError::TransactionError(
             TransactionError::InstructionError(
-                1,
+                0,
                 InstructionError::Custom(
                     TokenError::MaximumPendingBalanceCreditCounterExceeded as u32
                 ),
@@ -886,7 +886,7 @@ async fn ct_transfer() {
     assert_eq!(
         err,
         TokenClientError::Client(Box::new(TransportError::TransactionError(
-            TransactionError::InstructionError(1, InstructionError::InvalidAccountData)
+            TransactionError::InstructionError(0, InstructionError::InvalidAccountData)
         )))
     );
 
@@ -1089,7 +1089,7 @@ async fn ct_transfer_with_fee() {
     assert_eq!(
         err,
         TokenClientError::Client(Box::new(TransportError::TransactionError(
-            TransactionError::InstructionError(1, InstructionError::InvalidAccountData)
+            TransactionError::InstructionError(0, InstructionError::InvalidAccountData)
         )))
     );
 
