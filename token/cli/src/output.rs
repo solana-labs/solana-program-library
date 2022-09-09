@@ -2,7 +2,7 @@ use crate::{config::Config, sort::UnsupportedAccount};
 use console::Emoji;
 use serde::{Deserialize, Serialize, Serializer};
 use solana_account_decoder::parse_token::{
-    UiAccountState, UiMultisig, UiTokenAccount, UiTokenAmount,
+    UiAccountState, UiMint, UiMultisig, UiTokenAccount, UiTokenAmount,
 };
 use solana_cli_output::{display::writeln_name_value, OutputFormat, QuietDisplay, VerboseDisplay};
 use std::fmt::{self, Display};
@@ -60,7 +60,7 @@ pub(crate) fn println_display(config: &Config, message: String) {
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct CliMint<T>
+pub(crate) struct CliCreateToken<T>
 where
     T: Serialize + Display + QuietDisplay + VerboseDisplay,
 {
@@ -69,7 +69,7 @@ where
     pub(crate) transaction_data: T,
 }
 
-impl<T> Display for CliMint<T>
+impl<T> Display for CliCreateToken<T>
 where
     T: Serialize + Display + QuietDisplay + VerboseDisplay,
 {
@@ -80,7 +80,7 @@ where
         Display::fmt(&self.transaction_data, f)
     }
 }
-impl<T> QuietDisplay for CliMint<T>
+impl<T> QuietDisplay for CliCreateToken<T>
 where
     T: Serialize + Display + QuietDisplay + VerboseDisplay,
 {
@@ -91,7 +91,7 @@ where
         QuietDisplay::write_str(&self.transaction_data, w)
     }
 }
-impl<T> VerboseDisplay for CliMint<T>
+impl<T> VerboseDisplay for CliCreateToken<T>
 where
     T: Serialize + Display + QuietDisplay + VerboseDisplay,
 {
@@ -183,6 +183,7 @@ impl fmt::Display for CliMultisig {
 pub(crate) struct CliTokenAccount {
     pub(crate) address: String,
     pub(crate) program_id: String,
+    pub(crate) decimals: Option<u8>,
     pub(crate) is_associated: bool,
     #[serde(flatten)]
     pub(crate) account: UiTokenAccount,
@@ -205,6 +206,16 @@ impl fmt::Display for CliTokenAccount {
             f,
             "Balance:",
             &self.account.token_amount.real_number_string_trimmed(),
+        )?;
+        writeln_name_value(
+            f,
+            "Decimals:",
+            if self.decimals.is_some() {
+                self.decimals.unwrap().to_string()
+            } else {
+                String::new()
+            }
+            .as_ref(),
         )?;
         let mint = format!(
             "{}{}",
@@ -238,6 +249,43 @@ impl fmt::Display for CliTokenAccount {
             writeln!(f)?;
             writeln!(f, "* Please run `spl-token gc` to clean up Aux accounts")?;
         }
+        Ok(())
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CliMint {
+    pub(crate) address: String,
+    pub(crate) program_id: String,
+    #[serde(flatten)]
+    pub(crate) mint: UiMint,
+}
+
+impl QuietDisplay for CliMint {}
+impl VerboseDisplay for CliMint {}
+
+impl fmt::Display for CliMint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f)?;
+        writeln_name_value(f, "Type:", "Mint")?;
+        writeln_name_value(f, "Address:", &self.address)?;
+        writeln_name_value(f, "Program:", &self.program_id)?;
+        writeln_name_value(f, "Supply:", &self.mint.supply)?;
+        writeln_name_value(f, "Decimals:", &self.mint.decimals.to_string())?;
+        writeln_name_value(
+            f,
+            "Mint authority:",
+            self.mint.mint_authority.as_ref().unwrap_or(&String::new()),
+        )?;
+        writeln_name_value(
+            f,
+            "Freeze authority:",
+            self.mint
+                .freeze_authority
+                .as_ref()
+                .unwrap_or(&String::new()),
+        )?;
         Ok(())
     }
 }

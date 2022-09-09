@@ -409,7 +409,7 @@ async fn command_create_token(
     let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(cli_signature) => format_output(
-            CliMint {
+            CliCreateToken {
                 address: token_pubkey.to_string(),
                 decimals,
                 transaction_data: cli_signature,
@@ -1648,13 +1648,22 @@ async fn command_display(config: &Config<'_>, address: Pubkey) -> CommandResult 
             let cli_output = CliTokenAccount {
                 address: address.to_string(),
                 program_id: config.program_id.to_string(),
+                decimals,
                 is_associated: associated_address == address,
                 account,
             };
 
             Ok(config.output_format.formatted_string(&cli_output))
         }
-        Ok(TokenAccountType::Mint(_mint)) => unimplemented!(),
+        Ok(TokenAccountType::Mint(mint)) => {
+            let cli_output = CliMint {
+                address: address.to_string(),
+                program_id: config.program_id.to_string(),
+                mint,
+            };
+
+            Ok(config.output_format.formatted_string(&cli_output))
+        }
         Ok(TokenAccountType::Multisig(multisig)) => {
             let cli_output = CliMultisig {
                 address: address.to_string(),
@@ -1664,7 +1673,7 @@ async fn command_display(config: &Config<'_>, address: Pubkey) -> CommandResult 
 
             Ok(config.output_format.formatted_string(&cli_output))
         }
-        Err(_) => panic!("err here"),
+        Err(e) => Err(e.into()),
     }
 }
 
