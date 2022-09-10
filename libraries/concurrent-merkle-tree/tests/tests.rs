@@ -29,6 +29,13 @@ async fn test_initialize() {
         off_chain_tree.get_root(),
         "Init failed to set root properly"
     );
+
+    // Check that reinitialization fails
+    if let Err(ConcurrentMerkleTreeError::TreeAlreadyInitialized) = cmt.initialize() {
+        println!("Reinitialization successfully prevented");
+    } else {
+        panic!("Tree should not be able to be reinitialized");
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -135,6 +142,18 @@ async fn test_initialize_with_root() {
         tree.get_root(),
         "Init failed to set root properly"
     );
+
+    // Check that reinitialization fails
+    if let Err(ConcurrentMerkleTreeError::TreeAlreadyInitialized) = cmt.initialize_with_root(
+        tree.get_root(),
+        tree.get_leaf(last_leaf_idx),
+        &tree.get_proof_of_leaf(last_leaf_idx),
+        last_leaf_idx as u32,
+    ) {
+        println!("Reinitialization with root successfully prevented");
+    } else {
+        panic!("Tree should not be able to be reinitialized");
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
