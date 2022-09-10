@@ -187,10 +187,11 @@ async fn end_to_end_default_account_state() {
 
     let owner = Pubkey::new_unique();
     let account = Keypair::new();
-    let account = token
+    token
         .create_auxiliary_token_account(&account, &owner)
         .await
         .unwrap();
+    let account = account.pubkey();
     let account_state = token.get_account_info(&account).await.unwrap();
     assert_eq!(account_state.base.state, default_account_state);
 
@@ -222,10 +223,11 @@ async fn end_to_end_default_account_state() {
 
     let owner = Pubkey::new_unique();
     let account = Keypair::new();
-    let account = token
+    token
         .create_auxiliary_token_account(&account, &owner)
         .await
         .unwrap();
+    let account = account.pubkey();
     let account_state = token.get_account_info(&account).await.unwrap();
     assert_eq!(account_state.base.state, AccountState::Initialized);
 

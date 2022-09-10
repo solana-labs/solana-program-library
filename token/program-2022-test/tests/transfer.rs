@@ -29,15 +29,17 @@ async fn run_basic_transfers(context: TestContext, test_mode: TestMode) {
     } = context.token_context.unwrap();
 
     let alice_account = Keypair::new();
-    let alice_account = token
+    token
         .create_auxiliary_token_account(&alice_account, &alice.pubkey())
         .await
         .unwrap();
+    let alice_account = alice_account.pubkey();
     let bob_account = Keypair::new();
-    let bob_account = token
+    token
         .create_auxiliary_token_account(&bob_account, &bob.pubkey())
         .await
         .unwrap();
+    let bob_account = bob_account.pubkey();
 
     // mint a token
     let amount = 10;
@@ -157,10 +159,11 @@ async fn run_self_transfers(context: TestContext, test_mode: TestMode) {
     } = context.token_context.unwrap();
 
     let alice_account = Keypair::new();
-    let alice_account = token
+    token
         .create_auxiliary_token_account(&alice_account, &alice.pubkey())
         .await
         .unwrap();
+    let alice_account = alice_account.pubkey();
 
     // mint a token
     let amount = 10;
@@ -256,15 +259,17 @@ async fn run_self_owned(context: TestContext, test_mode: TestMode) {
         ..
     } = context.token_context.unwrap();
 
-    let alice_account = token
+    token
         .create_auxiliary_token_account(&alice, &alice.pubkey())
         .await
         .unwrap();
+    let alice_account = alice.pubkey();
     let bob_account = Keypair::new();
-    let bob_account = token
+    token
         .create_auxiliary_token_account(&bob_account, &bob.pubkey())
         .await
         .unwrap();
+    let bob_account = bob_account.pubkey();
 
     // mint a token
     let amount = 10;
@@ -357,15 +362,17 @@ async fn transfer_with_fee_on_mint_without_fee_configured() {
     } = context.token_context.unwrap();
 
     let alice_account = Keypair::new();
-    let alice_account = token
+    token
         .create_auxiliary_token_account(&alice_account, &alice.pubkey())
         .await
         .unwrap();
+    let alice_account = alice_account.pubkey();
     let bob_account = Keypair::new();
-    let bob_account = token
+    token
         .create_auxiliary_token_account(&bob_account, &bob.pubkey())
         .await
         .unwrap();
+    let bob_account = bob_account.pubkey();
 
     // mint some tokens
     let amount = 10;

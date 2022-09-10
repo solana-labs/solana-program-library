@@ -58,7 +58,7 @@ impl ConfidentialTransferMintWithKeypairs {
         let ct_mint_transfer_auditor_encryption_keypair = ElGamalKeypair::new_rand();
         let ct_mint_withdraw_withheld_authority_encryption_keypair = ElGamalKeypair::new_rand();
         let ct_mint = ConfidentialTransferMint {
-            authority: ct_mint_authority.pubkey().into(),
+            authority: ct_mint_authority.pubkey(),
             auto_approve_new_accounts: true.into(),
             auditor_encryption_pubkey: ct_mint_transfer_auditor_encryption_keypair.public.into(),
             withdraw_withheld_authority_encryption_pubkey:
@@ -93,14 +93,16 @@ impl ConfidentialTokenAccountMeta {
     where
         T: SendTransaction,
     {
-        let token_account = token
+        let token_account_keypair = Keypair::new();
+        token
             .create_auxiliary_token_account_with_extension_space(
-                &Keypair::new(),
+                &token_account_keypair,
                 &owner.pubkey(),
                 vec![ExtensionType::ConfidentialTransferAccount],
             )
             .await
             .unwrap();
+        let token_account = token_account_keypair.pubkey();
 
         let elgamal_keypair = ElGamalKeypair::new(owner, &token_account).unwrap();
         let ae_key = AeKey::new(owner, &token_account).unwrap();

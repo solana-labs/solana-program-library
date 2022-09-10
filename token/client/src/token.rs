@@ -458,7 +458,7 @@ where
     }
 
     /// Create and initialize the associated account.
-    pub async fn create_associated_token_account(&self, owner: &Pubkey) -> TokenResult<Pubkey> {
+    pub async fn create_associated_token_account(&self, owner: &Pubkey) -> TokenResult<T::Output> {
         self.process_ixs::<[&dyn Signer; 0]>(
             &[create_associated_token_account(
                 &self.payer.pubkey(),
@@ -469,7 +469,6 @@ where
             &[],
         )
         .await
-        .map(|_| self.get_associated_token_address(owner))
         .map_err(Into::into)
     }
 
@@ -478,7 +477,7 @@ where
         &self,
         account: &dyn Signer,
         owner: &Pubkey,
-    ) -> TokenResult<Pubkey> {
+    ) -> TokenResult<T::Output> {
         self.create_auxiliary_token_account_with_extension_space(account, owner, vec![])
             .await
     }
@@ -489,7 +488,7 @@ where
         account: &dyn Signer,
         owner: &Pubkey,
         extensions: Vec<ExtensionType>,
-    ) -> TokenResult<Pubkey> {
+    ) -> TokenResult<T::Output> {
         let state = self.get_mint_info().await?;
         let mint_extensions: Vec<ExtensionType> = state.get_extension_types()?;
         let mut required_extensions =
@@ -522,7 +521,6 @@ where
             &vec![account],
         )
         .await
-        .map(|_| account.pubkey())
         .map_err(Into::into)
     }
 

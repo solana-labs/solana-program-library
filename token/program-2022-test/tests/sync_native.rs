@@ -56,10 +56,12 @@ async fn basic() {
     let TokenContext { token, alice, .. } = context.token_context.unwrap();
     let context = context.context.clone();
 
-    let account = token
-        .create_auxiliary_token_account(&Keypair::new(), &alice.pubkey())
+    let account = Keypair::new();
+    token
+        .create_auxiliary_token_account(&account, &alice.pubkey())
         .await
         .unwrap();
+    let account = account.pubkey();
     run_basic(token, context, account).await;
 }
 
@@ -70,13 +72,15 @@ async fn basic_with_extension() {
     let TokenContext { token, alice, .. } = context.token_context.unwrap();
     let context = context.context.clone();
 
-    let account = token
+    let account = Keypair::new();
+    token
         .create_auxiliary_token_account_with_extension_space(
-            &Keypair::new(),
+            &account,
             &alice.pubkey(),
             vec![ExtensionType::ImmutableOwner],
         )
         .await
         .unwrap();
+    let account = account.pubkey();
     run_basic(token, context, account).await;
 }

@@ -253,10 +253,11 @@ async fn fail_close_with_supply() {
     // mint a token
     let owner = Pubkey::new_unique();
     let account = Keypair::new();
-    let account = token
+    token
         .create_auxiliary_token_account(&account, &owner)
         .await
         .unwrap();
+    let account = account.pubkey();
     token
         .mint_to(
             &account,
