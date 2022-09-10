@@ -34,7 +34,7 @@ async fn test_initialize() {
     if let Err(ConcurrentMerkleTreeError::TreeAlreadyInitialized) = cmt.initialize() {
         println!("Reinitialization successfully prevented");
     } else {
-        assert!(false, "Tree should not be able to be reinitialized");
+        panic!("Tree should not be able to be reinitialized");
     }
 }
 
@@ -152,7 +152,7 @@ async fn test_initialize_with_root() {
     ) {
         println!("Reinitialization with root successfully prevented");
     } else {
-        assert!(false, "Tree should not be able to be reinitialized");
+        panic!("Tree should not be able to be reinitialized");
     }
 }
 
