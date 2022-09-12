@@ -120,10 +120,11 @@ async fn success(original_program_id: Pubkey, new_program_id: Pubkey) {
         &spl_token_upgrade::id(),
     );
 
-    let original_account = original_token
+    original_token
         .create_associated_token_account(&wallet.pubkey())
         .await
         .unwrap();
+    let original_account = original_token.get_associated_token_address(&wallet.pubkey());
     let token_amount = 1_000_000_000_000;
     original_token
         .mint_to(
@@ -136,14 +137,16 @@ async fn success(original_program_id: Pubkey, new_program_id: Pubkey) {
         .await
         .unwrap();
 
-    let new_account = new_token
+    new_token
         .create_associated_token_account(&wallet.pubkey())
         .await
         .unwrap();
-    let escrow_account = new_token
+    let new_account = new_token.get_associated_token_address(&wallet.pubkey());
+    new_token
         .create_associated_token_account(&program_escrow)
         .await
         .unwrap();
+    let escrow_account = new_token.get_associated_token_address(&program_escrow);
     new_token
         .mint_to(
             &escrow_account,
@@ -228,10 +231,11 @@ async fn fail_incorrect_escrow_derivation(original_program_id: Pubkey, new_progr
         &spl_token_upgrade::id(),
     );
 
-    let original_account = original_token
+    original_token
         .create_associated_token_account(&wallet.pubkey())
         .await
         .unwrap();
+    let original_account = original_token.get_associated_token_address(&wallet.pubkey());
     let token_amount = 1_000_000_000_000;
     original_token
         .mint_to(
@@ -244,14 +248,16 @@ async fn fail_incorrect_escrow_derivation(original_program_id: Pubkey, new_progr
         .await
         .unwrap();
 
-    let new_account = new_token
+    new_token
         .create_associated_token_account(&wallet.pubkey())
         .await
         .unwrap();
-    let escrow_account = new_token
+    let new_account = new_token.get_associated_token_address(&wallet.pubkey());
+    new_token
         .create_associated_token_account(&program_escrow)
         .await
         .unwrap();
+    let escrow_account = new_token.get_associated_token_address(&program_escrow);
     new_token
         .mint_to(
             &escrow_account,
