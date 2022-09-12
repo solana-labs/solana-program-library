@@ -20,7 +20,7 @@ pub enum TokenUpgradeInstruction {
     ///
     ///   0. `[writeable]` Original token account to burn from
     ///   1. `[writeable]` Original token mint
-    ///   2. `[writeable]` Escrow of new tokens held by or delegated to PDA:
+    ///   2. `[writeable]` Escrow of new tokens held by or delegated to PDA at address:
     ///       `get_token_upgrade_authority_address(original_mint, new_mint, program_id)`
     ///   3. `[writeable]` New token account to transfer into
     ///   4. `[]` New token mint

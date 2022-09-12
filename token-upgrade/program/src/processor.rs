@@ -2,8 +2,8 @@
 
 use {
     crate::{
-        error::TokenUpgradeError, get_token_upgrade_authority_address_and_bump_seed,
-        get_token_upgrade_authority_signer_seeds, instruction::TokenUpgradeInstruction,
+        collect_token_upgrade_authority_signer_seeds, error::TokenUpgradeError,
+        get_token_upgrade_authority_address_and_bump_seed, instruction::TokenUpgradeInstruction,
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -107,7 +107,7 @@ fn process_exchange(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
         program_id,
     );
     let bump_seed = [bump_seed];
-    let authority_seeds = get_token_upgrade_authority_signer_seeds(
+    let authority_seeds = collect_token_upgrade_authority_signer_seeds(
         original_mint_info.key,
         new_mint_info.key,
         &bump_seed,
