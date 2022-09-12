@@ -97,7 +97,13 @@ jobs:
           ./ci/install-program-deps.sh
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Build and test
+      - name: Build dependent programs
         run: |
-          BUILD_DEPENDENT_PROGRAMS=1 cargo build --manifest-path ./token-upgrade/cli/Cargo.toml
+          cargo build-sbf --manifest-path ./token/program/Cargo.toml
+          cargo build-sbf --manifest-path ./token/program-2022/Cargo.toml
+          cargo build-sbf --manifest-path ./associated-token-account/program/Cargo.toml
+          cargo build-sbf --manifest-path ./token-upgrade/program/Cargo.toml
+
+      - name: Run CLI tests
+        run: |
           cargo test --manifest-path ./token-upgrade/cli/Cargo.toml
