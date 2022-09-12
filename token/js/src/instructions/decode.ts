@@ -247,10 +247,3 @@ export function isUiamountToAmountInstruction(
 // ): decoded is DecodedInitializeMultisig2Instruction {
 //     return decoded.data.instruction === TokenInstruction.InitializeMultisig2;
 // }
-
-/** TODO: docs, implement */
-// export function isInitializeMint2Instruction(
-//     decoded: DecodedInstruction
-// ): decoded is DecodedInitializeMint2Instruction {
-//     return decoded.data.instruction === TokenInstruction.InitializeMint2;
-// }
