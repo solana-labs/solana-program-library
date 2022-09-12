@@ -6,6 +6,7 @@ import {
     createAssociatedTokenAccountInstruction,
     createReallocateInstruction,
     createInitializeMintInstruction,
+    createInitializeMint2Instruction,
     createSyncNativeInstruction,
     createTransferCheckedInstruction,
     getAssociatedTokenAddress,
@@ -42,6 +43,17 @@ describe('spl-token instructions', () => {
         const ix = createInitializeMintInstruction(Keypair.generate().publicKey, 9, Keypair.generate().publicKey, null);
         expect(ix.programId).to.eql(TOKEN_PROGRAM_ID);
         expect(ix.keys).to.have.length(2);
+    });
+
+    it('InitializeMint2', () => {
+        const ix = createInitializeMint2Instruction(
+            Keypair.generate().publicKey,
+            9,
+            Keypair.generate().publicKey,
+            null
+        );
+        expect(ix.programId).to.eql(TOKEN_PROGRAM_ID);
+        expect(ix.keys).to.have.length(1);
     });
 
     it('SyncNative', () => {
@@ -97,6 +109,18 @@ describe('spl-token-2022 instructions', () => {
         );
         expect(ix.programId).to.eql(TOKEN_2022_PROGRAM_ID);
         expect(ix.keys).to.have.length(2);
+    });
+
+    it('InitializeMint2', () => {
+        const ix = createInitializeMint2Instruction(
+            Keypair.generate().publicKey,
+            9,
+            Keypair.generate().publicKey,
+            null,
+            TOKEN_2022_PROGRAM_ID
+        );
+        expect(ix.programId).to.eql(TOKEN_2022_PROGRAM_ID);
+        expect(ix.keys).to.have.length(1);
     });
 
     it('SyncNative', () => {
