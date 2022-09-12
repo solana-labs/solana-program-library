@@ -3,7 +3,10 @@ use console::Emoji;
 use serde::{Deserialize, Serialize, Serializer};
 use solana_account_decoder::{
     parse_token::{UiAccountState, UiMint, UiMultisig, UiTokenAccount, UiTokenAmount},
-    parse_token_extension::{UiExtension, UiMintCloseAuthority},
+    parse_token_extension::{
+        UiDefaultAccountState, UiExtension, UiMemoTransfer, UiMintCloseAuthority,
+        UiTransferFeeAmount,
+    },
 };
 use solana_cli_output::{display::writeln_name_value, OutputFormat, QuietDisplay, VerboseDisplay};
 use std::fmt::{self, Display};
@@ -232,7 +235,7 @@ impl fmt::Display for CliTokenAccount {
         writeln_name_value(f, "  Owner:", &self.account.owner)?;
         writeln_name_value(f, "  State:", &format!("{:?}", self.account.state))?;
         if let Some(delegate) = &self.account.delegate {
-            writeln!(f, "  Delegation:")?;
+            writeln_name_value(f, "  Delegation:", " ")?;
             writeln_name_value(f, "    Delegate:", delegate)?;
             let allowance = self.account.delegated_amount.as_ref().unwrap();
             writeln_name_value(f, "    Allowance:", &allowance.real_number_string_trimmed())?;
@@ -478,6 +481,10 @@ impl fmt::Display for CliTokenAccounts {
 
 fn display_ui_extension(f: &mut fmt::Formatter, ui_extension: &UiExtension) -> fmt::Result {
     match ui_extension {
+        UiExtension::TransferFeeConfig(_) => unimplemented!(), // annoying
+        UiExtension::TransferFeeAmount(UiTransferFeeAmount { withheld_amount }) => {
+            writeln_name_value(f, "  Transfer fees withheld:", &withheld_amount.to_string())
+        }
         UiExtension::MintCloseAuthority(UiMintCloseAuthority { close_authority }) => {
             writeln_name_value(
                 f,
@@ -485,8 +492,27 @@ fn display_ui_extension(f: &mut fmt::Formatter, ui_extension: &UiExtension) -> f
                 close_authority.as_ref().unwrap_or(&String::new()),
             )
         }
-        UiExtension::ImmutableOwner => writeln_name_value(f, "  Immutable owner:", "Enabled"),
-        _ => unimplemented!(),
+        UiExtension::ConfidentialTransferMint(_) => unimplemented!(), // very annoying
+        UiExtension::ConfidentialTransferAccount(_) => unimplemented!(), //very annoying
+        UiExtension::DefaultAccountState(UiDefaultAccountState { account_state }) => {
+            writeln_name_value(f, "  Default state:", &format!("{:?}", account_state))
+        }
+        UiExtension::ImmutableOwner => writeln_name_value(f, "  Immutable owner", " "),
+        UiExtension::MemoTransfer(UiMemoTransfer {
+            require_incoming_transfer_memos,
+        }) => writeln_name_value(
+            f,
+            "  Transfer memo:",
+            if *require_incoming_transfer_memos {
+                "Required"
+            } else {
+                "Not required"
+            },
+        ),
+        UiExtension::NonTransferable => writeln_name_value(f, "  Non-transferable", " "),
+        UiExtension::InterestBearingConfig(_) => unimplemented!(), // little annoying
+        UiExtension::UnparseableExtension => panic!("err here"),
+        UiExtension::Uninitialized => panic!("err here...?"),
     }
 }
 
