@@ -121,6 +121,13 @@ export function isInitializeMintInstruction(decoded: DecodedInstruction): decode
 }
 
 /** TODO: docs */
+export function isInitializeMint2Instruction(
+    decoded: DecodedInstruction
+): decoded is DecodedInitializeMint2Instruction {
+    return decoded.data.instruction === TokenInstruction.InitializeMint2;
+}
+
+/** TODO: docs */
 export function isInitializeAccountInstruction(
     decoded: DecodedInstruction
 ): decoded is DecodedInitializeAccountInstruction {
