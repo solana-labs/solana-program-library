@@ -7067,6 +7067,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-token-wrap"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "num_enum 0.5.11",
+ "solana-program",
+ "spl-associated-token-account 2.0.0",
+ "spl-token 4.0.0",
+ "spl-token-2022 0.7.0",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-transfer-hook-example"
 version = "0.1.0"
 dependencies = [
