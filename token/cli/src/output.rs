@@ -1,11 +1,11 @@
 use crate::{config::Config, sort::UnsupportedAccount};
-use console::Emoji;
+use console::{style, Emoji};
 use serde::{Deserialize, Serialize, Serializer};
 use solana_account_decoder::{
     parse_token::{UiAccountState, UiMint, UiMultisig, UiTokenAccount, UiTokenAmount},
     parse_token_extension::{
-        UiDefaultAccountState, UiExtension, UiMemoTransfer, UiMintCloseAuthority,
-        UiTransferFeeAmount,
+        UiDefaultAccountState, UiExtension, UiInterestBearingConfig, UiMemoTransfer,
+        UiMintCloseAuthority, UiTransferFee, UiTransferFeeAmount, UiTransferFeeConfig,
     },
 };
 use solana_cli_output::{display::writeln_name_value, OutputFormat, QuietDisplay, VerboseDisplay};
@@ -168,11 +168,11 @@ impl fmt::Display for CliMultisig {
         let n = self.multisig.num_valid_signers;
 
         writeln!(f)?;
-        writeln_name_value(f, "SPL Token Multisig", " ")?;
+        writeln!(f, "{}", style("SPL Token Multisig").bold())?;
         writeln_name_value(f, "  Address:", &self.address)?;
         writeln_name_value(f, "  Program:", &self.program_id)?;
         writeln_name_value(f, "  M/N:", &format!("{}/{}", m, n))?;
-        writeln_name_value(f, "  Signers:", " ")?;
+        writeln!(f, "  {}", style("Signers:").bold())?;
         let width = if n >= 9 { 4 } else { 3 };
         for i in 0..n as usize {
             let title = format!("  {1:>0$}:", width, i + 1);
@@ -188,6 +188,7 @@ impl fmt::Display for CliMultisig {
 pub(crate) struct CliTokenAccount {
     pub(crate) address: String,
     pub(crate) program_id: String,
+    pub(crate) epoch: u64,
     pub(crate) decimals: Option<u8>,
     pub(crate) is_associated: bool,
     #[serde(flatten)]
@@ -200,7 +201,7 @@ impl VerboseDisplay for CliTokenAccount {}
 impl fmt::Display for CliTokenAccount {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f)?;
-        writeln_name_value(f, "SPL Token Account", " ")?;
+        writeln!(f, "{}", style("SPL Token Account").bold())?;
         if self.is_associated {
             writeln_name_value(f, "  Address:", &self.address)?;
         } else {
@@ -235,7 +236,7 @@ impl fmt::Display for CliTokenAccount {
         writeln_name_value(f, "  Owner:", &self.account.owner)?;
         writeln_name_value(f, "  State:", &format!("{:?}", self.account.state))?;
         if let Some(delegate) = &self.account.delegate {
-            writeln_name_value(f, "  Delegation:", " ")?;
+            writeln!(f, "  {}", style("Delegation:").bold())?;
             writeln_name_value(f, "    Delegate:", delegate)?;
             let allowance = self.account.delegated_amount.as_ref().unwrap();
             writeln_name_value(f, "    Allowance:", &allowance.real_number_string_trimmed())?;
@@ -252,9 +253,9 @@ impl fmt::Display for CliTokenAccount {
         )?;
 
         if !self.account.extensions.is_empty() {
-            writeln_name_value(f, "Extensions", " ")?;
+            writeln!(f, "{}", style("Extensions:").bold())?;
             for extension in &self.account.extensions {
-                display_ui_extension(f, extension)?;
+                display_ui_extension(f, self.epoch, extension)?;
             }
         }
 
@@ -272,6 +273,7 @@ impl fmt::Display for CliTokenAccount {
 pub(crate) struct CliMint {
     pub(crate) address: String,
     pub(crate) program_id: String,
+    pub(crate) epoch: u64,
     #[serde(flatten)]
     pub(crate) mint: UiMint,
 }
@@ -282,7 +284,7 @@ impl VerboseDisplay for CliMint {}
 impl fmt::Display for CliMint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f)?;
-        writeln_name_value(f, "SPL Token Mint", " ")?;
+        writeln!(f, "{}", style("SPL Token Mint").bold())?;
 
         writeln_name_value(f, "  Address:", &self.address)?;
         writeln_name_value(f, "  Program:", &self.program_id)?;
@@ -303,9 +305,9 @@ impl fmt::Display for CliMint {
         )?;
 
         if !self.mint.extensions.is_empty() {
-            writeln_name_value(f, "Extensions", " ")?;
+            writeln!(f, "{}", style("Extensions").bold())?;
             for extension in &self.mint.extensions {
-                display_ui_extension(f, extension)?;
+                display_ui_extension(f, self.epoch, extension)?;
             }
         }
 
@@ -479,9 +481,54 @@ impl fmt::Display for CliTokenAccounts {
     }
 }
 
-fn display_ui_extension(f: &mut fmt::Formatter, ui_extension: &UiExtension) -> fmt::Result {
+fn display_ui_extension(
+    f: &mut fmt::Formatter,
+    epoch: u64,
+    ui_extension: &UiExtension,
+) -> fmt::Result {
     match ui_extension {
-        UiExtension::TransferFeeConfig(_) => unimplemented!(), // annoying
+        UiExtension::TransferFeeConfig(UiTransferFeeConfig {
+            transfer_fee_config_authority,
+            withdraw_withheld_authority,
+            withheld_amount,
+            older_transfer_fee,
+            newer_transfer_fee,
+            ..
+        }) => {
+            let UiTransferFee {
+                transfer_fee_basis_points,
+                maximum_fee,
+                ..
+            } = if newer_transfer_fee.epoch >= epoch {
+                newer_transfer_fee
+            } else {
+                older_transfer_fee
+            };
+
+            writeln!(f, "  {}", style("Transfer fees:").bold())?;
+            writeln!(
+                f,
+                "    {} {}bps",
+                style("Fee:").bold(),
+                transfer_fee_basis_points
+            )?;
+            writeln_name_value(f, "    Maximum fee:", &maximum_fee.to_string())?;
+            writeln_name_value(
+                f,
+                "    Config authority:",
+                transfer_fee_config_authority
+                    .as_ref()
+                    .unwrap_or(&String::new()),
+            )?;
+            writeln_name_value(
+                f,
+                "    Withdrawal authority:",
+                withdraw_withheld_authority
+                    .as_ref()
+                    .unwrap_or(&String::new()),
+            )?;
+            writeln_name_value(f, "    Withheld fees:", &withheld_amount.to_string())
+        }
         UiExtension::TransferFeeAmount(UiTransferFeeAmount { withheld_amount }) => {
             writeln_name_value(f, "  Transfer fees withheld:", &withheld_amount.to_string())
         }
@@ -497,7 +544,7 @@ fn display_ui_extension(f: &mut fmt::Formatter, ui_extension: &UiExtension) -> f
         UiExtension::DefaultAccountState(UiDefaultAccountState { account_state }) => {
             writeln_name_value(f, "  Default state:", &format!("{:?}", account_state))
         }
-        UiExtension::ImmutableOwner => writeln_name_value(f, "  Immutable owner", " "),
+        UiExtension::ImmutableOwner => writeln!(f, "  {}", style("Immutable owner").bold()),
         UiExtension::MemoTransfer(UiMemoTransfer {
             require_incoming_transfer_memos,
         }) => writeln_name_value(
@@ -509,8 +556,25 @@ fn display_ui_extension(f: &mut fmt::Formatter, ui_extension: &UiExtension) -> f
                 "Not required"
             },
         ),
-        UiExtension::NonTransferable => writeln_name_value(f, "  Non-transferable", " "),
-        UiExtension::InterestBearingConfig(_) => unimplemented!(), // little annoying
+        UiExtension::NonTransferable => writeln!(f, "  {}", style("Non-transferable").bold()),
+        UiExtension::InterestBearingConfig(UiInterestBearingConfig {
+            rate_authority,
+            current_rate,
+            ..
+        }) => {
+            writeln!(f, "  {}", style("Interest-bearing:").bold())?;
+            writeln!(
+                f,
+                "    {} {}bps",
+                style("Interest rate:").bold(),
+                current_rate
+            )?;
+            writeln_name_value(
+                f,
+                "    Rate authority:",
+                rate_authority.as_ref().unwrap_or(&String::new()),
+            )
+        }
         UiExtension::UnparseableExtension => panic!("err here"),
         UiExtension::Uninitialized => panic!("err here...?"),
     }
