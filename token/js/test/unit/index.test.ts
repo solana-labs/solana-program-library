@@ -139,7 +139,7 @@ describe('spl-associated-token-account instructions', () => {
             Keypair.generate().publicKey
         );
         expect(ix.programId).to.eql(ASSOCIATED_TOKEN_PROGRAM_ID);
-        expect(ix.keys).to.have.length(7);
+        expect(ix.keys).to.have.length(6);
     });
 });
 
