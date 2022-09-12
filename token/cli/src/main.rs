@@ -1626,7 +1626,6 @@ async fn command_address(
 
 async fn command_display(config: &Config<'_>, address: Pubkey) -> CommandResult {
     let account_data = config.get_account_checked(&address).await?;
-    let epoch_info = config.rpc_client.get_epoch_info().await?;
 
     let decimals = if let Some(mint_address) = get_token_account_mint(&account_data.data) {
         Some(config.get_mint_info(&mint_address, None).await?.decimals)
@@ -1649,7 +1648,6 @@ async fn command_display(config: &Config<'_>, address: Pubkey) -> CommandResult 
             let cli_output = CliTokenAccount {
                 address: address.to_string(),
                 program_id: config.program_id.to_string(),
-                epoch: epoch_info.epoch,
                 decimals,
                 is_associated: associated_address == address,
                 account,
@@ -1658,6 +1656,7 @@ async fn command_display(config: &Config<'_>, address: Pubkey) -> CommandResult 
             Ok(config.output_format.formatted_string(&cli_output))
         }
         Ok(TokenAccountType::Mint(mint)) => {
+            let epoch_info = config.rpc_client.get_epoch_info().await?;
             let cli_output = CliMint {
                 address: address.to_string(),
                 epoch: epoch_info.epoch,

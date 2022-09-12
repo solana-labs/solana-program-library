@@ -5,7 +5,7 @@ use solana_account_decoder::{
     parse_token::{UiAccountState, UiMint, UiMultisig, UiTokenAccount, UiTokenAmount},
     parse_token_extension::{
         UiDefaultAccountState, UiExtension, UiInterestBearingConfig, UiMemoTransfer,
-        UiMintCloseAuthority, UiTransferFee, UiTransferFeeAmount, UiTransferFeeConfig,
+        UiMintCloseAuthority, UiTransferFeeAmount, UiTransferFeeConfig,
     },
 };
 use solana_cli_output::{display::writeln_name_value, OutputFormat, QuietDisplay, VerboseDisplay};
@@ -188,7 +188,6 @@ impl fmt::Display for CliMultisig {
 pub(crate) struct CliTokenAccount {
     pub(crate) address: String,
     pub(crate) program_id: String,
-    pub(crate) epoch: u64,
     pub(crate) decimals: Option<u8>,
     pub(crate) is_associated: bool,
     #[serde(flatten)]
@@ -255,7 +254,7 @@ impl fmt::Display for CliTokenAccount {
         if !self.account.extensions.is_empty() {
             writeln!(f, "{}", style("Extensions:").bold())?;
             for extension in &self.account.extensions {
-                display_ui_extension(f, self.epoch, extension)?;
+                display_ui_extension(f, 0, extension)?;
             }
         }
 
@@ -273,6 +272,7 @@ impl fmt::Display for CliTokenAccount {
 pub(crate) struct CliMint {
     pub(crate) address: String,
     pub(crate) program_id: String,
+    #[serde(skip_serializing)]
     pub(crate) epoch: u64,
     #[serde(flatten)]
     pub(crate) mint: UiMint,
@@ -493,26 +493,53 @@ fn display_ui_extension(
             withheld_amount,
             older_transfer_fee,
             newer_transfer_fee,
-            ..
         }) => {
-            let UiTransferFee {
-                transfer_fee_basis_points,
-                maximum_fee,
-                ..
-            } = if newer_transfer_fee.epoch >= epoch {
-                newer_transfer_fee
-            } else {
-                older_transfer_fee
-            };
-
             writeln!(f, "  {}", style("Transfer fees:").bold())?;
-            writeln!(
-                f,
-                "    {} {}bps",
-                style("Fee:").bold(),
-                transfer_fee_basis_points
-            )?;
-            writeln_name_value(f, "    Maximum fee:", &maximum_fee.to_string())?;
+
+            if newer_transfer_fee.epoch >= epoch {
+                writeln!(
+                    f,
+                    "    {} {}bps",
+                    style("Current fee:").bold(),
+                    newer_transfer_fee.transfer_fee_basis_points
+                )?;
+                writeln_name_value(
+                    f,
+                    "    Current maximum:",
+                    &newer_transfer_fee.maximum_fee.to_string(),
+                )?;
+            } else {
+                writeln!(
+                    f,
+                    "    {} {}bps",
+                    style("Current fee:").bold(),
+                    older_transfer_fee.transfer_fee_basis_points
+                )?;
+                writeln_name_value(
+                    f,
+                    "    Current maximum:",
+                    &older_transfer_fee.maximum_fee.to_string(),
+                )?;
+                writeln!(
+                    f,
+                    "    {} {}bps",
+                    style("Upcoming fee:").bold(),
+                    newer_transfer_fee.transfer_fee_basis_points
+                )?;
+                writeln_name_value(
+                    f,
+                    "    Upcoming maximum:",
+                    &newer_transfer_fee.maximum_fee.to_string(),
+                )?;
+                writeln!(
+                    f,
+                    "    {} Epoch {} ({} epochs)",
+                    style("Switchover at:").bold(),
+                    newer_transfer_fee.epoch,
+                    newer_transfer_fee.epoch - epoch
+                )?;
+            }
+
             writeln_name_value(
                 f,
                 "    Config authority:",
@@ -539,8 +566,8 @@ fn display_ui_extension(
                 close_authority.as_ref().unwrap_or(&String::new()),
             )
         }
-        UiExtension::ConfidentialTransferMint(_) => unimplemented!(), // very annoying
-        UiExtension::ConfidentialTransferAccount(_) => unimplemented!(), //very annoying
+        UiExtension::ConfidentialTransferMint(_) => unimplemented!(),
+        UiExtension::ConfidentialTransferAccount(_) => unimplemented!(),
         UiExtension::DefaultAccountState(UiDefaultAccountState { account_state }) => {
             writeln_name_value(f, "  Default state:", &format!("{:?}", account_state))
         }
@@ -559,6 +586,7 @@ fn display_ui_extension(
         UiExtension::NonTransferable => writeln!(f, "  {}", style("Non-transferable").bold()),
         UiExtension::InterestBearingConfig(UiInterestBearingConfig {
             rate_authority,
+            pre_update_average_rate,
             current_rate,
             ..
         }) => {
@@ -566,8 +594,14 @@ fn display_ui_extension(
             writeln!(
                 f,
                 "    {} {}bps",
-                style("Interest rate:").bold(),
+                style("Current rate:").bold(),
                 current_rate
+            )?;
+            writeln!(
+                f,
+                "    {} {}bps",
+                style("Average rate:").bold(),
+                pre_update_average_rate
             )?;
             writeln_name_value(
                 f,
@@ -575,8 +609,13 @@ fn display_ui_extension(
                 rate_authority.as_ref().unwrap_or(&String::new()),
             )
         }
-        UiExtension::UnparseableExtension => panic!("err here"),
-        UiExtension::Uninitialized => panic!("err here...?"),
+        // ExtensionType::Uninitialized is a hack to ensure a mint/account is never the same length as a multisig
+        UiExtension::Uninitialized => Ok(()),
+        UiExtension::UnparseableExtension => writeln_name_value(
+            f,
+            "    Unparseable extension:",
+            "Consider upgrading to a newer version of spl-token",
+        ),
     }
 }
 
