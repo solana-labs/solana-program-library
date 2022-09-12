@@ -45,6 +45,8 @@ import { decodeTransferCheckedInstruction } from './transferChecked.js';
 import { TokenInstruction } from './types.js';
 import type { DecodedUiAmountToAmountInstruction } from './uiAmountToAmount.js';
 import { decodeUiAmountToAmountInstruction } from './uiAmountToAmount.js';
+import type { DecodedInitializeMint2Instruction } from './initializeMint2.js';
+import { decodeInitializeMint2Instruction } from './initializeMint2.js';
 
 /** TODO: docs */
 export type DecodedInstruction =
@@ -69,8 +71,8 @@ export type DecodedInstruction =
     | DecodedInitializeAccount3Instruction
     | DecodedAmountToUiAmountInstruction
     | DecodedUiAmountToAmountInstruction
+    | DecodedInitializeMint2Instruction
     // | DecodedInitializeMultisig2Instruction
-    // | DecodedInitializeMint2Instruction
     // TODO: implement ^ and remove `never`
     | never;
 
@@ -104,13 +106,11 @@ export function decodeInstruction(
     if (type === TokenInstruction.SyncNative) return decodeSyncNativeInstruction(instruction, programId);
     if (type === TokenInstruction.AmountToUiAmount) return decodeAmountToUiAmountInstruction(instruction, programId);
     if (type === TokenInstruction.UiAmountToAmount) return decodeUiAmountToAmountInstruction(instruction, programId);
-    // TODO: implement
     if (type === TokenInstruction.InitializeAccount3)
         return decodeInitializeAccount3Instruction(instruction, programId);
+    if (type === TokenInstruction.InitializeMint2) return decodeInitializeMint2Instruction(instruction, programId);
     // TODO: implement
     if (type === TokenInstruction.InitializeMultisig2) throw new TokenInvalidInstructionTypeError();
-    // TODO: implement
-    if (type === TokenInstruction.InitializeMint2) throw new TokenInvalidInstructionTypeError();
 
     throw new TokenInvalidInstructionTypeError();
 }
