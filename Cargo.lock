@@ -6187,6 +6187,7 @@ name = "spl-token-client"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "solana-cli-output",
  "solana-client",
  "solana-program-test",
  "solana-sdk",
