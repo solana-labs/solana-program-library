@@ -24,6 +24,8 @@ import type { DecodedInitializeAccount3Instruction } from './initializeAccount3.
 import { decodeInitializeAccount3Instruction } from './initializeAccount3.js';
 import type { DecodedInitializeMintInstruction } from './initializeMint.js';
 import { decodeInitializeMintInstruction } from './initializeMint.js';
+import type { DecodedInitializeMint2Instruction } from './initializeMint2.js';
+import { decodeInitializeMint2Instruction } from './initializeMint2.js';
 import type { DecodedInitializeMultisigInstruction } from './initializeMultisig.js';
 import { decodeInitializeMultisigInstruction } from './initializeMultisig.js';
 import type { DecodedMintToInstruction } from './mintTo.js';
@@ -45,8 +47,6 @@ import { decodeTransferCheckedInstruction } from './transferChecked.js';
 import { TokenInstruction } from './types.js';
 import type { DecodedUiAmountToAmountInstruction } from './uiAmountToAmount.js';
 import { decodeUiAmountToAmountInstruction } from './uiAmountToAmount.js';
-import type { DecodedInitializeMint2Instruction } from './initializeMint2.js';
-import { decodeInitializeMint2Instruction } from './initializeMint2.js';
 
 /** TODO: docs */
 export type DecodedInstruction =
