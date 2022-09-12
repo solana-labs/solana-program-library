@@ -69,9 +69,9 @@ export type DecodedInstruction =
     | DecodedInitializeAccount2Instruction
     | DecodedSyncNativeInstruction
     | DecodedInitializeAccount3Instruction
+    | DecodedInitializeMint2Instruction
     | DecodedAmountToUiAmountInstruction
     | DecodedUiAmountToAmountInstruction
-    | DecodedInitializeMint2Instruction
     // | DecodedInitializeMultisig2Instruction
     // TODO: implement ^ and remove `never`
     | never;
@@ -104,11 +104,11 @@ export function decodeInstruction(
     if (type === TokenInstruction.InitializeAccount2)
         return decodeInitializeAccount2Instruction(instruction, programId);
     if (type === TokenInstruction.SyncNative) return decodeSyncNativeInstruction(instruction, programId);
-    if (type === TokenInstruction.AmountToUiAmount) return decodeAmountToUiAmountInstruction(instruction, programId);
-    if (type === TokenInstruction.UiAmountToAmount) return decodeUiAmountToAmountInstruction(instruction, programId);
     if (type === TokenInstruction.InitializeAccount3)
         return decodeInitializeAccount3Instruction(instruction, programId);
     if (type === TokenInstruction.InitializeMint2) return decodeInitializeMint2Instruction(instruction, programId);
+    if (type === TokenInstruction.AmountToUiAmount) return decodeAmountToUiAmountInstruction(instruction, programId);
+    if (type === TokenInstruction.UiAmountToAmount) return decodeUiAmountToAmountInstruction(instruction, programId);
     // TODO: implement
     if (type === TokenInstruction.InitializeMultisig2) throw new TokenInvalidInstructionTypeError();
 
@@ -118,13 +118,6 @@ export function decodeInstruction(
 /** TODO: docs */
 export function isInitializeMintInstruction(decoded: DecodedInstruction): decoded is DecodedInitializeMintInstruction {
     return decoded.data.instruction === TokenInstruction.InitializeMint;
-}
-
-/** TODO: docs */
-export function isInitializeMint2Instruction(
-    decoded: DecodedInstruction
-): decoded is DecodedInitializeMint2Instruction {
-    return decoded.data.instruction === TokenInstruction.InitializeMint2;
 }
 
 /** TODO: docs */
@@ -227,6 +220,20 @@ export function isInitializeAccount3Instruction(
     return decoded.data.instruction === TokenInstruction.InitializeAccount3;
 }
 
+/** TODO: docs, implement */
+// export function isInitializeMultisig2Instruction(
+//     decoded: DecodedInstruction
+// ): decoded is DecodedInitializeMultisig2Instruction {
+//     return decoded.data.instruction === TokenInstruction.InitializeMultisig2;
+// }
+
+/** TODO: docs */
+export function isInitializeMint2Instruction(
+    decoded: DecodedInstruction
+): decoded is DecodedInitializeMint2Instruction {
+    return decoded.data.instruction === TokenInstruction.InitializeMint2;
+}
+
 /** TODO: docs */
 export function isAmountToUiAmountInstruction(
     decoded: DecodedInstruction
@@ -240,10 +247,3 @@ export function isUiamountToAmountInstruction(
 ): decoded is DecodedUiAmountToAmountInstruction {
     return decoded.data.instruction === TokenInstruction.UiAmountToAmount;
 }
-
-/** TODO: docs, implement */
-// export function isInitializeMultisig2Instruction(
-//     decoded: DecodedInstruction
-// ): decoded is DecodedInitializeMultisig2Instruction {
-//     return decoded.data.instruction === TokenInstruction.InitializeMultisig2;
-// }
