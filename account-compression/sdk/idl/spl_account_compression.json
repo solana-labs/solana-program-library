@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "name": "spl_compression",
+  "name": "spl_account_compression",
   "instructions": [
     {
       "name": "initEmptyMerkleTree",

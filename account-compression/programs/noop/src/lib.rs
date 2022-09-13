@@ -9,9 +9,9 @@ declare_id!("WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh");
 use solana_program::entrypoint;
 
 #[cfg(not(feature = "no-entrypoint"))]
-entrypoint!(wrap);
+entrypoint!(noop);
 
-pub fn wrap(
+pub fn noop(
     _program_id: &Pubkey,
     _accounts: &[AccountInfo],
     _instruction_data: &[u8],
@@ -19,7 +19,7 @@ pub fn wrap(
     Ok(())
 }
 
-pub fn wrap_instruction(data: Vec<u8>) -> Instruction {
+pub fn instruction(data: Vec<u8>) -> Instruction {
     Instruction {
         program_id: crate::id(),
         accounts: vec![],

@@ -18,6 +18,6 @@ See the SDK folder for instructions.
 
 With a built local SDK, the test suite can be ran with:
 
-1. `yarn link @solana/account-compression`
+1. `yarn link @solana/spl-account-compression`
 2. `yarn`
 3. `anchor test`

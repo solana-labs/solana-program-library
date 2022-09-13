@@ -202,7 +202,7 @@ macro_rules! merkle_tree_apply_fn {
 }
 
 #[program]
-pub mod spl_compression {
+pub mod spl_account_compression {
     use super::*;
 
     /// Creates a new merkle tree with maximum leaf capacity of `power(2, max_depth)`
