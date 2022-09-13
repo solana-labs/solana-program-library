@@ -1101,7 +1101,12 @@ fn command_update_reserve(
 ) -> CommandResult {
     let reserve_info = config.rpc_client.get_account(&reserve_pubkey)?;
     let mut reserve = Reserve::unpack_from_slice(reserve_info.data.borrow())?;
-    if reserve_config.optimal_utilization_rate.is_some() {
+    let mut no_change = true;
+    if reserve_config.optimal_utilization_rate.is_some()
+        && reserve.config.optimal_utilization_rate
+            != reserve_config.optimal_utilization_rate.unwrap()
+    {
+        no_change = false;
         println!(
             "Updating optimal_utilization_rate from {} to {}",
             reserve.config.optimal_utilization_rate,
@@ -1110,7 +1115,10 @@ fn command_update_reserve(
         reserve.config.optimal_utilization_rate = reserve_config.optimal_utilization_rate.unwrap();
     }
 
-    if reserve_config.loan_to_value_ratio.is_some() {
+    if reserve_config.loan_to_value_ratio.is_some()
+        && reserve.config.loan_to_value_ratio != reserve_config.loan_to_value_ratio.unwrap()
+    {
+        no_change = false;
         println!(
             "Updating loan_to_value_ratio from {} to {}",
             reserve.config.loan_to_value_ratio,
@@ -1119,7 +1127,10 @@ fn command_update_reserve(
         reserve.config.loan_to_value_ratio = reserve_config.loan_to_value_ratio.unwrap();
     }
 
-    if reserve_config.liquidation_bonus.is_some() {
+    if reserve_config.liquidation_bonus.is_some()
+        && reserve.config.liquidation_bonus != reserve_config.liquidation_bonus.unwrap()
+    {
+        no_change = false;
         println!(
             "Updating liquidation_bonus from {} to {}",
             reserve.config.liquidation_bonus,
@@ -1128,7 +1139,10 @@ fn command_update_reserve(
         reserve.config.liquidation_bonus = reserve_config.liquidation_bonus.unwrap();
     }
 
-    if reserve_config.liquidation_threshold.is_some() {
+    if reserve_config.liquidation_threshold.is_some()
+        && reserve.config.liquidation_threshold != reserve_config.liquidation_threshold.unwrap()
+    {
+        no_change = false;
         println!(
             "Updating liquidation_threshold from {} to {}",
             reserve.config.liquidation_threshold,
@@ -1137,7 +1151,10 @@ fn command_update_reserve(
         reserve.config.liquidation_threshold = reserve_config.liquidation_threshold.unwrap();
     }
 
-    if reserve_config.min_borrow_rate.is_some() {
+    if reserve_config.min_borrow_rate.is_some()
+        && reserve.config.min_borrow_rate != reserve_config.min_borrow_rate.unwrap()
+    {
+        no_change = false;
         println!(
             "Updating min_borrow_rate from {} to {}",
             reserve.config.min_borrow_rate,
@@ -1146,7 +1163,10 @@ fn command_update_reserve(
         reserve.config.min_borrow_rate = reserve_config.min_borrow_rate.unwrap();
     }
 
-    if reserve_config.optimal_borrow_rate.is_some() {
+    if reserve_config.optimal_borrow_rate.is_some()
+        && reserve.config.optimal_borrow_rate != reserve_config.optimal_borrow_rate.unwrap()
+    {
+        no_change = false;
         println!(
             "Updating optimal_borrow_rate from {} to {}",
             reserve.config.optimal_borrow_rate,
@@ -1155,7 +1175,10 @@ fn command_update_reserve(
         reserve.config.optimal_borrow_rate = reserve_config.optimal_borrow_rate.unwrap();
     }
 
-    if reserve_config.max_borrow_rate.is_some() {
+    if reserve_config.max_borrow_rate.is_some()
+        && reserve.config.max_borrow_rate != reserve_config.max_borrow_rate.unwrap()
+    {
+        no_change = false;
         println!(
             "Updating max_borrow_rate from {} to {}",
             reserve.config.max_borrow_rate,
@@ -1164,7 +1187,10 @@ fn command_update_reserve(
         reserve.config.max_borrow_rate = reserve_config.max_borrow_rate.unwrap();
     }
 
-    if reserve_config.fees.borrow_fee_wad.is_some() {
+    if reserve_config.fees.borrow_fee_wad.is_some()
+        && reserve.config.fees.borrow_fee_wad != reserve_config.fees.borrow_fee_wad.unwrap()
+    {
+        no_change = false;
         println!(
             "Updating borrow_fee_wad from {} to {}",
             reserve.config.fees.borrow_fee_wad,
@@ -1173,7 +1199,10 @@ fn command_update_reserve(
         reserve.config.fees.borrow_fee_wad = reserve_config.fees.borrow_fee_wad.unwrap();
     }
 
-    if reserve_config.fees.flash_loan_fee_wad.is_some() {
+    if reserve_config.fees.flash_loan_fee_wad.is_some()
+        && reserve.config.fees.flash_loan_fee_wad != reserve_config.fees.flash_loan_fee_wad.unwrap()
+    {
+        no_change = false;
         println!(
             "Updating flash_loan_fee_wad from {} to {}",
             reserve.config.fees.flash_loan_fee_wad,
@@ -1182,7 +1211,11 @@ fn command_update_reserve(
         reserve.config.fees.flash_loan_fee_wad = reserve_config.fees.flash_loan_fee_wad.unwrap();
     }
 
-    if reserve_config.fees.host_fee_percentage.is_some() {
+    if reserve_config.fees.host_fee_percentage.is_some()
+        && reserve.config.fees.host_fee_percentage
+            != reserve_config.fees.host_fee_percentage.unwrap()
+    {
+        no_change = false;
         println!(
             "Updating host_fee_percentage from {} to {}",
             reserve.config.fees.host_fee_percentage,
@@ -1191,7 +1224,10 @@ fn command_update_reserve(
         reserve.config.fees.host_fee_percentage = reserve_config.fees.host_fee_percentage.unwrap();
     }
 
-    if reserve_config.deposit_limit.is_some() {
+    if reserve_config.deposit_limit.is_some()
+        && reserve.config.deposit_limit != reserve_config.deposit_limit.unwrap()
+    {
+        no_change = false;
         println!(
             "Updating deposit_limit from {} to {}",
             amount_to_ui_amount(
@@ -1206,7 +1242,10 @@ fn command_update_reserve(
         )
     }
 
-    if reserve_config.borrow_limit.is_some() {
+    if reserve_config.borrow_limit.is_some()
+        && reserve.config.borrow_limit != reserve_config.borrow_limit.unwrap()
+    {
+        no_change = false;
         println!(
             "Updating borrow_limit from {} to {}",
             amount_to_ui_amount(reserve.config.borrow_limit, reserve.liquidity.mint_decimals),
@@ -1218,7 +1257,10 @@ fn command_update_reserve(
         )
     }
 
-    if reserve_config.fee_receiver.is_some() {
+    if reserve_config.fee_receiver.is_some()
+        && reserve.config.fee_receiver != reserve_config.fee_receiver.unwrap()
+    {
+        no_change = false;
         println!(
             "Updating fee_receiver from {} to {}",
             reserve.config.fee_receiver,
@@ -1227,7 +1269,11 @@ fn command_update_reserve(
         reserve.config.fee_receiver = reserve_config.fee_receiver.unwrap();
     }
 
-    if reserve_config.protocol_liquidation_fee.is_some() {
+    if reserve_config.protocol_liquidation_fee.is_some()
+        && reserve.config.protocol_liquidation_fee
+            != reserve_config.protocol_liquidation_fee.unwrap()
+    {
+        no_change = false;
         println!(
             "Updating protocol_liquidation_fee from {} to {}",
             reserve.config.protocol_liquidation_fee,
@@ -1236,7 +1282,10 @@ fn command_update_reserve(
         reserve.config.protocol_liquidation_fee = reserve_config.protocol_liquidation_fee.unwrap();
     }
 
-    if reserve_config.protocol_take_rate.is_some() {
+    if reserve_config.protocol_take_rate.is_some()
+        && reserve.config.protocol_take_rate != reserve_config.protocol_take_rate.unwrap()
+    {
+        no_change = false;
         println!(
             "Updating protocol_take_rate from {} to {}",
             reserve.config.protocol_take_rate,
@@ -1246,7 +1295,10 @@ fn command_update_reserve(
     }
 
     let mut new_pyth_product_pubkey = solend_program::NULL_PUBKEY;
-    if pyth_price_pubkey.is_some() {
+    if pyth_price_pubkey.is_some()
+        && reserve.liquidity.pyth_oracle_pubkey != pyth_price_pubkey.unwrap()
+    {
+        no_change = false;
         println!(
             "Updating pyth oracle pubkey from {} to {}",
             reserve.liquidity.pyth_oracle_pubkey,
@@ -1256,13 +1308,20 @@ fn command_update_reserve(
         new_pyth_product_pubkey = pyth_product_pubkey.unwrap();
     }
 
-    if switchboard_feed_pubkey.is_some() {
+    if switchboard_feed_pubkey.is_some()
+        && reserve.liquidity.switchboard_oracle_pubkey != switchboard_feed_pubkey.unwrap()
+    {
+        no_change = false;
         println!(
             "Updating switchboard_oracle_pubkey {} to {}",
             reserve.liquidity.switchboard_oracle_pubkey,
             switchboard_feed_pubkey.unwrap(),
         );
         reserve.liquidity.switchboard_oracle_pubkey = switchboard_feed_pubkey.unwrap();
+    }
+    if no_change {
+        println!("No changes made for reserve {}", reserve_pubkey);
+        return Ok(());
     }
 
     let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
