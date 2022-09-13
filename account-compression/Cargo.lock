@@ -1199,13 +1199,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-compression"
+name = "spl-account-compression"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "bytemuck",
  "spl-concurrent-merkle-tree",
- "wrapper",
+ "spl-noop",
 ]
 
 [[package]]
@@ -1215,6 +1215,13 @@ dependencies = [
  "bytemuck",
  "solana-program",
  "thiserror",
+]
+
+[[package]]
+name = "spl-noop"
+version = "0.1.0"
+dependencies = [
+ "solana-program",
 ]
 
 [[package]]
@@ -1405,13 +1412,6 @@ name = "windows_x86_64_msvc"
 version = "0.36.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c811ca4a8c853ef420abd8592ba53ddbbac90410fab6903b3e79972a631f7680"
-
-[[package]]
-name = "wrapper"
-version = "0.1.0"
-dependencies = [
- "solana-program",
-]
 
 [[package]]
 name = "yansi"

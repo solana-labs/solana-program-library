@@ -1,8 +1,8 @@
 [programs.localnet]
-spl_compression = "GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU"
+spl_account_compression = "GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU"
 
 [programs.testnet]
-spl_compression = "GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD"
+spl_account_compression = "GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD"
 
 [[test.genesis]]
 address = "WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh"

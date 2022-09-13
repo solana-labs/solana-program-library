@@ -14,7 +14,7 @@ pub struct Wrapper;
 
 impl anchor_lang::Id for Wrapper {
     fn id() -> Pubkey {
-        wrapper::id()
+        spl_noop::id()
     }
 }
 
@@ -23,7 +23,7 @@ pub fn wrap_event<'info>(
     log_wrapper_program: &Program<'info, Wrapper>,
 ) -> Result<()> {
     invoke(
-        &wrapper::wrap_instruction(data),
+        &spl_noop::instruction(data),
         &[log_wrapper_program.to_account_info()],
     )?;
     Ok(())

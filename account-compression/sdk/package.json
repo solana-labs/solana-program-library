@@ -1,5 +1,5 @@
 {
-  "name": "@solana/account-compression",
+  "name": "@solana/spl-account-compression",
   "version": "0.1.0",
   "description": "SPL Account Compression Program JS API",
   "author": "Solana Maintainers <maintainers@solana.foundation>",
@@ -24,7 +24,7 @@
   },
   "scripts": {
     "build": "rm -rf dist/ && tsc && tsc -p tsconfig.cjs.json",
-    "start-validator": "solana-test-validator --reset --quiet --bpf-program GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU ../target/deploy/spl_compression.so --bpf-program WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh ../target/deploy/wrapper.so",
+    "start-validator": "solana-test-validator --reset --quiet --bpf-program GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU ../target/deploy/spl_account_compression.so --bpf-program WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh ../target/deploy/spl_noop.so",
     "run-tests": "jest tests --detectOpenHandles",
     "test": "start-server-and-test start-validator http://localhost:8899/health run-tests"
   },
