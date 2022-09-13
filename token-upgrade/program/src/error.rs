@@ -13,6 +13,9 @@ pub enum TokenUpgradeError {
     /// Account does not match address derivation
     #[error("Account does not match address derivation")]
     InvalidOwner,
+    /// Decimals of original and new token mint do not match
+    #[error("Decimals of original and new token mint do not match")]
+    DecimalsMismatch,
 }
 impl From<TokenUpgradeError> for ProgramError {
     fn from(e: TokenUpgradeError) -> Self {

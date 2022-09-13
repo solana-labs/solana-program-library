@@ -122,7 +122,7 @@ fn process_exchange(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
     }
 
     // pull out these values in a block to drop all data before performing CPIs
-    let (token_amount, original_decimals, new_decimals) = {
+    let (token_amount, decimals) = {
         // check mints are actually mints
         let original_mint_data = original_mint_info.try_borrow_data()?;
         let original_mint = StateWithExtensions::<Mint>::unpack(&original_mint_data)?;
@@ -146,12 +146,16 @@ fn process_exchange(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
             );
             return Err(ProgramError::InsufficientFunds);
         }
+        if original_mint.base.decimals != new_mint.base.decimals {
+            msg!(
+                "Original and new token mint decimals mismatch: original has {} decimals, and new has {}",
+                original_mint.base.decimals,
+                new_mint.base.decimals,
+            );
+            return Err(TokenUpgradeError::DecimalsMismatch.into());
+        }
 
-        (
-            original_account.base.amount,
-            original_mint.base.decimals,
-            new_mint.base.decimals,
-        )
+        (original_account.base.amount, original_mint.base.decimals)
     };
 
     burn_original_tokens(
@@ -161,7 +165,7 @@ fn process_exchange(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
         original_transfer_authority_info.clone(),
         account_info_iter.as_slice(),
         token_amount,
-        original_decimals,
+        decimals,
     )?;
 
     transfer_new_tokens(
@@ -172,7 +176,7 @@ fn process_exchange(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRes
         new_transfer_authority_info.clone(),
         &authority_seeds,
         token_amount,
-        new_decimals,
+        decimals,
     )?;
 
     Ok(())

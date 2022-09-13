@@ -303,3 +303,110 @@ async fn fail_incorrect_escrow_derivation(original_program_id: Pubkey, new_progr
         )
     );
 }
+
+#[test_case(spl_token::id(), spl_token_2022::id() ; "fail upgrade to token-2022")]
+#[tokio::test]
+async fn fail_decimals_mismatch(original_program_id: Pubkey, new_program_id: Pubkey) {
+    let (context, client, payer) = setup().await;
+
+    let wallet = Keypair::new();
+    let mint_authority = Keypair::new();
+    let mint_authority_pubkey = mint_authority.pubkey();
+
+    // different decimals
+    let original_decimals = 2;
+    let new_decimals = 3;
+
+    let original_token = setup_mint(
+        &original_program_id,
+        &mint_authority_pubkey,
+        original_decimals,
+        payer.clone(),
+        client.clone(),
+    )
+    .await;
+    let new_token = setup_mint(
+        &new_program_id,
+        &mint_authority_pubkey,
+        new_decimals,
+        payer.clone(),
+        client.clone(),
+    )
+    .await;
+
+    let program_escrow = get_token_upgrade_authority_address(
+        original_token.get_address(),
+        new_token.get_address(),
+        &spl_token_upgrade::id(),
+    );
+
+    original_token
+        .create_associated_token_account(&wallet.pubkey())
+        .await
+        .unwrap();
+    let original_account = original_token.get_associated_token_address(&wallet.pubkey());
+    let token_amount = 1_000_000_000_000;
+    original_token
+        .mint_to(
+            &original_account,
+            &mint_authority_pubkey,
+            token_amount,
+            Some(original_decimals),
+            &[&mint_authority],
+        )
+        .await
+        .unwrap();
+
+    new_token
+        .create_associated_token_account(&wallet.pubkey())
+        .await
+        .unwrap();
+    let new_account = new_token.get_associated_token_address(&wallet.pubkey());
+    new_token
+        .create_associated_token_account(&program_escrow)
+        .await
+        .unwrap();
+    let escrow_account = new_token.get_associated_token_address(&program_escrow);
+    new_token
+        .mint_to(
+            &escrow_account,
+            &mint_authority_pubkey,
+            token_amount,
+            Some(new_decimals),
+            &[&mint_authority],
+        )
+        .await
+        .unwrap();
+
+    let mut context = context.lock().await;
+    let transaction = Transaction::new_signed_with_payer(
+        &[exchange(
+            &spl_token_upgrade::id(),
+            &original_account,
+            original_token.get_address(),
+            &escrow_account,
+            &new_account,
+            new_token.get_address(),
+            &original_program_id,
+            &new_program_id,
+            &wallet.pubkey(),
+            &[],
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &wallet],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap_err()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(TokenUpgradeError::DecimalsMismatch as u32)
+        )
+    );
+}
