@@ -131,12 +131,8 @@ pub enum ConfidentialTransferInstruction {
     /// The account owner can then invoke the `ApplyPendingBalance` instruction to roll the deposit
     /// into their available balance at a time of their choosing.
     ///
-<<<<<<< HEAD
     /// Fails if the source or destination accounts are frozen.
     /// Fails if the associated mint is extended as `NonTransferable`.
-=======
-    /// Fails if the account is frozen.
->>>>>>> 1668db8e (restrict deposit source account to base account)
     ///
     /// Accounts expected by this instruction:
     ///
@@ -164,15 +160,13 @@ pub enum ConfidentialTransferInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
-    ///   0. `[writable]` The source SPL Token account with confidential transfers configured.
-    ///   1. `[writable]` The destination SPL Token account.
+    ///   1. `[writable]` The SPL Token account.
     ///   2. `[]` The token mint.
     ///   3. `[]` Instructions sysvar.
     ///   4. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
-    ///   0. `[writable]` The source SPL Token account with confidential transfers configured.
-    ///   1. `[writable]` The destination SPL Token account.
+    ///   1. `[writable]` The SPL Token account.
     ///   2. `[]` The token mint.
     ///   3. `[]` Instructions sysvar.
     ///   4. `[]` The multisig  source account owner.
@@ -660,8 +654,7 @@ pub fn deposit(
 #[allow(clippy::too_many_arguments)]
 pub fn inner_withdraw(
     token_program_id: &Pubkey,
-    source_token_account: &Pubkey,
-    destination_token_account: &Pubkey,
+    token_account: &Pubkey,
     mint: &Pubkey,
     amount: u64,
     decimals: u8,
@@ -672,8 +665,7 @@ pub fn inner_withdraw(
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
-        AccountMeta::new(*source_token_account, false),
-        AccountMeta::new(*destination_token_account, false),
+        AccountMeta::new(*token_account, false),
         AccountMeta::new_readonly(*mint, false),
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
         AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
@@ -702,8 +694,7 @@ pub fn inner_withdraw(
 #[cfg(not(target_os = "solana"))]
 pub fn withdraw(
     token_program_id: &Pubkey,
-    source_token_account: &Pubkey,
-    destination_token_account: &Pubkey,
+    token_account: &Pubkey,
     mint: &Pubkey,
     amount: u64,
     decimals: u8,
@@ -716,8 +707,7 @@ pub fn withdraw(
         verify_withdraw(proof_data),
         inner_withdraw(
             token_program_id,
-            source_token_account,
-            destination_token_account,
+            token_account,
             mint,
             amount,
             decimals,

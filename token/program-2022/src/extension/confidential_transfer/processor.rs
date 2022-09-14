@@ -369,7 +369,6 @@ fn process_withdraw(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
-    let destination_token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
     let instructions_sysvar_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
@@ -395,73 +394,49 @@ fn process_withdraw(
         &previous_instruction,
     )?;
 
-    // Process source account
-    {
-        check_program_account(token_account_info.owner)?;
-        let token_account_data = &mut token_account_info.data.borrow_mut();
-        let mut token_account = StateWithExtensionsMut::<Account>::unpack(token_account_data)?;
+    check_program_account(token_account_info.owner)?;
+    let token_account_data = &mut token_account_info.data.borrow_mut();
+    let mut token_account = StateWithExtensionsMut::<Account>::unpack(token_account_data)?;
 
-        Processor::validate_owner(
-            program_id,
-            &token_account.base.owner,
-            authority_info,
-            authority_info_data_len,
-            account_info_iter.as_slice(),
-        )?;
+    Processor::validate_owner(
+        program_id,
+        &token_account.base.owner,
+        authority_info,
+        authority_info_data_len,
+        account_info_iter.as_slice(),
+    )?;
 
-        if token_account.base.is_frozen() {
-            return Err(TokenError::AccountFrozen.into());
-        }
-
-        if token_account.base.mint != *mint_info.key {
-            return Err(TokenError::MintMismatch.into());
-        }
-
-        let mut confidential_transfer_account =
-            token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-
-        confidential_transfer_account.available_balance =
-            ops::subtract_from(&confidential_transfer_account.available_balance, amount)
-                .ok_or(ProgramError::InvalidInstructionData)?;
-
-        if confidential_transfer_account.available_balance != proof_data.final_ciphertext {
-            return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
-        }
-
-        confidential_transfer_account.decryptable_available_balance =
-            new_decryptable_available_balance;
+    if token_account.base.is_frozen() {
+        return Err(TokenError::AccountFrozen.into());
     }
 
-    //
-    // Finished with the source token account at this point. Drop all references to it to avoid a
-    // double borrow if the source and destination accounts are the same
-    //
-
-    // Process destination account
-    {
-        check_program_account(destination_token_account_info.owner)?;
-        let destination_token_account_data = &mut destination_token_account_info.data.borrow_mut();
-        let mut destination_token_account =
-            StateWithExtensionsMut::<Account>::unpack(destination_token_account_data)?;
-
-        if destination_token_account.base.is_frozen() {
-            return Err(TokenError::AccountFrozen.into());
-        }
-
-        if destination_token_account.base.mint != *mint_info.key {
-            return Err(TokenError::MintMismatch.into());
-        }
-
-        // Wrapped SOL withdrawals are not supported because lamports cannot be apparated.
-        assert!(!destination_token_account.base.is_native());
-        destination_token_account.base.amount = destination_token_account
-            .base
-            .amount
-            .checked_add(amount)
-            .ok_or(TokenError::Overflow)?;
-
-        destination_token_account.pack_base();
+    if token_account.base.mint != *mint_info.key {
+        return Err(TokenError::MintMismatch.into());
     }
+
+    // Wrapped SOL withdrawals are not supported because lamports cannot be apparated.
+    assert!(!token_account.base.is_native());
+
+    let mut confidential_transfer_account =
+        token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
+
+    confidential_transfer_account.available_balance =
+        ops::subtract_from(&confidential_transfer_account.available_balance, amount)
+            .ok_or(ProgramError::InvalidInstructionData)?;
+
+    if confidential_transfer_account.available_balance != proof_data.final_ciphertext {
+        return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
+    }
+
+    confidential_transfer_account.decryptable_available_balance = new_decryptable_available_balance;
+
+    token_account.base.amount = token_account
+        .base
+        .amount
+        .checked_add(amount)
+        .ok_or(TokenError::Overflow)?;
+
+    token_account.pack_base();
 
     Ok(())
 }
