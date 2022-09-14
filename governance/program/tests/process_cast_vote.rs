@@ -1506,9 +1506,12 @@ async fn test_cast_vote_with_strict_tipping_and_inflated_max_vote_weight() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     // Reduce max voter weight to 50% for the cast vote to be above max_voter_weight
-    let mut realm_config_args = RealmSetupArgs::default();
-    realm_config_args.community_mint_max_vote_weight_source =
-        MintMaxVoteWeightSource::SupplyFraction(MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2);
+    let realm_config_args = RealmSetupArgs {
+        community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(
+            MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
+        ),
+        ..Default::default()
+    };
 
     let realm_cookie = governance_test
         .with_realm_using_args(&realm_config_args)

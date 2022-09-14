@@ -485,7 +485,7 @@ async fn test_revoke_council_tokens_with_community_mint_error() {
         .unwrap();
 
     // Try to use mint and authority for Community to revoke Council token
-    let governing_token_mint = realm_cookie.account.community_mint.clone();
+    let governing_token_mint = realm_cookie.account.community_mint;
     let governing_token_mint_authority = clone_keypair(&realm_cookie.community_mint_authority);
     let governing_token_holding_address = get_governing_token_holding_address(
         &governance_test.program_id,
@@ -534,7 +534,7 @@ async fn test_revoke_council_tokens_with_not_matching_mint_and_authority_error()
         .unwrap();
 
     // Try to use a valid mint and authority not matching the Council mint
-    let governing_token_mint = realm_cookie.account.community_mint.clone();
+    let governing_token_mint = realm_cookie.account.community_mint;
     let governing_token_mint_authority = clone_keypair(&realm_cookie.community_mint_authority);
 
     // Act

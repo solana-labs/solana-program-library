@@ -296,7 +296,7 @@ impl GovernanceChatProgramTest {
             token_owner_record_address,
             token_owner,
             governing_token_mint: governing_token_mint_keypair.pubkey(),
-            governing_token_mint_authority: governing_token_mint_authority,
+            governing_token_mint_authority,
             voter_weight_record,
         }
     }

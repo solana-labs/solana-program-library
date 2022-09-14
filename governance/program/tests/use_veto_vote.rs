@@ -510,8 +510,10 @@ async fn test_cast_veto_vote_with_no_council_error() {
         .unwrap();
 
     // Remove Council
-    let mut realm_setup_args = RealmSetupArgs::default();
-    realm_setup_args.use_council_mint = false;
+    let realm_setup_args = RealmSetupArgs {
+        use_council_mint: false,
+        ..Default::default()
+    };
 
     governance_test
         .set_realm_config(&mut realm_cookie, &realm_setup_args)

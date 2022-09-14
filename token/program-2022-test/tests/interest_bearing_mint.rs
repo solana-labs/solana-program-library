@@ -314,14 +314,14 @@ async fn amount_conversions() {
     let TokenContext { token, .. } = context.token_context.take().unwrap();
 
     // warp forward, so interest is accrued
-    let warp_slot = 1_000;
-    let initial_num_warps = 10;
+    let warp_slot: u64 = 1_000;
+    let initial_num_warps: u64 = 10;
     for i in 1..initial_num_warps {
         context
             .context
             .lock()
             .await
-            .warp_to_slot(i * warp_slot)
+            .warp_to_slot(i.checked_mul(warp_slot).unwrap())
             .unwrap();
     }
 

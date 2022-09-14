@@ -11,8 +11,8 @@ use solana_sdk::{
     transport::TransportError,
 };
 use spl_name_service::{
-    entrypoint::process_instruction,
     instruction::{create, delete, transfer, update, NameRegistryInstruction},
+    processor::Processor,
     state::{get_seeds_and_key, NameRecordHeader, HASH_PREFIX},
 };
 
@@ -24,7 +24,7 @@ async fn test_name_service() {
     let program_test = ProgramTest::new(
         "spl_name_service",
         program_id,
-        processor!(process_instruction),
+        processor!(Processor::process_instruction),
     );
 
     let mut ctx = program_test.start_with_context().await;
@@ -49,7 +49,7 @@ async fn test_name_service() {
         program_id,
         NameRegistryInstruction::Create {
             hashed_name: hashed_root_name,
-            lamports: rent.minimum_balance(space + NameRecordHeader::LEN),
+            lamports: rent.minimum_balance(space.saturating_add(NameRecordHeader::LEN)),
             space: space as u32,
         },
         root_name_account_key,
@@ -65,8 +65,7 @@ async fn test_name_service() {
         .unwrap();
 
     let name_record_header = NameRecordHeader::unpack_from_slice(
-        &mut &ctx
-            .banks_client
+        &ctx.banks_client
             .get_account(root_name_account_key)
             .await
             .unwrap()
@@ -93,7 +92,7 @@ async fn test_name_service() {
         program_id,
         NameRegistryInstruction::Create {
             hashed_name,
-            lamports: rent.minimum_balance(space + NameRecordHeader::LEN),
+            lamports: rent.minimum_balance(space.saturating_add(NameRecordHeader::LEN)),
             space: space as u32,
         },
         name_account_key,
@@ -113,8 +112,7 @@ async fn test_name_service() {
     .unwrap();
 
     let name_record_header = NameRecordHeader::unpack_from_slice(
-        &mut &ctx
-            .banks_client
+        &ctx.banks_client
             .get_account(name_account_key)
             .await
             .unwrap()
@@ -140,8 +138,7 @@ async fn test_name_service() {
         .unwrap();
 
     let name_record_header = NameRecordHeader::unpack_from_slice(
-        &mut &ctx
-            .banks_client
+        &ctx.banks_client
             .get_account(name_account_key)
             .await
             .unwrap()
@@ -168,8 +165,7 @@ async fn test_name_service() {
     .unwrap();
 
     let name_record_header = NameRecordHeader::unpack_from_slice(
-        &mut &ctx
-            .banks_client
+        &ctx.banks_client
             .get_account(name_account_key)
             .await
             .unwrap()

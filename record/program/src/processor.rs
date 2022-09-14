@@ -68,8 +68,8 @@ pub fn process_instruction(
                 return Err(ProgramError::UninitializedAccount);
             }
             check_authority(authority_info, &account_data.authority)?;
-            let start = RecordData::WRITABLE_START_INDEX + offset as usize;
-            let end = start + data.len();
+            let start = RecordData::WRITABLE_START_INDEX.saturating_add(offset as usize);
+            let end = start.saturating_add(data.len());
             if end > data_info.data.borrow().len() {
                 Err(ProgramError::AccountDataTooSmall)
             } else {

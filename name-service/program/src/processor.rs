@@ -95,7 +95,7 @@ impl Processor {
             invoke_signed(
                 &system_instruction::allocate(
                     &name_account_key,
-                    (NameRecordHeader::LEN + space as usize) as u64,
+                    NameRecordHeader::LEN.saturating_add(space as usize) as u64,
                 ),
                 &[name_account.clone(), system_program.clone()],
                 &[&seeds.chunks(32).collect::<Vec<&[u8]>>()],
@@ -158,7 +158,11 @@ impl Processor {
             return Err(ProgramError::InvalidArgument);
         }
 
-        write_data(name_account, &data, NameRecordHeader::LEN + offset as usize);
+        write_data(
+            name_account,
+            &data,
+            NameRecordHeader::LEN.saturating_add(offset as usize),
+        );
 
         Ok(())
     }
@@ -229,7 +233,7 @@ impl Processor {
         // Close the account by transferring the rent sol
         let source_amount: &mut u64 = &mut name_account.lamports.borrow_mut();
         let dest_amount: &mut u64 = &mut refund_target.lamports.borrow_mut();
-        *dest_amount += *source_amount;
+        *dest_amount = dest_amount.saturating_add(*source_amount);
         *source_amount = 0;
 
         Ok(())

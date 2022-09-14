@@ -1,3 +1,4 @@
+#![allow(clippy::integer_arithmetic)]
 use std::str::FromStr;
 
 use solana_program::{
@@ -698,7 +699,7 @@ impl GovernanceProgramTest {
         self.with_initial_governing_token_deposit(
             &realm_cookie.address,
             &realm_cookie.account.config.council_mint.unwrap(),
-            &realm_cookie.council_mint_authority.as_ref().unwrap(),
+            realm_cookie.council_mint_authority.as_ref().unwrap(),
             amount,
             None,
         )
@@ -746,7 +747,7 @@ impl GovernanceProgramTest {
         amount: u64,
         token_owner: Option<Keypair>,
     ) -> Result<TokenOwnerRecordCookie, ProgramError> {
-        let token_owner = token_owner.unwrap_or(Keypair::new());
+        let token_owner = token_owner.unwrap_or_else(Keypair::new);
         let token_source = Keypair::new();
 
         let transfer_authority = Keypair::new();
@@ -823,7 +824,7 @@ impl GovernanceProgramTest {
         amount: u64,
         token_owner: Option<Keypair>,
     ) -> Result<TokenOwnerRecordCookie, ProgramError> {
-        let token_owner = token_owner.unwrap_or(Keypair::new());
+        let token_owner = token_owner.unwrap_or_else(Keypair::new);
         let token_source = Keypair::new();
 
         let deposit_governing_tokens_ix = deposit_governing_tokens(
@@ -840,7 +841,7 @@ impl GovernanceProgramTest {
         self.bench
             .process_transaction(
                 &[deposit_governing_tokens_ix],
-                Some(&[&token_owner, &governing_mint_authority]),
+                Some(&[&token_owner, governing_mint_authority]),
             )
             .await?;
 
@@ -1442,12 +1443,10 @@ impl GovernanceProgramTest {
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         governance_config: &GovernanceConfig,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let voter_weight_record =
-            if let Some(voter_weight_record) = &token_owner_record_cookie.voter_weight_record {
-                Some(voter_weight_record.address)
-            } else {
-                None
-            };
+        let voter_weight_record = token_owner_record_cookie
+            .voter_weight_record
+            .as_ref()
+            .map(|voter_weight_record| voter_weight_record.address);
 
         self.with_governance_impl(
             realm_cookie,
@@ -1462,6 +1461,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    #[allow(clippy::too_many_arguments)]
     pub async fn with_governance_impl(
         &mut self,
         realm_cookie: &RealmCookie,
@@ -1497,7 +1497,7 @@ impl GovernanceProgramTest {
         let default_signers = &[create_authority];
         let signers = signers_override.unwrap_or(default_signers);
 
-        if signers.len() == 0 {
+        if signers.is_empty() {
             create_governance_ix.accounts[6].is_signer = false;
         }
 
@@ -1622,12 +1622,10 @@ impl GovernanceProgramTest {
     ) -> Result<GovernanceCookie, ProgramError> {
         let config = self.get_default_governance_config();
 
-        let voter_weight_record =
-            if let Some(voter_weight_record) = &token_owner_record_cookie.voter_weight_record {
-                Some(voter_weight_record.address)
-            } else {
-                None
-            };
+        let voter_weight_record = token_owner_record_cookie
+            .voter_weight_record
+            .as_ref()
+            .map(|voter_weight_record| voter_weight_record.address);
 
         let mut create_program_governance_ix = create_program_governance(
             &self.program_id,
@@ -1746,12 +1744,10 @@ impl GovernanceProgramTest {
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let voter_weight_record =
-            if let Some(voter_weight_record) = &token_owner_record_cookie.voter_weight_record {
-                Some(voter_weight_record.address)
-            } else {
-                None
-            };
+        let voter_weight_record = token_owner_record_cookie
+            .voter_weight_record
+            .as_ref()
+            .map(|voter_weight_record| voter_weight_record.address);
 
         let mut create_mint_governance_ix = create_mint_governance(
             &self.program_id,
@@ -1812,7 +1808,7 @@ impl GovernanceProgramTest {
         self.with_token_governance_using_instruction(
             realm_cookie,
             governed_token_cookie,
-            &token_owner_record_cookie,
+            token_owner_record_cookie,
             NopOverride,
             None,
         )
@@ -1830,12 +1826,10 @@ impl GovernanceProgramTest {
     ) -> Result<GovernanceCookie, ProgramError> {
         let config = self.get_default_governance_config();
 
-        let voter_weight_record =
-            if let Some(voter_weight_record) = &token_owner_record_cookie.voter_weight_record {
-                Some(voter_weight_record.address)
-            } else {
-                None
-            };
+        let voter_weight_record = token_owner_record_cookie
+            .voter_weight_record
+            .as_ref()
+            .map(|voter_weight_record| voter_weight_record.address);
 
         let mut create_token_governance_ix = create_token_governance(
             &self.program_id,
@@ -1979,12 +1973,10 @@ impl GovernanceProgramTest {
 
         let governance_authority = token_owner_record_cookie.get_governance_authority();
 
-        let voter_weight_record =
-            if let Some(voter_weight_record) = &token_owner_record_cookie.voter_weight_record {
-                Some(voter_weight_record.address)
-            } else {
-                None
-            };
+        let voter_weight_record = token_owner_record_cookie
+            .voter_weight_record
+            .as_ref()
+            .map(|voter_weight_record| voter_weight_record.address);
 
         let mut create_proposal_transaction = create_proposal(
             &self.program_id,
@@ -2050,7 +2042,7 @@ impl GovernanceProgramTest {
             token_owner_record: token_owner_record_cookie.address,
             signatories_signed_off_count: 0,
 
-            vote_type: vote_type,
+            vote_type,
             options: proposal_options,
             deny_vote_weight,
 
@@ -2380,20 +2372,15 @@ impl GovernanceProgramTest {
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<VoteRecordCookie, ProgramError> {
-        let voter_weight_record =
-            if let Some(voter_weight_record) = &token_owner_record_cookie.voter_weight_record {
-                Some(voter_weight_record.address)
-            } else {
-                None
-            };
+        let voter_weight_record = token_owner_record_cookie
+            .voter_weight_record
+            .as_ref()
+            .map(|voter_weight_record| voter_weight_record.address);
 
-        let max_voter_weight_record = if let Some(max_voter_weight_record) =
-            &token_owner_record_cookie.max_voter_weight_record
-        {
-            Some(max_voter_weight_record.address)
-        } else {
-            None
-        };
+        let max_voter_weight_record = token_owner_record_cookie
+            .max_voter_weight_record
+            .as_ref()
+            .map(|max_voter_weight_record| max_voter_weight_record.address);
 
         let mut cast_vote_ix = cast_vote(
             &self.program_id,
@@ -2814,7 +2801,7 @@ impl GovernanceProgramTest {
         );
 
         self.bench
-            .process_transaction(&[flag_transaction_error_ix], Some(&[&governance_authority]))
+            .process_transaction(&[flag_transaction_error_ix], Some(&[governance_authority]))
             .await
     }
 
