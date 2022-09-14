@@ -6272,6 +6272,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-token-upgrade"
+version = "0.1.0"
+dependencies = [
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-token 3.5.0",
+ "spl-token-2022 0.4.3",
+ "spl-token-client",
+ "test-case",
+ "thiserror",
+]
+
+[[package]]
 name = "stateless-asks"
 version = "0.1.0"
 dependencies = [
