@@ -1424,78 +1424,78 @@ async fn ct_transfer_memo() {
     let bob_meta =
         ConfidentialTokenAccountMeta::new_with_required_memo_transfers(&token, &bob).await;
 
-    // let state = token
-    //     .get_account_info(&alice_meta.token_account)
-    //     .await
-    //     .unwrap();
-    // let extension = state
-    //     .get_extension::<ConfidentialTransferAccount>()
-    //     .unwrap();
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
 
-    // // transfer without memo
-    // let err = token
-    //     .confidential_transfer_transfer(
-    //         &alice_meta.token_account,
-    //         &bob_meta.token_account,
-    //         &alice,
-    //         42, // amount
-    //         42,
-    //         &extension.available_balance.try_into().unwrap(),
-    //         &bob_meta.elgamal_keypair.public,
-    //         &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
-    //     )
-    //     .await
-    //     .unwrap_err();
+    // transfer without memo
+    let err = token
+        .confidential_transfer_transfer(
+            &alice_meta.token_account,
+            &bob_meta.token_account,
+            &alice,
+            42, // amount
+            42,
+            &extension.available_balance.try_into().unwrap(),
+            &bob_meta.elgamal_keypair.public,
+            &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
+        )
+        .await
+        .unwrap_err();
 
-    // assert_eq!(
-    //     err,
-    //     TokenClientError::Client(Box::new(TransportError::TransactionError(
-    //         TransactionError::InstructionError(
-    //             0,
-    //             InstructionError::Custom(TokenError::NoMemo as u32)
-    //         )
-    //     )))
-    // );
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::NoMemo as u32)
+            )
+        )))
+    );
 
-    // // transfer with memo
-    // token
-    //     .with_memo("🦖", vec![alice.pubkey()])
-    //     .confidential_transfer_transfer(
-    //         &alice_meta.token_account,
-    //         &bob_meta.token_account,
-    //         &alice,
-    //         42, // amount
-    //         42,
-    //         &extension.available_balance.try_into().unwrap(),
-    //         &bob_meta.elgamal_keypair.public,
-    //         &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
-    //     )
-    //     .await
-    //     .unwrap();
+    // transfer with memo
+    token
+        .with_memo("🦖", vec![alice.pubkey()])
+        .confidential_transfer_transfer(
+            &alice_meta.token_account,
+            &bob_meta.token_account,
+            &alice,
+            42, // amount
+            42,
+            &extension.available_balance.try_into().unwrap(),
+            &bob_meta.elgamal_keypair.public,
+            &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
+        )
+        .await
+        .unwrap();
 
-    // alice_meta
-    //     .check_balances(
-    //         &token,
-    //         ConfidentialTokenAccountBalances {
-    //             pending_balance_lo: 0,
-    //             pending_balance_hi: 0,
-    //             available_balance: 0,
-    //             decryptable_available_balance: 0,
-    //         },
-    //     )
-    //     .await;
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance_lo: 0,
+                pending_balance_hi: 0,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
 
-    // bob_meta
-    //     .check_balances(
-    //         &token,
-    //         ConfidentialTokenAccountBalances {
-    //             pending_balance_lo: 42,
-    //             pending_balance_hi: 0,
-    //             available_balance: 0,
-    //             decryptable_available_balance: 0,
-    //         },
-    //     )
-    //     .await;
+    bob_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance_lo: 42,
+                pending_balance_hi: 0,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
 }
 
 #[tokio::test]
