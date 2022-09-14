@@ -4,7 +4,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use crate::error::AccountCompressionError;
 
 #[derive(Debug, Copy, Clone, PartialEq, BorshDeserialize, BorshSerialize)]
-#[repr(u32)]
+#[repr(u8)]
 pub enum CompressionAccountType {
     /// Uninitialized
     Uninitialized,
@@ -36,6 +36,10 @@ impl std::fmt::Display for CompressionAccountType {
 pub struct ConcurrentMerkleTreeHeader {
     /// Account type
     pub account_type: CompressionAccountType,
+
+    /// Needs padding for the account to be 8-byte aligned
+    /// 8-byte alignment is necessary to zero-copy the SPL ConcurrentMerkleTree
+    pub _padding: [u8; 7],
 
     /// Buffer of changelogs stored on-chain.
     /// Must be a power of 2; see above table for valid combinations.

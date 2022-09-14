@@ -1,7 +1,13 @@
 use crate::{config::Config, sort::UnsupportedAccount};
-use console::Emoji;
+use console::{style, Emoji};
 use serde::{Deserialize, Serialize, Serializer};
-use solana_account_decoder::parse_token::{UiAccountState, UiTokenAccount, UiTokenAmount};
+use solana_account_decoder::{
+    parse_token::{UiAccountState, UiMint, UiMultisig, UiTokenAccount, UiTokenAmount},
+    parse_token_extension::{
+        UiDefaultAccountState, UiExtension, UiInterestBearingConfig, UiMemoTransfer,
+        UiMintCloseAuthority, UiTransferFeeAmount, UiTransferFeeConfig,
+    },
+};
 use solana_cli_output::{display::writeln_name_value, OutputFormat, QuietDisplay, VerboseDisplay};
 use std::fmt::{self, Display};
 
@@ -58,7 +64,7 @@ pub(crate) fn println_display(config: &Config, message: String) {
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct CliMint<T>
+pub(crate) struct CliCreateToken<T>
 where
     T: Serialize + Display + QuietDisplay + VerboseDisplay,
 {
@@ -67,7 +73,7 @@ where
     pub(crate) transaction_data: T,
 }
 
-impl<T> Display for CliMint<T>
+impl<T> Display for CliCreateToken<T>
 where
     T: Serialize + Display + QuietDisplay + VerboseDisplay,
 {
@@ -78,7 +84,7 @@ where
         Display::fmt(&self.transaction_data, f)
     }
 }
-impl<T> QuietDisplay for CliMint<T>
+impl<T> QuietDisplay for CliCreateToken<T>
 where
     T: Serialize + Display + QuietDisplay + VerboseDisplay,
 {
@@ -89,7 +95,7 @@ where
         QuietDisplay::write_str(&self.transaction_data, w)
     }
 }
-impl<T> VerboseDisplay for CliMint<T>
+impl<T> VerboseDisplay for CliCreateToken<T>
 where
     T: Serialize + Display + QuietDisplay + VerboseDisplay,
 {
@@ -148,9 +154,9 @@ impl fmt::Display for CliWalletAddress {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CliMultisig {
     pub(crate) address: String,
-    pub(crate) m: u8,
-    pub(crate) n: u8,
-    pub(crate) signers: Vec<String>,
+    pub(crate) program_id: String,
+    #[serde(flatten)]
+    pub(crate) multisig: UiMultisig,
 }
 
 impl QuietDisplay for CliMultisig {}
@@ -158,14 +164,19 @@ impl VerboseDisplay for CliMultisig {}
 
 impl fmt::Display for CliMultisig {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let m = self.multisig.num_required_signers;
+        let n = self.multisig.num_valid_signers;
+
         writeln!(f)?;
-        writeln_name_value(f, "Address:", &self.address)?;
-        writeln_name_value(f, "M/N:", &format!("{}/{}", self.m, self.n))?;
-        writeln_name_value(f, "Signers:", " ")?;
-        let width = if self.n >= 9 { 4 } else { 3 };
-        for i in 0..self.n as usize {
-            let title = format!("{1:>0$}:", width, i + 1);
-            let pubkey = &self.signers[i];
+        writeln!(f, "{}", style("SPL Token Multisig").bold())?;
+        writeln_name_value(f, "  Address:", &self.address)?;
+        writeln_name_value(f, "  Program:", &self.program_id)?;
+        writeln_name_value(f, "  M/N:", &format!("{}/{}", m, n))?;
+        writeln!(f, "  {}", style("Signers:").bold())?;
+        let width = if n >= 9 { 4 } else { 3 };
+        for i in 0..n as usize {
+            let title = format!("  {1:>0$}:", width, i + 1);
+            let pubkey = &self.multisig.signers[i];
             writeln_name_value(f, &title, pubkey)?;
         }
         Ok(())
@@ -176,6 +187,8 @@ impl fmt::Display for CliMultisig {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CliTokenAccount {
     pub(crate) address: String,
+    pub(crate) program_id: String,
+    pub(crate) decimals: Option<u8>,
     pub(crate) is_associated: bool,
     #[serde(flatten)]
     pub(crate) account: UiTokenAccount,
@@ -187,15 +200,27 @@ impl VerboseDisplay for CliTokenAccount {}
 impl fmt::Display for CliTokenAccount {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f)?;
+        writeln!(f, "{}", style("SPL Token Account").bold())?;
         if self.is_associated {
-            writeln_name_value(f, "Address:", &self.address)?;
+            writeln_name_value(f, "  Address:", &self.address)?;
         } else {
-            writeln_name_value(f, "Address:", &format!("{}  (Aux*)", self.address))?;
+            writeln_name_value(f, "  Address:", &format!("{}  (Aux*)", self.address))?;
         }
+        writeln_name_value(f, "  Program:", &self.program_id)?;
         writeln_name_value(
             f,
-            "Balance:",
+            "  Balance:",
             &self.account.token_amount.real_number_string_trimmed(),
+        )?;
+        writeln_name_value(
+            f,
+            "  Decimals:",
+            if self.decimals.is_some() {
+                self.decimals.unwrap().to_string()
+            } else {
+                String::new()
+            }
+            .as_ref(),
         )?;
         let mint = format!(
             "{}{}",
@@ -206,29 +231,86 @@ impl fmt::Display for CliTokenAccount {
                 ""
             }
         );
-        writeln_name_value(f, "Mint:", &mint)?;
-        writeln_name_value(f, "Owner:", &self.account.owner)?;
-        writeln_name_value(f, "State:", &format!("{:?}", self.account.state))?;
+        writeln_name_value(f, "  Mint:", &mint)?;
+        writeln_name_value(f, "  Owner:", &self.account.owner)?;
+        writeln_name_value(f, "  State:", &format!("{:?}", self.account.state))?;
         if let Some(delegate) = &self.account.delegate {
-            writeln!(f, "Delegation:")?;
-            writeln_name_value(f, "  Delegate:", delegate)?;
+            writeln!(f, "  {}", style("Delegation:").bold())?;
+            writeln_name_value(f, "    Delegate:", delegate)?;
             let allowance = self.account.delegated_amount.as_ref().unwrap();
-            writeln_name_value(f, "  Allowance:", &allowance.real_number_string_trimmed())?;
+            writeln_name_value(f, "    Allowance:", &allowance.real_number_string_trimmed())?;
         } else {
-            writeln_name_value(f, "Delegation:", "")?;
+            writeln_name_value(f, "  Delegation:", "")?;
         }
         writeln_name_value(
             f,
-            "Close authority:",
+            "  Close authority:",
             self.account
                 .close_authority
                 .as_ref()
                 .unwrap_or(&String::new()),
         )?;
+
+        if !self.account.extensions.is_empty() {
+            writeln!(f, "{}", style("Extensions:").bold())?;
+            for extension in &self.account.extensions {
+                display_ui_extension(f, 0, extension)?;
+            }
+        }
+
         if !self.is_associated {
             writeln!(f)?;
             writeln!(f, "* Please run `spl-token gc` to clean up Aux accounts")?;
         }
+
+        Ok(())
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CliMint {
+    pub(crate) address: String,
+    pub(crate) program_id: String,
+    #[serde(skip_serializing)]
+    pub(crate) epoch: u64,
+    #[serde(flatten)]
+    pub(crate) mint: UiMint,
+}
+
+impl QuietDisplay for CliMint {}
+impl VerboseDisplay for CliMint {}
+
+impl fmt::Display for CliMint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f)?;
+        writeln!(f, "{}", style("SPL Token Mint").bold())?;
+
+        writeln_name_value(f, "  Address:", &self.address)?;
+        writeln_name_value(f, "  Program:", &self.program_id)?;
+        writeln_name_value(f, "  Supply:", &self.mint.supply)?;
+        writeln_name_value(f, "  Decimals:", &self.mint.decimals.to_string())?;
+        writeln_name_value(
+            f,
+            "  Mint authority:",
+            self.mint.mint_authority.as_ref().unwrap_or(&String::new()),
+        )?;
+        writeln_name_value(
+            f,
+            "  Freeze authority:",
+            self.mint
+                .freeze_authority
+                .as_ref()
+                .unwrap_or(&String::new()),
+        )?;
+
+        if !self.mint.extensions.is_empty() {
+            writeln!(f, "{}", style("Extensions").bold())?;
+            for extension in &self.mint.extensions {
+                display_ui_extension(f, self.epoch, extension)?;
+            }
+        }
+
         Ok(())
     }
 }
@@ -396,6 +478,144 @@ impl fmt::Display for CliTokenAccounts {
             writeln!(f, "* Please run `spl-token gc` to clean up Aux accounts")?;
         }
         Ok(())
+    }
+}
+
+fn display_ui_extension(
+    f: &mut fmt::Formatter,
+    epoch: u64,
+    ui_extension: &UiExtension,
+) -> fmt::Result {
+    match ui_extension {
+        UiExtension::TransferFeeConfig(UiTransferFeeConfig {
+            transfer_fee_config_authority,
+            withdraw_withheld_authority,
+            withheld_amount,
+            older_transfer_fee,
+            newer_transfer_fee,
+        }) => {
+            writeln!(f, "  {}", style("Transfer fees:").bold())?;
+
+            if newer_transfer_fee.epoch >= epoch {
+                writeln!(
+                    f,
+                    "    {} {}bps",
+                    style("Current fee:").bold(),
+                    newer_transfer_fee.transfer_fee_basis_points
+                )?;
+                writeln_name_value(
+                    f,
+                    "    Current maximum:",
+                    &newer_transfer_fee.maximum_fee.to_string(),
+                )?;
+            } else {
+                writeln!(
+                    f,
+                    "    {} {}bps",
+                    style("Current fee:").bold(),
+                    older_transfer_fee.transfer_fee_basis_points
+                )?;
+                writeln_name_value(
+                    f,
+                    "    Current maximum:",
+                    &older_transfer_fee.maximum_fee.to_string(),
+                )?;
+                writeln!(
+                    f,
+                    "    {} {}bps",
+                    style("Upcoming fee:").bold(),
+                    newer_transfer_fee.transfer_fee_basis_points
+                )?;
+                writeln_name_value(
+                    f,
+                    "    Upcoming maximum:",
+                    &newer_transfer_fee.maximum_fee.to_string(),
+                )?;
+                writeln!(
+                    f,
+                    "    {} Epoch {} ({} epochs)",
+                    style("Switchover at:").bold(),
+                    newer_transfer_fee.epoch,
+                    newer_transfer_fee.epoch - epoch
+                )?;
+            }
+
+            writeln_name_value(
+                f,
+                "    Config authority:",
+                transfer_fee_config_authority
+                    .as_ref()
+                    .unwrap_or(&String::new()),
+            )?;
+            writeln_name_value(
+                f,
+                "    Withdrawal authority:",
+                withdraw_withheld_authority
+                    .as_ref()
+                    .unwrap_or(&String::new()),
+            )?;
+            writeln_name_value(f, "    Withheld fees:", &withheld_amount.to_string())
+        }
+        UiExtension::TransferFeeAmount(UiTransferFeeAmount { withheld_amount }) => {
+            writeln_name_value(f, "  Transfer fees withheld:", &withheld_amount.to_string())
+        }
+        UiExtension::MintCloseAuthority(UiMintCloseAuthority { close_authority }) => {
+            writeln_name_value(
+                f,
+                "  Close authority:",
+                close_authority.as_ref().unwrap_or(&String::new()),
+            )
+        }
+        UiExtension::ConfidentialTransferMint(_) => unimplemented!(),
+        UiExtension::ConfidentialTransferAccount(_) => unimplemented!(),
+        UiExtension::DefaultAccountState(UiDefaultAccountState { account_state }) => {
+            writeln_name_value(f, "  Default state:", &format!("{:?}", account_state))
+        }
+        UiExtension::ImmutableOwner => writeln!(f, "  {}", style("Immutable owner").bold()),
+        UiExtension::MemoTransfer(UiMemoTransfer {
+            require_incoming_transfer_memos,
+        }) => writeln_name_value(
+            f,
+            "  Transfer memo:",
+            if *require_incoming_transfer_memos {
+                "Required"
+            } else {
+                "Not required"
+            },
+        ),
+        UiExtension::NonTransferable => writeln!(f, "  {}", style("Non-transferable").bold()),
+        UiExtension::InterestBearingConfig(UiInterestBearingConfig {
+            rate_authority,
+            pre_update_average_rate,
+            current_rate,
+            ..
+        }) => {
+            writeln!(f, "  {}", style("Interest-bearing:").bold())?;
+            writeln!(
+                f,
+                "    {} {}bps",
+                style("Current rate:").bold(),
+                current_rate
+            )?;
+            writeln!(
+                f,
+                "    {} {}bps",
+                style("Average rate:").bold(),
+                pre_update_average_rate
+            )?;
+            writeln_name_value(
+                f,
+                "    Rate authority:",
+                rate_authority.as_ref().unwrap_or(&String::new()),
+            )
+        }
+        // ExtensionType::Uninitialized is a hack to ensure a mint/account is never the same length as a multisig
+        UiExtension::Uninitialized => Ok(()),
+        UiExtension::UnparseableExtension => writeln_name_value(
+            f,
+            "    Unparseable extension:",
+            "Consider upgrading to a newer version of spl-token",
+        ),
     }
 }
 

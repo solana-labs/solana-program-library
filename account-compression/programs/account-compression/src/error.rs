@@ -23,7 +23,7 @@ pub enum AccountCompressionError {
     #[msg("Issue zero copying concurrent merkle tree data")]
     ZeroCopyError,
 
-    /// See [ConcurrentMerkleTreeHeader](/spl_compression/state/struct.ConcurrentMerkleTreeHeader.html) for valid configuration options.
+    /// See [ConcurrentMerkleTreeHeader](/spl_account_compression/state/struct.ConcurrentMerkleTreeHeader.html) for valid configuration options.
     #[msg("An unsupported max depth or max buffer size constant was provided")]
     ConcurrentMerkleTreeConstantsError,
 

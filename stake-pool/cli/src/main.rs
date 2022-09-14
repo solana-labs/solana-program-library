@@ -1718,7 +1718,7 @@ fn command_withdraw_sol(
 fn command_set_manager(
     config: &Config,
     stake_pool_address: &Pubkey,
-    new_manager: &Option<Keypair>,
+    new_manager: &Option<Box<dyn Signer>>,
     new_fee_receiver: &Option<Pubkey>,
 ) -> CommandResult {
     if !config.no_update {
@@ -1729,8 +1729,9 @@ fn command_set_manager(
     // If new accounts are missing in the arguments use the old ones
     let (new_manager_pubkey, mut signers): (Pubkey, Vec<&dyn Signer>) = match new_manager {
         None => (stake_pool.manager, vec![]),
-        Some(value) => (value.pubkey(), vec![value]),
+        Some(value) => (value.pubkey(), vec![value.as_ref()]),
     };
+
     let new_fee_receiver = match new_fee_receiver {
         None => stake_pool.manager_fee_account,
         Some(value) => {
@@ -2937,7 +2938,24 @@ fn main() {
         }
         ("set-manager", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
-            let new_manager: Option<Keypair> = keypair_of(arg_matches, "new_manager");
+
+            let new_manager = if arg_matches.value_of("new_manager").is_some() {
+                let signer = get_signer(
+                    arg_matches,
+                    "new-manager",
+                    arg_matches
+                        .value_of("new_manager")
+                        .expect("new manager argument not found!"),
+                    &mut wallet_manager,
+                    SignerFromPathConfig {
+                        allow_null_signer: true,
+                    },
+                );
+                Some(signer)
+            } else {
+                None
+            };
+
             let new_fee_receiver: Option<Pubkey> = pubkey_of(arg_matches, "new_fee_receiver");
             command_set_manager(
                 &config,

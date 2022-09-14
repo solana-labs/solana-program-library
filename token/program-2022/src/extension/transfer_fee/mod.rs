@@ -6,7 +6,10 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     solana_program::{clock::Epoch, entrypoint::ProgramResult},
-    std::{cmp, convert::TryFrom},
+    std::{
+        cmp,
+        convert::{TryFrom, TryInto},
+    },
 };
 
 /// Transfer fee extension instructions
@@ -32,6 +35,17 @@ pub struct TransferFee {
     pub transfer_fee_basis_points: PodU16,
 }
 impl TransferFee {
+    /// Calculate ceiling-division
+    ///
+    /// Ceiling-division `ceil[ dividend / divisor ]` can be represented as a floor-division
+    /// `floor[ dividend + (divisor - 1) / divisor ]`
+    fn ceil_div(dividend: u128, divisor: u128) -> Option<u128> {
+        dividend
+            .checked_add(divisor)?
+            .checked_sub(1)?
+            .checked_div(divisor)
+    }
+
     /// Calculate the transfer fee
     pub fn calculate_fee(&self, pre_fee_amount: u64) -> Option<u64> {
         let transfer_fee_basis_points = u16::from(self.transfer_fee_basis_points) as u128;
@@ -39,55 +53,55 @@ impl TransferFee {
             Some(0)
         } else {
             let numerator = (pre_fee_amount as u128).checked_mul(transfer_fee_basis_points)?;
-            let mut raw_fee = numerator.checked_div(ONE_IN_BASIS_POINTS)?;
-            let remainder = numerator.checked_rem(ONE_IN_BASIS_POINTS)?;
-            if remainder > 0 {
-                raw_fee = raw_fee.checked_add(1)?;
-            }
-            // guaranteed to be ok
-            let raw_fee = u64::try_from(raw_fee).ok()?;
+            let raw_fee = Self::ceil_div(numerator, ONE_IN_BASIS_POINTS)?
+                .try_into() // guaranteed to be okay
+                .ok()?;
+
             Some(cmp::min(raw_fee, u64::from(self.maximum_fee)))
+        }
+    }
+
+    /// Calculate the gross transfer amount after deducting fees
+    pub fn calculate_post_fee_amount(&self, pre_fee_amount: u64) -> Option<u64> {
+        pre_fee_amount.checked_sub(self.calculate_fee(pre_fee_amount)?)
+    }
+
+    /// Calculate the transfer amount that will result in a specified net transfer amount.
+    ///
+    /// The original transfer amount may not always be unique due to rounding. In this case, the
+    /// smaller amount will be chosen.
+    /// e.g. Both transfer amount 10, 11 with 10% fee rate results in net transfer amount of 9. In
+    /// this case, 10 will be chosen.
+    /// e.g. Fee rate is 100%. In this case, 0 will be chosen.
+    ///
+    /// The original transfer amount may not always exist on large net transfer amounts due to
+    /// overflow. In this case, `None` is returned.
+    /// e.g. The net fee amount is `u64::MAX` with a positive fee rate.
+    pub fn calculate_pre_fee_amount(&self, post_fee_amount: u64) -> Option<u64> {
+        let maximum_fee = u64::from(self.maximum_fee);
+        let transfer_fee_basis_points = u16::from(self.transfer_fee_basis_points) as u128;
+        if transfer_fee_basis_points == 0 {
+            Some(post_fee_amount)
+        } else if transfer_fee_basis_points == ONE_IN_BASIS_POINTS || post_fee_amount == 0 {
+            Some(0)
+        } else {
+            let numerator = (post_fee_amount as u128).checked_mul(ONE_IN_BASIS_POINTS)?;
+            let denominator = ONE_IN_BASIS_POINTS.checked_sub(transfer_fee_basis_points)?;
+            let raw_pre_fee_amount = Self::ceil_div(numerator, denominator)?;
+
+            if raw_pre_fee_amount.checked_sub(post_fee_amount as u128)? >= maximum_fee as u128 {
+                post_fee_amount.checked_add(maximum_fee)
+            } else {
+                // should return `None` if `pre_fee_amount` overflows
+                u64::try_from(raw_pre_fee_amount).ok()
+            }
         }
     }
 
     /// Calculate the fee that would produce the given output
     pub fn calculate_inverse_fee(&self, post_fee_amount: u64) -> Option<u64> {
-        let transfer_fee_basis_points = u16::from(self.transfer_fee_basis_points) as u128;
-        if transfer_fee_basis_points == 0 {
-            Some(0)
-        } else if transfer_fee_basis_points == ONE_IN_BASIS_POINTS {
-            None // if transfer fee is total amount, we can't ever figure out the output
-        } else if post_fee_amount == 0 {
-            Some(cmp::min(1, u64::from(self.maximum_fee)))
-        } else {
-            let post_fee_amount = post_fee_amount as u128;
-            let denominator = ONE_IN_BASIS_POINTS.checked_sub(transfer_fee_basis_points)?;
-            // try without remainder in out amount
-            let numerator = post_fee_amount.checked_mul(ONE_IN_BASIS_POINTS)?;
-            let pre_fee_amount = numerator.checked_div(denominator)?;
-
-            // with this amount in, does the fee calculation produce a remainder?
-            // if so, probably not the right one
-            let check_numerator = pre_fee_amount.checked_mul(transfer_fee_basis_points)?;
-            let check_remainder = check_numerator.checked_rem(ONE_IN_BASIS_POINTS)?;
-            let raw_fee = if check_remainder == 0 {
-                check_numerator.checked_div(ONE_IN_BASIS_POINTS)?
-            } else {
-                // try with remainder
-                let numerator = post_fee_amount
-                    .checked_add(1)?
-                    .checked_mul(ONE_IN_BASIS_POINTS)?;
-                let pre_fee_amount = numerator.checked_div(denominator)?;
-                pre_fee_amount.checked_sub(post_fee_amount)?
-            };
-            // the division and rounding can go above u64::MAX, so protect
-            let fee = if raw_fee > u64::MAX as u128 {
-                u64::MAX
-            } else {
-                u64::try_from(raw_fee).ok()?
-            };
-            Some(cmp::min(fee, u64::from(self.maximum_fee)))
-        }
+        let pre_fee_amount = self.calculate_pre_fee_amount(post_fee_amount)?;
+        self.calculate_fee(pre_fee_amount)
     }
 }
 
@@ -302,7 +316,9 @@ pub(crate) mod test {
         // hit maximum fee
         assert_eq!(
             maximum_fee,
-            transfer_fee.calculate_inverse_fee(u64::MAX).unwrap()
+            transfer_fee
+                .calculate_inverse_fee(u64::MAX - maximum_fee)
+                .unwrap()
         );
         // at exactly the max
         assert_eq!(
@@ -350,8 +366,8 @@ pub(crate) mod test {
             minimum_fee + 1,
             transfer_fee.calculate_inverse_fee(one).unwrap()
         );
-        // zero is 1 token
-        assert_eq!(minimum_fee, transfer_fee.calculate_inverse_fee(0).unwrap());
+        // zero is zero token
+        assert_eq!(0, transfer_fee.calculate_inverse_fee(0).unwrap());
     }
 
     proptest! {

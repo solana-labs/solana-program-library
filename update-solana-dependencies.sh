@@ -47,4 +47,5 @@ crates=(
 set -x
 for crate in "${crates[@]}"; do
   sed -E -i'' -e "s:(${crate} = \")(=?)${old_solana_ver}\".*:\1\2${solana_ver}\":" "${tomls[@]}"
+  sed -E -i'' -e "s:(${crate} = \{ version = \")(=?)${old_solana_ver}(\".*):\1\2${solana_ver}\3:" "${tomls[@]}"
 done

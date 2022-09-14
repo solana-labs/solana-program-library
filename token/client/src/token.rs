@@ -60,6 +60,8 @@ pub enum TokenError {
     AccountDecryption,
     #[error("not enough funds in account")]
     NotEnoughFunds,
+    #[error("missing memo signer")]
+    MissingMemoSigner,
 }
 impl PartialEq for TokenError {
     fn eq(&self, other: &Self) -> bool {
@@ -77,6 +79,7 @@ impl PartialEq for TokenError {
             ) => true,
             (Self::AccountDecryption, Self::AccountDecryption) => true,
             (Self::NotEnoughFunds, Self::NotEnoughFunds) => true,
+            (Self::MissingMemoSigner, Self::MissingMemoSigner) => true,
             _ => false,
         }
     }
@@ -104,6 +107,7 @@ pub enum ExtensionInitializationParams {
         rate_authority: Option<Pubkey>,
         rate: i16,
     },
+    NonTransferable,
 }
 impl ExtensionInitializationParams {
     /// Get the extension type associated with the init params
@@ -114,6 +118,7 @@ impl ExtensionInitializationParams {
             Self::MintCloseAuthority { .. } => ExtensionType::MintCloseAuthority,
             Self::TransferFeeConfig { .. } => ExtensionType::TransferFeeConfig,
             Self::InterestBearingConfig { .. } => ExtensionType::InterestBearingConfig,
+            Self::NonTransferable => ExtensionType::NonTransferable,
         }
     }
     /// Generate an appropriate initialization instruction for the given mint
@@ -166,11 +171,28 @@ impl ExtensionInitializationParams {
                 rate_authority,
                 rate,
             ),
+            Self::NonTransferable => {
+                instruction::initialize_non_transferable_mint(token_program_id, mint)
+            }
         }
     }
 }
 
 pub type TokenResult<T> = Result<T, TokenError>;
+
+#[derive(Debug)]
+struct TokenMemo {
+    text: String,
+    signers: Vec<Pubkey>,
+}
+impl TokenMemo {
+    pub fn to_instruction(&self) -> Instruction {
+        spl_memo::build_memo(
+            self.text.as_bytes(),
+            &self.signers.iter().collect::<Vec<_>>(),
+        )
+    }
+}
 
 pub struct Token<T> {
     client: Arc<dyn ProgramClient<T>>,
@@ -179,7 +201,7 @@ pub struct Token<T> {
     program_id: Pubkey,
     nonce_account: Option<Pubkey>,
     nonce_authority: Option<Pubkey>,
-    memo: Arc<RwLock<Option<String>>>,
+    memo: Arc<RwLock<Option<TokenMemo>>>,
 }
 
 impl<T> fmt::Debug for Token<T> {
@@ -187,6 +209,9 @@ impl<T> fmt::Debug for Token<T> {
         f.debug_struct("Token")
             .field("pubkey", &self.pubkey)
             .field("payer", &self.payer.pubkey())
+            .field("program_id", &self.program_id)
+            .field("nonce_account", &self.nonce_account)
+            .field("nonce_authority", &self.nonce_authority)
             .field("memo", &self.memo.read().unwrap())
             .finish()
     }
@@ -242,9 +267,12 @@ where
         }
     }
 
-    pub fn with_memo<M: AsRef<str>>(&self, memo: M) -> &Self {
+    pub fn with_memo<M: AsRef<str>>(&self, memo: M, signers: Vec<Pubkey>) -> &Self {
         let mut w_memo = self.memo.write().unwrap();
-        *w_memo = Some(memo.as_ref().to_string());
+        *w_memo = Some(TokenMemo {
+            text: memo.as_ref().to_string(),
+            signers,
+        });
         self
     }
 
@@ -305,7 +333,16 @@ where
         {
             let mut w_memo = self.memo.write().unwrap();
             if let Some(memo) = w_memo.take() {
-                instructions.push(spl_memo::build_memo(memo.as_bytes(), &[&payer_key]));
+                let signing_pubkeys = signing_keypairs.pubkeys();
+                if !memo
+                    .signers
+                    .iter()
+                    .all(|signer| signing_pubkeys.contains(signer))
+                {
+                    return Err(TokenError::MissingMemoSigner);
+                }
+
+                instructions.push(memo.to_instruction());
             }
         }
 
@@ -426,7 +463,7 @@ where
     }
 
     /// Create and initialize the associated account.
-    pub async fn create_associated_token_account(&self, owner: &Pubkey) -> TokenResult<Pubkey> {
+    pub async fn create_associated_token_account(&self, owner: &Pubkey) -> TokenResult<T::Output> {
         self.process_ixs::<[&dyn Signer; 0]>(
             &[create_associated_token_account(
                 &self.payer.pubkey(),
@@ -437,7 +474,6 @@ where
             &[],
         )
         .await
-        .map(|_| self.get_associated_token_address(owner))
         .map_err(Into::into)
     }
 
@@ -446,7 +482,7 @@ where
         &self,
         account: &dyn Signer,
         owner: &Pubkey,
-    ) -> TokenResult<Pubkey> {
+    ) -> TokenResult<T::Output> {
         self.create_auxiliary_token_account_with_extension_space(account, owner, vec![])
             .await
     }
@@ -457,7 +493,7 @@ where
         account: &dyn Signer,
         owner: &Pubkey,
         extensions: Vec<ExtensionType>,
-    ) -> TokenResult<Pubkey> {
+    ) -> TokenResult<T::Output> {
         let state = self.get_mint_info().await?;
         let mint_extensions: Vec<ExtensionType> = state.get_extension_types()?;
         let mut required_extensions =
@@ -468,30 +504,34 @@ where
             }
         }
         let space = ExtensionType::get_account_len::<Account>(&required_extensions);
-        self.process_ixs(
-            &[
-                system_instruction::create_account(
-                    &self.payer.pubkey(),
-                    &account.pubkey(),
-                    self.client
-                        .get_minimum_balance_for_rent_exemption(space)
-                        .await
-                        .map_err(TokenError::Client)?,
-                    space as u64,
-                    &self.program_id,
-                ),
-                instruction::initialize_account(
-                    &self.program_id,
-                    &account.pubkey(),
-                    &self.pubkey,
-                    owner,
-                )?,
-            ],
-            &vec![account],
-        )
-        .await
-        .map(|_| account.pubkey())
-        .map_err(Into::into)
+        let mut instructions = vec![system_instruction::create_account(
+            &self.payer.pubkey(),
+            &account.pubkey(),
+            self.client
+                .get_minimum_balance_for_rent_exemption(space)
+                .await
+                .map_err(TokenError::Client)?,
+            space as u64,
+            &self.program_id,
+        )];
+
+        if required_extensions.contains(&ExtensionType::ImmutableOwner) {
+            instructions.push(instruction::initialize_immutable_owner(
+                &self.program_id,
+                &account.pubkey(),
+            )?)
+        }
+
+        instructions.push(instruction::initialize_account(
+            &self.program_id,
+            &account.pubkey(),
+            &self.pubkey,
+            owner,
+        )?);
+
+        self.process_ixs(&instructions, &vec![account])
+            .await
+            .map_err(Into::into)
     }
 
     /// Retrieve a raw account
@@ -1367,9 +1407,8 @@ where
     /// Deposit SPL Tokens into the pending balance of a confidential token account
     pub async fn confidential_transfer_deposit<S: Signer>(
         &self,
-        source_token_account: &Pubkey,
-        destination_token_account: &Pubkey,
-        source_token_authority: &S,
+        token_account: &Pubkey,
+        token_authority: &S,
         amount: u64,
         decimals: u8,
     ) -> TokenResult<T::Output> {
@@ -1380,15 +1419,14 @@ where
         self.process_ixs(
             &[confidential_transfer::instruction::deposit(
                 &self.program_id,
-                source_token_account,
+                token_account,
                 &self.pubkey,
-                destination_token_account,
                 amount,
                 decimals,
-                &source_token_authority.pubkey(),
+                &token_authority.pubkey(),
                 &[],
             )?],
-            &[source_token_authority],
+            &[token_authority],
         )
         .await
     }
@@ -1398,30 +1436,27 @@ where
     #[allow(clippy::too_many_arguments)]
     pub async fn confidential_transfer_withdraw<S: Signer>(
         &self,
-        source_token_account: &Pubkey,
-        destination_token_account: &Pubkey,
-        source_token_authority: &S,
+        token_account: &Pubkey,
+        token_authority: &S,
         amount: u64,
-        source_available_balance: u64,
-        source_available_balance_ciphertext: &ElGamalCiphertext,
+        available_balance: u64,
+        available_balance_ciphertext: &ElGamalCiphertext,
         decimals: u8,
     ) -> TokenResult<T::Output> {
-        let source_elgamal_keypair =
-            ElGamalKeypair::new(source_token_authority, source_token_account)
-                .map_err(TokenError::Key)?;
-        let source_authenticated_encryption_key =
-            AeKey::new(source_token_authority, source_token_account).map_err(TokenError::Key)?;
+        let elgamal_keypair =
+            ElGamalKeypair::new(token_authority, token_account).map_err(TokenError::Key)?;
+        let authenticated_encryption_key =
+            AeKey::new(token_authority, token_account).map_err(TokenError::Key)?;
 
         self.confidential_transfer_withdraw_with_key(
-            source_token_account,
-            destination_token_account,
-            source_token_authority,
+            token_account,
+            token_authority,
             amount,
             decimals,
-            source_available_balance,
-            source_available_balance_ciphertext,
-            &source_elgamal_keypair,
-            &source_authenticated_encryption_key,
+            available_balance,
+            available_balance_ciphertext,
+            &elgamal_keypair,
+            &authenticated_encryption_key,
         )
         .await
     }
@@ -1431,44 +1466,42 @@ where
     #[allow(clippy::too_many_arguments)]
     pub async fn confidential_transfer_withdraw_with_key<S: Signer>(
         &self,
-        source_token_account: &Pubkey,
-        destination_token_account: &Pubkey,
-        source_token_authority: &S,
+        token_account: &Pubkey,
+        token_authority: &S,
         amount: u64,
         decimals: u8,
-        source_available_balance: u64,
-        source_available_balance_ciphertext: &ElGamalCiphertext,
-        source_elgamal_keypair: &ElGamalKeypair,
-        source_authenticated_encryption_key: &AeKey,
+        available_balance: u64,
+        available_balance_ciphertext: &ElGamalCiphertext,
+        elgamal_keypair: &ElGamalKeypair,
+        authenticated_encryption_key: &AeKey,
     ) -> TokenResult<T::Output> {
         let proof_data = confidential_transfer::instruction::WithdrawData::new(
             amount,
-            source_elgamal_keypair,
-            source_available_balance,
-            source_available_balance_ciphertext,
+            elgamal_keypair,
+            available_balance,
+            available_balance_ciphertext,
         )
         .map_err(TokenError::Proof)?;
 
-        let source_remaining_balance = source_available_balance
+        let remaining_balance = available_balance
             .checked_sub(amount)
             .ok_or(TokenError::NotEnoughFunds)?;
-        let new_source_decryptable_available_balance =
-            source_authenticated_encryption_key.encrypt(source_remaining_balance);
+        let new_decryptable_available_balance =
+            authenticated_encryption_key.encrypt(remaining_balance);
 
         self.process_ixs(
             &confidential_transfer::instruction::withdraw(
                 &self.program_id,
-                source_token_account,
-                destination_token_account,
+                token_account,
                 &self.pubkey,
                 amount,
                 decimals,
-                new_source_decryptable_available_balance,
-                &source_token_authority.pubkey(),
+                new_decryptable_available_balance,
+                &token_authority.pubkey(),
                 &[],
                 &proof_data,
             )?,
-            &[source_token_authority],
+            &[token_authority],
         )
         .await
     }

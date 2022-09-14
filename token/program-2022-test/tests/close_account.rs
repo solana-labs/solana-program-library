@@ -22,10 +22,11 @@ async fn success_init_after_close_account() {
     let token_program_id = spl_token_2022::id();
     let owner = Keypair::new();
     let token_account_keypair = Keypair::new();
-    let token_account = token
+    token
         .create_auxiliary_token_account(&token_account_keypair, &owner.pubkey())
         .await
         .unwrap();
+    let token_account = token_account_keypair.pubkey();
 
     let destination = Pubkey::new_unique();
     token
@@ -70,10 +71,12 @@ async fn fail_init_after_close_account() {
     let token = context.token_context.take().unwrap().token;
     let token_program_id = spl_token_2022::id();
     let owner = Keypair::new();
-    let token_account = token
-        .create_auxiliary_token_account(&Keypair::new(), &owner.pubkey())
+    let token_account_keypair = Keypair::new();
+    token
+        .create_auxiliary_token_account(&token_account_keypair, &owner.pubkey())
         .await
         .unwrap();
+    let token_account = token_account_keypair.pubkey();
 
     let destination = Pubkey::new_unique();
     let error = token

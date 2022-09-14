@@ -55,6 +55,8 @@ pub(crate) fn sort_and_parse_token_accounts(
                         max_len_balance = max_len_balance.max(len_balance);
                         let parsed_account = CliTokenAccount {
                             address,
+                            program_id: program_id.to_string(),
+                            decimals: None,
                             account: ui_token_account,
                             is_associated,
                         };

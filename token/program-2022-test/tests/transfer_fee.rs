@@ -118,15 +118,17 @@ async fn create_mint_with_accounts(alice_amount: u64) -> TokenWithAccounts {
     } = context.token_context.take().unwrap();
 
     // token account is self-owned just to test another case
-    let alice_account = token
+    token
         .create_auxiliary_token_account(&alice, &alice.pubkey())
         .await
         .unwrap();
+    let alice_account = alice.pubkey();
     let bob_account = Keypair::new();
-    let bob_account = token
+    token
         .create_auxiliary_token_account(&bob_account, &bob.pubkey())
         .await
         .unwrap();
+    let bob_account = bob_account.pubkey();
 
     // mint tokens
     token
@@ -688,10 +690,12 @@ async fn set_withdraw_withheld_authority() {
     );
 
     // new authority can withdraw tokens
-    let account = token
-        .create_auxiliary_token_account(&Keypair::new(), &new_authority.pubkey())
+    let account = Keypair::new();
+    token
+        .create_auxiliary_token_account(&account, &new_authority.pubkey())
         .await
         .unwrap();
+    let account = account.pubkey();
     token
         .withdraw_withheld_tokens_from_accounts(&account, &new_authority, &[&account])
         .await
@@ -751,10 +755,12 @@ async fn set_withdraw_withheld_authority() {
     );
 
     // assert no authority can withdraw withheld fees
-    let account = token
-        .create_auxiliary_token_account(&Keypair::new(), &new_authority.pubkey())
+    let account = Keypair::new();
+    token
+        .create_auxiliary_token_account(&account, &new_authority.pubkey())
         .await
         .unwrap();
+    let account = account.pubkey();
     let error = token
         .withdraw_withheld_tokens_from_accounts(&account, &withdraw_withheld_authority, &[&account])
         .await
@@ -1144,10 +1150,12 @@ async fn create_and_transfer_to_account(
     amount: u64,
     decimals: u8,
 ) -> Pubkey {
-    let account = token
-        .create_auxiliary_token_account(&Keypair::new(), owner)
+    let account = Keypair::new();
+    token
+        .create_auxiliary_token_account(&account, owner)
         .await
         .unwrap();
+    let account = account.pubkey();
     token
         .transfer(
             source,
@@ -1297,10 +1305,12 @@ async fn max_withdraw_withheld_tokens_from_accounts() {
     // withdraw from max accounts, which is around 35: 1 mint, 1 destination, 1 authority,
     // 32 accounts
     // see https://docs.solana.com/proposals/transactions-v2#problem
-    let destination = token
-        .create_auxiliary_token_account(&Keypair::new(), &alice.pubkey())
+    let destination = Keypair::new();
+    token
+        .create_auxiliary_token_account(&destination, &alice.pubkey())
         .await
         .unwrap();
+    let destination = destination.pubkey();
     let mut accounts = vec![];
     let max_accounts = 32;
     for _ in 0..max_accounts {
@@ -1606,10 +1616,12 @@ async fn withdraw_withheld_tokens_from_accounts() {
         .await
         .unwrap();
     let TokenContext { token, .. } = context.token_context.take().unwrap();
-    let withdraw_account = token
-        .create_auxiliary_token_account(&Keypair::new(), &alice.pubkey())
+    let withdraw_account = Keypair::new();
+    token
+        .create_auxiliary_token_account(&withdraw_account, &alice.pubkey())
         .await
         .unwrap();
+    let withdraw_account = withdraw_account.pubkey();
     token
         .withdraw_withheld_tokens_from_accounts(
             &withdraw_account,

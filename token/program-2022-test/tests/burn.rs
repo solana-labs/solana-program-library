@@ -23,10 +23,11 @@ async fn run_basic(context: TestContext) {
     } = context.token_context.unwrap();
 
     let alice_account = Keypair::new();
-    let alice_account = token
+    token
         .create_auxiliary_token_account(&alice_account, &alice.pubkey())
         .await
         .unwrap();
+    let alice_account = alice_account.pubkey();
 
     // mint a token
     let amount = 10;
@@ -133,10 +134,11 @@ async fn run_self_owned(context: TestContext) {
         ..
     } = context.token_context.unwrap();
 
-    let alice_account = token
+    token
         .create_auxiliary_token_account(&alice, &alice.pubkey())
         .await
         .unwrap();
+    let alice_account = alice.pubkey();
 
     // mint a token
     let amount = 10;
@@ -202,10 +204,11 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
     } = context.token_context.unwrap();
 
     let alice_account = Keypair::new();
-    let alice_account = token
+    token
         .create_auxiliary_token_account(&alice_account, &alice.pubkey())
         .await
         .unwrap();
+    let alice_account = alice_account.pubkey();
 
     // mint a token
     token
@@ -221,10 +224,11 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
 
     // transfer token to incinerator/system
     let non_owner_account = Keypair::new();
-    let non_owner_account = token
+    token
         .create_auxiliary_token_account(&non_owner_account, non_owner)
         .await
         .unwrap();
+    let non_owner_account = non_owner_account.pubkey();
     token
         .transfer(
             &alice_account,

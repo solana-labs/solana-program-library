@@ -58,7 +58,7 @@ impl ConfidentialTransferMintWithKeypairs {
         let ct_mint_transfer_auditor_encryption_keypair = ElGamalKeypair::new_rand();
         let ct_mint_withdraw_withheld_authority_encryption_keypair = ElGamalKeypair::new_rand();
         let ct_mint = ConfidentialTransferMint {
-            authority: ct_mint_authority.pubkey().into(),
+            authority: ct_mint_authority.pubkey(),
             auto_approve_new_accounts: true.into(),
             auditor_encryption_pubkey: ct_mint_transfer_auditor_encryption_keypair.public.into(),
             withdraw_withheld_authority_encryption_pubkey:
@@ -93,14 +93,16 @@ impl ConfidentialTokenAccountMeta {
     where
         T: SendTransaction,
     {
-        let token_account = token
+        let token_account_keypair = Keypair::new();
+        token
             .create_auxiliary_token_account_with_extension_space(
-                &Keypair::new(),
+                &token_account_keypair,
                 &owner.pubkey(),
                 vec![ExtensionType::ConfidentialTransferAccount],
             )
             .await
             .unwrap();
+        let token_account = token_account_keypair.pubkey();
 
         let elgamal_keypair = ElGamalKeypair::new(owner, &token_account).unwrap();
         let ae_key = AeKey::new(owner, &token_account).unwrap();
@@ -145,13 +147,7 @@ impl ConfidentialTokenAccountMeta {
             .unwrap();
 
         token
-            .confidential_transfer_deposit(
-                &meta.token_account,
-                &meta.token_account,
-                owner,
-                amount,
-                decimals,
-            )
+            .confidential_transfer_deposit(&meta.token_account, owner, amount, decimals)
             .await
             .unwrap();
 
@@ -488,13 +484,7 @@ async fn ct_deposit() {
     );
 
     token
-        .confidential_transfer_deposit(
-            &alice_meta.token_account,
-            &alice_meta.token_account,
-            &alice,
-            65537,
-            decimals,
-        )
+        .confidential_transfer_deposit(&alice_meta.token_account, &alice, 65537, decimals)
         .await
         .unwrap();
 
@@ -523,24 +513,12 @@ async fn ct_deposit() {
         .await;
 
     token
-        .confidential_transfer_deposit(
-            &alice_meta.token_account,
-            &alice_meta.token_account,
-            &alice,
-            0,
-            decimals,
-        )
+        .confidential_transfer_deposit(&alice_meta.token_account, &alice, 0, decimals)
         .await
         .unwrap();
 
     let err = token
-        .confidential_transfer_deposit(
-            &alice_meta.token_account,
-            &alice_meta.token_account,
-            &alice,
-            0,
-            decimals,
-        )
+        .confidential_transfer_deposit(&alice_meta.token_account, &alice, 0, decimals)
         .await
         .unwrap_err();
 
@@ -609,7 +587,6 @@ async fn ct_withdraw() {
     token
         .confidential_transfer_withdraw(
             &alice_meta.token_account,
-            &alice_meta.token_account,
             &alice,
             21,
             42,
@@ -642,7 +619,6 @@ async fn ct_withdraw() {
 
     token
         .confidential_transfer_withdraw(
-            &alice_meta.token_account,
             &alice_meta.token_account,
             &alice,
             21,

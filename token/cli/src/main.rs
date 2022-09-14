@@ -4,7 +4,7 @@ use clap::{
 };
 use serde::Serialize;
 use solana_account_decoder::{
-    parse_token::{TokenAccountType, UiAccountState},
+    parse_token::{get_token_account_mint, parse_token, TokenAccountType, UiAccountState},
     UiAccountData,
 };
 use solana_clap_utils::{
@@ -150,6 +150,7 @@ pub enum CommandName {
     Address,
     AccountInfo,
     MultisigInfo,
+    Display,
     Gc,
     SyncNative,
     EnableRequiredTransferMemos,
@@ -343,12 +344,11 @@ pub fn signers_of(
 
 fn token_client_from_config(
     config: &Config<'_>,
-    program_id: &Pubkey,
     token_pubkey: &Pubkey,
 ) -> Token<ProgramRpcClientSendTransaction> {
     let token = Token::new(
         config.program_client.clone(),
-        program_id,
+        &config.program_id,
         token_pubkey,
         config.fee_payer.clone(),
     );
@@ -376,7 +376,7 @@ async fn command_create_token(
 ) -> CommandResult {
     println_display(config, format!("Creating token {}", token_pubkey));
 
-    let token = token_client_from_config(config, &config.program_id, &token_pubkey);
+    let token = token_client_from_config(config, &token_pubkey);
 
     let freeze_authority = if enable_freeze { Some(authority) } else { None };
 
@@ -396,7 +396,7 @@ async fn command_create_token(
     }
 
     if let Some(text) = memo {
-        token.with_memo(text);
+        token.with_memo(text, vec![config.default_signer.pubkey()]);
     }
 
     let res = token
@@ -412,7 +412,7 @@ async fn command_create_token(
     let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(cli_signature) => format_output(
-            CliMint {
+            CliCreateToken {
                 address: token_pubkey.to_string(),
                 decimals,
                 transaction_data: cli_signature,
@@ -433,10 +433,8 @@ async fn command_set_interest_rate(
     rate_bps: i16,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
-    let program_id = if !config.sign_only {
-        let mint_account = config.rpc_client.get_account(&token_pubkey).await?;
-        let program_id = mint_account.owner;
-        config.check_owner(&token_pubkey, &mint_account.owner)?;
+    if !config.sign_only {
+        let mint_account = config.get_account_checked(&token_pubkey).await?;
 
         let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)
             .map_err(|_| format!("Could not deserialize token mint {}", token_pubkey))?;
@@ -459,11 +457,7 @@ async fn command_set_interest_rate(
         } else {
             return Err(format!("Mint {} is not interest-bearing", token_pubkey).into());
         }
-
-        program_id
-    } else {
-        config.program_id
-    };
+    }
 
     println_display(
         config,
@@ -474,7 +468,7 @@ async fn command_set_interest_rate(
     );
 
     let instructions = vec![interest_bearing_mint::instruction::update_rate(
-        &program_id,
+        &config.program_id,
         &token_pubkey,
         &rate_authority,
         &[&rate_authority],
@@ -668,10 +662,8 @@ async fn command_authorize(
         AuthorityType::InterestRate => "interest rate authority",
     };
 
-    let (program_id, mint_pubkey, previous_authority) = if !config.sign_only {
-        let target_account = config.rpc_client.get_account(&account).await?;
-        let program_id = target_account.owner;
-        config.check_owner(&account, &target_account.owner)?;
+    let (mint_pubkey, previous_authority) = if !config.sign_only {
+        let target_account = config.get_account_checked(&account).await?;
 
         let (mint_pubkey, previous_authority) = if let Ok(mint) =
             StateWithExtensionsOwned::<Mint>::unpack(target_account.data.clone())
@@ -715,7 +707,7 @@ async fn command_authorize(
                 let maybe_associated_token_account = get_associated_token_address_with_program_id(
                     &token_account.base.owner,
                     &token_account.base.mint,
-                    &program_id,
+                    &config.program_id,
                 );
                 if account == maybe_associated_token_account
                     && !force_authorize
@@ -761,13 +753,13 @@ async fn command_authorize(
             Err("Unsupported account data format".to_string())
         }?;
 
-        (program_id, mint_pubkey, previous_authority)
+        (mint_pubkey, previous_authority)
     } else {
         // default is safe here because authorize doesnt use it
-        (config.program_id, Pubkey::default(), COption::None)
+        (Pubkey::default(), COption::None)
     };
 
-    let token = token_client_from_config(config, &program_id, &mint_pubkey);
+    let token = token_client_from_config(config, &mint_pubkey);
 
     println_display(
         config,
@@ -811,12 +803,7 @@ async fn command_authorize(
 }
 
 async fn validate_mint(config: &Config<'_>, token: Pubkey) -> Result<Pubkey, Error> {
-    let mint = config
-        .rpc_client
-        .get_account(&token)
-        .await
-        .map_err(|_| format!("Mint account not found {:?}", token))?;
-    config.check_owner(&token, &mint.owner)?;
+    let mint = config.get_account_checked(&token).await?;
     if StateWithExtensionsOwned::<Mint>::unpack(mint.data).is_err() {
         return Err(format!("Invalid mint account {:?}", token).into());
     }
@@ -1058,8 +1045,8 @@ async fn command_transfer(
 #[allow(clippy::too_many_arguments)]
 async fn command_burn(
     config: &Config<'_>,
-    source: Pubkey,
-    source_owner: Pubkey,
+    account: Pubkey,
+    owner: Pubkey,
     ui_amount: f64,
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
@@ -1069,10 +1056,10 @@ async fn command_burn(
 ) -> CommandResult {
     println_display(
         config,
-        format!("Burn {} tokens\n  Source: {}", ui_amount, source),
+        format!("Burn {} tokens\n  Source: {}", ui_amount, account),
     );
 
-    let mint_address = config.check_account(&source, mint_address).await?;
+    let mint_address = config.check_account(&account, mint_address).await?;
     let mint_info = config.get_mint_info(&mint_address, mint_decimals).await?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals);
     let decimals = if use_unchecked_instruction {
@@ -1081,13 +1068,13 @@ async fn command_burn(
         Some(mint_info.decimals)
     };
 
-    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    let token = token_client_from_config(config, &mint_info.address);
     if let Some(text) = memo {
-        token.with_memo(text);
+        token.with_memo(text, vec![config.default_signer.pubkey()]);
     }
 
     let res = token
-        .burn(&source, &source_owner, amount, decimals, &bulk_signers)
+        .burn(&account, &owner, amount, decimals, &bulk_signers)
         .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -1128,9 +1115,9 @@ async fn command_mint(
         Some(mint_info.decimals)
     };
 
-    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    let token = token_client_from_config(config, &mint_info.address);
     if let Some(text) = memo {
-        token.with_memo(text);
+        token.with_memo(text, vec![config.default_signer.pubkey()]);
     }
 
     let res = token
@@ -1166,7 +1153,7 @@ async fn command_freeze(
         ),
     );
 
-    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    let token = token_client_from_config(config, &mint_info.address);
     let res = token
         .freeze(&account, &freeze_authority, &bulk_signers)
         .await?;
@@ -1200,7 +1187,7 @@ async fn command_thaw(
         ),
     );
 
-    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    let token = token_client_from_config(config, &mint_info.address);
     let res = token
         .thaw(&account, &freeze_authority, &bulk_signers)
         .await?;
@@ -1313,26 +1300,26 @@ async fn command_wrap(
 async fn command_unwrap(
     config: &Config<'_>,
     wallet_address: Pubkey,
-    address: Option<Pubkey>,
+    account: Option<Pubkey>,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let use_associated_account = address.is_none();
+    let use_associated_account = account.is_none();
     let native_mint = native_mint(&config.program_id)?;
-    let address = address.unwrap_or_else(|| {
+    let account = account.unwrap_or_else(|| {
         get_associated_token_address_with_program_id(
             &wallet_address,
             &native_mint,
             &config.program_id,
         )
     });
-    println_display(config, format!("Unwrapping {}", address));
+    println_display(config, format!("Unwrapping {}", account));
     if !config.sign_only {
-        let lamports = config.rpc_client.get_balance(&address).await?;
+        let lamports = config.rpc_client.get_balance(&account).await?;
         if lamports == 0 {
             if use_associated_account {
                 return Err("No wrapped SOL in associated account; did you mean to specify an auxiliary address?".to_string().into());
             } else {
-                return Err(format!("No wrapped SOL in {}", address).into());
+                return Err(format!("No wrapped SOL in {}", account).into());
             }
         }
         println_display(
@@ -1344,7 +1331,7 @@ async fn command_unwrap(
 
     let instructions = vec![close_account(
         &config.program_id,
-        &address,
+        &account,
         &wallet_address,
         &wallet_address,
         &config.multisigner_pubkeys,
@@ -1398,7 +1385,7 @@ async fn command_approve(
         Some(mint_info.decimals)
     };
 
-    let token = token_client_from_config(config, &mint_info.program_id, &mint_info.address);
+    let token = token_client_from_config(config, &mint_info.address);
     let res = token
         .approve(&account, &delegate, &owner, amount, decimals, &bulk_signers)
         .await?;
@@ -1421,8 +1408,8 @@ async fn command_revoke(
     delegate: Option<Pubkey>,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let (program_id, mint_pubkey, delegate) = if !config.sign_only {
-        let source_account = config.rpc_client.get_account(&account).await?;
+    let (mint_pubkey, delegate) = if !config.sign_only {
+        let source_account = config.get_account_checked(&account).await?;
         let source_state = StateWithExtensionsOwned::<Account>::unpack(source_account.data)
             .map_err(|_| format!("Could not deserialize token account {}", account))?;
 
@@ -1432,11 +1419,10 @@ async fn command_revoke(
             None
         };
 
-        config.check_owner(&account, &source_account.owner)?;
-        (source_account.owner, source_state.base.mint, delegate)
+        (source_state.base.mint, delegate)
     } else {
         // default is safe here because revoke doesnt use it
-        (config.program_id, Pubkey::default(), delegate)
+        (Pubkey::default(), delegate)
     };
 
     if let Some(delegate) = delegate {
@@ -1451,7 +1437,7 @@ async fn command_revoke(
         return Err(format!("No delegate on account {}", account).into());
     }
 
-    let token = token_client_from_config(config, &program_id, &mint_pubkey);
+    let token = token_client_from_config(config, &mint_pubkey);
     let res = token.revoke(&account, &owner, &bulk_signers).await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -1472,10 +1458,8 @@ async fn command_close(
     recipient: Pubkey,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let (program_id, mint_pubkey) = if !config.sign_only {
-        let source_account = config.rpc_client.get_account(&account).await?;
-        let program_id = source_account.owner;
-        config.check_owner(&account, &source_account.owner)?;
+    let mint_pubkey = if !config.sign_only {
+        let source_account = config.get_account_checked(&account).await?;
 
         let source_state = StateWithExtensionsOwned::<Account>::unpack(source_account.data)
             .map_err(|_| format!("Could not deserialize token account {}", account))?;
@@ -1489,13 +1473,13 @@ async fn command_close(
             .into());
         }
 
-        (program_id, source_state.base.mint)
+        source_state.base.mint
     } else {
         // default is safe here because close doesnt use it
-        (config.program_id, Pubkey::default())
+        Pubkey::default()
     };
 
-    let token = token_client_from_config(config, &program_id, &mint_pubkey);
+    let token = token_client_from_config(config, &mint_pubkey);
     let res = token
         .close_account(&account, &recipient, &close_authority, &bulk_signers)
         .await?;
@@ -1518,10 +1502,8 @@ async fn command_close_mint(
     recipient: Pubkey,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let program_id = if !config.sign_only {
-        let mint_account = config.rpc_client.get_account(&token_pubkey).await?;
-        let program_id = mint_account.owner;
-        config.check_owner(&token_pubkey, &mint_account.owner)?;
+    if !config.sign_only {
+        let mint_account = config.get_account_checked(&token_pubkey).await?;
 
         let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)
             .map_err(|_| format!("Could not deserialize token mint {}", token_pubkey))?;
@@ -1553,13 +1535,9 @@ async fn command_close_mint(
         } else {
             return Err(format!("Mint {} does not support close authority", token_pubkey).into());
         }
+    }
 
-        program_id
-    } else {
-        config.program_id
-    };
-
-    let token = token_client_from_config(config, &program_id, &token_pubkey);
+    let token = token_client_from_config(config, &token_pubkey);
     let res = token
         .close_account(&token_pubkey, &recipient, &close_authority, &bulk_signers)
         .await?;
@@ -1585,8 +1563,8 @@ async fn command_balance(config: &Config<'_>, address: Pubkey) -> CommandResult 
     Ok(config.output_format.formatted_string(&cli_token_amount))
 }
 
-async fn command_supply(config: &Config<'_>, address: Pubkey) -> CommandResult {
-    let supply = config.rpc_client.get_token_supply(&address).await?;
+async fn command_supply(config: &Config<'_>, token: Pubkey) -> CommandResult {
+    let supply = config.rpc_client.get_token_supply(&token).await?;
     let cli_token_amount = CliTokenAmount { amount: supply };
     Ok(config.output_format.formatted_string(&cli_token_amount))
 }
@@ -1596,18 +1574,16 @@ async fn command_accounts(
     token: Option<Pubkey>,
     owner: Pubkey,
 ) -> CommandResult {
-    let program_id = if let Some(token) = token {
-        validate_mint(config, token).await?
-    } else {
-        config.program_id
-    };
+    if let Some(token) = token {
+        validate_mint(config, token).await?;
+    }
     let accounts = config
         .rpc_client
         .get_token_accounts_by_owner(
             &owner,
             match token {
                 Some(token) => TokenAccountsFilter::Mint(token),
-                None => TokenAccountsFilter::ProgramId(program_id),
+                None => TokenAccountsFilter::ProgramId(config.program_id),
             },
         )
         .await?;
@@ -1617,7 +1593,7 @@ async fn command_accounts(
     }
 
     let (mint_accounts, unsupported_accounts, max_len_balance, includes_aux) =
-        sort_and_parse_token_accounts(&owner, accounts, &program_id);
+        sort_and_parse_token_accounts(&owner, accounts, &config.program_id);
     let aux_len = if includes_aux { 10 } else { 0 };
 
     let cli_token_accounts = CliTokenAccounts {
@@ -1643,61 +1619,67 @@ async fn command_address(
         ..CliWalletAddress::default()
     };
     if let Some(token) = token {
-        let program_id = validate_mint(config, token).await?;
+        validate_mint(config, token).await?;
         let associated_token_address =
-            get_associated_token_address_with_program_id(&owner, &token, &program_id);
+            get_associated_token_address_with_program_id(&owner, &token, &config.program_id);
         cli_address.associated_token_address = Some(associated_token_address.to_string());
     }
     Ok(config.output_format.formatted_string(&cli_address))
 }
 
-async fn command_account_info(config: &Config<'_>, address: Pubkey) -> CommandResult {
-    let account = config
-        .rpc_client
-        .get_token_account(&address)
-        .await
-        .map_err(|_| format!("Could not find token account {}", address))?
-        .unwrap();
-    let mint = Pubkey::from_str(&account.mint).unwrap();
-    let owner = Pubkey::from_str(&account.owner).unwrap();
-    let program_id = config.rpc_client.get_account(&address).await?.owner;
-    let is_associated =
-        get_associated_token_address_with_program_id(&owner, &mint, &program_id) == address;
-    let cli_token_account = CliTokenAccount {
-        address: address.to_string(),
-        is_associated,
-        account,
-    };
-    Ok(config.output_format.formatted_string(&cli_token_account))
-}
+async fn command_display(config: &Config<'_>, address: Pubkey) -> CommandResult {
+    let account_data = config.get_account_checked(&address).await?;
 
-async fn get_multisig(config: &Config<'_>, address: &Pubkey) -> Result<Multisig, Error> {
-    let account = config.rpc_client.get_account(address).await?;
-    Multisig::unpack(&account.data).map_err(|e| e.into())
-}
-
-async fn command_multisig(config: &Config<'_>, address: Pubkey) -> CommandResult {
-    let multisig = get_multisig(config, &address).await?;
-    let n = multisig.n as usize;
-    assert!(n <= multisig.signers.len());
-    let cli_multisig = CliMultisig {
-        address: address.to_string(),
-        m: multisig.m,
-        n: multisig.n,
-        signers: multisig
-            .signers
-            .iter()
-            .enumerate()
-            .filter_map(|(i, signer)| {
-                if i < n {
-                    Some(signer.to_string())
-                } else {
-                    None
-                }
-            })
-            .collect(),
+    let decimals = if let Some(mint_address) = get_token_account_mint(&account_data.data) {
+        Some(config.get_mint_info(&mint_address, None).await?.decimals)
+    } else {
+        None
     };
-    Ok(config.output_format.formatted_string(&cli_multisig))
+
+    let token_data = parse_token(&account_data.data, decimals);
+
+    match token_data {
+        Ok(TokenAccountType::Account(account)) => {
+            let mint_address = Pubkey::from_str(&account.mint)?;
+            let owner = Pubkey::from_str(&account.owner)?;
+            let associated_address = get_associated_token_address_with_program_id(
+                &owner,
+                &mint_address,
+                &config.program_id,
+            );
+
+            let cli_output = CliTokenAccount {
+                address: address.to_string(),
+                program_id: config.program_id.to_string(),
+                decimals,
+                is_associated: associated_address == address,
+                account,
+            };
+
+            Ok(config.output_format.formatted_string(&cli_output))
+        }
+        Ok(TokenAccountType::Mint(mint)) => {
+            let epoch_info = config.rpc_client.get_epoch_info().await?;
+            let cli_output = CliMint {
+                address: address.to_string(),
+                epoch: epoch_info.epoch,
+                program_id: config.program_id.to_string(),
+                mint,
+            };
+
+            Ok(config.output_format.formatted_string(&cli_output))
+        }
+        Ok(TokenAccountType::Multisig(multisig)) => {
+            let cli_output = CliMultisig {
+                address: address.to_string(),
+                program_id: config.program_id.to_string(),
+                multisig,
+            };
+
+            Ok(config.output_format.formatted_string(&cli_output))
+        }
+        Err(e) => Err(e.into()),
+    }
 }
 
 async fn command_gc(
@@ -1883,21 +1865,9 @@ async fn command_sync_native(
     bulk_signers: Vec<Arc<dyn Signer>>,
     config: &Config<'_>,
 ) -> CommandResult {
-    let program_id = if config.sign_only {
-        config.program_id
-    } else {
-        config
-            .rpc_client
-            .get_account(&native_account_address)
-            .await
-            .map_err(|err| {
-                format!(
-                    "Token account {} does not exist: {}",
-                    native_account_address, err
-                )
-            })?
-            .owner
-    };
+    if !config.sign_only {
+        config.get_account_checked(&native_account_address).await?;
+    }
 
     let tx_return = handle_tx(
         &CliSignerInfo {
@@ -1906,7 +1876,7 @@ async fn command_sync_native(
         config,
         false,
         0,
-        vec![sync_native(&program_id, &native_account_address)?],
+        vec![sync_native(&config.program_id, &native_account_address)?],
     )
     .await?;
     Ok(match tx_return {
@@ -2061,7 +2031,6 @@ fn multisig_member_help_string() -> String {
 
 fn app<'a, 'b>(
     default_decimals: &'a str,
-    default_program_id: &'a str,
     minimum_signers_help: &'b str,
     multisig_member_help: &'b str,
 ) -> App<'a, 'b> {
@@ -2102,7 +2071,6 @@ fn app<'a, 'b>(
                 .value_name("ADDRESS")
                 .takes_value(true)
                 .global(true)
-                .default_value(default_program_id)
                 .validator(is_valid_pubkey)
                 .help("SPL Token program id"),
         )
@@ -2199,7 +2167,7 @@ fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token")
                         .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ADDRESS")
+                        .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .required(true)
                         .help("The interest-bearing token address"),
@@ -2229,7 +2197,7 @@ fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token")
                         .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ADDRESS")
+                        .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
                         .required(true)
@@ -2297,7 +2265,7 @@ fn app<'a, 'b>(
                         .takes_value(true)
                         .index(1)
                         .required(true)
-                        .help("The address of the token account"),
+                        .help("The address of the token mint or account"),
                 )
                 .arg(
                     Arg::with_name("authority_type")
@@ -2358,7 +2326,7 @@ fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token")
                         .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ADDRESS")
+                        .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
                         .required(true)
@@ -2447,9 +2415,9 @@ fn app<'a, 'b>(
             SubCommand::with_name(CommandName::Burn.into())
                 .about("Burn tokens from an account")
                 .arg(
-                    Arg::with_name("source")
+                    Arg::with_name("account")
                         .validator(is_valid_pubkey)
-                        .value_name("SOURCE_TOKEN_ACCOUNT_ADDRESS")
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
                         .required(true)
@@ -2464,9 +2432,9 @@ fn app<'a, 'b>(
                         .required(true)
                         .help("Amount to burn, in tokens"),
                 )
-                .arg(owner_keypair_arg_with_value_name("SOURCE_TOKEN_OWNER_KEYPAIR")
+                .arg(owner_keypair_arg_with_value_name("TOKEN_OWNER_KEYPAIR")
                         .help(
-                            "Specify the source token owner account. \
+                            "Specify the burnt token owner account. \
                             This may be a keypair file or the ASK keyword. \
                             Defaults to the client keypair.",
                         ),
@@ -2483,7 +2451,7 @@ fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token")
                         .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ADDRESS")
+                        .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
                         .required(true)
@@ -2623,7 +2591,7 @@ fn app<'a, 'b>(
             SubCommand::with_name(CommandName::Unwrap.into())
                 .about("Unwrap a SOL token account")
                 .arg(
-                    Arg::with_name("address")
+                    Arg::with_name("account")
                         .validator(is_valid_pubkey)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
@@ -2711,7 +2679,7 @@ fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token")
                         .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ADDRESS")
+                        .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
                         .required_unless("address")
@@ -2760,7 +2728,7 @@ fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token")
                         .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ADDRESS")
+                        .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
                         .required(true)
@@ -2797,7 +2765,7 @@ fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token")
                         .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ADDRESS")
+                        .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
                         .required_unless("address")
@@ -2819,9 +2787,9 @@ fn app<'a, 'b>(
             SubCommand::with_name(CommandName::Supply.into())
                 .about("Get token supply")
                 .arg(
-                    Arg::with_name("address")
+                    Arg::with_name("token")
                         .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ADDRESS")
+                        .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
                         .required(true)
@@ -2834,7 +2802,7 @@ fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token")
                         .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ADDRESS")
+                        .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
                         .help("Limit results to the given token. [Default: list accounts for all tokens]"),
@@ -2847,7 +2815,7 @@ fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token")
                         .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ADDRESS")
+                        .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .long("token")
                         .requires("verbose")
@@ -2863,11 +2831,12 @@ fn app<'a, 'b>(
         )
         .subcommand(
             SubCommand::with_name(CommandName::AccountInfo.into())
-                .about("Query details of an SPL Token account by address")
+                .about("Query details of an SPL Token account by address (DEPRECATED: use `spl-token display`)")
+                .setting(AppSettings::Hidden)
                 .arg(
                     Arg::with_name("token")
                         .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ADDRESS")
+                        .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
                         .conflicts_with("address")
@@ -2895,7 +2864,8 @@ fn app<'a, 'b>(
         )
         .subcommand(
             SubCommand::with_name(CommandName::MultisigInfo.into())
-                .about("Query details about and SPL Token multisig account by address")
+                .about("Query details of an SPL Token multisig account by address (DEPRECATED: use `spl-token display`)")
+                .setting(AppSettings::Hidden)
                 .arg(
                     Arg::with_name("address")
                     .validator(is_valid_pubkey)
@@ -2904,6 +2874,19 @@ fn app<'a, 'b>(
                     .index(1)
                     .required(true)
                     .help("The address of the SPL Token multisig account to query"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::Display.into())
+                .about("Query details of an SPL Token mint, account, or multisig by address")
+                .arg(
+                    Arg::with_name("address")
+                    .validator(is_valid_pubkey)
+                    .value_name("TOKEN_ADDRESS")
+                    .takes_value(true)
+                    .index(1)
+                    .required(true)
+                    .help("The address of the SPL Token mint, account, or multisig to query"),
                 ),
         )
         .subcommand(
@@ -2981,12 +2964,10 @@ fn app<'a, 'b>(
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let default_decimals = format!("{}", spl_token_2022::native_mint::DECIMALS);
-    let default_program_id = spl_token::id().to_string();
     let minimum_signers_help = minimum_signers_help_string();
     let multisig_member_help = multisig_member_help_string();
     let app_matches = app(
         &default_decimals,
-        &default_program_id,
         &minimum_signers_help,
         &multisig_member_help,
     )
@@ -3005,7 +2986,8 @@ async fn main() -> Result<(), Error> {
         &mut wallet_manager,
         &mut bulk_signers,
         &mut multisigner_ids,
-    );
+    )
+    .await;
 
     solana_logger::setup_with_default("solana=info");
     let result =
@@ -3211,7 +3193,7 @@ async fn process_command<'a>(
             .await
         }
         (CommandName::Burn, arg_matches) => {
-            let source = pubkey_of_signer(arg_matches, "source", &mut wallet_manager)
+            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
 
@@ -3229,7 +3211,7 @@ async fn process_command<'a>(
             let memo = value_t!(arg_matches, "memo", String).ok();
             command_burn(
                 config,
-                source,
+                account,
                 owner,
                 amount,
                 mint_address,
@@ -3349,8 +3331,8 @@ async fn process_command<'a>(
                 bulk_signers.push(wallet_signer);
             }
 
-            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
-            command_unwrap(config, wallet_address, address, bulk_signers).await
+            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager).unwrap();
+            command_unwrap(config, wallet_address, account, bulk_signers).await
         }
         (CommandName::Approve, arg_matches) => {
             let (owner_signer, owner_address) =
@@ -3438,10 +3420,10 @@ async fn process_command<'a>(
             command_balance(config, address).await
         }
         (CommandName::Supply, arg_matches) => {
-            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            command_supply(config, address).await
+            command_supply(config, token).await
         }
         (CommandName::Accounts, arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
@@ -3457,13 +3439,19 @@ async fn process_command<'a>(
             let address = config
                 .associated_token_address_or_override(arg_matches, "address", &mut wallet_manager)
                 .await;
-            command_account_info(config, address).await
+            command_display(config, address).await
         }
         (CommandName::MultisigInfo, arg_matches) => {
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            command_multisig(config, address).await
+            command_display(config, address).await
+        }
+        (CommandName::Display, arg_matches) => {
+            let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            command_display(config, address).await
         }
         (CommandName::Gc, arg_matches) => {
             match config.output_format {
@@ -3838,13 +3826,11 @@ mod tests {
         args: &[&str],
     ) -> CommandResult {
         let default_decimals = format!("{}", spl_token_2022::native_mint::DECIMALS);
-        let default_program_id = spl_token::id().to_string();
         let minimum_signers_help = minimum_signers_help_string();
         let multisig_member_help = multisig_member_help_string();
 
         let app_matches = app(
             &default_decimals,
-            &default_program_id,
             &minimum_signers_help,
             &multisig_member_help,
         )
@@ -3860,13 +3846,11 @@ mod tests {
 
     async fn exec_test_cmd(config: &Config<'_>, args: &[&str]) -> CommandResult {
         let default_decimals = format!("{}", spl_token_2022::native_mint::DECIMALS);
-        let default_program_id = spl_token::id().to_string();
         let minimum_signers_help = minimum_signers_help_string();
         let multisig_member_help = multisig_member_help_string();
 
         let app_matches = app(
             &default_decimals,
-            &default_program_id,
             &minimum_signers_help,
             &multisig_member_help,
         )
@@ -3887,7 +3871,8 @@ mod tests {
             config.rpc_client.clone(),
             config.program_client.clone(),
             config.websocket_url.clone(),
-        );
+        )
+        .await;
 
         process_command(&sub_command, matches, &config, wallet_manager, bulk_signers).await
     }
