@@ -107,6 +107,7 @@ pub enum ExtensionInitializationParams {
         rate_authority: Option<Pubkey>,
         rate: i16,
     },
+    NonTransferable,
 }
 impl ExtensionInitializationParams {
     /// Get the extension type associated with the init params
@@ -117,6 +118,7 @@ impl ExtensionInitializationParams {
             Self::MintCloseAuthority { .. } => ExtensionType::MintCloseAuthority,
             Self::TransferFeeConfig { .. } => ExtensionType::TransferFeeConfig,
             Self::InterestBearingConfig { .. } => ExtensionType::InterestBearingConfig,
+            Self::NonTransferable => ExtensionType::NonTransferable,
         }
     }
     /// Generate an appropriate initialization instruction for the given mint
@@ -169,6 +171,9 @@ impl ExtensionInitializationParams {
                 rate_authority,
                 rate,
             ),
+            Self::NonTransferable => {
+                instruction::initialize_non_transferable_mint(token_program_id, mint)
+            }
         }
     }
 }
@@ -499,29 +504,34 @@ where
             }
         }
         let space = ExtensionType::get_account_len::<Account>(&required_extensions);
-        self.process_ixs(
-            &[
-                system_instruction::create_account(
-                    &self.payer.pubkey(),
-                    &account.pubkey(),
-                    self.client
-                        .get_minimum_balance_for_rent_exemption(space)
-                        .await
-                        .map_err(TokenError::Client)?,
-                    space as u64,
-                    &self.program_id,
-                ),
-                instruction::initialize_account(
-                    &self.program_id,
-                    &account.pubkey(),
-                    &self.pubkey,
-                    owner,
-                )?,
-            ],
-            &vec![account],
-        )
-        .await
-        .map_err(Into::into)
+        let mut instructions = vec![system_instruction::create_account(
+            &self.payer.pubkey(),
+            &account.pubkey(),
+            self.client
+                .get_minimum_balance_for_rent_exemption(space)
+                .await
+                .map_err(TokenError::Client)?,
+            space as u64,
+            &self.program_id,
+        )];
+
+        if required_extensions.contains(&ExtensionType::ImmutableOwner) {
+            instructions.push(instruction::initialize_immutable_owner(
+                &self.program_id,
+                &account.pubkey(),
+            )?)
+        }
+
+        instructions.push(instruction::initialize_account(
+            &self.program_id,
+            &account.pubkey(),
+            &self.pubkey,
+            owner,
+        )?);
+
+        self.process_ixs(&instructions, &vec![account])
+            .await
+            .map_err(Into::into)
     }
 
     /// Retrieve a raw account
