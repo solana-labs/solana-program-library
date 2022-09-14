@@ -409,7 +409,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 eprintln!("error: create escrow: {}", err);
                 exit(1);
             });
-            println!("{:?}", response);
+            println!("{}", response);
         }
         ("exchange", arg_matches) => {
             let mut bulk_signers = vec![config.payer.clone()];
