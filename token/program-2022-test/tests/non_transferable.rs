@@ -34,12 +34,13 @@ async fn transfer_checked() {
     } = context.token_context.unwrap();
 
     // create token accounts
-    let alice_account = token
+    token
         .create_auxiliary_token_account(&alice, &alice.pubkey())
         .await
         .unwrap();
+    let alice_account = alice.pubkey();
 
-    let bob_account = token
+    token
         .create_auxiliary_token_account_with_extension_space(
             &bob,
             &bob.pubkey(),
@@ -47,6 +48,7 @@ async fn transfer_checked() {
         )
         .await
         .unwrap();
+    let bob_account = bob.pubkey();
 
     // mint fails because the account does not have immutable ownership
     let error = token
@@ -168,7 +170,7 @@ async fn transfer_checked_with_fee() {
     } = context.token_context.unwrap();
 
     // create token accounts
-    let alice_account = token
+    token
         .create_auxiliary_token_account_with_extension_space(
             &alice,
             &alice.pubkey(),
@@ -176,8 +178,9 @@ async fn transfer_checked_with_fee() {
         )
         .await
         .unwrap();
+    let alice_account = alice.pubkey();
 
-    let bob_account = token
+    token
         .create_auxiliary_token_account_with_extension_space(
             &bob,
             &bob.pubkey(),
@@ -185,6 +188,7 @@ async fn transfer_checked_with_fee() {
         )
         .await
         .unwrap();
+    let bob_account = bob.pubkey();
 
     token
         .mint_to(
