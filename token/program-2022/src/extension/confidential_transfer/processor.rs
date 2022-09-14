@@ -267,7 +267,7 @@ fn process_deposit(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
-    let destination_token_account_info = next_account_info(account_info_iter)?;
+    // let destination_token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
@@ -284,94 +284,74 @@ fn process_deposit(
         return Err(TokenError::NonTransferable.into());
     }
 
-    // Process source account
-    {
-        check_program_account(token_account_info.owner)?;
-        let token_account_data = &mut token_account_info.data.borrow_mut();
-        let mut token_account = StateWithExtensionsMut::<Account>::unpack(token_account_data)?;
+    check_program_account(token_account_info.owner)?;
+    let token_account_data = &mut token_account_info.data.borrow_mut();
+    let mut token_account = StateWithExtensionsMut::<Account>::unpack(token_account_data)?;
 
-        Processor::validate_owner(
-            program_id,
-            &token_account.base.owner,
-            authority_info,
-            authority_info_data_len,
-            account_info_iter.as_slice(),
-        )?;
+    Processor::validate_owner(
+        program_id,
+        &token_account.base.owner,
+        authority_info,
+        authority_info_data_len,
+        account_info_iter.as_slice(),
+    )?;
 
-        if token_account.base.is_frozen() {
-            return Err(TokenError::AccountFrozen.into());
-        }
-
-        if token_account.base.mint != *mint_info.key {
-            return Err(TokenError::MintMismatch.into());
-        }
-
-        // Wrapped SOL deposits are not supported because lamports cannot be vanished.
-        assert!(!token_account.base.is_native());
-        token_account.base.amount = token_account
-            .base
-            .amount
-            .checked_sub(amount)
-            .ok_or(TokenError::Overflow)?;
-
-        token_account.pack_base();
+    if token_account.base.is_frozen() {
+        return Err(TokenError::AccountFrozen.into());
     }
 
-    //
-    // Finished with the source token account at this point. Drop all references to it to avoid a
-    // double borrow if the source and destination accounts are the same
-    //
+    if token_account.base.mint != *mint_info.key {
+        return Err(TokenError::MintMismatch.into());
+    }
 
-    // Process destination account
+    // Wrapped SOL deposits are not supported because lamports cannot be vanished.
+    assert!(!token_account.base.is_native());
+
+    // A deposit amount must be a 48-bit number
+    if amount >> MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH > 0 {
+        return Err(TokenError::MaximumDepositAmountExceeded.into());
+    }
+
+    token_account.base.amount = token_account
+        .base
+        .amount
+        .checked_sub(amount)
+        .ok_or(TokenError::Overflow)?;
+
+    token_account.pack_base();
+
+    let mut confidential_transfer_account =
+        token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
+    confidential_transfer_account.approved()?;
+
+    if !bool::from(&confidential_transfer_account.allow_balance_credits) {
+        return Err(TokenError::ConfidentialTransferDepositsAndTransfersDisabled.into());
+    }
+
+    // Divide the deposit amount into low 16 and high 48-bit numbers and then add to the
+    // appropriate pending ciphertexts
+    confidential_transfer_account.pending_balance_lo = ops::add_to(
+        &confidential_transfer_account.pending_balance_lo,
+        amount << PENDING_BALANCE_HI_BIT_LENGTH >> PENDING_BALANCE_HI_BIT_LENGTH,
+    )
+    .ok_or(ProgramError::InvalidInstructionData)?;
+
+    confidential_transfer_account.pending_balance_hi = ops::add_to(
+        &confidential_transfer_account.pending_balance_hi,
+        amount >> PENDING_BALANCE_LO_BIT_LENGTH,
+    )
+    .ok_or(ProgramError::InvalidInstructionData)?;
+
+    confidential_transfer_account.pending_balance_credit_counter =
+        (u64::from(confidential_transfer_account.pending_balance_credit_counter)
+            .checked_add(1)
+            .ok_or(ProgramError::InvalidInstructionData)?)
+        .into();
+
+    if u64::from(confidential_transfer_account.pending_balance_credit_counter)
+        > u64::from(confidential_transfer_account.maximum_pending_balance_credit_counter)
     {
-        check_program_account(destination_token_account_info.owner)?;
-        let destination_token_account_data = &mut destination_token_account_info.data.borrow_mut();
-        let mut destination_token_account =
-            StateWithExtensionsMut::<Account>::unpack(destination_token_account_data)?;
-
-        if destination_token_account.base.is_frozen() {
-            return Err(TokenError::AccountFrozen.into());
-        }
-
-        if destination_token_account.base.mint != *mint_info.key {
-            return Err(TokenError::MintMismatch.into());
-        }
-
-        let mut destination_confidential_transfer_account =
-            destination_token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-        destination_confidential_transfer_account.approved()?;
-
-        if !bool::from(&destination_confidential_transfer_account.allow_balance_credits) {
-            return Err(TokenError::ConfidentialTransferDepositsAndTransfersDisabled.into());
-        }
-
-        // Divide deposit into the low 16 and high 48 bits and then add to the appropriate pending
-        // ciphertexts
-        destination_confidential_transfer_account.pending_balance_lo = ops::add_to(
-            &destination_confidential_transfer_account.pending_balance_lo,
-            amount << PENDING_BALANCE_HI_BIT_LENGTH >> PENDING_BALANCE_HI_BIT_LENGTH,
-        )
-        .ok_or(ProgramError::InvalidInstructionData)?;
-
-        destination_confidential_transfer_account.pending_balance_hi = ops::add_to(
-            &destination_confidential_transfer_account.pending_balance_hi,
-            amount >> PENDING_BALANCE_LO_BIT_LENGTH,
-        )
-        .ok_or(ProgramError::InvalidInstructionData)?;
-
-        destination_confidential_transfer_account.pending_balance_credit_counter =
-            (u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
-                .checked_add(1)
-                .ok_or(ProgramError::InvalidInstructionData)?)
-            .into();
-
-        if u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
-            > u64::from(
-                destination_confidential_transfer_account.maximum_pending_balance_credit_counter,
-            )
-        {
-            return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
-        }
+        return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
     }
 
     Ok(())

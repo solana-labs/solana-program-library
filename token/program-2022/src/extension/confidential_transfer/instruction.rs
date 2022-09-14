@@ -131,23 +131,25 @@ pub enum ConfidentialTransferInstruction {
     /// The account owner can then invoke the `ApplyPendingBalance` instruction to roll the deposit
     /// into their available balance at a time of their choosing.
     ///
+<<<<<<< HEAD
     /// Fails if the source or destination accounts are frozen.
     /// Fails if the associated mint is extended as `NonTransferable`.
+=======
+    /// Fails if the account is frozen.
+>>>>>>> 1668db8e (restrict deposit source account to base account)
     ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
-    ///   0. `[writable]` The source SPL Token account.
-    ///   1. `[writable]` The destination SPL Token account with confidential transfers configured.
-    ///   2. `[]` The token mint.
-    ///   3. `[signer]` The single source account owner or delegate.
+    ///   0. `[writable]` The SPL Token account.
+    ///   1. `[]` The token mint.
+    ///   2. `[signer]` The single account owner or delegate.
     ///
     ///   * Multisignature owner/delegate
-    ///   0. `[writable]` The source SPL Token account.
-    ///   1. `[writable]` The destination SPL Token account with confidential transfers configured.
-    ///   2. `[]` The token mint.
-    ///   3. `[]` The multisig source account owner or delegate.
-    ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   0. `[writable]` The SPL Token account.
+    ///   1. `[]` The token mint.
+    ///   2. `[]` The multisig account owner or delegate.
+    ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
     /// Data expected by this instruction:
     ///   `DepositInstructionData`
@@ -622,9 +624,8 @@ pub fn empty_account(
 #[allow(clippy::too_many_arguments)]
 pub fn deposit(
     token_program_id: &Pubkey,
-    source_token_account: &Pubkey,
+    token_account: &Pubkey,
     mint: &Pubkey,
-    destination_token_account: &Pubkey,
     amount: u64,
     decimals: u8,
     authority: &Pubkey,
@@ -632,8 +633,7 @@ pub fn deposit(
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
-        AccountMeta::new(*source_token_account, false),
-        AccountMeta::new(*destination_token_account, false),
+        AccountMeta::new(*token_account, false),
         AccountMeta::new_readonly(*mint, false),
         AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];

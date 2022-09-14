@@ -156,6 +156,9 @@ pub enum TokenError {
             the associated `maximum_pending_balance_credit_counter`"
     )]
     MaximumPendingBalanceCreditCounterExceeded,
+    /// The deposit amount for the confidential extension exceeds the maximum limit
+    #[error("Deposit amount exceeds maximum limit")]
+    MaximumDepositAmountExceeded,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -267,6 +270,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::MaximumPendingBalanceCreditCounterExceeded => {
                 msg!("The total number of `Deposit` and `Transfer` instructions to an account cannot exceed the associated `maximum_pending_balance_credit_counter`");
+            }
+            TokenError::MaximumDepositAmountExceeded => {
+                msg!("Deposit amount exceeds maximum limit")
             }
         }
     }
