@@ -1397,9 +1397,8 @@ where
     /// Deposit SPL Tokens into the pending balance of a confidential token account
     pub async fn confidential_transfer_deposit<S: Signer>(
         &self,
-        source_token_account: &Pubkey,
-        destination_token_account: &Pubkey,
-        source_token_authority: &S,
+        token_account: &Pubkey,
+        token_authority: &S,
         amount: u64,
         decimals: u8,
     ) -> TokenResult<T::Output> {
@@ -1410,15 +1409,14 @@ where
         self.process_ixs(
             &[confidential_transfer::instruction::deposit(
                 &self.program_id,
-                source_token_account,
+                token_account,
                 &self.pubkey,
-                destination_token_account,
                 amount,
                 decimals,
-                &source_token_authority.pubkey(),
+                &token_authority.pubkey(),
                 &[],
             )?],
-            &[source_token_authority],
+            &[token_authority],
         )
         .await
     }
@@ -1428,30 +1426,27 @@ where
     #[allow(clippy::too_many_arguments)]
     pub async fn confidential_transfer_withdraw<S: Signer>(
         &self,
-        source_token_account: &Pubkey,
-        destination_token_account: &Pubkey,
-        source_token_authority: &S,
+        token_account: &Pubkey,
+        token_authority: &S,
         amount: u64,
-        source_available_balance: u64,
-        source_available_balance_ciphertext: &ElGamalCiphertext,
+        available_balance: u64,
+        available_balance_ciphertext: &ElGamalCiphertext,
         decimals: u8,
     ) -> TokenResult<T::Output> {
-        let source_elgamal_keypair =
-            ElGamalKeypair::new(source_token_authority, source_token_account)
-                .map_err(TokenError::Key)?;
-        let source_authenticated_encryption_key =
-            AeKey::new(source_token_authority, source_token_account).map_err(TokenError::Key)?;
+        let elgamal_keypair =
+            ElGamalKeypair::new(token_authority, token_account).map_err(TokenError::Key)?;
+        let authenticated_encryption_key =
+            AeKey::new(token_authority, token_account).map_err(TokenError::Key)?;
 
         self.confidential_transfer_withdraw_with_key(
-            source_token_account,
-            destination_token_account,
-            source_token_authority,
+            token_account,
+            token_authority,
             amount,
             decimals,
-            source_available_balance,
-            source_available_balance_ciphertext,
-            &source_elgamal_keypair,
-            &source_authenticated_encryption_key,
+            available_balance,
+            available_balance_ciphertext,
+            &elgamal_keypair,
+            &authenticated_encryption_key,
         )
         .await
     }
@@ -1461,44 +1456,42 @@ where
     #[allow(clippy::too_many_arguments)]
     pub async fn confidential_transfer_withdraw_with_key<S: Signer>(
         &self,
-        source_token_account: &Pubkey,
-        destination_token_account: &Pubkey,
-        source_token_authority: &S,
+        token_account: &Pubkey,
+        token_authority: &S,
         amount: u64,
         decimals: u8,
-        source_available_balance: u64,
-        source_available_balance_ciphertext: &ElGamalCiphertext,
-        source_elgamal_keypair: &ElGamalKeypair,
-        source_authenticated_encryption_key: &AeKey,
+        available_balance: u64,
+        available_balance_ciphertext: &ElGamalCiphertext,
+        elgamal_keypair: &ElGamalKeypair,
+        authenticated_encryption_key: &AeKey,
     ) -> TokenResult<T::Output> {
         let proof_data = confidential_transfer::instruction::WithdrawData::new(
             amount,
-            source_elgamal_keypair,
-            source_available_balance,
-            source_available_balance_ciphertext,
+            elgamal_keypair,
+            available_balance,
+            available_balance_ciphertext,
         )
         .map_err(TokenError::Proof)?;
 
-        let source_remaining_balance = source_available_balance
+        let remaining_balance = available_balance
             .checked_sub(amount)
             .ok_or(TokenError::NotEnoughFunds)?;
-        let new_source_decryptable_available_balance =
-            source_authenticated_encryption_key.encrypt(source_remaining_balance);
+        let new_decryptable_available_balance =
+            authenticated_encryption_key.encrypt(remaining_balance);
 
         self.process_ixs(
             &confidential_transfer::instruction::withdraw(
                 &self.program_id,
-                source_token_account,
-                destination_token_account,
+                token_account,
                 &self.pubkey,
                 amount,
                 decimals,
-                new_source_decryptable_available_balance,
-                &source_token_authority.pubkey(),
+                new_decryptable_available_balance,
+                &token_authority.pubkey(),
                 &[],
                 &proof_data,
             )?,
-            &[source_token_authority],
+            &[token_authority],
         )
         .await
     }
