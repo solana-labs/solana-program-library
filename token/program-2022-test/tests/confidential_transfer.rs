@@ -123,7 +123,7 @@ impl ConfidentialTokenAccountMeta {
         }
     }
 
-    async fn new_with_memo<T>(token: &Token<T>, owner: &Keypair) -> Self
+    async fn new_with_required_memo_transfers<T>(token: &Token<T>, owner: &Keypair) -> Self
     where
         T: SendTransaction,
     {
@@ -1419,7 +1419,8 @@ async fn ct_transfer_memo() {
     let alice_meta =
         ConfidentialTokenAccountMeta::with_tokens(&token, &alice, &mint_authority, 42, decimals)
             .await;
-    let bob_meta = ConfidentialTokenAccountMeta::new_with_memo(&token, &bob).await;
+    let bob_meta =
+        ConfidentialTokenAccountMeta::new_with_required_memo_transfers(&token, &bob).await;
 
     let state = token
         .get_account_info(&alice_meta.token_account)
@@ -1528,7 +1529,8 @@ async fn ct_transfer_with_fee_memo() {
     let alice_meta =
         ConfidentialTokenAccountMeta::with_tokens(&token, &alice, &mint_authority, 100, decimals)
             .await;
-    let bob_meta = ConfidentialTokenAccountMeta::new_with_memo(&token, &bob).await;
+    let bob_meta =
+        ConfidentialTokenAccountMeta::new_with_required_memo_transfers(&token, &bob).await;
 
     let state = token
         .get_account_info(&alice_meta.token_account)
