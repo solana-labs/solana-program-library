@@ -499,77 +499,43 @@ async fn command_set_interest_rate(
 
 async fn command_create_account(
     config: &Config<'_>,
-    token: Pubkey,
+    token_pubkey: Pubkey,
     owner: Pubkey,
     maybe_account: Option<Pubkey>,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
-    let minimum_balance_for_rent_exemption = if !config.sign_only {
-        config
-            .program_client
-            .get_minimum_balance_for_rent_exemption(Account::LEN)
-            .await?
+    let token = token_client_from_config(config, &token_pubkey);
+
+    let (account, associated) = if let Some(account) = maybe_account {
+        (account, false)
     } else {
-        0
+        (token.get_associated_token_address(&owner), true)
     };
 
-    let mint_info = config.get_mint_info(&token, None).await?;
-    let (account, system_account_ok, instructions) = if let Some(account) = maybe_account {
-        println_display(config, format!("Creating account {}", account));
-        (
-            account,
-            false,
-            vec![
-                system_instruction::create_account(
-                    &config.fee_payer.pubkey(),
-                    &account,
-                    minimum_balance_for_rent_exemption,
-                    Account::LEN as u64,
-                    &mint_info.program_id,
-                ),
-                initialize_account(&mint_info.program_id, &account, &token, &owner)?,
-            ],
-        )
-    } else {
-        let account =
-            get_associated_token_address_with_program_id(&owner, &token, &mint_info.program_id);
-        println_display(config, format!("Creating account {}", account));
-        (
-            account,
-            true,
-            vec![create_associated_token_account(
-                &config.fee_payer.pubkey(),
-                &owner,
-                &token,
-                &mint_info.program_id,
-            )],
-        )
-    };
+    println_display(config, format!("Creating account {}", account));
 
     if !config.sign_only {
-        if let Some(account_data) = config
-            .rpc_client
-            .get_account_with_commitment(&account, config.rpc_client.commitment())
-            .await?
-            .value
-        {
-            if !(account_data.owner == system_program::id() && system_account_ok) {
+        if let Some(account_data) = config.program_client.get_account(account).await? {
+            if account_data.owner != system_program::id() || !associated {
                 return Err(format!("Error: Account already exists: {}", account).into());
             }
         }
     }
 
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        minimum_balance_for_rent_exemption,
-        instructions,
-    )
-    .await?;
+    let res = if associated {
+        token.create_associated_token_account(&owner).await
+    } else {
+        let signer = bulk_signers
+            .iter()
+            .find(|signer| signer.pubkey() == account)
+            .unwrap_or_else(|| panic!("No signer provided for account {}", account));
 
+        token
+            .create_auxiliary_token_account_with_extension_space(&**signer, &owner, vec![])
+            .await
+    }?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
