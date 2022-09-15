@@ -27,7 +27,7 @@ spl-token-upgrade = { version = "0.1", path = "../program", features = ["no-entr
 tokio = { version = "1", features = ["full"] }
 
 [dev-dependencies]
-solana-validator = "1.11.6"
+solana-test-validator = "1.11.6"
 
 [[bin]]
 name = "spl-token-upgrade"
