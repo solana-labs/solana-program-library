@@ -253,6 +253,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 Arg::new("original_mint")
                     .validator(|s| is_valid_pubkey(s))
                     .value_name("ADDRESS")
+                    .required(true)
                     .takes_value(true)
                     .index(1)
                     .help("Original mint address, whose tokens will be burned")
@@ -261,6 +262,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 Arg::new("new_mint")
                     .validator(|s| is_valid_pubkey(s))
                     .value_name("ADDRESS")
+                    .required(true)
                     .takes_value(true)
                     .index(2)
                     .help("New mint address, whose tokens will be transferred to users")
@@ -280,6 +282,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 Arg::new("original_mint")
                     .validator(|s| is_valid_pubkey(s))
                     .value_name("ADDRESS")
+                    .required(true)
                     .takes_value(true)
                     .index(1)
                     .help("Original mint address, whose tokens will be burned")
@@ -288,6 +291,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 Arg::new("new_mint")
                     .validator(|s| is_valid_pubkey(s))
                     .value_name("ADDRESS")
+                    .required(true)
                     .takes_value(true)
                     .index(2)
                     .help("New mint address, whose tokens will be transferred to users")
@@ -314,7 +318,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     .value_name("ESCROW_TOKEN_ACCOUNT_ADDRESS")
                     .validator(|s| is_valid_pubkey(s))
                     .takes_value(true)
-                    .help("Specify the escrow account address to transfer from. [default: associated token account for the escrow authority]"),
+                    .help("Specify the escrow account address to transfer from. [default: associated token account for the escrow authority on new mint]"),
             )
             .arg(
                 Arg::new("destination")
