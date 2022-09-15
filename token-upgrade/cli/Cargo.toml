@@ -1,0 +1,37 @@
+[package]
+name = "spl-token-upgrade-cli"
+version = "0.1.0"
+description = "SPL Token Upgrade Command-line Utility"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+
+[build-dependencies]
+walkdir = "2"
+
+[dependencies]
+clap = { version = "3", features = ["cargo"] }
+futures-util = "0.3.19"
+solana-clap-v3-utils = "1.11.6"
+solana-cli-config = "1.11.6"
+solana-client = "1.11.6"
+solana-logger = "1.11.6"
+solana-remote-wallet = "1.11.6"
+solana-sdk = "1.11.6"
+spl-associated-token-account = { version = "1.1", path = "../../associated-token-account/program", features = ["no-entrypoint"] }
+spl-token = { version = "3.5", path = "../../token/program", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "0.4", path = "../../token/program-2022", features = ["no-entrypoint"] }
+spl-token-client = { version = "0.1", path = "../../token/client" }
+spl-token-upgrade = { version = "0.1", path = "../program", features = ["no-entrypoint"] }
+tokio = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+solana-validator = "1.11.6"
+
+[[bin]]
+name = "spl-token-upgrade"
+path = "src/main.rs"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
