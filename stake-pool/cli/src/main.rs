@@ -1,3 +1,4 @@
+#![allow(clippy::integer_arithmetic)]
 mod client;
 mod output;
 

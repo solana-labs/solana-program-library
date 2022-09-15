@@ -210,7 +210,7 @@ async fn run_self_transfers(context: TestContext, test_mode: TestMode) {
             &alice_account,
             &alice_account,
             &alice.pubkey(),
-            amount + 1,
+            amount.checked_add(1).unwrap(),
             Some(decimals),
             &vec![&alice],
         )

@@ -52,7 +52,7 @@ pub fn exchange(
     original_multisig_signers: &[&Pubkey],
 ) -> Instruction {
     let escrow_authority = get_token_upgrade_authority_address(original_mint, new_mint, program_id);
-    let mut accounts = Vec::with_capacity(9 + original_multisig_signers.len());
+    let mut accounts = Vec::with_capacity(9usize.saturating_add(original_multisig_signers.len()));
     accounts.push(AccountMeta::new(*original_account, false));
     accounts.push(AccountMeta::new(*original_mint, false));
     accounts.push(AccountMeta::new(*new_escrow, false));

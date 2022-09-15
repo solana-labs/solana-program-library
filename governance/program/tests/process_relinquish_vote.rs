@@ -426,7 +426,7 @@ async fn test_relinquish_vote_with_already_relinquished_error() {
         .get_vote_record_account(&vote_record_cookie.address)
         .await;
 
-    assert_eq!(true, vote_record_account.is_relinquished);
+    assert!(vote_record_account.is_relinquished);
 
     governance_test
         .mint_community_tokens(&realm_cookie, 10)

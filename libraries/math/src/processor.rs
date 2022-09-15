@@ -1,3 +1,4 @@
+#![allow(clippy::integer_arithmetic)]
 //! Program state processor
 
 use {

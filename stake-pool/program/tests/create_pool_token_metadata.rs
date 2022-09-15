@@ -1,3 +1,4 @@
+#![allow(clippy::integer_arithmetic)]
 #![cfg(feature = "test-sbf")]
 mod helpers;
 
@@ -45,9 +46,9 @@ async fn success_create_pool_token_metadata() {
     let symbol = "SYM";
     let uri = "test_uri";
 
-    let puffed_name = puffed_out_string(&name, MAX_NAME_LENGTH);
-    let puffed_symbol = puffed_out_string(&symbol, MAX_SYMBOL_LENGTH);
-    let puffed_uri = puffed_out_string(&uri, MAX_URI_LENGTH);
+    let puffed_name = puffed_out_string(name, MAX_NAME_LENGTH);
+    let puffed_symbol = puffed_out_string(symbol, MAX_SYMBOL_LENGTH);
+    let puffed_uri = puffed_out_string(uri, MAX_URI_LENGTH);
 
     let ix = instruction::create_token_metadata(
         &spl_stake_pool::id(),
@@ -79,9 +80,9 @@ async fn success_create_pool_token_metadata() {
     )
     .await;
 
-    assert_eq!(metadata.data.name.to_string(), puffed_name);
-    assert_eq!(metadata.data.symbol.to_string(), puffed_symbol);
-    assert_eq!(metadata.data.uri.to_string(), puffed_uri);
+    assert_eq!(metadata.data.name, puffed_name);
+    assert_eq!(metadata.data.symbol, puffed_symbol);
+    assert_eq!(metadata.data.uri, puffed_uri);
 }
 
 #[tokio::test]

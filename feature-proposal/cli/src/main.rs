@@ -1,3 +1,4 @@
+#![allow(clippy::integer_arithmetic)]
 use {
     chrono::{DateTime, NaiveDateTime, SecondsFormat, Utc},
     clap::{

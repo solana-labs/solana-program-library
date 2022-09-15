@@ -1,5 +1,4 @@
-use std::sync::Arc;
-
+#![allow(clippy::integer_arithmetic)]
 use {
     arbitrary::Arbitrary,
     honggfuzz::fuzz,
@@ -25,7 +24,10 @@ use {
         native_token::{get_token_balance, transfer},
         native_token_swap::NativeTokenSwap,
     },
-    std::collections::{HashMap, HashSet},
+    std::{
+        collections::{HashMap, HashSet},
+        sync::Arc,
+    },
 };
 
 #[derive(Debug, Arbitrary, Clone)]

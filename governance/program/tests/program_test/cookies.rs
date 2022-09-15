@@ -40,7 +40,7 @@ impl RealmCookie {
         if *governing_token_mint == self.account.community_mint {
             &self.community_mint_authority
         } else if Some(*governing_token_mint) == self.account.config.council_mint {
-            &self.council_mint_authority.as_ref().unwrap()
+            self.council_mint_authority.as_ref().unwrap()
         } else {
             panic!("Invalid governing_token_mint")
         }

@@ -110,7 +110,7 @@ async fn test_create_proposal_with_multiple_choice_options_and_without_deny_opti
             max_voter_options: 2,
         }
     );
-    assert!(!proposal_account.deny_vote_weight.is_some());
+    assert!(proposal_account.deny_vote_weight.is_none());
 
     assert_eq!(proposal_cookie.account, proposal_account);
 }
@@ -1075,7 +1075,7 @@ async fn test_create_proposal_with_10_options_and_cast_vote() {
             max_voter_options: options_len,
         }
     );
-    assert!(!proposal_account.deny_vote_weight.is_some());
+    assert!(proposal_account.deny_vote_weight.is_none());
 
     assert_eq!(ProposalState::Completed, proposal_account.state);
 }

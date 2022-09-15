@@ -115,7 +115,7 @@ async fn run_basic(
             &alice_account,
             &bob_account,
             &bob.pubkey(),
-            delegated_amount + 1,
+            delegated_amount.checked_add(1).unwrap(),
             Some(decimals),
             &vec![&bob],
         )
