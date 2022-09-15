@@ -1,6 +1,6 @@
 //! Creates a file that will set constants captured from the environment.
 //! These constants represent official accounts, program ids, and names.
-//! Normally lazy_static! would work, but it is not supported with build-sbf.
+//! Normally lazy_static! would work, but it is not supported with build-bpf.
 
 use {
     solana_program::pubkey::Pubkey,

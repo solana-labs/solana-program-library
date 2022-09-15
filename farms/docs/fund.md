@@ -14,7 +14,7 @@ To build and deploy the Fund program, run:
 
 ```sh
 cd solana-program-library/farms/fund
-cargo build-sbf
+cargo build-bpf
 solana program deploy ../target/deploy/solana_fund.so
 ```
 
