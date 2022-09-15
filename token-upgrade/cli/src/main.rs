@@ -416,7 +416,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let mut multisig_pubkeys = vec![];
             if let Some(values) = arg_matches.values_of("multisig_signer") {
                 for (i, value) in values.enumerate() {
-                    let name = format!("{}-{}", "multisig_signer", i + 1);
+                    let name = format!("{}-{}", "multisig_signer", i.saturating_add(1));
                     let signer = signer_from_path(arg_matches, value, &name, &mut wallet_manager)
                         .unwrap_or_else(|e| {
                             eprintln!("error parsing multisig signer: {}", e);
