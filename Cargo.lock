@@ -5959,6 +5959,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-instruction-padding"
+version = "0.1.0"
+dependencies = [
+ "num_enum",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+]
+
+[[package]]
 name = "spl-managed-token"
 version = "0.1.0"
 dependencies = [
