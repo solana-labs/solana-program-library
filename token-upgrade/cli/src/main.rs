@@ -495,7 +495,7 @@ mod test {
     use {
         super::*,
         solana_sdk::{bpf_loader, signer::keypair::Keypair},
-        solana_validator::test_validator::*,
+        solana_test_validator::{ProgramInfo, TestValidator, TestValidatorGenesis},
         spl_token_client::client::{ProgramClient, SendTransaction},
         std::path::PathBuf,
     };
