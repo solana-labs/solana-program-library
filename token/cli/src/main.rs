@@ -1892,11 +1892,11 @@ async fn command_sync_native(
 // Both enable_required_transfer_mesos and disable_required_transfer_mesos
 // Switches with enable_memos bool
 async fn command_required_transfer_memos(
+    config: &Config<'_>,
     token_account_address: Pubkey,
     owner: Pubkey,
     bulk_signers: BulkSigners,
     enable_memos: bool,
-    config: &Config<'_>,
 ) -> CommandResult {
     if config.sign_only {
         panic!("Config can not be sign only for enabling/disabling required transfer memos.");
@@ -1911,13 +1911,12 @@ async fn command_required_transfer_memos(
                 token_account_address, err
             )
         })?;
-    let program_id = account_fetch.owner;
-    config.check_owner(&token_account_address, &program_id)?;
+    let program_id = config.program_id;
+    config.get_account_checked(&token_account_address).await?;
     let mut instructions: Vec<Instruction> = Vec::new();
     // Reallocation (if needed)
     let current_account_len = account_fetch.data.len();
-    let state_with_extension =
-        StateWithExtensionsOwned::<Account>::unpack(account_fetch.data.clone())?;
+    let state_with_extension = StateWithExtensionsOwned::<Account>::unpack(account_fetch.data)?;
     let mut existing_extensions: Vec<ExtensionType> = state_with_extension.get_extension_types()?;
     if existing_extensions.contains(&ExtensionType::MemoTransfer) {
         let extension_data: bool = state_with_extension
@@ -1935,7 +1934,7 @@ async fn command_required_transfer_memos(
             ));
         }
     } else {
-        existing_extensions.extend_from_slice(&[ExtensionType::MemoTransfer]);
+        existing_extensions.push(ExtensionType::MemoTransfer);
         let needed_account_len = ExtensionType::get_account_len::<Account>(&existing_extensions);
         if needed_account_len > current_account_len {
             instructions.push(reallocate(
@@ -3503,7 +3502,7 @@ async fn process_command<'a>(
             // Since account is required argument it will always be present
             let token_account =
                 config.pubkey_or_default(arg_matches, "account", &mut wallet_manager);
-            command_required_transfer_memos(token_account, owner, bulk_signers, true, config).await
+            command_required_transfer_memos(config, token_account, owner, bulk_signers, true).await
         }
         (CommandName::DisableRequiredTransferMemos, arg_matches) => {
             let (owner_signer, owner) =
@@ -3514,7 +3513,7 @@ async fn process_command<'a>(
             // Since account is required argument it will always be present
             let token_account =
                 config.pubkey_or_default(arg_matches, "account", &mut wallet_manager);
-            command_required_transfer_memos(token_account, owner, bulk_signers, false, config).await
+            command_required_transfer_memos(config, token_account, owner, bulk_signers, false).await
         }
     }
 }
