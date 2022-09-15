@@ -17,23 +17,22 @@ in the [documentation](token-2022.md).
 Mint owners may want to take advantage of new functionality for their users, but
 there is no way to automatically convert tokens from Token to Token-2022.
 
-The Token Upgrade Program defines an escrow authority, a program-derived address,
+The Token Upgrade Program defines an escrow authority, a program-derived address
 from two addresses, the original and new mints. Any new token account owned by or
-delegated to this escrow authority may be used in the protocol.
+delegated to this escrow authority may be used as the escrow account.
 
 A holder of original tokens provides their original token account, a new token account,
-and a new token account owned by or delegated to the escrow authority. If the
-escrow authority's account has enough tokens, the protocol will burn the original
-tokens and transfer the same amount of new tokens to the user's new account.
+and the escrow account. If the escrow account has enough tokens, the protocol will
+burn the original tokens and transfer the same amount of new tokens to the user's
+new account.
 
-The amount of tokens transferred is completely independent of decimals, so if
-the mints have different decimals, then users may be surprised to see a different
-amount.
+The program ensures that the decimals of both mints are the same, so if the mints
+have different decimals, the upgrade fails.
 
 The program is completely stateless and has a simple implementation, so mint owners
-may customize it if they need additional functionality. For example, if they want
-the transfer to be decimal-aware, they can scale the transferred number up or down
-as needed.
+may customize it with additional functionality. For example, if they want to
+upgrade between mints with different decimals, they can define how to scale
+the transferred number up or down as desired.
 
 **Note**: The Token Upgrade Program can also exchange tokens that belong to the
 same program, but different mints. For example, a mint owner can provide an upgrade
