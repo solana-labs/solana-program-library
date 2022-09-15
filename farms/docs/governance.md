@@ -4,7 +4,7 @@ To initialize the DAO, first build and deploy the governance program:
 
 ```sh
 cd solana-program-library/governance/program
-cargo build-sbf
+cargo build-bpf
 solana program deploy --commitment finalized target/deploy/spl_governance.so
 ```
 

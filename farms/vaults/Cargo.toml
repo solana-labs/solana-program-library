@@ -11,7 +11,6 @@ edition = "2021"
 [features]
 no-entrypoint = []
 debug = []
-test-sbf = []
 RDM-STAKE-LP-COMPOUND = []
 SBR-STAKE-LP-COMPOUND = []
 ORC-STAKE-LP-COMPOUND = []
@@ -29,4 +28,3 @@ solana-program-test = "1.9.18"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-
