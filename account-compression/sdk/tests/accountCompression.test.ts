@@ -30,7 +30,7 @@ import {
   createVerifyLeafIx,
   createAllocTreeIx,
   createInitEmptyMerkleTreeInstruction,
-  LOG_WRAPPER_PROGRAM_ID,
+  SPL_NOOP_PROGRAM_ID,
 } from "../src";
 import {
   getCMTMaxBufferSize,
@@ -160,7 +160,7 @@ describe("Account Compression", () => {
         {
           merkleTree: cmtKeypair.publicKey,
           authority: payer.publicKey,
-          logWrapper: LOG_WRAPPER_PROGRAM_ID,
+          logWrapper: SPL_NOOP_PROGRAM_ID,
         },
         {
           maxDepth,
@@ -676,7 +676,7 @@ describe("Account Compression", () => {
       let leafList = Array.from(leaves.entries());
       leafList.sort(() => Math.random() - 0.5);
       let replaces = 0;
-      let newLeaves = {};
+      let newLeaves: Record<number, Buffer> = {};
       for (const [i, leaf] of leafList) {
         const newLeaf = crypto.randomBytes(32);
         newLeaves[i] = newLeaf;
