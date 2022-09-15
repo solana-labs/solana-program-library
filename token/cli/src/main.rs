@@ -497,14 +497,26 @@ async fn command_set_interest_rate(
     })
 }
 
+// XXX OK wtf do i need to do for this shit
+// create account needs to go through the client
+// create associated vs create aux with ext... pretty simple?
+// then i want to impl --immutable, also simple
+// error if the mint is tokenkeg, rebuke if the token is associated
+// XXX umm then for default... i think its not possible to use this for ata?
+// test it out quicky
+
+// XXX NEXT UP impl this shit for wrap. maybe put wrap/unwrap in the client?
+// and also reply to jon. i need to take a nap tho omg im dying
 async fn command_create_account(
     config: &Config<'_>,
     token_pubkey: Pubkey,
     owner: Pubkey,
     maybe_account: Option<Pubkey>,
+    immutable_owner: bool,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     let token = token_client_from_config(config, &token_pubkey);
+    let mut extensions = vec![];
 
     let (account, associated) = if let Some(account) = maybe_account {
         (account, false)
@@ -522,6 +534,23 @@ async fn command_create_account(
         }
     }
 
+    if immutable_owner {
+        if config.program_id == spl_token::id() {
+            return Err(format!(
+                "Specified --immutable, but token program {} does not support the extension",
+                config.program_id
+            )
+            .into());
+        } else if associated {
+            println_display(
+                config,
+                "Note: --immutable specified, but Token-2022 ATAs are always immutable".to_string(),
+            );
+        } else {
+            extensions.push(ExtensionType::ImmutableOwner);
+        }
+    }
+
     let res = if associated {
         token.create_associated_token_account(&owner).await
     } else {
@@ -531,7 +560,7 @@ async fn command_create_account(
             .unwrap_or_else(|| panic!("No signer provided for account {}", account));
 
         token
-            .create_auxiliary_token_account_with_extension_space(&**signer, &owner, vec![])
+            .create_auxiliary_token_account_with_extension_space(&**signer, &owner, extensions)
             .await
     }?;
 
@@ -2170,6 +2199,14 @@ fn app<'a, 'b>(
                              [default: associated token account for --owner]"
                         ),
                 )
+                .arg(
+                    Arg::with_name("immutable")
+                        .long("immutable")
+                        .takes_value(false)
+                        .help(
+                            "Lock the owner of this token account from ever being changed"
+                        ),
+                )
                 .arg(owner_address_arg())
                 .nonce_args(true)
         )
@@ -3029,7 +3066,15 @@ async fn process_command<'a>(
             );
 
             let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager);
-            command_create_account(config, token, owner, account, bulk_signers).await
+            command_create_account(
+                config,
+                token,
+                owner,
+                account,
+                arg_matches.is_present("immutable"),
+                bulk_signers,
+            )
+            .await
         }
         (CommandName::CreateMultisig, arg_matches) => {
             let minimum_signers = value_of::<u8>(arg_matches, "minimum_signers").unwrap();
