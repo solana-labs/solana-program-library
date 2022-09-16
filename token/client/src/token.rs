@@ -21,7 +21,7 @@ use {
             confidential_transfer, default_account_state, interest_bearing_mint, memo_transfer,
             transfer_fee, ExtensionType, StateWithExtensionsOwned,
         },
-        instruction, native_mint,
+        instruction,
         solana_zk_token_sdk::{
             encryption::{auth_encryption::*, elgamal::*},
             errors::ProofError,
@@ -443,7 +443,7 @@ where
         program_id: &Pubkey,
         payer: Arc<dyn Signer>,
     ) -> TokenResult<Self> {
-        let token = Self::new(client, program_id, &native_mint::id(), payer);
+        let token = Self::new(client, program_id, &native_mint(program_id), payer);
         token
             .process_ixs::<[&dyn Signer; 0]>(
                 &[instruction::create_native_mint(
@@ -892,6 +892,87 @@ where
             signing_keypairs,
         )
         .await
+    }
+
+    pub async fn wrap<S: Signers>(
+        &self,
+        account: &Pubkey,
+        owner: &Pubkey,
+        lamports: u64,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        // mutable owner for Tokenkeg, immutable otherwise
+        let immutable_owner = self.program_id != spl_token::id();
+        let instructions = self.wrap_ixs(account, owner, lamports, immutable_owner)?;
+
+        self.process_ixs(&instructions, signing_keypairs).await
+    }
+
+    pub async fn wrap_transferable<S: Signers>(
+        &self,
+        account: &Pubkey,
+        owner: &Pubkey,
+        lamports: u64,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let instructions = self.wrap_ixs(account, owner, lamports, false)?;
+
+        self.process_ixs(&instructions, signing_keypairs).await
+    }
+
+    /// Wrap lamports into native account
+    fn wrap_ixs(
+        &self,
+        account: &Pubkey,
+        owner: &Pubkey,
+        lamports: u64,
+        immutable_owner: bool,
+    ) -> TokenResult<Vec<Instruction>> {
+        if self.pubkey != native_mint(&self.program_id) {
+            return Err(TokenError::AccountInvalidMint);
+        }
+
+        let mut instructions = vec![];
+        if *account == self.get_associated_token_address(owner) {
+            instructions.push(system_instruction::transfer(owner, account, lamports));
+            instructions.push(create_associated_token_account(
+                &self.payer.pubkey(),
+                owner,
+                &self.pubkey,
+                &self.program_id,
+            ));
+        } else {
+            let extensions = if immutable_owner {
+                vec![ExtensionType::ImmutableOwner]
+            } else {
+                vec![]
+            };
+            let space = ExtensionType::get_account_len::<Account>(&extensions);
+
+            instructions.push(system_instruction::create_account(
+                &self.payer.pubkey(),
+                account,
+                lamports,
+                space as u64,
+                &self.program_id,
+            ));
+
+            if immutable_owner {
+                instructions.push(instruction::initialize_immutable_owner(
+                    &self.program_id,
+                    account,
+                )?)
+            }
+
+            instructions.push(instruction::initialize_account(
+                &self.program_id,
+                account,
+                &self.pubkey,
+                owner,
+            )?);
+        };
+
+        Ok(instructions)
     }
 
     /// Sync native account lamports
@@ -1923,5 +2004,15 @@ where
             &[],
         )
         .await
+    }
+}
+
+fn native_mint(program_id: &Pubkey) -> Pubkey {
+    if program_id == &spl_token_2022::id() {
+        spl_token_2022::native_mint::id()
+    } else if program_id == &spl_token::id() {
+        spl_token::native_mint::id()
+    } else {
+        panic!("Unrecognized token program id: {}", program_id);
     }
 }

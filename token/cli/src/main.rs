@@ -497,16 +497,6 @@ async fn command_set_interest_rate(
     })
 }
 
-// XXX OK wtf do i need to do for this shit
-// create account needs to go through the client
-// create associated vs create aux with ext... pretty simple?
-// then i want to impl --immutable, also simple
-// error if the mint is tokenkeg, rebuke if the token is associated
-// XXX umm then for default... i think its not possible to use this for ata?
-// test it out quicky
-
-// XXX NEXT UP impl this shit for wrap. maybe put wrap/unwrap in the client?
-// and also reply to jon. i need to take a nap tho omg im dying
 async fn command_create_account(
     config: &Config<'_>,
     token_pubkey: Pubkey,
@@ -1199,6 +1189,7 @@ async fn command_thaw(
     })
 }
 
+// XXX TODO remove this when functionality moved into client
 fn native_mint(program_id: &Pubkey) -> Result<Pubkey, Error> {
     if program_id == &spl_token_2022::id() {
         Ok(spl_token_2022::native_mint::id())
@@ -1217,72 +1208,36 @@ async fn command_wrap(
     bulk_signers: BulkSigners,
 ) -> CommandResult {
     let lamports = sol_to_lamports(sol);
-
+    // XXX TODO i think i want a Token fn `new_native` that encapsulates the `native_mint` logic in one place
+    // also a function on it `is_native` maybe
     let native_mint = native_mint(&config.program_id)?;
-    let instructions = if let Some(wrapped_sol_account) = wrapped_sol_account {
-        println_display(
-            config,
-            format!("Wrapping {} SOL into {}", sol, wrapped_sol_account),
-        );
-        vec![
-            system_instruction::create_account(
-                &wallet_address,
-                &wrapped_sol_account,
-                lamports,
-                Account::LEN as u64,
-                &config.program_id,
-            ),
-            initialize_account(
-                &config.program_id,
-                &wrapped_sol_account,
-                &native_mint,
-                &wallet_address,
-            )?,
-        ]
-    } else {
-        let account = get_associated_token_address_with_program_id(
+    let token = token_client_from_config(config, &native_mint);
+
+    let account = wrapped_sol_account.unwrap_or_else(|| {
+        get_associated_token_address_with_program_id(
             &wallet_address,
             &native_mint,
             &config.program_id,
-        );
+        )
+    });
 
-        if !config.sign_only {
-            if let Some(account_data) = config
-                .rpc_client
-                .get_account_with_commitment(&account, config.rpc_client.commitment())
-                .await?
-                .value
-            {
-                if account_data.owner != system_program::id() {
-                    return Err(format!("Error: Account already exists: {}", account).into());
-                }
+    println_display(config, format!("Wrapping {} SOL into {}", sol, account));
+
+    if !config.sign_only {
+        if let Ok(account_data) = config.get_account_checked(&account).await {
+            if account_data.owner != system_program::id() {
+                return Err(format!("Error: Account already exists: {}", account).into());
             }
         }
 
-        println_display(config, format!("Wrapping {} SOL into {}", sol, account));
-        vec![
-            system_instruction::transfer(&wallet_address, &account, lamports),
-            create_associated_token_account(
-                &config.fee_payer.pubkey(),
-                &wallet_address,
-                &native_mint,
-                &config.program_id,
-            ),
-        ]
-    };
-    if !config.sign_only {
         check_wallet_balance(config, &wallet_address, lamports).await?;
     }
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        instructions,
-    )
-    .await?;
+
+    let res = token
+        .wrap_transferable(&account, &wallet_address, lamports, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
@@ -3775,9 +3730,16 @@ mod tests {
         let address = auxiliary.pubkey();
         let bulk_signers: Vec<Arc<dyn Signer>> =
             vec![Arc::new(clone_keypair(payer)), Arc::new(auxiliary)];
-        command_create_account(config, mint, payer.pubkey(), Some(address), bulk_signers)
-            .await
-            .unwrap();
+        command_create_account(
+            config,
+            mint,
+            payer.pubkey(),
+            Some(address),
+            false,
+            bulk_signers,
+        )
+        .await
+        .unwrap();
         address
     }
 
@@ -3787,7 +3749,7 @@ mod tests {
         mint: Pubkey,
     ) -> Pubkey {
         let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(payer))];
-        command_create_account(config, mint, payer.pubkey(), None, bulk_signers)
+        command_create_account(config, mint, payer.pubkey(), None, false, bulk_signers)
             .await
             .unwrap();
         get_associated_token_address_with_program_id(&payer.pubkey(), &mint, &config.program_id)
