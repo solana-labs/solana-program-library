@@ -1,24 +1,17 @@
 {
-  "include": [
-    "./src/**/*",
-  ],
+  "include": [],
   "compilerOptions": {
-    "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
-    "allowSyntheticDefaultImports": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "noImplicitAny": false,
-    "strictNullChecks": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Node",
     "esModuleInterop": true,
+    "isolatedModules": true,
+    "noEmitOnError": true,
     "resolveJsonModule": true,
-    "composite": true,
-    "downlevelIteration": true,
-    "baseUrl": ".",
+    "strict": true,
+    "stripInternal": true,
     "typeRoots": [
-      "src/types",
       "node_modules/@types"
-    ],
+    ]
   }
 }

@@ -1,5 +1,5 @@
 import { Connection, Keypair, PublicKey, SystemProgram, TransactionInstruction } from '@solana/web3.js';
-import { LOG_WRAPPER_PROGRAM_ID } from "../utils";
+import { SPL_NOOP_PROGRAM_ID } from "../utils";
 import { getConcurrentMerkleTreeAccountSize } from '../accounts';
 import {
     createReplaceLeafInstruction,
@@ -41,7 +41,7 @@ export function createReplaceIx(
         {
             merkleTree,
             authority: authority.publicKey,
-            logWrapper: LOG_WRAPPER_PROGRAM_ID,
+            logWrapper: SPL_NOOP_PROGRAM_ID,
         },
         {
             root: Array.from(treeRoot),
@@ -61,7 +61,7 @@ export function createAppendIx(
         {
             merkleTree,
             authority: authority.publicKey,
-            logWrapper: LOG_WRAPPER_PROGRAM_ID,
+            logWrapper: SPL_NOOP_PROGRAM_ID,
         },
         {
             leaf: Array.from(newLeaf),
