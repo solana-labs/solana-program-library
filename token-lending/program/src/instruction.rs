@@ -1160,7 +1160,7 @@ pub fn withdraw_obligation_collateral_and_redeem_reserve_collateral(
             AccountMeta::new(destination_liquidity_pubkey, false),
             AccountMeta::new(reserve_collateral_mint_pubkey, false),
             AccountMeta::new(reserve_liquidity_supply_pubkey, false),
-            AccountMeta::new(obligation_owner_pubkey, true),
+            AccountMeta::new_readonly(obligation_owner_pubkey, true),
             AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
