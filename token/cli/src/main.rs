@@ -363,6 +363,22 @@ fn token_client_from_config(
     }
 }
 
+fn native_token_client_from_config(config: &Config<'_>) -> Token<ProgramRpcClientSendTransaction> {
+    let token = Token::new_native(
+        config.program_client.clone(),
+        &config.program_id,
+        config.fee_payer.clone(),
+    );
+
+    if let (Some(nonce_account), Some(nonce_authority)) =
+        (config.nonce_account, config.nonce_authority)
+    {
+        token.with_nonce(&nonce_account, &nonce_authority)
+    } else {
+        token
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn command_create_token(
     config: &Config<'_>,
@@ -508,7 +524,7 @@ async fn command_create_account(
     let token = token_client_from_config(config, &token_pubkey);
     let mut extensions = vec![];
 
-    let (account, associated) = if let Some(account) = maybe_account {
+    let (account, is_associated) = if let Some(account) = maybe_account {
         (account, false)
     } else {
         (token.get_associated_token_address(&owner), true)
@@ -518,7 +534,7 @@ async fn command_create_account(
 
     if !config.sign_only {
         if let Some(account_data) = config.program_client.get_account(account).await? {
-            if account_data.owner != system_program::id() || !associated {
+            if account_data.owner != system_program::id() || !is_associated {
                 return Err(format!("Error: Account already exists: {}", account).into());
             }
         }
@@ -531,7 +547,7 @@ async fn command_create_account(
                 config.program_id
             )
             .into());
-        } else if associated {
+        } else if is_associated {
             println_display(
                 config,
                 "Note: --immutable specified, but Token-2022 ATAs are always immutable".to_string(),
@@ -541,7 +557,7 @@ async fn command_create_account(
         }
     }
 
-    let res = if associated {
+    let res = if is_associated {
         token.create_associated_token_account(&owner).await
     } else {
         let signer = bulk_signers
@@ -1189,17 +1205,6 @@ async fn command_thaw(
     })
 }
 
-// XXX TODO remove this when functionality moved into client
-fn native_mint(program_id: &Pubkey) -> Result<Pubkey, Error> {
-    if program_id == &spl_token_2022::id() {
-        Ok(spl_token_2022::native_mint::id())
-    } else if program_id == &spl_token::id() {
-        Ok(spl_token::native_mint::id())
-    } else {
-        Err(format!("Error: unknown token program id {}", program_id).into())
-    }
-}
-
 async fn command_wrap(
     config: &Config<'_>,
     sol: f64,
@@ -1208,15 +1213,12 @@ async fn command_wrap(
     bulk_signers: BulkSigners,
 ) -> CommandResult {
     let lamports = sol_to_lamports(sol);
-    // XXX TODO i think i want a Token fn `new_native` that encapsulates the `native_mint` logic in one place
-    // also a function on it `is_native` maybe
-    let native_mint = native_mint(&config.program_id)?;
-    let token = token_client_from_config(config, &native_mint);
+    let token = native_token_client_from_config(config);
 
     let account = wrapped_sol_account.unwrap_or_else(|| {
         get_associated_token_address_with_program_id(
             &wallet_address,
-            &native_mint,
+            token.get_address(),
             &config.program_id,
         )
     });
@@ -1251,19 +1253,22 @@ async fn command_wrap(
 async fn command_unwrap(
     config: &Config<'_>,
     wallet_address: Pubkey,
-    account: Option<Pubkey>,
+    maybe_account: Option<Pubkey>,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let use_associated_account = account.is_none();
-    let native_mint = native_mint(&config.program_id)?;
-    let account = account.unwrap_or_else(|| {
+    let use_associated_account = maybe_account.is_none();
+    let token = native_token_client_from_config(config);
+
+    let account = maybe_account.unwrap_or_else(|| {
         get_associated_token_address_with_program_id(
             &wallet_address,
-            &native_mint,
+            token.get_address(),
             &config.program_id,
         )
     });
+
     println_display(config, format!("Unwrapping {}", account));
+
     if !config.sign_only {
         let lamports = config.rpc_client.get_balance(&account).await?;
         if lamports == 0 {
@@ -1273,30 +1278,29 @@ async fn command_unwrap(
                 return Err(format!("No wrapped SOL in {}", account).into());
             }
         }
+
         println_display(
             config,
             format!("  Amount: {} SOL", lamports_to_sol(lamports)),
         );
+
+        if !use_associated_account {
+            let account_data = config.get_account_checked(&account).await?;
+            let account_state = StateWithExtensionsOwned::<Account>::unpack(account_data.data)?;
+
+            if account_state.base.mint != *token.get_address() {
+                return Err(format!("{} is not a native token account", account).into());
+            }
+        }
     }
+
     println_display(config, format!("  Recipient: {}", &wallet_address));
 
-    let instructions = vec![close_account(
-        &config.program_id,
-        &account,
-        &wallet_address,
-        &wallet_address,
-        &config.multisigner_pubkeys,
-    )?];
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        instructions,
-    )
-    .await?;
+    let res = token
+        .close_account(&account, &wallet_address, &wallet_address, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
@@ -1811,25 +1815,20 @@ async fn command_gc(
     Ok(result)
 }
 
-async fn command_sync_native(
-    native_account_address: Pubkey,
-    bulk_signers: Vec<Arc<dyn Signer>>,
-    config: &Config<'_>,
-) -> CommandResult {
+async fn command_sync_native(config: &Config<'_>, native_account_address: Pubkey) -> CommandResult {
+    let token = native_token_client_from_config(config);
+
     if !config.sign_only {
-        config.get_account_checked(&native_account_address).await?;
+        let account_data = config.get_account_checked(&native_account_address).await?;
+        let account_state = StateWithExtensionsOwned::<Account>::unpack(account_data.data)?;
+
+        if account_state.base.mint != *token.get_address() {
+            return Err(format!("{} is not a native token account", native_account_address).into());
+        }
     }
 
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        vec![sync_native(&config.program_id, &native_account_address)?],
-    )
-    .await?;
+    let res = token.sync_native(&native_account_address).await?;
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
@@ -3437,8 +3436,7 @@ async fn process_command<'a>(
             .await
         }
         (CommandName::SyncNative, arg_matches) => {
-            let program_id = config.program_id;
-            let native_mint = native_mint(&program_id)?;
+            let native_mint = *native_token_client_from_config(config).get_address();
             let address = config
                 .associated_token_address_for_token_or_override(
                     arg_matches,
@@ -3447,7 +3445,7 @@ async fn process_command<'a>(
                     Some(native_mint),
                 )
                 .await;
-            command_sync_native(address, bulk_signers, config).await
+            command_sync_native(config, address).await
         }
         (CommandName::EnableRequiredTransferMemos, arg_matches) => {
             let (owner_signer, owner) =
@@ -3598,6 +3596,16 @@ mod tests {
         std::path::PathBuf,
         tempfile::NamedTempFile,
     };
+
+    fn native_mint(program_id: &Pubkey) -> Result<Pubkey, Error> {
+        if program_id == &spl_token_2022::id() {
+            Ok(spl_token_2022::native_mint::id())
+        } else if program_id == &spl_token::id() {
+            Ok(spl_token::native_mint::id())
+        } else {
+            Err(format!("Error: unknown token program id {}", program_id).into())
+        }
+    }
 
     fn clone_keypair(keypair: &Keypair) -> Keypair {
         Keypair::from_bytes(&keypair.to_bytes()).unwrap()

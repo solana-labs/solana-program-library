@@ -217,6 +217,16 @@ impl<T> fmt::Debug for Token<T> {
     }
 }
 
+fn native_mint(program_id: &Pubkey) -> Pubkey {
+    if program_id == &spl_token_2022::id() {
+        spl_token_2022::native_mint::id()
+    } else if program_id == &spl_token::id() {
+        spl_token::native_mint::id()
+    } else {
+        panic!("Unrecognized token program id: {}", program_id);
+    }
+}
+
 impl<T> Token<T>
 where
     T: SendTransaction,
@@ -236,6 +246,18 @@ where
             nonce_authority: None,
             memo: Arc::new(RwLock::new(None)),
         }
+    }
+
+    pub fn new_native(
+        client: Arc<dyn ProgramClient<T>>,
+        program_id: &Pubkey,
+        payer: Arc<dyn Signer>,
+    ) -> Self {
+        Self::new(client, program_id, &native_mint(program_id), payer)
+    }
+
+    pub fn is_native(&self) -> bool {
+        self.pubkey == native_mint(&self.program_id)
     }
 
     /// Get token address.
@@ -443,7 +465,7 @@ where
         program_id: &Pubkey,
         payer: Arc<dyn Signer>,
     ) -> TokenResult<Self> {
-        let token = Self::new(client, program_id, &native_mint(program_id), payer);
+        let token = Self::new_native(client, program_id, payer);
         token
             .process_ixs::<[&dyn Signer; 0]>(
                 &[instruction::create_native_mint(
@@ -928,7 +950,7 @@ where
         lamports: u64,
         immutable_owner: bool,
     ) -> TokenResult<Vec<Instruction>> {
-        if self.pubkey != native_mint(&self.program_id) {
+        if !self.is_native() {
             return Err(TokenError::AccountInvalidMint);
         }
 
@@ -2004,15 +2026,5 @@ where
             &[],
         )
         .await
-    }
-}
-
-fn native_mint(program_id: &Pubkey) -> Pubkey {
-    if program_id == &spl_token_2022::id() {
-        spl_token_2022::native_mint::id()
-    } else if program_id == &spl_token::id() {
-        spl_token::native_mint::id()
-    } else {
-        panic!("Unrecognized token program id: {}", program_id);
     }
 }
