@@ -1210,6 +1210,7 @@ async fn command_wrap(
     sol: f64,
     wallet_address: Pubkey,
     wrapped_sol_account: Option<Pubkey>,
+    immutable_owner: bool,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
     let lamports = sol_to_lamports(sol);
@@ -1235,9 +1236,24 @@ async fn command_wrap(
         check_wallet_balance(config, &wallet_address, lamports).await?;
     }
 
-    let res = token
-        .wrap_transferable(&account, &wallet_address, lamports, &bulk_signers)
-        .await?;
+    let res = if immutable_owner {
+        if config.program_id == spl_token::id() {
+            return Err(format!(
+                "Specified --immutable, but token program {} does not support the extension",
+                config.program_id
+            )
+            .into());
+        }
+
+        token
+            .wrap(&account, &wallet_address, lamports, &bulk_signers)
+            .await?
+    } else {
+        // this case is hit for a token22 ata, which is always immutable. but it does the right thing anyway
+        token
+            .wrap_transferable(&account, &wallet_address, lamports, &bulk_signers)
+            .await?
+    };
 
     let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
@@ -2530,6 +2546,14 @@ fn app<'a, 'b>(
                         .long("create-aux-account")
                         .help("Wrap SOL in an auxiliary account instead of associated token account"),
                 )
+                .arg(
+                    Arg::with_name("immutable")
+                        .long("immutable")
+                        .takes_value(false)
+                        .help(
+                            "Lock the owner of this token account from ever being changed"
+                        ),
+                )
                 .nonce_args(true)
                 .offline_args(),
         )
@@ -3276,7 +3300,15 @@ async fn process_command<'a>(
                 bulk_signers.push(wallet_signer);
             }
 
-            command_wrap(config, amount, wallet_address, account, bulk_signers).await
+            command_wrap(
+                config,
+                amount,
+                wallet_address,
+                account,
+                arg_matches.is_present("immutable"),
+                bulk_signers,
+            )
+            .await
         }
         (CommandName::Unwrap, arg_matches) => {
             let (wallet_signer, wallet_address) =
@@ -4142,9 +4174,16 @@ mod tests {
             do_create_native_mint(&config, &program_id, &payer).await;
             let (signer, account) = new_throwaway_signer();
             let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(&payer)), signer];
-            command_wrap(&config, 0.5, payer.pubkey(), Some(account), bulk_signers)
-                .await
-                .unwrap();
+            command_wrap(
+                &config,
+                0.5,
+                payer.pubkey(),
+                Some(account),
+                false,
+                bulk_signers,
+            )
+            .await
+            .unwrap();
             let result = process_test_command(
                 &config,
                 &payer,
@@ -4304,9 +4343,16 @@ mod tests {
             let source = create_associated_account(&config, &payer, token).await;
             do_create_native_mint(&config, &program_id, &payer).await;
             let ui_amount = 10.0;
-            command_wrap(&config, ui_amount, payer.pubkey(), None, bulk_signers)
-                .await
-                .unwrap();
+            command_wrap(
+                &config,
+                ui_amount,
+                payer.pubkey(),
+                None,
+                false,
+                bulk_signers,
+            )
+            .await
+            .unwrap();
 
             let recipient = get_associated_token_address_with_program_id(
                 &payer.pubkey(),
