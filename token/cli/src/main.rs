@@ -1902,22 +1902,11 @@ async fn command_required_transfer_memos(
     if config.sign_only {
         panic!("Config can not be sign only for enabling/disabling required transfer memos.");
     }
-    let account_fetch = config
-        .rpc_client
-        .get_account(&token_account_address)
-        .await
-        .map_err(|err| {
-            format!(
-                "Token account {} does not exist: {}",
-                token_account_address, err
-            )
-        })?;
-    let program_id = config.program_id;
-    config.get_account_checked(&token_account_address).await?;
+    let account = config.get_account_checked(&token_account_address).await?;
     let mut instructions: Vec<Instruction> = Vec::new();
     // Reallocation (if needed)
-    let current_account_len = account_fetch.data.len();
-    let state_with_extension = StateWithExtensionsOwned::<Account>::unpack(account_fetch.data)?;
+    let current_account_len = account.data.len();
+    let state_with_extension = StateWithExtensionsOwned::<Account>::unpack(account.data)?;
     let mut existing_extensions: Vec<ExtensionType> = state_with_extension.get_extension_types()?;
     if existing_extensions.contains(&ExtensionType::MemoTransfer) {
         let extension_data: bool = state_with_extension
@@ -1939,7 +1928,7 @@ async fn command_required_transfer_memos(
         let needed_account_len = ExtensionType::get_account_len::<Account>(&existing_extensions);
         if needed_account_len > current_account_len {
             instructions.push(reallocate(
-                &program_id,
+                &config.program_id,
                 &token_account_address,
                 &config.fee_payer.pubkey(),
                 &owner,
@@ -1951,7 +1940,7 @@ async fn command_required_transfer_memos(
     if enable_memos {
         instructions.push(
             spl_token_2022::extension::memo_transfer::instruction::enable_required_transfer_memos(
-                &program_id,
+                &config.program_id,
                 &token_account_address,
                 &owner,
                 &config.multisigner_pubkeys,
@@ -1960,7 +1949,7 @@ async fn command_required_transfer_memos(
     } else {
         instructions.push(
             spl_token_2022::extension::memo_transfer::instruction::disable_required_transfer_memos(
-                &program_id,
+                &config.program_id,
                 &token_account_address,
                 &owner,
                 &config.multisigner_pubkeys,
