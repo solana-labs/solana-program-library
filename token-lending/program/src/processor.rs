@@ -110,9 +110,10 @@ pub fn process_instruction(
             msg!("Instruction: Repay Obligation Liquidity");
             process_repay_obligation_liquidity(program_id, liquidity_amount, accounts)
         }
-        LendingInstruction::LiquidateObligation { liquidity_amount } => {
+        LendingInstruction::LiquidateObligation { .. } => {
             msg!("Instruction: Liquidate Obligation");
-            process_liquidate_obligation(program_id, liquidity_amount, accounts)
+            msg!("method deprecated, please migrate to Liquidate Obligation and Redeem Reserve Collateral");
+            Err(LendingError::DeprecatedInstruction.into())
         }
         LendingInstruction::FlashLoan { .. } => {
             msg!("Instruction: Flash Loan");
@@ -1042,10 +1043,6 @@ fn _deposit_obligation_collateral<'a>(
         msg!("Deposit reserve is stale and must be refreshed in the current slot");
         return Err(LendingError::ReserveStale.into());
     }
-    if deposit_reserve.config.loan_to_value_ratio == 0 {
-        msg!("Deposit reserve has collateral disabled for borrowing");
-        return Err(LendingError::ReserveCollateralDisabled.into());
-    }
 
     let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
     if obligation_info.owner != program_id {
@@ -1636,16 +1633,6 @@ fn process_repay_obligation_liquidity(
     })?;
 
     Ok(())
-}
-
-#[inline(never)] // avoid stack frame limit
-fn process_liquidate_obligation(
-    _program_id: &Pubkey,
-    _liquidity_amount: u64,
-    _accounts: &[AccountInfo],
-) -> ProgramResult {
-    msg!("method deprecated, please migrate to Liquidate Obligation and Redeem Reserve Collateral");
-    Err(LendingError::DeprecatedInstruction.into())
 }
 
 #[allow(clippy::too_many_arguments)]
