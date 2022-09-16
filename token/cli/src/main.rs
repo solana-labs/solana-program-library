@@ -525,7 +525,10 @@ async fn command_create_account(
     let mut extensions = vec![];
 
     let (account, is_associated) = if let Some(account) = maybe_account {
-        (account, false)
+        (
+            account,
+            token.get_associated_token_address(&owner) == account,
+        )
     } else {
         (token.get_associated_token_address(&owner), true)
     };
@@ -550,7 +553,8 @@ async fn command_create_account(
         } else if is_associated {
             println_display(
                 config,
-                "Note: --immutable specified, but Token-2022 ATAs are always immutable".to_string(),
+                "Note: --immutable specified, but Token-2022 ATAs are always immutable, ignoring"
+                    .to_string(),
             );
         } else {
             extensions.push(ExtensionType::ImmutableOwner);
@@ -1227,7 +1231,7 @@ async fn command_wrap(
     println_display(config, format!("Wrapping {} SOL into {}", sol, account));
 
     if !config.sign_only {
-        if let Ok(account_data) = config.get_account_checked(&account).await {
+        if let Some(account_data) = config.program_client.get_account(account).await? {
             if account_data.owner != system_program::id() {
                 return Err(format!("Error: Account already exists: {}", account).into());
             }
@@ -1251,7 +1255,7 @@ async fn command_wrap(
     } else {
         // this case is hit for a token22 ata, which is always immutable. but it does the right thing anyway
         token
-            .wrap_transferable(&account, &wallet_address, lamports, &bulk_signers)
+            .wrap_with_mutable_ownership(&account, &wallet_address, lamports, &bulk_signers)
             .await?
     };
 
@@ -1286,8 +1290,17 @@ async fn command_unwrap(
     println_display(config, format!("Unwrapping {}", account));
 
     if !config.sign_only {
-        let lamports = config.rpc_client.get_balance(&account).await?;
-        if lamports == 0 {
+        let account_data = config.get_account_checked(&account).await?;
+
+        if !use_associated_account {
+            let account_state = StateWithExtensionsOwned::<Account>::unpack(account_data.data)?;
+
+            if account_state.base.mint != *token.get_address() {
+                return Err(format!("{} is not a native token account", account).into());
+            }
+        }
+
+        if account_data.lamports == 0 {
             if use_associated_account {
                 return Err("No wrapped SOL in associated account; did you mean to specify an auxiliary address?".to_string().into());
             } else {
@@ -1297,17 +1310,8 @@ async fn command_unwrap(
 
         println_display(
             config,
-            format!("  Amount: {} SOL", lamports_to_sol(lamports)),
+            format!("  Amount: {} SOL", lamports_to_sol(account_data.lamports)),
         );
-
-        if !use_associated_account {
-            let account_data = config.get_account_checked(&account).await?;
-            let account_state = StateWithExtensionsOwned::<Account>::unpack(account_data.data)?;
-
-            if account_state.base.mint != *token.get_address() {
-                return Err(format!("{} is not a native token account", account).into());
-            }
-        }
     }
 
     println_display(config, format!("  Recipient: {}", &wallet_address));
@@ -3629,16 +3633,6 @@ mod tests {
         tempfile::NamedTempFile,
     };
 
-    fn native_mint(program_id: &Pubkey) -> Result<Pubkey, Error> {
-        if program_id == &spl_token_2022::id() {
-            Ok(spl_token_2022::native_mint::id())
-        } else if program_id == &spl_token::id() {
-            Ok(spl_token::native_mint::id())
-        } else {
-            Err(format!("Error: unknown token program id {}", program_id).into())
-        }
-    }
-
     fn clone_keypair(keypair: &Keypair) -> Keypair {
         Keypair::from_bytes(&keypair.to_bytes()).unwrap()
     }
@@ -4142,8 +4136,13 @@ mod tests {
     async fn wrap() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let native_mint = native_mint(&program_id).unwrap();
             let config = test_config(&test_validator, &payer, &program_id);
+            let native_mint = *Token::new_native(
+                config.program_client.clone(),
+                &program_id,
+                config.fee_payer.clone(),
+            )
+            .get_address();
             do_create_native_mint(&config, &program_id, &payer).await;
             let _result = process_test_command(
                 &config,
@@ -4338,7 +4337,12 @@ mod tests {
             let config = test_config(&test_validator, &payer, &program_id);
             let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(&payer))];
 
-            let native_mint = native_mint(&program_id).unwrap();
+            let native_mint = *Token::new_native(
+                config.program_client.clone(),
+                &program_id,
+                config.fee_payer.clone(),
+            )
+            .get_address();
             let token = create_token(&config, &payer).await;
             let source = create_associated_account(&config, &payer, token).await;
             do_create_native_mint(&config, &program_id, &payer).await;
@@ -4777,5 +4781,102 @@ mod tests {
         let memo_transfer = extensions.get_extension::<MemoTransfer>().unwrap();
         let enabled: bool = memo_transfer.require_incoming_transfer_memos.into();
         assert!(!enabled);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn immutable_accounts() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let program_id = spl_token_2022::id();
+        let config = test_config(&test_validator, &payer, &program_id);
+        let token = create_token(&config, &payer).await;
+        let new_owner = Keypair::new().pubkey();
+        let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(&payer))];
+        let native_mint = *Token::new_native(
+            config.program_client.clone(),
+            &program_id,
+            config.fee_payer.clone(),
+        )
+        .get_address();
+        do_create_native_mint(&config, &program_id, &payer).await;
+
+        // cannot reassign an ata
+        let account = create_associated_account(&config, &payer, token).await;
+        let result = command_authorize(
+            &config,
+            account,
+            AuthorityType::AccountOwner,
+            payer.pubkey(),
+            Some(new_owner),
+            true,
+            bulk_signers.clone(),
+        )
+        .await;
+        result.unwrap_err();
+
+        // immutable works for create-account
+        let aux_account = Keypair::new();
+        let aux_pubkey = aux_account.pubkey();
+        let aux_keypair_file = NamedTempFile::new().unwrap();
+        write_keypair_file(&aux_account, &aux_keypair_file).unwrap();
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::CreateAccount.into(),
+                &token.to_string(),
+                aux_keypair_file.path().to_str().unwrap(),
+                "--immutable",
+            ],
+        )
+        .await
+        .unwrap();
+
+        let result = command_authorize(
+            &config,
+            aux_pubkey,
+            AuthorityType::AccountOwner,
+            payer.pubkey(),
+            Some(new_owner),
+            true,
+            bulk_signers.clone(),
+        )
+        .await;
+        result.unwrap_err();
+
+        // immutable works for wrap
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Wrap.into(),
+                "--create-aux-account",
+                "--immutable",
+                "0.5",
+            ],
+        )
+        .await
+        .unwrap();
+
+        let accounts = config
+            .rpc_client
+            .get_token_accounts_by_owner(&payer.pubkey(), TokenAccountsFilter::Mint(native_mint))
+            .await
+            .unwrap();
+
+        let result = command_authorize(
+            &config,
+            Pubkey::from_str(&accounts[0].pubkey).unwrap(),
+            AuthorityType::AccountOwner,
+            payer.pubkey(),
+            Some(new_owner),
+            true,
+            bulk_signers.clone(),
+        )
+        .await;
+        result.unwrap_err();
     }
 }

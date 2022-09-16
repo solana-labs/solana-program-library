@@ -916,6 +916,7 @@ where
         .await
     }
 
+    /// Wrap lamports into native account
     pub async fn wrap<S: Signers>(
         &self,
         account: &Pubkey,
@@ -930,7 +931,8 @@ where
         self.process_ixs(&instructions, signing_keypairs).await
     }
 
-    pub async fn wrap_transferable<S: Signers>(
+    /// Wrap lamports into a native account that can always have its ownership changed
+    pub async fn wrap_with_mutable_ownership<S: Signers>(
         &self,
         account: &Pubkey,
         owner: &Pubkey,
@@ -942,7 +944,6 @@ where
         self.process_ixs(&instructions, signing_keypairs).await
     }
 
-    /// Wrap lamports into native account
     fn wrap_ixs(
         &self,
         account: &Pubkey,
