@@ -68,6 +68,11 @@
           "isSigner": true
         },
         {
+          "name": "freezeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "mint",
           "isMut": false,
           "isSigner": false
@@ -132,6 +137,11 @@
           "isSigner": true
         },
         {
+          "name": "freezeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false,
@@ -173,6 +183,11 @@
           "isSigner": true
         },
         {
+          "name": "freezeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false,
@@ -210,6 +225,11 @@
         },
         {
           "name": "upstreamAuthority",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "freezeAuthority",
           "isMut": false,
           "isSigner": true
         },
@@ -256,6 +276,11 @@
         },
         {
           "name": "upstreamAuthority",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "freezeAuthority",
           "isMut": false,
           "isSigner": true
         },

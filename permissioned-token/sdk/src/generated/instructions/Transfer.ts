@@ -41,6 +41,7 @@ export const TransferStruct = new beet.BeetArgsStruct<
  * @property [] mint
  * @property [**signer**] owner
  * @property [**signer**] upstreamAuthority
+ * @property [] freezeAuthority
  * @category Instructions
  * @category Transfer
  * @category generated
@@ -51,6 +52,7 @@ export type TransferInstructionAccounts = {
   mint: web3.PublicKey
   owner: web3.PublicKey
   upstreamAuthority: web3.PublicKey
+  freezeAuthority: web3.PublicKey
   tokenProgram?: web3.PublicKey
 }
 
@@ -100,6 +102,11 @@ export function createTransferInstruction(
       pubkey: accounts.upstreamAuthority,
       isWritable: false,
       isSigner: true,
+    },
+    {
+      pubkey: accounts.freezeAuthority,
+      isWritable: false,
+      isSigner: false,
     },
     {
       pubkey: accounts.tokenProgram ?? splToken.TOKEN_PROGRAM_ID,

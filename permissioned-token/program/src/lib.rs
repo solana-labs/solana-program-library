@@ -88,13 +88,9 @@ pub fn process_initialize_mint(
         &[payer.clone(), mint.clone(), system_program.clone()],
     )?;
     let (mint_authority, _) = Pubkey::find_program_address(&[mint.key.as_ref()], program_id);
-    initialize_mint(
-        upstream_authority.key,
-        &mint_authority,
-        mint,
-        token_program,
-        decimals,
-    )
+    let (freeze_key, _) =
+        Pubkey::find_program_address(&[upstream_authority.key.as_ref()], program_id);
+    initialize_mint(&freeze_key, &mint_authority, mint, token_program, decimals)
 }
 
 pub fn process_initialize_account(accounts: &[AccountInfo]) -> ProgramResult {
@@ -103,6 +99,7 @@ pub fn process_initialize_account(accounts: &[AccountInfo]) -> ProgramResult {
         owner,
         payer,
         upstream_authority,
+        freeze_authority,
         mint,
         system_program,
         rent,
@@ -122,7 +119,18 @@ pub fn process_initialize_account(accounts: &[AccountInfo]) -> ProgramResult {
             rent.clone(),
         ],
     )?;
-    freeze(upstream_authority, mint, token_account, token_program)
+    let mut seeds = vec![upstream_authority.key.as_ref().to_vec()];
+    let (freeze_key, bump) = Pubkey::find_program_address(
+        &seeds.iter().map(|s| s.as_slice()).collect::<Vec<&[u8]>>(),
+        &crate::id(),
+    );
+    seeds.push(vec![bump]);
+    assert_with_msg(
+        freeze_authority.key == &freeze_key,
+        ProgramError::InvalidInstructionData,
+        "Invalid freeze authority",
+    )?;
+    freeze(freeze_authority, mint, token_account, token_program, &seeds)
 }
 
 pub fn process_transfer(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
@@ -132,13 +140,25 @@ pub fn process_transfer(accounts: &[AccountInfo], amount: u64) -> ProgramResult 
         mint,
         owner,
         upstream_authority,
+        freeze_authority,
         token_program,
     } = Transfer::load(accounts)?;
-    thaw(upstream_authority, mint, src_account, token_program)?;
-    thaw(upstream_authority, mint, dst_account, token_program)?;
+    let mut seeds = vec![upstream_authority.key.as_ref().to_vec()];
+    let (freeze_key, bump) = Pubkey::find_program_address(
+        &seeds.iter().map(|s| s.as_slice()).collect::<Vec<&[u8]>>(),
+        &crate::id(),
+    );
+    seeds.push(vec![bump]);
+    assert_with_msg(
+        freeze_authority.key == &freeze_key,
+        ProgramError::InvalidInstructionData,
+        "Invalid freeze authority",
+    )?;
+    thaw(freeze_authority, mint, src_account, token_program, &seeds)?;
+    thaw(freeze_authority, mint, dst_account, token_program, &seeds)?;
     transfer(src_account, dst_account, owner, token_program, amount)?;
-    freeze(upstream_authority, mint, dst_account, token_program)?;
-    freeze(upstream_authority, mint, src_account, token_program)
+    freeze(freeze_authority, mint, dst_account, token_program, &seeds)?;
+    freeze(freeze_authority, mint, src_account, token_program, &seeds)
 }
 
 pub fn process_mint_to(
@@ -151,9 +171,21 @@ pub fn process_mint_to(
         token_account,
         owner,
         upstream_authority,
+        freeze_authority,
         token_program,
     } = MintOrBurn::load(accounts)?;
-    thaw(upstream_authority, mint, token_account, token_program)?;
+    let mut seeds = vec![upstream_authority.key.as_ref().to_vec()];
+    let (freeze_key, bump) = Pubkey::find_program_address(
+        &seeds.iter().map(|s| s.as_slice()).collect::<Vec<&[u8]>>(),
+        &crate::id(),
+    );
+    seeds.push(vec![bump]);
+    assert_with_msg(
+        freeze_authority.key == &freeze_key,
+        ProgramError::InvalidInstructionData,
+        "Invalid freeze authority",
+    )?;
+    thaw(freeze_authority, mint, token_account, token_program, &seeds)?;
     let (mint_authority, bump) = Pubkey::find_program_address(&[mint.key.as_ref()], program_id);
     assert_with_msg(
         &mint_authority == owner.key,
@@ -161,7 +193,7 @@ pub fn process_mint_to(
         "Mint authority must be a PDA of the Permissioned Token Program",
     )?;
     mint_to_signed(mint, token_account, owner, token_program, amount, bump)?;
-    freeze(upstream_authority, mint, token_account, token_program)
+    freeze(freeze_authority, mint, token_account, token_program, &seeds)
 }
 
 pub fn process_burn(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
@@ -170,11 +202,23 @@ pub fn process_burn(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
         token_account,
         owner,
         upstream_authority,
+        freeze_authority,
         token_program,
     } = MintOrBurn::load(accounts)?;
-    thaw(upstream_authority, mint, token_account, token_program)?;
+    let mut seeds = vec![upstream_authority.key.as_ref().to_vec()];
+    let (freeze_key, bump) = Pubkey::find_program_address(
+        &seeds.iter().map(|s| s.as_slice()).collect::<Vec<&[u8]>>(),
+        &crate::id(),
+    );
+    seeds.push(vec![bump]);
+    assert_with_msg(
+        freeze_authority.key == &freeze_key,
+        ProgramError::InvalidInstructionData,
+        "Invalid freeze authority",
+    )?;
+    thaw(freeze_authority, mint, token_account, token_program, &seeds)?;
     burn(mint, token_account, owner, token_program, amount)?;
-    freeze(upstream_authority, mint, token_account, token_program)
+    freeze(freeze_authority, mint, token_account, token_program, &seeds)
 }
 
 pub fn process_close(accounts: &[AccountInfo]) -> ProgramResult {
@@ -184,8 +228,20 @@ pub fn process_close(accounts: &[AccountInfo]) -> ProgramResult {
         mint,
         owner,
         upstream_authority,
+        freeze_authority,
         token_program,
     } = Close::load(accounts)?;
-    thaw(upstream_authority, mint, token_account, token_program)?;
+    let mut seeds = vec![upstream_authority.key.as_ref().to_vec()];
+    let (freeze_key, bump) = Pubkey::find_program_address(
+        &seeds.iter().map(|s| s.as_slice()).collect::<Vec<&[u8]>>(),
+        &crate::id(),
+    );
+    seeds.push(vec![bump]);
+    assert_with_msg(
+        freeze_authority.key == &freeze_key,
+        ProgramError::InvalidInstructionData,
+        "Invalid freeze authority",
+    )?;
+    thaw(freeze_authority, mint, token_account, token_program, &seeds)?;
     close(token_account, dst_account, owner, token_program)
 }

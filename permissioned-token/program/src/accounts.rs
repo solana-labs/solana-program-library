@@ -67,6 +67,7 @@ pub struct InitializeAccount<'a, 'info> {
     pub owner: &'a AccountInfo<'info>,
     pub payer: &'a AccountInfo<'info>,
     pub upstream_authority: &'a AccountInfo<'info>,
+    pub freeze_authority: &'a AccountInfo<'info>,
     pub mint: &'a AccountInfo<'info>,
     pub system_program: &'a AccountInfo<'info>,
     pub rent: &'a AccountInfo<'info>,
@@ -82,6 +83,7 @@ impl<'a, 'info> InitializeAccount<'a, 'info> {
             owner: next_account_info(account_iter)?,
             payer: next_account_info(account_iter)?,
             upstream_authority: next_account_info(account_iter)?,
+            freeze_authority: next_account_info(account_iter)?,
             mint: next_account_info(account_iter)?,
             system_program: next_account_info(account_iter)?,
             rent: next_account_info(account_iter)?,
@@ -152,6 +154,7 @@ pub struct MintOrBurn<'a, 'info> {
     pub token_account: &'a AccountInfo<'info>,
     pub owner: &'a AccountInfo<'info>,
     pub upstream_authority: &'a AccountInfo<'info>,
+    pub freeze_authority: &'a AccountInfo<'info>,
     pub token_program: &'a AccountInfo<'info>,
 }
 
@@ -163,6 +166,7 @@ impl<'a, 'info> MintOrBurn<'a, 'info> {
             token_account: next_account_info(account_iter)?,
             owner: next_account_info(account_iter)?,
             upstream_authority: next_account_info(account_iter)?,
+            freeze_authority: next_account_info(account_iter)?,
             token_program: next_account_info(account_iter)?,
         };
         assert_with_msg(
@@ -205,6 +209,7 @@ pub struct Transfer<'a, 'info> {
     pub mint: &'a AccountInfo<'info>,
     pub owner: &'a AccountInfo<'info>,
     pub upstream_authority: &'a AccountInfo<'info>,
+    pub freeze_authority: &'a AccountInfo<'info>,
     pub token_program: &'a AccountInfo<'info>,
 }
 
@@ -217,6 +222,7 @@ impl<'a, 'info> Transfer<'a, 'info> {
             mint: next_account_info(account_iter)?,
             owner: next_account_info(account_iter)?,
             upstream_authority: next_account_info(account_iter)?,
+            freeze_authority: next_account_info(account_iter)?,
             token_program: next_account_info(account_iter)?,
         };
         assert_with_msg(
@@ -269,6 +275,7 @@ pub struct Close<'a, 'info> {
     pub mint: &'a AccountInfo<'info>,
     pub owner: &'a AccountInfo<'info>,
     pub upstream_authority: &'a AccountInfo<'info>,
+    pub freeze_authority: &'a AccountInfo<'info>,
     pub token_program: &'a AccountInfo<'info>,
 }
 
@@ -281,6 +288,7 @@ impl<'a, 'info> Close<'a, 'info> {
             mint: next_account_info(account_iter)?,
             owner: next_account_info(account_iter)?,
             upstream_authority: next_account_info(account_iter)?,
+            freeze_authority: next_account_info(account_iter)?,
             token_program: next_account_info(account_iter)?,
         };
         assert_with_msg(

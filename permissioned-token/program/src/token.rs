@@ -5,8 +5,9 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
+
 pub(crate) fn initialize_mint<'a, 'b>(
-    upstream_authority: &Pubkey,
+    freeze_authority: &Pubkey,
     mint_authority: &Pubkey,
     mint: &'a AccountInfo<'b>,
     token_program: &'a AccountInfo<'b>,
@@ -17,7 +18,7 @@ pub(crate) fn initialize_mint<'a, 'b>(
             token_program.key,
             mint.key,
             mint_authority,
-            Some(upstream_authority),
+            Some(freeze_authority),
             decimals,
         )?,
         &[token_program.clone(), mint.clone()],
@@ -25,48 +26,52 @@ pub(crate) fn initialize_mint<'a, 'b>(
 }
 
 pub(crate) fn thaw<'a, 'b>(
-    upstream_authority: &'a AccountInfo<'b>,
+    freeze_authority: &'a AccountInfo<'b>,
     mint: &'a AccountInfo<'b>,
     target: &'a AccountInfo<'b>,
     token_program: &'a AccountInfo<'b>,
+    seeds: &[Vec<u8>],
 ) -> ProgramResult {
-    invoke(
+    invoke_signed(
         &spl_token::instruction::thaw_account(
             token_program.key,
             target.key,
             mint.key,
-            upstream_authority.key,
+            freeze_authority.key,
             &[],
         )?,
         &[
             token_program.clone(),
             mint.clone(),
-            upstream_authority.clone(),
+            freeze_authority.clone(),
             target.clone(),
         ],
+        &[&seeds.iter().map(|s| s.as_slice()).collect::<Vec<&[u8]>>()],
     )
 }
 
 pub(crate) fn freeze<'a, 'b>(
-    upstream_authority: &'a AccountInfo<'b>,
+    freeze_authority: &'a AccountInfo<'b>,
     mint: &'a AccountInfo<'b>,
     target: &'a AccountInfo<'b>,
     token_program: &'a AccountInfo<'b>,
+    seeds: &[Vec<u8>],
 ) -> ProgramResult {
-    invoke(
+    invoke_signed(
         &spl_token::instruction::freeze_account(
             token_program.key,
             target.key,
             mint.key,
-            upstream_authority.key,
+            freeze_authority.key,
             &[],
         )?,
         &[
             token_program.clone(),
             mint.clone(),
-            upstream_authority.clone(),
+            freeze_authority.clone(),
             target.clone(),
         ],
+        &[&seeds.iter().map(|s| s.as_slice()).collect::<Vec<&[u8]>>()],
     )
 }
 

@@ -25,6 +25,7 @@ export const CloseAccountStruct = new beet.BeetArgsStruct<{
  * @property [] mint
  * @property [**signer**] owner
  * @property [**signer**] upstreamAuthority
+ * @property [**signer**] freezeAuthority
  * @category Instructions
  * @category CloseAccount
  * @category generated
@@ -35,6 +36,7 @@ export type CloseAccountInstructionAccounts = {
   mint: web3.PublicKey
   owner: web3.PublicKey
   upstreamAuthority: web3.PublicKey
+  freezeAuthority: web3.PublicKey
   tokenProgram?: web3.PublicKey
 }
 
@@ -78,6 +80,11 @@ export function createCloseAccountInstruction(
     },
     {
       pubkey: accounts.upstreamAuthority,
+      isWritable: false,
+      isSigner: true,
+    },
+    {
+      pubkey: accounts.freezeAuthority,
       isWritable: false,
       isSigner: true,
     },

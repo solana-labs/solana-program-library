@@ -40,6 +40,7 @@ export const BurnStruct = new beet.BeetArgsStruct<
  * @property [_writable_] account
  * @property [**signer**] owner
  * @property [**signer**] upstreamAuthority
+ * @property [**signer**] freezeAuthority
  * @category Instructions
  * @category Burn
  * @category generated
@@ -49,6 +50,7 @@ export type BurnInstructionAccounts = {
   account: web3.PublicKey
   owner: web3.PublicKey
   upstreamAuthority: web3.PublicKey
+  freezeAuthority: web3.PublicKey
   tokenProgram?: web3.PublicKey
 }
 
@@ -91,6 +93,11 @@ export function createBurnInstruction(
     },
     {
       pubkey: accounts.upstreamAuthority,
+      isWritable: false,
+      isSigner: true,
+    },
+    {
+      pubkey: accounts.freezeAuthority,
       isWritable: false,
       isSigner: true,
     },
