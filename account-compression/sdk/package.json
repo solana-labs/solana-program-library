@@ -25,9 +25,12 @@
   "module": "./dist/esm/index.js",
   "types": "./dist/types/index.d.ts",
   "exports": {
-    "require": "./dist/cjs/index.js",
-    "import": "./dist/esm/index.js",
-    "types": "./dist/types/index.d.ts"
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "import": "./dist/esm/index.js",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./idl/spl_account_compression.json": "./idl/spl_account_compression.json"
   },
   "scripts": {
     "build": "rm -rf dist/ && tsc && tsc -p tsconfig.cjs.json",
