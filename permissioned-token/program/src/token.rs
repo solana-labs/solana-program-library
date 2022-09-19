@@ -5,7 +5,6 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-
 pub(crate) fn initialize_mint<'a, 'b>(
     freeze_authority: &Pubkey,
     mint_authority: &Pubkey,
