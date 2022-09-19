@@ -41,7 +41,7 @@ use crate::canopy::{fill_in_proof_from_canopy, update_canopy};
 use crate::data_wrapper::{wrap_event, Wrapper};
 use crate::error::AccountCompressionError;
 use crate::events::ChangeLogEvent;
-use crate::state::ConcurrentMerkleTreeHeader;
+use crate::state::{ConcurrentMerkleTreeHeader, CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1};
 use crate::zero_copy::ZeroCopy;
 
 /// Exported for Anchor / Solita
@@ -132,7 +132,7 @@ macro_rules! merkle_tree_depth_size_apply_fn {
 
 fn merkle_tree_get_size(header: &ConcurrentMerkleTreeHeader) -> Result<usize> {
     // Note: max_buffer_size MUST be a power of 2
-    match (header.max_depth, header.max_buffer_size) {
+    match (header.get_max_depth(), header.get_max_buffer_size()) {
         (3, 8) => Ok(size_of::<ConcurrentMerkleTree<3, 8>>()),
         (5, 8) => Ok(size_of::<ConcurrentMerkleTree<5, 8>>()),
         (14, 64) => Ok(size_of::<ConcurrentMerkleTree<14, 64>>()),
@@ -157,8 +157,8 @@ fn merkle_tree_get_size(header: &ConcurrentMerkleTreeHeader) -> Result<usize> {
         _ => {
             msg!(
                 "Failed to get size of max depth {} and max buffer size {}",
-                header.max_depth,
-                header.max_buffer_size
+                header.get_max_depth(),
+                header.get_max_buffer_size()
             );
             err!(AccountCompressionError::ConcurrentMerkleTreeConstantsError)
         }
@@ -171,7 +171,7 @@ fn merkle_tree_get_size(header: &ConcurrentMerkleTreeHeader) -> Result<usize> {
 macro_rules! merkle_tree_apply_fn {
     ($header:ident, $id:ident, $bytes:ident, $func:ident, $($arg:tt)*) => {
         // Note: max_buffer_size MUST be a power of 2
-        match ($header.max_depth, $header.max_buffer_size) {
+        match ($header.get_max_depth(), $header.get_max_buffer_size()) {
             (3, 8) => merkle_tree_depth_size_apply_fn!(3, 8, $id, $bytes, $func, $($arg)*),
             (5, 8) => merkle_tree_depth_size_apply_fn!(5, 8, $id, $bytes, $func, $($arg)*),
             (14, 64) => merkle_tree_depth_size_apply_fn!(14, 64, $id, $bytes, $func, $($arg)*),
@@ -194,7 +194,7 @@ macro_rules! merkle_tree_apply_fn {
             (30, 1024) => merkle_tree_depth_size_apply_fn!(30, 1024, $id, $bytes, $func, $($arg)*),
             (30, 2048) => merkle_tree_depth_size_apply_fn!(30, 2048, $id, $bytes, $func, $($arg)*),
             _ => {
-                msg!("Failed to apply {} on concurrent merkle tree with max depth {} and max buffer size {}", stringify!($func), $header.max_depth, $header.max_buffer_size);
+                msg!("Failed to apply {} on concurrent merkle tree with max depth {} and max buffer size {}", stringify!($func), $header.get_max_depth(), $header.get_max_buffer_size());
                 err!(AccountCompressionError::ConcurrentMerkleTreeConstantsError)
             }
         }
@@ -230,7 +230,7 @@ pub mod spl_account_compression {
         let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
 
         let (mut header_bytes, rest) =
-            merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
+            merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
 
         let mut header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
         header.initialize(
@@ -246,7 +246,7 @@ pub mod spl_account_compression {
         let change_log = merkle_tree_apply_fn!(header, id, tree_bytes, initialize,)?;
         wrap_event(change_log.try_to_vec()?, &ctx.accounts.log_wrapper)?;
         emit!(*change_log);
-        update_canopy(canopy_bytes, header.max_depth, None)
+        update_canopy(canopy_bytes, header.get_max_depth(), None)
     }
 
     /// Note:
@@ -276,7 +276,7 @@ pub mod spl_account_compression {
     //     let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
 
     //     let (mut header_bytes, rest) =
-    //         merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
+    //         merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
 
     //     let mut header = ConcurrentMerkleTreeHeader::try_from_slice(&header_bytes)?;
     //     header.initialize(
@@ -331,7 +331,7 @@ pub mod spl_account_compression {
         );
         let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
         let (header_bytes, rest) =
-            merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
+            merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
 
         let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
         header.assert_valid_authority(&ctx.accounts.authority.key())?;
@@ -343,7 +343,7 @@ pub mod spl_account_compression {
         for node in ctx.remaining_accounts.iter() {
             proof.push(node.key().to_bytes());
         }
-        fill_in_proof_from_canopy(canopy_bytes, header.max_depth, index, &mut proof)?;
+        fill_in_proof_from_canopy(canopy_bytes, header.get_max_depth(), index, &mut proof)?;
         let id = ctx.accounts.merkle_tree.key();
         // A call is made to ConcurrentMerkleTree::set_leaf(root, previous_leaf, new_leaf, proof, index)
         let change_log = merkle_tree_apply_fn!(
@@ -359,7 +359,7 @@ pub mod spl_account_compression {
         )?;
         wrap_event(change_log.try_to_vec()?, &ctx.accounts.log_wrapper)?;
         emit!(*change_log);
-        update_canopy(canopy_bytes, header.max_depth, Some(change_log))
+        update_canopy(canopy_bytes, header.get_max_depth(), Some(change_log))
     }
 
     /// Transfers `authority`.
@@ -375,13 +375,12 @@ pub mod spl_account_compression {
         );
         let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
         let (mut header_bytes, _) =
-            merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
+            merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
 
         let mut header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
         header.assert_valid_authority(&ctx.accounts.authority.key())?;
 
-        header.authority = new_authority;
-        msg!("Authority transferred to: {:?}", header.authority);
+        header.set_new_authority(&new_authority);
         header.serialize(&mut header_bytes)?;
 
         Ok(())
@@ -402,7 +401,7 @@ pub mod spl_account_compression {
         );
         let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
         let (header_bytes, rest) =
-            merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
+            merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
 
         let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
         header.assert_valid()?;
@@ -414,7 +413,7 @@ pub mod spl_account_compression {
         for node in ctx.remaining_accounts.iter() {
             proof.push(node.key().to_bytes());
         }
-        fill_in_proof_from_canopy(canopy_bytes, header.max_depth, index, &mut proof)?;
+        fill_in_proof_from_canopy(canopy_bytes, header.get_max_depth(), index, &mut proof)?;
         let id = ctx.accounts.merkle_tree.key();
 
         merkle_tree_apply_fn!(header, id, tree_bytes, prove_leaf, root, leaf, &proof, index)?;
@@ -435,7 +434,7 @@ pub mod spl_account_compression {
         );
         let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
         let (header_bytes, rest) =
-            merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
+            merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
 
         let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
         header.assert_valid_authority(&ctx.accounts.authority.key())?;
@@ -446,7 +445,7 @@ pub mod spl_account_compression {
         let change_log = merkle_tree_apply_fn!(header, id, tree_bytes, append, leaf)?;
         wrap_event(change_log.try_to_vec()?, &ctx.accounts.log_wrapper)?;
         emit!(*change_log);
-        update_canopy(canopy_bytes, header.max_depth, Some(change_log))
+        update_canopy(canopy_bytes, header.get_max_depth(), Some(change_log))
     }
 
     /// This instruction takes a proof, and will attempt to write the given leaf
@@ -466,7 +465,7 @@ pub mod spl_account_compression {
         );
         let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
         let (header_bytes, rest) =
-            merkle_tree_bytes.split_at_mut(size_of::<ConcurrentMerkleTreeHeader>());
+            merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
 
         let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
         header.assert_valid_authority(&ctx.accounts.authority.key())?;
@@ -478,7 +477,7 @@ pub mod spl_account_compression {
         for node in ctx.remaining_accounts.iter() {
             proof.push(node.key().to_bytes());
         }
-        fill_in_proof_from_canopy(canopy_bytes, header.max_depth, index, &mut proof)?;
+        fill_in_proof_from_canopy(canopy_bytes, header.get_max_depth(), index, &mut proof)?;
         // A call is made to ConcurrentMerkleTree::fill_empty_or_append
         let id = ctx.accounts.merkle_tree.key();
         let change_log = merkle_tree_apply_fn!(
@@ -493,6 +492,6 @@ pub mod spl_account_compression {
         )?;
         wrap_event(change_log.try_to_vec()?, &ctx.accounts.log_wrapper)?;
         emit!(*change_log);
-        update_canopy(canopy_bytes, header.max_depth, Some(change_log))
+        update_canopy(canopy_bytes, header.get_max_depth(), Some(change_log))
     }
 }
