@@ -167,11 +167,6 @@
           "isSigner": false
         },
         {
-          "name": "mintAuthority",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "upstreamAuthority",
           "isMut": false,
           "isSigner": true

@@ -244,6 +244,11 @@ impl<'a, 'info> Burn<'a, 'info> {
             ProgramError::MissingRequiredSignature,
             "Freeze authority must sign for modification",
         )?;
+        assert_with_msg(
+            ctx.owner.is_signer,
+            ProgramError::MissingRequiredSignature,
+            "Owner must sign for modification",
+        )?;
         Ok(ctx)
     }
 }
