@@ -33,7 +33,7 @@ async fn process_transaction(
     Ok(sig)
 }
 
-pub async fn airdrop(
+pub async fn transfer(
     context: &mut BanksClient,
     payer: &Keypair,
     receiver: &Pubkey,
@@ -60,7 +60,7 @@ async fn test_spl_managed_token_basic() {
     let mut context = spl_managed_token_test().start_with_context().await;
     let lwc = &mut context.banks_client;
     let authority = Keypair::new();
-    airdrop(lwc, &context.payer, &authority.pubkey(), sol(10.0))
+    transfer(lwc, &context.payer, &authority.pubkey(), sol(10.0))
         .await
         .unwrap();
     let mint = Keypair::new();
@@ -80,7 +80,7 @@ async fn test_spl_managed_token_basic() {
     let eve_key = eve.pubkey();
 
     for k in [&alice_key, &bob_key] {
-        airdrop(lwc, &context.payer, k, sol(1.0)).await.unwrap();
+        transfer(lwc, &context.payer, k, sol(1.0)).await.unwrap();
         let create_ata = create_initialize_account_instruction(
             &mint_key,
             k,

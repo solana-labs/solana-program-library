@@ -142,7 +142,59 @@ impl<'a, 'info> InitializeAccount<'a, 'info> {
     }
 }
 
-pub struct MintOrBurn<'a, 'info> {
+pub struct Mint<'a, 'info> {
+    pub mint: &'a AccountInfo<'info>,
+    pub token_account: &'a AccountInfo<'info>,
+    pub upstream_authority: &'a AccountInfo<'info>,
+    pub freeze_and_mint_authority: &'a AccountInfo<'info>,
+    pub token_program: &'a AccountInfo<'info>,
+}
+
+impl<'a, 'info> Mint<'a, 'info> {
+    pub fn load(accounts: &'a [AccountInfo<'info>]) -> Result<Self, ProgramError> {
+        let account_iter = &mut accounts.iter();
+        let ctx = Self {
+            mint: next_account_info(account_iter)?,
+            token_account: next_account_info(account_iter)?,
+            upstream_authority: next_account_info(account_iter)?,
+            freeze_and_mint_authority: next_account_info(account_iter)?,
+            token_program: next_account_info(account_iter)?,
+        };
+        assert_with_msg(
+            ctx.mint.owner == ctx.token_program.key,
+            ProgramError::IllegalOwner,
+            "Mint account must be owned by the Token Program",
+        )?;
+        assert_with_msg(
+            ctx.token_account.owner == ctx.token_program.key,
+            ProgramError::IllegalOwner,
+            "Token account must be owned by the Token Program",
+        )?;
+        assert_with_msg(
+            ctx.token_program.key == &spl_token::id(),
+            ProgramError::InvalidInstructionData,
+            "Invalid key supplied for Token Program",
+        )?;
+        assert_with_msg(
+            ctx.mint.is_writable,
+            ProgramError::InvalidInstructionData,
+            "Mint must be writable",
+        )?;
+        assert_with_msg(
+            ctx.token_account.is_writable,
+            ProgramError::InvalidInstructionData,
+            "Token Account must be writable",
+        )?;
+        assert_with_msg(
+            ctx.upstream_authority.is_signer,
+            ProgramError::MissingRequiredSignature,
+            "Freeze authority must sign for modification",
+        )?;
+        Ok(ctx)
+    }
+}
+
+pub struct Burn<'a, 'info> {
     pub mint: &'a AccountInfo<'info>,
     pub token_account: &'a AccountInfo<'info>,
     pub owner: &'a AccountInfo<'info>,
@@ -151,7 +203,7 @@ pub struct MintOrBurn<'a, 'info> {
     pub token_program: &'a AccountInfo<'info>,
 }
 
-impl<'a, 'info> MintOrBurn<'a, 'info> {
+impl<'a, 'info> Burn<'a, 'info> {
     pub fn load(accounts: &'a [AccountInfo<'info>]) -> Result<Self, ProgramError> {
         let account_iter = &mut accounts.iter();
         let ctx = Self {

@@ -8,7 +8,7 @@ use solana_program::{
 };
 use spl_associated_token_account::get_associated_token_address;
 
-use crate::{get_freeze_authority, get_mint_authority};
+use crate::get_authority;
 
 #[derive(Debug, Clone, ShankInstruction, BorshSerialize, BorshDeserialize)]
 #[rustfmt::skip]
@@ -99,7 +99,7 @@ pub fn create_initialize_account_instruction(
     upstream_authority: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let account = get_associated_token_address(owner, mint);
-    let (freeze_authority, _) = get_freeze_authority(upstream_authority);
+    let (freeze_authority, _) = get_authority(upstream_authority);
     Ok(Instruction {
         program_id: crate::id(),
         accounts: vec![
@@ -124,16 +124,14 @@ pub fn create_mint_to_instruction(
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
     let account = get_associated_token_address(owner, mint);
-    let (mint_authority, _) = get_mint_authority(mint);
-    let (freeze_authority, _) = get_freeze_authority(upstream_authority);
+    let (authority, _) = get_authority(upstream_authority);
     Ok(Instruction {
         program_id: crate::id(),
         accounts: vec![
             AccountMeta::new(*mint, false),
             AccountMeta::new(account, false),
-            AccountMeta::new_readonly(mint_authority, false),
             AccountMeta::new_readonly(*upstream_authority, true),
-            AccountMeta::new_readonly(freeze_authority, false),
+            AccountMeta::new_readonly(authority, false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
         data: ManagedTokenInstruction::MintTo { amount }.try_to_vec()?,
@@ -149,7 +147,7 @@ pub fn create_transfer_instruction(
 ) -> Result<Instruction, ProgramError> {
     let src_account = get_associated_token_address(src, mint);
     let dst_account = get_associated_token_address(dst, mint);
-    let (freeze_authority, _) = get_freeze_authority(upstream_authority);
+    let (freeze_authority, _) = get_authority(upstream_authority);
     Ok(Instruction {
         program_id: crate::id(),
         accounts: vec![
@@ -172,7 +170,7 @@ pub fn create_burn_instruction(
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
     let account = get_associated_token_address(owner, mint);
-    let (freeze_authority, _) = get_freeze_authority(upstream_authority);
+    let (freeze_authority, _) = get_authority(upstream_authority);
     Ok(Instruction {
         program_id: crate::id(),
         accounts: vec![
@@ -193,7 +191,7 @@ pub fn create_close_account_instruction(
     upstream_authority: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let account = get_associated_token_address(owner, mint);
-    let (freeze_authority, _) = get_freeze_authority(upstream_authority);
+    let (freeze_authority, _) = get_authority(upstream_authority);
     Ok(Instruction {
         program_id: crate::id(),
         accounts: vec![
