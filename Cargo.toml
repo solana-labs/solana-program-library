@@ -22,6 +22,7 @@ members = [
   "libraries/merkle-tree-reference",
   "memo/program",
   "name-service/program",
+  "managed-token/program",
   "record/program",
   "shared-memory/program",
   "stake-pool/cli",

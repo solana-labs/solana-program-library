@@ -1,0 +1,41 @@
+[package]
+name = "spl-managed-token"
+version = "0.1.0"
+description = "Solana Program Library Token Swap"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "spl_managed_token"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+test = []
+
+[dependencies]
+solana-program = "1.11.6"
+shank = "^0.0.5"
+spl-token = { version = "3.5.0", features = ["no-entrypoint"] }
+spl-associated-token-account = { version = "1.1.1", features = [ "no-entrypoint", ] }
+thiserror = "^1.0.24"
+borsh = "0.9.3"
+
+[dev-dependencies]
+solana-program-test = "1.11.6"
+solana-sdk = "1.11.6"
+tokio = { version = "1.8.4", features = ["full"] }
+anyhow = "1.0.52"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+overflow-checks = true
