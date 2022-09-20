@@ -3066,22 +3066,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "permissioned-token"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "borsh",
- "shank",
- "solana-program",
- "solana-program-test",
- "solana-sdk",
- "spl-associated-token-account 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-token 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "thiserror",
- "tokio",
-]
-
-[[package]]
 name = "pest"
 version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5944,6 +5928,22 @@ dependencies = [
  "solana-program",
  "spl-token 3.5.0",
  "thiserror",
+]
+
+[[package]]
+name = "spl-managed-token"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "borsh",
+ "shank",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-associated-token-account 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]

@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "name": "permissioned_token",
+  "name": "spl_managed_token",
   "instructions": [
     {
       "name": "InitializeMint",
@@ -82,12 +82,6 @@
           "isMut": false,
           "isSigner": false,
           "desc": "System program"
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false,
-          "desc": "Rent sysvar"
         },
         {
           "name": "associatedTokenProgram",
@@ -175,7 +169,7 @@
         {
           "name": "mintAuthority",
           "isMut": false,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "upstreamAuthority",
@@ -231,7 +225,7 @@
         {
           "name": "freezeAuthority",
           "isMut": false,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "tokenProgram",
@@ -282,7 +276,7 @@
         {
           "name": "freezeAuthority",
           "isMut": false,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "tokenProgram",

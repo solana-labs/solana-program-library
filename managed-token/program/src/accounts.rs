@@ -2,7 +2,7 @@ use crate::assert_with_msg;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     program_error::ProgramError,
-    system_program, sysvar,
+    system_program,
 };
 
 pub struct InitializeMint<'a, 'info> {
@@ -70,7 +70,6 @@ pub struct InitializeAccount<'a, 'info> {
     pub freeze_authority: &'a AccountInfo<'info>,
     pub mint: &'a AccountInfo<'info>,
     pub system_program: &'a AccountInfo<'info>,
-    pub rent: &'a AccountInfo<'info>,
     pub associated_token_program: &'a AccountInfo<'info>,
     pub token_program: &'a AccountInfo<'info>,
 }
@@ -86,7 +85,6 @@ impl<'a, 'info> InitializeAccount<'a, 'info> {
             freeze_authority: next_account_info(account_iter)?,
             mint: next_account_info(account_iter)?,
             system_program: next_account_info(account_iter)?,
-            rent: next_account_info(account_iter)?,
             associated_token_program: next_account_info(account_iter)?,
             token_program: next_account_info(account_iter)?,
         };
@@ -119,11 +117,6 @@ impl<'a, 'info> InitializeAccount<'a, 'info> {
             ctx.associated_token_program.key == &spl_associated_token_account::id(),
             ProgramError::InvalidInstructionData,
             "Invalid key supplied for Associataed Token Program",
-        )?;
-        assert_with_msg(
-            ctx.rent.key == &sysvar::rent::id(),
-            ProgramError::InvalidInstructionData,
-            "Invalid key supplied for Rent Sysvar",
         )?;
         assert_with_msg(
             ctx.token_account.is_writable,

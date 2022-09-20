@@ -10,10 +10,10 @@ use solana_sdk::{
     transaction::Transaction,
 };
 
-use permissioned_token::instruction::*;
 use spl_associated_token_account::{
     get_associated_token_address, instruction::create_associated_token_account,
 };
+use spl_managed_token::instruction::*;
 
 pub fn sol(amount: f64) -> u64 {
     (amount * LAMPORTS_PER_SOL as f64) as u64
@@ -47,17 +47,17 @@ pub async fn airdrop(
     process_transaction(context, ixs, vec![payer]).await
 }
 
-pub fn permissioned_token_test() -> ProgramTest {
+pub fn spl_managed_token_test() -> ProgramTest {
     ProgramTest::new(
-        "permissioned_token",
-        permissioned_token::id(),
-        processor!(permissioned_token::process_instruction),
+        "spl_managed_token",
+        spl_managed_token::id(),
+        processor!(spl_managed_token::process_instruction),
     )
 }
 
 #[tokio::test]
-async fn test_permissioned_token_basic() {
-    let mut context = permissioned_token_test().start_with_context().await;
+async fn test_spl_managed_token_basic() {
+    let mut context = spl_managed_token_test().start_with_context().await;
     let lwc = &mut context.banks_client;
     let authority = Keypair::new();
     airdrop(lwc, &context.payer, &authority.pubkey(), sol(10.0))

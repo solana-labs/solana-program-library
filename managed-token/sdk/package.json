@@ -1,0 +1,12 @@
+{
+  "name": "managed-token",
+  "version": "1.0.0",
+  "description": "SDK for managed-token",
+  "main": "index.ts",
+  "license": "MIT",
+  "dependencies": {
+    "@metaplex-foundation/rustbin": "^0.3.1",
+    "@metaplex-foundation/solita": "^0.12.2",
+    "@solana/spl-token": "0.1.8"
+  }
+}

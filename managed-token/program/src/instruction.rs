@@ -4,13 +4,15 @@ use solana_program::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
     pubkey::Pubkey,
-    system_program, sysvar,
+    system_program,
 };
 use spl_associated_token_account::get_associated_token_address;
 
+use crate::{get_freeze_authority, get_mint_authority};
+
 #[derive(Debug, Clone, ShankInstruction, BorshSerialize, BorshDeserialize)]
 #[rustfmt::skip]
-pub enum PermissionedTokenInstruction {
+pub enum ManagedTokenInstruction {
 
     #[account(0, writable, signer, name = "mint")]
     #[account(1, writable, signer, name = "payer")]
@@ -28,13 +30,12 @@ pub enum PermissionedTokenInstruction {
     #[account(4, name = "freeze_authority")]
     #[account(5, name = "mint")]
     #[account(6, name = "system_program", desc = "System program")]
-    #[account(7, name = "rent", desc = "Rent sysvar")]
     #[account(
-        8,
+        7,
         name = "associated_token_program",
         desc = "Associated Token program"
     )]
-    #[account(9, name = "token_program", desc = "Token program")]
+    #[account(8, name = "token_program", desc = "Token program")]
     InitializeAccount,
 
     #[account(0, writable, name = "src_account")]
@@ -48,7 +49,7 @@ pub enum PermissionedTokenInstruction {
 
     #[account(0, writable, name = "mint")]
     #[account(1, writable, name = "account")]
-    #[account(2, signer, name = "mint_authority")]
+    #[account(2, name = "mint_authority")]
     #[account(3, signer, name = "upstream_authority")]
     #[account(4, name = "freeze_authority")]
     #[account(5, name = "token_program", desc = "Token program")]
@@ -58,7 +59,7 @@ pub enum PermissionedTokenInstruction {
     #[account(1, writable, name = "account")]
     #[account(2, signer, name = "owner")]
     #[account(3, signer, name = "upstream_authority")]
-    #[account(4, signer, name = "freeze_authority")]
+    #[account(4, name = "freeze_authority")]
     #[account(5, name = "token_program", desc = "Token program")]
     Burn { amount: u64 },
 
@@ -67,7 +68,7 @@ pub enum PermissionedTokenInstruction {
     #[account(2, name = "mint")]
     #[account(3, signer, name = "owner")]
     #[account(4, signer, name = "upstream_authority")]
-    #[account(5, signer, name = "freeze_authority")]
+    #[account(5, name = "freeze_authority")]
     #[account(6, name = "token_program", desc = "Token program")]
     CloseAccount,
 }
@@ -87,7 +88,7 @@ pub fn create_initialize_mint_instruction(
             AccountMeta::new_readonly(system_program::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
-        data: PermissionedTokenInstruction::InitializeMint { decimals }.try_to_vec()?,
+        data: ManagedTokenInstruction::InitializeMint { decimals }.try_to_vec()?,
     })
 }
 
@@ -98,8 +99,7 @@ pub fn create_initialize_account_instruction(
     upstream_authority: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let account = get_associated_token_address(owner, mint);
-    let (freeze_authority, _) =
-        Pubkey::find_program_address(&[upstream_authority.as_ref()], &crate::id());
+    let (freeze_authority, _) = get_freeze_authority(upstream_authority);
     Ok(Instruction {
         program_id: crate::id(),
         accounts: vec![
@@ -110,11 +110,10 @@ pub fn create_initialize_account_instruction(
             AccountMeta::new_readonly(freeze_authority, false),
             AccountMeta::new_readonly(*mint, false),
             AccountMeta::new_readonly(system_program::id(), false),
-            AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(spl_associated_token_account::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
-        data: PermissionedTokenInstruction::InitializeAccount.try_to_vec()?,
+        data: ManagedTokenInstruction::InitializeAccount.try_to_vec()?,
     })
 }
 
@@ -125,9 +124,8 @@ pub fn create_mint_to_instruction(
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
     let account = get_associated_token_address(owner, mint);
-    let (mint_authority, _) = Pubkey::find_program_address(&[mint.as_ref()], &crate::id());
-    let (freeze_authority, _) =
-        Pubkey::find_program_address(&[upstream_authority.as_ref()], &crate::id());
+    let (mint_authority, _) = get_mint_authority(mint);
+    let (freeze_authority, _) = get_freeze_authority(upstream_authority);
     Ok(Instruction {
         program_id: crate::id(),
         accounts: vec![
@@ -138,7 +136,7 @@ pub fn create_mint_to_instruction(
             AccountMeta::new_readonly(freeze_authority, false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
-        data: PermissionedTokenInstruction::MintTo { amount }.try_to_vec()?,
+        data: ManagedTokenInstruction::MintTo { amount }.try_to_vec()?,
     })
 }
 
@@ -151,8 +149,7 @@ pub fn create_transfer_instruction(
 ) -> Result<Instruction, ProgramError> {
     let src_account = get_associated_token_address(src, mint);
     let dst_account = get_associated_token_address(dst, mint);
-    let (freeze_authority, _) =
-        Pubkey::find_program_address(&[upstream_authority.as_ref()], &crate::id());
+    let (freeze_authority, _) = get_freeze_authority(upstream_authority);
     Ok(Instruction {
         program_id: crate::id(),
         accounts: vec![
@@ -164,7 +161,7 @@ pub fn create_transfer_instruction(
             AccountMeta::new_readonly(freeze_authority, false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
-        data: PermissionedTokenInstruction::Transfer { amount }.try_to_vec()?,
+        data: ManagedTokenInstruction::Transfer { amount }.try_to_vec()?,
     })
 }
 
@@ -175,8 +172,7 @@ pub fn create_burn_instruction(
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
     let account = get_associated_token_address(owner, mint);
-    let (freeze_authority, _) =
-        Pubkey::find_program_address(&[upstream_authority.as_ref()], &crate::id());
+    let (freeze_authority, _) = get_freeze_authority(upstream_authority);
     Ok(Instruction {
         program_id: crate::id(),
         accounts: vec![
@@ -187,7 +183,7 @@ pub fn create_burn_instruction(
             AccountMeta::new_readonly(freeze_authority, false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
-        data: PermissionedTokenInstruction::Burn { amount }.try_to_vec()?,
+        data: ManagedTokenInstruction::Burn { amount }.try_to_vec()?,
     })
 }
 
@@ -197,8 +193,7 @@ pub fn create_close_account_instruction(
     upstream_authority: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let account = get_associated_token_address(owner, mint);
-    let (freeze_authority, _) =
-        Pubkey::find_program_address(&[upstream_authority.as_ref()], &crate::id());
+    let (freeze_authority, _) = get_freeze_authority(upstream_authority);
     Ok(Instruction {
         program_id: crate::id(),
         accounts: vec![
@@ -210,6 +205,6 @@ pub fn create_close_account_instruction(
             AccountMeta::new_readonly(freeze_authority, false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
-        data: PermissionedTokenInstruction::CloseAccount.try_to_vec()?,
+        data: ManagedTokenInstruction::CloseAccount.try_to_vec()?,
     })
 }

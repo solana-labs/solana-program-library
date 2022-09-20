@@ -1,4 +1,4 @@
-solana_program::declare_id!("PTxTEZXSadZ39at9G3hdXyYkKfyohTG3gCfNuSVnq4K");
+solana_program::declare_id!("mTok58Lg4YfcmwqyrDHpf7ogp599WRhzb6PxjaBqAxS");
 
 use borsh::BorshDeserialize;
 use solana_program::{
@@ -24,8 +24,8 @@ pub mod accounts;
 pub mod instruction;
 pub mod token;
 use accounts::{Close, InitializeAccount, InitializeMint, MintOrBurn, Transfer};
-use instruction::PermissionedTokenInstruction;
-use token::{burn, close, freeze, initialize_mint, mint_to_signed, thaw, transfer};
+use instruction::ManagedTokenInstruction;
+use token::{burn, close, freeze, initialize_mint, mint_to, thaw, transfer};
 
 #[cfg(not(feature = "no-entrypoint"))]
 solana_program::entrypoint!(process_instruction);
@@ -55,45 +55,66 @@ fn get_freeze_authority(upstream_authority: &Pubkey) -> (Pubkey, Vec<Vec<u8>>) {
     (freeze_key, seeds)
 }
 
+#[inline]
+fn get_mint_authority_seeds_checked(
+    mint: &Pubkey,
+    expected_key: &Pubkey,
+) -> Result<Vec<Vec<u8>>, ProgramError> {
+    let (mint_authority_key, seeds) = get_mint_authority(mint);
+    assert_with_msg(
+        expected_key == &mint_authority_key,
+        ProgramError::InvalidInstructionData,
+        "Invalid mint authority",
+    )?;
+    Ok(seeds)
+}
+
+#[inline]
+fn get_mint_authority(mint: &Pubkey) -> (Pubkey, Vec<Vec<u8>>) {
+    let mut seeds = vec![mint.as_ref().to_vec()];
+    let (mint_authority_key, bump) = Pubkey::find_program_address(
+        &seeds.iter().map(|s| s.as_slice()).collect::<Vec<&[u8]>>(),
+        &crate::id(),
+    );
+    seeds.push(vec![bump]);
+    (mint_authority_key, seeds)
+}
+
 pub fn process_instruction(
-    program_id: &Pubkey,
+    _program_id: &Pubkey,
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    let instruction = PermissionedTokenInstruction::try_from_slice(instruction_data)?;
+    let instruction = ManagedTokenInstruction::try_from_slice(instruction_data)?;
     match instruction {
-        PermissionedTokenInstruction::InitializeMint { decimals } => {
-            msg!("PermissionedTokenInstruction::InitializeMint");
-            process_initialize_mint(program_id, accounts, decimals)
+        ManagedTokenInstruction::InitializeMint { decimals } => {
+            msg!("ManagedTokenInstruction::InitializeMint");
+            process_initialize_mint(accounts, decimals)
         }
-        PermissionedTokenInstruction::InitializeAccount => {
-            msg!("PermissionedTokenInstruction::InitializeAccount");
+        ManagedTokenInstruction::InitializeAccount => {
+            msg!("ManagedTokenInstruction::InitializeAccount");
             process_initialize_account(accounts)
         }
-        PermissionedTokenInstruction::Transfer { amount } => {
-            msg!("PermissionedTokenInstruction::Transfer");
+        ManagedTokenInstruction::Transfer { amount } => {
+            msg!("ManagedTokenInstruction::Transfer");
             process_transfer(accounts, amount)
         }
-        PermissionedTokenInstruction::MintTo { amount } => {
-            msg!("PermissionedTokenInstruction::MintTo");
-            process_mint_to(program_id, accounts, amount)
+        ManagedTokenInstruction::MintTo { amount } => {
+            msg!("ManagedTokenInstruction::MintTo");
+            process_mint_to(accounts, amount)
         }
-        PermissionedTokenInstruction::Burn { amount } => {
-            msg!("PermissionedTokenInstruction::Burn");
+        ManagedTokenInstruction::Burn { amount } => {
+            msg!("ManagedTokenInstruction::Burn");
             process_burn(accounts, amount)
         }
-        PermissionedTokenInstruction::CloseAccount => {
-            msg!("PermissionedTokenInstruction::CloseAccount");
+        ManagedTokenInstruction::CloseAccount => {
+            msg!("ManagedTokenInstruction::CloseAccount");
             process_close(accounts)
         }
     }
 }
 
-pub fn process_initialize_mint(
-    program_id: &Pubkey,
-    accounts: &[AccountInfo],
-    decimals: u8,
-) -> ProgramResult {
+pub fn process_initialize_mint(accounts: &[AccountInfo], decimals: u8) -> ProgramResult {
     let InitializeMint {
         mint,
         payer,
@@ -112,7 +133,7 @@ pub fn process_initialize_mint(
         ),
         &[payer.clone(), mint.clone(), system_program.clone()],
     )?;
-    let (mint_authority, _) = Pubkey::find_program_address(&[mint.key.as_ref()], program_id);
+    let (mint_authority, _) = get_mint_authority(mint.key);
     let (freeze_key, _) = get_freeze_authority(upstream_authority.key);
     initialize_mint(&freeze_key, &mint_authority, mint, token_program, decimals)
 }
@@ -126,7 +147,6 @@ pub fn process_initialize_account(accounts: &[AccountInfo]) -> ProgramResult {
         freeze_authority,
         mint,
         system_program,
-        rent,
         associated_token_program,
         token_program,
     } = InitializeAccount::load(accounts)?;
@@ -140,7 +160,6 @@ pub fn process_initialize_account(accounts: &[AccountInfo]) -> ProgramResult {
             mint.clone(),
             system_program.clone(),
             token_program.clone(),
-            rent.clone(),
         ],
     )?;
     let seeds = get_freeze_authority_seeds_checked(upstream_authority.key, freeze_authority.key)?;
@@ -165,29 +184,40 @@ pub fn process_transfer(accounts: &[AccountInfo], amount: u64) -> ProgramResult 
     freeze(freeze_authority, mint, src_account, token_program, &seeds)
 }
 
-pub fn process_mint_to(
-    program_id: &Pubkey,
-    accounts: &[AccountInfo],
-    amount: u64,
-) -> ProgramResult {
+pub fn process_mint_to(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
     let MintOrBurn {
         mint,
         token_account,
-        owner,
+        owner: mint_authority,
         upstream_authority,
         freeze_authority,
         token_program,
     } = MintOrBurn::load(accounts)?;
-    let seeds = get_freeze_authority_seeds_checked(upstream_authority.key, freeze_authority.key)?;
-    thaw(freeze_authority, mint, token_account, token_program, &seeds)?;
-    let (mint_authority, bump) = Pubkey::find_program_address(&[mint.key.as_ref()], program_id);
-    assert_with_msg(
-        &mint_authority == owner.key,
-        spl_token::error::TokenError::OwnerMismatch,
-        "Mint authority must be a PDA of the Permissioned Token Program",
+    let freeze_authority_seeds =
+        get_freeze_authority_seeds_checked(upstream_authority.key, freeze_authority.key)?;
+    let mint_authority_seeds = get_mint_authority_seeds_checked(mint.key, mint_authority.key)?;
+    thaw(
+        freeze_authority,
+        mint,
+        token_account,
+        token_program,
+        &freeze_authority_seeds,
     )?;
-    mint_to_signed(mint, token_account, owner, token_program, amount, bump)?;
-    freeze(freeze_authority, mint, token_account, token_program, &seeds)
+    mint_to(
+        mint,
+        token_account,
+        mint_authority,
+        token_program,
+        amount,
+        &mint_authority_seeds,
+    )?;
+    freeze(
+        freeze_authority,
+        mint,
+        token_account,
+        token_program,
+        &freeze_authority_seeds,
+    )
 }
 
 pub fn process_burn(accounts: &[AccountInfo], amount: u64) -> ProgramResult {

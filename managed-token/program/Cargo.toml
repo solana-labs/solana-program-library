@@ -1,13 +1,17 @@
 [package]
-name = "permissioned-token"
+name = "spl-managed-token"
 version = "0.1.0"
-edition = "2021"
+description = "Solana Program Library Token Swap"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "permissioned_token"
+name = "spl_managed_token"
 
 [features]
 no-entrypoint = []

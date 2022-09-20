@@ -38,7 +38,7 @@ export const MintToStruct = new beet.BeetArgsStruct<
  *
  * @property [_writable_] mint
  * @property [_writable_] account
- * @property [**signer**] mintAuthority
+ * @property [] mintAuthority
  * @property [**signer**] upstreamAuthority
  * @property [] freezeAuthority
  * @category Instructions
@@ -89,7 +89,7 @@ export function createMintToInstruction(
     {
       pubkey: accounts.mintAuthority,
       isWritable: false,
-      isSigner: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.upstreamAuthority,

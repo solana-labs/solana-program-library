@@ -39,7 +39,6 @@ export type InitializeAccountInstructionAccounts = {
   freezeAuthority: web3.PublicKey
   mint: web3.PublicKey
   systemProgram?: web3.PublicKey
-  rent?: web3.PublicKey
   associatedTokenProgram: web3.PublicKey
   tokenProgram?: web3.PublicKey
 }
@@ -94,11 +93,6 @@ export function createInitializeAccountInstruction(
     },
     {
       pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
-      isWritable: false,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.rent ?? web3.SYSVAR_RENT_PUBKEY,
       isWritable: false,
       isSigner: false,
     },

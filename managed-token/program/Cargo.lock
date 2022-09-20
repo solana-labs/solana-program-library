@@ -2124,7 +2124,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "permissioned-token"
+name = "managed-token"
 version = "0.1.0"
 dependencies = [
  "anyhow",

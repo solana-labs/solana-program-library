@@ -99,13 +99,13 @@ pub(crate) fn transfer<'a, 'b>(
     )
 }
 
-pub(crate) fn mint_to_signed<'a, 'b>(
+pub(crate) fn mint_to<'a, 'b>(
     mint: &'a AccountInfo<'b>,
     account: &'a AccountInfo<'b>,
     owner: &'a AccountInfo<'b>,
     token_program: &'a AccountInfo<'b>,
     amount: u64,
-    bump: u8,
+    seeds: &[Vec<u8>],
 ) -> ProgramResult {
     invoke_signed(
         &spl_token::instruction::mint_to(
@@ -122,7 +122,7 @@ pub(crate) fn mint_to_signed<'a, 'b>(
             account.clone(),
             owner.clone(),
         ],
-        &[&[mint.key.as_ref(), &[bump]]],
+        &[&seeds.iter().map(|s| s.as_slice()).collect::<Vec<&[u8]>>()],
     )
 }
 
