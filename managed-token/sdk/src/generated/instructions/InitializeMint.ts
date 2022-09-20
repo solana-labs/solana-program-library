@@ -66,7 +66,7 @@ export const initializeMintInstructionDiscriminator = 0
 export function createInitializeMintInstruction(
   accounts: InitializeMintInstructionAccounts,
   args: InitializeMintInstructionArgs,
-  programId = new web3.PublicKey('PTxTEZXSadZ39at9G3hdXyYkKfyohTG3gCfNuSVnq4K')
+  programId = new web3.PublicKey('mTok58Lg4YfcmwqyrDHpf7ogp599WRhzb6PxjaBqAxS')
 ) {
   const [data] = InitializeMintStruct.serialize({
     instructionDiscriminator: initializeMintInstructionDiscriminator,

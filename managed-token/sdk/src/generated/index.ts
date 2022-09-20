@@ -7,7 +7,7 @@ export * from './instructions'
  * @category constants
  * @category generated
  */
-export const PROGRAM_ADDRESS = 'PTxTEZXSadZ39at9G3hdXyYkKfyohTG3gCfNuSVnq4K'
+export const PROGRAM_ADDRESS = 'mTok58Lg4YfcmwqyrDHpf7ogp599WRhzb6PxjaBqAxS'
 
 /**
  * Program public key

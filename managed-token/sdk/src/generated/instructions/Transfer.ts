@@ -71,7 +71,7 @@ export const transferInstructionDiscriminator = 2
 export function createTransferInstruction(
   accounts: TransferInstructionAccounts,
   args: TransferInstructionArgs,
-  programId = new web3.PublicKey('PTxTEZXSadZ39at9G3hdXyYkKfyohTG3gCfNuSVnq4K')
+  programId = new web3.PublicKey('mTok58Lg4YfcmwqyrDHpf7ogp599WRhzb6PxjaBqAxS')
 ) {
   const [data] = TransferStruct.serialize({
     instructionDiscriminator: transferInstructionDiscriminator,
