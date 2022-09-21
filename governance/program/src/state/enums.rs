@@ -230,8 +230,7 @@ pub enum MintMaxVoteWeightSource {
     /// The default is 100% (10^10) to use all available mint supply for voting
     SupplyFraction(u64),
 
-    /// Absolute value, irrelevant of the actual mint supply, is used as max vote weight
-    /// Note: this option is not implemented in the current version
+    /// Absolute value, irrelevant of the actual mint supply, is used as max voter weight
     Absolute(u64),
 }
 

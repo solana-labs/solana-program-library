@@ -51,6 +51,36 @@ async fn test_create_realm_with_non_default_config() {
 }
 
 #[tokio::test]
+async fn test_create_realm_with_max_voter_weight_absolute_value() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_setup_args = RealmSetupArgs {
+        community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Absolute(1),
+        ..Default::default()
+    };
+
+    // Act
+    let realm_cookie = governance_test
+        .with_realm_using_args(&realm_setup_args)
+        .await;
+
+    // Assert
+    let realm_account = governance_test
+        .get_realm_account(&realm_cookie.address)
+        .await;
+
+    assert_eq!(realm_cookie.account, realm_account);
+    assert_eq!(
+        realm_cookie
+            .account
+            .config
+            .community_mint_max_vote_weight_source,
+        MintMaxVoteWeightSource::Absolute(1)
+    );
+}
+
+#[tokio::test]
 async fn test_create_realm_for_existing_pda() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
