@@ -197,7 +197,11 @@ async fn end_to_end_default_account_state() {
 
     // Invalid default state
     let err = token
-        .set_default_account_state(&mint_authority, &AccountState::Uninitialized)
+        .set_default_account_state(
+            &mint_authority.pubkey(),
+            &AccountState::Uninitialized,
+            &vec![&mint_authority],
+        )
         .await
         .unwrap_err();
     assert_eq!(
@@ -211,7 +215,11 @@ async fn end_to_end_default_account_state() {
     );
 
     token
-        .set_default_account_state(&freeze_authority, &AccountState::Initialized)
+        .set_default_account_state(
+            &freeze_authority.pubkey(),
+            &AccountState::Initialized,
+            &vec![&freeze_authority],
+        )
         .await
         .unwrap();
     let state = token.get_mint_info().await.unwrap();
@@ -245,7 +253,11 @@ async fn end_to_end_default_account_state() {
         .unwrap();
 
     let err = token
-        .set_default_account_state(&mint_authority, &AccountState::Frozen)
+        .set_default_account_state(
+            &mint_authority.pubkey(),
+            &AccountState::Frozen,
+            &vec![&mint_authority],
+        )
         .await
         .unwrap_err();
     assert_eq!(
@@ -259,7 +271,11 @@ async fn end_to_end_default_account_state() {
     );
 
     token
-        .set_default_account_state(&new_authority, &AccountState::Frozen)
+        .set_default_account_state(
+            &new_authority.pubkey(),
+            &AccountState::Frozen,
+            &vec![&new_authority],
+        )
         .await
         .unwrap();
     let state = token.get_mint_info().await.unwrap();
@@ -281,7 +297,11 @@ async fn end_to_end_default_account_state() {
         .unwrap();
 
     let err = token
-        .set_default_account_state(&new_authority, &AccountState::Initialized)
+        .set_default_account_state(
+            &new_authority.pubkey(),
+            &AccountState::Initialized,
+            &vec![&new_authority],
+        )
         .await
         .unwrap_err();
     assert_eq!(

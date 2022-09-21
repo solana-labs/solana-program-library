@@ -1008,43 +1008,51 @@ where
     }
 
     /// Set transfer fee
-    pub async fn set_transfer_fee<S: Signer>(
+    pub async fn set_transfer_fee<S: Signers>(
         &self,
-        authority: &S,
+        authority: &Pubkey,
         transfer_fee_basis_points: u16,
         maximum_fee: u64,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[transfer_fee::instruction::set_transfer_fee(
                 &self.program_id,
                 &self.pubkey,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers,
                 transfer_fee_basis_points,
                 maximum_fee,
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Set default account state on mint
-    pub async fn set_default_account_state<S: Signer>(
+    pub async fn set_default_account_state<S: Signers>(
         &self,
-        authority: &S,
+        authority: &Pubkey,
         state: &AccountState,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[
                 default_account_state::instruction::update_default_account_state(
                     &self.program_id,
                     &self.pubkey,
-                    &authority.pubkey(),
-                    &[],
+                    authority,
+                    &multisig_signers,
                     state,
                 )?,
             ],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
@@ -1066,121 +1074,145 @@ where
     }
 
     /// Withdraw withheld tokens from mint
-    pub async fn withdraw_withheld_tokens_from_mint<S: Signer>(
+    pub async fn withdraw_withheld_tokens_from_mint<S: Signers>(
         &self,
         destination: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[
                 transfer_fee::instruction::withdraw_withheld_tokens_from_mint(
                     &self.program_id,
                     &self.pubkey,
                     destination,
-                    &authority.pubkey(),
-                    &[],
+                    authority,
+                    &multisig_signers,
                 )?,
             ],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Withdraw withheld tokens from accounts
-    pub async fn withdraw_withheld_tokens_from_accounts<S: Signer>(
+    pub async fn withdraw_withheld_tokens_from_accounts<S: Signers>(
         &self,
         destination: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
         sources: &[&Pubkey],
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[
                 transfer_fee::instruction::withdraw_withheld_tokens_from_accounts(
                     &self.program_id,
                     &self.pubkey,
                     destination,
-                    &authority.pubkey(),
-                    &[],
+                    authority,
+                    &multisig_signers,
                     sources,
                 )?,
             ],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Reallocate a token account to be large enough for a set of ExtensionTypes
-    pub async fn reallocate<S: Signer>(
+    pub async fn reallocate<S: Signers>(
         &self,
         account: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
         extension_types: &[ExtensionType],
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[instruction::reallocate(
                 &self.program_id,
                 account,
                 &self.payer.pubkey(),
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers,
                 extension_types,
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Require memos on transfers into this account
-    pub async fn enable_required_transfer_memos<S: Signer>(
+    pub async fn enable_required_transfer_memos<S: Signers>(
         &self,
         account: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[memo_transfer::instruction::enable_required_transfer_memos(
                 &self.program_id,
                 account,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers,
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Stop requiring memos on transfers into this account
-    pub async fn disable_required_transfer_memos<S: Signer>(
+    pub async fn disable_required_transfer_memos<S: Signers>(
         &self,
         account: &Pubkey,
-        authority: &S,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[memo_transfer::instruction::disable_required_transfer_memos(
                 &self.program_id,
                 account,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers,
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Update interest rate
-    pub async fn update_interest_rate<S: Signer>(
+    pub async fn update_interest_rate<S: Signers>(
         &self,
-        authority: &S,
+        authority: &Pubkey,
         new_rate: i16,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[interest_bearing_mint::instruction::update_rate(
                 &self.program_id,
                 self.get_address(),
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers,
                 new_rate,
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
