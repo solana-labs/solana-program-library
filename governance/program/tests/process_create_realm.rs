@@ -5,7 +5,7 @@ use solana_program_test::*;
 mod program_test;
 
 use program_test::*;
-use spl_governance::state::{enums::MintMaxVoteWeightSource, realm::get_realm_address};
+use spl_governance::state::{enums::MintMaxVoterWeightSource, realm::get_realm_address};
 
 use crate::program_test::args::RealmSetupArgs;
 
@@ -32,7 +32,7 @@ async fn test_create_realm_with_non_default_config() {
 
     let realm_setup_args = RealmSetupArgs {
         use_council_mint: false,
-        community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(1),
+        community_mint_max_voter_weight_source: MintMaxVoterWeightSource::SupplyFraction(1),
         min_community_weight_to_create_governance: 1,
         ..Default::default()
     };
@@ -56,7 +56,7 @@ async fn test_create_realm_with_max_voter_weight_absolute_value() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_setup_args = RealmSetupArgs {
-        community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Absolute(1),
+        community_mint_max_voter_weight_source: MintMaxVoterWeightSource::Absolute(1),
         ..Default::default()
     };
 
@@ -75,8 +75,8 @@ async fn test_create_realm_with_max_voter_weight_absolute_value() {
         realm_cookie
             .account
             .config
-            .community_mint_max_vote_weight_source,
-        MintMaxVoteWeightSource::Absolute(1)
+            .community_mint_max_voter_weight_source,
+        MintMaxVoterWeightSource::Absolute(1)
     );
 }
 

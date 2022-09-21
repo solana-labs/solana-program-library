@@ -121,8 +121,8 @@ pub fn process_set_realm_config(
     }
 
     // Update RealmConfig (Realm.config field)
-    realm_data.config.community_mint_max_vote_weight_source =
-        realm_config_args.community_mint_max_vote_weight_source;
+    realm_data.config.community_mint_max_voter_weight_source =
+        realm_config_args.community_mint_max_voter_weight_source;
 
     realm_data.config.min_community_weight_to_create_governance =
         realm_config_args.min_community_weight_to_create_governance;

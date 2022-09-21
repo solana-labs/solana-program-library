@@ -291,13 +291,13 @@ pub enum GovernanceError {
     #[error("Realm council mint change is not supported")]
     RealmCouncilMintChangeIsNotSupported,
 
-    /// Invalid max vote weight absolute value
-    #[error("Invalid max vote weight absolute value")]
-    InvalidMaxVoteWeightAbsoluteValue,
+    /// Invalid max voter weight absolute value
+    #[error("Invalid max voter weight absolute value")]
+    InvalidMaxVoterWeightAbsoluteValue,
 
-    /// Invalid max vote weight supply fraction
-    #[error("Invalid max vote weight supply fraction")]
-    InvalidMaxVoteWeightSupplyFraction,
+    /// Invalid max voter weight supply fraction
+    #[error("Invalid max voter weight supply fraction")]
+    InvalidMaxVoterWeightSupplyFraction,
 
     /// Owner doesn't have enough governing tokens to create Governance
     #[error("Owner doesn't have enough governing tokens to create Governance")]
