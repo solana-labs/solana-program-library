@@ -12,7 +12,7 @@ use solana_clap_utils::{
     fee_payer::fee_payer_arg,
     input_parsers::{pubkey_of_signer, pubkeys_of_multiple_signers, value_of},
     input_validators::{
-        is_amount, is_amount_or_all, is_parsable, is_url_or_moniker, is_valid_pubkey,
+        is_amount, is_amount_or_all, is_parsable, is_pubkey, is_url_or_moniker, is_valid_pubkey,
         is_valid_signer,
     },
     keypair::signer_from_path,
@@ -1987,6 +1987,23 @@ fn multisig_member_help_string() -> String {
     )
 }
 
+fn is_valid_token_program_id<T>(string: T) -> Result<(), String>
+where
+    T: AsRef<str> + Display,
+{
+    match is_pubkey(string.as_ref()) {
+        Ok(()) => {
+            let program_id = string.as_ref().parse::<Pubkey>().unwrap();
+            if program_id == spl_token_2022::id() || program_id == spl_token::id() {
+                Ok(())
+            } else {
+                Err(format!("Unrecognized token program id: {}", program_id))
+            }
+        }
+        Err(e) => Err(e),
+    }
+}
+
 fn app<'a, 'b>(
     default_decimals: &'a str,
     minimum_signers_help: &'b str,
@@ -2029,7 +2046,7 @@ fn app<'a, 'b>(
                 .value_name("ADDRESS")
                 .takes_value(true)
                 .global(true)
-                .validator(is_valid_pubkey)
+                .validator(is_valid_token_program_id)
                 .help("SPL Token program id"),
         )
         .arg(
