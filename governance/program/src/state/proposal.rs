@@ -447,7 +447,7 @@ impl ProposalV2 {
             MintMaxVoterWeightSource::Absolute(value) => value,
         };
 
-        // When the fraction or absolute vlaue is used it's possible we can go over the calculated max_vote_weight
+        // When the fraction or absolute value is used it's possible we can go over the calculated max_vote_weight
         // and we have to adjust it in case more votes have been cast
         Ok(self.coerce_max_voter_weight(max_voter_weight, vote_kind))
     }
