@@ -1940,6 +1940,60 @@ mod test {
     }
 
     #[test]
+    fn test_try_tip_vote_with_reduced_absolute_mint_max_vote_weight_and_vote_overflow() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+
+        // no vote weight
+        proposal.deny_vote_weight = Some(10);
+
+        proposal.state = ProposalState::Voting;
+
+        let current_timestamp = 15_i64;
+
+        let community_token_supply = 200;
+
+        let mut realm = create_test_realm();
+        let governing_token_mint = proposal.governing_token_mint;
+        let vote_kind = VoteKind::Electorate;
+        let vote_tipping = VoteTipping::Strict;
+
+        // reduce max vote weight to 100
+        realm.config.community_mint_max_voter_weight_source =
+            MintMaxVoterWeightSource::Absolute(community_token_supply / 2);
+
+        // vote above reduced supply
+        // Yes vote weight
+        proposal.options[0].vote_weight = 120;
+
+        let max_voter_weight = proposal
+            .get_max_voter_weight_from_mint_supply(
+                &realm,
+                &governing_token_mint,
+                community_token_supply,
+                &vote_kind,
+            )
+            .unwrap();
+
+        let vote_threshold = VoteThreshold::YesVotePercentage(60);
+
+        // Act
+        proposal
+            .try_tip_vote(
+                max_voter_weight,
+                &vote_tipping,
+                current_timestamp,
+                &vote_threshold,
+                &vote_kind,
+            )
+            .unwrap();
+
+        // Assert
+        assert_eq!(proposal.state, ProposalState::Succeeded);
+        assert_eq!(proposal.max_vote_weight, Some(130)); // Deny Vote 10 + Approve Vote 120
+    }
+
+    #[test]
     fn test_try_tip_vote_for_council_vote_with_reduced_community_mint_max_vote_weight() {
         // Arrange
         let mut proposal = create_test_proposal();
