@@ -74,11 +74,15 @@ pub fn update_canopy(
     check_canopy_bytes(canopy_bytes)?;
     let canopy = cast_slice_mut::<u8, Node>(canopy_bytes);
     let path_len = get_cached_path_length(canopy, max_depth)?;
-    if let Some(cl) = change_log {
-        // Update the canopy from the newest change log
-        for path_node in cl.path.iter().rev().skip(1).take(path_len as usize) {
-            // node_idx - 2 maps to the canopy index
-            canopy[(path_node.index - 2) as usize] = path_node.node;
+    if let Some(cl_event) = change_log {
+        match *cl_event {
+            ChangeLogEvent::V1(cl) => {
+                // Update the canopy from the newest change log
+                for path_node in cl.path.iter().rev().skip(1).take(path_len as usize) {
+                    // node_idx - 2 maps to the canopy index
+                    canopy[(path_node.index - 2) as usize] = path_node.node;
+                }
+            }
         }
     }
     Ok(())

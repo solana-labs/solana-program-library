@@ -23,7 +23,6 @@
 //! A production-ready indexer (Plerkle) can be found in the [Metaplex program library](https://github.com/metaplex-foundation/digital-asset-validator-plugin)
 
 use anchor_lang::{
-    emit,
     prelude::*,
     solana_program::sysvar::{clock::Clock, rent::Rent},
 };
@@ -245,7 +244,6 @@ pub mod spl_account_compression {
         let id = ctx.accounts.merkle_tree.key();
         let change_log = merkle_tree_apply_fn!(header, id, tree_bytes, initialize,)?;
         wrap_event(change_log.try_to_vec()?, &ctx.accounts.log_wrapper)?;
-        emit!(*change_log);
         update_canopy(canopy_bytes, header.get_max_depth(), None)
     }
 
@@ -310,7 +308,6 @@ pub mod spl_account_compression {
     //         index
     //     )?;
     //     wrap_event(change_log.try_to_vec()?, &ctx.accounts.log_wrapper)?;
-    //     emit!(*change_log);
     //     update_canopy(canopy_bytes, header.max_depth, Some(change_log))
     // }
 
@@ -358,7 +355,6 @@ pub mod spl_account_compression {
             index,
         )?;
         wrap_event(change_log.try_to_vec()?, &ctx.accounts.log_wrapper)?;
-        emit!(*change_log);
         update_canopy(canopy_bytes, header.get_max_depth(), Some(change_log))
     }
 
@@ -444,7 +440,6 @@ pub mod spl_account_compression {
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
         let change_log = merkle_tree_apply_fn!(header, id, tree_bytes, append, leaf)?;
         wrap_event(change_log.try_to_vec()?, &ctx.accounts.log_wrapper)?;
-        emit!(*change_log);
         update_canopy(canopy_bytes, header.get_max_depth(), Some(change_log))
     }
 
@@ -491,7 +486,6 @@ pub mod spl_account_compression {
             index,
         )?;
         wrap_event(change_log.try_to_vec()?, &ctx.accounts.log_wrapper)?;
-        emit!(*change_log);
         update_canopy(canopy_bytes, header.get_max_depth(), Some(change_log))
     }
 }
