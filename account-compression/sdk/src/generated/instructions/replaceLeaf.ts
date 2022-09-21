@@ -52,6 +52,7 @@ export type ReplaceLeafInstructionAccounts = {
   merkleTree: web3.PublicKey
   authority: web3.PublicKey
   logWrapper: web3.PublicKey
+  anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
 export const replaceLeafInstructionDiscriminator = [
@@ -94,6 +95,12 @@ export function createReplaceLeafInstruction(
       isSigner: false,
     },
   ]
+
+  if (accounts.anchorRemainingAccounts != null) {
+    for (const acc of accounts.anchorRemainingAccounts) {
+      keys.push(acc)
+    }
+  }
 
   const ix = new web3.TransactionInstruction({
     programId,

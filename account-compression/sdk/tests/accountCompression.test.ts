@@ -22,20 +22,12 @@ import {
   createReplaceIx,
   createAppendIx,
   createTransferAuthorityIx,
-  getCMTBufferSize,
-  getCMTCurrentRoot,
-  getCMTAuthority,
-  getConcurrentMerkleTree,
-  getCMTActiveIndex,
   createVerifyLeafIx,
   createAllocTreeIx,
   createInitEmptyMerkleTreeInstruction,
+  ConcurrentMerkleTreeAccount,
   SPL_NOOP_PROGRAM_ID,
 } from "../src";
-import {
-  getCMTMaxBufferSize,
-  getCMTMaxDepth,
-} from '../src/accounts';
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 
 async function assertCMTProperties(
@@ -46,22 +38,22 @@ async function assertCMTProperties(
   expectedRoot: Buffer,
   onChainCMTKey: PublicKey
 ) {
-  const onChainCMT = await getConcurrentMerkleTree(connection, onChainCMTKey);
+  const onChainCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, onChainCMTKey);
 
   assert(
-    getCMTMaxDepth(onChainCMT) === expectedMaxDepth,
-    `Max depth does not match ${getCMTMaxDepth(onChainCMT)}, expected ${expectedMaxDepth}`,
+    onChainCMT.getMaxDepth() === expectedMaxDepth,
+    `Max depth does not match ${onChainCMT.getMaxDepth()}, expected ${expectedMaxDepth}`,
   );
   assert(
-    getCMTMaxBufferSize(onChainCMT) === expectedMaxBufferSize,
-    `Max buffer size does not match ${getCMTMaxBufferSize(onChainCMT)}, expected ${expectedMaxBufferSize}`,
+    onChainCMT.getMaxBufferSize() === expectedMaxBufferSize,
+    `Max buffer size does not match ${onChainCMT.getMaxBufferSize()}, expected ${expectedMaxBufferSize}`,
   );
   assert(
-    getCMTAuthority(onChainCMT).equals(expectedAuthority),
+    onChainCMT.getAuthority().equals(expectedAuthority),
     "Failed to write auth pubkey",
   );
   assert(
-    getCMTCurrentRoot(onChainCMT).equals(expectedRoot),
+    onChainCMT.getCurrentRoot().equals(expectedRoot),
     "On chain root does not match root passed in instruction",
   );
 }
@@ -230,12 +222,11 @@ describe("Account Compression", () => {
         cmtKeypair.publicKey
       );
 
-      await execute(provider, [appendIx], [payer]);
-
+      await execute(provider, [appendIx], [payer])
       updateTree(offChainTree, newLeaf, 1);
 
-      const splCMT = await getConcurrentMerkleTree(connection, cmtKeypair.publicKey);
-      const onChainRoot = getCMTCurrentRoot(splCMT);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
+      const onChainRoot = splCMT.getCurrentRoot();
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
@@ -270,13 +261,13 @@ describe("Account Compression", () => {
 
       updateTree(offChainTree, newLeaf, index);
 
-      const splCMT = await getConcurrentMerkleTree(connection, cmtKeypair.publicKey);
-      const onChainRoot = getCMTCurrentRoot(splCMT);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
+      const onChainRoot = splCMT.getCurrentRoot();
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
         "Updated on chain root matches root of updated off chain tree"
-      );
+      )
     });
     it("Verify leaf fails when proof fails", async () => {
       const previousLeaf = offChainTree.leaves[0].node;
@@ -315,8 +306,8 @@ describe("Account Compression", () => {
         assert(false, "Replace should have failed to verify");
       } catch { }
 
-      const splCMT = await getConcurrentMerkleTree(connection, cmtKeypair.publicKey);
-      const onChainRoot = getCMTCurrentRoot(splCMT);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
+      const onChainRoot = splCMT.getCurrentRoot();
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
@@ -348,8 +339,8 @@ describe("Account Compression", () => {
 
       updateTree(offChainTree, newLeaf, index);
 
-      const splCMT = await getConcurrentMerkleTree(connection, cmtKeypair.publicKey);
-      const onChainRoot = getCMTCurrentRoot(splCMT);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
+      const onChainRoot = splCMT.getCurrentRoot();
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
@@ -381,8 +372,8 @@ describe("Account Compression", () => {
 
       updateTree(offChainTree, newLeaf, index);
 
-      const splCMT = await getConcurrentMerkleTree(connection, cmtKeypair.publicKey);
-      const onChainRoot = getCMTCurrentRoot(splCMT);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
+      const onChainRoot = splCMT.getCurrentRoot();
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
@@ -439,11 +430,11 @@ describe("Account Compression", () => {
       );
       await execute(provider, [transferAuthorityIx], [authority]);
 
-      const splCMT = await getConcurrentMerkleTree(connection, cmtKeypair.publicKey);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
 
       assert(
-        getCMTAuthority(splCMT).equals(randomSigner.publicKey),
-        `Upon transfering authority, authority should be ${randomSigner.publicKey.toString()}, but was instead updated to ${getCMTAuthority(splCMT)}`
+        splCMT.getAuthority().equals(randomSigner.publicKey),
+        `Upon transfering authority, authority should be ${randomSigner.publicKey.toString()}, but was instead updated to ${splCMT.getAuthority()}`
       );
 
       // Attempting to replace with new authority now works
@@ -516,8 +507,8 @@ describe("Account Compression", () => {
       });
 
       // Compare on-chain & off-chain roots
-      const splCMT = await getConcurrentMerkleTree(connection, cmtKeypair.publicKey);
-      const onChainRoot = getCMTCurrentRoot(splCMT);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
+      const onChainRoot = splCMT.getCurrentRoot();
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
@@ -547,14 +538,14 @@ describe("Account Compression", () => {
       }
 
       // Compare on-chain & off-chain roots
-      const splCMT = await getConcurrentMerkleTree(connection, cmtKeypair.publicKey);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
 
       assert(
-        getCMTBufferSize(splCMT) === 2 ** DEPTH,
+        splCMT.getBufferSize() === 2 ** DEPTH,
         "Not all changes were processed"
       );
       assert(
-        getCMTActiveIndex(splCMT) === 0,
+        splCMT.getActiveIndex() === 0,
         "Not all changes were processed"
       );
     });
@@ -586,10 +577,10 @@ describe("Account Compression", () => {
         );
       } catch (e) { }
 
-      const splCMT = await getConcurrentMerkleTree(connection, cmtKeypair.publicKey);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
 
       assert(
-        getCMTActiveIndex(splCMT) === 0,
+        splCMT.getActiveIndex() === 0,
         "CMT updated its active index after attacker's transaction, when it shouldn't have done anything"
       );
     });
@@ -623,10 +614,10 @@ describe("Account Compression", () => {
         );
       } catch (e) { }
 
-      const splCMT = await getConcurrentMerkleTree(provider.connection, cmtKeypair.publicKey);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(provider.connection, cmtKeypair.publicKey);
 
       assert(
-        getCMTActiveIndex(splCMT) === 0,
+        splCMT.getActiveIndex() === 0,
         "CMT updated its active index after attacker's transaction, when it shouldn't have done anything"
       );
     });
@@ -666,8 +657,8 @@ describe("Account Compression", () => {
 
       // Compare on-chain & off-chain roots
       let ixs: TransactionInstruction[] = [];
-      const splCMT = await getConcurrentMerkleTree(connection, cmtKeypair.publicKey);
-      const root = getCMTCurrentRoot(splCMT);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
+      const root = splCMT.getCurrentRoot();
 
       // Test that the entire state of the tree is stored properly
       // by using the canopy to infer proofs to all of the leaves in the tree.

@@ -304,6 +304,100 @@
   ],
   "types": [
     {
+      "name": "ConcurrentMerkleTreeHeader",
+      "docs": [
+        "Initialization parameters for an SPL ConcurrentMerkleTree.",
+        "",
+        "Only the following permutations are valid:",
+        "",
+        "| max_depth | max_buffer_size       |",
+        "| --------- | --------------------- |",
+        "| 14        | (64, 256, 1024, 2048) |",
+        "| 20        | (64, 256, 1024, 2048) |",
+        "| 24        | (64, 256, 512, 1024, 2048) |",
+        "| 26        | (64, 256, 512, 1024, 2048) |",
+        "| 30        | (512, 1024, 2048) |",
+        ""
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "accountType",
+            "docs": [
+              "Account type"
+            ],
+            "type": {
+              "defined": "CompressionAccountType"
+            }
+          },
+          {
+            "name": "header",
+            "docs": [
+              "Versioned header"
+            ],
+            "type": {
+              "defined": "ConcurrentMerkleTreeHeaderData"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConcurrentMerkleTreeHeaderDataV1",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "maxBufferSize",
+            "docs": [
+              "Buffer of changelogs stored on-chain.",
+              "Must be a power of 2; see above table for valid combinations."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "maxDepth",
+            "docs": [
+              "Depth of the SPL ConcurrentMerkleTree to store.",
+              "Tree capacity can be calculated as power(2, max_depth).",
+              "See above table for valid options."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "authority",
+            "docs": [
+              "Authority that validates the content of the trees.",
+              "Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "creationSlot",
+            "docs": [
+              "Slot corresponding to when the Merkle tree was created.",
+              "Provides a lower-bound on what slot to start (re-)building a tree from."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "padding",
+            "docs": [
+              "Needs padding for the account to be 8-byte aligned",
+              "8-byte alignment is necessary to zero-copy the SPL ConcurrentMerkleTree"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "PathNode",
       "type": {
         "kind": "struct",
@@ -334,6 +428,22 @@
           },
           {
             "name": "ConcurrentMerkleTree"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConcurrentMerkleTreeHeaderData",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "V1",
+            "fields": [
+              {
+                "defined": "ConcurrentMerkleTreeHeaderDataV1"
+              }
+            ]
           }
         ]
       }

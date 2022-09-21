@@ -610,7 +610,7 @@
     "@jridgewell/resolve-uri" "^3.0.3"
     "@jridgewell/sourcemap-codec" "^1.4.10"
 
-"@metaplex-foundation/beet-solana@^0.3.0":
+"@metaplex-foundation/beet-solana@^0.3.1":
   version "0.3.1"
   resolved "https://registry.yarnpkg.com/@metaplex-foundation/beet-solana/-/beet-solana-0.3.1.tgz#4b37cda5c7f32ffd2bdd8b3164edc05c6463ab35"
   integrity sha512-tgyEl6dvtLln8XX81JyBvWjIiEcjTkUwZbrM5dIobTmoqMuGewSyk9CClno8qsMsFdB5T3jC91Rjeqmu/6xk2g==
@@ -620,19 +620,10 @@
     bs58 "^5.0.0"
     debug "^4.3.4"
 
-"@metaplex-foundation/beet@>=0.1.0":
+"@metaplex-foundation/beet@>=0.1.0", "@metaplex-foundation/beet@^0.6.1":
   version "0.6.1"
   resolved "https://registry.yarnpkg.com/@metaplex-foundation/beet/-/beet-0.6.1.tgz#6331bdde0648bf2cae6f9e482f8e3552db05d69f"
   integrity sha512-OYgnijLFzw0cdUlRKH5POp0unQECPOW9muJ2X3QIVyak5G6I6l/rKo72sICgPLIFKdmsi2jmnkuLY7wp14iXdw==
-  dependencies:
-    ansicolors "^0.3.2"
-    bn.js "^5.2.0"
-    debug "^4.3.3"
-
-"@metaplex-foundation/beet@^0.4.0":
-  version "0.4.0"
-  resolved "https://registry.yarnpkg.com/@metaplex-foundation/beet/-/beet-0.4.0.tgz#eb2a0a6eb084bb25d67dd9bed2f7387ee7e63a55"
-  integrity sha512-2OAKJnLatCc3mBXNL0QmWVQKAWK2C7XDfepgL0p/9+8oSx4bmRAFHFqptl1A/C0U5O3dxGwKfmKluW161OVGcA==
   dependencies:
     ansicolors "^0.3.2"
     bn.js "^5.2.0"
@@ -648,15 +639,15 @@
     text-table "^0.2.0"
     toml "^3.0.0"
 
-"@metaplex-foundation/solita@^0.12.2":
-  version "0.12.2"
-  resolved "https://registry.yarnpkg.com/@metaplex-foundation/solita/-/solita-0.12.2.tgz#13ef213ac183c986f6d01c5d981c44e59a900834"
-  integrity sha512-oczMfE43NNHWweSqhXPTkQBUbap/aAiwjDQw8zLKNnd/J8sXr/0+rKcN5yJIEgcHeKRkp90eTqkmt2WepQc8yw==
+"@metaplex-foundation/solita@0.15.2":
+  version "0.15.2"
+  resolved "https://registry.yarnpkg.com/@metaplex-foundation/solita/-/solita-0.15.2.tgz#a425bd3c3e4ef9f217e6aaa488696fb633b5352b"
+  integrity sha512-mpuFijA2st3yH4ZOKMyM3iE+S7FIIWobzPDVfGiubRSSDel1+qPP2C0tC23doGEmTpHEwF75rmdrCc+jyMLkAg==
   dependencies:
-    "@metaplex-foundation/beet" "^0.4.0"
-    "@metaplex-foundation/beet-solana" "^0.3.0"
+    "@metaplex-foundation/beet" "^0.6.1"
+    "@metaplex-foundation/beet-solana" "^0.3.1"
     "@metaplex-foundation/rustbin" "^0.3.0"
-    "@solana/web3.js" "^1.36.0"
+    "@solana/web3.js" "^1.56.2"
     camelcase "^6.2.1"
     debug "^4.3.3"
     js-sha256 "^0.9.0"

@@ -1,2 +1,5 @@
 export * from './CompressionAccountType'
+export * from './ConcurrentMerkleTreeHeader'
+export * from './ConcurrentMerkleTreeHeaderData'
+export * from './ConcurrentMerkleTreeHeaderDataV1'
 export * from './PathNode'
