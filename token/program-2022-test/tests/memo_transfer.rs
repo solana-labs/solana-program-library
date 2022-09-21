@@ -52,7 +52,7 @@ async fn test_memo_transfers(
 
     // require memo transfers into bob_account
     token
-        .enable_required_transfer_memos(&bob_account, &bob)
+        .enable_required_transfer_memos(&bob_account, &bob.pubkey(), &vec![&bob])
         .await
         .unwrap();
 
@@ -174,7 +174,7 @@ async fn test_memo_transfers(
 
     // stop requiring memo transfers into bob_account
     token
-        .disable_required_transfer_memos(&bob_account, &bob)
+        .disable_required_transfer_memos(&bob_account, &bob.pubkey(), &vec![&bob])
         .await
         .unwrap();
 
@@ -244,8 +244,9 @@ async fn require_memo_transfers_with_realloc() {
         .token
         .reallocate(
             &token_context.bob.pubkey(),
-            &token_context.bob,
+            &token_context.bob.pubkey(),
             &[ExtensionType::MemoTransfer],
+            &vec![&token_context.bob],
         )
         .await
         .unwrap();

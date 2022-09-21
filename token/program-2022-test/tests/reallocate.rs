@@ -28,8 +28,9 @@ async fn reallocate() {
     let error = token
         .reallocate(
             token.get_address(),
-            &mint_authority,
+            &mint_authority.pubkey(),
             &[ExtensionType::ImmutableOwner],
+            &vec![&mint_authority],
         )
         .await
         .unwrap_err();
@@ -50,7 +51,12 @@ async fn reallocate() {
 
     // reallocate fails on invalid extension type
     let error = token
-        .reallocate(&alice_account, &alice, &[ExtensionType::MintCloseAuthority])
+        .reallocate(
+            &alice_account,
+            &alice.pubkey(),
+            &[ExtensionType::MintCloseAuthority],
+            &vec![&alice],
+        )
         .await
         .unwrap_err();
     assert_eq!(
@@ -67,8 +73,9 @@ async fn reallocate() {
     let error = token
         .reallocate(
             &alice_account,
-            &mint_authority,
+            &mint_authority.pubkey(),
             &[ExtensionType::ImmutableOwner],
+            &vec![&mint_authority],
         )
         .await
         .unwrap_err();
@@ -84,7 +91,12 @@ async fn reallocate() {
 
     // reallocate succeeds
     token
-        .reallocate(&alice_account, &alice, &[ExtensionType::ImmutableOwner])
+        .reallocate(
+            &alice_account,
+            &alice.pubkey(),
+            &[ExtensionType::ImmutableOwner],
+            &vec![&alice],
+        )
         .await
         .unwrap();
     let account = token.get_account(&alice_account).await.unwrap();
@@ -96,7 +108,12 @@ async fn reallocate() {
     // reallocate succeeds with noop if account is already large enough
     token.get_new_latest_blockhash().await.unwrap();
     token
-        .reallocate(&alice_account, &alice, &[ExtensionType::ImmutableOwner])
+        .reallocate(
+            &alice_account,
+            &alice.pubkey(),
+            &[ExtensionType::ImmutableOwner],
+            &vec![&alice],
+        )
         .await
         .unwrap();
     let account = token.get_account(&alice_account).await.unwrap();
@@ -109,13 +126,14 @@ async fn reallocate() {
     token
         .reallocate(
             &alice_account,
-            &alice,
+            &alice.pubkey(),
             &[
                 ExtensionType::ImmutableOwner,
                 ExtensionType::ImmutableOwner,
                 ExtensionType::TransferFeeAmount,
                 ExtensionType::TransferFeeAmount,
             ],
+            &vec![&alice],
         )
         .await
         .unwrap();
@@ -153,7 +171,12 @@ async fn reallocate_without_current_extension_knowledge() {
 
     // reallocate resizes account to accommodate new and existing extensions
     token
-        .reallocate(&alice_account, &alice, &[ExtensionType::ImmutableOwner])
+        .reallocate(
+            &alice_account,
+            &alice.pubkey(),
+            &[ExtensionType::ImmutableOwner],
+            &vec![&alice],
+        )
         .await
         .unwrap();
     let account = token.get_account(&alice_account).await.unwrap();

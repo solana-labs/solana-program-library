@@ -94,7 +94,11 @@ async fn update_rate() {
     // correct
     let middle_rate = 1_000;
     token
-        .update_interest_rate(&rate_authority, middle_rate)
+        .update_interest_rate(
+            &rate_authority.pubkey(),
+            middle_rate,
+            &vec![&rate_authority],
+        )
         .await
         .unwrap();
     let state = token.get_mint_info().await.unwrap();
@@ -118,7 +122,7 @@ async fn update_rate() {
     // update again, pre_update_average_rate is between the two previous
     let new_rate = 2_000;
     token
-        .update_interest_rate(&rate_authority, new_rate)
+        .update_interest_rate(&rate_authority.pubkey(), new_rate, &vec![&rate_authority])
         .await
         .unwrap();
     let state = token.get_mint_info().await.unwrap();
@@ -131,8 +135,9 @@ async fn update_rate() {
     assert!(final_update_timestamp > last_update_timestamp);
 
     // wrong signer
+    let wrong_signer = Keypair::new();
     let err = token
-        .update_interest_rate(&Keypair::new(), 0)
+        .update_interest_rate(&wrong_signer.pubkey(), 0, &vec![&wrong_signer])
         .await
         .unwrap_err();
     assert_eq!(
@@ -179,11 +184,11 @@ async fn set_authority() {
         Some(new_rate_authority.pubkey()).try_into().unwrap(),
     );
     token
-        .update_interest_rate(&new_rate_authority, 10)
+        .update_interest_rate(&new_rate_authority.pubkey(), 10, &vec![&new_rate_authority])
         .await
         .unwrap();
     let err = token
-        .update_interest_rate(&rate_authority, 100)
+        .update_interest_rate(&rate_authority.pubkey(), 100, &vec![&rate_authority])
         .await
         .unwrap_err();
     assert_eq!(
@@ -213,7 +218,7 @@ async fn set_authority() {
 
     // now all fail
     let err = token
-        .update_interest_rate(&new_rate_authority, 50)
+        .update_interest_rate(&new_rate_authority.pubkey(), 50, &vec![&new_rate_authority])
         .await
         .unwrap_err();
     assert_eq!(
@@ -226,7 +231,7 @@ async fn set_authority() {
         )))
     );
     let err = token
-        .update_interest_rate(&rate_authority, 5)
+        .update_interest_rate(&rate_authority.pubkey(), 5, &vec![&rate_authority])
         .await
         .unwrap_err();
     assert_eq!(
