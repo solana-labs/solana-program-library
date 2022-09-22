@@ -377,6 +377,48 @@ pub enum GovernanceInstruction {
     ///   7. `[]` System program
     ///   8. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///   9. `[]` Optional Voter Weight Record
+    #[account(
+        0,
+        name = "realm_account",
+        desc = "Realm account the created Proposal belongs to"
+    )]
+    #[account(
+        1,
+        writable,
+        name = "proposal_account",
+        desc = "Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_index]"
+    )]
+    #[account(2, writable, name = "governance_account", desc = "Governance account")]
+    #[account(
+        3,
+        writable,
+        name = "token_owner_record",
+        desc = "TokenOwnerRecord account of the Proposal owner"
+    )]
+    #[account(
+        4,
+        name = "governing_token_mint",
+        desc = "Token Mint the Proposal is created for"
+    )]
+    #[account(
+        5,
+        signer,
+        name = "governance_authority",
+        desc = "Governance Authority (Token Owner or Governance Delegate)"
+    )]
+    #[account(6, signer, name = "payer")]
+    #[account(7, name = "system_program")]
+    #[account(
+        8,
+        name = "realm_config",
+        desc = "RealmConfig account. PDA seeds: ['realm-config', realm]"
+    )]
+    #[account(
+        9,
+        optional,
+        name = "voter_weight_record",
+        desc = "Optional Voter Weight Record"
+    )]
     CreateProposal {
         #[allow(dead_code)]
         /// UTF-8 encoded name of the proposal
