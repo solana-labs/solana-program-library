@@ -740,6 +740,27 @@ pub enum GovernanceInstruction {
     ///   4. `[]` Governing Token Mint
     ///   5. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///   6. `[]` Optional Max Voter Weight Record
+    #[account(0, writable, name = "realm_account")]
+    #[account(1, writable, name = "governance_account")]
+    #[account(2, writable, name = "proposal_account")]
+    #[account(
+        3,
+        writable,
+        name = "token_owner_record",
+        desc = "TokenOwnerRecord of the Proposal owner"
+    )]
+    #[account(4, name = "governing_token_mint")]
+    #[account(
+        5,
+        name = "realm_config",
+        desc = "RealmConfig account. PDA seeds: ['realm-config', realm]"
+    )]
+    #[account(
+        6,
+        optional,
+        name = "max_voter_weight_record",
+        desc = "Optional Max Voter Weight Record"
+    )]
     FinalizeVote {},
 
     ///  Relinquish Vote removes voter weight from a Proposal and removes it from voter's active votes
