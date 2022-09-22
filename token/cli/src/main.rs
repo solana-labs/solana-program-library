@@ -35,7 +35,7 @@ use solana_sdk::{
     program_pack::Pack,
     pubkey::Pubkey,
     signature::{Keypair, Signer},
-    system_instruction, system_program,
+    system_program,
     transaction::Transaction,
 };
 use spl_associated_token_account::{
@@ -47,7 +47,7 @@ use spl_token_2022::{
         mint_close_authority::MintCloseAuthority, ExtensionType, StateWithExtensionsOwned,
     },
     instruction::*,
-    state::{Account, Mint, Multisig},
+    state::{Account, Mint},
 };
 use spl_token_client::{
     client::{ProgramRpcClientSendTransaction, RpcClientResponse},
@@ -390,7 +390,13 @@ async fn command_create_token(
     rate_bps: Option<i16>,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
-    println_display(config, format!("Creating token {}", token_pubkey));
+    println_display(
+        config,
+        format!(
+            "Creating token {} under program {}",
+            token_pubkey, config.program_id
+        ),
+    );
 
     let token = token_client_from_config(config, &token_pubkey);
 
@@ -574,56 +580,33 @@ async fn command_create_account(
 
 async fn command_create_multisig(
     config: &Config<'_>,
-    multisig: Pubkey,
+    multisig: Arc<dyn Signer>,
     minimum_signers: u8,
     multisig_members: Vec<Pubkey>,
-    bulk_signers: BulkSigners,
 ) -> CommandResult {
     println_display(
         config,
         format!(
-            "Creating {}/{} multisig {}",
+            "Creating {}/{} multisig {} under program {}",
             minimum_signers,
             multisig_members.len(),
-            multisig
+            multisig.pubkey(),
+            config.program_id,
         ),
     );
 
-    let minimum_balance_for_rent_exemption = if !config.sign_only {
-        config
-            .program_client
-            .get_minimum_balance_for_rent_exemption(Multisig::LEN)
-            .await?
-    } else {
-        0
-    };
+    // default is safe here because create_multisig doesnt use it
+    let token = token_client_from_config(config, &Pubkey::default());
 
-    let instructions = vec![
-        system_instruction::create_account(
-            &config.fee_payer.pubkey(),
-            &multisig,
-            minimum_balance_for_rent_exemption,
-            Multisig::LEN as u64,
-            &config.program_id,
-        ),
-        initialize_multisig(
-            &config.program_id,
-            &multisig,
-            multisig_members.iter().collect::<Vec<_>>().as_slice(),
+    let res = token
+        .create_multisig(
+            &*multisig,
+            &multisig_members.iter().collect::<Vec<_>>(),
             minimum_signers,
-        )?,
-    ];
+        )
+        .await?;
 
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        minimum_balance_for_rent_exemption,
-        instructions,
-    )
-    .await?;
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
@@ -3063,20 +3046,10 @@ async fn process_command<'a>(
                 exit(1);
             }
 
-            let (signer, account) = get_signer(arg_matches, "address_keypair", &mut wallet_manager)
+            let (signer, _) = get_signer(arg_matches, "address_keypair", &mut wallet_manager)
                 .unwrap_or_else(new_throwaway_signer);
-            if !bulk_signers.contains(&signer) {
-                bulk_signers.push(signer);
-            }
 
-            command_create_multisig(
-                config,
-                account,
-                minimum_signers,
-                multisig_members,
-                bulk_signers,
-            )
-            .await
+            command_create_multisig(config, signer, minimum_signers, multisig_members).await
         }
         (CommandName::Authorize, arg_matches) => {
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)

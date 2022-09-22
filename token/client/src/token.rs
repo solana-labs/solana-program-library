@@ -8,6 +8,7 @@ use {
         instruction::Instruction,
         message::Message,
         program_error::ProgramError,
+        program_pack::Pack,
         pubkey::Pubkey,
         signer::{signers::Signers, Signer, SignerError},
         system_instruction,
@@ -27,7 +28,7 @@ use {
             errors::ProofError,
             instruction::transfer_with_fee::FeeParameters,
         },
-        state::{Account, AccountState, Mint},
+        state::{Account, AccountState, Mint, Multisig},
     },
     std::{
         convert::TryInto,
@@ -479,6 +480,35 @@ where
         Ok(token)
     }
 
+    /// Create multisig
+    pub async fn create_multisig(
+        &self,
+        account: &dyn Signer,
+        multisig_members: &[&Pubkey],
+        minimum_signers: u8,
+    ) -> TokenResult<T::Output> {
+        let instructions = vec![
+            system_instruction::create_account(
+                &self.payer.pubkey(),
+                &account.pubkey(),
+                self.client
+                    .get_minimum_balance_for_rent_exemption(Multisig::LEN)
+                    .await
+                    .map_err(TokenError::Client)?,
+                Multisig::LEN as u64,
+                &self.program_id,
+            ),
+            instruction::initialize_multisig(
+                &self.program_id,
+                &account.pubkey(),
+                multisig_members,
+                minimum_signers,
+            )?,
+        ];
+
+        self.process_ixs(&instructions, &vec![account]).await
+    }
+
     /// Get the address for the associated token account.
     pub fn get_associated_token_address(&self, owner: &Pubkey) -> Pubkey {
         get_associated_token_address_with_program_id(owner, &self.pubkey, &self.program_id)
@@ -496,7 +526,6 @@ where
             &[],
         )
         .await
-        .map_err(Into::into)
     }
 
     /// Create and initialize a new token account.
@@ -551,9 +580,7 @@ where
             owner,
         )?);
 
-        self.process_ixs(&instructions, &vec![account])
-            .await
-            .map_err(Into::into)
+        self.process_ixs(&instructions, &vec![account]).await
     }
 
     /// Retrieve a raw account
