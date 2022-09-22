@@ -666,6 +666,14 @@ pub enum GovernanceInstruction {
     ///  0. `[writable]` ProgramMetadata account. PDA seeds: ['metadata']
     ///  1. `[signer]` Payer
     ///  2. `[]` System
+    #[account(
+        0,
+        writable,
+        name = "program_metadata_account",
+        desc = "seeds=['metadata']"
+    )]
+    #[account(1, signer, name = "payer")]
+    #[account(2, name = "system_program")]
     UpdateProgramMetadata {},
 
     /// Creates native SOL treasury account for a Governance account
