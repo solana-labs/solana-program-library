@@ -1,10 +1,13 @@
 import { PublicKey } from '@solana/web3.js';
-export * from './ChangeLog';
+import BN from 'bn.js'
+import { PathNode } from '../generated';
 export * from './Path';
 export * from './Canopy';
 export * from './ConcurrentMerkleTree';
 
-export type PathNode = {
-    node: PublicKey;
-    index: number;
+export type ChangeLogEventV1 = {
+    treeId: PublicKey,
+    path: PathNode[],
+    seq: BN,
+    index: number,
 };

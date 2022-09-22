@@ -71,6 +71,14 @@ export class ConcurrentMerkleTreeAccount {
         return this.getHeaderV1().authority;
     }
 
+    getCreationSlot(): number {
+        return new BN.BN(this.getHeaderV1().creationSlot).toNumber();
+    }
+
+    getCurrentSeq(): number {
+        return new BN.BN(this.tree.sequenceNumber).toNumber();
+    }
+
 };
 
 function getCanopyDepth(canopyByteLength: number): number {

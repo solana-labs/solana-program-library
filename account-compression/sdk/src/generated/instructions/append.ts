@@ -66,7 +66,7 @@ export const appendInstructionDiscriminator = [
 export function createAppendInstruction(
   accounts: AppendInstructionAccounts,
   args: AppendInstructionArgs,
-  programId = new web3.PublicKey('GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU')
+  programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
 ) {
   const [data] = appendStruct.serialize({
     instructionDiscriminator: appendInstructionDiscriminator,

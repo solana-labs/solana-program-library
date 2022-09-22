@@ -304,6 +304,47 @@
   ],
   "types": [
     {
+      "name": "ChangeLogEventV1",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "docs": [
+              "Public key of the ConcurrentMerkleTree"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "path",
+            "docs": [
+              "Nodes of off-chain merkle tree needed by indexer"
+            ],
+            "type": {
+              "vec": {
+                "defined": "PathNode"
+              }
+            }
+          },
+          {
+            "name": "seq",
+            "docs": [
+              "Index corresponding to the number of successful operations on this tree.",
+              "Used by the off-chain indexer to figure out when there are gaps to be backfilled."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "index",
+            "docs": [
+              "Bitmap of node parity (used when hashing)"
+            ],
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
       "name": "ConcurrentMerkleTreeHeader",
       "docs": [
         "Initialization parameters for an SPL ConcurrentMerkleTree.",
@@ -419,6 +460,38 @@
       }
     },
     {
+      "name": "ChangeLogEvent",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "V1",
+            "fields": [
+              {
+                "defined": "ChangeLogEventV1"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "AccountCompressionEvent",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "ChangeLog",
+            "fields": [
+              {
+                "defined": "ChangeLogEvent"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "name": "CompressionAccountType",
       "type": {
         "kind": "enum",
@@ -447,57 +520,6 @@
           }
         ]
       }
-    }
-  ],
-  "events": [
-    {
-      "name": "ChangeLogEvent",
-      "fields": [
-        {
-          "name": "id",
-          "type": "publicKey",
-          "index": false
-        },
-        {
-          "name": "path",
-          "type": {
-            "vec": {
-              "defined": "PathNode"
-            }
-          },
-          "index": false
-        },
-        {
-          "name": "seq",
-          "type": "u64",
-          "index": false
-        },
-        {
-          "name": "index",
-          "type": "u32",
-          "index": false
-        }
-      ]
-    },
-    {
-      "name": "NewLeafEvent",
-      "fields": [
-        {
-          "name": "id",
-          "type": "publicKey",
-          "index": false
-        },
-        {
-          "name": "leaf",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          },
-          "index": false
-        }
-      ]
     }
   ],
   "errors": [
@@ -543,7 +565,7 @@
     }
   ],
   "metadata": {
-    "address": "GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU",
+    "address": "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK",
     "origin": "anchor",
     "binaryVersion": "0.25.0",
     "libVersion": "0.25.0"

@@ -66,7 +66,7 @@ export const verifyLeafInstructionDiscriminator = [
 export function createVerifyLeafInstruction(
   accounts: VerifyLeafInstructionAccounts,
   args: VerifyLeafInstructionArgs,
-  programId = new web3.PublicKey('GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU')
+  programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
 ) {
   const [data] = verifyLeafStruct.serialize({
     instructionDiscriminator: verifyLeafInstructionDiscriminator,

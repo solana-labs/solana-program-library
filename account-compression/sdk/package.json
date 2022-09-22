@@ -25,14 +25,19 @@
   "module": "./dist/esm/index.js",
   "types": "./dist/types/index.d.ts",
   "exports": {
-    "require": "./dist/cjs/index.js",
-    "import": "./dist/esm/index.js",
-    "types": "./dist/types/index.d.ts"
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "import": "./dist/esm/index.js",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./idl/spl_account_compression.json": "./idl/spl_account_compression.json"
   },
   "scripts": {
     "build": "rm -rf dist/ && tsc && tsc -p tsconfig.cjs.json",
-    "start-validator": "solana-test-validator --reset --quiet --bpf-program GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU ../target/deploy/spl_account_compression.so --bpf-program WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh ../target/deploy/spl_noop.so",
+    "start-validator": "solana-test-validator --reset --quiet --bpf-program cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK ../target/deploy/spl_account_compression.so --bpf-program noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV ../target/deploy/spl_noop.so",
     "run-tests": "jest tests --detectOpenHandles",
+    "run-tests:events": "jest tests/events --detectOpenHandles",
+    "test:events": "start-server-and-test start-validator http://localhost:8899/health run-tests:events",
     "test": "start-server-and-test start-validator http://localhost:8899/health run-tests"
   },
   "dependencies": {
