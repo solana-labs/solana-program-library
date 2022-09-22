@@ -618,6 +618,13 @@ pub enum GovernanceInstruction {
     ///   0. `[writable]` Realm account
     ///   1. `[signer]` Current Realm authority    
     ///   2. `[]` New realm authority. Must be one of the realm governances when set
+    #[account(0, writable, name = "realm_account")]
+    #[account(1, signer, name = "realm_authority")]
+    #[account(
+        2,
+        name = "new_realm_authority",
+        desc = "Must be one of the realm governances when set"
+    )]
     SetRealmAuthority {
         #[allow(dead_code)]
         /// Set action ( SetUnchecked, SetChecked, Remove)
