@@ -418,8 +418,23 @@ pub enum GovernanceInstruction {
     ///   0. `[writable]` Realm account
     ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
-    ///   3. `[writable]`  TokenOwnerRecord account of the  Proposal owner
+    ///   3. `[writable]`  TokenOwnerRecord account of the Proposal owner
     ///   4. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    #[account(0, writable, name = "realm_account")]
+    #[account(1, writable, name = "governance_account")]
+    #[account(2, writable, name = "proposal_account")]
+    #[account(
+        3,
+        writable,
+        name = "token_owner_record",
+        desc = "TokenOwnerRecord account of the Proposal owner"
+    )]
+    #[account(
+        4,
+        signer,
+        name = "governance_authority",
+        desc = "Governance authority (Token Owner or Governance Delegate)"
+    )]
     CancelProposal,
 
     /// Signs off Proposal indicating the Signatory approves the Proposal
