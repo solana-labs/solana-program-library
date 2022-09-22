@@ -658,6 +658,17 @@ pub enum GovernanceInstruction {
     ///   3. `[]` Governing Token Mint   
     ///   4. `[signer]` Payer
     ///   5. `[]` System
+    #[account(0, name = "realm_account")]
+    #[account(1, name = "governing_token_owner_account")]
+    #[account(
+        2,
+        writable,
+        name = "token_owner_record",
+        desc = "seeds=['governance', realm, governing_token_mint, governing_token_owner]"
+    )]
+    #[account(3, name = "governing_token_mint")]
+    #[account(4, signer, name = "payer")]
+    #[account(5, name = "system_program")]
     CreateTokenOwnerRecord {},
 
     /// Updates ProgramMetadata account
