@@ -3,12 +3,9 @@
 
 use crate::{error::GovernanceError, processor};
 use solana_program::{
-    account_info::AccountInfo, declare_id, entrypoint, entrypoint::ProgramResult,
+    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult,
     program_error::PrintProgramError, pubkey::Pubkey,
 };
-
-// Todo: Feature-gate this to only run when publishing shank IDL
-declare_id!("GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw");
 
 entrypoint!(process_instruction);
 fn process_instruction(
