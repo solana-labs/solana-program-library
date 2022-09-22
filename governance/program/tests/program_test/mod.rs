@@ -28,7 +28,7 @@ use spl_governance::{
     processor::process_instruction,
     state::{
         enums::{
-            GovernanceAccountType, InstructionExecutionFlags, MintMaxVoteWeightSource,
+            GovernanceAccountType, InstructionExecutionFlags, MintMaxVoterWeightSource,
             ProposalState, TransactionExecutionStatus, VoteThreshold,
         },
         governance::{
@@ -320,7 +320,7 @@ impl GovernanceProgramTest {
             name.clone(),
             realm_setup_args.min_community_weight_to_create_governance,
             realm_setup_args
-                .community_mint_max_vote_weight_source
+                .community_mint_max_voter_weight_source
                 .clone(),
         );
 
@@ -342,8 +342,8 @@ impl GovernanceProgramTest {
 
                 min_community_weight_to_create_governance: realm_setup_args
                     .min_community_weight_to_create_governance,
-                community_mint_max_vote_weight_source: realm_setup_args
-                    .community_mint_max_vote_weight_source
+                community_mint_max_voter_weight_source: realm_setup_args
+                    .community_mint_max_voter_weight_source
                     .clone(),
                 legacy1: 0,
                 legacy2: 0,
@@ -411,7 +411,7 @@ impl GovernanceProgramTest {
 
         let realm_authority = Keypair::new();
 
-        let community_mint_max_vote_weight_source = MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION;
+        let community_mint_max_voter_weight_source = MintMaxVoterWeightSource::FULL_SUPPLY_FRACTION;
         let min_community_weight_to_create_governance = 10;
 
         let create_realm_ix = create_realm(
@@ -424,7 +424,7 @@ impl GovernanceProgramTest {
             None,
             name.clone(),
             min_community_weight_to_create_governance,
-            community_mint_max_vote_weight_source,
+            community_mint_max_voter_weight_source,
         );
 
         self.bench
@@ -443,8 +443,8 @@ impl GovernanceProgramTest {
                 council_mint: Some(council_mint),
                 reserved: [0; 6],
 
-                community_mint_max_vote_weight_source:
-                    MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
+                community_mint_max_voter_weight_source:
+                    MintMaxVoterWeightSource::FULL_SUPPLY_FRACTION,
                 min_community_weight_to_create_governance,
                 legacy1: 0,
                 legacy2: 0,
@@ -1145,7 +1145,7 @@ impl GovernanceProgramTest {
             Some(realm_setup_args.council_token_config_args.clone()),
             realm_setup_args.min_community_weight_to_create_governance,
             realm_setup_args
-                .community_mint_max_vote_weight_source
+                .community_mint_max_voter_weight_source
                 .clone(),
         );
 
@@ -1158,8 +1158,8 @@ impl GovernanceProgramTest {
         realm_cookie
             .account
             .config
-            .community_mint_max_vote_weight_source = realm_setup_args
-            .community_mint_max_vote_weight_source
+            .community_mint_max_voter_weight_source = realm_setup_args
+            .community_mint_max_voter_weight_source
             .clone();
 
         realm_cookie.realm_config = RealmConfigCookie {

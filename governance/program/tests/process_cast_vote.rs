@@ -9,7 +9,7 @@ use program_test::*;
 use spl_governance::{
     error::GovernanceError,
     state::{
-        enums::{MintMaxVoteWeightSource, ProposalState, VoteThreshold, VoteTipping},
+        enums::{MintMaxVoterWeightSource, ProposalState, VoteThreshold, VoteTipping},
         vote_record::Vote,
     },
 };
@@ -1507,8 +1507,8 @@ async fn test_cast_vote_with_strict_tipping_and_inflated_max_vote_weight() {
 
     // Reduce max voter weight to 50% for the cast vote to be above max_voter_weight
     let realm_config_args = RealmSetupArgs {
-        community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(
-            MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
+        community_mint_max_voter_weight_source: MintMaxVoterWeightSource::SupplyFraction(
+            MintMaxVoterWeightSource::SUPPLY_FRACTION_BASE / 2,
         ),
         ..Default::default()
     };

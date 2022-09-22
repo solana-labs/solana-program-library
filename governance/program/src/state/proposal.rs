@@ -24,7 +24,7 @@ use crate::{
     error::GovernanceError,
     state::{
         enums::{
-            GovernanceAccountType, InstructionExecutionFlags, MintMaxVoteWeightSource,
+            GovernanceAccountType, InstructionExecutionFlags, MintMaxVoterWeightSource,
             ProposalState, TransactionExecutionStatus, VoteThreshold, VoteTipping,
         },
         governance::GovernanceConfig,
@@ -432,26 +432,24 @@ impl ProposalV2 {
             return Ok(governing_token_mint_supply);
         }
 
-        match realm_data.config.community_mint_max_vote_weight_source {
-            MintMaxVoteWeightSource::SupplyFraction(fraction) => {
-                if fraction == MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE {
+        let max_voter_weight = match realm_data.config.community_mint_max_voter_weight_source {
+            MintMaxVoterWeightSource::SupplyFraction(fraction) => {
+                if fraction == MintMaxVoterWeightSource::SUPPLY_FRACTION_BASE {
                     return Ok(governing_token_mint_supply);
                 }
 
-                let max_voter_weight = (governing_token_mint_supply as u128)
+                (governing_token_mint_supply as u128)
                     .checked_mul(fraction as u128)
                     .unwrap()
-                    .checked_div(MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE as u128)
-                    .unwrap() as u64;
+                    .checked_div(MintMaxVoterWeightSource::SUPPLY_FRACTION_BASE as u128)
+                    .unwrap() as u64
+            }
+            MintMaxVoterWeightSource::Absolute(value) => value,
+        };
 
-                // When the fraction is used it's possible we can go over the calculated max_vote_weight
-                // and we have to adjust it in case more votes have been cast
-                Ok(self.coerce_max_voter_weight(max_voter_weight, vote_kind))
-            }
-            MintMaxVoteWeightSource::Absolute(_) => {
-                Err(GovernanceError::VoteWeightSourceNotSupported.into())
-            }
-        }
+        // When the fraction or absolute value is used it's possible we can go over the calculated max_vote_weight
+        // and we have to adjust it in case more votes have been cast
+        Ok(self.coerce_max_voter_weight(max_voter_weight, vote_kind))
     }
 
     /// Adjusts max voter weight to ensure it's not lower than total cast votes
@@ -1057,7 +1055,7 @@ mod test {
     use solana_program::clock::Epoch;
 
     use crate::state::{
-        enums::{MintMaxVoteWeightSource, VoteThreshold},
+        enums::{MintMaxVoterWeightSource, VoteThreshold},
         legacy::ProposalV1,
         realm::RealmConfig,
         vote_record::VoteChoice,
@@ -1158,8 +1156,8 @@ mod test {
                 legacy1: 0,
                 legacy2: 0,
 
-                community_mint_max_vote_weight_source:
-                    MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
+                community_mint_max_voter_weight_source:
+                    MintMaxVoterWeightSource::FULL_SUPPLY_FRACTION,
                 min_community_weight_to_create_governance: 10,
             },
             voting_proposal_count: 0,
@@ -1801,10 +1799,61 @@ mod test {
         let vote_tipping = VoteTipping::Strict;
 
         // reduce max vote weight to 100
-        realm.config.community_mint_max_vote_weight_source =
-            MintMaxVoteWeightSource::SupplyFraction(
-                MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
+        realm.config.community_mint_max_voter_weight_source =
+            MintMaxVoterWeightSource::SupplyFraction(
+                MintMaxVoterWeightSource::SUPPLY_FRACTION_BASE / 2,
             );
+
+        let max_voter_weight = proposal
+            .get_max_voter_weight_from_mint_supply(
+                &realm,
+                &governing_token_mint,
+                community_token_supply,
+                &vote_kind,
+            )
+            .unwrap();
+
+        let vote_threshold = &VoteThreshold::YesVotePercentage(60);
+        let vote_kind = VoteKind::Electorate;
+
+        // Act
+        proposal
+            .try_tip_vote(
+                max_voter_weight,
+                &vote_tipping,
+                current_timestamp,
+                vote_threshold,
+                &vote_kind,
+            )
+            .unwrap();
+
+        // Assert
+        assert_eq!(proposal.state, ProposalState::Succeeded);
+        assert_eq!(proposal.max_vote_weight, Some(100));
+    }
+
+    #[test]
+    fn test_try_tip_vote_with_reduced_absolute_community_mint_max_vote_weight() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+
+        proposal.options[0].vote_weight = 60;
+        proposal.deny_vote_weight = Some(10);
+
+        proposal.state = ProposalState::Voting;
+
+        let current_timestamp = 15_i64;
+
+        let community_token_supply = 200;
+
+        let mut realm = create_test_realm();
+        let governing_token_mint = proposal.governing_token_mint;
+        let vote_kind = VoteKind::Electorate;
+        let vote_tipping = VoteTipping::Strict;
+
+        // set max vote weight to 100
+        realm.config.community_mint_max_voter_weight_source =
+            MintMaxVoterWeightSource::Absolute(community_token_supply / 2);
 
         let max_voter_weight = proposal
             .get_max_voter_weight_from_mint_supply(
@@ -1854,9 +1903,9 @@ mod test {
         let vote_tipping = VoteTipping::Strict;
 
         // reduce max vote weight to 100
-        realm.config.community_mint_max_vote_weight_source =
-            MintMaxVoteWeightSource::SupplyFraction(
-                MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
+        realm.config.community_mint_max_voter_weight_source =
+            MintMaxVoterWeightSource::SupplyFraction(
+                MintMaxVoterWeightSource::SUPPLY_FRACTION_BASE / 2,
             );
 
         // vote above reduced supply
@@ -1891,6 +1940,60 @@ mod test {
     }
 
     #[test]
+    fn test_try_tip_vote_with_reduced_absolute_mint_max_vote_weight_and_vote_overflow() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+
+        // no vote weight
+        proposal.deny_vote_weight = Some(10);
+
+        proposal.state = ProposalState::Voting;
+
+        let current_timestamp = 15_i64;
+
+        let community_token_supply = 200;
+
+        let mut realm = create_test_realm();
+        let governing_token_mint = proposal.governing_token_mint;
+        let vote_kind = VoteKind::Electorate;
+        let vote_tipping = VoteTipping::Strict;
+
+        // reduce max vote weight to 100
+        realm.config.community_mint_max_voter_weight_source =
+            MintMaxVoterWeightSource::Absolute(community_token_supply / 2);
+
+        // vote above reduced supply
+        // Yes vote weight
+        proposal.options[0].vote_weight = 120;
+
+        let max_voter_weight = proposal
+            .get_max_voter_weight_from_mint_supply(
+                &realm,
+                &governing_token_mint,
+                community_token_supply,
+                &vote_kind,
+            )
+            .unwrap();
+
+        let vote_threshold = VoteThreshold::YesVotePercentage(60);
+
+        // Act
+        proposal
+            .try_tip_vote(
+                max_voter_weight,
+                &vote_tipping,
+                current_timestamp,
+                &vote_threshold,
+                &vote_kind,
+            )
+            .unwrap();
+
+        // Assert
+        assert_eq!(proposal.state, ProposalState::Succeeded);
+        assert_eq!(proposal.max_vote_weight, Some(130)); // Deny Vote 10 + Approve Vote 120
+    }
+
+    #[test]
     fn test_try_tip_vote_for_council_vote_with_reduced_community_mint_max_vote_weight() {
         // Arrange
         let mut proposal = create_test_proposal();
@@ -1909,9 +2012,9 @@ mod test {
         let vote_kind = VoteKind::Electorate;
         let vote_tipping = VoteTipping::Strict;
 
-        realm.config.community_mint_max_vote_weight_source =
-            MintMaxVoteWeightSource::SupplyFraction(
-                MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
+        realm.config.community_mint_max_voter_weight_source =
+            MintMaxVoterWeightSource::SupplyFraction(
+                MintMaxVoterWeightSource::SUPPLY_FRACTION_BASE / 2,
             );
         realm.config.council_mint = Some(proposal.governing_token_mint);
 
@@ -1961,9 +2064,9 @@ mod test {
         let vote_kind = VoteKind::Electorate;
 
         // reduce max vote weight to 100
-        realm.config.community_mint_max_vote_weight_source =
-            MintMaxVoteWeightSource::SupplyFraction(
-                MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
+        realm.config.community_mint_max_voter_weight_source =
+            MintMaxVoterWeightSource::SupplyFraction(
+                MintMaxVoterWeightSource::SUPPLY_FRACTION_BASE / 2,
             );
 
         let max_voter_weight = proposal
@@ -2012,9 +2115,9 @@ mod test {
         let vote_kind = VoteKind::Electorate;
 
         // reduce max vote weight to 100
-        realm.config.community_mint_max_vote_weight_source =
-            MintMaxVoteWeightSource::SupplyFraction(
-                MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
+        realm.config.community_mint_max_voter_weight_source =
+            MintMaxVoterWeightSource::SupplyFraction(
+                MintMaxVoterWeightSource::SUPPLY_FRACTION_BASE / 2,
             );
 
         // vote above reduced supply

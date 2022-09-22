@@ -10,7 +10,7 @@ use spl_governance::{
         deposit_governing_tokens,
     },
     state::{
-        enums::{MintMaxVoteWeightSource, VoteThreshold},
+        enums::{MintMaxVoterWeightSource, VoteThreshold},
         governance::{get_governance_address, GovernanceConfig},
         proposal::{get_proposal_address, VoteType},
         realm::{get_realm_address, GoverningTokenConfigAccountArgs},
@@ -125,7 +125,7 @@ impl GovernanceChatProgramTest {
             None,
             name.clone(),
             1,
-            MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
+            MintMaxVoterWeightSource::FULL_SUPPLY_FRACTION,
         );
 
         self.bench

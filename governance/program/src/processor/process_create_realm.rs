@@ -132,8 +132,8 @@ pub fn process_create_realm(
         config: RealmConfig {
             council_mint: council_token_mint_address,
             reserved: [0; 6],
-            community_mint_max_vote_weight_source: realm_config_args
-                .community_mint_max_vote_weight_source,
+            community_mint_max_voter_weight_source: realm_config_args
+                .community_mint_max_voter_weight_source,
             min_community_weight_to_create_governance: realm_config_args
                 .min_community_weight_to_create_governance,
             legacy1: 0,

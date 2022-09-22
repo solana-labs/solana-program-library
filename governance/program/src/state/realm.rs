@@ -19,7 +19,7 @@ use spl_governance_tools::account::{
 use crate::{
     error::GovernanceError,
     state::{
-        enums::{GovernanceAccountType, MintMaxVoteWeightSource},
+        enums::{GovernanceAccountType, MintMaxVoterWeightSource},
         legacy::RealmV1,
         realm_config::GoverningTokenType,
         token_owner_record::get_token_owner_record_data_for_realm,
@@ -41,7 +41,7 @@ pub struct RealmConfigArgs {
     pub min_community_weight_to_create_governance: u64,
 
     /// The source used for community mint max vote weight source
-    pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
+    pub community_mint_max_voter_weight_source: MintMaxVoterWeightSource,
 
     /// Community token config args
     pub community_token_config_args: GoverningTokenConfigArgs,
@@ -116,7 +116,7 @@ pub struct RealmConfig {
     pub min_community_weight_to_create_governance: u64,
 
     /// The source used for community mint max vote weight source
-    pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
+    pub community_mint_max_voter_weight_source: MintMaxVoterWeightSource,
 
     /// Optional council mint
     pub council_mint: Option<Pubkey>,
@@ -435,14 +435,16 @@ pub fn get_governing_token_holding_address(
 pub fn assert_valid_realm_config_args(
     realm_config_args: &RealmConfigArgs,
 ) -> Result<(), ProgramError> {
-    match realm_config_args.community_mint_max_vote_weight_source {
-        MintMaxVoteWeightSource::SupplyFraction(fraction) => {
-            if !(1..=MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE).contains(&fraction) {
-                return Err(GovernanceError::InvalidMaxVoteWeightSupplyFraction.into());
+    match realm_config_args.community_mint_max_voter_weight_source {
+        MintMaxVoterWeightSource::SupplyFraction(fraction) => {
+            if !(1..=MintMaxVoterWeightSource::SUPPLY_FRACTION_BASE).contains(&fraction) {
+                return Err(GovernanceError::InvalidMaxVoterWeightSupplyFraction.into());
             }
         }
-        MintMaxVoteWeightSource::Absolute(_) => {
-            return Err(GovernanceError::MintMaxVoteWeightSourceNotSupported.into())
+        MintMaxVoterWeightSource::Absolute(value) => {
+            if value == 0 {
+                return Err(GovernanceError::InvalidMaxVoterWeightAbsoluteValue.into());
+            }
         }
     }
 
@@ -471,7 +473,7 @@ mod test {
                 legacy1: 0,
                 legacy2: 0,
                 reserved: [0; 6],
-                community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Absolute(100),
+                community_mint_max_voter_weight_source: MintMaxVoterWeightSource::Absolute(100),
                 min_community_weight_to_create_governance: 10,
             },
 
@@ -495,7 +497,7 @@ mod test {
         pub min_community_weight_to_create_governance: u64,
 
         /// The source used for community mint max vote weight source
-        pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
+        pub community_mint_max_voter_weight_source: MintMaxVoterWeightSource,
     }
 
     /// Instructions supported by the Governance program
@@ -528,8 +530,8 @@ mod test {
             config_args: RealmConfigArgs {
                 use_council_mint: true,
                 min_community_weight_to_create_governance: 100,
-                community_mint_max_vote_weight_source:
-                    MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
+                community_mint_max_voter_weight_source:
+                    MintMaxVoterWeightSource::FULL_SUPPLY_FRACTION,
                 community_token_config_args: GoverningTokenConfigArgs::default(),
                 council_token_config_args: GoverningTokenConfigArgs::default(),
             },
@@ -548,8 +550,8 @@ mod test {
         if let GovernanceInstructionV1::CreateRealm { name, config_args } = create_realm_ix_v1 {
             assert_eq!("test-realm", name);
             assert_eq!(
-                MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
-                config_args.community_mint_max_vote_weight_source
+                MintMaxVoterWeightSource::FULL_SUPPLY_FRACTION,
+                config_args.community_mint_max_voter_weight_source
             );
         } else {
             panic!("Can't deserialize v1 CreateRealm instruction from v2");
