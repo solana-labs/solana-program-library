@@ -181,6 +181,32 @@ pub enum GovernanceInstruction {
     ///  4. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
     ///  5. `[]` SPL Token program
     ///  6. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    #[account(0, name = "realm_account")]
+    #[account(
+        1,
+        writable,
+        name = "governing_token_holding_account",
+        desc = "seeds=['governance', realm, governing_token_mint]"
+    )]
+    #[account(
+        2,
+        writable,
+        name = "governing_token_destination_account",
+        desc = "All tokens will be transferred to this account"
+    )]
+    #[account(3, signer, name = "governing_token_owner_account")]
+    #[account(
+        4,
+        writable,
+        name = "token_owner_record",
+        desc = "seeds=['governance',realm, governing_token_mint, governing_token_owner]"
+    )]
+    #[account(5, name = "token_program")]
+    #[account(
+        6,
+        name = "realm_config_account",
+        desc = "seeds=['realm-config', realm]"
+    )]
     WithdrawGoverningTokens {},
 
     /// Sets Governance Delegate for the given Realm and Governing Token Mint (Community or Council)
