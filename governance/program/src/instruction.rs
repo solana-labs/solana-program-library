@@ -580,6 +580,46 @@ pub enum GovernanceInstruction {
     ///   9. `[signer]` Governance authority
     ///   10. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///   11. `[]` Optional Voter Weight Record   
+    #[account(
+        0,
+        name = "realm_account",
+        desc = "Realm account the created Governance belongs to"
+    )]
+    #[account(
+        1,
+        writable,
+        name = "token_governance_account",
+        desc = "Token Governance account. seeds=['token-governance', realm, governed_token]"
+    )]
+    #[account(
+        2,
+        writable,
+        name = "token_account",
+        desc = "Token account governed by this Governance account"
+    )]
+    #[account(
+        3,
+        signer,
+        name = "token_account_authority",
+        desc = "Current token account authority (AccountOwner and optionally CloseAccount"
+    )]
+    #[account(
+        4,
+        name = "governing_token_owner_record",
+        desc = "Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority"
+    )]
+    #[account(5, signer, name = "payer")]
+    #[account(6, name = "token_program")]
+    #[account(7, name = "system_program")]
+    #[account(8, name = "rent")]
+    #[account(9, signer, name = "governance_authority")]
+    #[account(10, name = "realm_config", desc = "seeds=['realm-config', realm]")]
+    #[account(
+        11,
+        optional,
+        name = "voter_weight_record",
+        desc = "Optional Voter Weight Record"
+    )]
     CreateTokenGovernance {
         #[allow(dead_code)]
         /// Governance config
@@ -696,6 +736,37 @@ pub enum GovernanceInstruction {
         writable,
         name = "realm_config",
         desc = "RealmConfig account. seeds=['realm-config', realm]"
+    )]
+    #[account(
+        6,
+        optional,
+        name = "community_voter_weight_addin_program_id",
+        desc = "Optional Community Voter Weight Addin Program Id"
+    )]
+    #[account(
+        7,
+        optional,
+        name = "max_community_voter_weight_addin_program_id",
+        desc = "Optional Max Community Voter Weight Addin Program Id"
+    )]
+    #[account(
+        8,
+        optional,
+        name = "council_voter_weight_addin_program_id",
+        desc = "Optional Council Voter Weight Adding Program Id"
+    )]
+    #[account(
+        9,
+        optional,
+        name = "max_council_voter_weight_addin_program_id",
+        desc = "Optional Max Council Voter Weight Addin Program Id"
+    )]
+    #[account(
+        10,
+        optional,
+        signer,
+        name = "payer",
+        desc = "Optional Payer. Required if RealmConfig doesn't exist and needs to be created"
     )]
     SetRealmConfig {
         #[allow(dead_code)]
