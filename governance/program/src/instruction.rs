@@ -486,6 +486,30 @@ pub enum GovernanceInstruction {
     ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     ///   3. `[writable]` Signatory Record Account
     ///   4. `[writable]` Beneficiary Account which would receive lamports from the disposed Signatory Record Account
+    #[account(0, writable, name = "proposal_account")]
+    #[account(
+        1,
+        name = "token_owner_record",
+        desc = "TokenOwnerRecord account of the Proposal owner"
+    )]
+    #[account(
+        2,
+        signer,
+        name = "governance_authority",
+        desc = "Governance Authority (Token Owner or Governance Delegate)"
+    )]
+    #[account(
+        3,
+        writable,
+        name = "signatory_record_account",
+        desc = "Signatory Record Account"
+    )]
+    #[account(
+        4,
+        writable,
+        name = "beneficiary_account",
+        desc = "Beneficiary Account which would receive lamports from the disposed Signatory Record Account"
+    )]
     RemoveSignatory {
         #[allow(dead_code)]
         /// Signatory to remove from the Proposal
