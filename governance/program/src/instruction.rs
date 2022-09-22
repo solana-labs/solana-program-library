@@ -452,6 +452,27 @@ pub enum GovernanceInstruction {
     ///   4. `[signer]` Payer
     ///   5. `[]` System program
     ///   6. `[]` Rent sysvar
+    #[account(0, writable, name = "proposal_account")]
+    #[account(
+        1,
+        name = "token_owner_record",
+        desc = "TokenOwnerRecord account of the Proposal owner"
+    )]
+    #[account(
+        2,
+        signer,
+        name = "governance_authority",
+        desc = "Governance Authority (Token Owner or Governance Delegate)"
+    )]
+    #[account(
+        3,
+        writable,
+        name = "signatory_record_account",
+        desc = "Signatory Record Account"
+    )]
+    #[account(4, signer, name = "payer")]
+    #[account(5, name = "system_program")]
+    #[account(6, name = "rent")]
     AddSignatory {
         #[allow(dead_code)]
         /// Signatory to add to the Proposal
