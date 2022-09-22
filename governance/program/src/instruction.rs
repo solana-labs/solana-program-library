@@ -596,6 +596,12 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[]` Realm account the Governance account belongs to    
     ///   1. `[writable, signer]` The Governance account the config is for
+    #[account(
+        0,
+        name = "realm_account",
+        desc = "Realm account the governance_account belongs to"
+    )]
+    #[account(1, writable, signer, name = "The governance account the config is for")]
     SetGovernanceConfig {
         #[allow(dead_code)]
         /// New governance config
