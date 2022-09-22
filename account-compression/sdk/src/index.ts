@@ -5,6 +5,7 @@ export {
 } from './generated';
 export * from './instructions';
 export * from './accounts';
+export * from './events';
 export * from './utils';
 export * from './types';
-export type { PathNode } from './types';
+export type { ChangeLogEventV1 } from './types';

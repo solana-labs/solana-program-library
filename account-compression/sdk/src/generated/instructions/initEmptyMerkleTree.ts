@@ -68,7 +68,7 @@ export const initEmptyMerkleTreeInstructionDiscriminator = [
 export function createInitEmptyMerkleTreeInstruction(
   accounts: InitEmptyMerkleTreeInstructionAccounts,
   args: InitEmptyMerkleTreeInstructionArgs,
-  programId = new web3.PublicKey('GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU')
+  programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
 ) {
   const [data] = initEmptyMerkleTreeStruct.serialize({
     instructionDiscriminator: initEmptyMerkleTreeInstructionDiscriminator,

@@ -1,11 +1,8 @@
 [programs.localnet]
-spl_account_compression = "GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU"
-
-[programs.testnet]
-spl_account_compression = "GRoLLMza82AiYN7W9S9KCCtCyyPRAQP2ifBy4v4D5RMD"
+spl_account_compression = "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK"
 
 [[test.genesis]]
-address = "WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh"
+address = "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV"
 program = "./target/deploy/wrapper.so"
 
 [registry]

@@ -10,7 +10,13 @@ import {
   TransactionInstruction,
 } from "@solana/web3.js";
 import { assert } from "chai";
+import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 import * as crypto from "crypto";
+
+import {
+  createTreeOnChain,
+  execute
+} from './utils';
 import {
   buildTree,
   hash,
@@ -23,87 +29,8 @@ import {
   createAppendIx,
   createTransferAuthorityIx,
   createVerifyLeafIx,
-  createAllocTreeIx,
-  createInitEmptyMerkleTreeInstruction,
   ConcurrentMerkleTreeAccount,
-  SPL_NOOP_PROGRAM_ID,
 } from "../src";
-import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
-
-async function assertCMTProperties(
-  connection: Connection,
-  expectedMaxDepth: number,
-  expectedMaxBufferSize: number,
-  expectedAuthority: PublicKey,
-  expectedRoot: Buffer,
-  onChainCMTKey: PublicKey
-) {
-  const onChainCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, onChainCMTKey);
-
-  assert(
-    onChainCMT.getMaxDepth() === expectedMaxDepth,
-    `Max depth does not match ${onChainCMT.getMaxDepth()}, expected ${expectedMaxDepth}`,
-  );
-  assert(
-    onChainCMT.getMaxBufferSize() === expectedMaxBufferSize,
-    `Max buffer size does not match ${onChainCMT.getMaxBufferSize()}, expected ${expectedMaxBufferSize}`,
-  );
-  assert(
-    onChainCMT.getAuthority().equals(expectedAuthority),
-    "Failed to write auth pubkey",
-  );
-  assert(
-    onChainCMT.getCurrentRoot().equals(expectedRoot),
-    "On chain root does not match root passed in instruction",
-  );
-}
-
-
-/// Wait for a transaction of a certain id to confirm and optionally log its messages
-export async function confirmAndLogTx(provider: AnchorProvider, txId: string, verbose: boolean = false) {
-  const tx = await provider.connection.confirmTransaction(txId, "confirmed");
-  if (tx.value.err || verbose) {
-    console.log(
-      (await provider.connection.getConfirmedTransaction(txId, "confirmed"))!.meta!
-        .logMessages
-    );
-  }
-  if (tx.value.err) {
-    console.log("Transaction failed");
-    throw new Error(JSON.stringify(tx.value.err));
-  }
-};
-
-/// Execute a series of instructions in a txn
-export async function execute(
-  provider: AnchorProvider,
-  instructions: TransactionInstruction[],
-  signers: Signer[],
-  skipPreflight: boolean = false,
-  verbose: boolean = false,
-): Promise<string> {
-  let tx = new Transaction();
-  instructions.map((ix) => { tx = tx.add(ix) });
-
-  let txid: string | null = null;
-  try {
-    txid = await provider.sendAndConfirm!(tx, signers, {
-      skipPreflight,
-    })
-  } catch (e: any) {
-    console.log("Tx error!", e.logs)
-    throw e;
-  }
-
-  if (verbose && txid) {
-    console.log(
-      (await provider.connection.getConfirmedTransaction(txid, "confirmed"))!.meta!
-        .logMessages
-    );
-  }
-
-  return txid;
-}
 
 describe("Account Compression", () => {
   // Configure the client to use the local cluster.
@@ -116,82 +43,6 @@ describe("Account Compression", () => {
   const MAX_SIZE = 64;
   const MAX_DEPTH = 14;
 
-  async function createTreeOnChain(
-    payer: Keypair,
-    numLeaves: number,
-    maxDepth?: number,
-    maxSize?: number,
-    canopyDepth?: number
-  ): Promise<[Keypair, Tree]> {
-    if (maxDepth === undefined) {
-      maxDepth = MAX_DEPTH;
-    }
-    if (maxSize === undefined) {
-      maxSize = MAX_SIZE;
-    }
-    const cmtKeypair = Keypair.generate();
-
-    const leaves = Array(2 ** maxDepth).fill(Buffer.alloc(32));
-    for (let i = 0; i < numLeaves; i++) {
-      leaves[i] = crypto.randomBytes(32);
-    }
-    const tree = buildTree(leaves);
-
-    const allocAccountIx = await createAllocTreeIx(
-      provider.connection,
-      maxSize,
-      maxDepth,
-      canopyDepth ?? 0,
-      payer.publicKey,
-      cmtKeypair.publicKey
-    );
-
-    let ixs = [
-      allocAccountIx,
-      createInitEmptyMerkleTreeInstruction(
-        {
-          merkleTree: cmtKeypair.publicKey,
-          authority: payer.publicKey,
-          logWrapper: SPL_NOOP_PROGRAM_ID,
-        },
-        {
-          maxDepth,
-          maxBufferSize: maxSize,
-        }
-      )
-    ];
-
-    let txId = await execute(provider, ixs, [
-      payer,
-      cmtKeypair,
-    ]);
-    if (canopyDepth) {
-      await confirmAndLogTx(provider, txId as string);
-    }
-
-    if (numLeaves) {
-      const nonZeroLeaves = leaves.slice(0, numLeaves);
-      let appendIxs: TransactionInstruction[] = nonZeroLeaves.map((leaf) => {
-        return createAppendIx(leaf, payer, cmtKeypair.publicKey)
-      });
-      while (appendIxs.length) {
-        const batch = appendIxs.slice(0, 5);
-        await execute(provider, batch, [payer]);
-        appendIxs = appendIxs.slice(5,);
-      }
-    }
-
-    await assertCMTProperties(
-      provider.connection,
-      maxDepth,
-      maxSize,
-      payer.publicKey,
-      tree.root,
-      cmtKeypair.publicKey
-    );
-
-    return [cmtKeypair, tree];
-  }
 
   beforeEach(async () => {
     payer = Keypair.generate();
@@ -212,7 +63,7 @@ describe("Account Compression", () => {
 
   describe("Having created a tree with a single leaf", () => {
     beforeEach(async () => {
-      [cmtKeypair, offChainTree] = await createTreeOnChain(payer, 1);
+      [cmtKeypair, offChainTree] = await createTreeOnChain(provider, payer, 1, MAX_DEPTH, MAX_SIZE);
     });
     it("Append single leaf", async () => {
       const newLeaf = crypto.randomBytes(32);
@@ -394,8 +245,11 @@ describe("Account Compression", () => {
         )
       );
       [cmtKeypair, offChainTree] = await createTreeOnChain(
+        provider,
         authority,
-        1
+        1,
+        MAX_DEPTH,
+        MAX_SIZE
       );
     });
     it("Attempting to replace with random authority fails", async () => {
@@ -460,8 +314,11 @@ describe("Account Compression", () => {
   describe(`Having created a tree with ${MAX_SIZE} leaves`, () => {
     beforeEach(async () => {
       [cmtKeypair, offChainTree] = await createTreeOnChain(
+        provider,
         payer,
-        MAX_SIZE
+        MAX_SIZE,
+        MAX_DEPTH,
+        MAX_SIZE,
       );
     });
     it(`Replace all of them in a block`, async () => {
@@ -521,6 +378,7 @@ describe("Account Compression", () => {
     const DEPTH = 3;
     beforeEach(async () => {
       [cmtKeypair, offChainTree] = await createTreeOnChain(
+        provider,
         payer,
         0,
         DEPTH,
@@ -626,6 +484,7 @@ describe("Account Compression", () => {
     const DEPTH = 5;
     it("Testing canopy for appends and replaces on a full on chain tree", async () => {
       [cmtKeypair, offChainTree] = await createTreeOnChain(
+        provider,
         payer,
         0,
         DEPTH,
