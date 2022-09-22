@@ -551,9 +551,53 @@ pub enum GovernanceInstruction {
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
     ///   8. `[]` Sysvar Rent
-    ///   8. `[signer]` Governance authority
-    ///   9. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
-    ///   10. `[]` Optional Voter Weight Record
+    ///   9. `[signer]` Governance authority
+    ///   10. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///   11. `[]` Optional Voter Weight Record
+    #[account(
+        0,
+        name = "realm_account",
+        desc = "Realm account the created Governance belongs to"
+    )]
+    #[account(
+        1,
+        writable,
+        name = "mint_governance_account",
+        desc = "Mint Governance account. seeds=['mint-governance', realm, governed_mint]"
+    )]
+    #[account(
+        2,
+        writable,
+        name = "governed_mint",
+        desc = "Mint governed by this Governance account"
+    )]
+    #[account(
+        3,
+        signer,
+        name = "mint_authority",
+        desc = "Current Mint authority (MintTokens and optionally FreezeAccount)"
+    )]
+    #[account(
+        4,
+        name = "governing_token_owner_record",
+        desc = "Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)"
+    )]
+    #[account(5, signer, name = "payer")]
+    #[account(6, name = "token_program")]
+    #[account(7, name = "system_program")]
+    #[account(8, name = "rent")]
+    #[account(9, signer, name = "governance_authority")]
+    #[account(
+        10,
+        name = "realm_config",
+        desc = "RealmConfig account. seeds=['realm-config', realm]"
+    )]
+    #[account(
+        11,
+        optional,
+        name = "voter_weight_record",
+        desc = "Optional Voter Weight Record"
+    )]
     CreateMintGovernance {
         #[allow(dead_code)]
         /// Governance config
