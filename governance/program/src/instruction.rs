@@ -528,6 +528,28 @@ pub enum GovernanceInstruction {
     ///   5. `[signer]` Payer
     ///   6. `[]` System program
     ///   7. `[]` Rent sysvar
+    #[account(0, name = "governance_account")]
+    #[account(1, writable, name = "proposal_account")]
+    #[account(
+        2,
+        name = "token_owner_record",
+        desc = "TokenOwnerRecord account of the Proposal owner"
+    )]
+    #[account(
+        3,
+        signer,
+        name = "governance_authority",
+        desc = "Governance Authority (Token Owner or Governance Delegate)"
+    )]
+    #[account(
+        4,
+        writable,
+        name = "proposal_transaction_account",
+        desc = "ProposalTransaction, account. PDA seeds: ['governance', proposal, option_index, index]"
+    )]
+    #[account(5, signer, name = "payer")]
+    #[account(6, name = "system_program")]
+    #[account(7, name = "rent")]
     InsertTransaction {
         #[allow(dead_code)]
         /// The index of the option the transaction is for
