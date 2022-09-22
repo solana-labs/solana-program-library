@@ -611,6 +611,24 @@ pub enum GovernanceInstruction {
     ///   1. `[]` TokenOwnerRecord account of the Proposal owner
     ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)    
     ///   3. `[writable]` ProposalTransaction account to flag
+    #[account(0, writable, name = "proposal_account")]
+    #[account(
+        1,
+        name = "token_owner_record",
+        desc = "TokenOwnerRecord account of the Proposal owner"
+    )]
+    #[account(
+        2,
+        signer,
+        name = "governance_authority",
+        desc = "Governance Authority (Token Owner or Governance Delegate)"
+    )]
+    #[account(
+        3,
+        writable,
+        name = "proposal_transaction_account",
+        desc = "ProposalTransaction account to flag"
+    )]
     FlagTransactionError,
 
     /// Sets new Realm authority
