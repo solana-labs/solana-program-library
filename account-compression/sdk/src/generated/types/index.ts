@@ -1,3 +1,6 @@
+export * from './AccountCompressionEvent'
+export * from './ChangeLogEvent'
+export * from './ChangeLogEventV1'
 export * from './CompressionAccountType'
 export * from './ConcurrentMerkleTreeHeader'
 export * from './ConcurrentMerkleTreeHeaderData'

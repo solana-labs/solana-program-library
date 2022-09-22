@@ -70,7 +70,7 @@ export const insertOrAppendInstructionDiscriminator = [
 export function createInsertOrAppendInstruction(
   accounts: InsertOrAppendInstructionAccounts,
   args: InsertOrAppendInstructionArgs,
-  programId = new web3.PublicKey('GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU')
+  programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
 ) {
   const [data] = insertOrAppendStruct.serialize({
     instructionDiscriminator: insertOrAppendInstructionDiscriminator,

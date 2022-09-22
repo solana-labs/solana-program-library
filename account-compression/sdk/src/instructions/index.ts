@@ -6,7 +6,8 @@ import {
     createAppendInstruction,
     createTransferAuthorityInstruction,
     createVerifyLeafInstruction,
-    PROGRAM_ID
+    PROGRAM_ID,
+    createInitEmptyMerkleTreeInstruction
 } from "../generated";
 
 /**
@@ -26,6 +27,25 @@ export function addProof(
         })
     )
     return instruction;
+}
+
+export function createInitEmptyMerkleTreeIx(
+    authority: Keypair,
+    merkleTree: PublicKey,
+    maxDepth: number,
+    maxBufferSize: number
+): TransactionInstruction {
+    return createInitEmptyMerkleTreeInstruction(
+        {
+            merkleTree,
+            authority: authority.publicKey,
+            logWrapper: SPL_NOOP_PROGRAM_ID,
+        },
+        {
+            maxBufferSize,
+            maxDepth
+        }
+    );
 }
 
 export function createReplaceIx(
@@ -110,7 +130,7 @@ export async function createAllocTreeIx(
     maxDepth: number,
     canopyDepth: number,
     payer: PublicKey,
-    merkleRoll: PublicKey,
+    merkleTree: PublicKey,
 ): Promise<TransactionInstruction> {
     const requiredSpace = getConcurrentMerkleTreeAccountSize(
         maxDepth,
@@ -119,7 +139,7 @@ export async function createAllocTreeIx(
     );
     return SystemProgram.createAccount({
         fromPubkey: payer,
-        newAccountPubkey: merkleRoll,
+        newAccountPubkey: merkleTree,
         lamports:
             await connection.getMinimumBalanceForRentExemption(
                 requiredSpace
