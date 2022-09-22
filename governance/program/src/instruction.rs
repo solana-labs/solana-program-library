@@ -215,7 +215,7 @@ pub enum GovernanceInstruction {
     /// Note: This doesn't take voting rights from the Token Owner who still can vote and change governance_delegate
     ///
     /// 0. `[signer]` Current Governance Delegate or Governing Token owner
-    /// 1. `[writable]` Token Owner  Record
+    /// 1. `[writable]` Token Owner Record
     #[account(
         0,
         signer,
@@ -234,7 +234,7 @@ pub enum GovernanceInstruction {
     ///   0. `[]` Realm account the created Governance belongs to
     ///   1. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
     ///   2. `[]` Account governed by this Governance
-    ///       Note: The account doesn't have to exist and can be only used as a unique identifier for the Governance account  
+    ///       Note: The account doesn't have to exist and can be used only as a unique identifier for the Governance account  
     ///   3. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)
     ///   4. `[signer]` Payer
     ///   5. `[]` System program
@@ -242,6 +242,43 @@ pub enum GovernanceInstruction {
     ///   7. `[signer]` Governance authority
     ///   8. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///   9. `[]` Optional Voter Weight Record
+    #[account(
+        0,
+        name = "governance_realm_account",
+        desc = "Realm account the created governance belongs to"
+    )]
+    #[account(
+        1,
+        writable,
+        name = "governing_account",
+        desc = "seeds=['account-governance', realm, governed_account]"
+    )]
+    #[account(
+        2,
+        name = "governed_account",
+        desc = "Account governed by this Governance (governing_account). 
+        Note: the account doesn't have to exist and can be used only as a unique identified for the Governance account"
+    )]
+    #[account(
+        3,
+        name = "governing_token_owner_record",
+        desc = "Used only if not signed by RealmAuthority"
+    )]
+    #[account(4, signer, name = "payer")]
+    #[account(5, name = "system_program")]
+    #[account(6, name = "rent")]
+    #[account(7, signer, name = "governance_authority")]
+    #[account(
+        8,
+        name = "realm_config_account",
+        desc = "seeds=['realm-config', realm]"
+    )]
+    #[account(
+        9,
+        optional,
+        name = "voter_weight_record",
+        desc = "Optional Voter Weight Record"
+    )]
     CreateGovernance {
         /// Governance config
         #[allow(dead_code)]
