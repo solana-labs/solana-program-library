@@ -135,6 +135,35 @@ pub enum GovernanceInstruction {
     ///  7. `[]` System
     ///  8. `[]` SPL Token program
     ///  9. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    #[account(0, name = "governance_realm")]
+    #[account(
+        1,
+        writable,
+        name = "governing_token_holding_account",
+        desc = "seeds=['governance', realm, governing_token_mint]"
+    )]
+    #[account(
+        2,
+        writable,
+        name = "governing_token_source_account",
+        desc = "It can either be spl-token TokenAccount or MintAccount. Tokens will be transferred or minted to the holding account"
+    )]
+    #[account(3, signer, name = "governing_token_owner_account")]
+    #[account(4, signer, name = "governing_token_source_account_authority")]
+    #[account(
+        5,
+        writable,
+        name = "token_owner_record",
+        desc = "seeds=['governance', realm, governing_token_mint, governing_token_owner]"
+    )]
+    #[account(6, signer, name = "payer")]
+    #[account(7, name = "system_program")]
+    #[account(8, name = "token_program")]
+    #[account(
+        9,
+        name = "realm_config_account",
+        desc = "seeds=['realm-config', realm]"
+    )]
     DepositGoverningTokens {
         /// The amount to deposit into the realm
         #[allow(dead_code)]
