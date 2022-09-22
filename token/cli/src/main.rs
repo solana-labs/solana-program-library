@@ -43,9 +43,8 @@ use spl_associated_token_account::{
 };
 use spl_token_2022::{
     extension::{
-        interest_bearing_mint, interest_bearing_mint::InterestBearingConfig,
-        memo_transfer::MemoTransfer, mint_close_authority::MintCloseAuthority, ExtensionType,
-        StateWithExtensionsOwned,
+        interest_bearing_mint::InterestBearingConfig, memo_transfer::MemoTransfer,
+        mint_close_authority::MintCloseAuthority, ExtensionType, StateWithExtensionsOwned,
     },
     instruction::*,
     state::{Account, Mint, Multisig},
@@ -450,6 +449,8 @@ async fn command_set_interest_rate(
     rate_bps: i16,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
+    let token = token_client_from_config(config, &token_pubkey);
+
     if !config.sign_only {
         let mint_account = config.get_account_checked(&token_pubkey).await?;
 
@@ -484,25 +485,11 @@ async fn command_set_interest_rate(
         ),
     );
 
-    let instructions = vec![interest_bearing_mint::instruction::update_rate(
-        &config.program_id,
-        &token_pubkey,
-        &rate_authority,
-        &[&rate_authority],
-        rate_bps,
-    )?];
+    let res = token
+        .update_interest_rate(&rate_authority, rate_bps, &bulk_signers)
+        .await?;
 
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        instructions,
-    )
-    .await?;
-
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
@@ -1871,11 +1858,14 @@ async fn command_required_transfer_memos(
     if config.sign_only {
         panic!("Config can not be sign only for enabling/disabling required transfer memos.");
     }
+
     let account = config.get_account_checked(&token_account_address).await?;
-    let mut instructions: Vec<Instruction> = Vec::new();
-    // Reallocation (if needed)
     let current_account_len = account.data.len();
+
     let state_with_extension = StateWithExtensionsOwned::<Account>::unpack(account.data)?;
+    let token = token_client_from_config(config, &state_with_extension.base.mint);
+
+    // Reallocation (if needed)
     let mut existing_extensions: Vec<ExtensionType> = state_with_extension.get_extension_types()?;
     if existing_extensions.contains(&ExtensionType::MemoTransfer) {
         let extension_data: bool = state_with_extension
@@ -1896,45 +1886,28 @@ async fn command_required_transfer_memos(
         existing_extensions.push(ExtensionType::MemoTransfer);
         let needed_account_len = ExtensionType::get_account_len::<Account>(&existing_extensions);
         if needed_account_len > current_account_len {
-            instructions.push(reallocate(
-                &config.program_id,
-                &token_account_address,
-                &config.fee_payer.pubkey(),
-                &owner,
-                &config.multisigner_pubkeys,
-                &existing_extensions,
-            )?);
+            token
+                .reallocate(
+                    &token_account_address,
+                    &owner,
+                    &[ExtensionType::MemoTransfer],
+                    &bulk_signers,
+                )
+                .await?;
         }
     }
-    if enable_memos {
-        instructions.push(
-            spl_token_2022::extension::memo_transfer::instruction::enable_required_transfer_memos(
-                &config.program_id,
-                &token_account_address,
-                &owner,
-                &config.multisigner_pubkeys,
-            )?,
-        );
+
+    let res = if enable_memos {
+        token
+            .enable_required_transfer_memos(&token_account_address, &owner, &bulk_signers)
+            .await
     } else {
-        instructions.push(
-            spl_token_2022::extension::memo_transfer::instruction::disable_required_transfer_memos(
-                &config.program_id,
-                &token_account_address,
-                &owner,
-                &config.multisigner_pubkeys,
-            )?,
-        );
-    }
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        false,
-        0,
-        instructions,
-    )
-    .await?;
+        token
+            .disable_required_transfer_memos(&token_account_address, &owner, &bulk_signers)
+            .await
+    }?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
@@ -2929,7 +2902,6 @@ fn app<'a, 'b>(
                 )
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
-                .offline_args()
         )
         .subcommand(
             SubCommand::with_name(CommandName::DisableRequiredTransferMemos.into())
@@ -2948,7 +2920,6 @@ fn app<'a, 'b>(
                 )
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
-                .offline_args()
         )
 }
 
@@ -3933,7 +3904,7 @@ mod tests {
         let mint_account =
             StateWithExtensionsOwned::<spl_token_2022::state::Mint>::unpack(account.data).unwrap();
         let extension = mint_account
-            .get_extension::<interest_bearing_mint::InterestBearingConfig>()
+            .get_extension::<InterestBearingConfig>()
             .unwrap();
         assert_eq!(account.owner, spl_token_2022::id());
         assert_eq!(i16::from(extension.current_rate), rate_bps);
@@ -3955,7 +3926,7 @@ mod tests {
         let mint_account =
             StateWithExtensionsOwned::<spl_token_2022::state::Mint>::unpack(account.data).unwrap();
         let extension = mint_account
-            .get_extension::<interest_bearing_mint::InterestBearingConfig>()
+            .get_extension::<InterestBearingConfig>()
             .unwrap();
         assert_eq!(account.owner, spl_token_2022::id());
         assert_eq!(i16::from(extension.current_rate), initial_rate);
@@ -3976,7 +3947,7 @@ mod tests {
         let mint_account =
             StateWithExtensionsOwned::<spl_token_2022::state::Mint>::unpack(account.data).unwrap();
         let extension = mint_account
-            .get_extension::<interest_bearing_mint::InterestBearingConfig>()
+            .get_extension::<InterestBearingConfig>()
             .unwrap();
         assert_eq!(i16::from(extension.current_rate), new_rate);
     }
