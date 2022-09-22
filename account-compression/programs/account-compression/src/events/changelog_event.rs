@@ -1,8 +1,10 @@
 use crate::state::PathNode;
+
 use anchor_lang::prelude::*;
 use spl_concurrent_merkle_tree::changelog::ChangeLog;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
+#[repr(C)]
 pub enum ChangeLogEvent {
     V1(ChangeLogEventV1),
 }
