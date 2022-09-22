@@ -674,6 +674,29 @@ pub enum GovernanceInstruction {
     ///   9. `[]` Optional Max Council Voter Weight Addin Program Id    
     ///
     ///   10. `[signer]` Optional Payer. Required if RealmConfig doesn't exist and needs to be created
+    #[account(0, writable, name = "realm_account")]
+    #[account(1, signer, name = "realm_authority")]
+    #[account(
+        2,
+        name = "council_token_mint",
+        desc = "Council Token Mint - optional. 
+        Note: In the current version it's only possible to remove council mint (set it to None)
+        After setting council to None it won't be possible to withdraw the tokens from the Realm any longer. 
+        If that's required then it must be done before executing this instruction"
+    )]
+    #[account(
+        3,
+        writable,
+        name = "council_token_holding_account",
+        desc = "Optional unless council is used. seeds=['governance', realm, council_mint]"
+    )]
+    #[account(4, name = "system_program")]
+    #[account(
+        5,
+        writable,
+        name = "realm_config",
+        desc = "RealmConfig account. seeds=['realm-config', realm]"
+    )]
     SetRealmConfig {
         #[allow(dead_code)]
         /// Realm config args
