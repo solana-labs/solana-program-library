@@ -24,6 +24,7 @@ use crate::{
     tools::bpf_loader_upgradeable::get_program_data_address,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use shank::ShankInstruction;
 use solana_program::{
     bpf_loader_upgradeable,
     instruction::{AccountMeta, Instruction},
@@ -32,7 +33,9 @@ use solana_program::{
 };
 
 /// Instructions supported by the Governance program
-#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, ShankInstruction,
+)]
 #[allow(clippy::large_enum_variant)]
 pub enum GovernanceInstruction {
     /// Creates Governance Realm account which aggregates governances for given Community Mint and optional Council Mint
@@ -58,6 +61,54 @@ pub enum GovernanceInstruction {
     ///
     /// 13. `[]` Optional Council Voter Weight Addin Program Id
     /// 14. `[]` Optional Max Council Voter Weight Addin Program Id
+    #[account(0, writable, name = "governance_realm")]
+    #[account(1, name = "realm_authority")]
+    #[account(2, name = "community_token_mint")]
+    #[account(
+        3,
+        writable,
+        name = "community_token_holding_account",
+        desc = "This account will be created with the Realm PDA as its owner. seeds=['governance', realm, community_mint]"
+    )]
+    #[account(4, writable, signer, name = "payer")]
+    #[account(5, name = "system_program")]
+    #[account(6, name = "token_program")]
+    #[account(7, name = "rent")]
+    #[account(8, optional, name = "council_token_mint")]
+    #[account(
+        9,
+        optional,
+        writable,
+        name = "council_token_holding_account",
+        desc = "Council Token Holding account - optional unless council is used. 
+        PDA seeds: ['governance',realm,council_mint]
+        The account will be created with the Realm PDA as its owner"
+    )]
+    #[account(10, optional, writable, name = "realm_config")]
+    #[account(
+        11,
+        optional,
+        name = "community_voter_weight_addin_program_id",
+        desc = "Optional Community Voter Weight Addin Program Id"
+    )]
+    #[account(
+        12,
+        optional,
+        name = "max_community_voter_weight_addin_program_id",
+        desc = "Optional Max Community Voter Weight Addin Program Id "
+    )]
+    #[account(
+        13,
+        optional,
+        name = "council_voter_weight_addin_program_id",
+        desc = "Optional Council Voter Weight Addin Program Id "
+    )]
+    #[account(
+        14,
+        optional,
+        name = "max_council_voter_weight_addin_program_id",
+        desc = "Optional Max Council Voter Weight Addin Program Id "
+    )]
     CreateRealm {
         #[allow(dead_code)]
         /// UTF-8 encoded Governance Realm name
