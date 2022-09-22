@@ -300,6 +300,59 @@ pub enum GovernanceInstruction {
     ///   10. `[signer]` Governance authority
     ///   11. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///   12. `[]` Optional Voter Weight Record
+    #[account(
+        0,
+        name = "realm_account",
+        desc = "Realm account the created Governance belongs to"
+    )]
+    #[account(
+        1,
+        writable,
+        name = "program_governance_account",
+        desc = "Program Governance account. seeds: ['program-governance', realm, governed_program]"
+    )]
+    #[account(
+        2,
+        name = "governed_program",
+        desc = "Program governed by this Governance account"
+    )]
+    #[account(
+        3,
+        writable,
+        name = "program_data",
+        desc = "Program Data account of the Program governed by this Governance account"
+    )]
+    #[account(
+        4,
+        signer,
+        name = "current_upgrade_authority",
+        desc = "Current Upgrade Authority account of the Program governed by this Governance account"
+    )]
+    #[account(
+        5,
+        name = "governing_token_owner_record",
+        desc = "Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)"
+    )]
+    #[account(6, signer, name = "payer")]
+    #[account(
+        7,
+        name = "bpf_upgradeable_loader_program",
+        desc = "bpf_upgradeable_loader_program program"
+    )]
+    #[account(8, name = "system_program")]
+    #[account(9, name = "rent")]
+    #[account(10, signer, name = "governance_authority")]
+    #[account(
+        11,
+        name = "realm_config",
+        desc = "RealmConfig account. seeds=['realm-config', realm]"
+    )]
+    #[account(
+        12,
+        optional,
+        name = "voter_weight_record",
+        desc = "Optional Voter Weight Record"
+    )]
     CreateProgramGovernance {
         /// Governance config
         #[allow(dead_code)]
