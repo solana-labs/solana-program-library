@@ -7,6 +7,7 @@
 //! vital to the functioning of compression. When compression logs are truncated, indexers can fallback to
 //! deserializing the CPI instruction data.
 
+use crate::events::AccountCompressionEvent;
 use anchor_lang::{prelude::*, solana_program::program::invoke};
 
 #[derive(Clone)]
@@ -19,11 +20,11 @@ impl anchor_lang::Id for Wrapper {
 }
 
 pub fn wrap_event<'info>(
-    data: Vec<u8>,
+    event: &AccountCompressionEvent,
     log_wrapper_program: &Program<'info, Wrapper>,
 ) -> Result<()> {
     invoke(
-        &spl_noop::instruction(data),
+        &spl_noop::instruction(event.try_to_vec()?),
         &[log_wrapper_program.to_account_info()],
     )?;
     Ok(())
