@@ -501,6 +501,9 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Proposal account
     ///   2. `[writable]` ProposalTransaction account you wish to execute
     ///   3+ Any extra accounts that are part of the transaction, in order
+    #[account(0, name = "governance_account")]
+    #[account(1, writable, name = "proposal_account")]
+    #[account(2, writable, name = "proposal_transaction_account")]
     ExecuteTransaction,
 
     /// Creates Mint Governance account which governs a mint
