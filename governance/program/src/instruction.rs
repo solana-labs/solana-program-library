@@ -675,6 +675,19 @@ pub enum GovernanceInstruction {
     ///  1. `[writable]` NativeTreasury account. PDA seeds: ['treasury', governance]
     ///  2. `[signer]` Payer
     ///  3. `[]` System
+    #[account(
+        0,
+        name = "governance_account",
+        desc = "Governance account the treasury account is for"
+    )]
+    #[account(
+        1,
+        writable,
+        name = "native_treasury_account",
+        desc = "seeds=['treasury', governance]"
+    )]
+    #[account(2, signer, name = "payer")]
+    #[account(3, name = "system_program")]
     CreateNativeTreasury,
 
     /// Revokes (burns) membership governing tokens for the given TokenOwnerRecord and hence takes away governance power from the TokenOwner
@@ -687,6 +700,32 @@ pub enum GovernanceInstruction {
     ///  4. `[signer]` GoverningTokenMint mint_authority
     ///  5. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///  6. `[]` SPL Token program
+    #[account(0, name = "realm_account")]
+    #[account(
+        1,
+        writable,
+        name = "governing_token_holding_account",
+        desc = "seeds=['governance', realm, governing_token_mint]"
+    )]
+    #[account(
+        2,
+        writable,
+        name = "token_owner_record",
+        desc = "seeds=['governance', realm, governing_token_mint, governing_token_owner]"
+    )]
+    #[account(3, writable, name = "governing_token_mint")]
+    #[account(
+        4,
+        signer,
+        name = "governing_token_mint_authority",
+        desc = "GoverningTokenMint mint_authority"
+    )]
+    #[account(
+        5,
+        name = "realm_config_account",
+        desc = "seeds=['realm-config', realm]"
+    )]
+    #[account(6, name = "token_program")]
     RevokeGoverningTokens {
         /// The amount to revoke
         #[allow(dead_code)]
