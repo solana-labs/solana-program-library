@@ -1,0 +1,12 @@
+{
+  "name": "@solana/spl-governance-solita",
+  "version": "0.1.0",
+  "description": "SPL Governance SDK generated with Solita",
+  "main": "index.ts",
+  "author": "@thlorenz, @sebastienbor, @ngundotra",
+  "license": "MIT",
+  "devDependencies": {
+    "@metaplex-foundation/solita": "^0.16.0",
+    "typescript": "^4.8.3"
+  }
+}
