@@ -778,6 +778,35 @@ pub enum GovernanceInstruction {
     ///       It's required only when Proposal is still being voted on
     ///   7. `[writable]` Optional Beneficiary account which would receive lamports when VoteRecord Account is disposed
     ///       It's required only when Proposal is still being voted on
+    #[account(0, name = "realm")]
+    #[account(1, name = "governance")]
+    #[account(2, writable, name = "proposal")]
+    #[account(
+        3,
+        writable,
+        name = "token_owner_record",
+        desc = "TokenOwnerRecord account. PDA seeds: ['governance',realm, vote_governing_token_mint, governing_token_owner]"
+    )]
+    #[account(
+        4,
+        writable,
+        name = "proposal_vote_record",
+        desc = "Proposal VoteRecord account. PDA seeds: ['governance',proposal, token_owner_record]"
+    )]
+    #[account(
+        5,
+        name = "governing_token_mint",
+        desc = "The Governing Token Mint which was used to cast the vote (vote_governing_token_mint)"
+    )]
+    #[account(6, optional, signer, name = "governance_authority")]
+    #[account(
+        7,
+        optional,
+        writable,
+        name = "beneficiary_account",
+        desc = "Optional Beneficiary account which would receive lamports when VoteRecord Account is disposed.
+    It's required only when Proposal is still being voted on"
+    )]
     RelinquishVote,
 
     /// Executes a Transaction in the Proposal
