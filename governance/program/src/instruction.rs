@@ -631,6 +631,22 @@ pub enum GovernanceInstruction {
     ///       Or Proposal owner if the owner hasn't appointed any signatories
     ///   4. `[]` TokenOwnerRecord for the Proposal owner, required when the owner signs off the Proposal
     ///       Or `[writable]` SignatoryRecord account, required when non owner sings off the Proposal
+    #[account(0, writable, name = "realm_account")]
+    #[account(1, writable, name = "governance_account")]
+    #[account(2, writable, name = "proposal_account")]
+    #[account(
+        3,
+        signer,
+        name = "signatory_account",
+        desc = "Signatory account signing off the Proposal.
+    Or Proposal owner if the owner hasn't appointed any signatories"
+    )]
+    #[account(
+        4,
+        name = "token_owner_record",
+        desc = "TokenOwnerRecord for the Proposal owner, required when the owner signs off the Proposal.
+    Or `[writable]` SignatoryRecord account, required when non owner sings off the Proposal"
+    )]
     SignOffProposal,
 
     ///  Uses your voter weight (deposited Community or Council tokens) to cast a vote on a Proposal
