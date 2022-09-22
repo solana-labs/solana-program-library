@@ -216,6 +216,13 @@ pub enum GovernanceInstruction {
     ///
     /// 0. `[signer]` Current Governance Delegate or Governing Token owner
     /// 1. `[writable]` Token Owner  Record
+    #[account(
+        0,
+        signer,
+        name = "governance_delegate",
+        desc = "Current governance delegate or governing token owner"
+    )]
+    #[account(1, writable, name = "token_owner_record")]
     SetGovernanceDelegate {
         #[allow(dead_code)]
         /// New Governance Delegate
