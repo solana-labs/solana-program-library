@@ -670,6 +670,61 @@ pub enum GovernanceInstruction {
     ///   10. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///   11. `[]` Optional Voter Weight Record
     ///   12. `[]` Optional Max Voter Weight Record
+    #[account(0, writable, name = "realm_account")]
+    #[account(1, writable, name = "governance_account")]
+    #[account(2, writable, name = "proposal_account")]
+    #[account(
+        3,
+        writable,
+        name = "proposal_token_owner_record",
+        desc = "TokenOwnerRecord of the Proposal owner"
+    )]
+    #[account(
+        4,
+        writable,
+        name = "voter_token_owner_record",
+        desc = "TokenOwnerRecord of the voter. PDA seeds: ['governance',realm, vote_governing_token_mint, governing_token_owner]"
+    )]
+    #[account(
+        5,
+        signer,
+        name = "governance_authority",
+        desc = "Governance Authority (Token Owner or Governance Delegate)"
+    )]
+    #[account(
+        6,
+        writable,
+        name = "proposal_vote_record",
+        desc = "Proposal VoteRecord account. PDA seeds: ['governance',proposal,token_owner_record]"
+    )]
+    #[account(
+        7,
+        name = "governing_token_mint",
+        desc = "The Governing Token Mint which is used to cast the vote (vote_governing_token_mint).
+    The voting token mint is the governing_token_mint of the Proposal for Approve, Deny and Abstain votes.
+    For Veto vote the voting token mint is the mint of the opposite voting population.
+    Council mint to veto Community proposals and Community mint to veto Council proposals
+    Note: In the current version only Council veto is supported"
+    )]
+    #[account(8, signer, name = "payer")]
+    #[account(9, name = "system_program")]
+    #[account(
+        10,
+        name = "realm_config_account",
+        desc = "RealmConfig account. PDA seeds: ['realm-config', realm]"
+    )]
+    #[account(
+        11,
+        optional,
+        name = "voter_weight_record",
+        desc = "Optional Voter Weight Record"
+    )]
+    #[account(
+        12,
+        optional,
+        name = "max_voter_weight_record",
+        desc = "Optional Max Voter Weight Record"
+    )]
     CastVote {
         #[allow(dead_code)]
         /// User's vote
