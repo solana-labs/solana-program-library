@@ -411,6 +411,25 @@ pub enum GovernanceInstruction {
     ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     ///   3. `[writable]` ProposalTransaction, account
     ///   4. `[writable]` Beneficiary Account which would receive lamports from the disposed ProposalTransaction account
+    #[account(0, writable, name = "proposal_account")]
+    #[account(
+        1,
+        name = "token_owner_record",
+        desc = "TokenOwnerRecord account of the Proposal owner"
+    )]
+    #[account(
+        2,
+        signer,
+        name = "governance_authority",
+        desc = "Governance Authority (Token Owner or Governance Delegate)"
+    )]
+    #[account(3, writable, name = "proposal_transaction_account")]
+    #[account(
+        4,
+        writable,
+        name = "benificiary_account",
+        desc = "Beneficiary Account which would receive lamports from the disposed ProposalTransaction account"
+    )]
     RemoveTransaction,
 
     /// Cancels Proposal by changing its state to Canceled
