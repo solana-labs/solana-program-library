@@ -1537,7 +1537,7 @@ impl GovernanceProgramTest {
                     program_data.len(),
                 ));
 
-        let mut instructions = bpf_loader_upgradeable::create_buffer(
+        let instructions = bpf_loader_upgradeable::create_buffer(
             &self.bench.payer.pubkey(),
             &program_buffer_keypair.pubkey(),
             &program_upgrade_authority_keypair.pubkey(),
@@ -1546,15 +1546,23 @@ impl GovernanceProgramTest {
         )
         .unwrap();
 
-        let chunk_size = 800;
+        self.bench
+            .process_transaction(&instructions, Some(&[&program_buffer_keypair]))
+            .await
+            .unwrap();
 
-        for (chunk, i) in program_data.chunks(chunk_size).zip(0..) {
-            instructions.push(bpf_loader_upgradeable::write(
+        const CHUNK_SIZE: usize = 800;
+        for (i, chunk) in program_data.chunks(CHUNK_SIZE).enumerate() {
+            let instruction = bpf_loader_upgradeable::write(
                 &program_buffer_keypair.pubkey(),
                 &program_upgrade_authority_keypair.pubkey(),
-                (i * chunk_size) as u32,
+                (i * CHUNK_SIZE) as u32,
                 chunk.to_vec(),
-            ));
+            );
+            self.bench
+                .process_transaction(&[instruction], Some(&[&program_upgrade_authority_keypair]))
+                .await
+                .unwrap();
         }
 
         let program_account_rent = self
@@ -1572,16 +1580,10 @@ impl GovernanceProgramTest {
         )
         .unwrap();
 
-        instructions.extend_from_slice(&deploy_ixs);
-
         self.bench
             .process_transaction(
-                &instructions[..],
-                Some(&[
-                    &program_upgrade_authority_keypair,
-                    &program_keypair,
-                    &program_buffer_keypair,
-                ]),
+                &deploy_ixs,
+                Some(&[&program_upgrade_authority_keypair, &program_keypair]),
             )
             .await
             .unwrap();
