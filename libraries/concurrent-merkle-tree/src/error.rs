@@ -32,4 +32,8 @@ pub enum ConcurrentMerkleTreeError {
         "Valid proof was passed to a leaf, but its value has changed since the proof was issued"
     )]
     LeafContentsModified,
+
+    /// Tree has at least 1 non-EMTPY leaf
+    #[error("Tree is not empty")]
+    TreeNonEmpty,
 }
