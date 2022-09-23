@@ -51,6 +51,8 @@ pub enum TokenError {
     AccountInvalidOwner,
     #[error("invalid account mint")]
     AccountInvalidMint,
+    #[error("invalid account")]
+    AccountInvalidAccount,
     #[error("proof error: {0}")]
     Proof(ProofError),
     #[error("maximum deposit transfer amount exceeded")]
@@ -74,6 +76,7 @@ impl PartialEq for TokenError {
             (Self::AccountNotFound, Self::AccountNotFound) => true,
             (Self::AccountInvalidOwner, Self::AccountInvalidOwner) => true,
             (Self::AccountInvalidMint, Self::AccountInvalidMint) => true,
+            (Self::AccountInvalidAccount, Self::AccountInvalidAccount) => true,
             (
                 Self::MaximumDepositTransferAmountExceeded,
                 Self::MaximumDepositTransferAmountExceeded,
@@ -404,6 +407,7 @@ where
         Ok(transaction)
     }
 
+    // XXX TODO remove process_ixs from program-2022-test/tests/close_account.rs and private this function
     pub async fn process_ixs<S: Signers>(
         &self,
         token_instructions: &[Instruction],
@@ -865,11 +869,11 @@ where
         .await
     }
 
-    /// Close account into another
+    /// Close an empty account and reclaim its lamports
     pub async fn close_account<S: Signers>(
         &self,
         account: &Pubkey,
-        destination: &Pubkey,
+        lamports_destination: &Pubkey,
         authority: &Pubkey,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
@@ -879,17 +883,99 @@ where
         let mut instructions = vec![instruction::close_account(
             &self.program_id,
             account,
-            destination,
+            lamports_destination,
             authority,
             &multisig_signers,
         )?];
 
-        if let Ok(Some(destination_account)) = self.client.get_account(*destination).await {
+        if let Ok(Some(destination_account)) = self.client.get_account(*lamports_destination).await
+        {
             if let Ok(destination_obj) =
                 StateWithExtensionsOwned::<Account>::unpack(destination_account.data)
             {
                 if destination_obj.base.is_native() {
-                    instructions.push(instruction::sync_native(&self.program_id, destination)?);
+                    instructions.push(instruction::sync_native(
+                        &self.program_id,
+                        lamports_destination,
+                    )?);
+                }
+            }
+        }
+
+        self.process_ixs(&instructions, signing_keypairs).await
+    }
+
+    /// Close an auxiliary account, reclaiming its lamports and consolidating its tokens
+    pub async fn empty_and_close_auxiliary_account<S: Signers>(
+        &self,
+        auxiliary_account: &Pubkey,
+        lamports_destination: &Pubkey,
+        authority: &Pubkey,
+        decimals: u8,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        // this implicitly validates that the mint on self is correct
+        let account_state = self.get_account_info(auxiliary_account).await?;
+        let account_owner = &account_state.base.owner;
+
+        // we move tokens to the owner of the closed account, NOT the authority that authorizes its closure
+        let associated_account = self.get_associated_token_address(account_owner);
+        if *auxiliary_account == associated_account {
+            return Err(TokenError::AccountInvalidAccount);
+        }
+
+        let mut instructions = vec![];
+
+        if !self.is_native() && account_state.base.amount > 0 {
+            match self.get_account(&associated_account).await {
+                Err(TokenError::AccountNotFound) => {
+                    instructions.push(create_associated_token_account(
+                        &self.payer.pubkey(),
+                        account_owner,
+                        &self.pubkey,
+                        &self.program_id,
+                    ))
+                }
+                Err(e) => return Err(e),
+                _ => {}
+            };
+
+            // we sign the transfer with authority, rather than owner
+            // which means that if a separate close authority is being used, it must be a delegate also
+            // this is to avoid overcomplicating the interface for a twice-niche usecase (closing nonempty nonowned)
+            instructions.push(instruction::transfer_checked(
+                &self.program_id,
+                auxiliary_account,
+                &self.pubkey,
+                &associated_account,
+                authority,
+                &multisig_signers,
+                account_state.base.amount,
+                decimals,
+            )?);
+        }
+
+        instructions.push(instruction::close_account(
+            &self.program_id,
+            auxiliary_account,
+            lamports_destination,
+            authority,
+            &multisig_signers,
+        )?);
+
+        if let Ok(Some(destination_account)) = self.client.get_account(*lamports_destination).await
+        {
+            if let Ok(destination_obj) =
+                StateWithExtensionsOwned::<Account>::unpack(destination_account.data)
+            {
+                if destination_obj.base.is_native() {
+                    instructions.push(instruction::sync_native(
+                        &self.program_id,
+                        lamports_destination,
+                    )?);
                 }
             }
         }

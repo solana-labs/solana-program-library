@@ -1403,28 +1403,21 @@ async fn command_close(
     recipient: Pubkey,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let mint_pubkey = if !config.sign_only {
-        let source_account = config.get_account_checked(&account).await?;
+    let source_account = config.get_account_checked(&account).await?;
 
-        let source_state = StateWithExtensionsOwned::<Account>::unpack(source_account.data)
-            .map_err(|_| format!("Could not deserialize token account {}", account))?;
-        let source_amount = source_state.base.amount;
+    let source_state = StateWithExtensionsOwned::<Account>::unpack(source_account.data)
+        .map_err(|_| format!("Could not deserialize token account {}", account))?;
+    let source_amount = source_state.base.amount;
 
-        if !source_state.base.is_native() && source_amount > 0 {
-            return Err(format!(
-                "Account {} still has {} tokens; empty the account in order to close it.",
-                account, source_amount,
-            )
-            .into());
-        }
+    if !source_state.base.is_native() && source_amount > 0 {
+        return Err(format!(
+            "Account {} still has {} tokens; empty the account in order to close it.",
+            account, source_amount,
+        )
+        .into());
+    }
 
-        source_state.base.mint
-    } else {
-        // default is safe here because close doesnt use it
-        Pubkey::default()
-    };
-
-    let token = token_client_from_config(config, &mint_pubkey);
+    let token = token_client_from_config(config, &source_state.base.mint);
     let res = token
         .close_account(&account, &recipient, &close_authority, &bulk_signers)
         .await?;
@@ -1649,15 +1642,6 @@ async fn command_gc(
         return Ok("".to_string());
     }
 
-    let minimum_balance_for_rent_exemption = if !config.sign_only {
-        config
-            .program_client
-            .get_minimum_balance_for_rent_exemption(Account::LEN)
-            .await?
-    } else {
-        0
-    };
-
     let mut accounts_by_token = HashMap::new();
 
     for keyed_account in accounts {
@@ -1702,107 +1686,79 @@ async fn command_gc(
         }
     }
 
-    let mut instructions = vec![];
-    let mut lamports_needed = 0;
+    let mut results = vec![];
+    for (token_pubkey, accounts) in accounts_by_token.into_iter() {
+        println_display(config, format!("Processing token: {}", token_pubkey));
 
-    for (token, accounts) in accounts_by_token.into_iter() {
-        println_display(config, format!("Processing token: {}", token));
-        let associated_token_account =
-            get_associated_token_address_with_program_id(&owner, &token, &config.program_id);
+        let token = token_client_from_config(config, &token_pubkey);
+        let associated_token_account = token.get_associated_token_address(&owner);
         let total_balance: u64 = accounts.values().map(|account| account.0).sum();
 
-        if total_balance > 0 && !accounts.contains_key(&associated_token_account) {
-            // Create the associated token account
-            instructions.push(vec![create_associated_token_account(
-                &config.fee_payer.pubkey(),
-                &owner,
-                &token,
-                &config.program_id,
-            )]);
-            lamports_needed += minimum_balance_for_rent_exemption;
-        }
-
         for (address, (amount, decimals, frozen, close_authority)) in accounts {
-            match (
-                address == associated_token_account,
-                close_empty_associated_accounts,
-                total_balance > 0,
-            ) {
-                (true, _, true) => continue, // don't ever close associated token account with amount
-                (true, false, _) => continue, // don't close associated token account if close_empty_associated_accounts isn't set
-                (true, true, false) => println_display(
-                    config,
-                    format!("Closing Account {}", associated_token_account),
-                ),
-                _ => {}
-            }
+            let is_associated = address == associated_token_account;
 
-            if frozen {
-                // leave frozen accounts alone
+            // only close the associated account if --close-empty-associated-accounts is provided
+            if is_associated && !close_empty_associated_accounts {
                 continue;
             }
 
-            let mut account_instructions = vec![];
+            // never close the associated account if *any* account carries a balance
+            if is_associated && total_balance > 0 {
+                continue;
+            }
+
+            // dont attempt to close frozen accounts
+            if frozen {
+                continue;
+            }
 
             // Sanity check!
             // we shouldn't ever be here, but if we are here, abort!
-            assert!(amount == 0 || address != associated_token_account);
-
-            if amount > 0 {
-                // Transfer the account balance into the associated token account
-                account_instructions.push(transfer_checked(
-                    &config.program_id,
-                    &address,
-                    &token,
-                    &associated_token_account,
-                    &owner,
-                    &config.multisigner_pubkeys,
-                    amount,
-                    decimals,
-                )?);
+            if is_associated && amount > 0 {
+                panic!("gc should NEVER attempt to close a nonempty ata");
             }
-            // Close the account if config.owner is able to
+
             if close_authority == owner {
-                account_instructions.push(close_account(
-                    &config.program_id,
-                    &address,
-                    &owner,
-                    &owner,
-                    &config.multisigner_pubkeys,
-                )?);
-            }
+                let res = if is_associated || amount == 0 {
+                    token
+                        .close_account(&address, &owner, &owner, &bulk_signers)
+                        .await
+                } else {
+                    token
+                        .empty_and_close_auxiliary_account(
+                            &address,
+                            &owner,
+                            &owner,
+                            decimals,
+                            &bulk_signers,
+                        )
+                        .await
+                }?;
 
-            if !account_instructions.is_empty() {
-                instructions.push(account_instructions);
+                let tx_return = finish_tx(config, &res, false).await?;
+
+                results.push(match tx_return {
+                    TransactionReturnData::CliSignature(signature) => {
+                        config.output_format.formatted_string(&signature)
+                    }
+                    TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+                        config.output_format.formatted_string(&sign_only_data)
+                    }
+                });
+            } else {
+                println_display(
+                    config,
+                    format!(
+                        "Note: skipping {} due to separate close authority {}; \
+                               revoke authority and rerun gc, or rerun gc with --owner",
+                        address, close_authority
+                    ),
+                );
             }
         }
     }
 
-    let cli_signer_info = CliSignerInfo {
-        signers: bulk_signers,
-    };
-
-    let mut result = String::from("");
-    for tx_instructions in instructions {
-        let tx_return = handle_tx(
-            &cli_signer_info,
-            config,
-            false,
-            lamports_needed,
-            tx_instructions,
-        )
-        .await?;
-        result += &match tx_return {
-            TransactionReturnData::CliSignature(signature) => {
-                config.output_format.formatted_string(&signature)
-            }
-            TransactionReturnData::CliSignOnlyData(sign_only_data) => {
-                config.output_format.formatted_string(&sign_only_data)
-            }
-        };
-        result += "\n";
-    }
-    Ok(result)
+    Ok(results.join(""))
 }
 
 async fn command_sync_native(config: &Config<'_>, native_account_address: Pubkey) -> CommandResult {
@@ -2630,7 +2586,8 @@ fn app<'a, 'b>(
                         .takes_value(true)
                         .index(1)
                         .required_unless("address")
-                        .help("Token to close. To close a specific account, use the `--address` parameter instead"),
+                        .help("Token of the associated account to close. \
+                              To close a specific account, use the `--address` parameter instead"),
                 )
                 .arg(owner_address_arg())
                 .arg(
@@ -2667,7 +2624,6 @@ fn app<'a, 'b>(
                 )
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
-                .offline_args(),
         )
         .subcommand(
             SubCommand::with_name(CommandName::CloseMint.into())
@@ -4419,6 +4375,78 @@ mod tests {
             .unwrap();
             let value: serde_json::Value = serde_json::from_str(&result).unwrap();
             assert_eq!(value["accounts"].as_array().unwrap().len(), 1);
+
+            config.output_format = OutputFormat::Display;
+
+            // test implicit transfer
+            let token = create_token(&config, &payer).await;
+            let ata = create_associated_account(&config, &payer, token).await;
+            let aux = create_auxiliary_account(&config, &payer, token).await;
+            mint_tokens(&config, &payer, token, 1.0, ata).await;
+            mint_tokens(&config, &payer, token, 1.0, aux).await;
+
+            process_test_command(&config, &payer, &["spl-token", CommandName::Gc.into()])
+                .await
+                .unwrap();
+
+            let ui_ata = config
+                .rpc_client
+                .get_token_account(&ata)
+                .await
+                .unwrap()
+                .unwrap();
+
+            // aux is gone and its tokens are in ata
+            assert_eq!(ui_ata.token_amount.amount, "2");
+            config.rpc_client.get_account(&aux).await.unwrap_err();
+
+            // test ata closure
+            let token = create_token(&config, &payer).await;
+            let ata = create_associated_account(&config, &payer, token).await;
+
+            process_test_command(
+                &config,
+                &payer,
+                &[
+                    "spl-token",
+                    CommandName::Gc.into(),
+                    "--close-empty-associated-accounts",
+                ],
+            )
+            .await
+            .unwrap();
+
+            // ata is gone
+            config.rpc_client.get_account(&ata).await.unwrap_err();
+
+            // test a tricky corner case of both
+            let token = create_token(&config, &payer).await;
+            let ata = create_associated_account(&config, &payer, token).await;
+            let aux = create_auxiliary_account(&config, &payer, token).await;
+            mint_tokens(&config, &payer, token, 1.0, aux).await;
+
+            process_test_command(
+                &config,
+                &payer,
+                &[
+                    "spl-token",
+                    CommandName::Gc.into(),
+                    "--close-empty-associated-accounts",
+                ],
+            )
+            .await
+            .unwrap();
+
+            let ui_ata = config
+                .rpc_client
+                .get_token_account(&ata)
+                .await
+                .unwrap()
+                .unwrap();
+
+            // aux is gone and its tokens are in ata, and ata has not been closed
+            assert_eq!(ui_ata.token_amount.amount, "1");
+            config.rpc_client.get_account(&aux).await.unwrap_err();
         }
     }
 
