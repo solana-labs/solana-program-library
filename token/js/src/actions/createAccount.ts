@@ -26,11 +26,10 @@ export async function createAccount(
     owner: PublicKey,
     keypair?: Keypair,
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_PROGRAM_ID,
-    idemPotent = false,
+    programId = TOKEN_PROGRAM_ID
 ): Promise<PublicKey> {
     // If a keypair isn't provided, create the associated token account and return its address
-    if (!keypair) return await createAssociatedTokenAccount(connection, payer, mint, owner, confirmOptions, programId, undefined, idemPotent);
+    if (!keypair) return await createAssociatedTokenAccount(connection, payer, mint, owner, confirmOptions, programId);
 
     // Otherwise, create the account with the provided keypair and return its public key
     const mintState = await getMint(connection, mint, confirmOptions?.commitment, programId);

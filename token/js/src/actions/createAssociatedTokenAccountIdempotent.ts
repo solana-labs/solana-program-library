@@ -1,11 +1,14 @@
 import type { ConfirmOptions, Connection, PublicKey, Signer } from '@solana/web3.js';
 import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants.js';
-import { createAssociatedTokenAccountInstruction } from '../instructions/associatedTokenAccount.js';
+import {
+    createAssociatedTokenAccountIdempotentInstruction,
+} from '../instructions/associatedTokenAccount.js';
 import { getAssociatedTokenAddress } from '../state/mint.js';
 
 /**
  * Create and initialize a new associated token account
+ * The instruction will succeed even if the associated token account already exists
  *
  * @param connection               Connection to use
  * @param payer                    Payer of the transaction and initialization fees
@@ -15,9 +18,9 @@ import { getAssociatedTokenAddress } from '../state/mint.js';
  * @param programId                SPL Token program account
  * @param associatedTokenProgramId SPL Associated Token program account
  *
- * @return Address of the new associated token account
+ * @return Address of the new or existing associated token account
  */
-export async function createAssociatedTokenAccount(
+export async function createAssociatedTokenAccountIdempotent(
     connection: Connection,
     payer: Signer,
     mint: PublicKey,
@@ -29,13 +32,13 @@ export async function createAssociatedTokenAccount(
     const associatedToken = await getAssociatedTokenAddress(mint, owner, false, programId, associatedTokenProgramId);
 
     const transaction = new Transaction().add(
-        createAssociatedTokenAccountInstruction(
+        createAssociatedTokenAccountIdempotentInstruction(
             payer.publicKey,
             associatedToken,
             owner,
             mint,
             programId,
-            associatedTokenProgramId
+            associatedTokenProgramId,
         )
     );
 

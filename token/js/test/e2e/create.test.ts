@@ -10,6 +10,7 @@ import {
     createMint,
     getMint,
     createAccount,
+    createAssociatedTokenAccountIdempotent,
     getAccount,
     getAssociatedTokenAddress,
 } from '../../src';
@@ -145,15 +146,13 @@ describe('createAccount', () => {
 
             // when creating again but with idempotent mode, TX should not throw error
             return expect(
-                createAccount(
+                createAssociatedTokenAccountIdempotent(
                     connection,
                     payer,
                     mint,
                     owner.publicKey,
-                    undefined, // uses ATA by default
                     undefined,
-                    TEST_PROGRAM_ID,
-                    true,
+                    TEST_PROGRAM_ID
                 )
             ).to.be.fulfilled;
         });
