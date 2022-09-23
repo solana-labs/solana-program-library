@@ -377,8 +377,10 @@ pub fn assert_valid_realm_config_args(config_args: &RealmConfigArgs) -> Result<(
                 return Err(GovernanceError::InvalidMaxVoteWeightSupplyFraction.into());
             }
         }
-        MintMaxVoteWeightSource::Absolute(_) => {
-            return Err(GovernanceError::MintMaxVoteWeightSourceNotSupported.into())
+        MintMaxVoteWeightSource::Absolute(value) => {
+            if value == 0 {
+                return Err(GovernanceError::InvalidMaxVoterWeightAbsoluteValue.into());
+            }
         }
     }
 

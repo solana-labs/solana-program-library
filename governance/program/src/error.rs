@@ -290,9 +290,9 @@ pub enum GovernanceError {
     #[error("Realm council mint change is not supported")]
     RealmCouncilMintChangeIsNotSupported,
 
-    /// Not supported mint max vote weight sourcef
-    #[error("Not supported mint max vote weight source")]
-    MintMaxVoteWeightSourceNotSupported,
+    /// Invalid max voter weight absolute value
+    #[error("Invalid max voter weight absolute value")]
+    InvalidMaxVoterWeightAbsoluteValue,
 
     /// Invalid max vote weight supply fraction
     #[error("Invalid max vote weight supply fraction")]
