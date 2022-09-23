@@ -29,7 +29,7 @@
           "isMut": false,
           "isSigner": true,
           "docs": [
-            "Authority that validates the content of the trees.",
+            "Authority that controls write-access to the tree",
             "Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs."
           ]
         },
@@ -81,7 +81,7 @@
           "isMut": false,
           "isSigner": true,
           "docs": [
-            "Authority that validates the content of the trees.",
+            "Authority that controls write-access to the tree",
             "Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs."
           ]
         },
@@ -146,7 +146,7 @@
           "isMut": false,
           "isSigner": true,
           "docs": [
-            "Authority that validates the content of the trees.",
+            "Authority that controls write-access to the tree",
             "Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs."
           ]
         }
@@ -217,7 +217,7 @@
           "isMut": false,
           "isSigner": true,
           "docs": [
-            "Authority that validates the content of the trees.",
+            "Authority that controls write-access to the tree",
             "Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs."
           ]
         },
@@ -262,7 +262,7 @@
           "isMut": false,
           "isSigner": true,
           "docs": [
-            "Authority that validates the content of the trees.",
+            "Authority that controls write-access to the tree",
             "Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs."
           ]
         },
@@ -300,6 +300,30 @@
           "type": "u32"
         }
       ]
+    },
+    {
+      "name": "closeEmptyTree",
+      "accounts": [
+        {
+          "name": "merkleTree",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Authority that controls write-access to the tree"
+          ]
+        },
+        {
+          "name": "recipient",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "types": [
