@@ -92,6 +92,7 @@ async fn transfer_checked() {
             &bob.pubkey(),
             test_transfer_amount,
             Some(decimals),
+            None,
             &vec![&bob],
         )
         .await
@@ -115,6 +116,7 @@ async fn transfer_checked() {
             &bob.pubkey(),
             test_transfer_amount,
             Some(decimals),
+            None,
             &vec![&bob],
         )
         .await
@@ -209,6 +211,7 @@ async fn transfer_checked_with_fee() {
             &alice.pubkey(),
             test_transfer_amount,
             Some(decimals),
+            None,
             &vec![&alice],
         )
         .await
@@ -232,6 +235,7 @@ async fn transfer_checked_with_fee() {
             &alice.pubkey(),
             test_transfer_amount,
             Some(decimals),
+            None,
             &vec![&alice],
         )
         .await
