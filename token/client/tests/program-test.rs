@@ -310,6 +310,7 @@ async fn transfer() {
             &alice.pubkey(),
             transfer_amount,
             Some(decimals),
+            None,
             &vec![&alice],
         )
         .await

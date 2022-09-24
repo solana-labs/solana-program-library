@@ -32,15 +32,12 @@ use solana_sdk::{
     message::Message,
     native_token::*,
     program_option::COption,
-    program_pack::Pack,
     pubkey::Pubkey,
     signature::{Keypair, Signer},
     system_program,
     transaction::Transaction,
 };
-use spl_associated_token_account::{
-    get_associated_token_address_with_program_id, instruction::create_associated_token_account,
-};
+use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::{
     extension::{
         interest_bearing_mint::InterestBearingConfig, memo_transfer::MemoTransfer,
@@ -789,7 +786,7 @@ async fn validate_mint(config: &Config<'_>, token: Pubkey) -> Result<Pubkey, Err
 #[allow(clippy::too_many_arguments)]
 async fn command_transfer(
     config: &Config<'_>,
-    token: Pubkey,
+    token_pubkey: Pubkey,
     ui_amount: Option<f64>,
     recipient: Pubkey,
     sender: Option<Pubkey>,
@@ -804,33 +801,45 @@ async fn command_transfer(
     no_wait: bool,
     allow_non_system_account_recipient: bool,
 ) -> CommandResult {
-    let mint_info = config.get_mint_info(&token, mint_decimals).await?;
+    let token = token_client_from_config(config, &token_pubkey);
+    let mint_info = config.get_mint_info(&token_pubkey, mint_decimals).await?;
+
+    // decimals arg, which determines whether transfer or transfer_checked instruction is used
+    // the logic here is tricky because "do what we are told" and "do the right thing" are at odds
+    let decimals = if use_unchecked_instruction {
+        None
+    } else if !config.sign_only {
+        Some(mint_info.decimals)
+    } else if mint_decimals.is_some() {
+        mint_decimals
+    } else {
+        return Err("Decimals must be specified with --mint-decimals in offline mode".into());
+    };
+
+    // pubkey of the actual account we are sending from
     let sender = if let Some(sender) = sender {
         sender
     } else {
-        get_associated_token_address_with_program_id(&sender_owner, &token, &mint_info.program_id)
+        token.get_associated_token_address(&sender_owner)
     };
-    config.check_account(&sender, Some(token)).await?;
+
+    // in any sign_only block, we can safely unwrap this
+    let maybe_sender_state = match token.get_account_info(&sender).await {
+        Ok(a) => Some(a),
+        Err(_) if config.sign_only => None,
+        Err(e) => {
+            return Err(format!("Error: failed to fetch sender account {}: {}", sender, e).into())
+        }
+    };
+
     let maybe_transfer_balance =
         ui_amount.map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals));
+
+    // the amount we will transfer, as a u64
     let transfer_balance = if !config.sign_only {
-        let sender_token_amount = config
-            .rpc_client
-            .get_token_account_balance(&sender)
-            .await
-            .map_err(|err| {
-                format!(
-                    "Error: Failed to get token balance of sender address {}: {}",
-                    sender, err
-                )
-            })?;
-        let sender_balance = sender_token_amount.amount.parse::<u64>().map_err(|err| {
-            format!(
-                "Token account {} balance could not be parsed: {}",
-                sender, err
-            )
-        })?;
+        let sender_balance = maybe_sender_state.unwrap().base.amount;
         let transfer_balance = maybe_transfer_balance.unwrap_or(sender_balance);
+
         println_display(
             config,
             format!(
@@ -851,59 +860,58 @@ async fn command_transfer(
             )
             .into());
         }
+
         transfer_balance
     } else {
         maybe_transfer_balance.unwrap()
     };
 
-    let mut instructions = vec![];
-
-    let mut recipient_token_account = recipient;
-    let mut minimum_balance_for_rent_exemption = 0;
-
+    // determine whether recipient is a token account or an expected owner of one
     let recipient_is_token_account = if !config.sign_only {
-        let recipient_account_info = config
-            .rpc_client
-            .get_account_with_commitment(&recipient, config.rpc_client.commitment())
-            .await?
-            .value
-            .map(|account| {
-                (
-                    account.owner == mint_info.program_id
-                        && Account::valid_account_data(account.data.as_slice()),
-                    account.owner == system_program::id(),
-                )
-            });
-        if let Some((recipient_is_token_account, recipient_is_system_account)) =
-            recipient_account_info
-        {
+        // in online mode we can fetch it and see
+        let maybe_recipient_account_data = config.program_client.get_account(recipient).await?;
+
+        // if the account exists...
+        if let Some(recipient_account_data) = maybe_recipient_account_data {
+            // ...and its a token or system account, we are happy
+            // but if its something else, we gate transfer with a flag
+            let recipient_is_token_account = recipient_account_data.owner == config.program_id
+                && Account::valid_account_data(&recipient_account_data.data);
+            let recipient_is_system_account = recipient_account_data.owner == system_program::id();
+
             if !recipient_is_token_account
                 && !recipient_is_system_account
                 && !allow_non_system_account_recipient
             {
                 return Err("Error: The recipient address is not owned by the System Program. \
-                                     Add `--allow-non-system-account-recipient` to complete the transfer. \
-                                    ".into());
+                                     Add `--allow-non-system-account-recipient` to complete the transfer.".into());
             }
-        } else if recipient_account_info.is_none() && !allow_unfunded_recipient {
-            return Err("Error: The recipient address is not funded. \
-                        Add `--allow-unfunded-recipient` to complete the transfer. \
-                                   "
-            .into());
+
+            recipient_is_token_account
         }
-        recipient_account_info
-            .map(|(recipient_is_token_account, _)| recipient_is_token_account)
-            .unwrap_or(false)
+        // if it doesnt exist, it definitely isnt a token account!
+        // we gate transfer with a different flag
+        else if maybe_recipient_account_data.is_none() && allow_unfunded_recipient {
+            false
+        } else {
+            return Err("Error: The recipient address is not funded. \
+                        Add `--allow-unfunded-recipient` to complete the transfer."
+                .into());
+        }
     } else {
+        // in offline mode we gotta trust them
         !recipient_is_ata_owner
     };
 
-    if !recipient_is_token_account {
-        recipient_token_account = get_associated_token_address_with_program_id(
-            &recipient,
-            &mint_info.address,
-            &mint_info.program_id,
-        );
+    // now if its a token account, life is ez
+    let (recipient_token_account, fundable_owner) = if recipient_is_token_account {
+        (recipient, None)
+    }
+    // but if not, we need to determine if we can or should create an ata for recipient
+    else {
+        // first, get the ata address
+        let recipient_token_account = token.get_associated_token_address(&recipient);
+
         println_display(
             config,
             format!(
@@ -912,19 +920,16 @@ async fn command_transfer(
             ),
         );
 
+        // if we can fetch it to determine if it exists, do so
         let needs_funding = if !config.sign_only {
             if let Some(recipient_token_account_data) = config
-                .rpc_client
-                .get_account_with_commitment(
-                    &recipient_token_account,
-                    config.rpc_client.commitment(),
-                )
+                .program_client
+                .get_account(recipient_token_account)
                 .await?
-                .value
             {
                 if recipient_token_account_data.owner == system_program::id() {
                     true
-                } else if recipient_token_account_data.owner == mint_info.program_id {
+                } else if recipient_token_account_data.owner == config.program_id {
                     false
                 } else {
                     return Err(
@@ -934,32 +939,21 @@ async fn command_transfer(
             } else {
                 true
             }
-        } else {
+        }
+        // otherwise trust the cli flag
+        else {
             fund_recipient
         };
 
-        if needs_funding {
+        // and now we determine if we will actually fund it, based on its need and our willingness
+        let fundable_owner = if needs_funding {
             if fund_recipient {
-                if !config.sign_only {
-                    minimum_balance_for_rent_exemption += config
-                        .program_client
-                        .get_minimum_balance_for_rent_exemption(Account::LEN)
-                        .await?;
-                    println_display(
-                        config,
-                        format!(
-                            "  Funding recipient: {} ({} SOL)",
-                            recipient_token_account,
-                            lamports_to_sol(minimum_balance_for_rent_exemption)
-                        ),
-                    );
-                }
-                instructions.push(create_associated_token_account(
-                    &config.fee_payer.pubkey(),
-                    &recipient,
-                    &mint_info.address,
-                    &mint_info.program_id,
-                ));
+                println_display(
+                    config,
+                    format!("  Funding recipient: {}", recipient_token_account,),
+                );
+
+                Some(recipient)
             } else {
                 return Err(
                     "Error: Recipient's associated token account does not exist. \
@@ -967,47 +961,32 @@ async fn command_transfer(
                         .into(),
                 );
             }
-        }
+        } else {
+            None
+        };
+
+        (recipient_token_account, fundable_owner)
+    };
+
+    // set up memo if provided...
+    if let Some(text) = memo {
+        token.with_memo(text, vec![config.default_signer.pubkey()]);
     }
 
-    if use_unchecked_instruction {
-        #[allow(deprecated)]
-        instructions.push(transfer(
-            &mint_info.program_id,
+    // ...and, finally, the transfer
+    let res = token
+        .transfer(
             &sender,
             &recipient_token_account,
             &sender_owner,
-            &config.multisigner_pubkeys,
             transfer_balance,
-        )?);
-    } else {
-        instructions.push(transfer_checked(
-            &mint_info.program_id,
-            &sender,
-            &mint_info.address,
-            &recipient_token_account,
-            &sender_owner,
-            &config.multisigner_pubkeys,
-            transfer_balance,
-            mint_info.decimals,
-        )?);
-    }
-    if let Some(text) = memo {
-        instructions.push(spl_memo::build_memo(
-            text.as_bytes(),
-            &[&config.fee_payer.pubkey()],
-        ));
-    }
-    let tx_return = handle_tx(
-        &CliSignerInfo {
-            signers: bulk_signers,
-        },
-        config,
-        no_wait,
-        minimum_balance_for_rent_exemption,
-        instructions,
-    )
-    .await?;
+            decimals,
+            fundable_owner,
+            &bulk_signers,
+        )
+        .await?;
+
+    let tx_return = finish_tx(config, &res, no_wait).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
@@ -3541,6 +3520,7 @@ mod tests {
         solana_sdk::{
             bpf_loader,
             signature::{write_keypair_file, Keypair, Signer},
+            transaction::Transaction,
         },
         solana_test_validator::{ProgramInfo, TestValidator, TestValidatorGenesis},
         spl_token_client::client::{
@@ -3830,8 +3810,7 @@ mod tests {
         let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
         let mint = Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
         let account = config.rpc_client.get_account(&mint).await.unwrap();
-        let mint_account =
-            StateWithExtensionsOwned::<spl_token_2022::state::Mint>::unpack(account.data).unwrap();
+        let mint_account = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
         let extension = mint_account
             .get_extension::<InterestBearingConfig>()
             .unwrap();
@@ -3852,8 +3831,7 @@ mod tests {
         let new_rate: i16 = 300;
         let token = create_interest_bearing_token(&config, &payer, initial_rate).await;
         let account = config.rpc_client.get_account(&token).await.unwrap();
-        let mint_account =
-            StateWithExtensionsOwned::<spl_token_2022::state::Mint>::unpack(account.data).unwrap();
+        let mint_account = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
         let extension = mint_account
             .get_extension::<InterestBearingConfig>()
             .unwrap();
@@ -3873,8 +3851,7 @@ mod tests {
         .await;
         let _value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
         let account = config.rpc_client.get_account(&token).await.unwrap();
-        let mint_account =
-            StateWithExtensionsOwned::<spl_token_2022::state::Mint>::unpack(account.data).unwrap();
+        let mint_account = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
         let extension = mint_account
             .get_extension::<InterestBearingConfig>()
             .unwrap();
@@ -4327,8 +4304,8 @@ mod tests {
             result.unwrap();
 
             let account = config.rpc_client.get_account(&token).await.unwrap();
-            let mint = Mint::unpack(&account.data).unwrap();
-            assert_eq!(mint.mint_authority, COption::None);
+            let mint = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+            assert_eq!(mint.base.mint_authority, COption::None);
         }
     }
 

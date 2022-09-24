@@ -703,6 +703,7 @@ where
     }
 
     /// Transfer tokens to another account
+    #[allow(clippy::too_many_arguments)]
     pub async fn transfer<S: Signers>(
         &self,
         source: &Pubkey,
@@ -710,13 +711,29 @@ where
         authority: &Pubkey,
         amount: u64,
         decimals: Option<u8>,
+        fundable_owner: Option<Pubkey>,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-        let instructions = if let Some(decimals) = decimals {
-            [instruction::transfer_checked(
+        let mut instructions = vec![];
+
+        if let Some(recipient) = fundable_owner {
+            if *destination != self.get_associated_token_address(&recipient) {
+                return Err(TokenError::AccountInvalidAccount);
+            }
+
+            instructions.push(create_associated_token_account(
+                &self.payer.pubkey(),
+                &recipient,
+                &self.pubkey,
+                &self.program_id,
+            ));
+        };
+
+        if let Some(decimals) = decimals {
+            instructions.push(instruction::transfer_checked(
                 &self.program_id,
                 source,
                 &self.pubkey,
@@ -725,18 +742,18 @@ where
                 &multisig_signers,
                 amount,
                 decimals,
-            )?]
+            )?);
         } else {
             #[allow(deprecated)]
-            [instruction::transfer(
+            instructions.push(instruction::transfer(
                 &self.program_id,
                 source,
                 destination,
                 authority,
                 &multisig_signers,
                 amount,
-            )?]
-        };
+            )?);
+        }
 
         self.process_ixs(&instructions, signing_keypairs).await
     }
