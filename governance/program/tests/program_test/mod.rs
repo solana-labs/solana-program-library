@@ -2583,7 +2583,7 @@ impl GovernanceProgramTest {
                     program_data.len(),
                 ));
 
-        let mut instructions = bpf_loader_upgradeable::create_buffer(
+        let instructions = bpf_loader_upgradeable::create_buffer(
             &self.bench.payer.pubkey(),
             &program_buffer_keypair.pubkey(),
             &buffer_authority_keypair.pubkey(),
@@ -2592,28 +2592,33 @@ impl GovernanceProgramTest {
         )
         .unwrap();
 
-        let chunk_size = 800;
+        self.bench
+            .process_transaction(&instructions, Some(&[&program_buffer_keypair]))
+            .await
+            .unwrap();
 
-        for (chunk, i) in program_data.chunks(chunk_size).zip(0..) {
-            instructions.push(bpf_loader_upgradeable::write(
+        const CHUNK_SIZE: usize = 800;
+        for (i, chunk) in program_data.chunks(CHUNK_SIZE).enumerate() {
+            let instruction = bpf_loader_upgradeable::write(
                 &program_buffer_keypair.pubkey(),
                 &buffer_authority_keypair.pubkey(),
-                (i * chunk_size) as u32,
+                (i * CHUNK_SIZE) as u32,
                 chunk.to_vec(),
-            ));
+            );
+            self.bench
+                .process_transaction(&[instruction], Some(&[&buffer_authority_keypair]))
+                .await
+                .unwrap();
         }
 
-        instructions.push(bpf_loader_upgradeable::set_buffer_authority(
+        let set_authority_ixs = bpf_loader_upgradeable::set_buffer_authority(
             &program_buffer_keypair.pubkey(),
             &buffer_authority_keypair.pubkey(),
             &governance_cookie.address,
-        ));
+        );
 
         self.bench
-            .process_transaction(
-                &instructions[..],
-                Some(&[&program_buffer_keypair, &buffer_authority_keypair]),
-            )
+            .process_transaction(&[set_authority_ixs], Some(&[&buffer_authority_keypair]))
             .await
             .unwrap();
 
