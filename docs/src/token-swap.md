@@ -19,7 +19,7 @@ The Token Swap Program was deployed to all networks by the Serum team at
 in the middle of 2021.  Though that program still exists, it is not actively
 maintained.
 
-For devnet and testnet, please use the maintainted deployment at
+For devnet and testnet, please use the maintained deployment at
 `SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw`, and for mainnet, please use any
 other AMM project on Solana. Almost all of these were based on Token Swap!
 
