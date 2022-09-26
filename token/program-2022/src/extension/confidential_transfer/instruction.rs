@@ -603,14 +603,14 @@ pub fn empty_account(
     proof_data: &CloseAccountData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
-        verify_close_account(proof_data),
         inner_empty_account(
             token_program_id,
             token_account,
             authority,
             multisig_signers,
-            -1,
+            1,
         )?, // calls check_program_account
+        verify_close_account(proof_data),
     ])
 }
 
@@ -704,7 +704,6 @@ pub fn withdraw(
     proof_data: &WithdrawData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
-        verify_withdraw(proof_data),
         inner_withdraw(
             token_program_id,
             token_account,
@@ -714,8 +713,9 @@ pub fn withdraw(
             new_decryptable_available_balance.into(),
             authority,
             multisig_signers,
-            -1,
+            1,
         )?, // calls check_program_account
+        verify_withdraw(proof_data),
     ])
 }
 
@@ -772,7 +772,6 @@ pub fn transfer(
     proof_data: &TransferData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
-        verify_transfer(proof_data),
         inner_transfer(
             token_program_id,
             source_token_account,
@@ -781,8 +780,9 @@ pub fn transfer(
             new_source_decryptable_available_balance.into(),
             authority,
             multisig_signers,
-            -1,
+            1,
         )?, // calls check_program_account
+        verify_transfer(proof_data),
     ])
 }
 
@@ -839,7 +839,6 @@ pub fn transfer_with_fee(
     proof_data: &TransferWithFeeData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
-        verify_transfer_with_fee(proof_data),
         inner_transfer_with_fee(
             token_program_id,
             source_token_account,
@@ -848,8 +847,9 @@ pub fn transfer_with_fee(
             new_source_decryptable_available_balance.into(),
             authority,
             multisig_signers,
-            -1,
+            1,
         )?, // calls check_program_account
+        verify_transfer_with_fee(proof_data),
     ])
 }
 
@@ -1008,15 +1008,15 @@ pub fn withdraw_withheld_tokens_from_mint(
     proof_data: &WithdrawWithheldTokensData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
-        verify_withdraw_withheld_tokens(proof_data),
         inner_withdraw_withheld_tokens_from_mint(
             token_program_id,
             mint,
             destination,
             authority,
             multisig_signers,
-            -1,
+            1,
         )?,
+        verify_withdraw_withheld_tokens(proof_data),
     ])
 }
 
@@ -1073,7 +1073,6 @@ pub fn withdraw_withheld_tokens_from_accounts(
     proof_data: &WithdrawWithheldTokensData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
-        verify_withdraw_withheld_tokens(proof_data),
         inner_withdraw_withheld_tokens_from_accounts(
             token_program_id,
             mint,
@@ -1081,8 +1080,9 @@ pub fn withdraw_withheld_tokens_from_accounts(
             authority,
             multisig_signers,
             sources,
-            -1,
+            1,
         )?,
+        verify_withdraw_withheld_tokens(proof_data),
     ])
 }
 
