@@ -162,9 +162,6 @@ impl<'a> Config<'a> {
                 eprintln!("error: {}", e);
                 exit(1);
             });
-        if !bulk_signers.contains(&fee_payer) {
-            bulk_signers.push(fee_payer.clone());
-        }
 
         let verbose = matches.is_present("verbose");
         let output_format = matches
