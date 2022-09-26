@@ -28,14 +28,11 @@ use solana_cli_output::{
 use solana_client::rpc_request::TokenAccountsFilter;
 use solana_remote_wallet::remote_wallet::RemoteWalletManager;
 use solana_sdk::{
-    instruction::Instruction,
-    message::Message,
     native_token::*,
     program_option::COption,
     pubkey::Pubkey,
     signature::{Keypair, Signer},
     system_program,
-    transaction::Transaction,
 };
 use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::{
@@ -65,25 +62,6 @@ use sort::{is_supported_program, sort_and_parse_token_accounts};
 mod bench;
 use bench::*;
 use spl_token_2022::generic_token_account::GenericTokenAccount;
-
-struct CliSignerInfo {
-    pub signers: Vec<Arc<dyn Signer>>,
-}
-
-impl CliSignerInfo {
-    pub fn signers_for_message(&self, message: &Message) -> Vec<&dyn Signer> {
-        self.signers
-            .iter()
-            .filter_map(|k| {
-                if message.signer_keys().contains(&&k.pubkey()) {
-                    Some(k.as_ref())
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-}
 
 pub const OWNER_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
     name: "owner",
@@ -3416,63 +3394,6 @@ where
 enum TransactionReturnData {
     CliSignature(CliSignature),
     CliSignOnlyData(CliSignOnlyData),
-}
-
-// XXX this goes away once everything is converted to token client
-async fn handle_tx<'a>(
-    signer_info: &CliSignerInfo,
-    config: &Config<'a>,
-    no_wait: bool,
-    minimum_balance_for_rent_exemption: u64,
-    instructions: Vec<Instruction>,
-) -> Result<TransactionReturnData, Error> {
-    let fee_payer_pubkey = config.fee_payer.pubkey();
-    let fee_payer = Some(&fee_payer_pubkey);
-
-    let recent_blockhash = config.program_client.get_latest_blockhash().await?;
-    let message = if let Some(nonce_account) = config.nonce_account.as_ref() {
-        let mut message = Message::new_with_nonce(
-            instructions,
-            fee_payer,
-            nonce_account,
-            config.nonce_authority.as_ref().unwrap(),
-        );
-        message.recent_blockhash = recent_blockhash;
-        message
-    } else {
-        Message::new_with_blockhash(&instructions, fee_payer, &recent_blockhash)
-    };
-
-    if !config.sign_only {
-        let fee = config.rpc_client.get_fee_for_message(&message).await?;
-        check_fee_payer_balance(config, minimum_balance_for_rent_exemption + fee).await?;
-    }
-
-    let signers = signer_info.signers_for_message(&message);
-    let mut transaction = Transaction::new_unsigned(message);
-
-    if config.sign_only {
-        transaction.try_partial_sign(&signers, recent_blockhash)?;
-        Ok(TransactionReturnData::CliSignOnlyData(return_signers_data(
-            &transaction,
-            &ReturnSignersConfig {
-                dump_transaction_message: config.dump_transaction_message,
-            },
-        )))
-    } else {
-        transaction.try_sign(&signers, recent_blockhash)?;
-        let signature = if no_wait {
-            config.rpc_client.send_transaction(&transaction).await?
-        } else {
-            config
-                .rpc_client
-                .send_and_confirm_transaction_with_spinner(&transaction)
-                .await?
-        };
-        Ok(TransactionReturnData::CliSignature(CliSignature {
-            signature: signature.to_string(),
-        }))
-    }
 }
 
 async fn finish_tx<'a>(
