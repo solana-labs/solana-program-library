@@ -782,16 +782,23 @@ async fn command_transfer(
     let token = token_client_from_config(config, &token_pubkey);
     let mint_info = config.get_mint_info(&token_pubkey, mint_decimals).await?;
 
-    // decimals arg, which determines whether transfer or transfer_checked instruction is used
-    // the logic here is tricky because "do what we are told" and "do the right thing" are at odds
+    // if the user got the decimals wrong, they may well have calculated the transfer amount wrong
+    if !config.sign_only && mint_decimals.is_some() && mint_decimals != Some(mint_info.decimals) {
+        return Err(format!(
+            "Decimals {} was provided, but actual value is {}",
+            mint_decimals.unwrap(),
+            mint_info.decimals
+        )
+        .into());
+    }
+
+    // decimals determines whether transfer_checked is used or not
     let decimals = if use_unchecked_instruction {
         None
-    } else if !config.sign_only {
-        Some(mint_info.decimals)
     } else if mint_decimals.is_some() {
         mint_decimals
     } else {
-        return Err("Decimals must be specified with --mint-decimals in offline mode".into());
+        Some(mint_info.decimals)
     };
 
     // pubkey of the actual account we are sending from
