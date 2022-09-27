@@ -54,6 +54,9 @@ pub struct GovernanceConfig {
 
     /// The threshold for Community Veto votes
     pub community_veto_vote_threshold: VoteThreshold,
+
+    /// Reserved space for future versions
+    pub reserved: [u8; 3],
 }
 
 /// Governance Account
@@ -81,9 +84,6 @@ pub struct GovernanceV2 {
 
     /// Governance config
     pub config: GovernanceConfig,
-
-    /// Reserved space for future versions
-    pub reserved: [u8; 3],
 
     /// The number of proposals in voting state in the Governance
     pub voting_proposal_count: u16,
@@ -284,7 +284,6 @@ pub fn get_governance_data(
             governed_account: governance_data_v1.governed_account,
             proposals_count: governance_data_v1.proposals_count,
             config: governance_data_v1.config,
-            reserved: [0; 3],
             voting_proposal_count: governance_data_v1.voting_proposal_count,
 
             // Add the extra reserved_v2 padding
@@ -575,6 +574,7 @@ mod test {
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
+            reserved: [0; 3],
         };
 
         // Act
@@ -600,6 +600,7 @@ mod test {
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
+            reserved: [0; 3],
         };
 
         // Act
@@ -625,6 +626,7 @@ mod test {
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
+            reserved: [0; 3],
         };
 
         // Act
@@ -650,6 +652,7 @@ mod test {
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
+            reserved: [0; 3],
         };
 
         // Act
@@ -675,6 +678,7 @@ mod test {
             min_council_weight_to_create_proposal: 1,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(0),
             community_vote_tipping: VoteTipping::Strict,
+            reserved: [0; 3],
         };
 
         // Act
