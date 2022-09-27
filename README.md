@@ -14,15 +14,15 @@ solana-runtime, and deployed to its mainnet.  As others implement Sealevel, we
 will graciously accept patches to ensure the programs here are portable across
 all implementations.
 
-Full documentation is available at https://spl.solana.com
-TypeDocs: https://solana-labs.github.io/solana-program-library/token/js/
+Form more information see the [full documentation](https://spl.solana.com) and the [TypeDocs](https://solana-labs.github.io/solana-program-library/token/js/).
+
 
 ## Development
 
 ### Environment Setup
 
-1. Install the latest Solana tools from from https://docs.solana.com/cli/install-solana-cli-tools.
-2. Install the latest Rust stable from https://rustup.rs/. If you already have Rust, run `rustup update` to get the latest version.
+1. Install the latest [Solana tools](https://docs.solana.com/cli/install-solana-cli-tools).
+2. Install the latest [Rust stable](https://rustup.rs/). If you already have Rust, run `rustup update` to get the latest version.
 3. Install the `libudev` development package for your distribution (`libudev-dev` on Debian-derived distros, `libudev-devel` on Redhat-derived).
 
 ### Build
