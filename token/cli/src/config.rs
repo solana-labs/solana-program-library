@@ -57,6 +57,8 @@ impl<'a> Config<'a> {
                 eprintln!("error: Could not find config file `{}`", config_file);
                 exit(1);
             })
+        } else if let Some(config_file) = &*solana_cli_config::CONFIG_FILE {
+            solana_cli_config::Config::load(config_file).unwrap_or_default()
         } else {
             solana_cli_config::Config::default()
         };
