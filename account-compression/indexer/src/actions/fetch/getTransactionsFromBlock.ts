@@ -56,7 +56,6 @@ export async function getTransactionsFromBlock(
         let relevant = false;
         for (let i = 0; !relevant && i < accountKeys.length; i++) {
             const key = accountKeys.get(i);
-            // console.log(key!.toBase58());
             if (key && key.equals(treeId)) {
                 foundTree = true;
             } else if (key && key.equals(SPL_ACCOUNT_COMPRESSION_PROGRAM_ID)) {
