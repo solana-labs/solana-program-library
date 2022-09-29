@@ -1676,18 +1676,16 @@ async fn command_gc(
                 continue;
             }
 
-            // Sanity check!
-            // we shouldn't ever be here, but if we are here, abort!
-            if is_associated && amount > 0 {
-                panic!("gc should NEVER attempt to close a nonempty ata");
-            }
-
-            if close_authority == owner {
-                let res = if is_associated || amount == 0 {
+            // this logic is quite fiendish, but its more readable this way than if/else
+            let maybe_res = match (close_authority == owner, is_associated, amount == 0) {
+                // owner authority, associated or auxiliary, empty -> close
+                (true, _, true) => Some(
                     token
                         .close_account(&address, &owner, &owner, &bulk_signers)
-                        .await
-                } else {
+                        .await,
+                ),
+                // owner authority, auxiliary, nonempty -> empty and close
+                (true, false, false) => Some(
                     token
                         .empty_and_close_auxiliary_account(
                             &address,
@@ -1696,10 +1694,40 @@ async fn command_gc(
                             decimals,
                             &bulk_signers,
                         )
-                        .await
-                }?;
+                        .await,
+                ),
+                // separate authority, auxiliary, nonempty -> transfer
+                (false, false, false) => Some(
+                    token
+                        .transfer(
+                            &address,
+                            &associated_token_account,
+                            &owner,
+                            amount,
+                            Some(decimals),
+                            Some(owner),
+                            &bulk_signers,
+                        )
+                        .await,
+                ),
+                // separate authority, associated or auxiliary, empty -> print warning
+                (false, _, true) => {
+                    println_display(
+                        config,
+                        format!(
+                            "Note: skipping {} due to separate close authority {}; \
+                             revoke authority and rerun gc, or rerun gc with --owner",
+                            address, close_authority
+                        ),
+                    );
+                    None
+                }
+                // anything else, including a nonempty associated account -> unreachable
+                (_, _, _) => unreachable!(),
+            };
 
-                let tx_return = finish_tx(config, &res, false).await?;
+            if let Some(res) = maybe_res {
+                let tx_return = finish_tx(config, &res?, false).await?;
 
                 results.push(match tx_return {
                     TransactionReturnData::CliSignature(signature) => {
@@ -1709,16 +1737,7 @@ async fn command_gc(
                         config.output_format.formatted_string(&sign_only_data)
                     }
                 });
-            } else {
-                println_display(
-                    config,
-                    format!(
-                        "Note: skipping {} due to separate close authority {}; \
-                               revoke authority and rerun gc, or rerun gc with --owner",
-                        address, close_authority
-                    ),
-                );
-            }
+            };
         }
     }
 
@@ -4352,6 +4371,41 @@ mod tests {
             // aux is gone and its tokens are in ata, and ata has not been closed
             assert_eq!(ui_ata.token_amount.amount, "1");
             config.rpc_client.get_account(&aux).await.unwrap_err();
+
+            // test that balance moves off an uncloseable account
+            let token = create_token(&config, &payer).await;
+            let ata = create_associated_account(&config, &payer, token).await;
+            let aux = create_auxiliary_account(&config, &payer, token).await;
+            let close_authority = Keypair::new().pubkey();
+            mint_tokens(&config, &payer, token, 1.0, aux).await;
+
+            process_test_command(
+                &config,
+                &payer,
+                &[
+                    "spl-token",
+                    CommandName::Authorize.into(),
+                    &aux.to_string(),
+                    "close",
+                    &close_authority.to_string(),
+                ],
+            )
+            .await
+            .unwrap();
+
+            process_test_command(&config, &payer, &["spl-token", CommandName::Gc.into()])
+                .await
+                .unwrap();
+
+            let ui_ata = config
+                .rpc_client
+                .get_token_account(&ata)
+                .await
+                .unwrap()
+                .unwrap();
+
+            // aux tokens are now in ata
+            assert_eq!(ui_ata.token_amount.amount, "1");
         }
     }
 
