@@ -320,7 +320,7 @@ fn process_init_reserve(
     validate_pyth_keys(&lending_market, pyth_product_info, pyth_price_info)?;
     validate_switchboard_keys(&lending_market, switchboard_feed_info)?;
 
-    let market_price = get_price(switchboard_feed_info, pyth_price_info, clock)?;
+    let market_price = get_price(Some(switchboard_feed_info), pyth_price_info, clock)?;
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
@@ -427,7 +427,13 @@ fn process_refresh_reserve(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
     let account_info_iter = &mut accounts.iter().peekable();
     let reserve_info = next_account_info(account_info_iter)?;
     let pyth_price_info = next_account_info(account_info_iter)?;
-    let switchboard_feed_info = next_account_info(account_info_iter)?;
+    // set switchboard to a placeholder account info
+    let mut switchboard_feed_info = None;
+    // if the next account info exists and is not the clock set it to be switchboard
+    let switchboard_peek = account_info_iter.peek().map(|a| a.key);
+    if switchboard_peek.is_some() && switchboard_peek != Some(&clock::ID) {
+        switchboard_feed_info = Some(next_account_info(account_info_iter)?);
+    }
     let clock = &Clock::get()?;
     if account_info_iter.peek().map(|a| a.key) == Some(&clock::ID) {
         next_account_info(account_info_iter)?;
@@ -445,7 +451,7 @@ fn _refresh_reserve<'a>(
     program_id: &Pubkey,
     reserve_info: &AccountInfo<'a>,
     pyth_price_info: &AccountInfo<'a>,
-    switchboard_feed_info: &AccountInfo<'a>,
+    switchboard_feed_info: Option<&AccountInfo<'a>>,
     clock: &Clock,
 ) -> ProgramResult {
     let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
@@ -457,8 +463,11 @@ fn _refresh_reserve<'a>(
         msg!("Reserve liquidity pyth oracle does not match the reserve liquidity pyth oracle provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
-
-    if &reserve.liquidity.switchboard_oracle_pubkey != switchboard_feed_info.key {
+    // the first check is to allow for the only passing in pyth case
+    // TODO maybe change this to is_some_and later
+    if switchboard_feed_info.is_some()
+        && &reserve.liquidity.switchboard_oracle_pubkey != switchboard_feed_info.unwrap().key
+    {
         msg!("Reserve liquidity switchboard oracle does not match the reserve liquidity switchboard oracle provided");
         return Err(LendingError::InvalidOracleConfig.into());
     }
@@ -2564,7 +2573,7 @@ fn get_pyth_product_quote_currency(pyth_product: &pyth::Product) -> Result<[u8; 
 }
 
 fn get_price(
-    switchboard_feed_info: &AccountInfo,
+    switchboard_feed_info: Option<&AccountInfo>,
     pyth_price_account_info: &AccountInfo,
     clock: &Clock,
 ) -> Result<Decimal, ProgramError> {
@@ -2572,7 +2581,13 @@ fn get_price(
     if pyth_price != Decimal::zero() {
         return Ok(pyth_price);
     }
-    get_switchboard_price(switchboard_feed_info, clock)
+
+    // if switchboard was not passed in don't try to grab the price
+    if let Some(switchboard_feed_info_unwrapped) = switchboard_feed_info {
+        return get_switchboard_price(switchboard_feed_info_unwrapped, clock);
+    }
+
+    Err(LendingError::InvalidOracleConfig.into())
 }
 
 fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decimal, ProgramError> {
