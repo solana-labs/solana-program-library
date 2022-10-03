@@ -70,12 +70,26 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
         Pubkey::find_program_address(&treasury_seeds, program_id);
     let treasury_bump = &[treasury_bump_seed];
 
+    // Sign the transaction using the proposal's extra signer
+    let mut extra_signer_seeds = get_extra_signer_address_seeds(proposal_info.key).to_vec();
+    let (extra_address, extra_bump_seed) =
+        Pubkey::find_program_address(&extra_signer_seeds, program_id);
+    let extra_bump = &[extra_bump_seed];
+
     if instruction_account_infos
         .iter()
         .any(|a| a.key == &treasury_address)
     {
         treasury_seeds.push(treasury_bump);
         signers_seeds.push(&treasury_seeds[..]);
+    }
+
+    if instruction_account_infos
+        .iter()
+        .any(|a| a.key == &treasury_address)
+    {
+        extra_signer_seeds.push(extra_bump);
+        signers_seeds.push(&extra_signer_seeds[..]);
     }
 
     for instruction in instructions {
@@ -112,4 +126,9 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
     proposal_transaction_data.serialize(&mut *proposal_transaction_info.data.borrow_mut())?;
 
     Ok(())
+}
+
+/// Returns ExtraSigner PDA seeds
+pub fn get_extra_signer_address_seeds(proposal: &Pubkey) -> [&[u8]; 2] {
+    [b"extra_signer", proposal.as_ref()]
 }
