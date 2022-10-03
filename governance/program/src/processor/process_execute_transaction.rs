@@ -86,7 +86,7 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
 
     if instruction_account_infos
         .iter()
-        .any(|a| a.key == &treasury_address)
+        .any(|a| a.key == &extra_address)
     {
         extra_signer_seeds.push(extra_bump);
         signers_seeds.push(&extra_signer_seeds[..]);
