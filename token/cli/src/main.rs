@@ -64,7 +64,7 @@ mod output;
 use output::*;
 
 mod sort;
-use sort::{is_supported_program, sort_and_parse_token_accounts};
+use sort::sort_and_parse_token_accounts;
 
 mod bench;
 use bench::*;
@@ -808,14 +808,6 @@ async fn command_authorize(
     })
 }
 
-async fn validate_mint(config: &Config<'_>, token: Pubkey) -> Result<Pubkey, Error> {
-    let mint = config.get_account_checked(&token).await?;
-    if StateWithExtensionsOwned::<Mint>::unpack(mint.data).is_err() {
-        return Err(format!("Invalid mint account {:?}", token).into());
-    }
-    Ok(mint.owner)
-}
-
 #[allow(clippy::too_many_arguments)]
 async fn command_transfer(
     config: &Config<'_>,
@@ -1546,41 +1538,35 @@ async fn command_supply(config: &Config<'_>, token: Pubkey) -> CommandResult {
 
 async fn command_accounts(
     config: &Config<'_>,
-    token: Option<Pubkey>,
+    maybe_token: Option<Pubkey>,
     owner: Pubkey,
 ) -> CommandResult {
-    if let Some(token) = token {
-        validate_mint(config, token).await?;
-    }
-    let accounts = config
-        .rpc_client
-        .get_token_accounts_by_owner(
-            &owner,
-            match token {
-                Some(token) => TokenAccountsFilter::Mint(token),
-                None => TokenAccountsFilter::ProgramId(config.program_id),
-            },
-        )
-        .await?;
-    if accounts.is_empty() {
-        println!("None");
-        return Ok("".to_string());
-    }
-
-    let (mint_accounts, unsupported_accounts, max_len_balance, includes_aux) =
-        sort_and_parse_token_accounts(&owner, accounts, &config.program_id);
-    let aux_len = if includes_aux { 10 } else { 0 };
-
-    let cli_token_accounts = CliTokenAccounts {
-        accounts: mint_accounts
-            .into_iter()
-            .map(|(_mint, accounts_list)| accounts_list)
-            .collect(),
-        unsupported_accounts,
-        max_len_balance,
-        aux_len,
-        token_is_some: token.is_some(),
+    let filters = if let Some(token_pubkey) = maybe_token {
+        let _ = config.get_mint_info(&token_pubkey, None).await?;
+        vec![TokenAccountsFilter::Mint(token_pubkey)]
+    } else if config.explicit_program {
+        vec![TokenAccountsFilter::ProgramId(config.program_id)]
+    } else {
+        vec![
+            TokenAccountsFilter::ProgramId(spl_token::id()),
+            TokenAccountsFilter::ProgramId(spl_token_2022::id()),
+        ]
     };
+
+    let mut accounts = vec![];
+    for filter in filters {
+        accounts.push(
+            config
+                .rpc_client
+                .get_token_accounts_by_owner(&owner, filter)
+                .await?,
+        );
+    }
+    let accounts = accounts.into_iter().flatten().collect();
+
+    let cli_token_accounts =
+        sort_and_parse_token_accounts(&owner, accounts, maybe_token.is_some())?;
+
     Ok(config.output_format.formatted_string(&cli_token_accounts))
 }
 
@@ -1594,7 +1580,7 @@ async fn command_address(
         ..CliWalletAddress::default()
     };
     if let Some(token) = token {
-        validate_mint(config, token).await?;
+        config.get_mint_info(&token, None).await?;
         let associated_token_address =
             get_associated_token_address_with_program_id(&owner, &token, &config.program_id);
         cli_address.associated_token_address = Some(associated_token_address.to_string());
@@ -1626,7 +1612,6 @@ async fn command_display(config: &Config<'_>, address: Pubkey) -> CommandResult 
             let cli_output = CliTokenAccount {
                 address: address.to_string(),
                 program_id: config.program_id.to_string(),
-                decimals,
                 is_associated: associated_address == address,
                 account,
             };
@@ -1692,42 +1677,40 @@ async fn command_gc(
 
     for keyed_account in accounts {
         if let UiAccountData::Json(parsed_account) = keyed_account.account.data {
-            if is_supported_program(&parsed_account.program) {
-                if let Ok(TokenAccountType::Account(ui_token_account)) =
-                    serde_json::from_value(parsed_account.parsed)
-                {
-                    let frozen = ui_token_account.state == UiAccountState::Frozen;
+            if let Ok(TokenAccountType::Account(ui_token_account)) =
+                serde_json::from_value(parsed_account.parsed)
+            {
+                let frozen = ui_token_account.state == UiAccountState::Frozen;
 
-                    let token = ui_token_account
-                        .mint
-                        .parse::<Pubkey>()
-                        .unwrap_or_else(|err| panic!("Invalid mint: {}", err));
-                    let token_account = keyed_account
-                        .pubkey
-                        .parse::<Pubkey>()
-                        .unwrap_or_else(|err| panic!("Invalid token account: {}", err));
-                    let token_amount = ui_token_account
-                        .token_amount
-                        .amount
-                        .parse::<u64>()
-                        .unwrap_or_else(|err| panic!("Invalid token amount: {}", err));
+                let token = ui_token_account
+                    .mint
+                    .parse::<Pubkey>()
+                    .unwrap_or_else(|err| panic!("Invalid mint: {}", err));
+                let token_account = keyed_account
+                    .pubkey
+                    .parse::<Pubkey>()
+                    .unwrap_or_else(|err| panic!("Invalid token account: {}", err));
+                let token_amount = ui_token_account
+                    .token_amount
+                    .amount
+                    .parse::<u64>()
+                    .unwrap_or_else(|err| panic!("Invalid token amount: {}", err));
 
-                    let close_authority = ui_token_account.close_authority.map_or(owner, |s| {
-                        s.parse::<Pubkey>()
-                            .unwrap_or_else(|err| panic!("Invalid close authority: {}", err))
-                    });
+                let close_authority = ui_token_account.close_authority.map_or(owner, |s| {
+                    s.parse::<Pubkey>()
+                        .unwrap_or_else(|err| panic!("Invalid close authority: {}", err))
+                });
 
-                    let entry = accounts_by_token.entry(token).or_insert_with(HashMap::new);
-                    entry.insert(
-                        token_account,
-                        (
-                            token_amount,
-                            ui_token_account.token_amount.decimals,
-                            frozen,
-                            close_authority,
-                        ),
-                    );
-                }
+                let entry = accounts_by_token.entry(token).or_insert_with(HashMap::new);
+                entry.insert(
+                    token_account,
+                    (
+                        token_amount,
+                        ui_token_account.token_amount.decimals,
+                        frozen,
+                        close_authority,
+                    ),
+                );
             }
         }
     }
@@ -3702,6 +3685,7 @@ mod tests {
             dump_transaction_message: false,
             multisigner_pubkeys: vec![],
             program_id: *program_id,
+            explicit_program: true,
         }
     }
 
