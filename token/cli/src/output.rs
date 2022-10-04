@@ -328,24 +328,20 @@ impl QuietDisplay for CliTokenAccounts {}
 impl VerboseDisplay for CliTokenAccounts {
     fn write_str(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         let mut gc_alert = false;
-        if self.explicit_token {
-            writeln!(
-                w,
+        let header = if self.explicit_token {
+            format!(
                 "{:<44}  {:<44}  {:<3$}",
                 "Program", "Account", "Balance", self.max_len_balance
-            )?;
-            writeln!(
-                w,
-                "-------------------------------------------------------------"
-            )?;
+            )
         } else {
-            writeln!(
-                w,
+            format!(
                 "{:<44}  {:<44}  {:<44}  {:<4$}",
                 "Program", "Token", "Account", "Balance", self.max_len_balance
-            )?;
-            writeln!(w, "----------------------------------------------------------------------------------------------------------")?;
-        }
+            )
+        };
+        writeln!(w, "{}", header)?;
+        writeln!(w, "{}", "-".repeat(header.len() + 8))?;
+
         for accounts_list in self.accounts.iter() {
             let mut aux_counter = 1;
             for account in accounts_list {
@@ -408,20 +404,14 @@ impl VerboseDisplay for CliTokenAccounts {
 impl fmt::Display for CliTokenAccounts {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut gc_alert = false;
-        if self.explicit_token {
-            writeln!(f, "{:<1$}", "Balance", self.max_len_balance)?;
-            writeln!(f, "-------------")?;
+        let header = if self.explicit_token {
+            format!("{:<1$}", "Balance", self.max_len_balance)
         } else {
-            writeln!(
-                f,
-                "{:<44}  {:<44}  {:<3$}",
-                "Program", "Token", "Balance", self.max_len_balance
-            )?;
-            writeln!(
-                f,
-                "---------------------------------------------------------------"
-            )?;
-        }
+            format!("{:<44}  {:<2$}", "Token", "Balance", self.max_len_balance)
+        };
+        writeln!(f, "{}", header)?;
+        writeln!(f, "{}", "-".repeat(header.len() + 8))?;
+
         for accounts_list in self.accounts.iter() {
             let mut aux_counter = 1;
             for account in accounts_list {
@@ -441,8 +431,7 @@ impl fmt::Display for CliTokenAccounts {
                 if self.explicit_token {
                     writeln!(
                         f,
-                        "{:<44}  {:<4$}{:<5$}{}",
-                        account.program_id,
+                        "{:<3$}{:<4$}{}",
                         account.account.token_amount.real_number_string_trimmed(),
                         maybe_aux,
                         maybe_frozen,
@@ -452,8 +441,7 @@ impl fmt::Display for CliTokenAccounts {
                 } else {
                     writeln!(
                         f,
-                        "{:<44}  {:<44}  {:<5$}{:<6$}{}",
-                        account.program_id,
+                        "{:<44}  {:<4$}{:<5$}{}",
                         account.account.mint,
                         account.account.token_amount.real_number_string_trimmed(),
                         maybe_aux,
