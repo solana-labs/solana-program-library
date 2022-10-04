@@ -183,12 +183,11 @@ impl fmt::Display for CliMultisig {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CliTokenAccount {
     pub(crate) address: String,
     pub(crate) program_id: String,
-    pub(crate) decimals: Option<u8>,
     pub(crate) is_associated: bool,
     #[serde(flatten)]
     pub(crate) account: UiTokenAccount,
@@ -215,12 +214,7 @@ impl fmt::Display for CliTokenAccount {
         writeln_name_value(
             f,
             "  Decimals:",
-            if self.decimals.is_some() {
-                self.decimals.unwrap().to_string()
-            } else {
-                String::new()
-            }
-            .as_ref(),
+            self.account.token_amount.decimals.to_string().as_ref(),
         )?;
         let mint = format!(
             "{}{}",
@@ -327,18 +321,18 @@ pub(crate) struct CliTokenAccounts {
     #[serde(skip_serializing)]
     pub(crate) aux_len: usize,
     #[serde(skip_serializing)]
-    pub(crate) token_is_some: bool,
+    pub(crate) explicit_token: bool,
 }
 
 impl QuietDisplay for CliTokenAccounts {}
 impl VerboseDisplay for CliTokenAccounts {
     fn write_str(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         let mut gc_alert = false;
-        if self.token_is_some {
+        if self.explicit_token {
             writeln!(
                 w,
-                "{:<44}  {:<2$}",
-                "Account", "Balance", self.max_len_balance
+                "{:<44}  {:<44}  {:<3$}",
+                "Program", "Account", "Balance", self.max_len_balance
             )?;
             writeln!(
                 w,
@@ -347,8 +341,8 @@ impl VerboseDisplay for CliTokenAccounts {
         } else {
             writeln!(
                 w,
-                "{:<44}  {:<44}  {:<3$}",
-                "Token", "Account", "Balance", self.max_len_balance
+                "{:<44}  {:<44}  {:<44}  {:<4$}",
+                "Program", "Token", "Account", "Balance", self.max_len_balance
             )?;
             writeln!(w, "----------------------------------------------------------------------------------------------------------")?;
         }
@@ -368,10 +362,11 @@ impl VerboseDisplay for CliTokenAccounts {
                 } else {
                     "".to_string()
                 };
-                if self.token_is_some {
+                if self.explicit_token {
                     writeln!(
                         w,
-                        "{:<44}  {:<4$}{:<5$}{}",
+                        "{:<44}  {:<44}  {:<5$}{:<6$}{}",
+                        account.program_id,
                         account.address,
                         account.account.token_amount.real_number_string_trimmed(),
                         maybe_aux,
@@ -382,7 +377,8 @@ impl VerboseDisplay for CliTokenAccounts {
                 } else {
                     writeln!(
                         w,
-                        "{:<44}  {:<44}  {:<5$}{:<6$}{}",
+                        "{:<44}  {:<44}  {:<44}  {:<6$}{:<7$}{}",
+                        account.program_id,
                         account.account.mint,
                         account.address,
                         account.account.token_amount.real_number_string_trimmed(),
@@ -412,14 +408,14 @@ impl VerboseDisplay for CliTokenAccounts {
 impl fmt::Display for CliTokenAccounts {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut gc_alert = false;
-        if self.token_is_some {
+        if self.explicit_token {
             writeln!(f, "{:<1$}", "Balance", self.max_len_balance)?;
             writeln!(f, "-------------")?;
         } else {
             writeln!(
                 f,
-                "{:<44}  {:<2$}",
-                "Token", "Balance", self.max_len_balance
+                "{:<44}  {:<44}  {:<3$}",
+                "Program", "Token", "Balance", self.max_len_balance
             )?;
             writeln!(
                 f,
@@ -442,10 +438,11 @@ impl fmt::Display for CliTokenAccounts {
                 } else {
                     "".to_string()
                 };
-                if self.token_is_some {
+                if self.explicit_token {
                     writeln!(
                         f,
-                        "{:<3$}{:<4$}{}",
+                        "{:<44}  {:<4$}{:<5$}{}",
+                        account.program_id,
                         account.account.token_amount.real_number_string_trimmed(),
                         maybe_aux,
                         maybe_frozen,
@@ -455,7 +452,8 @@ impl fmt::Display for CliTokenAccounts {
                 } else {
                     writeln!(
                         f,
-                        "{:<44}  {:<4$}{:<5$}{}",
+                        "{:<44}  {:<44}  {:<5$}{:<6$}{}",
+                        account.program_id,
                         account.account.mint,
                         account.account.token_amount.real_number_string_trimmed(),
                         maybe_aux,

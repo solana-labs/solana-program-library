@@ -43,6 +43,7 @@ pub(crate) struct Config<'a> {
     pub(crate) dump_transaction_message: bool,
     pub(crate) multisigner_pubkeys: Vec<&'a Pubkey>,
     pub(crate) program_id: Pubkey,
+    pub(crate) explicit_program: bool,
 }
 
 impl<'a> Config<'a> {
@@ -215,24 +216,28 @@ impl<'a> Config<'a> {
         let dump_transaction_message = matches.is_present(DUMP_TRANSACTION_MESSAGE.name);
 
         let default_program_id = spl_token::id();
-        let program_id = if let Some(program_id) = value_of(matches, "program_id") {
-            program_id
-        } else if !sign_only {
-            if let Some(address) = value_of(matches, "token")
-                .or_else(|| value_of(matches, "account"))
-                .or_else(|| value_of(matches, "address"))
-            {
-                rpc_client
-                    .get_account(&address)
-                    .await
-                    .map(|account| account.owner)
-                    .unwrap_or(default_program_id)
+        let (program_id, explicit_program) =
+            if let Some(program_id) = value_of(matches, "program_id") {
+                (program_id, true)
+            } else if !sign_only {
+                if let Some(address) = value_of(matches, "token")
+                    .or_else(|| value_of(matches, "account"))
+                    .or_else(|| value_of(matches, "address"))
+                {
+                    (
+                        rpc_client
+                            .get_account(&address)
+                            .await
+                            .map(|account| account.owner)
+                            .unwrap_or(default_program_id),
+                        false,
+                    )
+                } else {
+                    (default_program_id, false)
+                }
             } else {
-                default_program_id
-            }
-        } else {
-            default_program_id
-        };
+                (default_program_id, false)
+            };
 
         Self {
             default_signer,
@@ -247,6 +252,7 @@ impl<'a> Config<'a> {
             dump_transaction_message,
             multisigner_pubkeys,
             program_id,
+            explicit_program,
         }
     }
 
