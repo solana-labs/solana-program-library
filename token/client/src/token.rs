@@ -68,6 +68,10 @@ pub enum TokenError {
     NotEnoughFunds,
     #[error("missing memo signer")]
     MissingMemoSigner,
+    #[error("decimals required, but missing")]
+    MissingDecimals,
+    #[error("decimals specified, but incorrect")]
+    InvalidDecimals,
 }
 impl PartialEq for TokenError {
     fn eq(&self, other: &Self) -> bool {
@@ -88,6 +92,8 @@ impl PartialEq for TokenError {
             (Self::AccountDecryption, Self::AccountDecryption) => true,
             (Self::NotEnoughFunds, Self::NotEnoughFunds) => true,
             (Self::MissingMemoSigner, Self::MissingMemoSigner) => true,
+            (Self::MissingDecimals, Self::MissingDecimals) => true,
+            (Self::InvalidDecimals, Self::InvalidDecimals) => true,
             _ => false,
         }
     }
@@ -205,6 +211,7 @@ impl TokenMemo {
 pub struct Token<T> {
     client: Arc<dyn ProgramClient<T>>,
     pubkey: Pubkey, /*token mint*/
+    decimals: Option<u8>,
     payer: Arc<dyn Signer>,
     program_id: Pubkey,
     nonce_account: Option<Pubkey>,
@@ -216,6 +223,7 @@ impl<T> fmt::Debug for Token<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Token")
             .field("pubkey", &self.pubkey)
+            .field("decimals", &self.decimals)
             .field("payer", &self.payer.pubkey())
             .field("program_id", &self.program_id)
             .field("nonce_account", &self.nonce_account)
@@ -235,6 +243,16 @@ fn native_mint(program_id: &Pubkey) -> Pubkey {
     }
 }
 
+fn native_mint_decimals(program_id: &Pubkey) -> u8 {
+    if program_id == &spl_token_2022::id() {
+        spl_token_2022::native_mint::DECIMALS
+    } else if program_id == &spl_token::id() {
+        spl_token::native_mint::DECIMALS
+    } else {
+        panic!("Unrecognized token program id: {}", program_id);
+    }
+}
+
 impl<T> Token<T>
 where
     T: SendTransaction,
@@ -243,11 +261,13 @@ where
         client: Arc<dyn ProgramClient<T>>,
         program_id: &Pubkey,
         address: &Pubkey,
+        decimals: Option<u8>,
         payer: Arc<dyn Signer>,
     ) -> Self {
         Token {
             client,
             pubkey: *address,
+            decimals,
             payer,
             program_id: *program_id,
             nonce_account: None,
@@ -261,7 +281,13 @@ where
         program_id: &Pubkey,
         payer: Arc<dyn Signer>,
     ) -> Self {
-        Self::new(client, program_id, &native_mint(program_id), payer)
+        Self::new(
+            client,
+            program_id,
+            &native_mint(program_id),
+            Some(native_mint_decimals(program_id)),
+            payer,
+        )
     }
 
     pub fn is_native(&self) -> bool {
@@ -277,6 +303,7 @@ where
         Token {
             client: Arc::clone(&self.client),
             pubkey: self.pubkey,
+            decimals: self.decimals,
             payer,
             program_id: self.program_id,
             nonce_account: self.nonce_account,
@@ -289,6 +316,7 @@ where
         Token {
             client: Arc::clone(&self.client),
             pubkey: self.pubkey,
+            decimals: self.decimals,
             payer: self.payer.clone(),
             program_id: self.program_id,
             nonce_account: Some(*nonce_account),
@@ -431,10 +459,11 @@ where
         &self,
         mint_authority: &'a Pubkey,
         freeze_authority: Option<&'a Pubkey>,
-        decimals: u8,
         extension_initialization_params: Vec<ExtensionInitializationParams>,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let decimals = self.decimals.ok_or(TokenError::MissingDecimals)?;
+
         let extension_types = extension_initialization_params
             .iter()
             .map(|e| e.extension())
@@ -606,7 +635,16 @@ where
             return Err(TokenError::AccountInvalidOwner);
         }
 
-        StateWithExtensionsOwned::<Mint>::unpack(account.data).map_err(Into::into)
+        let mint_result =
+            StateWithExtensionsOwned::<Mint>::unpack(account.data).map_err(Into::into);
+
+        if let (Ok(mint), Some(decimals)) = (&mint_result, self.decimals) {
+            if decimals != mint.base.decimals {
+                return Err(TokenError::InvalidDecimals);
+            }
+        }
+
+        mint_result
     }
 
     /// Retrieve account information.
@@ -675,13 +713,12 @@ where
         destination: &Pubkey,
         authority: &Pubkey,
         amount: u64,
-        decimals: Option<u8>,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-        let instructions = if let Some(decimals) = decimals {
+        let instructions = if let Some(decimals) = self.decimals {
             [instruction::mint_to_checked(
                 &self.program_id,
                 &self.pubkey,
@@ -713,13 +750,12 @@ where
         destination: &Pubkey,
         authority: &Pubkey,
         amount: u64,
-        decimals: Option<u8>,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-        let instructions = if let Some(decimals) = decimals {
+        let instructions = if let Some(decimals) = self.decimals {
             [instruction::transfer_checked(
                 &self.program_id,
                 source,
@@ -754,7 +790,6 @@ where
         destination_owner: &Pubkey,
         authority: &Pubkey,
         amount: u64,
-        decimals: Option<u8>,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
@@ -773,7 +808,7 @@ where
             )),
         ];
 
-        if let Some(decimals) = decimals {
+        if let Some(decimals) = self.decimals {
             instructions.push(instruction::transfer_checked(
                 &self.program_id,
                 source,
@@ -807,12 +842,12 @@ where
         destination: &Pubkey,
         authority: &Pubkey,
         amount: u64,
-        decimals: u8,
         fee: u64,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+        let decimals = self.decimals.ok_or(TokenError::MissingDecimals)?;
 
         self.process_ixs(
             &[transfer_fee::instruction::transfer_checked_with_fee(
@@ -837,13 +872,12 @@ where
         source: &Pubkey,
         authority: &Pubkey,
         amount: u64,
-        decimals: Option<u8>,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-        let instructions = if let Some(decimals) = decimals {
+        let instructions = if let Some(decimals) = self.decimals {
             [instruction::burn_checked(
                 &self.program_id,
                 source,
@@ -874,13 +908,12 @@ where
         delegate: &Pubkey,
         authority: &Pubkey,
         amount: u64,
-        decimals: Option<u8>,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-        let instructions = if let Some(decimals) = decimals {
+        let instructions = if let Some(decimals) = self.decimals {
             [instruction::approve_checked(
                 &self.program_id,
                 source,
@@ -970,7 +1003,6 @@ where
         lamports_destination: &Pubkey,
         tokens_destination: &Pubkey,
         authority: &Pubkey,
-        decimals: u8,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
@@ -983,16 +1015,28 @@ where
 
         if !self.is_native() && account_state.base.amount > 0 {
             // if a separate close authority is being used, it must be a delegate also
-            instructions.push(instruction::transfer_checked(
-                &self.program_id,
-                account_to_close,
-                &self.pubkey,
-                tokens_destination,
-                authority,
-                &multisig_signers,
-                account_state.base.amount,
-                decimals,
-            )?);
+            if let Some(decimals) = self.decimals {
+                instructions.push(instruction::transfer_checked(
+                    &self.program_id,
+                    account_to_close,
+                    &self.pubkey,
+                    tokens_destination,
+                    authority,
+                    &multisig_signers,
+                    account_state.base.amount,
+                    decimals,
+                )?);
+            } else {
+                #[allow(deprecated)]
+                instructions.push(instruction::transfer(
+                    &self.program_id,
+                    account_to_close,
+                    tokens_destination,
+                    authority,
+                    &multisig_signers,
+                    account_state.base.amount,
+                )?);
+            }
         }
 
         instructions.push(instruction::close_account(

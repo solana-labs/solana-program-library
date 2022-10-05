@@ -96,6 +96,7 @@ async fn process_create_escrow_account(
         program_client.clone(),
         &new_program_id,
         new_mint,
+        None,
         payer.clone(),
     );
 
@@ -536,9 +537,15 @@ mod test {
         client: Arc<dyn ProgramClient<T>>,
     ) -> Token<T> {
         let mint_account = Keypair::new();
-        let token = Token::new(client, program_id, &mint_account.pubkey(), payer);
+        let token = Token::new(
+            client,
+            program_id,
+            &mint_account.pubkey(),
+            Some(decimals),
+            payer,
+        );
         token
-            .create_mint(mint_authority, None, decimals, vec![], &[&mint_account])
+            .create_mint(mint_authority, None, vec![], &[&mint_account])
             .await
             .unwrap();
         token
@@ -670,7 +677,6 @@ mod test {
                 &burn_from,
                 &mint_authority.pubkey(),
                 amount,
-                Some(decimals),
                 &[&mint_authority],
             )
             .await
@@ -688,7 +694,6 @@ mod test {
                 &escrow,
                 &mint_authority.pubkey(),
                 amount,
-                Some(decimals),
                 &[&mint_authority],
             )
             .await
@@ -782,7 +787,6 @@ mod test {
                 &burn_from,
                 &mint_authority.pubkey(),
                 amount,
-                Some(decimals),
                 &[&mint_authority],
             )
             .await
@@ -794,7 +798,6 @@ mod test {
                 &escrow,
                 &mint_authority.pubkey(),
                 amount,
-                Some(decimals),
                 &[&mint_authority],
             )
             .await

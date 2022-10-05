@@ -244,7 +244,6 @@ async fn fail_close_with_supply() {
         .await
         .unwrap();
     let TokenContext {
-        decimals,
         mint_authority,
         token,
         ..
@@ -263,7 +262,6 @@ async fn fail_close_with_supply() {
             &account,
             &mint_authority.pubkey(),
             1,
-            Some(decimals),
             &vec![&mint_authority],
         )
         .await

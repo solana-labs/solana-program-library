@@ -25,7 +25,6 @@ async fn transfer_checked() {
         .unwrap();
 
     let TokenContext {
-        decimals,
         mint_authority,
         token,
         alice,
@@ -56,7 +55,6 @@ async fn transfer_checked() {
             &alice_account,
             &mint_authority.pubkey(),
             test_transfer_amount,
-            Some(decimals),
             &vec![&mint_authority],
         )
         .await
@@ -78,7 +76,6 @@ async fn transfer_checked() {
             &bob_account,
             &mint_authority.pubkey(),
             test_transfer_amount,
-            Some(decimals),
             &vec![&mint_authority],
         )
         .await
@@ -91,7 +88,6 @@ async fn transfer_checked() {
             &bob_account,
             &bob.pubkey(),
             test_transfer_amount,
-            Some(decimals),
             &vec![&bob],
         )
         .await
@@ -114,7 +110,6 @@ async fn transfer_checked() {
             &alice_account,
             &bob.pubkey(),
             test_transfer_amount,
-            Some(decimals),
             &vec![&bob],
         )
         .await
@@ -161,7 +156,6 @@ async fn transfer_checked_with_fee() {
         .unwrap();
 
     let TokenContext {
-        decimals,
         mint_authority,
         token,
         alice,
@@ -195,7 +189,6 @@ async fn transfer_checked_with_fee() {
             &alice_account,
             &mint_authority.pubkey(),
             test_transfer_amount,
-            Some(decimals),
             &vec![&mint_authority],
         )
         .await
@@ -208,7 +201,6 @@ async fn transfer_checked_with_fee() {
             &alice_account,
             &alice.pubkey(),
             test_transfer_amount,
-            Some(decimals),
             &vec![&alice],
         )
         .await
@@ -231,7 +223,6 @@ async fn transfer_checked_with_fee() {
             &bob_account,
             &alice.pubkey(),
             test_transfer_amount,
-            Some(decimals),
             &vec![&alice],
         )
         .await
@@ -255,7 +246,6 @@ async fn transfer_checked_with_fee() {
             &alice_account,
             &alice.pubkey(),
             test_transfer_amount,
-            decimals,
             fee,
             &vec![&alice],
         )
@@ -280,7 +270,6 @@ async fn transfer_checked_with_fee() {
             &bob_account,
             &alice.pubkey(),
             test_transfer_amount,
-            decimals,
             fee,
             &vec![&alice],
         )
