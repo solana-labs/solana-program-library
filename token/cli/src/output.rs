@@ -328,19 +328,57 @@ impl QuietDisplay for CliTokenAccounts {}
 impl VerboseDisplay for CliTokenAccounts {
     fn write_str(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         let mut gc_alert = false;
+
+        let mut delegate_padding = 9;
+        let mut close_authority_padding = 15;
+        for accounts_list in self.accounts.iter() {
+            for account in accounts_list {
+                if account.account.delegated_amount.is_some() {
+                    delegate_padding = delegate_padding.max(
+                        account
+                            .account
+                            .delegated_amount
+                            .as_ref()
+                            .unwrap()
+                            .amount
+                            .len(),
+                    );
+                }
+
+                if account.account.close_authority.is_some() {
+                    close_authority_padding = 44;
+                }
+            }
+        }
+
         let header = if self.explicit_token {
             format!(
-                "{:<44}  {:<44}  {:<3$}",
-                "Program", "Account", "Balance", self.max_len_balance
+                "{:<44}  {:<44}  {:<5$}  {:<6$}  {:<7$}",
+                "Program",
+                "Account",
+                "Delegated",
+                "Close Authority",
+                "Balance",
+                delegate_padding,
+                close_authority_padding,
+                self.max_len_balance
             )
         } else {
             format!(
-                "{:<44}  {:<44}  {:<44}  {:<4$}",
-                "Program", "Token", "Account", "Balance", self.max_len_balance
+                "{:<44}  {:<44}  {:<44}  {:<6$}  {:<7$}  {:<8$}",
+                "Program",
+                "Token",
+                "Account",
+                "Delegated",
+                "Close Authority",
+                "Balance",
+                delegate_padding,
+                close_authority_padding,
+                self.max_len_balance
             )
         };
         writeln!(w, "{}", header)?;
-        writeln!(w, "{}", "-".repeat(header.len() + 8))?;
+        writeln!(w, "{}", "-".repeat(header.len() + self.aux_len))?;
 
         for accounts_list in self.accounts.iter() {
             let mut aux_counter = 1;
@@ -353,33 +391,56 @@ impl VerboseDisplay for CliTokenAccounts {
                 } else {
                     "".to_string()
                 };
+
                 let maybe_frozen = if let UiAccountState::Frozen = account.account.state {
                     format!(" {}  Frozen", WARNING)
                 } else {
                     "".to_string()
                 };
+
+                let maybe_delegated = account
+                    .account
+                    .delegated_amount
+                    .clone()
+                    .map(|d| d.amount)
+                    .unwrap_or_else(|| "".to_string());
+
+                let maybe_close_authority = account
+                    .account
+                    .close_authority
+                    .clone()
+                    .unwrap_or_else(|| "".to_string());
+
                 if self.explicit_token {
                     writeln!(
                         w,
-                        "{:<44}  {:<44}  {:<5$}{:<6$}{}",
+                        "{:<44}  {:<44}  {:<7$}  {:<8$}  {:<9$}{:<10$}{}",
                         account.program_id,
                         account.address,
+                        maybe_delegated,
+                        maybe_close_authority,
                         account.account.token_amount.real_number_string_trimmed(),
                         maybe_aux,
                         maybe_frozen,
+                        delegate_padding,
+                        close_authority_padding,
                         self.max_len_balance,
                         self.aux_len,
                     )?;
                 } else {
                     writeln!(
                         w,
-                        "{:<44}  {:<44}  {:<44}  {:<6$}{:<7$}{}",
+                        "{:<44}  {:<44}  {:<44}  {:<8$}  {:<9$}  {:<10$}{:<11$}{}",
                         account.program_id,
                         account.account.mint,
                         account.address,
+                        maybe_delegated,
+                        maybe_close_authority,
                         account.account.token_amount.real_number_string_trimmed(),
                         maybe_aux,
                         maybe_frozen,
+                        delegate_padding,
+                        close_authority_padding,
                         self.max_len_balance,
                         self.aux_len,
                     )?;
@@ -410,7 +471,7 @@ impl fmt::Display for CliTokenAccounts {
             format!("{:<44}  {:<2$}", "Token", "Balance", self.max_len_balance)
         };
         writeln!(f, "{}", header)?;
-        writeln!(f, "{}", "-".repeat(header.len() + 8))?;
+        writeln!(f, "{}", "-".repeat(header.len() + self.aux_len))?;
 
         for accounts_list in self.accounts.iter() {
             let mut aux_counter = 1;
