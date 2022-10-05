@@ -17,10 +17,18 @@ pub(crate) struct UnsupportedAccount {
     pub err: String,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub(crate) enum AccountFilter {
+    Delegated,
+    Closeable,
+    All,
+}
+
 pub(crate) fn sort_and_parse_token_accounts(
     owner: &Pubkey,
     accounts: Vec<RpcKeyedAccount>,
     explicit_token: bool,
+    account_filter: AccountFilter,
 ) -> Result<CliTokenAccounts, Error> {
     let mut cli_accounts: BTreeMap<(Pubkey, Pubkey), Vec<CliTokenAccount>> = BTreeMap::new();
     let mut unsupported_accounts = vec![];
@@ -40,6 +48,14 @@ pub(crate) fn sort_and_parse_token_accounts(
                     let is_associated =
                         get_associated_token_address_with_program_id(owner, &mint, &program_id)
                             == address;
+
+                    match account_filter {
+                        AccountFilter::Delegated if ui_token_account.delegate.is_none() => continue,
+                        AccountFilter::Closeable if ui_token_account.close_authority.is_none() => {
+                            continue
+                        }
+                        _ => (),
+                    }
 
                     if is_associated {
                         includes_aux = true;
