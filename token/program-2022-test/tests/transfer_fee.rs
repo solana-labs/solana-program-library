@@ -75,13 +75,13 @@ fn test_transfer_fee_config_with_keypairs() -> TransferFeeConfigWithKeypairs {
 struct TokenWithAccounts {
     context: TestContext,
     token: Token<ProgramBanksClientProcessTransaction>,
+    token_unchecked: Token<ProgramBanksClientProcessTransaction>,
     transfer_fee_config: TransferFeeConfig,
     withdraw_withheld_authority: Keypair,
     freeze_authority: Keypair,
     alice: Keypair,
     alice_account: Pubkey,
     bob_account: Pubkey,
-    decimals: u8,
 }
 
 async fn create_mint_with_accounts(alice_amount: u64) -> TokenWithAccounts {
@@ -108,10 +108,10 @@ async fn create_mint_with_accounts(alice_amount: u64) -> TokenWithAccounts {
         .await
         .unwrap();
     let TokenContext {
-        decimals,
         mint_authority,
         freeze_authority,
         token,
+        token_unchecked,
         alice,
         bob,
         ..
@@ -136,7 +136,6 @@ async fn create_mint_with_accounts(alice_amount: u64) -> TokenWithAccounts {
             &alice_account,
             &mint_authority.pubkey(),
             alice_amount,
-            Some(decimals),
             &vec![&mint_authority],
         )
         .await
@@ -144,13 +143,13 @@ async fn create_mint_with_accounts(alice_amount: u64) -> TokenWithAccounts {
     TokenWithAccounts {
         context,
         token,
+        token_unchecked,
         transfer_fee_config,
         withdraw_withheld_authority,
         freeze_authority: freeze_authority.unwrap(),
         alice,
         alice_account,
         bob_account,
-        decimals,
     }
 }
 
@@ -841,22 +840,21 @@ async fn transfer_checked() {
     let mut alice_amount = maximum_fee * 100;
     let TokenWithAccounts {
         token,
+        token_unchecked,
         transfer_fee_config,
         alice,
         alice_account,
         bob_account,
-        decimals,
         ..
     } = create_mint_with_accounts(alice_amount).await;
 
     // fail unchecked always
-    let error = token
+    let error = token_unchecked
         .transfer(
             &alice_account,
             &bob_account,
             &alice.pubkey(),
             maximum_fee,
-            None,
             &vec![&alice],
         )
         .await
@@ -878,7 +876,6 @@ async fn transfer_checked() {
             &bob_account,
             &alice.pubkey(),
             alice_amount + 1,
-            Some(decimals),
             &vec![&alice],
         )
         .await
@@ -906,7 +903,6 @@ async fn transfer_checked() {
             &bob_account,
             &alice.pubkey(),
             maximum_fee,
-            Some(decimals),
             &vec![&alice],
         )
         .await
@@ -935,7 +931,6 @@ async fn transfer_checked() {
             &bob_account,
             &alice.pubkey(),
             transfer_amount,
-            Some(decimals),
             &vec![&alice],
         )
         .await
@@ -969,7 +964,6 @@ async fn transfer_checked() {
             &bob_account,
             &alice.pubkey(),
             transfer_amount,
-            Some(decimals),
             &vec![&alice],
         )
         .await
@@ -993,7 +987,6 @@ async fn transfer_checked() {
             &bob_account,
             &alice.pubkey(),
             alice_amount - 1,
-            Some(decimals),
             &vec![&alice],
         )
         .await
@@ -1017,7 +1010,6 @@ async fn transfer_checked() {
             &bob_account,
             &alice.pubkey(),
             1,
-            Some(decimals),
             &vec![&alice],
         )
         .await
@@ -1043,7 +1035,6 @@ async fn transfer_checked_with_fee() {
         alice,
         alice_account,
         bob_account,
-        decimals,
         ..
     } = create_mint_with_accounts(alice_amount).await;
 
@@ -1059,7 +1050,6 @@ async fn transfer_checked_with_fee() {
             &bob_account,
             &alice.pubkey(),
             transfer_amount,
-            decimals,
             fee,
             &vec![&alice],
         )
@@ -1086,7 +1076,6 @@ async fn transfer_checked_with_fee() {
             &bob_account,
             &alice.pubkey(),
             transfer_amount,
-            decimals,
             fee,
             &vec![&alice],
         )
@@ -1113,7 +1102,6 @@ async fn transfer_checked_with_fee() {
             &bob_account,
             &alice.pubkey(),
             alice_amount + 1,
-            decimals,
             fee,
             &vec![&alice],
         )
@@ -1139,7 +1127,6 @@ async fn transfer_checked_with_fee() {
             &bob_account,
             &alice.pubkey(),
             transfer_amount,
-            decimals,
             fee,
             &vec![&alice],
         )
@@ -1164,7 +1151,6 @@ async fn no_fees_from_self_transfer() {
         transfer_fee_config,
         alice,
         alice_account,
-        decimals,
         ..
     } = create_mint_with_accounts(alice_amount).await;
 
@@ -1176,7 +1162,6 @@ async fn no_fees_from_self_transfer() {
             &alice_account,
             &alice.pubkey(),
             amount,
-            decimals,
             fee,
             &vec![&alice],
         )
@@ -1194,7 +1179,6 @@ async fn create_and_transfer_to_account(
     authority: &Keypair,
     owner: &Pubkey,
     amount: u64,
-    decimals: u8,
 ) -> Pubkey {
     let account = Keypair::new();
     token
@@ -1208,7 +1192,6 @@ async fn create_and_transfer_to_account(
             &account,
             &authority.pubkey(),
             amount,
-            Some(decimals),
             &vec![authority],
         )
         .await
@@ -1226,7 +1209,6 @@ async fn harvest_withheld_tokens_to_mint() {
         transfer_fee_config,
         alice,
         alice_account,
-        decimals,
         ..
     } = create_mint_with_accounts(alice_amount).await;
 
@@ -1238,15 +1220,9 @@ async fn harvest_withheld_tokens_to_mint() {
 
     // harvest from one account
     let accumulated_fees = transfer_fee_config.calculate_epoch_fee(0, amount).unwrap();
-    let account = create_and_transfer_to_account(
-        &token,
-        &alice_account,
-        &alice,
-        &alice.pubkey(),
-        amount,
-        decimals,
-    )
-    .await;
+    let account =
+        create_and_transfer_to_account(&token, &alice_account, &alice, &alice.pubkey(), amount)
+            .await;
     token
         .harvest_withheld_tokens_to_mint(&[&account])
         .await
@@ -1260,15 +1236,9 @@ async fn harvest_withheld_tokens_to_mint() {
 
     // no fail harvesting from account belonging to different mint, but nothing
     // happens
-    let account = create_and_transfer_to_account(
-        &token,
-        &alice_account,
-        &alice,
-        &alice.pubkey(),
-        amount,
-        decimals,
-    )
-    .await;
+    let account =
+        create_and_transfer_to_account(&token, &alice_account, &alice, &alice.pubkey(), amount)
+            .await;
     context
         .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
             transfer_fee_config_authority: Some(Pubkey::new_unique()),
@@ -1297,7 +1267,6 @@ async fn max_harvest_withheld_tokens_to_mint() {
         transfer_fee_config,
         alice,
         alice_account,
-        decimals,
         ..
     } = create_mint_with_accounts(alice_amount).await;
 
@@ -1306,15 +1275,9 @@ async fn max_harvest_withheld_tokens_to_mint() {
     let mut accounts = vec![];
     let max_accounts = 34;
     for _ in 0..max_accounts {
-        let account = create_and_transfer_to_account(
-            &token,
-            &alice_account,
-            &alice,
-            &alice.pubkey(),
-            amount,
-            decimals,
-        )
-        .await;
+        let account =
+            create_and_transfer_to_account(&token, &alice_account, &alice, &alice.pubkey(), amount)
+                .await;
         accounts.push(account);
     }
     let accounts: Vec<_> = accounts.iter().collect();
@@ -1344,7 +1307,6 @@ async fn max_withdraw_withheld_tokens_from_accounts() {
         transfer_fee_config,
         alice,
         alice_account,
-        decimals,
         ..
     } = create_mint_with_accounts(alice_amount).await;
 
@@ -1360,15 +1322,9 @@ async fn max_withdraw_withheld_tokens_from_accounts() {
     let mut accounts = vec![];
     let max_accounts = 32;
     for _ in 0..max_accounts {
-        let account = create_and_transfer_to_account(
-            &token,
-            &alice_account,
-            &alice,
-            &alice.pubkey(),
-            amount,
-            decimals,
-        )
-        .await;
+        let account =
+            create_and_transfer_to_account(&token, &alice_account, &alice, &alice.pubkey(), amount)
+                .await;
         accounts.push(account);
     }
     let accounts: Vec<_> = accounts.iter().collect();
@@ -1404,7 +1360,6 @@ async fn withdraw_withheld_tokens_from_mint() {
         freeze_authority,
         alice,
         alice_account,
-        decimals,
         bob_account,
         ..
     } = create_mint_with_accounts(alice_amount).await;
@@ -1428,15 +1383,9 @@ async fn withdraw_withheld_tokens_from_mint() {
 
     // transfer + harvest to mint
     let fee = transfer_fee_config.calculate_epoch_fee(0, amount).unwrap();
-    let account = create_and_transfer_to_account(
-        &token,
-        &alice_account,
-        &alice,
-        &alice.pubkey(),
-        amount,
-        decimals,
-    )
-    .await;
+    let account =
+        create_and_transfer_to_account(&token, &alice_account, &alice, &alice.pubkey(), amount)
+            .await;
 
     let state = token.get_account_info(&account).await.unwrap();
     let extension = state.get_extension::<TransferFeeAmount>().unwrap();
@@ -1485,15 +1434,9 @@ async fn withdraw_withheld_tokens_from_mint() {
     );
 
     // fail frozen account
-    let account = create_and_transfer_to_account(
-        &token,
-        &alice_account,
-        &alice,
-        &alice.pubkey(),
-        amount,
-        decimals,
-    )
-    .await;
+    let account =
+        create_and_transfer_to_account(&token, &alice_account, &alice, &alice.pubkey(), amount)
+            .await;
     token
         .freeze(
             &account,
@@ -1521,15 +1464,9 @@ async fn withdraw_withheld_tokens_from_mint() {
     );
 
     // set to none, fail
-    let account = create_and_transfer_to_account(
-        &token,
-        &alice_account,
-        &alice,
-        &alice.pubkey(),
-        amount,
-        decimals,
-    )
-    .await;
+    let account =
+        create_and_transfer_to_account(&token, &alice_account, &alice, &alice.pubkey(), amount)
+            .await;
     token
         .set_authority(
             token.get_address(),
@@ -1598,7 +1535,6 @@ async fn withdraw_withheld_tokens_from_accounts() {
         withdraw_withheld_authority,
         alice,
         alice_account,
-        decimals,
         ..
     } = create_mint_with_accounts(alice_amount).await;
 
@@ -1637,15 +1573,9 @@ async fn withdraw_withheld_tokens_from_accounts() {
     assert_eq!(state.base.amount, alice_amount);
 
     // self-harvest from one account
-    let account = create_and_transfer_to_account(
-        &token,
-        &alice_account,
-        &alice,
-        &alice.pubkey(),
-        amount,
-        decimals,
-    )
-    .await;
+    let account =
+        create_and_transfer_to_account(&token, &alice_account, &alice, &alice.pubkey(), amount)
+            .await;
     token
         .withdraw_withheld_tokens_from_accounts(
             &account,
@@ -1681,15 +1611,9 @@ async fn withdraw_withheld_tokens_from_accounts() {
 
     // no fail harvesting from account belonging to different mint, but nothing
     // happens
-    let account = create_and_transfer_to_account(
-        &token,
-        &alice_account,
-        &alice,
-        &alice.pubkey(),
-        amount,
-        decimals,
-    )
-    .await;
+    let account =
+        create_and_transfer_to_account(&token, &alice_account, &alice, &alice.pubkey(), amount)
+            .await;
     context
         .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
             transfer_fee_config_authority: Some(Pubkey::new_unique()),
@@ -1749,20 +1673,13 @@ async fn fail_close_with_withheld() {
         transfer_fee_config,
         alice,
         alice_account,
-        decimals,
         ..
     } = create_mint_with_accounts(alice_amount).await;
 
     // accrue withheld fees on new account
-    let account = create_and_transfer_to_account(
-        &token,
-        &alice_account,
-        &alice,
-        &alice.pubkey(),
-        amount,
-        decimals,
-    )
-    .await;
+    let account =
+        create_and_transfer_to_account(&token, &alice_account, &alice, &alice.pubkey(), amount)
+            .await;
 
     // empty the account
     let fee = transfer_fee_config.calculate_epoch_fee(0, amount).unwrap();
@@ -1772,7 +1689,6 @@ async fn fail_close_with_withheld() {
             &alice_account,
             &alice.pubkey(),
             amount - fee,
-            Some(decimals),
             &vec![&alice],
         )
         .await

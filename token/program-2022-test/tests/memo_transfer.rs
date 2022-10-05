@@ -30,7 +30,6 @@ async fn test_memo_transfers(
     bob_account: Pubkey,
 ) {
     let TokenContext {
-        decimals,
         mint_authority,
         token,
         alice,
@@ -44,7 +43,6 @@ async fn test_memo_transfers(
             &alice_account,
             &mint_authority.pubkey(),
             4242,
-            Some(decimals),
             &vec![&mint_authority],
         )
         .await
@@ -67,7 +65,6 @@ async fn test_memo_transfers(
             &bob_account,
             &alice.pubkey(),
             10,
-            None,
             &vec![&alice],
         )
         .await
@@ -137,7 +134,6 @@ async fn test_memo_transfers(
             &bob_account,
             &alice.pubkey(),
             10,
-            None,
             &vec![&alice],
         )
         .await
@@ -185,7 +181,6 @@ async fn test_memo_transfers(
             &bob_account,
             &alice.pubkey(),
             12,
-            None,
             &vec![&alice],
         )
         .await

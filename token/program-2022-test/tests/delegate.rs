@@ -37,9 +37,9 @@ async fn run_basic(
     approve_mode: ApproveMode,
 ) {
     let TokenContext {
-        decimals,
         mint_authority,
         token,
+        token_unchecked,
         alice,
         bob,
         ..
@@ -76,7 +76,6 @@ async fn run_basic(
             &alice_account,
             &mint_authority.pubkey(),
             amount,
-            Some(decimals),
             &vec![&mint_authority],
         )
         .await
@@ -85,13 +84,12 @@ async fn run_basic(
     // delegate to bob
     let delegated_amount = 10;
     match approve_mode {
-        ApproveMode::Unchecked => token
+        ApproveMode::Unchecked => token_unchecked
             .approve(
                 &alice_account,
                 &bob.pubkey(),
                 &alice.pubkey(),
                 delegated_amount,
-                None,
                 &vec![&alice],
             )
             .await
@@ -102,7 +100,6 @@ async fn run_basic(
                 &bob.pubkey(),
                 &alice.pubkey(),
                 delegated_amount,
-                Some(decimals),
                 &vec![&alice],
             )
             .await
@@ -116,7 +113,6 @@ async fn run_basic(
             &bob_account,
             &bob.pubkey(),
             delegated_amount.checked_add(1).unwrap(),
-            Some(decimals),
             &vec![&bob],
         )
         .await
@@ -133,44 +129,24 @@ async fn run_basic(
 
     // transfer is ok
     if transfer_mode == TransferMode::All {
-        token
-            .transfer(
-                &alice_account,
-                &bob_account,
-                &bob.pubkey(),
-                1,
-                None,
-                &vec![&bob],
-            )
+        token_unchecked
+            .transfer(&alice_account, &bob_account, &bob.pubkey(), 1, &vec![&bob])
             .await
             .unwrap();
     }
 
     token
-        .transfer(
-            &alice_account,
-            &bob_account,
-            &bob.pubkey(),
-            1,
-            Some(decimals),
-            &vec![&bob],
-        )
+        .transfer(&alice_account, &bob_account, &bob.pubkey(), 1, &vec![&bob])
         .await
         .unwrap();
 
     // burn is ok
-    token
-        .burn(&alice_account, &bob.pubkey(), 1, None, &vec![&bob])
+    token_unchecked
+        .burn(&alice_account, &bob.pubkey(), 1, &vec![&bob])
         .await
         .unwrap();
     token
-        .burn(
-            &alice_account,
-            &bob.pubkey(),
-            1,
-            Some(decimals),
-            &vec![&bob],
-        )
+        .burn(&alice_account, &bob.pubkey(), 1, &vec![&bob])
         .await
         .unwrap();
 
@@ -182,7 +158,6 @@ async fn run_basic(
             &bob_account,
             &keypair.pubkey(),
             1,
-            Some(decimals),
             &vec![keypair],
         )
         .await
@@ -205,14 +180,7 @@ async fn run_basic(
 
     // now fails
     let error = token
-        .transfer(
-            &alice_account,
-            &bob_account,
-            &bob.pubkey(),
-            2,
-            Some(decimals),
-            &vec![&bob],
-        )
+        .transfer(&alice_account, &bob_account, &bob.pubkey(), 2, &vec![&bob])
         .await
         .unwrap_err();
     assert_eq!(

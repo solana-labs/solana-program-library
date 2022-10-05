@@ -320,11 +320,13 @@ pub fn signers_of(
 fn token_client_from_config(
     config: &Config<'_>,
     token_pubkey: &Pubkey,
+    decimals: Option<u8>,
 ) -> Token<ProgramRpcClientSendTransaction> {
     let token = Token::new(
         config.program_client.clone(),
         &config.program_id,
         token_pubkey,
+        decimals,
         config.fee_payer.clone(),
     );
 
@@ -373,7 +375,7 @@ async fn command_create_token(
         ),
     );
 
-    let token = token_client_from_config(config, &token_pubkey);
+    let token = token_client_from_config(config, &token_pubkey, Some(decimals));
 
     let freeze_authority = if enable_freeze { Some(authority) } else { None };
 
@@ -400,7 +402,6 @@ async fn command_create_token(
         .create_mint(
             &authority,
             freeze_authority.as_ref(),
-            decimals,
             extensions,
             &bulk_signers,
         )
@@ -430,7 +431,7 @@ async fn command_set_interest_rate(
     rate_bps: i16,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
-    let token = token_client_from_config(config, &token_pubkey);
+    let token = token_client_from_config(config, &token_pubkey, None);
 
     if !config.sign_only {
         let mint_account = config.get_account_checked(&token_pubkey).await?;
@@ -489,7 +490,7 @@ async fn command_create_account(
     immutable_owner: bool,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
-    let token = token_client_from_config(config, &token_pubkey);
+    let token = token_client_from_config(config, &token_pubkey, None);
     let mut extensions = vec![];
 
     let (account, is_associated) = if let Some(account) = maybe_account {
@@ -571,7 +572,7 @@ async fn command_create_multisig(
     );
 
     // default is safe here because create_multisig doesnt use it
-    let token = token_client_from_config(config, &Pubkey::default());
+    let token = token_client_from_config(config, &Pubkey::default(), None);
 
     let res = token
         .create_multisig(
@@ -710,7 +711,7 @@ async fn command_authorize(
         (Pubkey::default(), COption::None)
     };
 
-    let token = token_client_from_config(config, &mint_pubkey);
+    let token = token_client_from_config(config, &mint_pubkey, None);
 
     println_display(
         config,
@@ -771,7 +772,6 @@ async fn command_transfer(
     no_wait: bool,
     allow_non_system_account_recipient: bool,
 ) -> CommandResult {
-    let token = token_client_from_config(config, &token_pubkey);
     let mint_info = config.get_mint_info(&token_pubkey, mint_decimals).await?;
 
     // if the user got the decimals wrong, they may well have calculated the transfer amount wrong
@@ -797,6 +797,8 @@ async fn command_transfer(
     } else {
         Some(mint_info.decimals)
     };
+
+    let token = token_client_from_config(config, &token_pubkey, decimals);
 
     // pubkey of the actual account we are sending from
     let sender = if let Some(sender) = sender {
@@ -956,7 +958,6 @@ async fn command_transfer(
                 &recipient_owner,
                 &sender_owner,
                 transfer_balance,
-                decimals,
                 &bulk_signers,
             )
             .await?
@@ -967,7 +968,6 @@ async fn command_transfer(
                 &recipient_token_account,
                 &sender_owner,
                 transfer_balance,
-                decimals,
                 &bulk_signers,
             )
             .await?
@@ -1010,14 +1010,12 @@ async fn command_burn(
         Some(mint_info.decimals)
     };
 
-    let token = token_client_from_config(config, &mint_info.address);
+    let token = token_client_from_config(config, &mint_info.address, decimals);
     if let Some(text) = memo {
         token.with_memo(text, vec![config.default_signer.pubkey()]);
     }
 
-    let res = token
-        .burn(&account, &owner, amount, decimals, &bulk_signers)
-        .await?;
+    let res = token.burn(&account, &owner, amount, &bulk_signers).await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
@@ -1057,13 +1055,13 @@ async fn command_mint(
         Some(mint_info.decimals)
     };
 
-    let token = token_client_from_config(config, &mint_info.address);
+    let token = token_client_from_config(config, &mint_info.address, decimals);
     if let Some(text) = memo {
         token.with_memo(text, vec![config.default_signer.pubkey()]);
     }
 
     let res = token
-        .mint_to(&recipient, &mint_authority, amount, decimals, &bulk_signers)
+        .mint_to(&recipient, &mint_authority, amount, &bulk_signers)
         .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -1095,7 +1093,8 @@ async fn command_freeze(
         ),
     );
 
-    let token = token_client_from_config(config, &mint_info.address);
+    // we dont use the decimals from mint_info because its not need and in sign-only its wrong
+    let token = token_client_from_config(config, &mint_info.address, None);
     let res = token
         .freeze(&account, &freeze_authority, &bulk_signers)
         .await?;
@@ -1129,7 +1128,8 @@ async fn command_thaw(
         ),
     );
 
-    let token = token_client_from_config(config, &mint_info.address);
+    // we dont use the decimals from mint_info because its not need and in sign-only its wrong
+    let token = token_client_from_config(config, &mint_info.address, None);
     let res = token
         .thaw(&account, &freeze_authority, &bulk_signers)
         .await?;
@@ -1296,9 +1296,9 @@ async fn command_approve(
         Some(mint_info.decimals)
     };
 
-    let token = token_client_from_config(config, &mint_info.address);
+    let token = token_client_from_config(config, &mint_info.address, decimals);
     let res = token
-        .approve(&account, &delegate, &owner, amount, decimals, &bulk_signers)
+        .approve(&account, &delegate, &owner, amount, &bulk_signers)
         .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -1348,7 +1348,7 @@ async fn command_revoke(
         return Err(format!("No delegate on account {}", account).into());
     }
 
-    let token = token_client_from_config(config, &mint_pubkey);
+    let token = token_client_from_config(config, &mint_pubkey, None);
     let res = token.revoke(&account, &owner, &bulk_signers).await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -1390,7 +1390,7 @@ async fn command_close(
         Pubkey::default()
     };
 
-    let token = token_client_from_config(config, &mint_pubkey);
+    let token = token_client_from_config(config, &mint_pubkey, None);
     let res = token
         .close_account(&account, &recipient, &close_authority, &bulk_signers)
         .await?;
@@ -1448,7 +1448,7 @@ async fn command_close_mint(
         }
     }
 
-    let token = token_client_from_config(config, &token_pubkey);
+    let token = token_client_from_config(config, &token_pubkey, None);
     let res = token
         .close_account(&token_pubkey, &recipient, &close_authority, &bulk_signers)
         .await?;
@@ -1628,6 +1628,7 @@ async fn command_gc(
                 serde_json::from_value(parsed_account.parsed)
             {
                 let frozen = ui_token_account.state == UiAccountState::Frozen;
+                let decimals = ui_token_account.token_amount.decimals;
 
                 let token = ui_token_account
                     .mint
@@ -1648,25 +1649,19 @@ async fn command_gc(
                         .unwrap_or_else(|err| panic!("Invalid close authority: {}", err))
                 });
 
-                let entry = accounts_by_token.entry(token).or_insert_with(HashMap::new);
-                entry.insert(
-                    token_account,
-                    (
-                        token_amount,
-                        ui_token_account.token_amount.decimals,
-                        frozen,
-                        close_authority,
-                    ),
-                );
+                let entry = accounts_by_token
+                    .entry((token, decimals))
+                    .or_insert_with(HashMap::new);
+                entry.insert(token_account, (token_amount, frozen, close_authority));
             }
         }
     }
 
     let mut results = vec![];
-    for (token_pubkey, accounts) in accounts_by_token.into_iter() {
+    for ((token_pubkey, decimals), accounts) in accounts_by_token.into_iter() {
         println_display(config, format!("Processing token: {}", token_pubkey));
 
-        let token = token_client_from_config(config, &token_pubkey);
+        let token = token_client_from_config(config, &token_pubkey, Some(decimals));
         let total_balance: u64 = accounts.values().map(|account| account.0).sum();
 
         let associated_token_account = token.get_associated_token_address(&owner);
@@ -1674,7 +1669,7 @@ async fn command_gc(
             token.create_associated_token_account(&owner).await?;
         }
 
-        for (address, (amount, decimals, frozen, close_authority)) in accounts {
+        for (address, (amount, frozen, close_authority)) in accounts {
             let is_associated = address == associated_token_account;
 
             // only close the associated account if --close-empty-associated-accounts is provided
@@ -1712,7 +1707,6 @@ async fn command_gc(
                             &owner,
                             &associated_token_account,
                             &owner,
-                            decimals,
                             &bulk_signers,
                         )
                         .await,
@@ -1725,7 +1719,6 @@ async fn command_gc(
                             &associated_token_account,
                             &owner,
                             amount,
-                            Some(decimals),
                             &bulk_signers,
                         )
                         .await,
@@ -1805,7 +1798,7 @@ async fn command_required_transfer_memos(
     let current_account_len = account.data.len();
 
     let state_with_extension = StateWithExtensionsOwned::<Account>::unpack(account.data)?;
-    let token = token_client_from_config(config, &state_with_extension.base.mint);
+    let token = token_client_from_config(config, &state_with_extension.base.mint, None);
 
     // Reallocation (if needed)
     let mut existing_extensions: Vec<ExtensionType> = state_with_extension.get_extension_types()?;
