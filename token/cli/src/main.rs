@@ -57,7 +57,7 @@ mod output;
 use output::*;
 
 mod sort;
-use sort::sort_and_parse_token_accounts;
+use sort::{sort_and_parse_token_accounts, AccountFilter};
 
 mod bench;
 use bench::*;
@@ -1484,6 +1484,8 @@ async fn command_accounts(
     config: &Config<'_>,
     maybe_token: Option<Pubkey>,
     owner: Pubkey,
+    account_filter: AccountFilter,
+    print_addresses: bool,
 ) -> CommandResult {
     let filters = if let Some(token_pubkey) = maybe_token {
         let _ = config.get_mint_info(&token_pubkey, None).await?;
@@ -1509,9 +1511,19 @@ async fn command_accounts(
     let accounts = accounts.into_iter().flatten().collect();
 
     let cli_token_accounts =
-        sort_and_parse_token_accounts(&owner, accounts, maybe_token.is_some())?;
+        sort_and_parse_token_accounts(&owner, accounts, maybe_token.is_some(), account_filter)?;
 
-    Ok(config.output_format.formatted_string(&cli_token_accounts))
+    if print_addresses {
+        Ok(cli_token_accounts
+            .accounts
+            .into_iter()
+            .flatten()
+            .map(|a| a.address)
+            .collect::<Vec<_>>()
+            .join("\n"))
+    } else {
+        Ok(config.output_format.formatted_string(&cli_token_accounts))
+    }
 }
 
 async fn command_address(
@@ -2701,6 +2713,34 @@ fn app<'a, 'b>(
                         .index(1)
                         .help("Limit results to the given token. [Default: list accounts for all tokens]"),
                 )
+                .arg(
+                    Arg::with_name("delegated")
+                        .long("delegated")
+                        .takes_value(false)
+                        .conflicts_with("closeable")
+                        .help(
+                            "Limit results to accounts with transfer delegations"
+                        ),
+                )
+                .arg(
+                    Arg::with_name("closeable")
+                        .long("closeable")
+                        .takes_value(false)
+                        .conflicts_with("delegated")
+                        .help(
+                            "Limit results to accounts with external close authorities"
+                        ),
+                )
+                .arg(
+                    Arg::with_name("addresses")
+                        .long("addresses")
+                        .takes_value(false)
+                        .conflicts_with("verbose")
+                        .conflicts_with("output_format")
+                        .help(
+                            "Print token account addresses only"
+                        ),
+                )
                 .arg(owner_address_arg())
         )
         .subcommand(
@@ -3326,7 +3366,22 @@ async fn process_command<'a>(
         (CommandName::Accounts, arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
             let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager);
-            command_accounts(config, token, owner).await
+            let filter = if arg_matches.is_present("delegated") {
+                AccountFilter::Delegated
+            } else if arg_matches.is_present("closeable") {
+                AccountFilter::Closeable
+            } else {
+                AccountFilter::All
+            };
+
+            command_accounts(
+                config,
+                token,
+                owner,
+                filter,
+                arg_matches.is_present("addresses"),
+            )
+            .await
         }
         (CommandName::Address, arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
