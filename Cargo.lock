@@ -5752,7 +5752,7 @@ dependencies = [
 
 [[package]]
 name = "spl-concurrent-merkle-tree"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bytemuck",
  "rand 0.7.3",

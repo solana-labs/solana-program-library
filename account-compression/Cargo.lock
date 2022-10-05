@@ -1200,7 +1200,7 @@ dependencies = [
 
 [[package]]
 name = "spl-account-compression"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anchor-lang",
  "bytemuck",
@@ -1210,7 +1210,7 @@ dependencies = [
 
 [[package]]
 name = "spl-concurrent-merkle-tree"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bytemuck",
  "solana-program",
@@ -1219,7 +1219,7 @@ dependencies = [
 
 [[package]]
 name = "spl-noop"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "solana-program",
 ]
