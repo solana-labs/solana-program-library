@@ -7,7 +7,7 @@
 //! vital to the functioning of compression. When compression logs are truncated, indexers can fallback to
 //! deserializing the CPI instruction data.
 
-use crate::events::AccountCompressionEvent;
+use crate::events::{AccountCompressionEvent, ApplicationDataEvent, ApplicationDataEventV1};
 use anchor_lang::{prelude::*, solana_program::program::invoke};
 
 #[derive(Clone)]
@@ -28,4 +28,18 @@ pub fn wrap_event<'info>(
         &[log_wrapper_program.to_account_info()],
     )?;
     Ok(())
+}
+
+/// Wraps a custom event in the most recent version of application event data
+pub fn wrap_application_data_v1<'info>(
+    custom_data: Vec<u8>,
+    log_wrapper_program: &Program<'info, Wrapper>,
+) -> Result<()> {
+    let versioned_data = ApplicationDataEventV1 {
+        application_data: custom_data,
+    };
+    wrap_event(
+        &AccountCompressionEvent::ApplicationData(ApplicationDataEvent::V1(versioned_data)),
+        log_wrapper_program,
+    )
 }
