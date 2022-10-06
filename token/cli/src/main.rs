@@ -783,6 +783,7 @@ async fn command_transfer(
     let mint_info = config.get_mint_info(&token_pubkey, mint_decimals).await?;
 
     // if the user got the decimals wrong, they may well have calculated the transfer amount wrong
+    // we only check in online mode, because in offline, mint_info.decimals is always 9
     if !config.sign_only && mint_decimals.is_some() && mint_decimals != Some(mint_info.decimals) {
         return Err(format!(
             "Decimals {} was provided, but actual value is {}",
@@ -793,6 +794,10 @@ async fn command_transfer(
     }
 
     // decimals determines whether transfer_checked is used or not
+    // in online mode, mint_decimals may be None but mint_info.decimals is always correct
+    // in offline mode, mint_info.decimals may be wrong, but mint_decimals is always provided
+    // and in online mode, when mint_decimals is provided, it is verified correct
+    // hence the fallthrough logic here
     let decimals = if use_unchecked_instruction {
         None
     } else if mint_decimals.is_some() {
@@ -808,21 +813,13 @@ async fn command_transfer(
         token.get_associated_token_address(&sender_owner)
     };
 
-    // in any sign_only block, we can safely unwrap this
-    let maybe_sender_state = match token.get_account_info(&sender).await {
-        Ok(a) => Some(a),
-        Err(_) if config.sign_only => None,
-        Err(e) => {
-            return Err(format!("Error: failed to fetch sender account {}: {}", sender, e).into())
-        }
-    };
-
+    // the amount the user wants to tranfer, as a f64
     let maybe_transfer_balance =
         ui_amount.map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals));
 
     // the amount we will transfer, as a u64
     let transfer_balance = if !config.sign_only {
-        let sender_balance = maybe_sender_state.unwrap().base.amount;
+        let sender_balance = token.get_account_info(&sender).await?.base.amount;
         let transfer_balance = maybe_transfer_balance.unwrap_or(sender_balance);
 
         println_display(
@@ -959,17 +956,30 @@ async fn command_transfer(
     }
 
     // ...and, finally, the transfer
-    let res = token
-        .transfer(
-            &sender,
-            &recipient_token_account,
-            &sender_owner,
-            transfer_balance,
-            decimals,
-            fundable_owner,
-            &bulk_signers,
-        )
-        .await?;
+    let res = if let Some(recipient_owner) = fundable_owner {
+        token
+            .create_recipient_associated_account_and_transfer(
+                &sender,
+                &recipient_token_account,
+                &recipient_owner,
+                &sender_owner,
+                transfer_balance,
+                decimals,
+                &bulk_signers,
+            )
+            .await?
+    } else {
+        token
+            .transfer(
+                &sender,
+                &recipient_token_account,
+                &sender_owner,
+                transfer_balance,
+                decimals,
+                &bulk_signers,
+            )
+            .await?
+    };
 
     let tx_return = finish_tx(config, &res, no_wait).await?;
     Ok(match tx_return {
@@ -1367,21 +1377,28 @@ async fn command_close(
     recipient: Pubkey,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let source_account = config.get_account_checked(&account).await?;
+    let mint_pubkey = if !config.sign_only {
+        let source_account = config.get_account_checked(&account).await?;
 
-    let source_state = StateWithExtensionsOwned::<Account>::unpack(source_account.data)
-        .map_err(|_| format!("Could not deserialize token account {}", account))?;
-    let source_amount = source_state.base.amount;
+        let source_state = StateWithExtensionsOwned::<Account>::unpack(source_account.data)
+            .map_err(|_| format!("Could not deserialize token account {}", account))?;
+        let source_amount = source_state.base.amount;
 
-    if !source_state.base.is_native() && source_amount > 0 {
-        return Err(format!(
-            "Account {} still has {} tokens; empty the account in order to close it.",
-            account, source_amount,
-        )
-        .into());
-    }
+        if !source_state.base.is_native() && source_amount > 0 {
+            return Err(format!(
+                "Account {} still has {} tokens; empty the account in order to close it.",
+                account, source_amount,
+            )
+            .into());
+        }
 
-    let token = token_client_from_config(config, &source_state.base.mint);
+        source_state.base.mint
+    } else {
+        // default is safe here because close doesnt use it
+        Pubkey::default()
+    };
+
+    let token = token_client_from_config(config, &mint_pubkey);
     let res = token
         .close_account(&account, &recipient, &close_authority, &bulk_signers)
         .await?;
@@ -1655,8 +1672,12 @@ async fn command_gc(
         println_display(config, format!("Processing token: {}", token_pubkey));
 
         let token = token_client_from_config(config, &token_pubkey);
-        let associated_token_account = token.get_associated_token_address(&owner);
         let total_balance: u64 = accounts.values().map(|account| account.0).sum();
+
+        let associated_token_account = token.get_associated_token_address(&owner);
+        if !accounts.contains_key(&associated_token_account) && total_balance > 0 {
+            token.create_associated_token_account(&owner).await?;
+        }
 
         for (address, (amount, decimals, frozen, close_authority)) in accounts {
             let is_associated = address == associated_token_account;
@@ -1676,6 +1697,10 @@ async fn command_gc(
                 continue;
             }
 
+            if is_associated {
+                println!("Closing associated account {}", address);
+            }
+
             // this logic is quite fiendish, but its more readable this way than if/else
             let maybe_res = match (close_authority == owner, is_associated, amount == 0) {
                 // owner authority, associated or auxiliary, empty -> close
@@ -1687,9 +1712,10 @@ async fn command_gc(
                 // owner authority, auxiliary, nonempty -> empty and close
                 (true, false, false) => Some(
                     token
-                        .empty_and_close_auxiliary_account(
+                        .empty_and_close_account(
                             &address,
                             &owner,
+                            &associated_token_account,
                             &owner,
                             decimals,
                             &bulk_signers,
@@ -1705,7 +1731,6 @@ async fn command_gc(
                             &owner,
                             amount,
                             Some(decimals),
-                            Some(owner),
                             &bulk_signers,
                         )
                         .await,

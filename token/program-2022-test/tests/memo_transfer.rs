@@ -68,7 +68,6 @@ async fn test_memo_transfers(
             &alice.pubkey(),
             10,
             None,
-            None,
             &vec![&alice],
         )
         .await
@@ -139,7 +138,6 @@ async fn test_memo_transfers(
             &alice.pubkey(),
             10,
             None,
-            None,
             &vec![&alice],
         )
         .await
@@ -187,7 +185,6 @@ async fn test_memo_transfers(
             &bob_account,
             &alice.pubkey(),
             12,
-            None,
             None,
             &vec![&alice],
         )

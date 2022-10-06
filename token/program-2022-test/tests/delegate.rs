@@ -117,7 +117,6 @@ async fn run_basic(
             &bob.pubkey(),
             delegated_amount.checked_add(1).unwrap(),
             Some(decimals),
-            None,
             &vec![&bob],
         )
         .await
@@ -141,7 +140,6 @@ async fn run_basic(
                 &bob.pubkey(),
                 1,
                 None,
-                None,
                 &vec![&bob],
             )
             .await
@@ -155,7 +153,6 @@ async fn run_basic(
             &bob.pubkey(),
             1,
             Some(decimals),
-            None,
             &vec![&bob],
         )
         .await
@@ -186,7 +183,6 @@ async fn run_basic(
             &keypair.pubkey(),
             1,
             Some(decimals),
-            None,
             &vec![keypair],
         )
         .await
@@ -215,7 +211,6 @@ async fn run_basic(
             &bob.pubkey(),
             2,
             Some(decimals),
-            None,
             &vec![&bob],
         )
         .await

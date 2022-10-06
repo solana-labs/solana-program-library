@@ -857,7 +857,6 @@ async fn transfer_checked() {
             &alice.pubkey(),
             maximum_fee,
             None,
-            None,
             &vec![&alice],
         )
         .await
@@ -880,7 +879,6 @@ async fn transfer_checked() {
             &alice.pubkey(),
             alice_amount + 1,
             Some(decimals),
-            None,
             &vec![&alice],
         )
         .await
@@ -909,7 +907,6 @@ async fn transfer_checked() {
             &alice.pubkey(),
             maximum_fee,
             Some(decimals),
-            None,
             &vec![&alice],
         )
         .await
@@ -939,7 +936,6 @@ async fn transfer_checked() {
             &alice.pubkey(),
             transfer_amount,
             Some(decimals),
-            None,
             &vec![&alice],
         )
         .await
@@ -974,7 +970,6 @@ async fn transfer_checked() {
             &alice.pubkey(),
             transfer_amount,
             Some(decimals),
-            None,
             &vec![&alice],
         )
         .await
@@ -999,7 +994,6 @@ async fn transfer_checked() {
             &alice.pubkey(),
             alice_amount - 1,
             Some(decimals),
-            None,
             &vec![&alice],
         )
         .await
@@ -1024,7 +1018,6 @@ async fn transfer_checked() {
             &alice.pubkey(),
             1,
             Some(decimals),
-            None,
             &vec![&alice],
         )
         .await
@@ -1216,7 +1209,6 @@ async fn create_and_transfer_to_account(
             &authority.pubkey(),
             amount,
             Some(decimals),
-            None,
             &vec![authority],
         )
         .await
@@ -1781,7 +1773,6 @@ async fn fail_close_with_withheld() {
             &alice.pubkey(),
             amount - fee,
             Some(decimals),
-            None,
             &vec![&alice],
         )
         .await

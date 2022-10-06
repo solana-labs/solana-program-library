@@ -52,8 +52,10 @@ pub enum TokenError {
     AccountInvalidOwner,
     #[error("invalid account mint")]
     AccountInvalidMint,
-    #[error("invalid account")]
-    AccountInvalidAccount,
+    #[error("invalid associated account address")]
+    AccountInvalidAssociatedAddress,
+    #[error("invalid auxiliary account address")]
+    AccountInvalidAuxiliaryAddress,
     #[error("proof error: {0}")]
     Proof(ProofError),
     #[error("maximum deposit transfer amount exceeded")]
@@ -77,7 +79,8 @@ impl PartialEq for TokenError {
             (Self::AccountNotFound, Self::AccountNotFound) => true,
             (Self::AccountInvalidOwner, Self::AccountInvalidOwner) => true,
             (Self::AccountInvalidMint, Self::AccountInvalidMint) => true,
-            (Self::AccountInvalidAccount, Self::AccountInvalidAccount) => true,
+            (Self::AccountInvalidAssociatedAddress, Self::AccountInvalidAssociatedAddress) => true,
+            (Self::AccountInvalidAuxiliaryAddress, Self::AccountInvalidAuxiliaryAddress) => true,
             (
                 Self::MaximumDepositTransferAmountExceeded,
                 Self::MaximumDepositTransferAmountExceeded,
@@ -408,7 +411,6 @@ where
         Ok(transaction)
     }
 
-    // XXX TODO remove process_ixs from program-2022-test/tests/close_account.rs and private this function
     pub async fn process_ixs<S: Signers>(
         &self,
         token_instructions: &[Instruction],
@@ -712,26 +714,64 @@ where
         authority: &Pubkey,
         amount: u64,
         decimals: Option<u8>,
-        fundable_owner: Option<Pubkey>,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-        let mut instructions = vec![];
+        let instructions = if let Some(decimals) = decimals {
+            [instruction::transfer_checked(
+                &self.program_id,
+                source,
+                &self.pubkey,
+                destination,
+                authority,
+                &multisig_signers,
+                amount,
+                decimals,
+            )?]
+        } else {
+            #[allow(deprecated)]
+            [instruction::transfer(
+                &self.program_id,
+                source,
+                destination,
+                authority,
+                &multisig_signers,
+                amount,
+            )?]
+        };
 
-        if let Some(recipient) = fundable_owner {
-            if *destination != self.get_associated_token_address(&recipient) {
-                return Err(TokenError::AccountInvalidAccount);
-            }
+        self.process_ixs(&instructions, signing_keypairs).await
+    }
 
-            instructions.push(create_associated_token_account_idempotent(
+    /// Transfer tokens to an associated account, creating it if it does not exist
+    #[allow(clippy::too_many_arguments)]
+    pub async fn create_recipient_associated_account_and_transfer<S: Signers>(
+        &self,
+        source: &Pubkey,
+        destination: &Pubkey,
+        destination_owner: &Pubkey,
+        authority: &Pubkey,
+        amount: u64,
+        decimals: Option<u8>,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        if *destination != self.get_associated_token_address(destination_owner) {
+            return Err(TokenError::AccountInvalidAssociatedAddress);
+        }
+
+        let mut instructions = vec![
+            (create_associated_token_account_idempotent(
                 &self.payer.pubkey(),
-                &recipient,
+                destination_owner,
                 &self.pubkey,
                 &self.program_id,
-            ));
-        };
+            )),
+        ];
 
         if let Some(decimals) = decimals {
             instructions.push(instruction::transfer_checked(
@@ -923,11 +963,12 @@ where
         self.process_ixs(&instructions, signing_keypairs).await
     }
 
-    /// Close an auxiliary account, reclaiming its lamports and consolidating its tokens
-    pub async fn empty_and_close_auxiliary_account<S: Signers>(
+    /// Close an account, reclaiming its lamports and tokens
+    pub async fn empty_and_close_account<S: Signers>(
         &self,
-        auxiliary_account: &Pubkey,
+        account_to_close: &Pubkey,
         lamports_destination: &Pubkey,
+        tokens_destination: &Pubkey,
         authority: &Pubkey,
         decimals: u8,
         signing_keypairs: &S,
@@ -936,39 +977,17 @@ where
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
         // this implicitly validates that the mint on self is correct
-        let account_state = self.get_account_info(auxiliary_account).await?;
-        let account_owner = &account_state.base.owner;
-
-        // we move tokens to the owner of the closed account, NOT the authority that authorizes its closure
-        let associated_account = self.get_associated_token_address(account_owner);
-        if *auxiliary_account == associated_account {
-            return Err(TokenError::AccountInvalidAccount);
-        }
+        let account_state = self.get_account_info(account_to_close).await?;
 
         let mut instructions = vec![];
 
         if !self.is_native() && account_state.base.amount > 0 {
-            match self.get_account(&associated_account).await {
-                Err(TokenError::AccountNotFound) => {
-                    instructions.push(create_associated_token_account(
-                        &self.payer.pubkey(),
-                        account_owner,
-                        &self.pubkey,
-                        &self.program_id,
-                    ))
-                }
-                Err(e) => return Err(e),
-                _ => {}
-            };
-
-            // we sign the transfer with authority, rather than owner
-            // which means that if a separate close authority is being used, it must be a delegate also
-            // this is to avoid overcomplicating the interface for a twice-niche usecase (closing nonempty nonowned)
+            // if a separate close authority is being used, it must be a delegate also
             instructions.push(instruction::transfer_checked(
                 &self.program_id,
-                auxiliary_account,
+                account_to_close,
                 &self.pubkey,
-                &associated_account,
+                tokens_destination,
                 authority,
                 &multisig_signers,
                 account_state.base.amount,
@@ -978,7 +997,7 @@ where
 
         instructions.push(instruction::close_account(
             &self.program_id,
-            auxiliary_account,
+            account_to_close,
             lamports_destination,
             authority,
             &multisig_signers,
