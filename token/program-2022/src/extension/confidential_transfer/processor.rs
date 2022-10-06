@@ -4,6 +4,7 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{instruction::*, *},
+            memo_transfer::{check_previous_sibling_instruction_is_memo, memo_required},
             non_transferable::NonTransferable,
             StateWithExtensions, StateWithExtensionsMut,
         },
@@ -696,6 +697,10 @@ fn process_destination_for_transfer(
 
     if destination_token_account.base.mint != *mint_info.key {
         return Err(TokenError::MintMismatch.into());
+    }
+
+    if memo_required(&destination_token_account) {
+        check_previous_sibling_instruction_is_memo()?;
     }
 
     let mut destination_confidential_transfer_account =

@@ -7,7 +7,8 @@ import {
     createTransferAuthorityInstruction,
     createVerifyLeafInstruction,
     PROGRAM_ID,
-    createInitEmptyMerkleTreeInstruction
+    createInitEmptyMerkleTreeInstruction,
+    createCloseEmptyTreeInstruction
 } from "../generated";
 
 /**
@@ -147,4 +148,18 @@ export async function createAllocTreeIx(
         space: requiredSpace,
         programId: PROGRAM_ID
     });
+}
+
+export function createCloseEmptyTreeIx(
+    authority: PublicKey,
+    merkleTree: PublicKey,
+    recipient: PublicKey,
+): TransactionInstruction {
+    return createCloseEmptyTreeInstruction(
+        {
+            merkleTree,
+            authority,
+            recipient
+        },
+    )
 }

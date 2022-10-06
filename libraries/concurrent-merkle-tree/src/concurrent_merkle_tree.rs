@@ -146,6 +146,23 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         Ok(root)
     }
 
+    /// Errors if one of the leaves of the current merkle tree is non-EMPTY
+    pub fn prove_tree_is_empty(&self) -> Result<(), ConcurrentMerkleTreeError> {
+        let mut empty_node_cache = Box::new([EMPTY; MAX_DEPTH]);
+        if self.get_root()
+            != empty_node_cached::<MAX_DEPTH>(MAX_DEPTH as u32, &mut empty_node_cache)
+        {
+            return Err(ConcurrentMerkleTreeError::TreeNonEmpty);
+        }
+        Ok(())
+    }
+
+    /// Returns the current root of the merkle tree
+    pub fn get_root(&self) -> [u8; 32] {
+        self.get_change_log().root
+    }
+
+    /// Returns the most recent changelog
     pub fn get_change_log(&self) -> Box<ChangeLog<MAX_DEPTH>> {
         Box::new(self.change_logs[self.active_index as usize])
     }
@@ -416,7 +433,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         proof: &[Node; MAX_DEPTH],
         leaf_index: u32,
     ) -> bool {
-        recompute(leaf, proof, leaf_index) == self.get_change_log().root
+        recompute(leaf, proof, leaf_index) == self.get_root()
     }
 
     /// Note: Enabling `allow_inferred_proof` will fast forward the given proof

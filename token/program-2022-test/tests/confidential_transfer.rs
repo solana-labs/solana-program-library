@@ -123,6 +123,48 @@ impl ConfidentialTokenAccountMeta {
         }
     }
 
+    async fn new_with_required_memo_transfers<T>(token: &Token<T>, owner: &Keypair) -> Self
+    where
+        T: SendTransaction,
+    {
+        let token_account_keypair = Keypair::new();
+        token
+            .create_auxiliary_token_account_with_extension_space(
+                &token_account_keypair,
+                &owner.pubkey(),
+                vec![
+                    ExtensionType::ConfidentialTransferAccount,
+                    ExtensionType::MemoTransfer,
+                ],
+            )
+            .await
+            .unwrap();
+        let token_account = token_account_keypair.pubkey();
+
+        let elgamal_keypair = ElGamalKeypair::new(owner, &token_account).unwrap();
+        let ae_key = AeKey::new(owner, &token_account).unwrap();
+
+        token
+            .confidential_transfer_configure_token_account_with_pending_counter(
+                &token_account,
+                owner,
+                TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER,
+            )
+            .await
+            .unwrap();
+
+        token
+            .enable_required_transfer_memos(&token_account, owner)
+            .await
+            .unwrap();
+
+        Self {
+            token_account,
+            elgamal_keypair,
+            ae_key,
+        }
+    }
+
     async fn with_tokens<T>(
         token: &Token<T>,
         owner: &Keypair,
@@ -774,7 +816,7 @@ async fn ct_transfer() {
         err,
         TokenClientError::Client(Box::new(TransportError::TransactionError(
             TransactionError::InstructionError(
-                1,
+                0,
                 InstructionError::Custom(
                     TokenError::MaximumPendingBalanceCreditCounterExceeded as u32
                 ),
@@ -846,7 +888,7 @@ async fn ct_transfer() {
     assert_eq!(
         err,
         TokenClientError::Client(Box::new(TransportError::TransactionError(
-            TransactionError::InstructionError(1, InstructionError::InvalidAccountData)
+            TransactionError::InstructionError(0, InstructionError::InvalidAccountData)
         )))
     );
 
@@ -1049,7 +1091,7 @@ async fn ct_transfer_with_fee() {
     assert_eq!(
         err,
         TokenClientError::Client(Box::new(TransportError::TransactionError(
-            TransactionError::InstructionError(1, InstructionError::InvalidAccountData)
+            TransactionError::InstructionError(0, InstructionError::InvalidAccountData)
         )))
     );
 
@@ -1348,6 +1390,224 @@ async fn ct_withdraw_withheld_tokens_from_accounts() {
             &token,
             ConfidentialTokenAccountBalances {
                 pending_balance_lo: 3,
+                pending_balance_hi: 0,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
+}
+
+#[tokio::test]
+async fn ct_transfer_memo() {
+    let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
+        ConfidentialTransferMintWithKeypairs::new();
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+        ])
+        .await
+        .unwrap();
+
+    let TokenContext {
+        token,
+        alice,
+        bob,
+        mint_authority,
+        decimals,
+        ..
+    } = context.token_context.unwrap();
+    let alice_meta =
+        ConfidentialTokenAccountMeta::with_tokens(&token, &alice, &mint_authority, 42, decimals)
+            .await;
+    let bob_meta =
+        ConfidentialTokenAccountMeta::new_with_required_memo_transfers(&token, &bob).await;
+
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+
+    // transfer without memo
+    let err = token
+        .confidential_transfer_transfer(
+            &alice_meta.token_account,
+            &bob_meta.token_account,
+            &alice,
+            42, // amount
+            42,
+            &extension.available_balance.try_into().unwrap(),
+            &bob_meta.elgamal_keypair.public,
+            &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::NoMemo as u32)
+            )
+        )))
+    );
+
+    // transfer with memo
+    token
+        .with_memo("🦖", vec![alice.pubkey()])
+        .confidential_transfer_transfer(
+            &alice_meta.token_account,
+            &bob_meta.token_account,
+            &alice,
+            42, // amount
+            42,
+            &extension.available_balance.try_into().unwrap(),
+            &bob_meta.elgamal_keypair.public,
+            &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
+        )
+        .await
+        .unwrap();
+
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance_lo: 0,
+                pending_balance_hi: 0,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
+
+    bob_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance_lo: 42,
+                pending_balance_hi: 0,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
+}
+
+#[tokio::test]
+async fn ct_transfer_with_fee_memo() {
+    let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
+        ConfidentialTransferMintWithKeypairs::new();
+
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(Pubkey::new_unique()),
+                withdraw_withheld_authority: Some(Pubkey::new_unique()),
+                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+                maximum_fee: TEST_MAXIMUM_FEE,
+            },
+            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+        ])
+        .await
+        .unwrap();
+
+    let TokenContext {
+        token,
+        alice,
+        bob,
+        mint_authority,
+        decimals,
+        ..
+    } = context.token_context.unwrap();
+
+    let epoch_info = test_epoch_info();
+
+    let alice_meta =
+        ConfidentialTokenAccountMeta::with_tokens(&token, &alice, &mint_authority, 100, decimals)
+            .await;
+    let bob_meta =
+        ConfidentialTokenAccountMeta::new_with_required_memo_transfers(&token, &bob).await;
+
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+
+    let err = token
+        .confidential_transfer_transfer_with_fee(
+            &alice_meta.token_account,
+            &bob_meta.token_account,
+            &alice,
+            100,
+            100,
+            &extension.available_balance.try_into().unwrap(),
+            &bob_meta.elgamal_keypair.public,
+            &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
+            &ct_mint
+                .withdraw_withheld_authority_encryption_pubkey
+                .try_into()
+                .unwrap(),
+            &epoch_info,
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::NoMemo as u32)
+            )
+        )))
+    );
+
+    token
+        .with_memo("🦖", vec![alice.pubkey()])
+        .confidential_transfer_transfer_with_fee(
+            &alice_meta.token_account,
+            &bob_meta.token_account,
+            &alice,
+            100,
+            100,
+            &extension.available_balance.try_into().unwrap(),
+            &bob_meta.elgamal_keypair.public,
+            &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
+            &ct_mint
+                .withdraw_withheld_authority_encryption_pubkey
+                .try_into()
+                .unwrap(),
+            &epoch_info,
+        )
+        .await
+        .unwrap();
+
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance_lo: 0,
+                pending_balance_hi: 0,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
+
+    bob_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance_lo: 97,
                 pending_balance_hi: 0,
                 available_balance: 0,
                 decryptable_available_balance: 0,

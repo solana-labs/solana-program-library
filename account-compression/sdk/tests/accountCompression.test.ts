@@ -30,6 +30,7 @@ import {
   createTransferAuthorityIx,
   createVerifyLeafIx,
   ConcurrentMerkleTreeAccount,
+  createCloseEmptyTreeInstruction,
 } from "../src";
 
 describe("Account Compression", () => {
@@ -324,7 +325,6 @@ describe("Account Compression", () => {
     it(`Replace all of them in a block`, async () => {
       // Replace 64 leaves before syncing off-chain tree with on-chain tree
 
-      // Cache all proofs so we can execute in single block
       let ixArray: TransactionInstruction[] = [];
       let txList: Promise<string>[] = [];
 
@@ -351,7 +351,7 @@ describe("Account Compression", () => {
         ixArray.push(replaceIx);
       }
 
-      // Execute all replaces in a "single block"
+      // Execute all replaces 
       ixArray.map((ix) => {
         txList.push(
           execute(provider, [ix], [payer])
@@ -372,6 +372,70 @@ describe("Account Compression", () => {
         "Updated on chain root does not match root of updated off chain tree"
       );
     });
+    it("Empty all of the leaves and close the tree", async () => {
+      let ixArray: TransactionInstruction[] = [];
+      let txList: Promise<string>[] = [];
+      const leavesToUpdate: Buffer[] = [];
+      for (let i = 0; i < MAX_SIZE; i++) {
+        const index = i;
+        const newLeaf = hash(
+          payer.publicKey.toBuffer(),
+          Buffer.from(new BN(i).toArray())
+        );
+        leavesToUpdate.push(newLeaf);
+        const proof = getProofOfLeaf(offChainTree, index);
+        const replaceIx = createReplaceIx(
+          payer,
+          cmtKeypair.publicKey,
+          offChainTree.root,
+          offChainTree.leaves[i].node,
+          Buffer.alloc(32), // Empty node
+          index,
+          proof.map((treeNode) => {
+            return treeNode.node;
+          })
+        );
+        ixArray.push(replaceIx);
+      }
+      // Execute all replaces 
+      ixArray.map((ix) => {
+        txList.push(
+          execute(provider, [ix], [payer])
+        );
+      });
+      await Promise.all(txList);
+
+      let payerInfo = await provider.connection.getAccountInfo(payer.publicKey, "confirmed")!;
+      let treeInfo = await provider.connection.getAccountInfo(cmtKeypair.publicKey, "confirmed")!;
+
+      let payerLamports = payerInfo!.lamports;
+      let treeLamports = treeInfo!.lamports;
+
+      const ix = createCloseEmptyTreeInstruction({
+        merkleTree: cmtKeypair.publicKey,
+        authority: payer.publicKey,
+        recipient: payer.publicKey,
+      })
+      await execute(provider, [ix], [payer]);
+
+      payerInfo = await provider.connection.getAccountInfo(payer.publicKey, "confirmed")!;
+      const finalLamports = payerInfo!.lamports;
+      assert(finalLamports === (payerLamports + treeLamports - 5000), "Expected payer to have received the lamports from the closed tree account");
+
+      treeInfo = await provider.connection.getAccountInfo(cmtKeypair.publicKey, "confirmed");
+      assert(treeInfo === null, "Expected the merkle tree account info to be null");
+    })
+    it("It cannot be closed until empty", async () => {
+      const ix = createCloseEmptyTreeInstruction({
+        merkleTree: cmtKeypair.publicKey,
+        authority: payer.publicKey,
+        recipient: payer.publicKey,
+      })
+      try {
+        await execute(provider, [ix], [payer]);
+        assert(false, "Closing a tree account before it is empty should ALWAYS error")
+      } catch (e) { }
+    })
   });
 
   describe(`Having created a tree with depth 3`, () => {
