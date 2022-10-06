@@ -236,7 +236,6 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
             &alice.pubkey(),
             1,
             Some(decimals),
-            None,
             &vec![&alice],
         )
         .await

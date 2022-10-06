@@ -154,7 +154,7 @@ impl ConfidentialTokenAccountMeta {
             .unwrap();
 
         token
-            .enable_required_transfer_memos(&token_account, &owner.pubkey(), &vec![owner])
+            .enable_required_transfer_memos(&token_account, &owner.pubkey(), &[owner])
             .await
             .unwrap();
 
