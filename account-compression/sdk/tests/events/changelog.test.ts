@@ -3,38 +3,24 @@ import { BN } from 'bn.js';
 import { AnchorProvider } from "@project-serum/anchor";
 import {
     Connection,
-    Signer,
     Keypair,
     PublicKey,
-    Transaction,
-    TransactionInstruction,
 } from "@solana/web3.js";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 import { assert } from "chai";
 import * as crypto from "crypto";
 
 import {
-    createReplaceIx,
     createAppendIx,
-    createTransferAuthorityIx,
-    createVerifyLeafIx,
-    createAllocTreeIx,
-    createInitEmptyMerkleTreeInstruction,
-    ConcurrentMerkleTreeAccount,
-    changeLogEventBeet,
-    deserializeAccountCompressionEvent,
+    deserializeChangeLogEventV1,
     SPL_NOOP_PROGRAM_ID,
-    changeLogEventV1Beet,
 } from "../../src";
 
 import {
-    buildTree,
     Tree,
     updateTree,
 } from "../merkleTree";
 import {
-    assertCMTProperties,
-    confirmAndLogTx,
     execute,
     createTreeOnChain,
 } from '../utils'
@@ -93,7 +79,7 @@ describe("Serde tests", () => {
                 throw Error(`Only inner ix should be a noop, but instead is a ${programId.toBase58()}`)
             }
             const cpiData = Buffer.from(bs58.decode(noopInstruction.data));
-            const changeLogEvent = deserializeAccountCompressionEvent(cpiData)
+            const changeLogEvent = deserializeChangeLogEventV1(cpiData);
 
             assert(
                 changeLogEvent.treeId.equals(cmt),
