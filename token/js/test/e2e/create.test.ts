@@ -10,6 +10,7 @@ import {
     createMint,
     getMint,
     createAccount,
+    createAssociatedTokenAccountIdempotent,
     getAccount,
     getAssociatedTokenAddress,
 } from '../../src';
@@ -142,5 +143,17 @@ describe('createAccount', () => {
                     TEST_PROGRAM_ID
                 )
             ).to.be.rejected;
+
+            // when creating again but with idempotent mode, TX should not throw error
+            return expect(
+                createAssociatedTokenAccountIdempotent(
+                    connection,
+                    payer,
+                    mint,
+                    owner.publicKey,
+                    undefined,
+                    TEST_PROGRAM_ID
+                )
+            ).to.be.fulfilled;
         });
 });
