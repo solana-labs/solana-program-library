@@ -1,9 +1,7 @@
 import type { ConfirmOptions, Connection, PublicKey, Signer } from '@solana/web3.js';
 import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants.js';
-import {
-    createAssociatedTokenAccountIdempotentInstruction,
-} from '../instructions/associatedTokenAccount.js';
+import { createAssociatedTokenAccountIdempotentInstruction } from '../instructions/associatedTokenAccount.js';
 import { getAssociatedTokenAddress } from '../state/mint.js';
 
 /**
@@ -38,7 +36,7 @@ export async function createAssociatedTokenAccountIdempotent(
             owner,
             mint,
             programId,
-            associatedTokenProgramId,
+            associatedTokenProgramId
         )
     );
 

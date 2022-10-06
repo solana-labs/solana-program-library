@@ -2,7 +2,6 @@ import type { PublicKey } from '@solana/web3.js';
 import { SystemProgram, TransactionInstruction } from '@solana/web3.js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants.js';
 
-
 /**
  * Construct a CreateAssociatedTokenAccount instruction
  *
@@ -23,7 +22,7 @@ export function createAssociatedTokenAccountInstruction(
     programId = TOKEN_PROGRAM_ID,
     associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
 ): TransactionInstruction {
-    return _createAssociatedTokenAccountInstruction(
+    return buildAssociatedTokenAccountInstruction(
         payer,
         associatedToken,
         owner,
@@ -54,18 +53,18 @@ export function createAssociatedTokenAccountIdempotentInstruction(
     programId = TOKEN_PROGRAM_ID,
     associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
 ): TransactionInstruction {
-    return _createAssociatedTokenAccountInstruction(
+    return buildAssociatedTokenAccountInstruction(
         payer,
         associatedToken,
         owner,
         mint,
-        Buffer.from(new Uint8Array([1])),
+        Buffer.from([1]),
         programId,
         associatedTokenProgramId
     );
 }
 
-function _createAssociatedTokenAccountInstruction(
+function buildAssociatedTokenAccountInstruction(
     payer: PublicKey,
     associatedToken: PublicKey,
     owner: PublicKey,
@@ -86,6 +85,6 @@ function _createAssociatedTokenAccountInstruction(
     return new TransactionInstruction({
         keys,
         programId: associatedTokenProgramId,
-        data: instructionData
+        data: instructionData,
     });
 }
