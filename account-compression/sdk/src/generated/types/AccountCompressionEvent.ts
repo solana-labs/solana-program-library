@@ -7,6 +7,10 @@
 
 import * as beet from '@metaplex-foundation/beet'
 import { ChangeLogEvent, changeLogEventBeet } from './ChangeLogEvent'
+import {
+  ApplicationDataEvent,
+  applicationDataEventBeet,
+} from './ApplicationDataEvent'
 /**
  * This type is used to derive the {@link AccountCompressionEvent} type as well as the de/serializer.
  * However don't refer to it in your code but use the {@link AccountCompressionEvent} type instead.
@@ -18,6 +22,7 @@ import { ChangeLogEvent, changeLogEventBeet } from './ChangeLogEvent'
  */
 export type AccountCompressionEventRecord = {
   ChangeLog: { fields: [ChangeLogEvent] }
+  ApplicationData: { fields: [ApplicationDataEvent] }
 }
 
 /**
@@ -38,6 +43,10 @@ export const isAccountCompressionEventChangeLog = (
   x: AccountCompressionEvent
 ): x is AccountCompressionEvent & { __kind: 'ChangeLog' } =>
   x.__kind === 'ChangeLog'
+export const isAccountCompressionEventApplicationData = (
+  x: AccountCompressionEvent
+): x is AccountCompressionEvent & { __kind: 'ApplicationData' } =>
+  x.__kind === 'ApplicationData'
 
 /**
  * @category userTypes
@@ -52,6 +61,15 @@ export const accountCompressionEventBeet =
       >(
         [['fields', beet.tuple([changeLogEventBeet])]],
         'AccountCompressionEventRecord["ChangeLog"]'
+      ),
+    ],
+    [
+      'ApplicationData',
+      new beet.FixableBeetArgsStruct<
+        AccountCompressionEventRecord['ApplicationData']
+      >(
+        [['fields', beet.tuple([applicationDataEventBeet])]],
+        'AccountCompressionEventRecord["ApplicationData"]'
       ),
     ],
   ]) as beet.FixableBeet<AccountCompressionEvent>

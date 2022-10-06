@@ -30,14 +30,16 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use std::mem::size_of;
 
 pub mod canopy;
-pub mod data_wrapper;
+mod data_wrapper;
 pub mod error;
 pub mod events;
 pub mod state;
 pub mod zero_copy;
 
+pub use crate::data_wrapper::{wrap_application_data_v1, Wrapper};
+
 use crate::canopy::{fill_in_proof_from_canopy, update_canopy};
-use crate::data_wrapper::{wrap_event, Wrapper};
+use crate::data_wrapper::wrap_event;
 use crate::error::AccountCompressionError;
 use crate::events::{AccountCompressionEvent, ChangeLogEvent};
 use crate::state::{ConcurrentMerkleTreeHeader, CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1};

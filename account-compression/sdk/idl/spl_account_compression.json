@@ -328,6 +328,18 @@
   ],
   "types": [
     {
+      "name": "ApplicationDataEventV1",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "applicationData",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
       "name": "ChangeLogEventV1",
       "type": {
         "kind": "struct",
@@ -484,6 +496,22 @@
       }
     },
     {
+      "name": "ApplicationDataEvent",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "V1",
+            "fields": [
+              {
+                "defined": "ApplicationDataEventV1"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "name": "ChangeLogEvent",
       "type": {
         "kind": "enum",
@@ -509,6 +537,14 @@
             "fields": [
               {
                 "defined": "ChangeLogEvent"
+              }
+            ]
+          },
+          {
+            "name": "ApplicationData",
+            "fields": [
+              {
+                "defined": "ApplicationDataEvent"
               }
             ]
           }

@@ -1,6 +1,6 @@
 [package]
 name = "spl-noop"
-version = "0.1.1"
+version = "0.1.2"
 description = "Solana Program Library No-op Program"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -12,8 +12,6 @@ crate-type = ["cdylib", "lib"]
 
 [features]
 no-entrypoint = []
-no-idl = []
-no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = []
 
