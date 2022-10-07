@@ -1,4 +1,7 @@
-use crate::output::{CliTokenAccount, CliTokenAccounts};
+use crate::{
+    output::{CliTokenAccount, CliTokenAccounts},
+    Error,
+};
 use serde::{Deserialize, Serialize};
 use solana_account_decoder::{parse_token::TokenAccountType, UiAccountData};
 use solana_client::rpc_response::RpcKeyedAccount;
@@ -9,8 +12,6 @@ use std::{
     str::FromStr,
 };
 
-type Error = Box<dyn std::error::Error + Send + Sync>;
-
 #[derive(Serialize, Deserialize)]
 pub(crate) struct UnsupportedAccount {
     pub address: String,
@@ -20,7 +21,7 @@ pub(crate) struct UnsupportedAccount {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) enum AccountFilter {
     Delegated,
-    Closeable,
+    ExternallyCloseable,
     All,
 }
 
@@ -33,7 +34,7 @@ pub(crate) fn sort_and_parse_token_accounts(
     let mut cli_accounts: BTreeMap<(Pubkey, Pubkey), Vec<CliTokenAccount>> = BTreeMap::new();
     let mut unsupported_accounts = vec![];
     let mut max_len_balance = 0;
-    let mut includes_aux = false;
+    let mut aux_count = 0;
 
     for keyed_account in accounts {
         let address_str = keyed_account.pubkey;
@@ -51,14 +52,16 @@ pub(crate) fn sort_and_parse_token_accounts(
 
                     match account_filter {
                         AccountFilter::Delegated if ui_token_account.delegate.is_none() => continue,
-                        AccountFilter::Closeable if ui_token_account.close_authority.is_none() => {
+                        AccountFilter::ExternallyCloseable
+                            if ui_token_account.close_authority.is_none() =>
+                        {
                             continue
                         }
                         _ => (),
                     }
 
-                    if is_associated {
-                        includes_aux = true;
+                    if !is_associated {
+                        aux_count += 1;
                     }
 
                     max_len_balance = max_len_balance.max(
@@ -110,7 +113,11 @@ pub(crate) fn sort_and_parse_token_accounts(
             .collect(),
         unsupported_accounts,
         max_len_balance,
-        aux_len: if includes_aux { 10 } else { 0 },
+        aux_len: if aux_count > 0 {
+            format!("  (Aux-{}*)", aux_count).chars().count() + 1
+        } else {
+            0
+        },
         explicit_token,
     })
 }

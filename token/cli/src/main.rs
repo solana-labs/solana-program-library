@@ -1541,12 +1541,12 @@ async fn command_accounts(
     maybe_token: Option<Pubkey>,
     owner: Pubkey,
     account_filter: AccountFilter,
-    print_addresses: bool,
+    print_addresses_only: bool,
 ) -> CommandResult {
     let filters = if let Some(token_pubkey) = maybe_token {
         let _ = config.get_mint_info(&token_pubkey, None).await?;
         vec![TokenAccountsFilter::Mint(token_pubkey)]
-    } else if config.explicit_program {
+    } else if config.restrict_to_program_id {
         vec![TokenAccountsFilter::ProgramId(config.program_id)]
     } else {
         vec![
@@ -1569,7 +1569,7 @@ async fn command_accounts(
     let cli_token_accounts =
         sort_and_parse_token_accounts(&owner, accounts, maybe_token.is_some(), account_filter)?;
 
-    if print_addresses {
+    if print_addresses_only {
         Ok(cli_token_accounts
             .accounts
             .into_iter()
@@ -2797,14 +2797,14 @@ fn app<'a, 'b>(
                     Arg::with_name("delegated")
                         .long("delegated")
                         .takes_value(false)
-                        .conflicts_with("closeable")
+                        .conflicts_with("externally_closeable")
                         .help(
                             "Limit results to accounts with transfer delegations"
                         ),
                 )
                 .arg(
-                    Arg::with_name("closeable")
-                        .long("closeable")
+                    Arg::with_name("externally_closeable")
+                        .long("externally-closeable")
                         .takes_value(false)
                         .conflicts_with("delegated")
                         .help(
@@ -2812,8 +2812,8 @@ fn app<'a, 'b>(
                         ),
                 )
                 .arg(
-                    Arg::with_name("addresses")
-                        .long("addresses")
+                    Arg::with_name("addresses_only")
+                        .long("addresses-only")
                         .takes_value(false)
                         .conflicts_with("verbose")
                         .conflicts_with("output_format")
@@ -3460,8 +3460,8 @@ async fn process_command<'a>(
             let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager);
             let filter = if arg_matches.is_present("delegated") {
                 AccountFilter::Delegated
-            } else if arg_matches.is_present("closeable") {
-                AccountFilter::Closeable
+            } else if arg_matches.is_present("externally_closeable") {
+                AccountFilter::ExternallyCloseable
             } else {
                 AccountFilter::All
             };
@@ -3471,7 +3471,7 @@ async fn process_command<'a>(
                 token,
                 owner,
                 filter,
-                arg_matches.is_present("addresses"),
+                arg_matches.is_present("addresses_only"),
             )
             .await
         }
@@ -3740,7 +3740,7 @@ mod tests {
             dump_transaction_message: false,
             multisigner_pubkeys: vec![],
             program_id: *program_id,
-            explicit_program: true,
+            restrict_to_program_id: true,
         }
     }
 
