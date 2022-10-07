@@ -76,7 +76,7 @@ async fn run_basic(
             &alice_account,
             &mint_authority.pubkey(),
             amount,
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap();
@@ -90,7 +90,7 @@ async fn run_basic(
                 &bob.pubkey(),
                 &alice.pubkey(),
                 delegated_amount,
-                &vec![&alice],
+                &[&alice],
             )
             .await
             .unwrap(),
@@ -100,7 +100,7 @@ async fn run_basic(
                 &bob.pubkey(),
                 &alice.pubkey(),
                 delegated_amount,
-                &vec![&alice],
+                &[&alice],
             )
             .await
             .unwrap(),
@@ -113,7 +113,7 @@ async fn run_basic(
             &bob_account,
             &bob.pubkey(),
             delegated_amount.checked_add(1).unwrap(),
-            &vec![&bob],
+            &[&bob],
         )
         .await
         .unwrap_err();
@@ -130,23 +130,23 @@ async fn run_basic(
     // transfer is ok
     if transfer_mode == TransferMode::All {
         token_unchecked
-            .transfer(&alice_account, &bob_account, &bob.pubkey(), 1, &vec![&bob])
+            .transfer(&alice_account, &bob_account, &bob.pubkey(), 1, &[&bob])
             .await
             .unwrap();
     }
 
     token
-        .transfer(&alice_account, &bob_account, &bob.pubkey(), 1, &vec![&bob])
+        .transfer(&alice_account, &bob_account, &bob.pubkey(), 1, &[&bob])
         .await
         .unwrap();
 
     // burn is ok
     token_unchecked
-        .burn(&alice_account, &bob.pubkey(), 1, &vec![&bob])
+        .burn(&alice_account, &bob.pubkey(), 1, &[&bob])
         .await
         .unwrap();
     token
-        .burn(&alice_account, &bob.pubkey(), 1, &vec![&bob])
+        .burn(&alice_account, &bob.pubkey(), 1, &[&bob])
         .await
         .unwrap();
 
@@ -158,7 +158,7 @@ async fn run_basic(
             &bob_account,
             &keypair.pubkey(),
             1,
-            &vec![keypair],
+            &[keypair],
         )
         .await
         .unwrap_err();
@@ -174,13 +174,13 @@ async fn run_basic(
 
     // revoke
     token
-        .revoke(&alice_account, &alice.pubkey(), &vec![&alice])
+        .revoke(&alice_account, &alice.pubkey(), &[&alice])
         .await
         .unwrap();
 
     // now fails
     let error = token
-        .transfer(&alice_account, &bob_account, &bob.pubkey(), 2, &vec![&bob])
+        .transfer(&alice_account, &bob_account, &bob.pubkey(), 2, &[&bob])
         .await
         .unwrap_err();
     assert_eq!(

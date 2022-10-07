@@ -43,14 +43,14 @@ async fn test_memo_transfers(
             &alice_account,
             &mint_authority.pubkey(),
             4242,
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap();
 
     // require memo transfers into bob_account
     token
-        .enable_required_transfer_memos(&bob_account, &bob.pubkey(), &vec![&bob])
+        .enable_required_transfer_memos(&bob_account, &bob.pubkey(), &[&bob])
         .await
         .unwrap();
 
@@ -60,13 +60,7 @@ async fn test_memo_transfers(
 
     // attempt to transfer from alice to bob without memo
     let err = token
-        .transfer(
-            &alice_account,
-            &bob_account,
-            &alice.pubkey(),
-            10,
-            &vec![&alice],
-        )
+        .transfer(&alice_account, &bob_account, &alice.pubkey(), 10, &[&alice])
         .await
         .unwrap_err();
     assert_eq!(
@@ -129,13 +123,7 @@ async fn test_memo_transfers(
     // transfer with memo
     token
         .with_memo("🦖", vec![alice.pubkey()])
-        .transfer(
-            &alice_account,
-            &bob_account,
-            &alice.pubkey(),
-            10,
-            &vec![&alice],
-        )
+        .transfer(&alice_account, &bob_account, &alice.pubkey(), 10, &[&alice])
         .await
         .unwrap();
     let bob_state = token.get_account_info(&bob_account).await.unwrap();
@@ -170,19 +158,13 @@ async fn test_memo_transfers(
 
     // stop requiring memo transfers into bob_account
     token
-        .disable_required_transfer_memos(&bob_account, &bob.pubkey(), &vec![&bob])
+        .disable_required_transfer_memos(&bob_account, &bob.pubkey(), &[&bob])
         .await
         .unwrap();
 
     // transfer from alice to bob without memo
     token
-        .transfer(
-            &alice_account,
-            &bob_account,
-            &alice.pubkey(),
-            12,
-            &vec![&alice],
-        )
+        .transfer(&alice_account, &bob_account, &alice.pubkey(), 12, &[&alice])
         .await
         .unwrap();
     let bob_state = token.get_account_info(&bob_account).await.unwrap();
@@ -241,7 +223,7 @@ async fn require_memo_transfers_with_realloc() {
             &token_context.bob.pubkey(),
             &token_context.bob.pubkey(),
             &[ExtensionType::MemoTransfer],
-            &vec![&token_context.bob],
+            &[&token_context.bob],
         )
         .await
         .unwrap();
