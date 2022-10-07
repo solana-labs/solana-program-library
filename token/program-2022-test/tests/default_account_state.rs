@@ -200,7 +200,7 @@ async fn end_to_end_default_account_state() {
         .set_default_account_state(
             &mint_authority.pubkey(),
             &AccountState::Uninitialized,
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap_err();
@@ -218,7 +218,7 @@ async fn end_to_end_default_account_state() {
         .set_default_account_state(
             &freeze_authority.pubkey(),
             &AccountState::Initialized,
-            &vec![&freeze_authority],
+            &[&freeze_authority],
         )
         .await
         .unwrap();
@@ -256,7 +256,7 @@ async fn end_to_end_default_account_state() {
         .set_default_account_state(
             &mint_authority.pubkey(),
             &AccountState::Frozen,
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap_err();
@@ -274,7 +274,7 @@ async fn end_to_end_default_account_state() {
         .set_default_account_state(
             &new_authority.pubkey(),
             &AccountState::Frozen,
-            &vec![&new_authority],
+            &[&new_authority],
         )
         .await
         .unwrap();
@@ -300,7 +300,7 @@ async fn end_to_end_default_account_state() {
         .set_default_account_state(
             &new_authority.pubkey(),
             &AccountState::Initialized,
-            &vec![&new_authority],
+            &[&new_authority],
         )
         .await
         .unwrap_err();

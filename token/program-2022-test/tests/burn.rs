@@ -36,26 +36,26 @@ async fn run_basic(context: TestContext) {
             &alice_account,
             &mint_authority.pubkey(),
             amount,
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap();
 
     // unchecked is ok
     token_unchecked
-        .burn(&alice_account, &alice.pubkey(), 1, &vec![&alice])
+        .burn(&alice_account, &alice.pubkey(), 1, &[&alice])
         .await
         .unwrap();
 
     // checked is ok
     token
-        .burn(&alice_account, &alice.pubkey(), 1, &vec![&alice])
+        .burn(&alice_account, &alice.pubkey(), 1, &[&alice])
         .await
         .unwrap();
 
     // burn too much is not ok
     let error = token
-        .burn(&alice_account, &alice.pubkey(), amount, &vec![&alice])
+        .burn(&alice_account, &alice.pubkey(), amount, &[&alice])
         .await
         .unwrap_err();
     assert_eq!(
@@ -70,7 +70,7 @@ async fn run_basic(context: TestContext) {
 
     // wrong signer
     let error = token
-        .burn(&alice_account, &bob.pubkey(), 1, &vec![&bob])
+        .burn(&alice_account, &bob.pubkey(), 1, &[&bob])
         .await
         .unwrap_err();
     assert_eq!(
@@ -128,20 +128,20 @@ async fn run_self_owned(context: TestContext) {
             &alice_account,
             &mint_authority.pubkey(),
             amount,
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap();
 
     // unchecked is ok
     token_unchecked
-        .burn(&alice_account, &alice.pubkey(), 1, &vec![&alice])
+        .burn(&alice_account, &alice.pubkey(), 1, &[&alice])
         .await
         .unwrap();
 
     // checked is ok
     token
-        .burn(&alice_account, &alice.pubkey(), 1, &vec![&alice])
+        .burn(&alice_account, &alice.pubkey(), 1, &[&alice])
         .await
         .unwrap();
 }
@@ -189,7 +189,7 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
             &alice_account,
             &mint_authority.pubkey(),
             1,
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap();
@@ -207,7 +207,7 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
             &non_owner_account,
             &alice.pubkey(),
             1,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap();
@@ -235,7 +235,7 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
 
     // but anyone can burn it
     token
-        .burn(&non_owner_account, &carlos.pubkey(), 1, &vec![&carlos])
+        .burn(&non_owner_account, &carlos.pubkey(), 1, &[&carlos])
         .await
         .unwrap();
 

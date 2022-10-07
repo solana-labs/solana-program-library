@@ -182,7 +182,7 @@ impl ConfidentialTokenAccountMeta {
                 &meta.token_account,
                 &mint_authority.pubkey(),
                 amount,
-                &vec![mint_authority],
+                &[mint_authority],
             )
             .await
             .unwrap();
@@ -494,7 +494,7 @@ async fn ct_deposit() {
             &alice_meta.token_account,
             &mint_authority.pubkey(),
             65537,
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap();

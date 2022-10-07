@@ -30,7 +30,7 @@ async fn reallocate() {
             token.get_address(),
             &mint_authority.pubkey(),
             &[ExtensionType::ImmutableOwner],
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap_err();
@@ -55,7 +55,7 @@ async fn reallocate() {
             &alice_account,
             &alice.pubkey(),
             &[ExtensionType::MintCloseAuthority],
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap_err();
@@ -75,7 +75,7 @@ async fn reallocate() {
             &alice_account,
             &mint_authority.pubkey(),
             &[ExtensionType::ImmutableOwner],
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap_err();
@@ -95,7 +95,7 @@ async fn reallocate() {
             &alice_account,
             &alice.pubkey(),
             &[ExtensionType::ImmutableOwner],
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap();
@@ -112,7 +112,7 @@ async fn reallocate() {
             &alice_account,
             &alice.pubkey(),
             &[ExtensionType::ImmutableOwner],
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap();
@@ -133,7 +133,7 @@ async fn reallocate() {
                 ExtensionType::TransferFeeAmount,
                 ExtensionType::TransferFeeAmount,
             ],
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap();
@@ -175,7 +175,7 @@ async fn reallocate_without_current_extension_knowledge() {
             &alice_account,
             &alice.pubkey(),
             &[ExtensionType::ImmutableOwner],
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap();

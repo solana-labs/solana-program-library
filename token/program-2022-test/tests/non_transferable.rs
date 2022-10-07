@@ -55,7 +55,7 @@ async fn transfer_checked() {
             &alice_account,
             &mint_authority.pubkey(),
             test_transfer_amount,
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap_err();
@@ -76,7 +76,7 @@ async fn transfer_checked() {
             &bob_account,
             &mint_authority.pubkey(),
             test_transfer_amount,
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap();
@@ -88,7 +88,7 @@ async fn transfer_checked() {
             &bob_account,
             &bob.pubkey(),
             test_transfer_amount,
-            &vec![&bob],
+            &[&bob],
         )
         .await
         .unwrap_err();
@@ -110,7 +110,7 @@ async fn transfer_checked() {
             &alice_account,
             &bob.pubkey(),
             test_transfer_amount,
-            &vec![&bob],
+            &[&bob],
         )
         .await
         .unwrap_err();
@@ -189,7 +189,7 @@ async fn transfer_checked_with_fee() {
             &alice_account,
             &mint_authority.pubkey(),
             test_transfer_amount,
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap();
@@ -201,7 +201,7 @@ async fn transfer_checked_with_fee() {
             &alice_account,
             &alice.pubkey(),
             test_transfer_amount,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap_err();
@@ -223,7 +223,7 @@ async fn transfer_checked_with_fee() {
             &bob_account,
             &alice.pubkey(),
             test_transfer_amount,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap_err();
@@ -247,7 +247,7 @@ async fn transfer_checked_with_fee() {
             &alice.pubkey(),
             test_transfer_amount,
             fee,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap_err();
@@ -271,7 +271,7 @@ async fn transfer_checked_with_fee() {
             &alice.pubkey(),
             test_transfer_amount,
             fee,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap_err();

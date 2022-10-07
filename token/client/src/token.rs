@@ -542,7 +542,7 @@ where
             )?,
         ];
 
-        self.process_ixs(&instructions, &vec![account]).await
+        self.process_ixs(&instructions, &[account]).await
     }
 
     /// Get the address for the associated token account.
@@ -616,7 +616,7 @@ where
             owner,
         )?);
 
-        self.process_ixs(&instructions, &vec![account]).await
+        self.process_ixs(&instructions, &[account]).await
     }
 
     /// Retrieve a raw account

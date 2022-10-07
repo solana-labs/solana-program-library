@@ -258,12 +258,7 @@ async fn fail_close_with_supply() {
         .unwrap();
     let account = account.pubkey();
     token
-        .mint_to(
-            &account,
-            &mint_authority.pubkey(),
-            1,
-            &vec![&mint_authority],
-        )
+        .mint_to(&account, &mint_authority.pubkey(), 1, &[&mint_authority])
         .await
         .unwrap();
 

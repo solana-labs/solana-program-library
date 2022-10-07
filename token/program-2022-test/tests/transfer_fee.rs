@@ -136,7 +136,7 @@ async fn create_mint_with_accounts(alice_amount: u64) -> TokenWithAccounts {
             &alice_account,
             &mint_authority.pubkey(),
             alice_amount,
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap();
@@ -296,7 +296,7 @@ async fn set_fee() {
             &transfer_fee_config_authority.pubkey(),
             new_transfer_fee_basis_points,
             new_maximum_fee,
-            &vec![&transfer_fee_config_authority],
+            &[&transfer_fee_config_authority],
         )
         .await
         .unwrap();
@@ -320,7 +320,7 @@ async fn set_fee() {
             &transfer_fee_config_authority.pubkey(),
             new_transfer_fee_basis_points,
             new_maximum_fee,
-            &vec![&transfer_fee_config_authority],
+            &[&transfer_fee_config_authority],
         )
         .await
         .unwrap();
@@ -350,7 +350,7 @@ async fn set_fee() {
             &transfer_fee_config_authority.pubkey(),
             new_transfer_fee_basis_points,
             new_maximum_fee,
-            &vec![&transfer_fee_config_authority],
+            &[&transfer_fee_config_authority],
         )
         .await
         .unwrap();
@@ -381,7 +381,7 @@ async fn set_fee() {
             &transfer_fee_config_authority.pubkey(),
             new_transfer_fee_basis_points,
             new_maximum_fee,
-            &vec![&transfer_fee_config_authority],
+            &[&transfer_fee_config_authority],
         )
         .await
         .unwrap();
@@ -403,7 +403,7 @@ async fn set_fee() {
             &withdraw_withheld_authority.pubkey(),
             new_transfer_fee_basis_points,
             new_maximum_fee,
-            &vec![&withdraw_withheld_authority],
+            &[&withdraw_withheld_authority],
         )
         .await
         .err()
@@ -424,7 +424,7 @@ async fn set_fee() {
             &transfer_fee_config_authority.pubkey(),
             MAX_FEE_BASIS_POINTS + 1,
             new_maximum_fee,
-            &vec![&transfer_fee_config_authority],
+            &[&transfer_fee_config_authority],
         )
         .await
         .err()
@@ -456,7 +456,7 @@ async fn fail_unsupported_mint() {
             &mint_authority.pubkey(),
             transfer_fee_basis_points,
             maximum_fee,
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .err()
@@ -482,7 +482,7 @@ async fn fail_unsupported_mint() {
         .withdraw_withheld_tokens_from_mint(
             &Pubkey::new_unique(),
             &mint_authority.pubkey(),
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .err()
@@ -567,7 +567,7 @@ async fn set_transfer_fee_config_authority() {
             &transfer_fee_config_authority.pubkey(),
             transfer_fee_basis_points,
             maximum_fee,
-            &vec![&transfer_fee_config_authority],
+            &[&transfer_fee_config_authority],
         )
         .await
         .unwrap_err();
@@ -585,7 +585,7 @@ async fn set_transfer_fee_config_authority() {
             &new_authority.pubkey(),
             transfer_fee_basis_points,
             maximum_fee,
-            &vec![&new_authority],
+            &[&new_authority],
         )
         .await
         .unwrap();
@@ -635,7 +635,7 @@ async fn set_transfer_fee_config_authority() {
             &transfer_fee_config_authority.pubkey(),
             0,
             0,
-            &vec![&transfer_fee_config_authority],
+            &[&transfer_fee_config_authority],
         )
         .await
         .unwrap_err();
@@ -726,7 +726,7 @@ async fn set_withdraw_withheld_authority() {
             &account,
             &new_authority.pubkey(),
             &[&account],
-            &vec![&new_authority],
+            &[&new_authority],
         )
         .await
         .unwrap();
@@ -736,7 +736,7 @@ async fn set_withdraw_withheld_authority() {
             &account,
             &withdraw_withheld_authority.pubkey(),
             &[&account],
-            &vec![&withdraw_withheld_authority],
+            &[&withdraw_withheld_authority],
         )
         .await
         .unwrap_err();
@@ -801,7 +801,7 @@ async fn set_withdraw_withheld_authority() {
             &account,
             &withdraw_withheld_authority.pubkey(),
             &[&account],
-            &vec![&withdraw_withheld_authority],
+            &[&withdraw_withheld_authority],
         )
         .await
         .unwrap_err();
@@ -819,7 +819,7 @@ async fn set_withdraw_withheld_authority() {
             &account,
             &new_authority.pubkey(),
             &[&account],
-            &vec![&new_authority],
+            &[&new_authority],
         )
         .await
         .unwrap_err();
@@ -855,7 +855,7 @@ async fn transfer_checked() {
             &bob_account,
             &alice.pubkey(),
             maximum_fee,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap_err();
@@ -876,7 +876,7 @@ async fn transfer_checked() {
             &bob_account,
             &alice.pubkey(),
             alice_amount + 1,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap_err();
@@ -903,7 +903,7 @@ async fn transfer_checked() {
             &bob_account,
             &alice.pubkey(),
             maximum_fee,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap();
@@ -931,7 +931,7 @@ async fn transfer_checked() {
             &bob_account,
             &alice.pubkey(),
             transfer_amount,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap();
@@ -964,7 +964,7 @@ async fn transfer_checked() {
             &bob_account,
             &alice.pubkey(),
             transfer_amount,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap();
@@ -987,7 +987,7 @@ async fn transfer_checked() {
             &bob_account,
             &alice.pubkey(),
             alice_amount - 1,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap();
@@ -1005,13 +1005,7 @@ async fn transfer_checked() {
 
     // final transfer, only move tokens to withheld amount, nothing received
     token
-        .transfer(
-            &alice_account,
-            &bob_account,
-            &alice.pubkey(),
-            1,
-            &vec![&alice],
-        )
+        .transfer(&alice_account, &bob_account, &alice.pubkey(), 1, &[&alice])
         .await
         .unwrap();
     withheld_amount += 1;
@@ -1051,7 +1045,7 @@ async fn transfer_checked_with_fee() {
             &alice.pubkey(),
             transfer_amount,
             fee,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap_err();
@@ -1077,7 +1071,7 @@ async fn transfer_checked_with_fee() {
             &alice.pubkey(),
             transfer_amount,
             fee,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap_err();
@@ -1103,7 +1097,7 @@ async fn transfer_checked_with_fee() {
             &alice.pubkey(),
             alice_amount + 1,
             fee,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap_err();
@@ -1128,7 +1122,7 @@ async fn transfer_checked_with_fee() {
             &alice.pubkey(),
             transfer_amount,
             fee,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap();
@@ -1163,7 +1157,7 @@ async fn no_fees_from_self_transfer() {
             &alice.pubkey(),
             amount,
             fee,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap();
@@ -1187,13 +1181,7 @@ async fn create_and_transfer_to_account(
         .unwrap();
     let account = account.pubkey();
     token
-        .transfer(
-            source,
-            &account,
-            &authority.pubkey(),
-            amount,
-            &vec![authority],
-        )
+        .transfer(source, &account, &authority.pubkey(), amount, &[authority])
         .await
         .unwrap();
     account
@@ -1335,7 +1323,7 @@ async fn max_withdraw_withheld_tokens_from_accounts() {
             &destination,
             &withdraw_withheld_authority.pubkey(),
             &accounts,
-            &vec![&withdraw_withheld_authority],
+            &[&withdraw_withheld_authority],
         )
         .await
         .unwrap();
@@ -1369,7 +1357,7 @@ async fn withdraw_withheld_tokens_from_mint() {
         .withdraw_withheld_tokens_from_mint(
             &alice_account,
             &withdraw_withheld_authority.pubkey(),
-            &vec![&withdraw_withheld_authority],
+            &[&withdraw_withheld_authority],
         )
         .await
         .unwrap();
@@ -1405,7 +1393,7 @@ async fn withdraw_withheld_tokens_from_mint() {
         .withdraw_withheld_tokens_from_mint(
             &bob_account,
             &withdraw_withheld_authority.pubkey(),
-            &vec![&withdraw_withheld_authority],
+            &[&withdraw_withheld_authority],
         )
         .await
         .unwrap();
@@ -1420,7 +1408,7 @@ async fn withdraw_withheld_tokens_from_mint() {
 
     // fail wrong signer
     let error = token
-        .withdraw_withheld_tokens_from_mint(&alice_account, &alice.pubkey(), &vec![&alice])
+        .withdraw_withheld_tokens_from_mint(&alice_account, &alice.pubkey(), &[&alice])
         .await
         .unwrap_err();
     assert_eq!(
@@ -1438,18 +1426,14 @@ async fn withdraw_withheld_tokens_from_mint() {
         create_and_transfer_to_account(&token, &alice_account, &alice, &alice.pubkey(), amount)
             .await;
     token
-        .freeze(
-            &account,
-            &freeze_authority.pubkey(),
-            &vec![&freeze_authority],
-        )
+        .freeze(&account, &freeze_authority.pubkey(), &[&freeze_authority])
         .await
         .unwrap();
     let error = token
         .withdraw_withheld_tokens_from_mint(
             &account,
             &withdraw_withheld_authority.pubkey(),
-            &vec![&withdraw_withheld_authority],
+            &[&withdraw_withheld_authority],
         )
         .await
         .unwrap_err();
@@ -1481,7 +1465,7 @@ async fn withdraw_withheld_tokens_from_mint() {
         .withdraw_withheld_tokens_from_mint(
             &account,
             &withdraw_withheld_authority.pubkey(),
-            &vec![&withdraw_withheld_authority],
+            &[&withdraw_withheld_authority],
         )
         .await
         .unwrap_err();
@@ -1510,7 +1494,7 @@ async fn withdraw_withheld_tokens_from_mint() {
         .withdraw_withheld_tokens_from_mint(
             &account,
             &withdraw_withheld_authority.pubkey(),
-            &vec![&withdraw_withheld_authority],
+            &[&withdraw_withheld_authority],
         )
         .await
         .unwrap_err();
@@ -1545,7 +1529,7 @@ async fn withdraw_withheld_tokens_from_accounts() {
             &alice_account,
             &wrong_signer.pubkey(),
             &[],
-            &vec![&wrong_signer],
+            &[&wrong_signer],
         )
         .await
         .unwrap_err();
@@ -1565,7 +1549,7 @@ async fn withdraw_withheld_tokens_from_accounts() {
             &alice_account,
             &withdraw_withheld_authority.pubkey(),
             &[],
-            &vec![&withdraw_withheld_authority],
+            &[&withdraw_withheld_authority],
         )
         .await
         .unwrap();
@@ -1581,7 +1565,7 @@ async fn withdraw_withheld_tokens_from_accounts() {
             &account,
             &withdraw_withheld_authority.pubkey(),
             &[&account],
-            &vec![&withdraw_withheld_authority],
+            &[&withdraw_withheld_authority],
         )
         .await
         .unwrap();
@@ -1598,7 +1582,7 @@ async fn withdraw_withheld_tokens_from_accounts() {
             &alice_account,
             &withdraw_withheld_authority.pubkey(),
             &[&account],
-            &vec![&withdraw_withheld_authority],
+            &[&withdraw_withheld_authority],
         )
         .await
         .unwrap();
@@ -1635,7 +1619,7 @@ async fn withdraw_withheld_tokens_from_accounts() {
             &withdraw_account,
             &withdraw_withheld_authority.pubkey(),
             &[&account],
-            &vec![&withdraw_withheld_authority],
+            &[&withdraw_withheld_authority],
         )
         .await
         .unwrap();
@@ -1649,7 +1633,7 @@ async fn withdraw_withheld_tokens_from_accounts() {
             &account,
             &withdraw_withheld_authority.pubkey(),
             &[&withdraw_account],
-            &vec![&withdraw_withheld_authority],
+            &[&withdraw_withheld_authority],
         )
         .await
         .unwrap_err();
@@ -1689,7 +1673,7 @@ async fn fail_close_with_withheld() {
             &alice_account,
             &alice.pubkey(),
             amount - fee,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap();

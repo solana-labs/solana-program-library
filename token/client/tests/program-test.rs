@@ -159,7 +159,7 @@ async fn set_authority() {
             &alice_vault,
             &mint_authority.pubkey(),
             1,
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .expect("failed to mint token");
@@ -188,7 +188,7 @@ async fn set_authority() {
             &alice_vault,
             &mint_authority.pubkey(),
             2,
-            &vec![&mint_authority]
+            &[&mint_authority]
         )
         .await
         .is_err());
@@ -240,7 +240,7 @@ async fn mint_to() {
             &alice_vault,
             &mint_authority.pubkey(),
             mint_amount,
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .expect("failed to mint token");
@@ -287,7 +287,7 @@ async fn transfer() {
             &alice_vault,
             &mint_authority.pubkey(),
             mint_amount,
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .expect("failed to mint token");
@@ -299,7 +299,7 @@ async fn transfer() {
             &bob_vault,
             &alice.pubkey(),
             transfer_amount,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .expect("failed to transfer");
