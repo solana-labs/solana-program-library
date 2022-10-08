@@ -1,4 +1,4 @@
-import type { PublicKey, Connection } from "@solana/web3.js";
+import type { PublicKey, Connection, Commitment, GetAccountInfoConfig } from "@solana/web3.js";
 import * as borsh from "borsh";
 import * as BN from 'bn.js';
 import * as beet from '@metaplex-foundation/beet';
@@ -35,8 +35,8 @@ export class ConcurrentMerkleTreeAccount {
         return deserializeConcurrentMerkleTree(buffer);
     }
 
-    static async fromAccountAddress(connection: Connection, publicKey: PublicKey): Promise<ConcurrentMerkleTreeAccount> {
-        const account = await connection.getAccountInfo(publicKey);
+    static async fromAccountAddress(connection: Connection, publicKey: PublicKey, commitmentOrConfig?: Commitment | GetAccountInfoConfig): Promise<ConcurrentMerkleTreeAccount> {
+        const account = await connection.getAccountInfo(publicKey, commitmentOrConfig);
         if (!account) {
             throw new Error("CMT account data unexpectedly null!");
         }
@@ -79,9 +79,13 @@ export class ConcurrentMerkleTreeAccount {
         return new BN.BN(this.tree.sequenceNumber).toNumber();
     }
 
+    getCanopyDepth(): number {
+        return getCanopyDepth(this.canopy.canopyBytes.length);
+    }
+
 };
 
-function getCanopyDepth(canopyByteLength: number): number {
+export function getCanopyDepth(canopyByteLength: number): number {
     if (canopyByteLength === 0) {
         return 0;
     }
