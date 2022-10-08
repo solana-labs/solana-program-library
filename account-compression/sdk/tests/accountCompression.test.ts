@@ -3,10 +3,7 @@ import { BN } from 'bn.js';
 import { AnchorProvider } from "@project-serum/anchor";
 import {
   Connection,
-  Signer,
   Keypair,
-  PublicKey,
-  Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
 import { assert } from "chai";

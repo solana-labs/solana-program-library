@@ -23,35 +23,6 @@ import {
     Tree,
 } from "./merkleTree";
 
-export async function assertCMTProperties(
-    connection: Connection,
-    expectedMaxDepth: number,
-    expectedMaxBufferSize: number,
-    expectedAuthority: PublicKey,
-    expectedRoot: Buffer,
-    onChainCMTKey: PublicKey
-) {
-    const onChainCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, onChainCMTKey);
-
-    assert(
-        onChainCMT.getMaxDepth() === expectedMaxDepth,
-        `Max depth does not match ${onChainCMT.getMaxDepth()}, expected ${expectedMaxDepth}`,
-    );
-    assert(
-        onChainCMT.getMaxBufferSize() === expectedMaxBufferSize,
-        `Max buffer size does not match ${onChainCMT.getMaxBufferSize()}, expected ${expectedMaxBufferSize}`,
-    );
-    assert(
-        onChainCMT.getAuthority().equals(expectedAuthority),
-        "Failed to write auth pubkey",
-    );
-    assert(
-        onChainCMT.getCurrentRoot().equals(expectedRoot),
-        "On chain root does not match root passed in instruction",
-    );
-}
-
-
 /// Wait for a transaction of a certain id to confirm and optionally log its messages
 export async function confirmAndLogTx(provider: AnchorProvider, txId: string, verbose: boolean = false) {
     const tx = await provider.connection.confirmTransaction(txId, "confirmed");
@@ -97,6 +68,7 @@ export async function execute(
 
     return txid;
 }
+
 
 export async function createTreeOnChain(
     provider: AnchorProvider,
@@ -152,15 +124,41 @@ export async function createTreeOnChain(
             appendIxs = appendIxs.slice(5,);
         }
     }
+    return [cmtKeypair, tree];
+}
 
-    await assertCMTProperties(
+export async function createEmptyTreeOnChain(
+    provider: AnchorProvider,
+    payer: Keypair,
+    maxDepth: number,
+    maxSize: number,
+    canopyDepth: number = 0,
+): Promise<Keypair> {
+    const cmtKeypair = Keypair.generate();
+    const allocAccountIx = await createAllocTreeIx(
         provider.connection,
-        maxDepth,
         maxSize,
+        maxDepth,
+        canopyDepth,
         payer.publicKey,
-        tree.root,
         cmtKeypair.publicKey
     );
 
-    return [cmtKeypair, tree];
+    let ixs = [
+        allocAccountIx,
+        createInitEmptyMerkleTreeIx(
+            payer,
+            cmtKeypair.publicKey,
+            maxDepth,
+            maxSize,
+        )
+    ];
+
+    let txId = await execute(provider, ixs, [
+        payer,
+        cmtKeypair,
+    ]);
+    await confirmAndLogTx(provider, txId as string);
+
+    return cmtKeypair;
 }
