@@ -253,7 +253,7 @@ fn process_empty_account(
     }
 
     if confidential_transfer_account.encryption_pubkey != proof_data.pubkey {
-        return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into())
+        return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
     confidential_transfer_account.available_balance = EncryptedBalance::zeroed();
@@ -681,7 +681,7 @@ fn process_source_for_transfer(
         .ok_or(ProgramError::InvalidInstructionData)?
     };
 
-    iif new_source_available_balance != *expected_new_source_available_balance {
+    if new_source_available_balance != *expected_new_source_available_balance {
         return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
     }
 
