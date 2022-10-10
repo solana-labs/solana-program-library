@@ -6189,7 +6189,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-cli"
-version = "2.0.17"
+version = "2.1.0"
 dependencies = [
  "assert_cmd",
  "clap 2.34.0",
@@ -6223,7 +6223,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-client"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "solana-cli-output",
