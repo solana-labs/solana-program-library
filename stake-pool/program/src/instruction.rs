@@ -84,10 +84,11 @@ pub enum StakePoolInstruction {
     ///
     ///   The stake account will have the rent-exempt amount plus
     ///   `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    ///   It is funded from the stake pool reserve.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[s]` Staker
-    ///   2. `[ws]` Funding account (must be a system account)
+    ///   2. `[w]` Reserve stake account
     ///   3. `[]` Stake pool withdraw authority
     ///   4. `[w]` Validator stake list storage account
     ///   5. `[w]` Stake account to add to the pool
@@ -100,7 +101,7 @@ pub enum StakePoolInstruction {
     ///  12. `[]` Stake program
     AddValidatorToPool,
 
-    ///   (Staker only) Removes validator from the pool
+    ///   (Staker only) Removes validator from the pool, deactivating its stake
     ///
     ///   Only succeeds if the validator stake account has the minimum of
     ///   `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
@@ -109,13 +110,11 @@ pub enum StakePoolInstruction {
     ///   0. `[w]` Stake pool
     ///   1. `[s]` Staker
     ///   2. `[]` Stake pool withdraw authority
-    ///   3. `[]` New withdraw/staker authority to set in the stake account
-    ///   4. `[w]` Validator stake list storage account
-    ///   5. `[w]` Stake account to remove from the pool
-    ///   6. `[]` Transient stake account, to check that that we're not trying to activate
-    ///   7. `[w]` Destination stake account, to receive the minimum SOL from the validator stake account
-    ///   8. `[]` Sysvar clock
-    ///   9. `[]` Stake program id,
+    ///   3. `[w]` Validator stake list storage account
+    ///   4. `[w]` Stake account to remove from the pool
+    ///   5. `[]` Transient stake account, to check that that we're not trying to activate
+    ///   6. `[]` Sysvar clock
+    ///   7. `[]` Stake program id,
     RemoveValidatorFromPool,
 
     /// (Staker only) Decrease active stake on a validator, eventually moving it to the reserve
@@ -473,7 +472,7 @@ pub fn add_validator_to_pool(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     staker: &Pubkey,
-    funder: &Pubkey,
+    reserve: &Pubkey,
     stake_pool_withdraw: &Pubkey,
     validator_list: &Pubkey,
     stake: &Pubkey,
@@ -482,7 +481,7 @@ pub fn add_validator_to_pool(
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*staker, true),
-        AccountMeta::new(*funder, true),
+        AccountMeta::new(*reserve, false),
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new(*validator_list, false),
         AccountMeta::new(*stake, false),
@@ -509,21 +508,17 @@ pub fn remove_validator_from_pool(
     stake_pool: &Pubkey,
     staker: &Pubkey,
     stake_pool_withdraw: &Pubkey,
-    new_stake_authority: &Pubkey,
     validator_list: &Pubkey,
     stake_account: &Pubkey,
     transient_stake_account: &Pubkey,
-    destination_stake_account: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*staker, true),
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
-        AccountMeta::new_readonly(*new_stake_authority, false),
         AccountMeta::new(*validator_list, false),
         AccountMeta::new(*stake_account, false),
         AccountMeta::new_readonly(*transient_stake_account, false),
-        AccountMeta::new(*destination_stake_account, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(stake::program::id(), false),
     ];
@@ -647,7 +642,6 @@ pub fn add_validator_to_pool_with_vote(
     program_id: &Pubkey,
     stake_pool: &StakePool,
     stake_pool_address: &Pubkey,
-    funder: &Pubkey,
     vote_account_address: &Pubkey,
 ) -> Instruction {
     let pool_withdraw_authority =
@@ -658,7 +652,7 @@ pub fn add_validator_to_pool_with_vote(
         program_id,
         stake_pool_address,
         &stake_pool.staker,
-        funder,
+        &stake_pool.reserve_stake,
         &pool_withdraw_authority,
         &stake_pool.validator_list,
         &stake_account_address,
@@ -673,9 +667,7 @@ pub fn remove_validator_from_pool_with_vote(
     stake_pool: &StakePool,
     stake_pool_address: &Pubkey,
     vote_account_address: &Pubkey,
-    new_stake_account_authority: &Pubkey,
     transient_stake_seed: u64,
-    destination_stake_address: &Pubkey,
 ) -> Instruction {
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(program_id, stake_pool_address).0;
@@ -692,11 +684,9 @@ pub fn remove_validator_from_pool_with_vote(
         stake_pool_address,
         &stake_pool.staker,
         &pool_withdraw_authority,
-        new_stake_account_authority,
         &stake_pool.validator_list,
         &stake_account_address,
         &transient_stake_account,
-        destination_stake_address,
     )
 }
 

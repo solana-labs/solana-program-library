@@ -229,17 +229,13 @@ async fn fail_ready_for_removal() {
         &stake_pool_accounts.stake_pool.pubkey(),
         transient_stake_seed,
     );
-    let new_authority = Pubkey::new_unique();
-    let destination_stake = Keypair::new();
     let remove_err = stake_pool_accounts
         .remove_validator_from_pool(
             &mut banks_client,
             &payer,
             &recent_blockhash,
-            &new_authority,
             &validator_stake_account.stake_account,
             &transient_stake_address,
-            &destination_stake,
         )
         .await;
     assert!(remove_err.is_none());

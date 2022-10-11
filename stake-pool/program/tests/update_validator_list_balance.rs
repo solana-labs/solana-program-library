@@ -8,7 +8,7 @@ use {
     solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey, stake},
     solana_program_test::*,
     solana_sdk::{
-        signature::{Keypair, Signer},
+        signature::Signer,
         stake::state::{Authorized, Lockup, StakeState},
         system_instruction,
         transaction::Transaction,
@@ -39,6 +39,15 @@ async fn setup(
     let mut slot = first_normal_slot;
     context.warp_to_slot(slot).unwrap();
 
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeState>());
+    let current_minimum_delegation = stake_pool_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
+
     let reserve_stake_amount = TEST_STAKE_AMOUNT * num_validators as u64;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -46,7 +55,9 @@ async fn setup(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            reserve_stake_amount + MINIMUM_RESERVE_LAMPORTS,
+            reserve_stake_amount
+                + MINIMUM_RESERVE_LAMPORTS
+                + (stake_rent + current_minimum_delegation) * num_validators as u64,
         )
         .await
         .unwrap();
@@ -478,8 +489,6 @@ async fn merge_transient_stake_after_remove() {
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeState>());
     let deactivated_lamports = lamports;
-    let new_authority = Pubkey::new_unique();
-    let destination_stake = Keypair::new();
     // Decrease and remove all validators
     for stake_account in &stake_accounts {
         let error = stake_pool_accounts
@@ -499,10 +508,8 @@ async fn merge_transient_stake_after_remove() {
                 &mut context.banks_client,
                 &context.payer,
                 &context.last_blockhash,
-                &new_authority,
                 &stake_account.stake_account,
                 &stake_account.transient_stake_account,
-                &destination_stake,
             )
             .await;
         assert!(error.is_none());

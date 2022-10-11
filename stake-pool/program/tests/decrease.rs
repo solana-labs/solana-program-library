@@ -32,6 +32,9 @@ async fn setup() -> (
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let rent = banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let current_minimum_delegation =
+        stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
+
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
         .initialize_stake_pool(
@@ -50,9 +53,6 @@ async fn setup() -> (
         &stake_pool_accounts,
     )
     .await;
-
-    let current_minimum_delegation =
-        stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
 
     let deposit_info = simple_deposit_stake(
         &mut banks_client,

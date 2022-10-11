@@ -29,12 +29,13 @@ use {
         find_transient_stake_program_address, find_withdraw_authority_program_address, id,
         instruction, minimum_delegation,
         processor::Processor,
-        state::{self, FeeType, ValidatorList},
+        state::{self, FeeType, StakePool, ValidatorList},
         MINIMUM_RESERVE_LAMPORTS,
     },
     std::convert::TryInto,
 };
 
+pub const FIRST_NORMAL_EPOCH: u64 = 15;
 pub const TEST_STAKE_AMOUNT: u64 = 1_500_000_000;
 pub const MAX_TEST_VALIDATORS: u32 = 10_000;
 pub const DEFAULT_TRANSIENT_STAKE_SEED: u64 = 42;
@@ -1080,6 +1081,11 @@ impl StakePoolAccounts {
             .err()
     }
 
+    pub async fn get_stake_pool(&self, banks_client: &mut BanksClient) -> StakePool {
+        let stake_pool_account = get_account(banks_client, &self.stake_pool.pubkey()).await;
+        try_from_slice_unchecked::<StakePool>(stake_pool_account.data.as_slice()).unwrap()
+    }
+
     pub async fn get_validator_list(&self, banks_client: &mut BanksClient) -> ValidatorList {
         let validator_list_account = get_account(banks_client, &self.validator_list.pubkey()).await;
         try_from_slice_unchecked::<ValidatorList>(validator_list_account.data.as_slice()).unwrap()
@@ -1234,7 +1240,7 @@ impl StakePoolAccounts {
                 &id(),
                 &self.stake_pool.pubkey(),
                 &self.staker.pubkey(),
-                &payer.pubkey(),
+                &self.reserve_stake.pubkey(),
                 &self.withdraw_authority,
                 &self.validator_list.pubkey(),
                 stake,
@@ -1258,34 +1264,21 @@ impl StakePoolAccounts {
         banks_client: &mut BanksClient,
         payer: &Keypair,
         recent_blockhash: &Hash,
-        new_authority: &Pubkey,
         validator_stake: &Pubkey,
         transient_stake: &Pubkey,
-        destination_stake: &Keypair,
     ) -> Option<TransportError> {
         let transaction = Transaction::new_signed_with_payer(
-            &[
-                system_instruction::create_account(
-                    &payer.pubkey(),
-                    &destination_stake.pubkey(),
-                    0,
-                    std::mem::size_of::<stake::state::StakeState>() as u64,
-                    &stake::program::id(),
-                ),
-                instruction::remove_validator_from_pool(
-                    &id(),
-                    &self.stake_pool.pubkey(),
-                    &self.staker.pubkey(),
-                    &self.withdraw_authority,
-                    new_authority,
-                    &self.validator_list.pubkey(),
-                    validator_stake,
-                    transient_stake,
-                    &destination_stake.pubkey(),
-                ),
-            ],
+            &[instruction::remove_validator_from_pool(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.staker.pubkey(),
+                &self.withdraw_authority,
+                &self.validator_list.pubkey(),
+                validator_stake,
+                transient_stake,
+            )],
             Some(&payer.pubkey()),
-            &[payer, &self.staker, destination_stake],
+            &[payer, &self.staker],
             *recent_blockhash,
         );
         #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
@@ -1449,6 +1442,31 @@ pub async fn simple_add_validator_to_pool(
         &stake_pool_accounts.stake_pool.pubkey(),
         DEFAULT_TRANSIENT_STAKE_SEED,
     );
+
+    let rent = banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let current_minimum_delegation =
+        stake_pool_get_minimum_delegation(banks_client, payer, recent_blockhash).await;
+
+    let intermediate_payer = Keypair::new(); // this is gross, but ensures we don't do the same
+                                             // transfer more than once
+    transfer(
+        banks_client,
+        payer,
+        recent_blockhash,
+        &intermediate_payer.pubkey(),
+        stake_rent * 2 + current_minimum_delegation, // a bit more for tx fees
+    )
+    .await;
+
+    transfer(
+        banks_client,
+        &intermediate_payer,
+        recent_blockhash,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        stake_rent + current_minimum_delegation,
+    )
+    .await;
 
     create_vote(
         banks_client,
@@ -1731,7 +1749,7 @@ pub fn add_validator_stake_account(
         delegation: stake::state::Delegation {
             voter_pubkey: *voter_pubkey,
             stake: stake_amount,
-            activation_epoch: 0,
+            activation_epoch: FIRST_NORMAL_EPOCH,
             deactivation_epoch: u64::MAX,
             warmup_cooldown_rate: 0.25, // default
         },
@@ -1762,7 +1780,7 @@ pub fn add_validator_stake_account(
         vote_account_address: *voter_pubkey,
         active_stake_lamports,
         transient_stake_lamports: 0,
-        last_update_epoch: 0,
+        last_update_epoch: FIRST_NORMAL_EPOCH,
         transient_seed_suffix_start: 0,
         transient_seed_suffix_end: 0,
     });

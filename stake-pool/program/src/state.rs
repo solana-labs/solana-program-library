@@ -512,6 +512,32 @@ pub enum StakeStatus {
     /// No more validator stake accounts exist, entry ready for removal during
     /// `UpdateStakePoolBalance`
     ReadyForRemoval,
+    /// Only the validator stake account is deactivating, no transient stake
+    /// account exists
+    DeactivatingValidator,
+    /// Both the transient and validator stake account are deactivating, when
+    /// a validator is removed with a transient stake active
+    DeactivatingAll,
+}
+impl StakeStatus {
+    /// Downgrade the status towards ready for removal by removing the validator stake
+    pub fn remove_validator_stake(&mut self) {
+        let new_self = match self {
+            Self::Active | Self::DeactivatingTransient | Self::ReadyForRemoval => *self,
+            Self::DeactivatingAll => Self::DeactivatingTransient,
+            Self::DeactivatingValidator => Self::ReadyForRemoval,
+        };
+        *self = new_self;
+    }
+    /// Downgrade the status towards ready for removal by removing the transient stake
+    pub fn remove_transient_stake(&mut self) {
+        let new_self = match self {
+            Self::Active | Self::DeactivatingValidator | Self::ReadyForRemoval => *self,
+            Self::DeactivatingAll => Self::DeactivatingValidator,
+            Self::DeactivatingTransient => Self::ReadyForRemoval,
+        };
+        *self = new_self;
+    }
 }
 
 impl Default for StakeStatus {

@@ -191,81 +191,32 @@ fn stake_is_usable_by_pool(
         && meta.lockup == *expected_lockup
 }
 
-/// Create a transient stake account without transferring lamports
-fn create_transient_stake_account<'a>(
-    transient_stake_account_info: AccountInfo<'a>,
-    transient_stake_account_signer_seeds: &[&[u8]],
+/// Checks if a stake acount is active, without taking into account cooldowns
+fn stake_is_inactive_without_history(stake: &stake::state::Stake, epoch: Epoch) -> bool {
+    stake.delegation.deactivation_epoch < epoch
+        || (stake.delegation.activation_epoch == epoch
+            && stake.delegation.deactivation_epoch == epoch)
+}
+
+/// Create a stake account on a PDA without transferring lamports
+fn create_stake_account<'a>(
+    stake_account_info: AccountInfo<'a>,
+    stake_account_signer_seeds: &[&[u8]],
     system_program_info: AccountInfo<'a>,
 ) -> Result<(), ProgramError> {
     invoke_signed(
         &system_instruction::allocate(
-            transient_stake_account_info.key,
+            stake_account_info.key,
             std::mem::size_of::<stake::state::StakeState>() as u64,
         ),
-        &[
-            transient_stake_account_info.clone(),
-            system_program_info.clone(),
-        ],
-        &[transient_stake_account_signer_seeds],
+        &[stake_account_info.clone(), system_program_info.clone()],
+        &[stake_account_signer_seeds],
     )?;
     invoke_signed(
-        &system_instruction::assign(transient_stake_account_info.key, &stake::program::id()),
-        &[transient_stake_account_info, system_program_info],
-        &[transient_stake_account_signer_seeds],
+        &system_instruction::assign(stake_account_info.key, &stake::program::id()),
+        &[stake_account_info, system_program_info],
+        &[stake_account_signer_seeds],
     )
-}
-
-/// Create an account on a program-derived address
-fn create_pda_account<'a>(
-    payer: &AccountInfo<'a>,
-    required_lamports: u64,
-    space: usize,
-    owner: &Pubkey,
-    system_program: &AccountInfo<'a>,
-    new_pda_account: &AccountInfo<'a>,
-    new_pda_signer_seeds: &[&[u8]],
-) -> ProgramResult {
-    if new_pda_account.lamports() > 0 {
-        let required_lamports = required_lamports.saturating_sub(new_pda_account.lamports());
-        if required_lamports > 0 {
-            invoke(
-                &system_instruction::transfer(payer.key, new_pda_account.key, required_lamports),
-                &[
-                    payer.clone(),
-                    new_pda_account.clone(),
-                    system_program.clone(),
-                ],
-            )?;
-        }
-
-        invoke_signed(
-            &system_instruction::allocate(new_pda_account.key, space as u64),
-            &[new_pda_account.clone(), system_program.clone()],
-            &[new_pda_signer_seeds],
-        )?;
-
-        invoke_signed(
-            &system_instruction::assign(new_pda_account.key, owner),
-            &[new_pda_account.clone(), system_program.clone()],
-            &[new_pda_signer_seeds],
-        )
-    } else {
-        invoke_signed(
-            &system_instruction::create_account(
-                payer.key,
-                new_pda_account.key,
-                required_lamports,
-                space as u64,
-                owner,
-            ),
-            &[
-                payer.clone(),
-                new_pda_account.clone(),
-                system_program.clone(),
-            ],
-            &[new_pda_signer_seeds],
-        )
-    }
 }
 
 /// Program state handler.
@@ -836,7 +787,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let staker_info = next_account_info(account_info_iter)?;
-        let funder_info = next_account_info(account_info_iter)?;
+        let reserve_stake_info = next_account_info(account_info_iter)?;
         let withdraw_authority_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
         let stake_info = next_account_info(account_info_iter)?;
@@ -866,6 +817,7 @@ impl Processor {
         )?;
 
         stake_pool.check_staker(staker_info)?;
+        stake_pool.check_reserve_stake(reserve_stake_info)?;
         stake_pool.check_validator_list(validator_list_info)?;
 
         if stake_pool.last_update_epoch < clock.epoch {
@@ -912,29 +864,20 @@ impl Processor {
             .saturating_add(rent.minimum_balance(space));
 
         // Create new stake account
-        create_pda_account(
-            funder_info,
-            required_lamports,
-            space,
-            &stake::program::id(),
-            system_program_info,
-            stake_info,
+        create_stake_account(
+            stake_info.clone(),
             stake_account_signer_seeds,
+            system_program_info.clone(),
         )?;
-        invoke(
-            &stake::instruction::initialize(
-                stake_info.key,
-                &stake::state::Authorized {
-                    staker: *withdraw_authority_info.key,
-                    withdrawer: *withdraw_authority_info.key,
-                },
-                &stake::state::Lockup::default(),
-            ),
-            &[
-                stake_info.clone(),
-                rent_info.clone(),
-                stake_program_info.clone(),
-            ],
+        // split into validator stake account
+        Self::stake_split(
+            stake_pool_info.key,
+            reserve_stake_info.clone(),
+            withdraw_authority_info.clone(),
+            AUTHORITY_WITHDRAW,
+            stake_pool.stake_withdraw_bump_seed,
+            required_lamports,
+            stake_info.clone(),
         )?;
 
         Self::stake_delegate(
@@ -972,11 +915,9 @@ impl Processor {
         let stake_pool_info = next_account_info(account_info_iter)?;
         let staker_info = next_account_info(account_info_iter)?;
         let withdraw_authority_info = next_account_info(account_info_iter)?;
-        let new_stake_authority_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
         let stake_account_info = next_account_info(account_info_iter)?;
         let transient_stake_account_info = next_account_info(account_info_iter)?;
-        let destination_stake_account_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
         let stake_program_info = next_account_info(account_info_iter)?;
@@ -997,6 +938,11 @@ impl Processor {
         stake_pool.check_staker(staker_info)?;
 
         if stake_pool.last_update_epoch < clock.epoch {
+            msg!(
+                "clock {} pool {}",
+                clock.epoch,
+                stake_pool.last_update_epoch
+            );
             return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
         }
 
@@ -1031,6 +977,10 @@ impl Processor {
             return Err(StakePoolError::ValidatorNotFound.into());
         }
         let mut validator_stake_info = maybe_validator_stake_info.unwrap();
+        if validator_stake_info.status != StakeStatus::Active {
+            msg!("Validator is already marked for removal");
+            return Err(StakePoolError::ValidatorNotFound.into());
+        }
 
         let stake_lamports = **stake_account_info.lamports.borrow();
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
@@ -1081,32 +1031,20 @@ impl Processor {
                         StakeStatus::DeactivatingTransient
                     }
                 }
-                _ => StakeStatus::ReadyForRemoval,
+                _ => StakeStatus::DeactivatingValidator,
             }
         } else {
-            StakeStatus::ReadyForRemoval
+            StakeStatus::DeactivatingValidator
         };
 
-        // split whole thing into destination stake account
-        Self::stake_split(
-            stake_pool_info.key,
+        // deactivate stake
+        Self::stake_deactivate(
             stake_account_info.clone(),
-            withdraw_authority_info.clone(),
-            AUTHORITY_WITHDRAW,
-            stake_pool.stake_withdraw_bump_seed,
-            stake_account_info.lamports(),
-            destination_stake_account_info.clone(),
-        )?;
-
-        Self::stake_authorize_signed(
-            stake_pool_info.key,
-            destination_stake_account_info.clone(),
-            withdraw_authority_info.clone(),
-            AUTHORITY_WITHDRAW,
-            stake_pool.stake_withdraw_bump_seed,
-            new_stake_authority_info.key,
             clock_info.clone(),
-            stake_program_info.clone(),
+            withdraw_authority_info.clone(),
+            stake_pool_info.key,
+            AUTHORITY_WITHDRAW,
+            stake_pool.stake_withdraw_bump_seed,
         )?;
 
         validator_stake_info.status = new_status;
@@ -1241,7 +1179,7 @@ impl Processor {
             return Err(ProgramError::InsufficientFunds);
         }
 
-        create_transient_stake_account(
+        create_stake_account(
             transient_stake_account_info.clone(),
             transient_stake_account_signer_seeds,
             system_program_info.clone(),
@@ -1433,7 +1371,7 @@ impl Processor {
             return Err(ProgramError::InsufficientFunds);
         }
 
-        create_transient_stake_account(
+        create_stake_account(
             transient_stake_account_info.clone(),
             transient_stake_account_signer_seeds,
             system_program_info.clone(),
@@ -1658,11 +1596,7 @@ impl Processor {
                                 stake_history_info.clone(),
                                 stake_program_info.clone(),
                             )?;
-                            if validator_stake_record.status == StakeStatus::DeactivatingTransient {
-                                // the validator stake was previously removed, and
-                                // now this entry can be removed totally
-                                validator_stake_record.status = StakeStatus::ReadyForRemoval;
-                            }
+                            validator_stake_record.status.remove_transient_stake();
                         }
                     }
                 }
@@ -1677,7 +1611,7 @@ impl Processor {
                             .saturating_add(stake.delegation.stake);
                         if no_merge {
                             transient_stake_lamports = account_stake;
-                        } else if stake.delegation.deactivation_epoch < clock.epoch {
+                        } else if stake_is_inactive_without_history(&stake, clock.epoch) {
                             // deactivated, merge into reserve
                             Self::stake_merge(
                                 stake_pool_info.key,
@@ -1690,11 +1624,7 @@ impl Processor {
                                 stake_history_info.clone(),
                                 stake_program_info.clone(),
                             )?;
-                            if validator_stake_record.status == StakeStatus::DeactivatingTransient {
-                                // the validator stake was previously removed, and
-                                // now this entry can be removed totally
-                                validator_stake_record.status = StakeStatus::ReadyForRemoval;
-                            }
+                            validator_stake_record.status.remove_transient_stake();
                         } else if stake.delegation.activation_epoch < clock.epoch {
                             if let Some(stake::state::StakeState::Stake(_, validator_stake)) =
                                 validator_stake_state
@@ -1758,15 +1688,47 @@ impl Processor {
             )
             .ok();
             match validator_stake_state {
-                Some(stake::state::StakeState::Stake(_, stake)) => {
-                    if validator_stake_record.status == StakeStatus::Active {
-                        active_stake_lamports = stake
-                            .delegation
-                            .stake
-                            .checked_sub(current_minimum_delegation)
-                            .ok_or(StakePoolError::CalculationFailure)?;
-                    } else {
-                        msg!("Validator stake account no longer part of the pool, ignoring");
+                Some(stake::state::StakeState::Stake(meta, stake)) => {
+                    match validator_stake_record.status {
+                        StakeStatus::Active => {
+                            active_stake_lamports = stake
+                                .delegation
+                                .stake
+                                .checked_sub(current_minimum_delegation)
+                                .ok_or(StakePoolError::CalculationFailure)?
+                        }
+                        StakeStatus::DeactivatingValidator | StakeStatus::DeactivatingAll => {
+                            if no_merge {
+                                active_stake_lamports = stake
+                                    .delegation
+                                    .stake
+                                    .checked_sub(current_minimum_delegation)
+                                    .ok_or(StakePoolError::CalculationFailure)?
+                            } else if stake_is_usable_by_pool(
+                                &meta,
+                                withdraw_authority_info.key,
+                                &stake_pool.lockup,
+                            ) && stake_is_inactive_without_history(&stake, clock.epoch)
+                            {
+                                // Validator was removed through normal means.
+                                // Absorb the lamports into the reserve.
+                                Self::stake_merge(
+                                    stake_pool_info.key,
+                                    validator_stake_info.clone(),
+                                    withdraw_authority_info.clone(),
+                                    AUTHORITY_WITHDRAW,
+                                    stake_pool.stake_withdraw_bump_seed,
+                                    reserve_stake_info.clone(),
+                                    clock_info.clone(),
+                                    stake_history_info.clone(),
+                                    stake_program_info.clone(),
+                                )?;
+                                validator_stake_record.status.remove_validator_stake();
+                            }
+                        }
+                        StakeStatus::DeactivatingTransient | StakeStatus::ReadyForRemoval => {
+                            msg!("Validator stake account no longer part of the pool, ignoring");
+                        }
                     }
                 }
                 Some(stake::state::StakeState::Initialized(meta))
@@ -1777,9 +1739,9 @@ impl Processor {
                     ) =>
                 {
                     // If a validator stake is `Initialized`, the validator could
-                    // have been destaked during a cluster restart. Either way,
-                    // absorb those lamports into the reserve.  The transient
-                    // stake was likely absorbed into the reserve earlier.
+                    // have been destaked during a cluster restart or removed through
+                    // normal means. Either way, absorb those lamports into the reserve.
+                    // The transient stake was likely absorbed into the reserve earlier.
                     Self::stake_merge(
                         stake_pool_info.key,
                         validator_stake_info.clone(),
@@ -1791,7 +1753,7 @@ impl Processor {
                         stake_history_info.clone(),
                         stake_program_info.clone(),
                     )?;
-                    validator_stake_record.status = StakeStatus::ReadyForRemoval;
+                    validator_stake_record.status.remove_validator_stake();
                 }
                 Some(stake::state::StakeState::Initialized(_))
                 | Some(stake::state::StakeState::Uninitialized)
