@@ -9,10 +9,10 @@ version = "0.2.0"
 
 [dependencies]
 async-trait = "0.1"
-solana-cli-output = { version = "=1.11.6", optional = true }
-solana-client = "=1.11.6"
-solana-program-test = "=1.11.6"
-solana-sdk = "=1.11.6"
+solana-cli-output = { version = "=1.14.4", optional = true }
+solana-client = "=1.14.4"
+solana-program-test = "=1.14.4"
+solana-sdk = "=1.14.4"
 # We never want the entrypoint for ATA, but we want the entrypoint for token when
 # testing token
 spl-associated-token-account = { version = "1.1", path = "../../associated-token-account/program", features = ["no-entrypoint"] }
