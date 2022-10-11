@@ -25,6 +25,17 @@ pub struct ChangeLogEventV1 {
     pub index: u32,
 }
 
+impl ChangeLogEvent {
+    pub fn new(id: Pubkey, path: Vec<PathNode>, seq: u64, index: u32) -> Self {
+        Self::V1(ChangeLogEventV1 {
+            id,
+            path,
+            seq,
+            index,
+        })
+    }
+}
+
 impl<const MAX_DEPTH: usize> From<(Box<ChangeLog<MAX_DEPTH>>, Pubkey, u64)>
     for Box<ChangeLogEvent>
 {
