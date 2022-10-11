@@ -433,6 +433,12 @@ async fn success_with_deactivating_transient_stake() {
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let current_minimum_delegation = stake_pool_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
     let deposit_info = simple_deposit_stake(
         &mut context.banks_client,
         &context.payer,
@@ -535,7 +541,7 @@ async fn success_with_deactivating_transient_stake() {
             status: state::StakeStatus::DeactivatingTransient,
             vote_account_address: validator_stake.vote.pubkey(),
             last_update_epoch: 0,
-            active_stake_lamports: 0,
+            active_stake_lamports: stake_rent + current_minimum_delegation,
             transient_stake_lamports: TEST_STAKE_AMOUNT + stake_rent,
             transient_seed_suffix_start: validator_stake.transient_stake_seed,
             transient_seed_suffix_end: 0,

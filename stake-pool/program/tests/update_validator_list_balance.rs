@@ -39,25 +39,14 @@ async fn setup(
     let mut slot = first_normal_slot;
     context.warp_to_slot(slot).unwrap();
 
-    let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeState>());
-    let current_minimum_delegation = stake_pool_get_minimum_delegation(
-        &mut context.banks_client,
-        &context.payer,
-        &context.last_blockhash,
-    )
-    .await;
-
-    let reserve_stake_amount = TEST_STAKE_AMOUNT * num_validators as u64;
+    let reserve_stake_amount = TEST_STAKE_AMOUNT * 2 * num_validators as u64;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            reserve_stake_amount
-                + MINIMUM_RESERVE_LAMPORTS
-                + (stake_rent + current_minimum_delegation) * num_validators as u64,
+            reserve_stake_amount + MINIMUM_RESERVE_LAMPORTS,
         )
         .await
         .unwrap();
@@ -163,7 +152,7 @@ async fn setup(
 }
 
 #[tokio::test]
-async fn success() {
+async fn success_with_normal() {
     let num_validators = 5;
     let (
         mut context,
@@ -178,18 +167,23 @@ async fn success() {
     // Check current balance in the list
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeState>());
+    let stake_pool_info = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
+    let validator_list_sum = get_validator_list_sum(
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.validator_list.pubkey(),
+    )
+    .await;
+    assert_eq!(stake_pool.total_lamports, validator_list_sum);
     // initially, have all of the deposits plus their rent, and the reserve stake
     let initial_lamports =
         (validator_lamports + stake_rent) * num_validators as u64 + reserve_lamports;
-    assert_eq!(
-        get_validator_list_sum(
-            &mut context.banks_client,
-            &stake_pool_accounts.reserve_stake.pubkey(),
-            &stake_pool_accounts.validator_list.pubkey()
-        )
-        .await,
-        initial_lamports,
-    );
+    assert_eq!(validator_list_sum, initial_lamports);
 
     // Simulate rewards
     for stake_account in &stake_accounts {
@@ -356,6 +350,16 @@ async fn merge_into_validator_stake() {
     .await;
 
     // Increase stake to all validators
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeState>());
+    let current_minimum_delegation = stake_pool_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
+    let available_lamports =
+        reserve_lamports - (stake_rent + current_minimum_delegation) * stake_accounts.len() as u64;
+    let increase_amount = available_lamports / stake_accounts.len() as u64;
     for stake_account in &stake_accounts {
         let error = stake_pool_accounts
             .increase_validator_stake(
@@ -365,7 +369,7 @@ async fn merge_into_validator_stake() {
                 &stake_account.transient_stake_account,
                 &stake_account.stake_account,
                 &stake_account.vote.pubkey(),
-                reserve_lamports / stake_accounts.len() as u64,
+                increase_amount,
                 stake_account.transient_stake_seed,
             )
             .await;
@@ -451,17 +455,7 @@ async fn merge_into_validator_stake() {
 
     // Check validator stake accounts have the expected balance now:
     // validator stake account minimum + deposited lamports + rents + increased lamports
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeState>());
-    let current_minimum_delegation = stake_pool_get_minimum_delegation(
-        &mut context.banks_client,
-        &context.payer,
-        &context.last_blockhash,
-    )
-    .await;
-    let expected_lamports = current_minimum_delegation
-        + lamports
-        + reserve_lamports / stake_accounts.len() as u64
-        + stake_rent;
+    let expected_lamports = current_minimum_delegation + lamports + increase_amount + stake_rent;
     for stake_account in &stake_accounts {
         let validator_stake =
             get_account(&mut context.banks_client, &stake_account.stake_account).await;
@@ -584,6 +578,12 @@ async fn merge_transient_stake_after_remove() {
     );
     assert_eq!(validator_list.validators[0].stake_lamports(), 0);
 
+    let current_minimum_delegation = stake_pool_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
     let reserve_stake = context
         .banks_client
         .get_account(stake_pool_accounts.reserve_stake.pubkey())
@@ -592,7 +592,8 @@ async fn merge_transient_stake_after_remove() {
         .unwrap();
     assert_eq!(
         reserve_stake.lamports,
-        reserve_lamports + deactivated_lamports + 2 * stake_rent + MINIMUM_RESERVE_LAMPORTS
+        reserve_lamports + deactivated_lamports + stake_rent * 2 + MINIMUM_RESERVE_LAMPORTS
+            - (stake_rent + current_minimum_delegation)
     );
 
     // Update stake pool balance and cleanup, should be gone

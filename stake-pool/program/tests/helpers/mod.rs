@@ -15,7 +15,6 @@ use {
     solana_sdk::{
         account::{Account, WritableAccount},
         clock::{Clock, Epoch},
-        native_token::LAMPORTS_PER_SOL,
         signature::{Keypair, Signer},
         transaction::Transaction,
         transport::TransportError,
@@ -1437,6 +1436,7 @@ pub async fn simple_add_validator_to_pool(
     payer: &Keypair,
     recent_blockhash: &Hash,
     stake_pool_accounts: &StakePoolAccounts,
+    sol_deposit_authority: Option<&Keypair>,
 ) -> ValidatorStakeAccount {
     let validator_stake = ValidatorStakeAccount::new(
         &stake_pool_accounts.stake_pool.pubkey(),
@@ -1448,25 +1448,28 @@ pub async fn simple_add_validator_to_pool(
     let current_minimum_delegation =
         stake_pool_get_minimum_delegation(banks_client, payer, recent_blockhash).await;
 
-    let intermediate_payer = Keypair::new(); // this is gross, but ensures we don't do the same
-                                             // transfer more than once
-    transfer(
+    let pool_token_account = Keypair::new();
+    create_token_account(
         banks_client,
         payer,
         recent_blockhash,
-        &intermediate_payer.pubkey(),
-        stake_rent * 2 + current_minimum_delegation, // a bit more for tx fees
+        &pool_token_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &payer.pubkey(),
     )
-    .await;
-
-    transfer(
-        banks_client,
-        &intermediate_payer,
-        recent_blockhash,
-        &stake_pool_accounts.reserve_stake.pubkey(),
-        stake_rent + current_minimum_delegation,
-    )
-    .await;
+    .await
+    .unwrap();
+    let error = stake_pool_accounts
+        .deposit_sol(
+            banks_client,
+            payer,
+            recent_blockhash,
+            &pool_token_account.pubkey(),
+            stake_rent + current_minimum_delegation,
+            sol_deposit_authority,
+        )
+        .await;
+    assert!(error.is_none());
 
     create_vote(
         banks_client,
@@ -1770,10 +1773,7 @@ pub fn add_validator_stake_account(
     let (stake_address, _) = find_stake_program_address(&id(), voter_pubkey, stake_pool_pubkey);
     program_test.add_account(stake_address, stake_account);
 
-    // Hack the active stake lamports to the current amount given by the runtime.
-    // Since program_test hasn't been started, there's no usable banks_client for
-    // fetching the minimum stake delegation.
-    let active_stake_lamports = stake_amount - LAMPORTS_PER_SOL;
+    let active_stake_lamports = stake_amount + STAKE_ACCOUNT_RENT_EXEMPTION;
 
     validator_list.validators.push(state::ValidatorStakeInfo {
         status,

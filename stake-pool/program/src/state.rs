@@ -588,7 +588,7 @@ pub struct ValidatorStakeInfo {
 }
 
 impl ValidatorStakeInfo {
-    /// Get the total lamports delegated to this validator (active and transient)
+    /// Get the total lamports on this validator (active and transient)
     pub fn stake_lamports(&self) -> u64 {
         self.active_stake_lamports
             .checked_add(self.transient_stake_lamports)

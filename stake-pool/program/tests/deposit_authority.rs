@@ -61,6 +61,7 @@ async fn success_deposit() {
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        stake_pool_accounts.stake_deposit_authority_keypair.as_ref(),
     )
     .await;
 
@@ -141,6 +142,7 @@ async fn fail_deposit_without_authority_signature() {
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        stake_pool_accounts.stake_deposit_authority_keypair.as_ref(),
     )
     .await;
 

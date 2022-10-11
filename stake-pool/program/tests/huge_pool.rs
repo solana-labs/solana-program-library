@@ -308,17 +308,26 @@ async fn remove_validator_from_pool() {
         try_from_slice_unchecked::<ValidatorList>(validator_list.data.as_slice()).unwrap();
     let first_element = &validator_list.validators[0];
     assert_eq!(first_element.status, StakeStatus::DeactivatingValidator);
-    assert_eq!(first_element.active_stake_lamports, 0);
+    assert_eq!(
+        first_element.active_stake_lamports,
+        LAMPORTS_PER_SOL + STAKE_ACCOUNT_RENT_EXEMPTION
+    );
     assert_eq!(first_element.transient_stake_lamports, 0);
 
     let middle_element = &validator_list.validators[middle_index];
     assert_eq!(middle_element.status, StakeStatus::DeactivatingValidator);
-    assert_eq!(middle_element.active_stake_lamports, 0);
+    assert_eq!(
+        middle_element.active_stake_lamports,
+        LAMPORTS_PER_SOL + STAKE_ACCOUNT_RENT_EXEMPTION
+    );
     assert_eq!(middle_element.transient_stake_lamports, 0);
 
     let last_element = &validator_list.validators[last_index];
     assert_eq!(last_element.status, StakeStatus::DeactivatingValidator);
-    assert_eq!(last_element.active_stake_lamports, 0);
+    assert_eq!(
+        last_element.active_stake_lamports,
+        LAMPORTS_PER_SOL + STAKE_ACCOUNT_RENT_EXEMPTION
+    );
     assert_eq!(last_element.transient_stake_lamports, 0);
 
     let transaction = Transaction::new_signed_with_payer(
@@ -480,7 +489,10 @@ async fn add_validator_to_pool() {
     assert_eq!(validator_list.validators.len(), last_index + 1);
     let last_element = validator_list.validators[last_index];
     assert_eq!(last_element.status, StakeStatus::Active);
-    assert_eq!(last_element.active_stake_lamports, 0);
+    assert_eq!(
+        last_element.active_stake_lamports,
+        LAMPORTS_PER_SOL + STAKE_ACCOUNT_RENT_EXEMPTION
+    );
     assert_eq!(last_element.transient_stake_lamports, 0);
     assert_eq!(last_element.vote_account_address, test_vote_address);
 
@@ -515,7 +527,10 @@ async fn add_validator_to_pool() {
         try_from_slice_unchecked::<ValidatorList>(validator_list.data.as_slice()).unwrap();
     let last_element = validator_list.validators[last_index];
     assert_eq!(last_element.status, StakeStatus::Active);
-    assert_eq!(last_element.active_stake_lamports, 0);
+    assert_eq!(
+        last_element.active_stake_lamports,
+        LAMPORTS_PER_SOL + STAKE_ACCOUNT_RENT_EXEMPTION
+    );
     assert_eq!(
         last_element.transient_stake_lamports,
         increase_amount + STAKE_ACCOUNT_RENT_EXEMPTION

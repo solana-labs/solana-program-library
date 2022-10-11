@@ -42,6 +42,7 @@ async fn setup() -> (
             &context.payer,
             &context.last_blockhash,
             &stake_pool_accounts,
+            None,
         )
         .await;
 
@@ -172,7 +173,7 @@ async fn success() {
 }
 
 #[tokio::test]
-async fn success_ignoring_extra_lamports() {
+async fn success_absorbing_extra_lamports() {
     let (mut context, stake_pool_accounts, stake_accounts) = setup().await;
 
     let pre_balance = get_validator_list_sum(
@@ -204,7 +205,7 @@ async fn success_ignoring_extra_lamports() {
         .await;
     assert!(error.is_none());
 
-    // Transfer extra funds, should not be taken into account
+    // Transfer extra funds, will be absorbed during update
     const EXTRA_STAKE_AMOUNT: u64 = 1_000_000;
     for stake_account in &stake_accounts {
         transfer(
@@ -216,6 +217,9 @@ async fn success_ignoring_extra_lamports() {
         )
         .await;
     }
+
+    let extra_lamports = EXTRA_STAKE_AMOUNT * stake_accounts.len() as u64;
+    let expected_fee = stake_pool.calc_epoch_fee_amount(extra_lamports).unwrap();
 
     // Update epoch
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
@@ -240,20 +244,20 @@ async fn success_ignoring_extra_lamports() {
         .await;
     assert!(error.is_none());
 
-    // Check fee
+    // Check extra lamports are absorbed and fee'd as rewards
     let post_balance = get_validator_list_sum(
         &mut context.banks_client,
         &stake_pool_accounts.reserve_stake.pubkey(),
         &stake_pool_accounts.validator_list.pubkey(),
     )
     .await;
-    assert_eq!(post_balance, pre_balance);
+    assert_eq!(post_balance, pre_balance + extra_lamports);
     let pool_token_supply = get_token_supply(
         &mut context.banks_client,
         &stake_pool_accounts.pool_mint.pubkey(),
     )
     .await;
-    assert_eq!(pool_token_supply, pre_token_supply);
+    assert_eq!(pool_token_supply, pre_token_supply + expected_fee);
 }
 
 #[tokio::test]

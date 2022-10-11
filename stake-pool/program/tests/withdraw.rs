@@ -55,6 +55,7 @@ async fn setup() -> (
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        None,
     )
     .await;
 
@@ -307,13 +308,8 @@ async fn _success(test_type: SuccessTestType) {
     // Check validator stake account balance
     let validator_stake_account =
         get_account(&mut banks_client, &validator_stake_account.stake_account).await;
-    let stake_state =
-        deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
-    let meta = stake_state.meta().unwrap();
-    let stake_minimum_delegation =
-        stake_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
     assert_eq!(
-        validator_stake_account.lamports - minimum_stake_lamports(&meta, stake_minimum_delegation),
+        validator_stake_account.lamports,
         validator_stake_item.active_stake_lamports
     );
 
@@ -665,6 +661,7 @@ async fn fail_without_token_approval() {
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        None,
     )
     .await;
 
@@ -741,6 +738,7 @@ async fn fail_with_low_delegation() {
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        None,
     )
     .await;
 
@@ -829,6 +827,7 @@ async fn fail_overdraw_validator() {
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        None,
     )
     .await;
 
@@ -877,6 +876,7 @@ async fn success_with_reserve() {
         &context.payer,
         &context.last_blockhash,
         &stake_pool_accounts,
+        None,
     )
     .await;
 
@@ -1142,6 +1142,7 @@ async fn fail_with_wrong_preferred_withdraw() {
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        None,
     )
     .await;
 
@@ -1241,6 +1242,7 @@ async fn fail_withdraw_from_transient() {
         &context.payer,
         &context.last_blockhash,
         &stake_pool_accounts,
+        None,
     )
     .await;
 
@@ -1259,6 +1261,7 @@ async fn fail_withdraw_from_transient() {
         &context.payer,
         &context.last_blockhash,
         &stake_pool_accounts,
+        None,
     )
     .await;
 
@@ -1366,6 +1369,7 @@ async fn success_withdraw_from_transient() {
         &context.payer,
         &context.last_blockhash,
         &stake_pool_accounts,
+        None,
     )
     .await;
 
@@ -1384,6 +1388,7 @@ async fn success_withdraw_from_transient() {
         &context.payer,
         &context.last_blockhash,
         &stake_pool_accounts,
+        None,
     )
     .await;
 
@@ -1487,7 +1492,7 @@ async fn success_withdraw_all_fee_tokens() {
         &deposit_info.pool_account.pubkey(),
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &user_transfer_authority,
-        tokens_to_withdraw,
+        tokens_to_withdraw / 2,
     )
     .await;
 
@@ -1554,6 +1559,7 @@ async fn success_empty_out_stake_with_fee() {
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        None,
     )
     .await;
 

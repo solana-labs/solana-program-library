@@ -895,7 +895,7 @@ impl Processor {
         validator_list.push(ValidatorStakeInfo {
             status: StakeStatus::Active,
             vote_account_address: *validator_vote_info.key,
-            active_stake_lamports: 0,
+            active_stake_lamports: required_lamports,
             transient_stake_lamports: 0,
             last_update_epoch: clock.epoch,
             transient_seed_suffix_start: 0,
@@ -1526,8 +1526,6 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
-        let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
         let validator_iter = &mut validator_slice
             .iter_mut()
             .zip(validator_stake_accounts.chunks_exact(2));
@@ -1606,11 +1604,8 @@ impl Processor {
                         withdraw_authority_info.key,
                         &stake_pool.lockup,
                     ) {
-                        let account_stake = meta
-                            .rent_exempt_reserve
-                            .saturating_add(stake.delegation.stake);
                         if no_merge {
-                            transient_stake_lamports = account_stake;
+                            transient_stake_lamports = transient_stake_info.lamports();
                         } else if stake_is_inactive_without_history(&stake, clock.epoch) {
                             // deactivated, merge into reserve
                             Self::stake_merge(
@@ -1630,9 +1625,6 @@ impl Processor {
                                 validator_stake_state
                             {
                                 if validator_stake.delegation.activation_epoch < clock.epoch {
-                                    let additional_lamports = transient_stake_info
-                                        .lamports()
-                                        .saturating_sub(stake.delegation.stake);
                                     Self::stake_merge(
                                         stake_pool_info.key,
                                         transient_stake_info.clone(),
@@ -1644,34 +1636,17 @@ impl Processor {
                                         stake_history_info.clone(),
                                         stake_program_info.clone(),
                                     )?;
-
-                                    // post merge of two active stakes, withdraw
-                                    // the extra back to the reserve
-                                    if additional_lamports > 0 {
-                                        Self::stake_withdraw(
-                                            stake_pool_info.key,
-                                            validator_stake_info.clone(),
-                                            withdraw_authority_info.clone(),
-                                            AUTHORITY_WITHDRAW,
-                                            stake_pool.stake_withdraw_bump_seed,
-                                            reserve_stake_info.clone(),
-                                            clock_info.clone(),
-                                            stake_history_info.clone(),
-                                            stake_program_info.clone(),
-                                            additional_lamports,
-                                        )?;
-                                    }
                                 } else {
                                     msg!("Stake activating or just active, not ready to merge");
-                                    transient_stake_lamports = account_stake;
+                                    transient_stake_lamports = transient_stake_info.lamports();
                                 }
                             } else {
                                 msg!("Transient stake is activating or active, but validator stake is not, need to add the validator stake account on {} back into the stake pool", stake.delegation.voter_pubkey);
-                                transient_stake_lamports = account_stake;
+                                transient_stake_lamports = transient_stake_info.lamports();
                             }
                         } else {
                             msg!("Transient stake not ready to be merged anywhere");
-                            transient_stake_lamports = account_stake;
+                            transient_stake_lamports = transient_stake_info.lamports();
                         }
                     }
                 }
@@ -1689,21 +1664,32 @@ impl Processor {
             .ok();
             match validator_stake_state {
                 Some(stake::state::StakeState::Stake(meta, stake)) => {
+                    let additional_lamports = validator_stake_info
+                        .lamports()
+                        .saturating_sub(stake.delegation.stake)
+                        .saturating_sub(meta.rent_exempt_reserve);
+                    // withdraw any extra lamports back to the reserve
+                    if additional_lamports > 0 {
+                        Self::stake_withdraw(
+                            stake_pool_info.key,
+                            validator_stake_info.clone(),
+                            withdraw_authority_info.clone(),
+                            AUTHORITY_WITHDRAW,
+                            stake_pool.stake_withdraw_bump_seed,
+                            reserve_stake_info.clone(),
+                            clock_info.clone(),
+                            stake_history_info.clone(),
+                            stake_program_info.clone(),
+                            additional_lamports,
+                        )?;
+                    }
                     match validator_stake_record.status {
                         StakeStatus::Active => {
-                            active_stake_lamports = stake
-                                .delegation
-                                .stake
-                                .checked_sub(current_minimum_delegation)
-                                .ok_or(StakePoolError::CalculationFailure)?
+                            active_stake_lamports = validator_stake_info.lamports();
                         }
                         StakeStatus::DeactivatingValidator | StakeStatus::DeactivatingAll => {
                             if no_merge {
-                                active_stake_lamports = stake
-                                    .delegation
-                                    .stake
-                                    .checked_sub(current_minimum_delegation)
-                                    .ok_or(StakePoolError::CalculationFailure)?
+                                active_stake_lamports = validator_stake_info.lamports();
                             } else if stake_is_usable_by_pool(
                                 &meta,
                                 withdraw_authority_info.key,
@@ -2170,13 +2156,7 @@ impl Processor {
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
-        let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
-        let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
-        validator_stake_info.active_stake_lamports = post_validator_stake
-            .delegation
-            .stake
-            .checked_sub(current_minimum_delegation)
-            .ok_or(StakePoolError::CalculationFailure)?;
+        validator_stake_info.active_stake_lamports = validator_stake_account_info.lamports();
 
         Ok(())
     }
@@ -2400,9 +2380,15 @@ impl Processor {
             return Err(StakePoolError::WithdrawalTooSmall.into());
         }
 
+        let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
+        let stake_state =
+            try_from_slice_unchecked::<stake::state::StakeState>(&stake_split_from.data.borrow())?;
+        let meta = stake_state.meta().ok_or(StakePoolError::WrongStakeState)?;
+        let required_lamports = minimum_stake_lamports(&meta, stake_minimum_delegation);
+
         let has_active_stake = validator_list
             .find::<ValidatorStakeInfo>(
-                &0u64.to_le_bytes(),
+                &required_lamports.to_le_bytes(),
                 ValidatorStakeInfo::active_lamports_not_equal,
             )
             .is_some();
@@ -2421,18 +2407,16 @@ impl Processor {
             }
 
             // check that reserve has enough (should never fail, but who knows?)
-            let stake_state = try_from_slice_unchecked::<stake::state::StakeState>(
-                &stake_split_from.data.borrow(),
-            )?;
-            let meta = stake_state.meta().ok_or(StakePoolError::WrongStakeState)?;
             stake_split_from
                 .lamports()
                 .checked_sub(minimum_reserve_lamports(&meta))
                 .ok_or(StakePoolError::StakeLamportsNotEqualToMinimum)?;
             None
         } else {
-            let (_, stake) = get_stake_state(stake_split_from)?;
-            let vote_account_address = stake.delegation.voter_pubkey;
+            let delegation = stake_state
+                .delegation()
+                .ok_or(StakePoolError::WrongStakeState)?;
+            let vote_account_address = delegation.voter_pubkey;
 
             if let Some(preferred_withdraw_validator) =
                 stake_pool.preferred_withdraw_validator_vote_address
@@ -2443,9 +2427,10 @@ impl Processor {
                         ValidatorStakeInfo::memcmp_pubkey,
                     )
                     .ok_or(StakePoolError::ValidatorNotFound)?;
-                if preferred_withdraw_validator != vote_account_address
-                    && preferred_validator_info.active_stake_lamports > 0
-                {
+                let available_lamports = preferred_validator_info
+                    .active_stake_lamports
+                    .saturating_sub(required_lamports);
+                if preferred_withdraw_validator != vote_account_address && available_lamports > 0 {
                     msg!("Validator vote address {} is preferred for withdrawals, it currently has {} lamports available. Please withdraw those before using other validator stake accounts.", preferred_withdraw_validator, preferred_validator_info.active_stake_lamports);
                     return Err(StakePoolError::IncorrectWithdrawVoteAddress.into());
                 }
@@ -2484,11 +2469,11 @@ impl Processor {
                 return Err(StakePoolError::ValidatorNotFound.into());
             }
 
-            let remaining_lamports = stake.delegation.stake.saturating_sub(withdraw_lamports);
-            let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
-            let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
-            if remaining_lamports < current_minimum_delegation {
-                msg!("Attempting to withdraw {} lamports from validator account with {} stake lamports, {} must remain", withdraw_lamports, stake.delegation.stake, current_minimum_delegation);
+            let remaining_lamports = stake_split_from
+                .lamports()
+                .saturating_sub(withdraw_lamports);
+            if remaining_lamports < required_lamports {
+                msg!("Attempting to withdraw {} lamports from validator account with {} stake lamports, {} must remain", withdraw_lamports, stake_split_from.lamports(), required_lamports);
                 return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
             }
             Some((validator_stake_info, withdrawing_from_transient_stake))
