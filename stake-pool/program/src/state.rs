@@ -539,11 +539,21 @@ impl StakeStatus {
         *self = new_self;
     }
 }
-
 impl Default for StakeStatus {
     fn default() -> Self {
         Self::Active
     }
+}
+
+/// Withdrawal type, figured out during process_withdraw_stake
+#[derive(Debug, PartialEq)]
+pub(crate) enum StakeWithdrawSource {
+    /// Some of an active stake account, but not all
+    Active,
+    /// Some of a transient stake account
+    Transient,
+    /// Take a whole validator stake account
+    ValidatorRemoval,
 }
 
 /// Information about a validator in the pool

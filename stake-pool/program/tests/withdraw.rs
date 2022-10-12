@@ -798,6 +798,182 @@ async fn fail_overdraw_validator() {
 }
 
 #[tokio::test]
+async fn fail_remove_validator() {
+    let (
+        mut context,
+        stake_pool_accounts,
+        validator_stake,
+        deposit_info,
+        user_transfer_authority,
+        user_stake_recipient,
+        _,
+    ) = setup().await;
+
+    // decrease a little stake, not all
+    let error = stake_pool_accounts
+        .decrease_validator_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+            deposit_info.stake_lamports / 2,
+            validator_stake.transient_stake_seed,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // warp forward to deactivation
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    context
+        .warp_to_slot(first_normal_slot + slots_per_epoch)
+        .unwrap();
+
+    // update to merge deactivated stake into reserve
+    stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &[validator_stake.vote.pubkey()],
+            false,
+        )
+        .await;
+
+    // Withdraw entire account, fail because some stake left
+    let validator_stake_account =
+        get_account(&mut context.banks_client, &validator_stake.stake_account).await;
+    let remaining_lamports = validator_stake_account.lamports;
+    let new_user_authority = Pubkey::new_unique();
+    let error = stake_pool_accounts
+        .withdraw_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
+            &deposit_info.pool_account.pubkey(),
+            &validator_stake.stake_account,
+            &new_user_authority,
+            remaining_lamports,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)
+        )
+    );
+}
+
+#[tokio::test]
+async fn success_remove_validator() {
+    let (
+        mut context,
+        stake_pool_accounts,
+        validator_stake,
+        deposit_info,
+        user_transfer_authority,
+        user_stake_recipient,
+        _,
+    ) = setup().await;
+
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+
+    // decrease all of stake
+    let error = stake_pool_accounts
+        .decrease_validator_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+            deposit_info.stake_lamports + stake_rent,
+            validator_stake.transient_stake_seed,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // warp forward to deactivation
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    context
+        .warp_to_slot(first_normal_slot + slots_per_epoch)
+        .unwrap();
+
+    // update to merge deactivated stake into reserve
+    stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &[validator_stake.vote.pubkey()],
+            false,
+        )
+        .await;
+
+    let validator_stake_account =
+        get_account(&mut context.banks_client, &validator_stake.stake_account).await;
+    let remaining_lamports = validator_stake_account.lamports;
+    let new_user_authority = Pubkey::new_unique();
+    let pool_tokens = stake_pool_accounts.calculate_inverse_withdrawal_fee(remaining_lamports);
+    let error = stake_pool_accounts
+        .withdraw_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
+            &deposit_info.pool_account.pubkey(),
+            &validator_stake.stake_account,
+            &new_user_authority,
+            pool_tokens,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // Check validator stake account gone
+    let validator_stake_account = context
+        .banks_client
+        .get_account(validator_stake.stake_account)
+        .await
+        .unwrap();
+    assert!(validator_stake_account.is_none());
+
+    // Check user recipient stake account balance
+    let user_stake_recipient_account =
+        get_account(&mut context.banks_client, &user_stake_recipient.pubkey()).await;
+    assert_eq!(
+        user_stake_recipient_account.lamports,
+        remaining_lamports + stake_rent + 1
+    );
+
+    // Check that cleanup happens correctly
+    stake_pool_accounts
+        .cleanup_removed_validator_entries(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+        )
+        .await;
+
+    let validator_list = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.validator_list.pubkey(),
+    )
+    .await;
+    let validator_list =
+        try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
+    let validator_stake_item = validator_list.find(&validator_stake.vote.pubkey());
+    assert!(validator_stake_item.is_none());
+}
+
+#[tokio::test]
 async fn fail_with_reserve() {
     let (
         mut context,

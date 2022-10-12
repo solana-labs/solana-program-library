@@ -287,12 +287,12 @@ pub enum StakePoolInstruction {
     ///   * preferred withdraw validator stake account (if set)
     ///   * validator stake accounts
     ///   * transient stake accounts
-    ///   * reserve stake account
+    ///   * reserve stake account OR totally remove validator stake accounts
     ///
     ///   A user can freely withdraw from a validator stake account, and if they
     ///   are all at the minimum, then they can withdraw from transient stake
     ///   accounts, and if they are all at minimum, then they can withdraw from
-    ///   the reserve.
+    ///   the reserve or remove any validator from the pool.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[w]` Validator stake list storage account

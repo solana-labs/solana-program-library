@@ -7,8 +7,8 @@ use {
         instruction::{FundingType, PreferredValidatorType, StakePoolInstruction},
         minimum_delegation, minimum_reserve_lamports, minimum_stake_lamports,
         state::{
-            AccountType, Fee, FeeType, StakePool, StakeStatus, ValidatorList, ValidatorListHeader,
-            ValidatorStakeInfo,
+            AccountType, Fee, FeeType, StakePool, StakeStatus, StakeWithdrawSource, ValidatorList,
+            ValidatorListHeader, ValidatorStakeInfo,
         },
         AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, TRANSIENT_STAKE_SEED_PREFIX,
     },
@@ -1015,8 +1015,11 @@ impl Processor {
 
             match get_stake_state(transient_stake_account_info) {
                 Ok((meta, stake))
-                    if meta.authorized.staker == *withdraw_authority_info.key
-                        && meta.authorized.withdrawer == *withdraw_authority_info.key =>
+                    if stake_is_usable_by_pool(
+                        &meta,
+                        withdraw_authority_info.key,
+                        &stake_pool.lockup,
+                    ) =>
                 {
                     if stake.delegation.deactivation_epoch == Epoch::MAX {
                         msg!(
@@ -2392,15 +2395,15 @@ impl Processor {
                 ValidatorStakeInfo::active_lamports_not_equal,
             )
             .is_some();
+        let has_transient_stake = validator_list
+            .find::<ValidatorStakeInfo>(
+                &0u64.to_le_bytes(),
+                ValidatorStakeInfo::transient_lamports_not_equal,
+            )
+            .is_some();
 
         let validator_list_item_info = if *stake_split_from.key == stake_pool.reserve_stake {
             // check that the validator stake accounts have no withdrawable stake
-            let has_transient_stake = validator_list
-                .find::<ValidatorStakeInfo>(
-                    &0u64.to_le_bytes(),
-                    ValidatorStakeInfo::transient_lamports_not_equal,
-                )
-                .is_some();
             if has_transient_stake || has_active_stake {
                 msg!("Error withdrawing from reserve: validator stake accounts have lamports available, please use those first.");
                 return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
@@ -2443,17 +2446,18 @@ impl Processor {
                 )
                 .ok_or(StakePoolError::ValidatorNotFound)?;
 
-            // if there's any active stake, we must withdraw from an active
-            // stake account
-            let withdrawing_from_transient_stake = if has_active_stake {
+            let withdraw_source = if has_active_stake {
+                // if there's any active stake, we must withdraw from an active
+                // stake account
                 check_validator_stake_address(
                     program_id,
                     stake_pool_info.key,
                     stake_split_from.key,
                     &vote_account_address,
                 )?;
-                false
-            } else {
+                StakeWithdrawSource::Active
+            } else if has_transient_stake {
+                // if there's any transient stake, we must withdraw from there
                 check_transient_stake_address(
                     program_id,
                     stake_pool_info.key,
@@ -2461,7 +2465,16 @@ impl Processor {
                     &vote_account_address,
                     validator_stake_info.transient_seed_suffix_start,
                 )?;
-                true
+                StakeWithdrawSource::Transient
+            } else {
+                // if there's no active or transient stake, we can take the whole account
+                check_validator_stake_address(
+                    program_id,
+                    stake_pool_info.key,
+                    stake_split_from.key,
+                    &vote_account_address,
+                )?;
+                StakeWithdrawSource::ValidatorRemoval
             };
 
             if validator_stake_info.status != StakeStatus::Active {
@@ -2469,14 +2482,25 @@ impl Processor {
                 return Err(StakePoolError::ValidatorNotFound.into());
             }
 
-            let remaining_lamports = stake_split_from
-                .lamports()
-                .saturating_sub(withdraw_lamports);
-            if remaining_lamports < required_lamports {
-                msg!("Attempting to withdraw {} lamports from validator account with {} stake lamports, {} must remain", withdraw_lamports, stake_split_from.lamports(), required_lamports);
-                return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
+            match withdraw_source {
+                StakeWithdrawSource::Active | StakeWithdrawSource::Transient => {
+                    let remaining_lamports = stake_split_from
+                        .lamports()
+                        .saturating_sub(withdraw_lamports);
+                    if remaining_lamports < required_lamports {
+                        msg!("Attempting to withdraw {} lamports from validator account with {} stake lamports, {} must remain", withdraw_lamports, stake_split_from.lamports(), required_lamports);
+                        return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
+                    }
+                }
+                StakeWithdrawSource::ValidatorRemoval => {
+                    if withdraw_lamports != stake_split_from.lamports() {
+                        msg!("Cannot withdraw a whole account worth {} lamports, must withdraw exactly {} lamports worth of pool tokens",
+                            withdraw_lamports, stake_split_from.lamports());
+                        return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
+                    }
+                }
             }
-            Some((validator_stake_info, withdrawing_from_transient_stake))
+            Some((validator_stake_info, withdraw_source))
         };
 
         Self::token_burn(
@@ -2528,19 +2552,34 @@ impl Processor {
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
-        if let Some((validator_list_item, withdrawing_from_transient_stake_account)) =
-            validator_list_item_info
-        {
-            if withdrawing_from_transient_stake_account {
-                validator_list_item.transient_stake_lamports = validator_list_item
-                    .transient_stake_lamports
-                    .checked_sub(withdraw_lamports)
-                    .ok_or(StakePoolError::CalculationFailure)?;
-            } else {
-                validator_list_item.active_stake_lamports = validator_list_item
-                    .active_stake_lamports
-                    .checked_sub(withdraw_lamports)
-                    .ok_or(StakePoolError::CalculationFailure)?;
+        if let Some((validator_list_item, withdraw_source)) = validator_list_item_info {
+            match withdraw_source {
+                StakeWithdrawSource::Active => {
+                    validator_list_item.active_stake_lamports = validator_list_item
+                        .active_stake_lamports
+                        .checked_sub(withdraw_lamports)
+                        .ok_or(StakePoolError::CalculationFailure)?
+                }
+                StakeWithdrawSource::Transient => {
+                    validator_list_item.transient_stake_lamports = validator_list_item
+                        .transient_stake_lamports
+                        .checked_sub(withdraw_lamports)
+                        .ok_or(StakePoolError::CalculationFailure)?
+                }
+                StakeWithdrawSource::ValidatorRemoval => {
+                    validator_list_item.active_stake_lamports = validator_list_item
+                        .active_stake_lamports
+                        .checked_sub(withdraw_lamports)
+                        .ok_or(StakePoolError::CalculationFailure)?;
+                    if validator_list_item.active_stake_lamports != 0 {
+                        msg!("Attempting to remove a validator from the pool, but withdrawal leaves {} lamports, update the pool to merge any unaccounted lamports",
+                            validator_list_item.active_stake_lamports);
+                        return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
+                    }
+                    // since we already checked that there's no transient stake,
+                    // we can immediately set this as ready for removal
+                    validator_list_item.status = StakeStatus::ReadyForRemoval;
+                }
             }
         }
 
