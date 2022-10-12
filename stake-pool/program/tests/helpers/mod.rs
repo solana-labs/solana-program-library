@@ -346,6 +346,25 @@ pub async fn delegate_tokens(
     banks_client.process_transaction(transaction).await.unwrap();
 }
 
+pub async fn revoke_tokens(
+    banks_client: &mut BanksClient,
+    payer: &Keypair,
+    recent_blockhash: &Hash,
+    account: &Pubkey,
+    manager: &Keypair,
+) {
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            spl_token::instruction::revoke(&spl_token::id(), account, &manager.pubkey(), &[])
+                .unwrap(),
+        ],
+        Some(&payer.pubkey()),
+        &[payer, manager],
+        *recent_blockhash,
+    );
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
 #[allow(clippy::too_many_arguments)]
 pub async fn create_stake_pool(
     banks_client: &mut BanksClient,
