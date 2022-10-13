@@ -11,12 +11,17 @@ use {
     },
 };
 
-/// Required Memo Transfers extension instructions
+/// CPI Guard extension instructions
 #[derive(Clone, Copy, Debug, PartialEq, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
-pub enum RequiredMemoTransfersInstruction {
-    /// Require memos for transfers into this Account. Adds the MemoTransfer extension to the
-    /// Account, if it doesn't already exist.
+pub enum CpiGuardInstruction {
+    /// Lock certain token operations from taking place within CPI for this Account, namely:
+    /// * Transfer and Burn must go through a delegate.
+    /// * CloseAccount can only return lamports to owner.
+    /// * SetAuthority can only be used to remove an existing close authority.
+    /// * Approve is disallowed entirely.
+    ///
+    /// In addition, CPI Guard cannot be enabled or disabled via CPI.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -29,7 +34,7 @@ pub enum RequiredMemoTransfersInstruction {
     ///   2. ..2+M `[signer]` M signer accounts.
     ///
     Enable,
-    /// Stop requiring memos for transfers into this Account.
+    /// Allow all token operations to happen via CPI as normal.
     ///
     /// Implicitly initializes the extension in the case where it is not present.
     ///
@@ -47,7 +52,7 @@ pub enum RequiredMemoTransfersInstruction {
 }
 
 /// Create an `Enable` instruction
-pub fn enable_required_transfer_memos(
+pub fn enable_cpi_guard(
     token_program_id: &Pubkey,
     account: &Pubkey,
     owner: &Pubkey,
@@ -64,14 +69,14 @@ pub fn enable_required_transfer_memos(
     Ok(encode_instruction(
         token_program_id,
         accounts,
-        TokenInstruction::MemoTransferExtension,
-        RequiredMemoTransfersInstruction::Enable,
+        TokenInstruction::CpiGuardExtension,
+        CpiGuardInstruction::Enable,
         &(),
     ))
 }
 
 /// Create a `Disable` instruction
-pub fn disable_required_transfer_memos(
+pub fn disable_cpi_guard(
     token_program_id: &Pubkey,
     account: &Pubkey,
     owner: &Pubkey,
@@ -88,8 +93,8 @@ pub fn disable_required_transfer_memos(
     Ok(encode_instruction(
         token_program_id,
         accounts,
-        TokenInstruction::MemoTransferExtension,
-        RequiredMemoTransfersInstruction::Disable,
+        TokenInstruction::CpiGuardExtension,
+        CpiGuardInstruction::Disable,
         &(),
     ))
 }
