@@ -11,7 +11,7 @@ use {
     },
 };
 
-/// Default Account State extension instructions
+/// Required Memo Transfers extension instructions
 #[derive(Clone, Copy, Debug, PartialEq, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum RequiredMemoTransfersInstruction {
