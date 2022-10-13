@@ -20,8 +20,8 @@ use {
     },
     spl_token_2022::{
         extension::{
-            confidential_transfer, default_account_state, interest_bearing_mint, memo_transfer,
-            transfer_fee, ExtensionType, StateWithExtensionsOwned,
+            confidential_transfer, cpi_guard, default_account_state, interest_bearing_mint,
+            memo_transfer, transfer_fee, ExtensionType, StateWithExtensionsOwned,
         },
         instruction,
         solana_zk_token_sdk::{
@@ -1378,6 +1378,50 @@ where
 
         self.process_ixs(
             &[memo_transfer::instruction::disable_required_transfer_memos(
+                &self.program_id,
+                account,
+                authority,
+                &multisig_signers,
+            )?],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Prevent unsafe usage of token account through cpi
+    pub async fn enable_cpi_guard<S: Signers>(
+        &self,
+        account: &Pubkey,
+        authority: &Pubkey,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        self.process_ixs(
+            &[cpi_guard::instruction::enable_cpi_guard(
+                &self.program_id,
+                account,
+                authority,
+                &multisig_signers,
+            )?],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Stop preventing unsafe usage of token account through cpi
+    pub async fn disable_cpi_guard<S: Signers>(
+        &self,
+        account: &Pubkey,
+        authority: &Pubkey,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        self.process_ixs(
+            &[cpi_guard::instruction::disable_cpi_guard(
                 &self.program_id,
                 account,
                 authority,
