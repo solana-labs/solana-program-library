@@ -15,7 +15,8 @@ use crate::state::{
     governance::get_governance_data,
     native_treasury::get_native_treasury_address_seeds,
     proposal::{get_proposal_data_for_governance, OptionVoteResult},
-    proposal_transaction::get_proposal_transaction_data_for_proposal, proposal_extra_signer::get_proposal_extra_account_seeds,
+    proposal_extra_signer::get_proposal_extra_account_seeds,
+    proposal_transaction::get_proposal_transaction_data_for_proposal,
 };
 
 /// Processes ExecuteTransaction instruction
@@ -72,9 +73,9 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
 
     // Sign the transaction using the proposal's extra account. This is an fresh extra account that is unique per proposal.
     // It is useful for example if the proposal aims to create an account
-    let mut extra_seeds = get_proposal_extra_account_seeds(governance_info.key, proposal_info.key).to_vec();
-    let (extra_address, extra_bump_seed) =
-        Pubkey::find_program_address(&extra_seeds, program_id);
+    let mut extra_seeds =
+        get_proposal_extra_account_seeds(governance_info.key, proposal_info.key).to_vec();
+    let (extra_address, extra_bump_seed) = Pubkey::find_program_address(&extra_seeds, program_id);
     let extra_bump = &[extra_bump_seed];
 
     if instruction_account_infos
@@ -128,4 +129,3 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
 
     Ok(())
 }
-
