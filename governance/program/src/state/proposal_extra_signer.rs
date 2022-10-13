@@ -19,23 +19,11 @@ impl AccountMaxSize for ProposalExtraAccount {
     }
 }
 /// Returns ProposalExtraAccount PDA seeds
-pub fn get_proposal_extra_account_seeds(governance: &Pubkey, proposal: &Pubkey) -> [&[u8]; 3] {
-    [
-        b"proposal_extra_account",
-        governance.as_ref(),
-        proposal.as_ref(),
-    ]
+pub fn get_proposal_extra_account_seeds(proposal: &Pubkey) -> [&[u8]; 3] {
+    [b"proposal_extra_account", proposal.as_ref()]
 }
 
 /// Returns ProposalExtraAccount PDA address
-pub fn get_proposal_extra_account_address(
-    program_id: &Pubkey,
-    governance: &Pubkey,
-    proposal: &Pubkey,
-) -> Pubkey {
-    Pubkey::find_program_address(
-        &get_proposal_extra_account_seeds(governance, proposal),
-        program_id,
-    )
-    .0
+pub fn get_proposal_extra_account_address(program_id: &Pubkey, proposal: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&get_proposal_extra_account_seeds(proposal), program_id).0
 }
