@@ -15,7 +15,7 @@ use crate::state::{
     governance::get_governance_data,
     native_treasury::get_native_treasury_address_seeds,
     proposal::{get_proposal_data_for_governance, OptionVoteResult},
-    proposal_extra_signer::get_proposal_extra_account_seeds,
+    proposal_extra_account::get_proposal_extra_account_seeds,
     proposal_transaction::get_proposal_transaction_data_for_proposal,
 };
 

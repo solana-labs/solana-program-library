@@ -6,7 +6,7 @@ pub mod legacy;
 pub mod native_treasury;
 pub mod program_metadata;
 pub mod proposal;
-pub mod proposal_extra_signer;
+pub mod proposal_extra_account;
 pub mod proposal_transaction;
 pub mod realm;
 pub mod realm_config;

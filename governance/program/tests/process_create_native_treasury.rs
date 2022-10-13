@@ -6,7 +6,7 @@ mod program_test;
 
 use program_test::*;
 use solana_program::pubkey::Pubkey;
-use spl_governance::state::proposal_extra_signer::get_proposal_extra_account_address;
+use spl_governance::state::proposal_extra_account::get_proposal_extra_account_address;
 
 #[tokio::test]
 async fn test_create_native_treasury() {
@@ -195,7 +195,8 @@ async fn test_create_account_from_native_treasury() {
     // Act
     governance_test
         .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
-        .await;
+        .await
+        .unwrap();
 
     // Assert
     let extra_address =
