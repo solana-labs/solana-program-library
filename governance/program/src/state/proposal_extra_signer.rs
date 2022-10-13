@@ -3,12 +3,12 @@ use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::pubkey::Pubkey;
 use spl_governance_tools::account::AccountMaxSize;
 
-/// ProposalExtraAccount (one per proposal)
+/// ProposalExtraAccount (one per proposal).
 /// This account aims to solve the problem of calling `system_instruction::create_account` from a proposal
 /// Typically, when we create an account outside of a program, we call `system_instruction::create_account`
 /// and both the newly created account and the funder need to sign.
-/// In the context of spl-governance, we already have a funder (`NativeTreasury`), `ProposalExtraAccount`
-/// is intended to be used as the newly created account.
+/// In the context of spl-governance, we already have a funder (`NativeTreasury`).
+/// `ProposalExtraAccount` is intended to be used as the newly created account.
 
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ProposalExtraAccount {}
