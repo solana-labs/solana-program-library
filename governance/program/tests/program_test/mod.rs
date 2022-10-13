@@ -38,6 +38,7 @@ use spl_governance::{
         native_treasury::{get_native_treasury_address, NativeTreasury},
         program_metadata::{get_program_metadata_address, ProgramMetadata},
         proposal::{get_proposal_address, OptionVoteResult, ProposalOption, ProposalV2, VoteType},
+        proposal_extra_signer::get_proposal_extra_account_address,
         proposal_transaction::{
             get_proposal_transaction_address, InstructionData, ProposalTransactionV2,
         },
@@ -2554,6 +2555,42 @@ impl GovernanceProgramTest {
             0,
             None,
             &mut transfer_ix,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_create_account_transaction(
+        &mut self,
+        governance_cookie: &GovernanceCookie,
+        proposal_cookie: &mut ProposalCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        owner: &Pubkey,
+        space: u64,
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
+        let treasury_address =
+            get_native_treasury_address(&self.program_id, &governance_cookie.address);
+
+        let extra_address =
+            get_proposal_extra_account_address(&self.program_id, &proposal_cookie.address);
+
+        let lamports = self.bench.rent.minimum_balance(space as usize);
+
+        let mut create_ix = system_instruction::create_account(
+            &treasury_address,
+            &extra_address,
+            lamports,
+            space,
+            owner,
+        );
+
+        self.with_proposal_transaction(
+            proposal_cookie,
+            token_owner_record_cookie,
+            0,
+            None,
+            &mut create_ix,
             None,
         )
         .await
