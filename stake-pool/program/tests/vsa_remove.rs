@@ -22,6 +22,7 @@ use {
         error::StakePoolError, find_transient_stake_program_address, id, instruction, state,
         MINIMUM_RESERVE_LAMPORTS,
     },
+    std::num::NonZeroU32,
 };
 
 async fn setup() -> (ProgramTestContext, StakePoolAccounts, ValidatorStakeAccount) {
@@ -37,8 +38,11 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts, ValidatorStakeAccoun
         .await
         .unwrap();
 
-    let validator_stake =
-        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), u64::MAX);
+    let validator_stake = ValidatorStakeAccount::new(
+        &stake_pool_accounts.stake_pool.pubkey(),
+        NonZeroU32::new(u32::MAX),
+        u64::MAX,
+    );
     create_vote(
         &mut context.banks_client,
         &context.payer,
@@ -55,6 +59,7 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts, ValidatorStakeAccoun
             &context.last_blockhash,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await;
     assert!(error.is_none());
@@ -538,13 +543,17 @@ async fn success_with_deactivating_transient_stake() {
             max_validators: stake_pool_accounts.max_validators,
         },
         validators: vec![state::ValidatorStakeInfo {
-            status: state::StakeStatus::DeactivatingTransient,
+            status: state::StakeStatus::DeactivatingAll,
             vote_account_address: validator_stake.vote.pubkey(),
             last_update_epoch: 0,
             active_stake_lamports: stake_rent + current_minimum_delegation,
             transient_stake_lamports: TEST_STAKE_AMOUNT + stake_rent,
             transient_seed_suffix_start: validator_stake.transient_stake_seed,
             transient_seed_suffix_end: 0,
+            validator_seed_suffix: validator_stake
+                .validator_stake_seed
+                .map(|s| s.get())
+                .unwrap_or(0),
         }],
     };
     assert_eq!(validator_list, expected_list);

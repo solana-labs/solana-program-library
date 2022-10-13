@@ -16,6 +16,7 @@ use {
         pubkey::Pubkey,
         stake, system_program, sysvar,
     },
+    std::num::NonZeroU32,
 };
 
 /// Defines which validator vote account is set during the
@@ -44,7 +45,7 @@ pub enum FundingType {
 
 /// Instructions supported by the StakePool program.
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
 pub enum StakePoolInstruction {
     ///   Initializes a new StakePool.
     ///
@@ -99,7 +100,10 @@ pub enum StakePoolInstruction {
     ///  10. '[]' Stake config sysvar
     ///  11. `[]` System program
     ///  12. `[]` Stake program
-    AddValidatorToPool,
+    ///
+    ///  userdata: optional non-zero u32 seed used for generating the validator
+    ///  stake address
+    AddValidatorToPool(u32),
 
     ///   (Staker only) Removes validator from the pool, deactivating its stake
     ///
@@ -477,6 +481,7 @@ pub fn add_validator_to_pool(
     validator_list: &Pubkey,
     stake: &Pubkey,
     validator: &Pubkey,
+    seed: Option<NonZeroU32>,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -493,12 +498,13 @@ pub fn add_validator_to_pool(
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(stake::program::id(), false),
     ];
+    let data = StakePoolInstruction::AddValidatorToPool(seed.map(|s| s.get()).unwrap_or(0))
+        .try_to_vec()
+        .unwrap();
     Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::AddValidatorToPool
-            .try_to_vec()
-            .unwrap(),
+        data,
     }
 }
 
@@ -643,11 +649,12 @@ pub fn add_validator_to_pool_with_vote(
     stake_pool: &StakePool,
     stake_pool_address: &Pubkey,
     vote_account_address: &Pubkey,
+    seed: Option<NonZeroU32>,
 ) -> Instruction {
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(program_id, stake_pool_address).0;
     let (stake_account_address, _) =
-        find_stake_program_address(program_id, vote_account_address, stake_pool_address);
+        find_stake_program_address(program_id, vote_account_address, stake_pool_address, seed);
     add_validator_to_pool(
         program_id,
         stake_pool_address,
@@ -657,6 +664,7 @@ pub fn add_validator_to_pool_with_vote(
         &stake_pool.validator_list,
         &stake_account_address,
         vote_account_address,
+        seed,
     )
 }
 
@@ -667,12 +675,17 @@ pub fn remove_validator_from_pool_with_vote(
     stake_pool: &StakePool,
     stake_pool_address: &Pubkey,
     vote_account_address: &Pubkey,
+    validator_stake_seed: Option<NonZeroU32>,
     transient_stake_seed: u64,
 ) -> Instruction {
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(program_id, stake_pool_address).0;
-    let (stake_account_address, _) =
-        find_stake_program_address(program_id, vote_account_address, stake_pool_address);
+    let (stake_account_address, _) = find_stake_program_address(
+        program_id,
+        vote_account_address,
+        stake_pool_address,
+        validator_stake_seed,
+    );
     let (transient_stake_account, _) = find_transient_stake_program_address(
         program_id,
         vote_account_address,
@@ -698,6 +711,7 @@ pub fn increase_validator_stake_with_vote(
     stake_pool_address: &Pubkey,
     vote_account_address: &Pubkey,
     lamports: u64,
+    validator_stake_seed: Option<NonZeroU32>,
     transient_stake_seed: u64,
 ) -> Instruction {
     let pool_withdraw_authority =
@@ -708,8 +722,12 @@ pub fn increase_validator_stake_with_vote(
         stake_pool_address,
         transient_stake_seed,
     );
-    let (validator_stake_address, _) =
-        find_stake_program_address(program_id, vote_account_address, stake_pool_address);
+    let (validator_stake_address, _) = find_stake_program_address(
+        program_id,
+        vote_account_address,
+        stake_pool_address,
+        validator_stake_seed,
+    );
 
     increase_validator_stake(
         program_id,
@@ -734,12 +752,17 @@ pub fn decrease_validator_stake_with_vote(
     stake_pool_address: &Pubkey,
     vote_account_address: &Pubkey,
     lamports: u64,
+    validator_stake_seed: Option<NonZeroU32>,
     transient_stake_seed: u64,
 ) -> Instruction {
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(program_id, stake_pool_address).0;
-    let (validator_stake_address, _) =
-        find_stake_program_address(program_id, vote_account_address, stake_pool_address);
+    let (validator_stake_address, _) = find_stake_program_address(
+        program_id,
+        vote_account_address,
+        stake_pool_address,
+        validator_stake_seed,
+    );
     let (transient_stake_address, _) = find_transient_stake_program_address(
         program_id,
         vote_account_address,
@@ -786,8 +809,12 @@ pub fn update_validator_list_balance(
             .flat_map(|vote_account_address| {
                 let validator_stake_info = validator_list.find(vote_account_address);
                 if let Some(validator_stake_info) = validator_stake_info {
-                    let (validator_stake_account, _) =
-                        find_stake_program_address(program_id, vote_account_address, stake_pool);
+                    let (validator_stake_account, _) = find_stake_program_address(
+                        program_id,
+                        vote_account_address,
+                        stake_pool,
+                        NonZeroU32::new(validator_stake_info.validator_seed_suffix),
+                    );
                     let (transient_stake_account, _) = find_transient_stake_program_address(
                         program_id,
                         vote_account_address,

@@ -587,8 +587,11 @@ pub struct ValidatorStakeInfo {
     /// Start of the validator transient account seed suffixess
     pub transient_seed_suffix_start: u64,
 
-    /// End of the validator transient account seed suffixes
-    pub transient_seed_suffix_end: u64,
+    /// Offset of the end the validator transient account seed suffixes
+    pub transient_seed_suffix_end: u32,
+
+    /// Validator account seed suffix
+    pub validator_seed_suffix: u32, // really `Option<NonZeroU32>` so 0 is `None`
 
     /// Status of the validator stake account
     pub status: StakeStatus,
@@ -889,6 +892,7 @@ mod test {
                     last_update_epoch: u64::from_le_bytes([64; 8]),
                     transient_seed_suffix_start: 0,
                     transient_seed_suffix_end: 0,
+                    validator_seed_suffix: 0,
                 },
                 ValidatorStakeInfo {
                     status: StakeStatus::DeactivatingTransient,
@@ -898,6 +902,7 @@ mod test {
                     last_update_epoch: 11223445566,
                     transient_seed_suffix_start: 0,
                     transient_seed_suffix_end: 0,
+                    validator_seed_suffix: 0,
                 },
                 ValidatorStakeInfo {
                     status: StakeStatus::ReadyForRemoval,
@@ -907,6 +912,7 @@ mod test {
                     last_update_epoch: 999999999999999,
                     transient_seed_suffix_start: 0,
                     transient_seed_suffix_end: 0,
+                    validator_seed_suffix: 0,
                 },
             ],
         }

@@ -35,6 +35,7 @@ use {
         sysvar::Sysvar,
     },
     spl_token::state::Mint,
+    std::num::NonZeroU32,
 };
 
 /// Deserialize the stake state from AccountInfo
@@ -55,10 +56,11 @@ fn check_validator_stake_address(
     stake_pool_address: &Pubkey,
     stake_account_address: &Pubkey,
     vote_address: &Pubkey,
+    seed: Option<NonZeroU32>,
 ) -> Result<(), ProgramError> {
     // Check stake account address validity
     let (validator_stake_address, _) =
-        crate::find_stake_program_address(program_id, vote_address, stake_pool_address);
+        crate::find_stake_program_address(program_id, vote_address, stake_pool_address, seed);
     if validator_stake_address != *stake_account_address {
         msg!(
             "Incorrect stake account address for vote {}, expected {}, received {}",
@@ -783,6 +785,7 @@ impl Processor {
     fn process_add_validator_to_pool(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
+        raw_validator_seed: u32,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -842,18 +845,25 @@ impl Processor {
             return Err(StakePoolError::ValidatorAlreadyAdded.into());
         }
 
+        let validator_seed = NonZeroU32::new(raw_validator_seed);
         let (stake_address, bump_seed) = crate::find_stake_program_address(
             program_id,
             validator_vote_info.key,
             stake_pool_info.key,
+            validator_seed,
         );
         if stake_address != *stake_info.key {
             return Err(StakePoolError::InvalidStakeAccountAddress.into());
         }
 
+        let validator_seed_bytes = validator_seed.map(|s| s.get().to_le_bytes());
         let stake_account_signer_seeds: &[&[_]] = &[
-            &validator_vote_info.key.to_bytes()[..32],
-            &stake_pool_info.key.to_bytes()[..32],
+            validator_vote_info.key.as_ref(),
+            stake_pool_info.key.as_ref(),
+            validator_seed_bytes
+                .as_ref()
+                .map(|s| s.as_slice())
+                .unwrap_or(&[]),
             &[bump_seed],
         ];
 
@@ -900,6 +910,7 @@ impl Processor {
             last_update_epoch: clock.epoch,
             transient_seed_suffix_start: 0,
             transient_seed_suffix_end: 0,
+            validator_seed_suffix: raw_validator_seed,
         })?;
 
         Ok(())
@@ -958,13 +969,6 @@ impl Processor {
 
         let (meta, stake) = get_stake_state(stake_account_info)?;
         let vote_account_address = stake.delegation.voter_pubkey;
-        check_validator_stake_address(
-            program_id,
-            stake_pool_info.key,
-            stake_account_info.key,
-            &vote_account_address,
-        )?;
-
         let maybe_validator_stake_info = validator_list.find_mut::<ValidatorStakeInfo>(
             vote_account_address.as_ref(),
             ValidatorStakeInfo::memcmp_pubkey,
@@ -977,6 +981,14 @@ impl Processor {
             return Err(StakePoolError::ValidatorNotFound.into());
         }
         let mut validator_stake_info = maybe_validator_stake_info.unwrap();
+        check_validator_stake_address(
+            program_id,
+            stake_pool_info.key,
+            stake_account_info.key,
+            &vote_account_address,
+            NonZeroU32::new(validator_stake_info.validator_seed_suffix),
+        )?;
+
         if validator_stake_info.status != StakeStatus::Active {
             msg!("Validator is already marked for removal");
             return Err(StakePoolError::ValidatorNotFound.into());
@@ -1030,8 +1042,7 @@ impl Processor {
                         );
                         return Err(StakePoolError::WrongStakeState.into());
                     } else {
-                        // stake is deactivating, mark the entry as such
-                        StakeStatus::DeactivatingTransient
+                        StakeStatus::DeactivatingAll
                     }
                 }
                 _ => StakeStatus::DeactivatingValidator,
@@ -1117,12 +1128,6 @@ impl Processor {
 
         let (meta, stake) = get_stake_state(validator_stake_account_info)?;
         let vote_account_address = stake.delegation.voter_pubkey;
-        check_validator_stake_address(
-            program_id,
-            stake_pool_info.key,
-            validator_stake_account_info.key,
-            &vote_account_address,
-        )?;
 
         let maybe_validator_stake_info = validator_list.find_mut::<ValidatorStakeInfo>(
             vote_account_address.as_ref(),
@@ -1136,6 +1141,13 @@ impl Processor {
             return Err(StakePoolError::ValidatorNotFound.into());
         }
         let mut validator_stake_info = maybe_validator_stake_info.unwrap();
+        check_validator_stake_address(
+            program_id,
+            stake_pool_info.key,
+            validator_stake_account_info.key,
+            &vote_account_address,
+            NonZeroU32::new(validator_stake_info.validator_seed_suffix),
+        )?;
         if validator_stake_info.transient_stake_lamports > 0 {
             return Err(StakePoolError::TransientAccountInUse.into());
         }
@@ -1305,6 +1317,7 @@ impl Processor {
                 stake_pool_info.key,
                 validator_stake_account_info.key,
                 vote_account_address,
+                NonZeroU32::new(validator_stake_info.validator_seed_suffix),
             )?;
             let (meta, stake) = get_stake_state(validator_stake_account_info)?;
             if !stake_is_usable_by_pool(&meta, withdraw_authority_info.key, &stake_pool.lockup) {
@@ -1541,6 +1554,7 @@ impl Processor {
                 stake_pool_info.key,
                 validator_stake_info.key,
                 &validator_stake_record.vote_account_address,
+                NonZeroU32::new(validator_stake_record.validator_seed_suffix),
             )
             .is_err()
             {
@@ -1672,7 +1686,13 @@ impl Processor {
                         .saturating_sub(stake.delegation.stake)
                         .saturating_sub(meta.rent_exempt_reserve);
                     // withdraw any extra lamports back to the reserve
-                    if additional_lamports > 0 {
+                    if additional_lamports > 0
+                        && stake_is_usable_by_pool(
+                            &meta,
+                            withdraw_authority_info.key,
+                            &stake_pool.lockup,
+                        )
+                    {
                         Self::stake_withdraw(
                             stake_pool_info.key,
                             validator_stake_info.clone(),
@@ -1970,12 +1990,6 @@ impl Processor {
         let (_, validator_stake) = get_stake_state(validator_stake_account_info)?;
         let pre_all_validator_lamports = validator_stake_account_info.lamports();
         let vote_account_address = validator_stake.delegation.voter_pubkey;
-        check_validator_stake_address(
-            program_id,
-            stake_pool_info.key,
-            validator_stake_account_info.key,
-            &vote_account_address,
-        )?;
         if let Some(preferred_deposit) = stake_pool.preferred_deposit_validator_vote_address {
             if preferred_deposit != vote_account_address {
                 msg!(
@@ -1993,6 +2007,13 @@ impl Processor {
                 ValidatorStakeInfo::memcmp_pubkey,
             )
             .ok_or(StakePoolError::ValidatorNotFound)?;
+        check_validator_stake_address(
+            program_id,
+            stake_pool_info.key,
+            validator_stake_account_info.key,
+            &vote_account_address,
+            NonZeroU32::new(validator_stake_info.validator_seed_suffix),
+        )?;
 
         if validator_stake_info.status != StakeStatus::Active {
             msg!("Validator is marked for removal and no longer accepting deposits");
@@ -2454,6 +2475,7 @@ impl Processor {
                     stake_pool_info.key,
                     stake_split_from.key,
                     &vote_account_address,
+                    NonZeroU32::new(validator_stake_info.validator_seed_suffix),
                 )?;
                 StakeWithdrawSource::Active
             } else if has_transient_stake {
@@ -2473,6 +2495,7 @@ impl Processor {
                     stake_pool_info.key,
                     stake_split_from.key,
                     &vote_account_address,
+                    NonZeroU32::new(validator_stake_info.validator_seed_suffix),
                 )?;
                 StakeWithdrawSource::ValidatorRemoval
             };
@@ -3038,9 +3061,9 @@ impl Processor {
                     max_validators,
                 )
             }
-            StakePoolInstruction::AddValidatorToPool => {
+            StakePoolInstruction::AddValidatorToPool(seed) => {
                 msg!("Instruction: AddValidatorToPool");
-                Self::process_add_validator_to_pool(program_id, accounts)
+                Self::process_add_validator_to_pool(program_id, accounts, seed)
             }
             StakePoolInstruction::RemoveValidatorFromPool => {
                 msg!("Instruction: RemoveValidatorFromPool");

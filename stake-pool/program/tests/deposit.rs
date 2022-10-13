@@ -685,7 +685,7 @@ async fn fail_with_unknown_validator() {
         error,
         TransactionError::InstructionError(
             2,
-            InstructionError::Custom(StakePoolError::InvalidStakeAccountAddress as u32)
+            InstructionError::Custom(StakePoolError::ValidatorNotFound as u32)
         )
     );
 }

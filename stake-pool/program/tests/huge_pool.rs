@@ -231,8 +231,12 @@ async fn remove_validator_from_pool() {
         setup(HUGE_POOL_SIZE, HUGE_POOL_SIZE, LAMPORTS_PER_SOL).await;
 
     let first_vote = vote_account_pubkeys[0];
-    let (stake_address, _) =
-        find_stake_program_address(&id(), &first_vote, &stake_pool_accounts.stake_pool.pubkey());
+    let (stake_address, _) = find_stake_program_address(
+        &id(),
+        &first_vote,
+        &stake_pool_accounts.stake_pool.pubkey(),
+        None,
+    );
     let transient_stake_seed = u64::MAX;
     let (transient_stake_address, _) = find_transient_stake_program_address(
         &id(),
@@ -258,6 +262,7 @@ async fn remove_validator_from_pool() {
         &id(),
         &middle_vote,
         &stake_pool_accounts.stake_pool.pubkey(),
+        None,
     );
     let (transient_stake_address, _) = find_transient_stake_program_address(
         &id(),
@@ -279,8 +284,12 @@ async fn remove_validator_from_pool() {
 
     let last_index = HUGE_POOL_SIZE as usize - 1;
     let last_vote = vote_account_pubkeys[last_index];
-    let (stake_address, _) =
-        find_stake_program_address(&id(), &last_vote, &stake_pool_accounts.stake_pool.pubkey());
+    let (stake_address, _) = find_stake_program_address(
+        &id(),
+        &last_vote,
+        &stake_pool_accounts.stake_pool.pubkey(),
+        None,
+    );
     let (transient_stake_address, _) = find_transient_stake_program_address(
         &id(),
         &last_vote,
@@ -466,7 +475,7 @@ async fn add_validator_to_pool() {
     let last_index = HUGE_POOL_SIZE as usize - 1;
     let stake_pool_pubkey = stake_pool_accounts.stake_pool.pubkey();
     let (stake_address, _) =
-        find_stake_program_address(&id(), &test_vote_address, &stake_pool_pubkey);
+        find_stake_program_address(&id(), &test_vote_address, &stake_pool_pubkey, None);
 
     let error = stake_pool_accounts
         .add_validator_to_pool(
@@ -475,6 +484,7 @@ async fn add_validator_to_pool() {
             &context.last_blockhash,
             &stake_address,
             &test_vote_address,
+            None,
         )
         .await;
     assert!(error.is_none());
@@ -590,6 +600,7 @@ async fn deposit_stake() {
         &id(),
         &vote_pubkey,
         &stake_pool_accounts.stake_pool.pubkey(),
+        None,
     );
 
     let error = stake_pool_accounts
@@ -615,6 +626,7 @@ async fn withdraw() {
         &id(),
         &vote_pubkey,
         &stake_pool_accounts.stake_pool.pubkey(),
+        None,
     );
 
     let error = stake_pool_accounts

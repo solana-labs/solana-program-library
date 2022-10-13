@@ -31,12 +31,13 @@ use {
         state::{self, FeeType, StakePool, ValidatorList},
         MINIMUM_RESERVE_LAMPORTS,
     },
-    std::convert::TryInto,
+    std::{convert::TryInto, num::NonZeroU32},
 };
 
 pub const FIRST_NORMAL_EPOCH: u64 = 15;
 pub const TEST_STAKE_AMOUNT: u64 = 1_500_000_000;
 pub const MAX_TEST_VALIDATORS: u32 = 10_000;
+pub const DEFAULT_VALIDATOR_STAKE_SEED: Option<NonZeroU32> = NonZeroU32::new(1_010);
 pub const DEFAULT_TRANSIENT_STAKE_SEED: u64 = 42;
 pub const STAKE_ACCOUNT_RENT_EXEMPTION: u64 = 2_282_880;
 const ACCOUNT_RENT_EXEMPTION: u64 = 1_000_000_000; // go with something big to be safe
@@ -629,7 +630,7 @@ pub async fn create_unknown_validator_stake(
     recent_blockhash: &Hash,
     stake_pool: &Pubkey,
 ) -> ValidatorStakeAccount {
-    let mut unknown_stake = ValidatorStakeAccount::new(stake_pool, 222);
+    let mut unknown_stake = ValidatorStakeAccount::new(stake_pool, NonZeroU32::new(1), 222);
     create_vote(
         banks_client,
         payer,
@@ -673,16 +674,22 @@ pub struct ValidatorStakeAccount {
     pub stake_account: Pubkey,
     pub transient_stake_account: Pubkey,
     pub transient_stake_seed: u64,
+    pub validator_stake_seed: Option<NonZeroU32>,
     pub vote: Keypair,
     pub validator: Keypair,
     pub stake_pool: Pubkey,
 }
 
 impl ValidatorStakeAccount {
-    pub fn new(stake_pool: &Pubkey, transient_stake_seed: u64) -> Self {
+    pub fn new(
+        stake_pool: &Pubkey,
+        validator_stake_seed: Option<NonZeroU32>,
+        transient_stake_seed: u64,
+    ) -> Self {
         let validator = Keypair::new();
         let vote = Keypair::new();
-        let (stake_account, _) = find_stake_program_address(&id(), &vote.pubkey(), stake_pool);
+        let (stake_account, _) =
+            find_stake_program_address(&id(), &vote.pubkey(), stake_pool, validator_stake_seed);
         let (transient_stake_account, _) = find_transient_stake_program_address(
             &id(),
             &vote.pubkey(),
@@ -693,6 +700,7 @@ impl ValidatorStakeAccount {
             stake_account,
             transient_stake_account,
             transient_stake_seed,
+            validator_stake_seed,
             vote,
             validator,
             stake_pool: *stake_pool,
@@ -1257,6 +1265,7 @@ impl StakePoolAccounts {
         recent_blockhash: &Hash,
         stake: &Pubkey,
         validator: &Pubkey,
+        seed: Option<NonZeroU32>,
     ) -> Option<TransportError> {
         let transaction = Transaction::new_signed_with_payer(
             &[instruction::add_validator_to_pool(
@@ -1268,6 +1277,7 @@ impl StakePoolAccounts {
                 &self.validator_list.pubkey(),
                 stake,
                 validator,
+                seed,
             )],
             Some(&payer.pubkey()),
             &[payer, &self.staker],
@@ -1464,6 +1474,7 @@ pub async fn simple_add_validator_to_pool(
 ) -> ValidatorStakeAccount {
     let validator_stake = ValidatorStakeAccount::new(
         &stake_pool_accounts.stake_pool.pubkey(),
+        DEFAULT_VALIDATOR_STAKE_SEED,
         DEFAULT_TRANSIENT_STAKE_SEED,
     );
 
@@ -1511,6 +1522,7 @@ pub async fn simple_add_validator_to_pool(
             recent_blockhash,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await;
     assert!(error.is_none());
@@ -1794,7 +1806,14 @@ pub fn add_validator_stake_account(
         Epoch::default(),
     );
 
-    let (stake_address, _) = find_stake_program_address(&id(), voter_pubkey, stake_pool_pubkey);
+    let raw_suffix = 0;
+    let validator_seed_suffix = NonZeroU32::new(raw_suffix);
+    let (stake_address, _) = find_stake_program_address(
+        &id(),
+        voter_pubkey,
+        stake_pool_pubkey,
+        validator_seed_suffix,
+    );
     program_test.add_account(stake_address, stake_account);
 
     let active_stake_lamports = stake_amount + STAKE_ACCOUNT_RENT_EXEMPTION;
@@ -1807,6 +1826,7 @@ pub fn add_validator_stake_account(
         last_update_epoch: FIRST_NORMAL_EPOCH,
         transient_seed_suffix_start: 0,
         transient_seed_suffix_end: 0,
+        validator_seed_suffix: raw_suffix,
     });
 
     stake_pool.total_lamports += active_stake_lamports;

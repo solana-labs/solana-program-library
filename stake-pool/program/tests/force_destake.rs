@@ -19,9 +19,15 @@ use {
         state::{StakeStatus, ValidatorStakeInfo},
         MINIMUM_ACTIVE_STAKE,
     },
+    std::num::NonZeroU32,
 };
 
-async fn setup() -> (ProgramTestContext, StakePoolAccounts, Pubkey) {
+async fn setup() -> (
+    ProgramTestContext,
+    StakePoolAccounts,
+    Pubkey,
+    Option<NonZeroU32>,
+) {
     let mut program_test = program_test();
     let stake_pool_accounts = StakePoolAccounts::new();
 
@@ -49,7 +55,10 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts, Pubkey) {
         Epoch::default(),
     );
 
-    let (stake_address, _) = find_stake_program_address(&id(), &voter_pubkey, &stake_pool_pubkey);
+    let raw_validator_seed = 42;
+    let validator_seed = NonZeroU32::new(raw_validator_seed);
+    let (stake_address, _) =
+        find_stake_program_address(&id(), &voter_pubkey, &stake_pool_pubkey, validator_seed);
     program_test.add_account(stake_address, stake_account);
     let active_stake_lamports = TEST_STAKE_AMOUNT - MINIMUM_ACTIVE_STAKE;
     // add to validator list
@@ -61,6 +70,7 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts, Pubkey) {
         last_update_epoch: 0,
         transient_seed_suffix_start: 0,
         transient_seed_suffix_end: 0,
+        validator_seed_suffix: raw_validator_seed,
     });
 
     stake_pool.total_lamports += active_stake_lamports;
@@ -98,12 +108,12 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts, Pubkey) {
     );
 
     let context = program_test.start_with_context().await;
-    (context, stake_pool_accounts, voter_pubkey)
+    (context, stake_pool_accounts, voter_pubkey, validator_seed)
 }
 
 #[tokio::test]
 async fn success_update() {
-    let (mut context, stake_pool_accounts, voter_pubkey) = setup().await;
+    let (mut context, stake_pool_accounts, voter_pubkey, validator_seed) = setup().await;
     let pre_reserve_lamports = context
         .banks_client
         .get_account(stake_pool_accounts.reserve_stake.pubkey())
@@ -115,6 +125,7 @@ async fn success_update() {
         &id(),
         &voter_pubkey,
         &stake_pool_accounts.stake_pool.pubkey(),
+        validator_seed,
     );
     let validator_stake_lamports = context
         .banks_client
@@ -156,11 +167,12 @@ async fn success_update() {
 
 #[tokio::test]
 async fn fail_increase() {
-    let (mut context, stake_pool_accounts, voter_pubkey) = setup().await;
+    let (mut context, stake_pool_accounts, voter_pubkey, validator_seed) = setup().await;
     let (stake_address, _) = find_stake_program_address(
         &id(),
         &voter_pubkey,
         &stake_pool_accounts.stake_pool.pubkey(),
+        validator_seed,
     );
     let transient_stake_seed = 0;
     let transient_stake_address = find_transient_stake_program_address(

@@ -53,7 +53,8 @@ async fn setup(
         .await
         .unwrap();
 
-    let validator_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), 0);
+    let validator_stake =
+        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), None, 0);
     create_vote(
         &mut banks_client,
         &payer,
@@ -84,6 +85,7 @@ async fn success() {
             &recent_blockhash,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await;
     assert!(error.is_none());
@@ -115,6 +117,10 @@ async fn success() {
                 transient_stake_lamports: 0,
                 transient_seed_suffix_start: 0,
                 transient_seed_suffix_end: 0,
+                validator_seed_suffix: validator_stake
+                    .validator_stake_seed
+                    .map(|s| s.get())
+                    .unwrap_or(0),
             }]
         }
     );
@@ -154,6 +160,7 @@ async fn fail_with_wrong_validator_list_account() {
             &wrong_validator_list.pubkey(),
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )],
         Some(&payer.pubkey()),
     );
@@ -190,6 +197,7 @@ async fn fail_double_add() {
             &recent_blockhash,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await;
 
@@ -202,6 +210,7 @@ async fn fail_double_add() {
             &latest_blockhash,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await
         .unwrap();
@@ -235,6 +244,7 @@ async fn fail_wrong_staker() {
             &stake_pool_accounts.validator_list.pubkey(),
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )],
         Some(&payer.pubkey()),
     );
@@ -282,9 +292,14 @@ async fn fail_without_signature() {
     let instruction = Instruction {
         program_id: id(),
         accounts,
-        data: instruction::StakePoolInstruction::AddValidatorToPool
-            .try_to_vec()
-            .unwrap(),
+        data: instruction::StakePoolInstruction::AddValidatorToPool(
+            validator_stake
+                .validator_stake_seed
+                .map(|s| s.get())
+                .unwrap_or(0),
+        )
+        .try_to_vec()
+        .unwrap(),
     };
 
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
@@ -333,9 +348,14 @@ async fn fail_with_wrong_stake_program_id() {
     let instruction = Instruction {
         program_id: id(),
         accounts,
-        data: instruction::StakePoolInstruction::AddValidatorToPool
-            .try_to_vec()
-            .unwrap(),
+        data: instruction::StakePoolInstruction::AddValidatorToPool(
+            validator_stake
+                .validator_stake_seed
+                .map(|s| s.get())
+                .unwrap_or(0),
+        )
+        .try_to_vec()
+        .unwrap(),
     };
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
     transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
@@ -382,9 +402,14 @@ async fn fail_with_wrong_system_program_id() {
     let instruction = Instruction {
         program_id: id(),
         accounts,
-        data: instruction::StakePoolInstruction::AddValidatorToPool
-            .try_to_vec()
-            .unwrap(),
+        data: instruction::StakePoolInstruction::AddValidatorToPool(
+            validator_stake
+                .validator_stake_seed
+                .map(|s| s.get())
+                .unwrap_or(0),
+        )
+        .try_to_vec()
+        .unwrap(),
     };
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
     transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
@@ -427,7 +452,8 @@ async fn fail_add_too_many_validator_stake_accounts() {
         .await
         .unwrap();
 
-    let validator_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), 0);
+    let validator_stake =
+        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), None, 0);
     create_vote(
         &mut banks_client,
         &payer,
@@ -444,11 +470,13 @@ async fn fail_add_too_many_validator_stake_accounts() {
             &recent_blockhash,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await;
     assert!(error.is_none());
 
-    let validator_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), 0);
+    let validator_stake =
+        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), None, 0);
     create_vote(
         &mut banks_client,
         &payer,
@@ -464,6 +492,7 @@ async fn fail_add_too_many_validator_stake_accounts() {
             &recent_blockhash,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await
         .unwrap()
@@ -485,8 +514,12 @@ async fn fail_on_non_vote_account() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, _) = setup(1).await;
 
     let validator = Pubkey::new_unique();
-    let (stake_account, _) =
-        find_stake_program_address(&id(), &validator, &stake_pool_accounts.stake_pool.pubkey());
+    let (stake_account, _) = find_stake_program_address(
+        &id(),
+        &validator,
+        &stake_pool_accounts.stake_pool.pubkey(),
+        None,
+    );
 
     let error = stake_pool_accounts
         .add_validator_to_pool(
@@ -495,6 +528,7 @@ async fn fail_on_non_vote_account() {
             &recent_blockhash,
             &stake_account,
             &validator,
+            None,
         )
         .await
         .unwrap()
@@ -519,6 +553,7 @@ async fn fail_on_incorrectly_derived_stake_account() {
             &recent_blockhash,
             &bad_stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await
         .unwrap()
@@ -554,6 +589,7 @@ async fn success_with_lamports_in_account() {
             &recent_blockhash,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await;
     assert!(error.is_none());
@@ -588,6 +624,7 @@ async fn fail_with_not_enough_reserve_lamports() {
             &recent_blockhash,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await
         .unwrap()
@@ -615,6 +652,7 @@ async fn fail_with_wrong_reserve() {
             &stake_pool_accounts.validator_list.pubkey(),
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )],
         Some(&payer.pubkey()),
     );
