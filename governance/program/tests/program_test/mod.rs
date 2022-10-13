@@ -38,7 +38,7 @@ use spl_governance::{
         native_treasury::{get_native_treasury_address, NativeTreasury},
         program_metadata::{get_program_metadata_address, ProgramMetadata},
         proposal::{get_proposal_address, OptionVoteResult, ProposalOption, ProposalV2, VoteType},
-        proposal_extra_signer::get_proposal_extra_account_address,
+        proposal_extra_account::get_proposal_extra_account_address,
         proposal_transaction::{
             get_proposal_transaction_address, InstructionData, ProposalTransactionV2,
         },
