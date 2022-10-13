@@ -5,6 +5,7 @@
 
 cd "$(dirname "$0")" || exit
 command_args=()
+sol_amount=$1
 
 ###################################################
 ### MODIFY PARAMETERS BELOW THIS LINE FOR YOUR POOL
@@ -12,20 +13,20 @@ command_args=()
 
 # Epoch fee, assessed as a percentage of rewards earned by the pool every epoch,
 # represented as `numerator / denominator`
-command_args+=( --epoch-fee-numerator 0 )
-command_args+=( --epoch-fee-denominator 0 )
+command_args+=( --epoch-fee-numerator 1 )
+command_args+=( --epoch-fee-denominator 100 )
 
 # Withdrawal fee for SOL and stake accounts, represented as `numerator / denominator`
-command_args+=( --withdrawal-fee-numerator 0 )
-command_args+=( --withdrawal-fee-denominator 0 )
+command_args+=( --withdrawal-fee-numerator 2 )
+command_args+=( --withdrawal-fee-denominator 100 )
 
 # Deposit fee for SOL and stake accounts, represented as `numerator / denominator`
-command_args+=( --deposit-fee-numerator 0 )
-command_args+=( --deposit-fee-denominator 0 )
+command_args+=( --deposit-fee-numerator 3 )
+command_args+=( --deposit-fee-denominator 100 )
 
 command_args+=( --referral-fee 0 ) # Percentage of deposit fee that goes towards the referrer (a number between 0 and 100, inclusive)
 
-command_args+=( --max-validators 2950 ) # Maximum number of validators in the stake pool, 2950 is the current maximum possible
+command_args+=( --max-validators 2350 ) # Maximum number of validators in the stake pool, 2350 is the current maximum possible
 
 # (Optional) Deposit authority, required to sign all deposits into the pool.
 # Setting this variable makes the pool "private" or "restricted".
@@ -68,3 +69,9 @@ $spl_stake_pool \
   --validator-list-keypair "$validator_list_keyfile" \
   --mint-keypair "$mint_keyfile" \
   --reserve-keypair "$reserve_keyfile"
+
+set +ex
+echo "Depositing SOL into stake pool"
+stake_pool_pubkey=$(solana-keygen pubkey "$stake_pool_keyfile")
+set -ex
+$spl_stake_pool deposit-sol "$stake_pool_pubkey" "$sol_amount"
