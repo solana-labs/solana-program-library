@@ -74,7 +74,7 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
     // Sign the transaction using the proposal's extra account. This is an fresh extra account that is unique per proposal.
     // It is useful for example if the proposal aims to create an account
     let mut extra_seeds =
-        get_proposal_extra_account_seeds(governance_info.key, proposal_info.key).to_vec();
+        get_proposal_extra_account_seeds(proposal_info.key).to_vec();
     let (extra_address, extra_bump_seed) = Pubkey::find_program_address(&extra_seeds, program_id);
     let extra_bump = &[extra_bump_seed];
 

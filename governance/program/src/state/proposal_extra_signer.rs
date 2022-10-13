@@ -19,7 +19,7 @@ impl AccountMaxSize for ProposalExtraAccount {
     }
 }
 /// Returns ProposalExtraAccount PDA seeds
-pub fn get_proposal_extra_account_seeds(proposal: &Pubkey) -> [&[u8]; 3] {
+pub fn get_proposal_extra_account_seeds(proposal: &Pubkey) -> [&[u8]; 2] {
     [b"proposal_extra_account", proposal.as_ref()]
 }
 
