@@ -1,7 +1,7 @@
 {
   "name": "@solana/spl-account-compression",
   "description": "SPL Account Compression Program JS API",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Solana Maintainers <maintainers@solana.foundation>",
   "repository": {
     "url": "https://github.com/solana-labs/solana-program-library",
@@ -37,7 +37,9 @@
     "start-validator": "solana-test-validator --reset --quiet --bpf-program cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK ../target/deploy/spl_account_compression.so --bpf-program noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV ../target/deploy/spl_noop.so",
     "run-tests": "jest tests --detectOpenHandles",
     "run-tests:events": "jest tests/events --detectOpenHandles",
+    "run-tests:accounts": "jest tests/accounts --detectOpenHandles",
     "test:events": "start-server-and-test start-validator http://localhost:8899/health run-tests:events",
+    "test:accounts": "start-server-and-test start-validator http://localhost:8899/health run-tests:accounts",
     "test": "start-server-and-test start-validator http://localhost:8899/health run-tests"
   },
   "dependencies": {
@@ -46,11 +48,11 @@
     "borsh": "^0.7.0"
   },
   "peerDependencies": {
-    "@metaplex-foundation/beet": "^0.6.1",
-    "@metaplex-foundation/beet-solana": "^0.6.1",
     "@solana/web3.js": "^1.50.1"
   },
   "devDependencies": {
+    "@metaplex-foundation/beet": "^0.7.1",
+    "@metaplex-foundation/beet-solana": "^0.4.0",
     "@metaplex-foundation/rustbin": "^0.3.1",
     "@metaplex-foundation/solita": "0.15.2",
     "@project-serum/anchor": "^0.25.0",

@@ -620,10 +620,29 @@
     bs58 "^5.0.0"
     debug "^4.3.4"
 
+"@metaplex-foundation/beet-solana@^0.4.0":
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/@metaplex-foundation/beet-solana/-/beet-solana-0.4.0.tgz#52891e78674aaa54e0031f1bca5bfbc40de12e8d"
+  integrity sha512-B1L94N3ZGMo53b0uOSoznbuM5GBNJ8LwSeznxBxJ+OThvfHQ4B5oMUqb+0zdLRfkKGS7Q6tpHK9P+QK0j3w2cQ==
+  dependencies:
+    "@metaplex-foundation/beet" ">=0.1.0"
+    "@solana/web3.js" "^1.56.2"
+    bs58 "^5.0.0"
+    debug "^4.3.4"
+
 "@metaplex-foundation/beet@>=0.1.0", "@metaplex-foundation/beet@^0.6.1":
   version "0.6.1"
   resolved "https://registry.yarnpkg.com/@metaplex-foundation/beet/-/beet-0.6.1.tgz#6331bdde0648bf2cae6f9e482f8e3552db05d69f"
   integrity sha512-OYgnijLFzw0cdUlRKH5POp0unQECPOW9muJ2X3QIVyak5G6I6l/rKo72sICgPLIFKdmsi2jmnkuLY7wp14iXdw==
+  dependencies:
+    ansicolors "^0.3.2"
+    bn.js "^5.2.0"
+    debug "^4.3.3"
+
+"@metaplex-foundation/beet@^0.7.1":
+  version "0.7.1"
+  resolved "https://registry.yarnpkg.com/@metaplex-foundation/beet/-/beet-0.7.1.tgz#0975314211643f87b5f6f3e584fa31abcf4c612c"
+  integrity sha512-hNCEnS2WyCiYyko82rwuISsBY3KYpe828ubsd2ckeqZr7tl0WVLivGkoyA/qdiaaHEBGdGl71OpfWa2rqL3DiA==
   dependencies:
     ansicolors "^0.3.2"
     bn.js "^5.2.0"
