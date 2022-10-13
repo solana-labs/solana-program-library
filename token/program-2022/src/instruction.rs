@@ -605,6 +605,11 @@ pub enum TokenInstruction<'a> {
     /// See `extension::interest_bearing_mint::instruction::InterestBearingMintInstruction` for
     /// further details about the extended instructions that share this instruction prefix
     InterestBearingMintExtension,
+    /// The common instruction prefix for Cpi Guard account extension instructions.
+    ///
+    /// See `extension::cpi_guard::instruction::CpiGuardInstruction` for
+    /// further details about the extended instructions that share this instruction prefix
+    CpiGuardExtension,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -735,6 +740,7 @@ impl<'a> TokenInstruction<'a> {
             31 => Self::CreateNativeMint,
             32 => Self::InitializeNonTransferableMint,
             33 => Self::InterestBearingMintExtension,
+            34 => Self::CpiGuardExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -886,6 +892,9 @@ impl<'a> TokenInstruction<'a> {
             }
             &Self::InterestBearingMintExtension => {
                 buf.push(33);
+            }
+            &Self::CpiGuardExtension => {
+                buf.push(34);
             }
         };
         buf

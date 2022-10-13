@@ -139,7 +139,6 @@ pub enum TokenError {
     /// mint and try again
     #[error("An account can only be closed if its withheld fee balance is zero, harvest fees to the mint and try again")]
     AccountHasWithheldTransferFees,
-
     /// No memo in previous instruction; required for recipient to receive a transfer
     #[error("No memo in previous instruction; required for recipient to receive a transfer")]
     NoMemo,
@@ -156,9 +155,17 @@ pub enum TokenError {
             the associated `maximum_pending_balance_credit_counter`"
     )]
     MaximumPendingBalanceCreditCounterExceeded,
+
+    // 40
     /// The deposit amount for the confidential extension exceeds the maximum limit
     #[error("Deposit amount exceeds maximum limit")]
     MaximumDepositAmountExceeded,
+    /// Cpi Guard is enabled, and a program tried to take a protected action via cpi
+    #[error("Cpi Guard is enabled, and a program tried to take a protected action via cpi")]
+    CpiGuardEnabled,
+    /// Cpi Guard status cannot be changed in cpi
+    #[error("Cpi Guard status cannot be changed in cpi")]
+    CpiGuardSettingsLocked,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -273,6 +280,12 @@ impl PrintProgramError for TokenError {
             }
             TokenError::MaximumDepositAmountExceeded => {
                 msg!("Deposit amount exceeds maximum limit")
+            }
+            TokenError::CpiGuardEnabled => {
+                msg!("Cpi Guard is enabled, and a program tried to take a protected action via cpi")
+            }
+            TokenError::CpiGuardSettingsLocked => {
+                msg!("Cpi Guard status cannot be changed in cpi")
             }
         }
     }

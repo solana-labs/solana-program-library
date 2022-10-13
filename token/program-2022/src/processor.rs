@@ -6,6 +6,7 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{self, ConfidentialTransferAccount},
+            cpi_guard,
             default_account_state::{self, DefaultAccountState},
             immutable_owner::ImmutableOwner,
             interest_bearing_mint::{self, InterestBearingConfig},
@@ -1323,6 +1324,9 @@ impl Processor {
                     accounts,
                     &input[1..],
                 )
+            }
+            TokenInstruction::CpiGuardExtension => {
+                cpi_guard::processor::process_instruction(program_id, accounts, &input[1..])
             }
         }
     }

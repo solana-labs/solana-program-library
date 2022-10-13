@@ -5,6 +5,7 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
+            cpi_guard::CpiGuard,
             default_account_state::DefaultAccountState,
             immutable_owner::ImmutableOwner,
             interest_bearing_mint::InterestBearingConfig,
@@ -33,6 +34,8 @@ use serde::{Deserialize, Serialize};
 
 /// Confidential Transfer extension
 pub mod confidential_transfer;
+/// Cpi Guard extension
+pub mod cpi_guard;
 /// Default Account State extension
 pub mod default_account_state;
 /// Immutable Owner extension
@@ -629,6 +632,8 @@ pub enum ExtensionType {
     NonTransferable,
     /// Tokens accrue interest over time,
     InterestBearingConfig,
+    /// Locks privileged token operations from happening via cpi
+    CpiGuard,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -669,6 +674,7 @@ impl ExtensionType {
             ExtensionType::MemoTransfer => pod_get_packed_len::<MemoTransfer>(),
             ExtensionType::NonTransferable => pod_get_packed_len::<NonTransferable>(),
             ExtensionType::InterestBearingConfig => pod_get_packed_len::<InterestBearingConfig>(),
+            ExtensionType::CpiGuard => pod_get_packed_len::<CpiGuard>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -729,7 +735,8 @@ impl ExtensionType {
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
-            | ExtensionType::MemoTransfer => AccountType::Account,
+            | ExtensionType::MemoTransfer
+            | ExtensionType::CpiGuard => AccountType::Account,
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => AccountType::Account,
             #[cfg(test)]
