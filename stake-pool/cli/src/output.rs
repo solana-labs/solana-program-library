@@ -363,7 +363,8 @@ pub(crate) struct CliStakePoolValidator {
     pub transient_stake_lamports: u64,
     pub last_update_epoch: u64,
     pub transient_seed_suffix_start: u64,
-    pub transient_seed_suffix_end: u64,
+    pub transient_seed_suffix_end: u32,
+    pub validator_seed_suffix: u32,
     pub status: CliStakePoolValidatorStakeStatus,
     pub vote_account_address: String,
 }
@@ -376,6 +377,7 @@ impl From<ValidatorStakeInfo> for CliStakePoolValidator {
             last_update_epoch: v.last_update_epoch,
             transient_seed_suffix_start: v.transient_seed_suffix_start,
             transient_seed_suffix_end: v.transient_seed_suffix_end,
+            validator_seed_suffix: v.validator_seed_suffix,
             status: CliStakePoolValidatorStakeStatus::from(v.status),
             vote_account_address: v.vote_account_address.to_string(),
         }
@@ -390,6 +392,10 @@ impl From<StakeStatus> for CliStakePoolValidatorStakeStatus {
                 CliStakePoolValidatorStakeStatus::DeactivatingTransient
             }
             StakeStatus::ReadyForRemoval => CliStakePoolValidatorStakeStatus::ReadyForRemoval,
+            StakeStatus::DeactivatingValidator => {
+                CliStakePoolValidatorStakeStatus::DeactivatingValidator
+            }
+            StakeStatus::DeactivatingAll => CliStakePoolValidatorStakeStatus::DeactivatingAll,
         }
     }
 }
@@ -399,6 +405,8 @@ pub(crate) enum CliStakePoolValidatorStakeStatus {
     Active,
     DeactivatingTransient,
     ReadyForRemoval,
+    DeactivatingValidator,
+    DeactivatingAll,
 }
 
 #[derive(Serialize, Deserialize)]
