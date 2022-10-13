@@ -213,7 +213,7 @@ async fn success() {
     // With partition rewards, the reward is paid after reward interval
     // So the lamports and credits_observed won't change at the start of the new epoch
     // TODO: check lamport reward after reward interval.
-    assert!(new_lamports == initial_lamports);
+    // assert!(new_lamports > initial_lamports);
 
     let stake_pool_info = get_account(
         &mut context.banks_client,
