@@ -263,12 +263,12 @@ pub(crate) async fn check_fee_payer_balance(
 ) -> Result<(), Error> {
     let balance = config
         .rpc_client
-        .get_balance(&config.fee_payer.pubkey())
+        .get_balance(&config.fee_payer()?.pubkey())
         .await?;
     if balance < required_balance {
         Err(format!(
             "Fee payer, {}, has insufficient balance: {} required, {} available",
-            config.fee_payer.pubkey(),
+            config.fee_payer()?.pubkey(),
             lamports_to_sol(required_balance),
             lamports_to_sol(balance)
         )
@@ -321,37 +321,39 @@ fn token_client_from_config(
     config: &Config<'_>,
     token_pubkey: &Pubkey,
     decimals: Option<u8>,
-) -> Token<ProgramRpcClientSendTransaction> {
+) -> Result<Token<ProgramRpcClientSendTransaction>, Error> {
     let token = Token::new(
         config.program_client.clone(),
         &config.program_id,
         token_pubkey,
         decimals,
-        config.fee_payer.clone(),
+        config.fee_payer()?.clone(),
     );
 
     if let (Some(nonce_account), Some(nonce_authority)) =
         (config.nonce_account, config.nonce_authority)
     {
-        token.with_nonce(&nonce_account, &nonce_authority)
+        Ok(token.with_nonce(&nonce_account, &nonce_authority))
     } else {
-        token
+        Ok(token)
     }
 }
 
-fn native_token_client_from_config(config: &Config<'_>) -> Token<ProgramRpcClientSendTransaction> {
+fn native_token_client_from_config(
+    config: &Config<'_>,
+) -> Result<Token<ProgramRpcClientSendTransaction>, Error> {
     let token = Token::new_native(
         config.program_client.clone(),
         &config.program_id,
-        config.fee_payer.clone(),
+        config.fee_payer()?.clone(),
     );
 
     if let (Some(nonce_account), Some(nonce_authority)) =
         (config.nonce_account, config.nonce_authority)
     {
-        token.with_nonce(&nonce_account, &nonce_authority)
+        Ok(token.with_nonce(&nonce_account, &nonce_authority))
     } else {
-        token
+        Ok(token)
     }
 }
 
@@ -375,7 +377,7 @@ async fn command_create_token(
         ),
     );
 
-    let token = token_client_from_config(config, &token_pubkey, Some(decimals));
+    let token = token_client_from_config(config, &token_pubkey, Some(decimals))?;
 
     let freeze_authority = if enable_freeze { Some(authority) } else { None };
 
@@ -395,7 +397,7 @@ async fn command_create_token(
     }
 
     if let Some(text) = memo {
-        token.with_memo(text, vec![config.default_signer.pubkey()]);
+        token.with_memo(text, vec![config.default_signer()?.pubkey()]);
     }
 
     let res = token
@@ -431,7 +433,7 @@ async fn command_set_interest_rate(
     rate_bps: i16,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
-    let token = token_client_from_config(config, &token_pubkey, None);
+    let token = token_client_from_config(config, &token_pubkey, None)?;
 
     if !config.sign_only {
         let mint_account = config.get_account_checked(&token_pubkey).await?;
@@ -490,7 +492,7 @@ async fn command_create_account(
     immutable_owner: bool,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
-    let token = token_client_from_config(config, &token_pubkey, None);
+    let token = token_client_from_config(config, &token_pubkey, None)?;
     let mut extensions = vec![];
 
     let (account, is_associated) = if let Some(account) = maybe_account {
@@ -572,7 +574,7 @@ async fn command_create_multisig(
     );
 
     // default is safe here because create_multisig doesnt use it
-    let token = token_client_from_config(config, &Pubkey::default(), None);
+    let token = token_client_from_config(config, &Pubkey::default(), None)?;
 
     let res = token
         .create_multisig(
@@ -711,7 +713,7 @@ async fn command_authorize(
         (Pubkey::default(), COption::None)
     };
 
-    let token = token_client_from_config(config, &mint_pubkey, None);
+    let token = token_client_from_config(config, &mint_pubkey, None)?;
 
     println_display(
         config,
@@ -798,7 +800,7 @@ async fn command_transfer(
         Some(mint_info.decimals)
     };
 
-    let token = token_client_from_config(config, &token_pubkey, decimals);
+    let token = token_client_from_config(config, &token_pubkey, decimals)?;
 
     // pubkey of the actual account we are sending from
     let sender = if let Some(sender) = sender {
@@ -946,7 +948,7 @@ async fn command_transfer(
 
     // set up memo if provided...
     if let Some(text) = memo {
-        token.with_memo(text, vec![config.default_signer.pubkey()]);
+        token.with_memo(text, vec![config.default_signer()?.pubkey()]);
     }
 
     // ...and, finally, the transfer
@@ -1010,9 +1012,9 @@ async fn command_burn(
         Some(mint_info.decimals)
     };
 
-    let token = token_client_from_config(config, &mint_info.address, decimals);
+    let token = token_client_from_config(config, &mint_info.address, decimals)?;
     if let Some(text) = memo {
-        token.with_memo(text, vec![config.default_signer.pubkey()]);
+        token.with_memo(text, vec![config.default_signer()?.pubkey()]);
     }
 
     let res = token.burn(&account, &owner, amount, &bulk_signers).await?;
@@ -1055,9 +1057,9 @@ async fn command_mint(
         Some(mint_info.decimals)
     };
 
-    let token = token_client_from_config(config, &mint_info.address, decimals);
+    let token = token_client_from_config(config, &mint_info.address, decimals)?;
     if let Some(text) = memo {
-        token.with_memo(text, vec![config.default_signer.pubkey()]);
+        token.with_memo(text, vec![config.default_signer()?.pubkey()]);
     }
 
     let res = token
@@ -1094,7 +1096,7 @@ async fn command_freeze(
     );
 
     // we dont use the decimals from mint_info because its not need and in sign-only its wrong
-    let token = token_client_from_config(config, &mint_info.address, None);
+    let token = token_client_from_config(config, &mint_info.address, None)?;
     let res = token
         .freeze(&account, &freeze_authority, &bulk_signers)
         .await?;
@@ -1129,7 +1131,7 @@ async fn command_thaw(
     );
 
     // we dont use the decimals from mint_info because its not need and in sign-only its wrong
-    let token = token_client_from_config(config, &mint_info.address, None);
+    let token = token_client_from_config(config, &mint_info.address, None)?;
     let res = token
         .thaw(&account, &freeze_authority, &bulk_signers)
         .await?;
@@ -1154,7 +1156,7 @@ async fn command_wrap(
     bulk_signers: BulkSigners,
 ) -> CommandResult {
     let lamports = sol_to_lamports(sol);
-    let token = native_token_client_from_config(config);
+    let token = native_token_client_from_config(config)?;
 
     let account = wrapped_sol_account.unwrap_or_else(|| {
         get_associated_token_address_with_program_id(
@@ -1213,7 +1215,7 @@ async fn command_unwrap(
     bulk_signers: BulkSigners,
 ) -> CommandResult {
     let use_associated_account = maybe_account.is_none();
-    let token = native_token_client_from_config(config);
+    let token = native_token_client_from_config(config)?;
 
     let account = maybe_account.unwrap_or_else(|| {
         get_associated_token_address_with_program_id(
@@ -1296,7 +1298,7 @@ async fn command_approve(
         Some(mint_info.decimals)
     };
 
-    let token = token_client_from_config(config, &mint_info.address, decimals);
+    let token = token_client_from_config(config, &mint_info.address, decimals)?;
     let res = token
         .approve(&account, &delegate, &owner, amount, &bulk_signers)
         .await?;
@@ -1348,7 +1350,7 @@ async fn command_revoke(
         return Err(format!("No delegate on account {}", account).into());
     }
 
-    let token = token_client_from_config(config, &mint_pubkey, None);
+    let token = token_client_from_config(config, &mint_pubkey, None)?;
     let res = token.revoke(&account, &owner, &bulk_signers).await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -1390,7 +1392,7 @@ async fn command_close(
         Pubkey::default()
     };
 
-    let token = token_client_from_config(config, &mint_pubkey, None);
+    let token = token_client_from_config(config, &mint_pubkey, None)?;
     let res = token
         .close_account(&account, &recipient, &close_authority, &bulk_signers)
         .await?;
@@ -1448,7 +1450,7 @@ async fn command_close_mint(
         }
     }
 
-    let token = token_client_from_config(config, &token_pubkey, None);
+    let token = token_client_from_config(config, &token_pubkey, None)?;
     let res = token
         .close_account(&token_pubkey, &recipient, &close_authority, &bulk_signers)
         .await?;
@@ -1661,7 +1663,7 @@ async fn command_gc(
     for ((token_pubkey, decimals), accounts) in accounts_by_token.into_iter() {
         println_display(config, format!("Processing token: {}", token_pubkey));
 
-        let token = token_client_from_config(config, &token_pubkey, Some(decimals));
+        let token = token_client_from_config(config, &token_pubkey, Some(decimals))?;
         let total_balance: u64 = accounts.values().map(|account| account.0).sum();
 
         let associated_token_account = token.get_associated_token_address(&owner);
@@ -1758,7 +1760,7 @@ async fn command_gc(
 }
 
 async fn command_sync_native(config: &Config<'_>, native_account_address: Pubkey) -> CommandResult {
-    let token = native_token_client_from_config(config);
+    let token = native_token_client_from_config(config)?;
 
     if !config.sign_only {
         let account_data = config.get_account_checked(&native_account_address).await?;
@@ -1798,7 +1800,7 @@ async fn command_required_transfer_memos(
     let current_account_len = account.data.len();
 
     let state_with_extension = StateWithExtensionsOwned::<Account>::unpack(account.data)?;
-    let token = token_client_from_config(config, &state_with_extension.base.mint, None);
+    let token = token_client_from_config(config, &state_with_extension.base.mint, None)?;
 
     // Reallocation (if needed)
     let mut existing_extensions: Vec<ExtensionType> = state_with_extension.get_extension_types()?;
@@ -2941,7 +2943,7 @@ async fn process_command<'a>(
         (CommandName::CreateToken, arg_matches) => {
             let decimals = value_t_or_exit!(arg_matches, "decimals", u8);
             let mint_authority =
-                config.pubkey_or_default(arg_matches, "mint_authority", &mut wallet_manager);
+                config.pubkey_or_default(arg_matches, "mint_authority", &mut wallet_manager)?;
             let memo = value_t!(arg_matches, "memo", String).ok();
             let rate_bps = value_t!(arg_matches, "interest_rate", i16).ok();
 
@@ -2998,7 +3000,7 @@ async fn process_command<'a>(
                 },
             );
 
-            let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager);
+            let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager)?;
             command_create_account(
                 config,
                 token,
@@ -3163,10 +3165,12 @@ async fn process_command<'a>(
             {
                 address
             } else {
+                let owner = config.default_signer()?.pubkey();
                 config.associated_token_address_for_token_and_program(
                     &mint_info.address,
+                    &owner,
                     &mint_info.program_id,
-                )
+                )?
             };
             config.check_account(&recipient, Some(token)).await?;
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
@@ -3327,8 +3331,9 @@ async fn process_command<'a>(
 
             let address = config
                 .associated_token_address_or_override(arg_matches, "address", &mut wallet_manager)
-                .await;
-            let recipient = config.pubkey_or_default(arg_matches, "recipient", &mut wallet_manager);
+                .await?;
+            let recipient =
+                config.pubkey_or_default(arg_matches, "recipient", &mut wallet_manager)?;
             command_close(config, address, close_authority, recipient, bulk_signers).await
         }
         (CommandName::CloseMint, arg_matches) => {
@@ -3340,14 +3345,15 @@ async fn process_command<'a>(
             if !bulk_signers.contains(&close_authority_signer) {
                 bulk_signers.push(close_authority_signer);
             }
-            let recipient = config.pubkey_or_default(arg_matches, "recipient", &mut wallet_manager);
+            let recipient =
+                config.pubkey_or_default(arg_matches, "recipient", &mut wallet_manager)?;
 
             command_close_mint(config, token, close_authority, recipient, bulk_signers).await
         }
         (CommandName::Balance, arg_matches) => {
             let address = config
                 .associated_token_address_or_override(arg_matches, "address", &mut wallet_manager)
-                .await;
+                .await?;
             command_balance(config, address).await
         }
         (CommandName::Supply, arg_matches) => {
@@ -3358,7 +3364,7 @@ async fn process_command<'a>(
         }
         (CommandName::Accounts, arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
-            let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager);
+            let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager)?;
             let filter = if arg_matches.is_present("delegated") {
                 AccountFilter::Delegated
             } else if arg_matches.is_present("externally_closeable") {
@@ -3378,13 +3384,13 @@ async fn process_command<'a>(
         }
         (CommandName::Address, arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
-            let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager);
+            let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager)?;
             command_address(config, token, owner).await
         }
         (CommandName::AccountInfo, arg_matches) => {
             let address = config
                 .associated_token_address_or_override(arg_matches, "address", &mut wallet_manager)
-                .await;
+                .await?;
             command_display(config, address).await
         }
         (CommandName::MultisigInfo, arg_matches) => {
@@ -3428,7 +3434,7 @@ async fn process_command<'a>(
             .await
         }
         (CommandName::SyncNative, arg_matches) => {
-            let native_mint = *native_token_client_from_config(config).get_address();
+            let native_mint = *native_token_client_from_config(config)?.get_address();
             let address = config
                 .associated_token_address_for_token_or_override(
                     arg_matches,
@@ -3437,7 +3443,7 @@ async fn process_command<'a>(
                     Some(native_mint),
                 )
                 .await;
-            command_sync_native(config, address).await
+            command_sync_native(config, address?).await
         }
         (CommandName::EnableRequiredTransferMemos, arg_matches) => {
             let (owner_signer, owner) =
@@ -3447,7 +3453,7 @@ async fn process_command<'a>(
             }
             // Since account is required argument it will always be present
             let token_account =
-                config.pubkey_or_default(arg_matches, "account", &mut wallet_manager);
+                config.pubkey_or_default(arg_matches, "account", &mut wallet_manager)?;
             command_required_transfer_memos(config, token_account, owner, bulk_signers, true).await
         }
         (CommandName::DisableRequiredTransferMemos, arg_matches) => {
@@ -3458,7 +3464,7 @@ async fn process_command<'a>(
             }
             // Since account is required argument it will always be present
             let token_account =
-                config.pubkey_or_default(arg_matches, "account", &mut wallet_manager);
+                config.pubkey_or_default(arg_matches, "account", &mut wallet_manager)?;
             command_required_transfer_memos(config, token_account, owner, bulk_signers, false).await
         }
     }
@@ -3562,7 +3568,7 @@ mod tests {
         test_validator_genesis.start_async().await
     }
 
-    fn test_config<'a>(
+    fn test_config_with_default_signer<'a>(
         test_validator: &TestValidator,
         payer: &Keypair,
         program_id: &Pubkey,
@@ -3577,8 +3583,34 @@ mod tests {
             program_client,
             websocket_url,
             output_format: OutputFormat::JsonCompact,
-            fee_payer: Arc::new(clone_keypair(payer)),
-            default_signer: Arc::new(clone_keypair(payer)),
+            fee_payer: Some(Arc::new(clone_keypair(payer))),
+            default_signer: Some(Arc::new(clone_keypair(payer))),
+            nonce_account: None,
+            nonce_authority: None,
+            sign_only: false,
+            dump_transaction_message: false,
+            multisigner_pubkeys: vec![],
+            program_id: *program_id,
+            restrict_to_program_id: true,
+        }
+    }
+
+    fn test_config_without_default_signer<'a>(
+        test_validator: &TestValidator,
+        program_id: &Pubkey,
+    ) -> Config<'a> {
+        let websocket_url = test_validator.rpc_pubsub_url();
+        let rpc_client = Arc::new(test_validator.get_async_rpc_client());
+        let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
+            ProgramRpcClient::new(rpc_client.clone(), ProgramRpcClientSendTransaction),
+        );
+        Config {
+            rpc_client,
+            program_client,
+            websocket_url,
+            output_format: OutputFormat::JsonCompact,
+            fee_payer: None,
+            default_signer: None,
             nonce_account: None,
             nonce_authority: None,
             sign_only: false,
@@ -3779,7 +3811,7 @@ mod tests {
     async fn create_token_default() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config(&test_validator, &payer, &program_id);
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
             let result = process_test_command(
                 &config,
                 &payer,
@@ -3798,7 +3830,8 @@ mod tests {
     #[serial]
     async fn create_token_interest_bearing() {
         let (test_validator, payer) = new_validator_for_test().await;
-        let config = test_config(&test_validator, &payer, &spl_token_2022::id());
+        let config =
+            test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
         let rate_bps: i16 = 100;
         let result = process_test_command(
             &config,
@@ -3830,7 +3863,8 @@ mod tests {
     #[serial]
     async fn set_interest_rate() {
         let (test_validator, payer) = new_validator_for_test().await;
-        let config = test_config(&test_validator, &payer, &spl_token_2022::id());
+        let config =
+            test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
         let initial_rate: i16 = 100;
         let new_rate: i16 = 300;
         let token = create_interest_bearing_token(&config, &payer, initial_rate).await;
@@ -3867,7 +3901,7 @@ mod tests {
     async fn supply() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config(&test_validator, &payer, &program_id);
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
             let token = create_token(&config, &payer).await;
             let result = process_test_command(
                 &config,
@@ -3886,7 +3920,7 @@ mod tests {
     async fn create_account_default() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config(&test_validator, &payer, &program_id);
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
             let token = create_token(&config, &payer).await;
             let result = process_test_command(
                 &config,
@@ -3907,7 +3941,7 @@ mod tests {
     async fn account_info() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config(&test_validator, &payer, &program_id);
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
             let token = create_token(&config, &payer).await;
             let _account = create_associated_account(&config, &payer, token).await;
             let result = process_test_command(
@@ -3940,7 +3974,7 @@ mod tests {
     async fn balance() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config(&test_validator, &payer, &program_id);
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
             let token = create_token(&config, &payer).await;
             let _account = create_associated_account(&config, &payer, token).await;
             let result = process_test_command(
@@ -3960,7 +3994,7 @@ mod tests {
     async fn mint() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config(&test_validator, &payer, &program_id);
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
             let token = create_token(&config, &payer).await;
             let account = create_associated_account(&config, &payer, token).await;
             let result = process_test_command(
@@ -3988,7 +4022,7 @@ mod tests {
     async fn balance_after_mint() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config(&test_validator, &payer, &program_id);
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
             let token = create_token(&config, &payer).await;
             let account = create_associated_account(&config, &payer, token).await;
             let ui_amount = 100.0;
@@ -4004,13 +4038,41 @@ mod tests {
             assert_eq!(value["uiAmountString"], format!("{}", ui_amount));
         }
     }
+    #[tokio::test]
+    #[serial]
+    async fn balance_after_mint_with_owner() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        for program_id in [spl_token::id(), spl_token_2022::id()] {
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+            let token = create_token(&config, &payer).await;
+            let account = create_associated_account(&config, &payer, token).await;
+            let ui_amount = 100.0;
+            mint_tokens(&config, &payer, token, ui_amount, account).await;
+            let config = test_config_without_default_signer(&test_validator, &program_id);
+            let result = process_test_command(
+                &config,
+                &payer,
+                &[
+                    "spl-token",
+                    CommandName::Balance.into(),
+                    &token.to_string(),
+                    "--owner",
+                    &payer.pubkey().to_string(),
+                ],
+            )
+            .await;
+            let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+            assert_eq!(value["amount"], format!("{}", ui_amount));
+            assert_eq!(value["uiAmountString"], format!("{}", ui_amount));
+        }
+    }
 
     #[tokio::test]
     #[serial]
     async fn accounts() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config(&test_validator, &payer, &program_id);
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
             let token1 = create_token(&config, &payer).await;
             let _account1 = create_associated_account(&config, &payer, token1).await;
             let token2 = create_token(&config, &payer).await;
@@ -4031,14 +4093,44 @@ mod tests {
 
     #[tokio::test]
     #[serial]
+    async fn accounts_with_owner() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        for program_id in [spl_token::id(), spl_token_2022::id()] {
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+            let token1 = create_token(&config, &payer).await;
+            let _account1 = create_associated_account(&config, &payer, token1).await;
+            let token2 = create_token(&config, &payer).await;
+            let _account2 = create_associated_account(&config, &payer, token2).await;
+            let token3 = create_token(&config, &payer).await;
+            let config = test_config_without_default_signer(&test_validator, &program_id);
+            let result = process_test_command(
+                &config,
+                &payer,
+                &[
+                    "spl-token",
+                    CommandName::Accounts.into(),
+                    "--owner",
+                    &payer.pubkey().to_string(),
+                ],
+            )
+            .await
+            .unwrap();
+            assert!(result.contains(&token1.to_string()));
+            assert!(result.contains(&token2.to_string()));
+            assert!(!result.contains(&token3.to_string()));
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
     async fn wrap() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config(&test_validator, &payer, &program_id);
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
             let native_mint = *Token::new_native(
                 config.program_client.clone(),
                 &program_id,
-                config.fee_payer.clone(),
+                config.fee_payer().unwrap().clone(),
             )
             .get_address();
             do_create_native_mint(&config, &program_id, &payer).await;
@@ -4067,7 +4159,7 @@ mod tests {
     async fn unwrap() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config(&test_validator, &payer, &program_id);
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
             do_create_native_mint(&config, &program_id, &payer).await;
             let (signer, account) = new_throwaway_signer();
             let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(&payer)), signer];
@@ -4101,7 +4193,7 @@ mod tests {
     async fn transfer() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config(&test_validator, &payer, &program_id);
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
             let token = create_token(&config, &payer).await;
             let source = create_associated_account(&config, &payer, token).await;
             let destination = create_auxiliary_account(&config, &payer, token).await;
@@ -4135,7 +4227,7 @@ mod tests {
     async fn transfer_fund_recipient() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config(&test_validator, &payer, &program_id);
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
             let token = create_token(&config, &payer).await;
             let source = create_associated_account(&config, &payer, token).await;
             let recipient = Keypair::new().pubkey().to_string();
@@ -4167,7 +4259,7 @@ mod tests {
     #[serial]
     async fn failing_to_allow_non_system_account_recipient() {
         let (test_validator, payer) = new_validator_for_test().await;
-        let config = test_config(&test_validator, &payer, &spl_token::id());
+        let config = test_config_with_default_signer(&test_validator, &payer, &spl_token::id());
 
         let token = create_token(&config, &payer).await;
         let source = create_associated_account(&config, &payer, token).await;
@@ -4194,7 +4286,7 @@ mod tests {
     #[serial]
     async fn allow_non_system_account_recipient() {
         let (test_validator, payer) = new_validator_for_test().await;
-        let config = test_config(&test_validator, &payer, &spl_token::id());
+        let config = test_config_with_default_signer(&test_validator, &payer, &spl_token::id());
 
         let token = create_token(&config, &payer).await;
         let source = create_associated_account(&config, &payer, token).await;
@@ -4232,13 +4324,13 @@ mod tests {
     async fn close_wrapped_sol_account() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config(&test_validator, &payer, &program_id);
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
             let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(&payer))];
 
             let native_mint = *Token::new_native(
                 config.program_client.clone(),
                 &program_id,
-                config.fee_payer.clone(),
+                config.fee_payer().unwrap().clone(),
             )
             .get_address();
             let token = create_token(&config, &payer).await;
@@ -4291,7 +4383,7 @@ mod tests {
     async fn disable_mint_authority() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config(&test_validator, &payer, &program_id);
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
             let token = create_token(&config, &payer).await;
             let result = process_test_command(
                 &config,
@@ -4318,7 +4410,7 @@ mod tests {
     async fn gc() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let mut config = test_config(&test_validator, &payer, &program_id);
+            let mut config = test_config_with_default_signer(&test_validator, &payer, &program_id);
             let token = create_token(&config, &payer).await;
             let _account = create_associated_account(&config, &payer, token).await;
             let _aux1 = create_auxiliary_account(&config, &payer, token).await;
@@ -4471,7 +4563,7 @@ mod tests {
     async fn set_owner() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config(&test_validator, &payer, &program_id);
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
             let token = create_token(&config, &payer).await;
             let aux = create_auxiliary_account(&config, &payer, token).await;
             let aux_string = aux.to_string();
@@ -4500,7 +4592,7 @@ mod tests {
     async fn transfer_with_account_delegate() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config(&test_validator, &payer, &program_id);
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
 
             let token = create_token(&config, &payer).await;
             let source = create_associated_account(&config, &payer, token).await;
@@ -4605,7 +4697,7 @@ mod tests {
     async fn burn_with_account_delegate() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config(&test_validator, &payer, &program_id);
+            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
 
             let token = create_token(&config, &payer).await;
             let source = create_associated_account(&config, &payer, token).await;
@@ -4691,7 +4783,8 @@ mod tests {
     #[serial]
     async fn close_mint() {
         let (test_validator, payer) = new_validator_for_test().await;
-        let config = test_config(&test_validator, &payer, &spl_token_2022::id());
+        let config =
+            test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
 
         let token_keypair = Keypair::new();
         let token_pubkey = token_keypair.pubkey();
@@ -4737,7 +4830,7 @@ mod tests {
     async fn required_transfer_memos() {
         let (test_validator, payer) = new_validator_for_test().await;
         let program_id = spl_token_2022::id();
-        let config = test_config(&test_validator, &payer, &program_id);
+        let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
         let token = create_token(&config, &payer).await;
         let token_account = create_associated_account(&config, &payer, token).await;
         let result = process_test_command(
@@ -4793,14 +4886,14 @@ mod tests {
     async fn immutable_accounts() {
         let (test_validator, payer) = new_validator_for_test().await;
         let program_id = spl_token_2022::id();
-        let config = test_config(&test_validator, &payer, &program_id);
+        let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
         let token = create_token(&config, &payer).await;
         let new_owner = Keypair::new().pubkey();
         let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(&payer))];
         let native_mint = *Token::new_native(
             config.program_client.clone(),
             &program_id,
-            config.fee_payer.clone(),
+            config.fee_payer().unwrap().clone(),
         )
         .get_address();
         do_create_native_mint(&config, &program_id, &payer).await;
