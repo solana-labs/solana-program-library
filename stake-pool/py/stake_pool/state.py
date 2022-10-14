@@ -116,6 +116,10 @@ class StakeStatus(IntEnum):
     """Stake has been removed, but a deactivating transient stake still exists."""
     READY_FOR_REMOVAL = 2
     """No more validator stake accounts exist, entry ready for removal."""
+    DEACTIVATING_VALIDATOR = 3
+    """Validator stake account is deactivating to be merged into the reserve next epoch."""
+    DEACTIVATING_ALL = 3
+    """All alidator stake accounts are deactivating to be merged into the reserve next epoch."""
 
 
 class ValidatorStakeInfo(NamedTuple):
@@ -134,6 +138,9 @@ class ValidatorStakeInfo(NamedTuple):
     transient_seed_suffix_end: int
     """End of the validator transient account seed suffixes."""
 
+    validator_seed_suffix: int
+    """Validator account seed suffix."""
+
     status: StakeStatus
     """Status of the validator stake account."""
 
@@ -148,6 +155,7 @@ class ValidatorStakeInfo(NamedTuple):
             last_update_epoch=container['last_update_epoch'],
             transient_seed_suffix_start=container['transient_seed_suffix_start'],
             transient_seed_suffix_end=container['transient_seed_suffix_end'],
+            validator_seed_suffix=container['validator_seed_suffix'],
             status=container['status'],
             vote_account_address=PublicKey(container['vote_account_address']),
         )
@@ -303,7 +311,8 @@ VALIDATOR_INFO_LAYOUT = Struct(
     "transient_stake_lamports" / Int64ul,
     "last_update_epoch" / Int64ul,
     "transient_seed_suffix_start" / Int64ul,
-    "transient_seed_suffix_end" / Int64ul,
+    "transient_seed_suffix_end" / Int32ul,
+    "validator_seed_suffix" / Int32ul,
     "status" / Int8ul,
     "vote_account_address" / PUBLIC_KEY_LAYOUT,
 )
