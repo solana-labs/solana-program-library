@@ -40,6 +40,7 @@ members = [
   "token/program-2022",
   "token/program-2022-test",
   "token/client",
+  "token/program-2022-test/cpi-caller",
   "utils/cgen",
   "utils/test-client",
   "token-lending/flash_loan_receiver",
