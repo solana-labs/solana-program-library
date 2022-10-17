@@ -97,15 +97,17 @@ pub fn process_instruction(
         vote_type,
         options,
         use_deny_option,
+        proposal_seed,
     } = &instruction
     {
         // Do not iterate through options
-        msg!("GOVERNANCE-INSTRUCTION: CreateProposal {{name: {:?}, description_link: {:?}, vote_type: {:?}, use_deny_option: {:?}, number of options: {} }}",
+        msg!("GOVERNANCE-INSTRUCTION: CreateProposal {{name: {:?}, description_link: {:?}, vote_type: {:?}, use_deny_option: {:?}, number of options: {}, proposal seed: {} }}",
             name,
             description_link,
             vote_type,
             use_deny_option,
-            options.len()
+            options.len(),
+            proposal_seed
         );
     } else if let GovernanceInstruction::CastVote {
         vote: Vote::Approve(v),

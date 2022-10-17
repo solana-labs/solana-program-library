@@ -17,6 +17,7 @@ use solana_sdk::{
 };
 
 use bincode::deserialize;
+use solana_sdk::compute_budget::ComputeBudgetInstruction;
 
 use spl_token::instruction::{set_authority, AuthorityType};
 use tools::clone_keypair;
@@ -33,6 +34,7 @@ pub struct ProgramTestBench {
     pub rent: Rent,
     pub payer: Keypair,
     pub next_id: u8,
+    compute_budget: u32,
 }
 
 impl ProgramTestBench {
@@ -49,6 +51,7 @@ impl ProgramTestBench {
             rent,
             payer,
             next_id: 0,
+            compute_budget: 0,
         }
     }
 
@@ -63,7 +66,19 @@ impl ProgramTestBench {
         instructions: &[Instruction],
         signers: Option<&[&Keypair]>,
     ) -> Result<(), ProgramError> {
-        let mut transaction = Transaction::new_with_payer(instructions, Some(&self.payer.pubkey()));
+        let mut instructions_to_process = instructions.to_vec();
+        if self.compute_budget > 0 {
+            instructions_to_process.insert(
+                0,
+                ComputeBudgetInstruction::set_compute_unit_limit(self.compute_budget),
+            );
+            self.compute_budget = 0;
+        }
+
+        let mut transaction = Transaction::new_with_payer(
+            instructions_to_process.as_slice(),
+            Some(&self.payer.pubkey()),
+        );
 
         let mut all_signers = vec![&self.payer];
 
@@ -117,6 +132,13 @@ impl ProgramTestBench {
             address: account_keypair.pubkey(),
             account,
         }
+    }
+
+    /// Setting a flag to use defined compute budget for the next transaction.
+    /// The maximal value of the compute budget is defined by the `MAXIMUM_SINGLE_SIGNER_INSTRUCTION_LIMIT` constant.
+    pub fn with_compute_budget(&mut self, compute_budget: u32) -> &mut Self {
+        self.compute_budget = compute_budget;
+        self
     }
 
     pub async fn create_mint(
