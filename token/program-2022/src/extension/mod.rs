@@ -34,7 +34,7 @@ use serde::{Deserialize, Serialize};
 
 /// Confidential Transfer extension
 pub mod confidential_transfer;
-/// Cpi Guard extension
+/// CPI Guard extension
 pub mod cpi_guard;
 /// Default Account State extension
 pub mod default_account_state;
@@ -632,7 +632,7 @@ pub enum ExtensionType {
     NonTransferable,
     /// Tokens accrue interest over time,
     InterestBearingConfig,
-    /// Locks privileged token operations from happening via cpi
+    /// Locks privileged token operations from happening via CPI
     CpiGuard,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]

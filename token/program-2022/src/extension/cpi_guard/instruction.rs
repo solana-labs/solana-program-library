@@ -11,17 +11,17 @@ use {
     },
 };
 
-/// Cpi Guard extension instructions
+/// CPI Guard extension instructions
 #[derive(Clone, Copy, Debug, PartialEq, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum CpiGuardInstruction {
-    /// Lock certain token operations from taking place within cpi for this Account, namely:
+    /// Lock certain token operations from taking place within CPI for this Account, namely:
     /// * Transfer and Burn must go through a delegate.
     /// * CloseAccount can only return lamports to owner.
     /// * SetAuthority can only be used to remove an existing close authority.
     /// * Approve is disallowed entirely.
     ///
-    /// In addition, CpiGuard cannot be enabled or disabled via cpi.
+    /// In addition, CPI Guard cannot be enabled or disabled via CPI.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -34,7 +34,7 @@ pub enum CpiGuardInstruction {
     ///   2. ..2+M `[signer]` M signer accounts.
     ///
     Enable,
-    /// Allow all token operations to happen via cpi as normal.
+    /// Allow all token operations to happen via CPI as normal.
     ///
     /// Fails if the account does not have the extension present.
     ///

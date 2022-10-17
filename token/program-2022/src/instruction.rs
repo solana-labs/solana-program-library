@@ -605,7 +605,7 @@ pub enum TokenInstruction<'a> {
     /// See `extension::interest_bearing_mint::instruction::InterestBearingMintInstruction` for
     /// further details about the extended instructions that share this instruction prefix
     InterestBearingMintExtension,
-    /// The common instruction prefix for Cpi Guard account extension instructions.
+    /// The common instruction prefix for CPI Guard account extension instructions.
     ///
     /// See `extension::cpi_guard::instruction::CpiGuardInstruction` for
     /// further details about the extended instructions that share this instruction prefix

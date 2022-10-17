@@ -352,7 +352,7 @@ impl Processor {
             _ => {
                 if let Ok(cpi_guard) = source_account.get_extension::<CpiGuard>() {
                     if cpi_guard.lock_cpi.into() && in_cpi() {
-                        return Err(TokenError::CpiGuardEnabled.into());
+                        return Err(TokenError::CpiGuardTransferBlocked.into());
                     }
                 }
 

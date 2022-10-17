@@ -1388,7 +1388,7 @@ where
         .await
     }
 
-    /// Prevent unsafe usage of token account through cpi
+    /// Prevent unsafe usage of token account through CPI
     pub async fn enable_cpi_guard<S: Signers>(
         &self,
         account: &Pubkey,
@@ -1410,7 +1410,7 @@ where
         .await
     }
 
-    /// Stop preventing unsafe usage of token account through cpi
+    /// Stop preventing unsafe usage of token account through CPI
     pub async fn disable_cpi_guard<S: Signers>(
         &self,
         account: &Pubkey,

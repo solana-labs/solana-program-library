@@ -160,12 +160,31 @@ pub enum TokenError {
     /// The deposit amount for the confidential extension exceeds the maximum limit
     #[error("Deposit amount exceeds maximum limit")]
     MaximumDepositAmountExceeded,
-    /// Cpi Guard is enabled, and a program tried to take a protected action via cpi
-    #[error("Cpi Guard is enabled, and a program tried to take a protected action via cpi")]
-    CpiGuardEnabled,
-    /// Cpi Guard status cannot be changed in cpi
-    #[error("Cpi Guard status cannot be changed in cpi")]
+    /// CPI Guard cannot be enabled or disabled in CPI
+    #[error("CPI Guard cannot be enabled or disabled in CPI")]
     CpiGuardSettingsLocked,
+    /// CPI Guard is enabled, and a program attempted to transfer user funds without using a delegate
+    #[error("CPI Guard is enabled, and a program attempted to transfer user funds without using a delegate")]
+    CpiGuardTransferBlocked,
+    /// CPI Guard is enabled, and a program attempted to burn user funds without using a delegate
+    #[error(
+        "CPI Guard is enabled, and a program attempted to burn user funds without using a delegate"
+    )]
+    CpiGuardBurnBlocked,
+    /// CPI Guard is enabled, and a program attempted to close an account without returning lamports to owner
+    #[error("CPI Guard is enabled, and a program attempted to close an account without returning lamports to owner")]
+    CpiGuardCloseAccountBlocked,
+
+    // 45
+    /// CPI Guard is enabled, and a program attempted to approve a delegate
+    #[error("CPI Guard is enabled, and a program attempted to approve a delegate")]
+    CpiGuardApproveBlocked,
+    /// CPI Guard is enabled, and a program attempted to add or change an authority
+    #[error("CPI Guard is enabled, and a program attempted to add or change an authority")]
+    CpiGuardSetAuthorityBlocked,
+    /// Account ownership cannot be changed while CPI Guard is enabled
+    #[error("Account ownership cannot be changed while CPI Guard is enabled")]
+    CpiGuardOwnerChangeBlocked,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -281,11 +300,26 @@ impl PrintProgramError for TokenError {
             TokenError::MaximumDepositAmountExceeded => {
                 msg!("Deposit amount exceeds maximum limit")
             }
-            TokenError::CpiGuardEnabled => {
-                msg!("Cpi Guard is enabled, and a program tried to take a protected action via cpi")
-            }
             TokenError::CpiGuardSettingsLocked => {
-                msg!("Cpi Guard status cannot be changed in cpi")
+                msg!("CPI Guard status cannot be changed in CPI")
+            }
+            TokenError::CpiGuardTransferBlocked => {
+                msg!("CPI Guard is enabled, and a program attempted to transfer user funds without using a delegate")
+            }
+            TokenError::CpiGuardBurnBlocked => {
+                msg!("CPI Guard is enabled, and a program attempted to burn user funds without using a delegate")
+            }
+            TokenError::CpiGuardCloseAccountBlocked => {
+                msg!("CPI Guard is enabled, and a program attempted to close an account without returning lamports to owner")
+            }
+            TokenError::CpiGuardApproveBlocked => {
+                msg!("CPI Guard is enabled, and a program attempted to approve a delegate")
+            }
+            TokenError::CpiGuardSetAuthorityBlocked => {
+                msg!("CPI Guard is enabled, and a program attempted to add or change an authority")
+            }
+            TokenError::CpiGuardOwnerChangeBlocked => {
+                msg!("Account ownership cannot be changed while CPI Guard is enabled")
             }
         }
     }
