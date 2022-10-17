@@ -7,7 +7,7 @@ use {
         program::invoke,
         pubkey::Pubkey,
     },
-    spl_token_2022::extension::cpi_guard,
+    spl_token_2022::{extension::cpi_guard, instruction},
     std::convert::TryFrom,
 };
 
@@ -48,6 +48,62 @@ impl Processor {
                 )?;
 
                 invoke(&instruction, &[account.clone(), owner.clone()])
+            }
+            TestInstruction::TransferOneChecked => {
+                msg!("Instruction: TransferOneChecked ");
+
+                let account_info_iter = &mut accounts.iter();
+                let token_program = next_account_info(account_info_iter)?;
+                let source = next_account_info(account_info_iter)?;
+                let mint = next_account_info(account_info_iter)?;
+                let destination = next_account_info(account_info_iter)?;
+                let owner = next_account_info(account_info_iter)?;
+
+                let instruction = instruction::transfer_checked(
+                    token_program.key,
+                    source.key,
+                    mint.key,
+                    destination.key,
+                    owner.key,
+                    &[],
+                    1,
+                    9,
+                )?;
+
+                invoke(
+                    &instruction,
+                    &[
+                        source.clone(),
+                        mint.clone(),
+                        destination.clone(),
+                        owner.clone(),
+                    ],
+                )
+            }
+            TestInstruction::TransferOneUnchecked => {
+                msg!("Instruction: TransferOneUnchecked ");
+
+                let account_info_iter = &mut accounts.iter();
+                let token_program = next_account_info(account_info_iter)?;
+                let source = next_account_info(account_info_iter)?;
+                let _ = next_account_info(account_info_iter)?;
+                let destination = next_account_info(account_info_iter)?;
+                let owner = next_account_info(account_info_iter)?;
+
+                #[allow(deprecated)]
+                let instruction = instruction::transfer(
+                    token_program.key,
+                    source.key,
+                    destination.key,
+                    owner.key,
+                    &[],
+                    1,
+                )?;
+
+                invoke(
+                    &instruction,
+                    &[source.clone(), destination.clone(), owner.clone()],
+                )
             }
         }
     }

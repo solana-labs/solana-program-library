@@ -136,3 +136,130 @@ async fn test_cpi_guard_enable_disable() {
     let extension = alice_state.get_extension::<CpiGuard>().unwrap();
     assert!(!bool::from(extension.lock_cpi));
 }
+
+#[tokio::test]
+async fn test_cpi_guard_transfer() {
+    let (context, cpi_caller_id) = make_context().await;
+    let TokenContext {
+        token,
+        mint_authority,
+        alice,
+        bob,
+        ..
+    } = context.token_context.unwrap();
+
+    let mut amount = 100;
+    token
+        .mint_to(
+            &alice.pubkey(),
+            &mint_authority.pubkey(),
+            amount,
+            &[&mint_authority],
+        )
+        .await
+        .unwrap();
+
+    // transfer works normally
+    token
+        .transfer(
+            &alice.pubkey(),
+            &bob.pubkey(),
+            &alice.pubkey(),
+            1,
+            &[&alice],
+        )
+        .await
+        .unwrap();
+    amount -= 1;
+
+    let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
+    assert_eq!(alice_state.base.amount, amount);
+
+    for do_checked in [true, false] {
+        token
+            .enable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
+            .await
+            .unwrap();
+
+        // user-auth cpi transfer with cpi guard doesnt work
+        token
+            .process_ixs(
+                &[cpi_caller::instruction::transfer_one_token(
+                    &cpi_caller_id,
+                    &spl_token_2022::id(),
+                    &alice.pubkey(),
+                    token.get_address(),
+                    &bob.pubkey(),
+                    &alice.pubkey(),
+                    do_checked,
+                )
+                .unwrap()],
+                &[&alice],
+            )
+            .await
+            .unwrap_err();
+
+        let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
+        assert_eq!(alice_state.base.amount, amount);
+
+        // delegate-auth cpi transfer with cpi guard works
+        token
+            .approve(
+                &alice.pubkey(),
+                &bob.pubkey(),
+                &alice.pubkey(),
+                1,
+                &[&alice],
+            )
+            .await
+            .unwrap();
+
+        token
+            .process_ixs(
+                &[cpi_caller::instruction::transfer_one_token(
+                    &cpi_caller_id,
+                    &spl_token_2022::id(),
+                    &alice.pubkey(),
+                    token.get_address(),
+                    &bob.pubkey(),
+                    &bob.pubkey(),
+                    do_checked,
+                )
+                .unwrap()],
+                &[&bob],
+            )
+            .await
+            .unwrap();
+        amount -= 1;
+
+        let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
+        assert_eq!(alice_state.base.amount, amount);
+
+        // make sure we didnt break backwards compat somehow
+        token
+            .disable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
+            .await
+            .unwrap();
+
+        token
+            .process_ixs(
+                &[cpi_caller::instruction::transfer_one_token(
+                    &cpi_caller_id,
+                    &spl_token_2022::id(),
+                    &alice.pubkey(),
+                    token.get_address(),
+                    &bob.pubkey(),
+                    &alice.pubkey(),
+                    do_checked,
+                )
+                .unwrap()],
+                &[&alice],
+            )
+            .await
+            .unwrap();
+        amount -= 1;
+
+        let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
+        assert_eq!(alice_state.base.amount, amount);
+    }
+}
