@@ -1,3 +1,5 @@
+use std::cmp::max;
+
 use crate::{
     changelog::ChangeLog,
     error::ConcurrentMerkleTreeError,
@@ -17,6 +19,14 @@ fn check_bounds(max_depth: usize, max_buffer_size: usize) {
     assert!(max_depth < 31);
     // This will return true if MAX_BUFFER_SIZE is a power of 2 or if it is 0
     assert!(max_buffer_size & (max_buffer_size - 1) == 0);
+}
+
+fn check_leaf_index(leaf_index: u32, max_depth: usize) -> Result<(), ConcurrentMerkleTreeError> {
+    if leaf_index >= (1 << max_depth) {
+        return Err(ConcurrentMerkleTreeError::LeafIndexOutOfBounds);
+    }
+    solana_logging!("Fuck");
+    Ok(())
 }
 
 /// Conurrent Merkle Tree is a Merkle Tree that allows
@@ -123,6 +133,8 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         index: u32,
     ) -> Result<Node, ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
+        check_leaf_index(index, MAX_DEPTH)?;
+
         if self.is_initialized() {
             return Err(ConcurrentMerkleTreeError::TreeAlreadyInitialized);
         }
@@ -186,6 +198,8 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         leaf_index: u32,
     ) -> Result<(), ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
+        check_leaf_index(leaf_index, MAX_DEPTH)?;
+
         if leaf_index > self.rightmost_proof.index {
             solana_logging!(
                 "Received an index larger than the rightmost index {} > {}",
@@ -289,6 +303,8 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         index: u32,
     ) -> Result<Node, ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
+        check_leaf_index(index, MAX_DEPTH)?;
+
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
         fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
 
@@ -314,6 +330,8 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         index: u32,
     ) -> Result<Node, ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
+        check_leaf_index(index, MAX_DEPTH)?;
+
         if index > self.rightmost_proof.index {
             Err(ConcurrentMerkleTreeError::LeafIndexOutOfBounds)
         } else {
@@ -433,6 +451,10 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         proof: &[Node; MAX_DEPTH],
         leaf_index: u32,
     ) -> bool {
+        if check_leaf_index(leaf_index, MAX_DEPTH).is_err() {
+            solana_logging!("Leaf index out of bounds for max_depth");
+            return false;
+        }
         recompute(leaf, proof, leaf_index) == self.get_root()
     }
 

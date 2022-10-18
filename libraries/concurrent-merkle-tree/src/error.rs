@@ -4,7 +4,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum ConcurrentMerkleTreeError {
     /// Received an index larger than the rightmost index
-    #[error("Received an index larger than the rightmost index")]
+    #[error("Received an index larger than the rightmost index, or greater than (1 << max_depth)")]
     LeafIndexOutOfBounds,
 
     /// Invalid root recomputed from proof
