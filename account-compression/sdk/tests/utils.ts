@@ -17,6 +17,7 @@ import {
     createInitEmptyMerkleTreeIx,
     createAllocTreeIx,
     createAppendIx,
+    ALL_DEPTH_SIZE_PAIRS,
 } from '../src'
 import {
     buildTree,
