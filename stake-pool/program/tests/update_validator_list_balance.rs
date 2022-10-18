@@ -43,7 +43,7 @@ async fn setup(
     context.warp_to_slot(slot).unwrap();
 
     let reserve_stake_amount = TEST_STAKE_AMOUNT * 2 * num_validators as u64;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut context.banks_client,
@@ -674,6 +674,7 @@ async fn success_with_burned_tokens() {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_mint.pubkey(),
         &deposit_accounts[0].pool_account.pubkey(),
         &deposit_accounts[0].authority,

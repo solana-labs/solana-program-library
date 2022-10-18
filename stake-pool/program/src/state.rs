@@ -18,7 +18,10 @@ use {
         pubkey::{Pubkey, PUBKEY_BYTES},
         stake::state::Lockup,
     },
-    spl_token::state::{Account, AccountState},
+    spl_token_2022::{
+        extension::StateWithExtensions,
+        state::{Account, AccountState, Mint},
+    },
     std::{borrow::Borrow, convert::TryFrom, fmt, matches},
 };
 
@@ -287,10 +290,11 @@ impl StakePool {
         &self,
         manager_fee_info: &AccountInfo,
     ) -> Result<(), ProgramError> {
-        let token_account = Account::unpack(&manager_fee_info.try_borrow_data()?)?;
+        let account_data = manager_fee_info.try_borrow_data()?;
+        let token_account = StateWithExtensions::<Account>::unpack(&account_data)?;
         if manager_fee_info.owner != &self.token_program_id
-            || token_account.state != AccountState::Initialized
-            || token_account.mint != self.pool_mint
+            || token_account.base.state != AccountState::Initialized
+            || token_account.base.mint != self.pool_mint
         {
             msg!("Manager fee account is not owned by token program, is not initialized, or does not match stake pool's mint");
             return Err(StakePoolError::InvalidFeeAccount.into());
@@ -370,11 +374,13 @@ impl StakePool {
 
     /// Check mint is correct
     #[inline]
-    pub(crate) fn check_mint(&self, mint_info: &AccountInfo) -> Result<(), ProgramError> {
+    pub(crate) fn check_mint(&self, mint_info: &AccountInfo) -> Result<u8, ProgramError> {
         if *mint_info.key != self.pool_mint {
             Err(StakePoolError::WrongPoolMint.into())
         } else {
-            Ok(())
+            let mint_data = mint_info.try_borrow_data()?;
+            let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+            Ok(mint.base.decimals)
         }
     }
 

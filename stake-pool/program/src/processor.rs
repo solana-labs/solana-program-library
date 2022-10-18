@@ -28,13 +28,19 @@ use {
         msg,
         program::{invoke, invoke_signed},
         program_error::{PrintProgramError, ProgramError},
-        program_pack::Pack,
         pubkey::Pubkey,
         rent::Rent,
         stake, system_instruction, system_program,
         sysvar::Sysvar,
     },
-    spl_token::state::Mint,
+    spl_token_2022::{
+        check_spl_token_program_account,
+        extension::{
+            mint_close_authority::MintCloseAuthority, non_transferable::NonTransferable,
+            BaseStateWithExtensions, StateWithExtensions,
+        },
+        state::Mint,
+    },
     std::num::NonZeroU32,
 };
 
@@ -476,7 +482,7 @@ impl Processor {
         authority: AccountInfo<'a>,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let ix = spl_token::instruction::burn(
+        let ix = spl_token_2022::instruction::burn(
             token_program.key,
             burn_account.key,
             mint.key,
@@ -504,7 +510,7 @@ impl Processor {
         let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
-        let ix = spl_token::instruction::mint_to(
+        let ix = spl_token_2022::instruction::mint_to(
             token_program.key,
             mint.key,
             destination.key,
@@ -521,19 +527,23 @@ impl Processor {
     fn token_transfer<'a>(
         token_program: AccountInfo<'a>,
         source: AccountInfo<'a>,
+        mint: AccountInfo<'a>,
         destination: AccountInfo<'a>,
         authority: AccountInfo<'a>,
         amount: u64,
+        decimals: u8,
     ) -> Result<(), ProgramError> {
-        let ix = spl_token::instruction::transfer(
+        let ix = spl_token_2022::instruction::transfer_checked(
             token_program.key,
             source.key,
+            mint.key,
             destination.key,
             authority.key,
             &[],
             amount,
+            decimals,
         )?;
-        invoke(&ix, &[source, destination, authority, token_program])
+        invoke(&ix, &[source, mint, destination, authority, token_program])
     }
 
     fn sol_transfer<'a>(
@@ -631,28 +641,14 @@ impl Processor {
             return Err(StakePoolError::FeeTooHigh.into());
         }
 
-        if *token_program_info.key != spl_token::id() {
-            msg!(
-                "Only the SPL token program is currently supported, expected {}, received {}",
-                spl_token::id(),
-                *token_program_info.key
-            );
-            return Err(ProgramError::IncorrectProgramId);
-        }
-
-        if manager_fee_info.owner != token_program_info.key {
-            return Err(ProgramError::IncorrectProgramId);
-        }
+        check_spl_token_program_account(token_program_info.key)?;
 
         if pool_mint_info.owner != token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        if *pool_mint_info.key
-            != spl_token::state::Account::unpack_from_slice(&manager_fee_info.data.borrow())?.mint
-        {
-            return Err(StakePoolError::WrongAccountMint.into());
-        }
+        stake_pool.token_program_id = *token_program_info.key;
+        stake_pool.pool_mint = *pool_mint_info.key;
 
         let (stake_deposit_authority, sol_deposit_authority) =
             match next_account_info(account_info_iter) {
@@ -676,19 +672,35 @@ impl Processor {
             return Err(StakePoolError::InvalidProgramAddress.into());
         }
 
-        let pool_mint = Mint::unpack_from_slice(&pool_mint_info.data.borrow())?;
+        {
+            let pool_mint_data = pool_mint_info.try_borrow_data()?;
+            let pool_mint = StateWithExtensions::<Mint>::unpack(&pool_mint_data)?;
 
-        if pool_mint.supply != 0 {
-            return Err(StakePoolError::NonZeroPoolTokenSupply.into());
-        }
+            if pool_mint.base.supply != 0 {
+                return Err(StakePoolError::NonZeroPoolTokenSupply.into());
+            }
 
-        if !pool_mint.mint_authority.contains(&withdraw_authority_key) {
-            return Err(StakePoolError::WrongMintingAuthority.into());
-        }
+            if !pool_mint
+                .base
+                .mint_authority
+                .contains(&withdraw_authority_key)
+            {
+                return Err(StakePoolError::WrongMintingAuthority.into());
+            }
 
-        if pool_mint.freeze_authority.is_some() {
-            return Err(StakePoolError::InvalidMintFreezeAuthority.into());
+            if pool_mint.base.freeze_authority.is_some() {
+                return Err(StakePoolError::InvalidMintFreezeAuthority.into());
+            }
+
+            if pool_mint.get_extension::<MintCloseAuthority>().is_ok() {
+                return Err(StakePoolError::InvalidMintFreezeAuthority.into());
+            }
+
+            if pool_mint.get_extension::<NonTransferable>().is_ok() {
+                return Err(StakePoolError::InvalidNonTransferableMint.into());
+            }
         }
+        stake_pool.check_manager_fee_info(manager_fee_info)?;
 
         if *reserve_stake_info.owner != stake::program::id() {
             msg!("Reserve stake account not owned by stake program");
@@ -751,9 +763,7 @@ impl Processor {
         stake_pool.stake_withdraw_bump_seed = stake_withdraw_bump_seed;
         stake_pool.validator_list = *validator_list_info.key;
         stake_pool.reserve_stake = *reserve_stake_info.key;
-        stake_pool.pool_mint = *pool_mint_info.key;
         stake_pool.manager_fee_account = *manager_fee_info.key;
-        stake_pool.token_program_id = *token_program_info.key;
         stake_pool.total_lamports = total_lamports;
         stake_pool.pool_token_supply = total_lamports;
         stake_pool.last_update_epoch = Clock::get()?.epoch;
@@ -1890,8 +1900,9 @@ impl Processor {
         }
         stake_pool.total_lamports = total_lamports;
 
-        let pool_mint = Mint::unpack_from_slice(&pool_mint_info.data.borrow())?;
-        stake_pool.pool_token_supply = pool_mint.supply;
+        let pool_mint_data = pool_mint_info.try_borrow_data()?;
+        let pool_mint = StateWithExtensions::<Mint>::unpack(&pool_mint_data)?;
+        stake_pool.pool_token_supply = pool_mint.base.supply;
 
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
@@ -2354,7 +2365,7 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        stake_pool.check_mint(pool_mint_info)?;
+        let decimals = stake_pool.check_mint(pool_mint_info)?;
         stake_pool.check_validator_list(validator_list_info)?;
         stake_pool.check_authority_withdraw(
             withdraw_authority_info.key,
@@ -2559,9 +2570,11 @@ impl Processor {
             Self::token_transfer(
                 token_program_info.clone(),
                 burn_from_pool_info.clone(),
+                pool_mint_info.clone(),
                 manager_fee_info.clone(),
                 user_transfer_authority_info.clone(),
                 pool_tokens_fee,
+                decimals,
             )?;
         }
 
@@ -2643,7 +2656,7 @@ impl Processor {
             stake_pool_info.key,
         )?;
         stake_pool.check_sol_withdraw_authority(sol_withdraw_authority_info)?;
-        stake_pool.check_mint(pool_mint_info)?;
+        let decimals = stake_pool.check_mint(pool_mint_info)?;
         stake_pool.check_reserve_stake(reserve_stake_info)?;
 
         if stake_pool.token_program_id != *token_program_info.key {
@@ -2716,9 +2729,11 @@ impl Processor {
             Self::token_transfer(
                 token_program_info.clone(),
                 burn_from_pool_info.clone(),
+                pool_mint_info.clone(),
                 manager_fee_info.clone(),
                 user_transfer_authority_info.clone(),
                 pool_tokens_fee,
+                decimals,
             )?;
         }
 
@@ -2939,12 +2954,7 @@ impl Processor {
             return Err(StakePoolError::SignatureMissing.into());
         }
 
-        if stake_pool.pool_mint
-            != spl_token::state::Account::unpack_from_slice(&new_manager_fee_info.data.borrow())?
-                .mint
-        {
-            return Err(StakePoolError::WrongAccountMint.into());
-        }
+        stake_pool.check_manager_fee_info(new_manager_fee_info)?;
 
         stake_pool.manager = *new_manager_info.key;
         stake_pool.manager_fee_account = *new_manager_fee_info.key;
@@ -3213,7 +3223,9 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::TransientAccountInUse => msg!("Error: Provided validator stake account already has a transient stake account in use"),
             StakePoolError::InvalidSolWithdrawAuthority => msg!("Error: Provided sol withdraw authority does not match the program's"),
             StakePoolError::SolWithdrawalTooLarge => msg!("Error: Too much SOL withdrawn from the stake pool's reserve account"),
-            StakePoolError::InvalidMetadataAccount => msg!("Error: Metadata account derived from pool mint account does not match the one passed to program")
+            StakePoolError::InvalidMetadataAccount => msg!("Error: Metadata account derived from pool mint account does not match the one passed to program"),
+            StakePoolError::InvalidMintCloseAuthority => msg!("Error: mint has an invalid close authority"),
+            StakePoolError::InvalidNonTransferableMint => msg!("Error: mint has non-transferable tokens"),
         }
     }
 }

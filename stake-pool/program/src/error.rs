@@ -135,6 +135,12 @@ pub enum StakePoolError {
     /// Provided metadata account does not match metadata account derived for pool mint
     #[error("InvalidMetadataAccount")]
     InvalidMetadataAccount,
+    /// The mint has an invalid close authority
+    #[error("InvalidMintCloseAuthority")]
+    InvalidMintCloseAuthority,
+    /// The mint has non-transferable tokens
+    #[error("InvalidNonTransferableMint")]
+    InvalidNonTransferableMint,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {

@@ -29,7 +29,7 @@ async fn setup() -> (
     Option<NonZeroU32>,
 ) {
     let mut program_test = program_test();
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
 
     let stake_pool_pubkey = stake_pool_accounts.stake_pool.pubkey();
     let (mut stake_pool, mut validator_list) = stake_pool_accounts.state();
@@ -96,12 +96,14 @@ async fn setup() -> (
 
     add_mint_account(
         &mut program_test,
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.withdraw_authority,
         stake_pool.pool_token_supply,
     );
     add_token_account(
         &mut program_test,
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.manager.pubkey(),

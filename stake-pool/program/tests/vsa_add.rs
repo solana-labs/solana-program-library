@@ -42,7 +42,7 @@ async fn setup(
         stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
     let minimum_for_validator = stake_rent + current_minimum_delegation;
 
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -440,8 +440,10 @@ async fn fail_add_too_many_validator_stake_accounts() {
         stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
     let minimum_for_validator = stake_rent + current_minimum_delegation;
 
-    let mut stake_pool_accounts = StakePoolAccounts::new();
-    stake_pool_accounts.max_validators = 1;
+    let stake_pool_accounts = StakePoolAccounts {
+        max_validators: 1,
+        ..Default::default()
+    };
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,

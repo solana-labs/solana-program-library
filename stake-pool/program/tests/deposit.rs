@@ -20,9 +20,12 @@ use {
     },
     spl_stake_pool::{error::StakePoolError, id, instruction, state, MINIMUM_RESERVE_LAMPORTS},
     spl_token::error as token_error,
+    test_case::test_case,
 };
 
-async fn setup() -> (
+async fn setup(
+    token_program_id: Pubkey,
+) -> (
     ProgramTestContext,
     StakePoolAccounts,
     ValidatorStakeAccount,
@@ -33,7 +36,7 @@ async fn setup() -> (
 ) {
     let mut context = program_test().start_with_context().await;
 
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::new_with_token_program(token_program_id);
     stake_pool_accounts
         .initialize_stake_pool(
             &mut context.banks_client,
@@ -107,6 +110,7 @@ async fn setup() -> (
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &pool_token_account,
         &stake_pool_accounts.pool_mint.pubkey(),
         &user.pubkey(),
@@ -125,8 +129,10 @@ async fn setup() -> (
     )
 }
 
+#[test_case(spl_token::id(); "token")]
+#[test_case(spl_token_2022::id(); "token-2022")]
 #[tokio::test]
-async fn success() {
+async fn success(token_program_id: Pubkey) {
     let (
         mut context,
         stake_pool_accounts,
@@ -135,7 +141,7 @@ async fn success() {
         deposit_stake,
         pool_token_account,
         stake_lamports,
-    ) = setup().await;
+    ) = setup(token_program_id).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
@@ -269,7 +275,7 @@ async fn success_with_extra_stake_lamports() {
         deposit_stake,
         pool_token_account,
         stake_lamports,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let extra_lamports = TEST_STAKE_AMOUNT * 3 + 1;
 
@@ -288,6 +294,7 @@ async fn success_with_extra_stake_lamports() {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &referrer_token_account,
         &stake_pool_accounts.pool_mint.pubkey(),
         &referrer.pubkey(),
@@ -464,7 +471,7 @@ async fn fail_with_wrong_stake_program_id() {
         deposit_stake,
         pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let wrong_stake_program = Pubkey::new_unique();
 
@@ -524,7 +531,7 @@ async fn fail_with_wrong_token_program_id() {
         deposit_stake,
         pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let wrong_token_program = Keypair::new();
 
@@ -574,7 +581,7 @@ async fn fail_with_wrong_validator_list_account() {
         deposit_stake,
         pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let wrong_validator_list = Keypair::new();
     stake_pool_accounts.validator_list = wrong_validator_list;
@@ -608,7 +615,7 @@ async fn fail_with_wrong_validator_list_account() {
 #[tokio::test]
 async fn fail_with_unknown_validator() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -633,6 +640,7 @@ async fn fail_with_unknown_validator() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &user_pool_account,
         &stake_pool_accounts.pool_mint.pubkey(),
         &user.pubkey(),
@@ -700,7 +708,7 @@ async fn fail_with_wrong_withdraw_authority() {
         deposit_stake,
         pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     stake_pool_accounts.withdraw_authority = Pubkey::new_unique();
 
@@ -737,7 +745,7 @@ async fn fail_with_wrong_mint_for_receiver_acc() {
         deposit_stake,
         _pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let outside_mint = Keypair::new();
     let outside_withdraw_auth = Keypair::new();
@@ -748,8 +756,10 @@ async fn fail_with_wrong_mint_for_receiver_acc() {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &outside_mint,
         &outside_withdraw_auth.pubkey(),
+        0,
     )
     .await
     .unwrap();
@@ -758,6 +768,7 @@ async fn fail_with_wrong_mint_for_receiver_acc() {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &outside_pool_fee_acc,
         &outside_mint.pubkey(),
         &outside_manager.pubkey(),
@@ -806,7 +817,7 @@ async fn success_with_preferred_deposit() {
         deposit_stake,
         pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     stake_pool_accounts
         .set_preferred_validator(
@@ -842,7 +853,7 @@ async fn fail_with_wrong_preferred_deposit() {
         deposit_stake,
         pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let preferred_validator = simple_add_validator_to_pool(
         &mut context.banks_client,
@@ -897,7 +908,7 @@ async fn success_with_referral_fee() {
         deposit_stake,
         pool_token_account,
         stake_lamports,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let referrer = Keypair::new();
     let referrer_token_account = Keypair::new();
@@ -905,6 +916,7 @@ async fn success_with_referral_fee() {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &referrer_token_account,
         &stake_pool_accounts.pool_mint.pubkey(),
         &referrer.pubkey(),
@@ -972,7 +984,7 @@ async fn fail_with_invalid_referrer() {
         deposit_stake,
         pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let invalid_token_account = Keypair::new();
 

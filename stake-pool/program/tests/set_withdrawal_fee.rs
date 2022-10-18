@@ -21,7 +21,7 @@ use {
 
 async fn setup(fee: Option<Fee>) -> (ProgramTestContext, StakePoolAccounts, Fee) {
     let mut context = program_test().start_with_context().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
+    let mut stake_pool_accounts = StakePoolAccounts::default();
     if let Some(fee) = fee {
         stake_pool_accounts.withdrawal_fee = fee;
     }
@@ -619,7 +619,7 @@ async fn fail_high_sol_fee_increase_from_0() {
 #[tokio::test]
 async fn fail_not_updated() {
     let mut context = program_test().start_with_context().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut context.banks_client,

@@ -32,7 +32,7 @@ async fn setup(
     let slot = context.genesis_config().epoch_schedule.first_normal_slot;
     context.warp_to_slot(slot).unwrap();
 
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut context.banks_client,
@@ -315,7 +315,7 @@ async fn success_absorbing_extra_lamports() {
 #[tokio::test]
 async fn fail_with_wrong_validator_list() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
+    let mut stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -349,7 +349,7 @@ async fn fail_with_wrong_validator_list() {
 #[tokio::test]
 async fn fail_with_wrong_pool_fee_account() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
+    let mut stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -383,7 +383,7 @@ async fn fail_with_wrong_pool_fee_account() {
 #[tokio::test]
 async fn fail_with_wrong_reserve() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
+    let mut stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,

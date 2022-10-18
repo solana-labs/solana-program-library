@@ -20,7 +20,7 @@ use {
     },
 };
 
-const HUGE_POOL_SIZE: u32 = 2_350;
+const HUGE_POOL_SIZE: u32 = 2_325;
 const STAKE_AMOUNT: u64 = 200_000_000_000;
 
 async fn setup(
@@ -38,8 +38,10 @@ async fn setup(
 ) {
     let mut program_test = program_test();
     let mut vote_account_pubkeys = vec![];
-    let mut stake_pool_accounts = StakePoolAccounts::new();
-    stake_pool_accounts.max_validators = max_validators;
+    let stake_pool_accounts = StakePoolAccounts {
+        max_validators,
+        ..Default::default()
+    };
 
     let stake_pool_pubkey = stake_pool_accounts.stake_pool.pubkey();
     let (mut stake_pool, mut validator_list) = stake_pool_accounts.state();
@@ -82,12 +84,14 @@ async fn setup(
 
     add_mint_account(
         &mut program_test,
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.withdraw_authority,
         stake_pool.pool_token_supply,
     );
     add_token_account(
         &mut program_test,
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.manager.pubkey(),
@@ -136,6 +140,7 @@ async fn setup(
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &pool_token_account,
         &stake_pool_accounts.pool_mint.pubkey(),
         &user.pubkey(),
@@ -672,7 +677,7 @@ async fn withdraw() {
 async fn cleanup_all() {
     let mut program_test = program_test();
     let mut vote_account_pubkeys = vec![];
-    let mut stake_pool_accounts = StakePoolAccounts::new();
+    let mut stake_pool_accounts = StakePoolAccounts::default();
     let max_validators = HUGE_POOL_SIZE;
     stake_pool_accounts.max_validators = max_validators;
 

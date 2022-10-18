@@ -24,7 +24,7 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts) {
     let mut context = program_test_with_metadata_program()
         .start_with_context()
         .await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut context.banks_client,

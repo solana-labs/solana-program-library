@@ -21,7 +21,7 @@ use {
 
 async fn setup(fee: Option<Fee>) -> (ProgramTestContext, StakePoolAccounts, Fee) {
     let mut context = program_test().start_with_context().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
+    let mut stake_pool_accounts = StakePoolAccounts::default();
     if let Some(fee) = fee {
         stake_pool_accounts.deposit_fee = fee;
     }

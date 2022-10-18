@@ -35,7 +35,7 @@ async fn setup() -> (
     let current_minimum_delegation =
         stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
 
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,

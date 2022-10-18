@@ -24,9 +24,12 @@ use {
         MINIMUM_RESERVE_LAMPORTS,
     },
     spl_token::error::TokenError,
+    test_case::test_case,
 };
 
-async fn setup() -> (
+async fn setup(
+    token_program_id: Pubkey,
+) -> (
     ProgramTestContext,
     StakePoolAccounts,
     ValidatorStakeAccount,
@@ -36,7 +39,7 @@ async fn setup() -> (
     u64,
 ) {
     let mut context = program_test().start_with_context().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::new_with_token_program(token_program_id);
     stake_pool_accounts
         .initialize_stake_pool(
             &mut context.banks_client,
@@ -82,6 +85,7 @@ async fn setup() -> (
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &deposit_info.pool_account.pubkey(),
         &deposit_info.authority,
         &user_transfer_authority.pubkey(),
@@ -110,14 +114,16 @@ async fn setup() -> (
     )
 }
 
+#[test_case(spl_token::id(); "token")]
+#[test_case(spl_token_2022::id(); "token-2022")]
 #[tokio::test]
-async fn success() {
-    _success(SuccessTestType::Success).await;
+async fn success(token_program_id: Pubkey) {
+    _success(token_program_id, SuccessTestType::Success).await;
 }
 
 #[tokio::test]
 async fn success_with_closed_manager_fee_account() {
-    _success(SuccessTestType::UninitializedManagerFee).await;
+    _success(spl_token::id(), SuccessTestType::UninitializedManagerFee).await;
 }
 
 enum SuccessTestType {
@@ -125,7 +131,7 @@ enum SuccessTestType {
     UninitializedManagerFee,
 }
 
-async fn _success(test_type: SuccessTestType) {
+async fn _success(token_program_id: Pubkey, test_type: SuccessTestType) {
     let (
         mut context,
         stake_pool_accounts,
@@ -134,7 +140,7 @@ async fn _success(test_type: SuccessTestType) {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_withdraw,
-    ) = setup().await;
+    ) = setup(token_program_id).await;
 
     // Save stake pool state before withdrawal
     let stake_pool_before = get_account(
@@ -182,6 +188,7 @@ async fn _success(test_type: SuccessTestType) {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &destination_keypair,
         &stake_pool_accounts.pool_mint.pubkey(),
         &Keypair::new().pubkey(),
@@ -194,10 +201,13 @@ async fn _success(test_type: SuccessTestType) {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
+            &stake_pool_accounts.token_program_id,
             &stake_pool_accounts.pool_fee_account.pubkey(),
+            &stake_pool_accounts.pool_mint.pubkey(),
             &destination_keypair.pubkey(),
             &stake_pool_accounts.manager,
             pool_fee_balance_before,
+            stake_pool_accounts.pool_decimals,
         )
         .await;
         // Check that the account cannot be frozen due to lack of
@@ -206,6 +216,7 @@ async fn _success(test_type: SuccessTestType) {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
+            &stake_pool_accounts.token_program_id,
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.pool_mint.pubkey(),
             &stake_pool_accounts.manager,
@@ -223,6 +234,7 @@ async fn _success(test_type: SuccessTestType) {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
+            &stake_pool_accounts.token_program_id,
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &destination_keypair.pubkey(),
             &stake_pool_accounts.manager,
@@ -346,7 +358,7 @@ async fn fail_with_wrong_stake_program() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let new_authority = Pubkey::new_unique();
     let wrong_stake_program = Pubkey::new_unique();
@@ -407,7 +419,7 @@ async fn fail_with_wrong_withdraw_authority() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let new_authority = Pubkey::new_unique();
     stake_pool_accounts.withdraw_authority = Keypair::new().pubkey();
@@ -449,7 +461,7 @@ async fn fail_with_wrong_token_program_id() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let new_authority = Pubkey::new_unique();
     let wrong_token_program = Keypair::new();
@@ -501,7 +513,7 @@ async fn fail_with_wrong_validator_list() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let new_authority = Pubkey::new_unique();
     stake_pool_accounts.validator_list = Keypair::new();
@@ -545,7 +557,7 @@ async fn fail_with_unknown_validator() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_withdraw,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let unknown_stake = create_unknown_validator_stake(
         &mut context.banks_client,
@@ -591,7 +603,7 @@ async fn fail_double_withdraw_to_the_same_account() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
@@ -616,6 +628,7 @@ async fn fail_double_withdraw_to_the_same_account() {
         &mut context.banks_client,
         &context.payer,
         &latest_blockhash,
+        &stake_pool_accounts.token_program_id,
         &deposit_info.pool_account.pubkey(),
         &deposit_info.authority,
         &user_transfer_authority.pubkey(),
@@ -656,12 +669,13 @@ async fn fail_without_token_approval() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     revoke_tokens(
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &deposit_info.pool_account.pubkey(),
         &deposit_info.authority,
     )
@@ -707,13 +721,14 @@ async fn fail_with_low_delegation() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     // Delegate few tokens for burning
     delegate_tokens(
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &deposit_info.pool_account.pubkey(),
         &deposit_info.authority,
         &user_transfer_authority.pubkey(),
@@ -761,7 +776,7 @@ async fn fail_overdraw_validator() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let validator_stake_account = simple_add_validator_to_pool(
         &mut context.banks_client,
@@ -807,7 +822,7 @@ async fn fail_remove_validator() {
         user_transfer_authority,
         user_stake_recipient,
         _,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     // decrease a little stake, not all
     let error = stake_pool_accounts
@@ -880,7 +895,7 @@ async fn success_remove_validator() {
         user_transfer_authority,
         user_stake_recipient,
         _,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
@@ -983,7 +998,7 @@ async fn fail_with_reserve() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     // decrease a little stake, not all
     let error = stake_pool_accounts
@@ -1053,7 +1068,7 @@ async fn success_with_reserve() {
         user_transfer_authority,
         user_stake_recipient,
         _,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
@@ -1174,7 +1189,7 @@ async fn success_with_preferred_validator() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     stake_pool_accounts
         .set_preferred_validator(
@@ -1213,7 +1228,7 @@ async fn fail_with_wrong_preferred_withdraw() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let preferred_validator = simple_add_validator_to_pool(
         &mut context.banks_client,
@@ -1309,7 +1324,7 @@ async fn fail_withdraw_from_transient() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_withdraw,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     // add a preferred withdraw validator, keep it empty, to be sure that this works
     let preferred_validator = simple_add_validator_to_pool(
@@ -1384,7 +1399,7 @@ async fn success_withdraw_from_transient() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_withdraw,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     // add a preferred withdraw validator, keep it empty, to be sure that this works
     let preferred_validator = simple_add_validator_to_pool(
@@ -1452,17 +1467,20 @@ async fn success_withdraw_all_fee_tokens() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_withdraw,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     // move tokens to fee account
     transfer_spl_tokens(
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &deposit_info.pool_account.pubkey(),
+        &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &user_transfer_authority,
         tokens_to_withdraw / 2,
+        stake_pool_accounts.pool_decimals,
     )
     .await;
 
@@ -1477,6 +1495,7 @@ async fn success_withdraw_all_fee_tokens() {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.manager,
         &user_transfer_authority.pubkey(),
@@ -1519,7 +1538,7 @@ async fn success_empty_out_stake_with_fee() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_withdraw,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     // add another validator and deposit into it
     let other_validator_stake_account = simple_add_validator_to_pool(
@@ -1547,10 +1566,13 @@ async fn success_empty_out_stake_with_fee() {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &deposit_info.pool_account.pubkey(),
+        &stake_pool_accounts.pool_mint.pubkey(),
         &other_deposit_info.pool_account.pubkey(),
         &user_transfer_authority,
         tokens_to_withdraw,
+        stake_pool_accounts.pool_decimals,
     )
     .await;
 
@@ -1565,6 +1587,7 @@ async fn success_empty_out_stake_with_fee() {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &other_deposit_info.pool_account.pubkey(),
         &other_deposit_info.authority,
         &user_transfer_authority.pubkey(),

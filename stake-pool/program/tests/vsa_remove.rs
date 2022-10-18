@@ -27,7 +27,7 @@ use {
 
 async fn setup() -> (ProgramTestContext, StakePoolAccounts, ValidatorStakeAccount) {
     let mut context = program_test().start_with_context().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut context.banks_client,
@@ -508,6 +508,7 @@ async fn success_with_deactivating_transient_stake() {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &deposit_info.pool_account.pubkey(),
         &deposit_info.authority,
         &user_transfer_authority.pubkey(),

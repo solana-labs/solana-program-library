@@ -6190,6 +6190,8 @@ dependencies = [
  "solana-vote-program",
  "spl-math",
  "spl-token 3.5.0",
+ "spl-token-2022 0.4.3",
+ "test-case",
  "thiserror",
 ]
 

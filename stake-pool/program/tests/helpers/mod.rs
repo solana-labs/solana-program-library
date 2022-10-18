@@ -13,7 +13,7 @@ use {
     },
     solana_program_test::{processor, BanksClient, ProgramTest},
     solana_sdk::{
-        account::{Account, WritableAccount},
+        account::{Account as SolanaAccount, WritableAccount},
         clock::{Clock, Epoch},
         signature::{Keypair, Signer},
         transaction::Transaction,
@@ -31,6 +31,10 @@ use {
         state::{self, FeeType, StakePool, ValidatorList},
         MINIMUM_RESERVE_LAMPORTS,
     },
+    spl_token_2022::{
+        extension::StateWithExtensionsOwned,
+        state::{Account, Mint},
+    },
     std::{convert::TryInto, num::NonZeroU32},
 };
 
@@ -43,17 +47,30 @@ pub const STAKE_ACCOUNT_RENT_EXEMPTION: u64 = 2_282_880;
 const ACCOUNT_RENT_EXEMPTION: u64 = 1_000_000_000; // go with something big to be safe
 
 pub fn program_test() -> ProgramTest {
-    ProgramTest::new("spl_stake_pool", id(), processor!(Processor::process))
+    let mut program_test = ProgramTest::new("spl_stake_pool", id(), processor!(Processor::process));
+    program_test.prefer_bpf(false);
+    program_test.add_program(
+        "spl_token_2022",
+        spl_token_2022::id(),
+        processor!(spl_token_2022::processor::Processor::process),
+    );
+    program_test
 }
 
 pub fn program_test_with_metadata_program() -> ProgramTest {
     let mut program_test = ProgramTest::default();
     program_test.add_program("spl_stake_pool", id(), processor!(Processor::process));
     program_test.add_program("mpl_token_metadata", mpl_token_metadata::id(), None);
+    program_test.prefer_bpf(false);
+    program_test.add_program(
+        "spl_token_2022",
+        spl_token_2022::id(),
+        processor!(spl_token_2022::processor::Processor::process),
+    );
     program_test
 }
 
-pub async fn get_account(banks_client: &mut BanksClient, pubkey: &Pubkey) -> Account {
+pub async fn get_account(banks_client: &mut BanksClient, pubkey: &Pubkey) -> SolanaAccount {
     banks_client
         .get_account(*pubkey)
         .await
@@ -65,11 +82,13 @@ pub async fn create_mint(
     banks_client: &mut BanksClient,
     payer: &Keypair,
     recent_blockhash: &Hash,
+    program_id: &Pubkey,
     pool_mint: &Keypair,
     manager: &Pubkey,
+    decimals: u8,
 ) -> Result<(), TransportError> {
     let rent = banks_client.get_rent().await.unwrap();
-    let mint_rent = rent.minimum_balance(spl_token::state::Mint::LEN);
+    let mint_rent = rent.minimum_balance(Mint::LEN);
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -77,15 +96,15 @@ pub async fn create_mint(
                 &payer.pubkey(),
                 &pool_mint.pubkey(),
                 mint_rent,
-                spl_token::state::Mint::LEN as u64,
-                &spl_token::id(),
+                Mint::LEN as u64,
+                program_id,
             ),
-            spl_token::instruction::initialize_mint(
-                &spl_token::id(),
+            spl_token_2022::instruction::initialize_mint(
+                program_id,
                 &pool_mint.pubkey(),
                 manager,
                 None,
-                0,
+                decimals,
             )
             .unwrap(),
         ],
@@ -119,23 +138,29 @@ pub async fn transfer(
     banks_client.process_transaction(transaction).await.unwrap();
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn transfer_spl_tokens(
     banks_client: &mut BanksClient,
     payer: &Keypair,
     recent_blockhash: &Hash,
+    program_id: &Pubkey,
     source: &Pubkey,
+    mint: &Pubkey,
     destination: &Pubkey,
     authority: &Keypair,
     amount: u64,
+    decimals: u8,
 ) {
     let transaction = Transaction::new_signed_with_payer(
-        &[spl_token::instruction::transfer(
-            &spl_token::id(),
+        &[spl_token_2022::instruction::transfer_checked(
+            program_id,
             source,
+            mint,
             destination,
             &authority.pubkey(),
             &[],
             amount,
+            decimals,
         )
         .unwrap()],
         Some(&payer.pubkey()),
@@ -149,12 +174,13 @@ pub async fn create_token_account(
     banks_client: &mut BanksClient,
     payer: &Keypair,
     recent_blockhash: &Hash,
+    program_id: &Pubkey,
     account: &Keypair,
     pool_mint: &Pubkey,
     manager: &Pubkey,
 ) -> Result<(), TransportError> {
     let rent = banks_client.get_rent().await.unwrap();
-    let account_rent = rent.minimum_balance(spl_token::state::Account::LEN);
+    let account_rent = rent.minimum_balance(Account::LEN);
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -162,11 +188,11 @@ pub async fn create_token_account(
                 &payer.pubkey(),
                 &account.pubkey(),
                 account_rent,
-                spl_token::state::Account::LEN as u64,
-                &spl_token::id(),
+                Account::LEN as u64,
+                program_id,
             ),
-            spl_token::instruction::initialize_account(
-                &spl_token::id(),
+            spl_token_2022::instruction::initialize_account(
+                program_id,
                 &account.pubkey(),
                 pool_mint,
                 manager,
@@ -187,13 +213,14 @@ pub async fn close_token_account(
     banks_client: &mut BanksClient,
     payer: &Keypair,
     recent_blockhash: &Hash,
+    program_id: &Pubkey,
     account: &Pubkey,
     lamports_destination: &Pubkey,
     manager: &Keypair,
 ) -> Result<(), TransportError> {
     let mut transaction = Transaction::new_with_payer(
-        &[spl_token::instruction::close_account(
-            &spl_token::id(),
+        &[spl_token_2022::instruction::close_account(
+            program_id,
             account,
             lamports_destination,
             &manager.pubkey(),
@@ -214,13 +241,14 @@ pub async fn freeze_token_account(
     banks_client: &mut BanksClient,
     payer: &Keypair,
     recent_blockhash: &Hash,
+    program_id: &Pubkey,
     account: &Pubkey,
     pool_mint: &Pubkey,
     manager: &Keypair,
 ) -> Result<(), TransportError> {
     let mut transaction = Transaction::new_with_payer(
-        &[spl_token::instruction::freeze_account(
-            &spl_token::id(),
+        &[spl_token_2022::instruction::freeze_account(
+            program_id,
             account,
             pool_mint,
             &manager.pubkey(),
@@ -237,18 +265,20 @@ pub async fn freeze_token_account(
         .map_err(|e| e.into())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn mint_tokens(
     banks_client: &mut BanksClient,
     payer: &Keypair,
     recent_blockhash: &Hash,
+    program_id: &Pubkey,
     mint: &Pubkey,
     account: &Pubkey,
     mint_authority: &Keypair,
     amount: u64,
 ) -> Result<(), TransportError> {
     let transaction = Transaction::new_signed_with_payer(
-        &[spl_token::instruction::mint_to(
-            &spl_token::id(),
+        &[spl_token_2022::instruction::mint_to(
+            program_id,
             mint,
             account,
             &mint_authority.pubkey(),
@@ -267,18 +297,20 @@ pub async fn mint_tokens(
         .map_err(|e| e.into())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn burn_tokens(
     banks_client: &mut BanksClient,
     payer: &Keypair,
     recent_blockhash: &Hash,
+    program_id: &Pubkey,
     mint: &Pubkey,
     account: &Pubkey,
     authority: &Keypair,
     amount: u64,
 ) -> Result<(), TransportError> {
     let transaction = Transaction::new_signed_with_payer(
-        &[spl_token::instruction::burn(
-            &spl_token::id(),
+        &[spl_token_2022::instruction::burn(
+            program_id,
             account,
             mint,
             &authority.pubkey(),
@@ -299,9 +331,8 @@ pub async fn burn_tokens(
 
 pub async fn get_token_balance(banks_client: &mut BanksClient, token: &Pubkey) -> u64 {
     let token_account = banks_client.get_account(*token).await.unwrap().unwrap();
-    let account_info: spl_token::state::Account =
-        spl_token::state::Account::unpack_from_slice(token_account.data.as_slice()).unwrap();
-    account_info.amount
+    let account_info = StateWithExtensionsOwned::<Account>::unpack(token_account.data).unwrap();
+    account_info.base.amount
 }
 
 pub async fn get_metadata_account(banks_client: &mut BanksClient, token_mint: &Pubkey) -> Metadata {
@@ -316,23 +347,24 @@ pub async fn get_metadata_account(banks_client: &mut BanksClient, token_mint: &P
 
 pub async fn get_token_supply(banks_client: &mut BanksClient, mint: &Pubkey) -> u64 {
     let mint_account = banks_client.get_account(*mint).await.unwrap().unwrap();
-    let account_info =
-        spl_token::state::Mint::unpack_from_slice(mint_account.data.as_slice()).unwrap();
-    account_info.supply
+    let account_info = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data).unwrap();
+    account_info.base.supply
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn delegate_tokens(
     banks_client: &mut BanksClient,
     payer: &Keypair,
     recent_blockhash: &Hash,
+    program_id: &Pubkey,
     account: &Pubkey,
     manager: &Keypair,
     delegate: &Pubkey,
     amount: u64,
 ) {
     let transaction = Transaction::new_signed_with_payer(
-        &[spl_token::instruction::approve(
-            &spl_token::id(),
+        &[spl_token_2022::instruction::approve(
+            program_id,
             account,
             delegate,
             &manager.pubkey(),
@@ -351,12 +383,13 @@ pub async fn revoke_tokens(
     banks_client: &mut BanksClient,
     payer: &Keypair,
     recent_blockhash: &Hash,
+    program_id: &Pubkey,
     account: &Pubkey,
     manager: &Keypair,
 ) {
     let transaction = Transaction::new_signed_with_payer(
         &[
-            spl_token::instruction::revoke(&spl_token::id(), account, &manager.pubkey(), &[])
+            spl_token_2022::instruction::revoke(program_id, account, &manager.pubkey(), &[])
                 .unwrap(),
         ],
         Some(&payer.pubkey()),
@@ -374,6 +407,7 @@ pub async fn create_stake_pool(
     stake_pool: &Keypair,
     validator_list: &Keypair,
     reserve_stake: &Pubkey,
+    token_program_id: &Pubkey,
     pool_mint: &Pubkey,
     pool_token_account: &Pubkey,
     manager: &Keypair,
@@ -420,7 +454,7 @@ pub async fn create_stake_pool(
                 reserve_stake,
                 pool_mint,
                 pool_token_account,
-                &spl_token::id(),
+                token_program_id,
                 stake_deposit_authority.as_ref().map(|k| k.pubkey()),
                 *epoch_fee,
                 *withdrawal_fee,
@@ -712,8 +746,10 @@ pub struct StakePoolAccounts {
     pub stake_pool: Keypair,
     pub validator_list: Keypair,
     pub reserve_stake: Keypair,
+    pub token_program_id: Pubkey,
     pub pool_mint: Keypair,
     pub pool_fee_account: Keypair,
+    pub pool_decimals: u8,
     pub manager: Keypair,
     pub staker: Keypair,
     pub withdraw_authority: Pubkey,
@@ -729,58 +765,19 @@ pub struct StakePoolAccounts {
 }
 
 impl StakePoolAccounts {
-    pub fn new() -> Self {
-        let stake_pool = Keypair::new();
-        let validator_list = Keypair::new();
-        let stake_pool_address = &stake_pool.pubkey();
-        let (stake_deposit_authority, _) =
-            find_deposit_authority_program_address(&id(), stake_pool_address);
-        let (withdraw_authority, _) =
-            find_withdraw_authority_program_address(&id(), stake_pool_address);
-        let reserve_stake = Keypair::new();
-        let pool_mint = Keypair::new();
-        let pool_fee_account = Keypair::new();
-        let manager = Keypair::new();
-        let staker = Keypair::new();
-
+    pub fn new_with_deposit_authority(stake_deposit_authority: Keypair) -> Self {
         Self {
-            stake_pool,
-            validator_list,
-            reserve_stake,
-            pool_mint,
-            pool_fee_account,
-            manager,
-            staker,
-            withdraw_authority,
-            stake_deposit_authority,
-            stake_deposit_authority_keypair: None,
-            epoch_fee: state::Fee {
-                numerator: 1,
-                denominator: 100,
-            },
-            withdrawal_fee: state::Fee {
-                numerator: 3,
-                denominator: 1000,
-            },
-            deposit_fee: state::Fee {
-                numerator: 1,
-                denominator: 1000,
-            },
-            referral_fee: 25,
-            sol_deposit_fee: state::Fee {
-                numerator: 3,
-                denominator: 100,
-            },
-            sol_referral_fee: 50,
-            max_validators: MAX_TEST_VALIDATORS,
+            stake_deposit_authority: stake_deposit_authority.pubkey(),
+            stake_deposit_authority_keypair: Some(stake_deposit_authority),
+            ..Default::default()
         }
     }
 
-    pub fn new_with_deposit_authority(stake_deposit_authority: Keypair) -> Self {
-        let mut stake_pool_accounts = Self::new();
-        stake_pool_accounts.stake_deposit_authority = stake_deposit_authority.pubkey();
-        stake_pool_accounts.stake_deposit_authority_keypair = Some(stake_deposit_authority);
-        stake_pool_accounts
+    pub fn new_with_token_program(token_program_id: Pubkey) -> Self {
+        Self {
+            token_program_id,
+            ..Default::default()
+        }
     }
 
     pub fn calculate_fee(&self, amount: u64) -> u64 {
@@ -819,14 +816,17 @@ impl StakePoolAccounts {
             banks_client,
             payer,
             recent_blockhash,
+            &self.token_program_id,
             &self.pool_mint,
             &self.withdraw_authority,
+            self.pool_decimals,
         )
         .await?;
         create_token_account(
             banks_client,
             payer,
             recent_blockhash,
+            &self.token_program_id,
             &self.pool_fee_account,
             &self.pool_mint.pubkey(),
             &self.manager.pubkey(),
@@ -852,6 +852,7 @@ impl StakePoolAccounts {
             &self.stake_pool,
             &self.validator_list,
             &self.reserve_stake.pubkey(),
+            &self.token_program_id,
             &self.pool_mint.pubkey(),
             &self.pool_fee_account.pubkey(),
             &self.manager,
@@ -925,7 +926,7 @@ impl StakePoolAccounts {
                     &self.pool_fee_account.pubkey(),
                     referrer,
                     &self.pool_mint.pubkey(),
-                    &spl_token::id(),
+                    &self.token_program_id,
                 )
             } else {
                 instruction::deposit_stake(
@@ -941,7 +942,7 @@ impl StakePoolAccounts {
                     &self.pool_fee_account.pubkey(),
                     referrer,
                     &self.pool_mint.pubkey(),
-                    &spl_token::id(),
+                    &self.token_program_id,
                 )
             };
         let transaction = Transaction::new_signed_with_payer(
@@ -982,7 +983,7 @@ impl StakePoolAccounts {
                 &self.pool_fee_account.pubkey(),
                 &self.pool_fee_account.pubkey(),
                 &self.pool_mint.pubkey(),
-                &spl_token::id(),
+                &self.token_program_id,
                 amount,
             )
         } else {
@@ -996,7 +997,7 @@ impl StakePoolAccounts {
                 &self.pool_fee_account.pubkey(),
                 &self.pool_fee_account.pubkey(),
                 &self.pool_mint.pubkey(),
-                &spl_token::id(),
+                &self.token_program_id,
                 amount,
             )
         };
@@ -1040,7 +1041,7 @@ impl StakePoolAccounts {
                 pool_account,
                 &self.pool_fee_account.pubkey(),
                 &self.pool_mint.pubkey(),
-                &spl_token::id(),
+                &self.token_program_id,
                 amount,
             )],
             Some(&payer.pubkey()),
@@ -1080,7 +1081,7 @@ impl StakePoolAccounts {
                 &user.pubkey(),
                 &self.pool_fee_account.pubkey(),
                 &self.pool_mint.pubkey(),
-                &spl_token::id(),
+                &self.token_program_id,
                 amount,
             )
         } else {
@@ -1094,7 +1095,7 @@ impl StakePoolAccounts {
                 &user.pubkey(),
                 &self.pool_fee_account.pubkey(),
                 &self.pool_mint.pubkey(),
-                &spl_token::id(),
+                &self.token_program_id,
                 amount,
             )
         };
@@ -1170,7 +1171,7 @@ impl StakePoolAccounts {
                 &self.reserve_stake.pubkey(),
                 &self.pool_fee_account.pubkey(),
                 &self.pool_mint.pubkey(),
-                &spl_token::id(),
+                &self.token_program_id,
             )],
             Some(&payer.pubkey()),
             &[payer],
@@ -1238,7 +1239,7 @@ impl StakePoolAccounts {
                     &self.reserve_stake.pubkey(),
                     &self.pool_fee_account.pubkey(),
                     &self.pool_mint.pubkey(),
-                    &spl_token::id(),
+                    &self.token_program_id,
                 ),
                 instruction::cleanup_removed_validator_entries(
                     &id(),
@@ -1437,7 +1438,7 @@ impl StakePoolAccounts {
             reserve_stake: self.reserve_stake.pubkey(),
             pool_mint: self.pool_mint.pubkey(),
             manager_fee_account: self.pool_fee_account.pubkey(),
-            token_program_id: spl_token::id(),
+            token_program_id: self.token_program_id,
             total_lamports: 0,
             pool_token_supply: 0,
             last_update_epoch: 0,
@@ -1464,6 +1465,56 @@ impl StakePoolAccounts {
         (stake_pool, validator_list)
     }
 }
+impl Default for StakePoolAccounts {
+    fn default() -> Self {
+        let stake_pool = Keypair::new();
+        let validator_list = Keypair::new();
+        let stake_pool_address = &stake_pool.pubkey();
+        let (stake_deposit_authority, _) =
+            find_deposit_authority_program_address(&id(), stake_pool_address);
+        let (withdraw_authority, _) =
+            find_withdraw_authority_program_address(&id(), stake_pool_address);
+        let reserve_stake = Keypair::new();
+        let pool_mint = Keypair::new();
+        let pool_fee_account = Keypair::new();
+        let manager = Keypair::new();
+        let staker = Keypair::new();
+
+        Self {
+            stake_pool,
+            validator_list,
+            reserve_stake,
+            token_program_id: spl_token::id(),
+            pool_mint,
+            pool_fee_account,
+            pool_decimals: 0,
+            manager,
+            staker,
+            withdraw_authority,
+            stake_deposit_authority,
+            stake_deposit_authority_keypair: None,
+            epoch_fee: state::Fee {
+                numerator: 1,
+                denominator: 100,
+            },
+            withdrawal_fee: state::Fee {
+                numerator: 3,
+                denominator: 1000,
+            },
+            deposit_fee: state::Fee {
+                numerator: 1,
+                denominator: 1000,
+            },
+            referral_fee: 25,
+            sol_deposit_fee: state::Fee {
+                numerator: 3,
+                denominator: 100,
+            },
+            sol_referral_fee: 50,
+            max_validators: MAX_TEST_VALIDATORS,
+        }
+    }
+}
 
 pub async fn simple_add_validator_to_pool(
     banks_client: &mut BanksClient,
@@ -1488,6 +1539,7 @@ pub async fn simple_add_validator_to_pool(
         banks_client,
         payer,
         recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &pool_token_account,
         &stake_pool_accounts.pool_mint.pubkey(),
         &payer.pubkey(),
@@ -1605,6 +1657,7 @@ impl DepositStakeAccount {
             banks_client,
             payer,
             recent_blockhash,
+            &stake_pool_accounts.token_program_id,
             &self.pool_account,
             &stake_pool_accounts.pool_mint.pubkey(),
             &self.authority.pubkey(),
@@ -1670,6 +1723,7 @@ pub async fn simple_deposit_stake(
         banks_client,
         payer,
         recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &pool_account,
         &stake_pool_accounts.pool_mint.pubkey(),
         &authority.pubkey(),
@@ -1752,7 +1806,7 @@ pub fn add_vote_account(program_test: &mut ProgramTest) -> Pubkey {
         },
         &Clock::default(),
     ));
-    let vote_account = Account::create(
+    let vote_account = SolanaAccount::create(
         ACCOUNT_RENT_EXEMPTION,
         bincode::serialize::<VoteStateVersions>(&vote_state).unwrap(),
         solana_vote_program::id(),
@@ -1795,7 +1849,7 @@ pub fn add_validator_stake_account(
         credits_observed: 0,
     };
 
-    let stake_account = Account::create(
+    let stake_account = SolanaAccount::create(
         stake_amount + STAKE_ACCOUNT_RENT_EXEMPTION,
         bincode::serialize::<stake::state::StakeState>(&stake::state::StakeState::Stake(
             meta, stake,
@@ -1847,7 +1901,7 @@ pub fn add_reserve_stake_account(
         },
         lockup: stake::state::Lockup::default(),
     };
-    let reserve_stake_account = Account::create(
+    let reserve_stake_account = SolanaAccount::create(
         stake_amount + STAKE_ACCOUNT_RENT_EXEMPTION,
         bincode::serialize::<stake::state::StakeState>(&stake::state::StakeState::Initialized(
             meta,
@@ -1869,7 +1923,7 @@ pub fn add_stake_pool_account(
     // more room for optionals
     stake_pool_bytes.extend_from_slice(&Pubkey::default().to_bytes());
     stake_pool_bytes.extend_from_slice(&Pubkey::default().to_bytes());
-    let stake_pool_account = Account::create(
+    let stake_pool_account = SolanaAccount::create(
         ACCOUNT_RENT_EXEMPTION,
         stake_pool_bytes,
         id(),
@@ -1891,7 +1945,7 @@ pub fn add_validator_list_account(
         validator_list_bytes
             .append(&mut state::ValidatorStakeInfo::default().try_to_vec().unwrap());
     }
-    let validator_list_account = Account::create(
+    let validator_list_account = SolanaAccount::create(
         ACCOUNT_RENT_EXEMPTION,
         validator_list_bytes,
         id(),
@@ -1903,12 +1957,13 @@ pub fn add_validator_list_account(
 
 pub fn add_mint_account(
     program_test: &mut ProgramTest,
+    program_id: &Pubkey,
     mint_key: &Pubkey,
     mint_authority: &Pubkey,
     supply: u64,
 ) {
-    let mut mint_vec = vec![0u8; spl_token::state::Mint::LEN];
-    let mint = spl_token::state::Mint {
+    let mut mint_vec = vec![0u8; Mint::LEN];
+    let mint = Mint {
         mint_authority: COption::Some(*mint_authority),
         supply,
         decimals: 9,
@@ -1916,10 +1971,10 @@ pub fn add_mint_account(
         freeze_authority: COption::None,
     };
     Pack::pack(mint, &mut mint_vec).unwrap();
-    let stake_pool_mint = Account::create(
+    let stake_pool_mint = SolanaAccount::create(
         ACCOUNT_RENT_EXEMPTION,
         mint_vec,
-        spl_token::id(),
+        *program_id,
         false,
         Epoch::default(),
     );
@@ -1928,26 +1983,27 @@ pub fn add_mint_account(
 
 pub fn add_token_account(
     program_test: &mut ProgramTest,
+    program_id: &Pubkey,
     account_key: &Pubkey,
     mint_key: &Pubkey,
     owner: &Pubkey,
 ) {
-    let mut fee_account_vec = vec![0u8; spl_token::state::Account::LEN];
-    let fee_account_data = spl_token::state::Account {
+    let mut fee_account_vec = vec![0u8; Account::LEN];
+    let fee_account_data = Account {
         mint: *mint_key,
         owner: *owner,
         amount: 0,
         delegate: COption::None,
-        state: spl_token::state::AccountState::Initialized,
+        state: spl_token_2022::state::AccountState::Initialized,
         is_native: COption::None,
         delegated_amount: 0,
         close_authority: COption::None,
     };
     Pack::pack(fee_account_data, &mut fee_account_vec).unwrap();
-    let fee_account = Account::create(
+    let fee_account = SolanaAccount::create(
         ACCOUNT_RENT_EXEMPTION,
         fee_account_vec,
-        spl_token::id(),
+        *program_id,
         false,
         Epoch::default(),
     );
