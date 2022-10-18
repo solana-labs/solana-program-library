@@ -157,6 +157,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
 
     /// Errors if one of the leaves of the current merkle tree is non-EMPTY
     pub fn prove_tree_is_empty(&self) -> Result<(), ConcurrentMerkleTreeError> {
+        if !self.is_initialized() {
+            return Err(ConcurrentMerkleTreeError::TreeNotInitialized);
+        }
         let mut empty_node_cache = Box::new([EMPTY; MAX_DEPTH]);
         if self.get_root()
             != empty_node_cached::<MAX_DEPTH>(MAX_DEPTH as u32, &mut empty_node_cache)
@@ -173,6 +176,10 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
 
     /// Returns the most recent changelog
     pub fn get_change_log(&self) -> Box<ChangeLog<MAX_DEPTH>> {
+        if !self.is_initialized() {
+            solana_logging!("Tree is not initialized, returning default change log");
+            return Box::new(ChangeLog::default());
+        }
         Box::new(self.change_logs[self.active_index as usize])
     }
 
@@ -196,6 +203,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
     ) -> Result<(), ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
         check_leaf_index(leaf_index, MAX_DEPTH)?;
+        if !self.is_initialized() {
+            return Err(ConcurrentMerkleTreeError::TreeNotInitialized);
+        }
 
         if leaf_index > self.rightmost_proof.index {
             solana_logging!(
@@ -235,6 +245,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
     /// Appending a non-empty Node will always succeed .
     pub fn append(&mut self, mut node: Node) -> Result<Node, ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
+        if !self.is_initialized() {
+            return Err(ConcurrentMerkleTreeError::TreeNotInitialized);
+        }
         if node == EMPTY {
             return Err(ConcurrentMerkleTreeError::CannotAppendEmptyNode);
         }
@@ -301,6 +314,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
     ) -> Result<Node, ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
         check_leaf_index(index, MAX_DEPTH)?;
+        if !self.is_initialized() {
+            return Err(ConcurrentMerkleTreeError::TreeNotInitialized);
+        }
 
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
         fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
@@ -328,6 +344,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
     ) -> Result<Node, ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
         check_leaf_index(index, MAX_DEPTH)?;
+        if !self.is_initialized() {
+            return Err(ConcurrentMerkleTreeError::TreeNotInitialized);
+        }
 
         if index > self.rightmost_proof.index {
             Err(ConcurrentMerkleTreeError::LeafIndexOutOfBounds)
@@ -448,6 +467,10 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         proof: &[Node; MAX_DEPTH],
         leaf_index: u32,
     ) -> bool {
+        if !self.is_initialized() {
+            solana_logging!("Tree is not initialized, returning false");
+            return false;
+        }
         if check_leaf_index(leaf_index, MAX_DEPTH).is_err() {
             solana_logging!("Leaf index out of bounds for max_depth");
             return false;

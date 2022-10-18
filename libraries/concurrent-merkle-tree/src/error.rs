@@ -23,6 +23,10 @@ pub enum ConcurrentMerkleTreeError {
     #[error("Tree already initialized")]
     TreeAlreadyInitialized,
 
+    /// This tree has not yet been initialized
+    #[error("Tree needs to be initialized before using")]
+    TreeNotInitialized,
+
     /// Root passed as argument cannot be found in stored changelog buffer
     #[error("Root not found in changelog buffer")]
     RootNotFound,

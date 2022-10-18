@@ -590,36 +590,41 @@
     },
     {
       "code": 6001,
+      "name": "LeafIndexOutOfBounds",
+      "msg": "Leaf index of concurrent merkle tree is out of bounds"
+    },
+    {
+      "code": 6002,
       "name": "ConcurrentMerkleTreeError",
       "msg": "Concurrent merkle tree error"
     },
     {
-      "code": 6002,
+      "code": 6003,
       "name": "ZeroCopyError",
       "msg": "Issue zero copying concurrent merkle tree data"
     },
     {
-      "code": 6003,
+      "code": 6004,
       "name": "ConcurrentMerkleTreeConstantsError",
       "msg": "An unsupported max depth or max buffer size constant was provided"
     },
     {
-      "code": 6004,
+      "code": 6005,
       "name": "CanopyLengthMismatch",
       "msg": "Expected a different byte length for the merkle tree canopy"
     },
     {
-      "code": 6005,
+      "code": 6006,
       "name": "IncorrectAuthority",
       "msg": "Provided authority does not match expected tree authority"
     },
     {
-      "code": 6006,
+      "code": 6007,
       "name": "IncorrectAccountOwner",
       "msg": "Account is owned by a different program, expected it to be owned by this program"
     },
     {
-      "code": 6007,
+      "code": 6008,
       "name": "IncorrectAccountType",
       "msg": "Account provided has incorrect account type"
     }
