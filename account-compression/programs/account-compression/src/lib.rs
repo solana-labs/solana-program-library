@@ -352,6 +352,7 @@ pub mod spl_account_compression {
 
         let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
         header.assert_valid_authority(&ctx.accounts.authority.key())?;
+        header.assert_valid_leaf_index(index)?;
 
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
@@ -428,6 +429,7 @@ pub mod spl_account_compression {
 
         let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
         header.assert_valid()?;
+        header.assert_valid_leaf_index(index)?;
 
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
@@ -498,6 +500,7 @@ pub mod spl_account_compression {
 
         let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
         header.assert_valid_authority(&ctx.accounts.authority.key())?;
+        header.assert_valid_leaf_index(index)?;
 
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
