@@ -13,6 +13,7 @@ use {
             memo_transfer::{self, check_previous_sibling_instruction_is_memo, memo_required},
             mint_close_authority::MintCloseAuthority,
             non_transferable::NonTransferable,
+            permanent_delegate::PermanentDelegate,
             reallocate,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             ExtensionType, StateWithExtensions, StateWithExtensionsMut,
@@ -138,6 +139,13 @@ impl Processor {
         let mint_data = mint_info.data.borrow();
         let mint = StateWithExtensions::<Mint>::unpack(&mint_data)
             .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
+        if mint
+            .get_extension::<PermanentDelegate>()
+            .map(|e| Option::<Pubkey>::from(e.delegate).is_some())
+            .unwrap_or(false)
+        {
+            msg!("Warning: Mint has a permanent delegate, so tokens in this account may be seized at any time");
+        }
         let required_extensions =
             Self::get_required_account_extensions_from_unpacked_mint(mint_info.owner, &mint)?;
         if ExtensionType::get_account_len::<Account>(&required_extensions)
@@ -279,7 +287,9 @@ impl Processor {
         if source_account.base.amount < amount {
             return Err(TokenError::InsufficientFunds.into());
         }
-        let fee = if let Some((mint_info, expected_decimals)) = expected_mint_info {
+        let (fee, maybe_permanent_delegate) = if let Some((mint_info, expected_decimals)) =
+            expected_mint_info
+        {
             if !cmp_pubkeys(&source_account.base.mint, mint_info.key) {
                 return Err(TokenError::MintMismatch.into());
             }
@@ -295,24 +305,32 @@ impl Processor {
                 return Err(TokenError::MintDecimalsMismatch.into());
             }
 
-            if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
+            let fee = if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
                 transfer_fee_config
                     .calculate_epoch_fee(Clock::get()?.epoch, amount)
                     .ok_or(TokenError::Overflow)?
             } else {
                 0
-            }
+            };
+
+            let maybe_permanent_delegate = mint
+                .get_extension::<PermanentDelegate>()
+                .map(|e| Option::<Pubkey>::from(e.delegate))
+                .ok()
+                .flatten();
+            (fee, maybe_permanent_delegate)
         } else {
             // Transfer fee amount extension exists on the account, but no mint
             // was provided to calculate the fee, abort
-            if source_account
+            let fee = if source_account
                 .get_extension_mut::<TransferFeeAmount>()
                 .is_ok()
             {
                 return Err(TokenError::MintRequiredForTransfer.into());
             } else {
                 0
-            }
+            };
+            (fee, None)
         };
         if let Some(expected_fee) = expected_fee {
             if expected_fee != fee {
@@ -322,8 +340,17 @@ impl Processor {
         }
 
         let self_transfer = cmp_pubkeys(source_account_info.key, destination_account_info.key);
-        match source_account.base.delegate {
-            COption::Some(ref delegate) if cmp_pubkeys(authority_info.key, delegate) => {
+        match (source_account.base.delegate, maybe_permanent_delegate) {
+            (_, Some(ref delegate)) if cmp_pubkeys(authority_info.key, delegate) => {
+                Self::validate_owner(
+                    program_id,
+                    delegate,
+                    authority_info,
+                    authority_info_data_len,
+                    account_info_iter.as_slice(),
+                )?
+            }
+            (COption::Some(ref delegate), _) if cmp_pubkeys(authority_info.key, delegate) => {
                 Self::validate_owner(
                     program_id,
                     delegate,
@@ -360,7 +387,7 @@ impl Processor {
                     }
                 }
             }
-        };
+        }
 
         // Revisit this later to see if it's worth adding a check to reduce
         // compute costs, ie:
@@ -698,6 +725,19 @@ impl Processor {
                     )?;
                     extension.rate_authority = new_authority.try_into()?;
                 }
+                AuthorityType::PermanentDelegate => {
+                    let extension = mint.get_extension_mut::<PermanentDelegate>()?;
+                    let maybe_delegate: Option<Pubkey> = extension.delegate.into();
+                    let delegate = maybe_delegate.ok_or(TokenError::AuthorityTypeNotSupported)?;
+                    Self::validate_owner(
+                        program_id,
+                        &delegate,
+                        authority_info,
+                        authority_info_data_len,
+                        account_info_iter.as_slice(),
+                    )?;
+                    extension.delegate = new_authority.try_into()?;
+                }
                 _ => {
                     return Err(TokenError::AuthorityTypeNotSupported.into());
                 }
@@ -828,13 +868,27 @@ impl Processor {
                 return Err(TokenError::MintDecimalsMismatch.into());
             }
         }
+        let maybe_permanent_delegate = mint
+            .get_extension::<PermanentDelegate>()
+            .map(|e| Option::<Pubkey>::from(e.delegate))
+            .ok()
+            .flatten();
 
         if !source_account
             .base
             .is_owned_by_system_program_or_incinerator()
         {
-            match source_account.base.delegate {
-                COption::Some(ref delegate) if cmp_pubkeys(authority_info.key, delegate) => {
+            match (source_account.base.delegate, maybe_permanent_delegate) {
+                (_, Some(ref delegate)) if cmp_pubkeys(authority_info.key, delegate) => {
+                    Self::validate_owner(
+                        program_id,
+                        delegate,
+                        authority_info,
+                        authority_info_data_len,
+                        account_info_iter.as_slice(),
+                    )?
+                }
+                (COption::Some(ref delegate), _) if cmp_pubkeys(authority_info.key, delegate) => {
                     Self::validate_owner(
                         program_id,
                         delegate,
@@ -1207,6 +1261,22 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes an [InitializePermanentDelegate](enum.TokenInstruction.html) instruction
+    pub fn process_initialize_permanent_delegate(
+        accounts: &[AccountInfo],
+        delegate: COption<Pubkey>,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let mint_account_info = next_account_info(account_info_iter)?;
+
+        let mut mint_data = mint_account_info.data.borrow_mut();
+        let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
+        let extension = mint.init_extension::<PermanentDelegate>(true)?;
+        extension.delegate = delegate.try_into()?;
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -1369,6 +1439,10 @@ impl Processor {
             }
             TokenInstruction::CpiGuardExtension => {
                 cpi_guard::processor::process_instruction(program_id, accounts, &input[1..])
+            }
+            TokenInstruction::InitializePermanentDelegate { delegate } => {
+                msg!("Instruction: InitializePermanentDelegate");
+                Self::process_initialize_permanent_delegate(accounts, delegate)
             }
         }
     }

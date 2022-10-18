@@ -610,6 +610,23 @@ pub enum TokenInstruction<'a> {
     /// See `extension::cpi_guard::instruction::CpiGuardInstruction` for
     /// further details about the extended instructions that share this instruction prefix
     CpiGuardExtension,
+    /// Initialize the permanent delegate on a new mint.
+    ///
+    /// Fails if the mint has already been initialized, so must be called before
+    /// `InitializeMint`.
+    ///
+    /// The mint must have exactly enough space allocated for the base mint (82
+    /// bytes), plus 83 bytes of padding, 1 byte reserved for the account type,
+    /// then space required for this extension, plus any others.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` The mint to initialize.
+    InitializePermanentDelegate {
+        /// Authority that may sign for `Transfer` instructions on any account
+        #[cfg_attr(feature = "serde-traits", serde(with = "coption_fromstr"))]
+        delegate: COption<Pubkey>,
+    },
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -741,6 +758,10 @@ impl<'a> TokenInstruction<'a> {
             32 => Self::InitializeNonTransferableMint,
             33 => Self::InterestBearingMintExtension,
             34 => Self::CpiGuardExtension,
+            35 => {
+                let (delegate, _rest) = Self::unpack_pubkey_option(rest)?;
+                Self::InitializePermanentDelegate { delegate }
+            }
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -896,6 +917,10 @@ impl<'a> TokenInstruction<'a> {
             &Self::CpiGuardExtension => {
                 buf.push(34);
             }
+            &Self::InitializePermanentDelegate { ref delegate } => {
+                buf.push(35);
+                Self::pack_pubkey_option(delegate, &mut buf);
+            }
         };
         buf
     }
@@ -977,6 +1002,8 @@ pub enum AuthorityType {
     CloseMint,
     /// Authority to set the interest rate
     InterestRate,
+    /// Authority to transfer or burn any tokens for a mint
+    PermanentDelegate,
 }
 
 impl AuthorityType {
@@ -990,6 +1017,7 @@ impl AuthorityType {
             AuthorityType::WithheldWithdraw => 5,
             AuthorityType::CloseMint => 6,
             AuthorityType::InterestRate => 7,
+            AuthorityType::PermanentDelegate => 8,
         }
     }
 
@@ -1003,6 +1031,7 @@ impl AuthorityType {
             5 => Ok(AuthorityType::WithheldWithdraw),
             6 => Ok(AuthorityType::CloseMint),
             7 => Ok(AuthorityType::InterestRate),
+            8 => Ok(AuthorityType::PermanentDelegate),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }
@@ -1753,6 +1782,21 @@ pub fn initialize_non_transferable_mint(
     })
 }
 
+/// Creates an `InitializePermanentDelegate` instruction
+pub fn initialize_permanent_delegate(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+    delegate: Option<&Pubkey>,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    let delegate = delegate.cloned().into();
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new(*mint_pubkey, false)],
+        data: TokenInstruction::InitializePermanentDelegate { delegate }.pack(),
+    })
+}
+
 /// Utility function that checks index is between MIN_SIGNERS and MAX_SIGNERS
 pub fn is_valid_signer_index(index: usize) -> bool {
     (MIN_SIGNERS..=MAX_SIGNERS).contains(&index)
@@ -2069,6 +2113,16 @@ mod test {
         let check = TokenInstruction::CreateNativeMint;
         let packed = check.pack();
         let expect = vec![31u8];
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializePermanentDelegate {
+            delegate: COption::Some(Pubkey::new(&[11u8; 32])),
+        };
+        let packed = check.pack();
+        let mut expect = vec![35u8, 1];
+        expect.extend_from_slice(&[11u8; 32]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);

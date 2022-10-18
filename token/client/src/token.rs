@@ -122,6 +122,9 @@ pub enum ExtensionInitializationParams {
         rate: i16,
     },
     NonTransferable,
+    PermanentDelegate {
+        delegate: Option<Pubkey>,
+    },
 }
 impl ExtensionInitializationParams {
     /// Get the extension type associated with the init params
@@ -133,6 +136,7 @@ impl ExtensionInitializationParams {
             Self::TransferFeeConfig { .. } => ExtensionType::TransferFeeConfig,
             Self::InterestBearingConfig { .. } => ExtensionType::InterestBearingConfig,
             Self::NonTransferable => ExtensionType::NonTransferable,
+            Self::PermanentDelegate { .. } => ExtensionType::PermanentDelegate,
         }
     }
     /// Generate an appropriate initialization instruction for the given mint
@@ -188,6 +192,11 @@ impl ExtensionInitializationParams {
             Self::NonTransferable => {
                 instruction::initialize_non_transferable_mint(token_program_id, mint)
             }
+            Self::PermanentDelegate { delegate } => instruction::initialize_permanent_delegate(
+                token_program_id,
+                mint,
+                delegate.as_ref(),
+            ),
         }
     }
 }

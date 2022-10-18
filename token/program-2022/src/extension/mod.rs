@@ -12,6 +12,7 @@ use {
             memo_transfer::MemoTransfer,
             mint_close_authority::MintCloseAuthority,
             non_transferable::NonTransferable,
+            permanent_delegate::PermanentDelegate,
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
         },
         pod::*,
@@ -48,6 +49,8 @@ pub mod memo_transfer;
 pub mod mint_close_authority;
 /// Non Transferable extension
 pub mod non_transferable;
+/// Permanent Delegate extension
+pub mod permanent_delegate;
 /// Utility to reallocate token accounts
 pub mod reallocate;
 /// Transfer Fee extension
@@ -647,6 +650,8 @@ pub enum ExtensionType {
     InterestBearingConfig,
     /// Locks privileged token operations from happening via CPI
     CpiGuard,
+    /// Includes an optional permanent delegate
+    PermanentDelegate,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -688,6 +693,7 @@ impl ExtensionType {
             ExtensionType::NonTransferable => pod_get_packed_len::<NonTransferable>(),
             ExtensionType::InterestBearingConfig => pod_get_packed_len::<InterestBearingConfig>(),
             ExtensionType::CpiGuard => pod_get_packed_len::<CpiGuard>(),
+            ExtensionType::PermanentDelegate => pod_get_packed_len::<PermanentDelegate>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -744,7 +750,8 @@ impl ExtensionType {
             | ExtensionType::ConfidentialTransferMint
             | ExtensionType::DefaultAccountState
             | ExtensionType::NonTransferable
-            | ExtensionType::InterestBearingConfig => AccountType::Mint,
+            | ExtensionType::InterestBearingConfig
+            | ExtensionType::PermanentDelegate => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
