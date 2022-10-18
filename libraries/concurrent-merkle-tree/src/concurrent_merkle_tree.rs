@@ -1,5 +1,3 @@
-use std::cmp::max;
-
 use crate::{
     changelog::ChangeLog,
     error::ConcurrentMerkleTreeError,
@@ -25,7 +23,6 @@ fn check_leaf_index(leaf_index: u32, max_depth: usize) -> Result<(), ConcurrentM
     if leaf_index >= (1 << max_depth) {
         return Err(ConcurrentMerkleTreeError::LeafIndexOutOfBounds);
     }
-    solana_logging!("Fuck");
     Ok(())
 }
 

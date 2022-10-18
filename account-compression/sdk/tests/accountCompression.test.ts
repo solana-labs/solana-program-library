@@ -662,7 +662,6 @@ describe("Account Compression", () => {
     });
     it(`Attempt to replace a leaf beyond the tree's capacity`, async () => {
       // Ensure that this fails
-
       let outOfBoundsIndex = 8;
       const index = outOfBoundsIndex;
       const newLeaf = hash(
@@ -688,9 +687,8 @@ describe("Account Compression", () => {
 
       try {
         await execute(provider, [replaceIx], [payer]);
-        throw Error("This replace instruction should have failed");
+        throw Error("This replace instruction should have failed because the leaf index is OOB");
       } catch (_e) { }
     });
   });
 });
-
