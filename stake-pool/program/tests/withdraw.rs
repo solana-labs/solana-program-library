@@ -712,7 +712,7 @@ async fn fail_without_token_approval() {
 }
 
 #[tokio::test]
-async fn fail_with_low_delegation() {
+async fn fail_with_not_enough_tokens() {
     let (
         mut context,
         stake_pool_accounts,
@@ -722,6 +722,75 @@ async fn fail_with_low_delegation() {
         user_stake_recipient,
         tokens_to_burn,
     ) = setup(spl_token::id()).await;
+
+    // Empty validator stake account
+    let empty_stake_account = simple_add_validator_to_pool(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &stake_pool_accounts,
+        None,
+    )
+    .await;
+
+    let new_authority = Pubkey::new_unique();
+    let error = stake_pool_accounts
+        .withdraw_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
+            &deposit_info.pool_account.pubkey(),
+            &empty_stake_account.stake_account,
+            &new_authority,
+            tokens_to_burn,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)
+        ),
+    );
+
+    // revoked delegation
+    revoke_tokens(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
+        &deposit_info.pool_account.pubkey(),
+        &deposit_info.authority,
+    )
+    .await;
+
+    let transaction_error = stake_pool_accounts
+        .withdraw_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
+            &deposit_info.pool_account.pubkey(),
+            &validator_stake_account.stake_account,
+            &new_authority,
+            tokens_to_burn,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(
+        transaction_error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(TokenError::OwnerMismatch as u32),
+        )
+    );
 
     // Delegate few tokens for burning
     delegate_tokens(
@@ -750,65 +819,15 @@ async fn fail_with_low_delegation() {
             tokens_to_burn,
         )
         .await
-        .unwrap();
-
-    match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(error_index),
-        )) => {
-            let program_error = TokenError::InsufficientFunds as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => panic!(
-            "Wrong error occurs while try to do withdraw with not enough delegated tokens to burn"
-        ),
-    }
-}
-
-#[tokio::test]
-async fn fail_overdraw_validator() {
-    let (
-        mut context,
-        stake_pool_accounts,
-        _validator_stake_account,
-        deposit_info,
-        user_transfer_authority,
-        user_stake_recipient,
-        tokens_to_burn,
-    ) = setup(spl_token::id()).await;
-
-    let validator_stake_account = simple_add_validator_to_pool(
-        &mut context.banks_client,
-        &context.payer,
-        &context.last_blockhash,
-        &stake_pool_accounts,
-        None,
-    )
-    .await;
-
-    let new_authority = Pubkey::new_unique();
-    let error = stake_pool_accounts
-        .withdraw_stake(
-            &mut context.banks_client,
-            &context.payer,
-            &context.last_blockhash,
-            &user_stake_recipient.pubkey(),
-            &user_transfer_authority,
-            &deposit_info.pool_account.pubkey(),
-            &validator_stake_account.stake_account,
-            &new_authority,
-            tokens_to_burn,
-        )
-        .await
         .unwrap()
         .unwrap();
+
     assert_eq!(
-        error,
+        transaction_error,
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)
-        ),
+            InstructionError::Custom(TokenError::InsufficientFunds as u32),
+        )
     );
 }
 
@@ -1180,46 +1199,7 @@ async fn success_with_reserve() {
 }
 
 #[tokio::test]
-async fn success_with_preferred_validator() {
-    let (
-        mut context,
-        stake_pool_accounts,
-        validator_stake,
-        deposit_info,
-        user_transfer_authority,
-        user_stake_recipient,
-        tokens_to_burn,
-    ) = setup(spl_token::id()).await;
-
-    stake_pool_accounts
-        .set_preferred_validator(
-            &mut context.banks_client,
-            &context.payer,
-            &context.last_blockhash,
-            instruction::PreferredValidatorType::Withdraw,
-            Some(validator_stake.vote.pubkey()),
-        )
-        .await;
-
-    let new_authority = Pubkey::new_unique();
-    let error = stake_pool_accounts
-        .withdraw_stake(
-            &mut context.banks_client,
-            &context.payer,
-            &context.last_blockhash,
-            &user_stake_recipient.pubkey(),
-            &user_transfer_authority,
-            &deposit_info.pool_account.pubkey(),
-            &validator_stake.stake_account,
-            &new_authority,
-            tokens_to_burn,
-        )
-        .await;
-    assert!(error.is_none());
-}
-
-#[tokio::test]
-async fn fail_with_wrong_preferred_withdraw() {
+async fn success_and_fail_with_preferred_withdraw() {
     let (
         mut context,
         stake_pool_accounts,
@@ -1249,7 +1229,7 @@ async fn fail_with_wrong_preferred_withdraw() {
         )
         .await;
 
-    // preferred is empty, this works
+    // preferred is empty, withdrawing from non-preferred works
     let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
         .withdraw_stake(
@@ -1261,12 +1241,21 @@ async fn fail_with_wrong_preferred_withdraw() {
             &deposit_info.pool_account.pubkey(),
             &validator_stake.stake_account,
             &new_authority,
-            tokens_to_burn,
+            tokens_to_burn / 2,
         )
         .await;
     assert!(error.is_none());
 
-    // deposit into preferred, then fail
+    // Deposit into preferred, then fail
+    let user_stake_recipient = Keypair::new();
+    create_blank_stake_account(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &user_stake_recipient,
+    )
+    .await;
+
     let _preferred_deposit = simple_deposit_stake(
         &mut context.banks_client,
         &context.payer,
@@ -1278,16 +1267,6 @@ async fn fail_with_wrong_preferred_withdraw() {
     .await
     .unwrap();
 
-    // Create stake account to withdraw to
-    let user_stake_recipient = Keypair::new();
-    create_blank_stake_account(
-        &mut context.banks_client,
-        &context.payer,
-        &context.last_blockhash,
-        &user_stake_recipient,
-    )
-    .await;
-
     let error = stake_pool_accounts
         .withdraw_stake(
             &mut context.banks_client,
@@ -1298,20 +1277,34 @@ async fn fail_with_wrong_preferred_withdraw() {
             &deposit_info.pool_account.pubkey(),
             &validator_stake.stake_account,
             &new_authority,
-            tokens_to_burn,
+            tokens_to_burn / 2,
         )
         .await
         .unwrap()
         .unwrap();
-    match error {
-        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
-            assert_eq!(
-                error_index,
-                StakePoolError::IncorrectWithdrawVoteAddress as u32
-            );
-        }
-        _ => panic!("Wrong error occurs while try to make a deposit with wrong stake program ID"),
-    }
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::IncorrectWithdrawVoteAddress as u32)
+        )
+    );
+
+    // success from preferred
+    let error = stake_pool_accounts
+        .withdraw_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
+            &deposit_info.pool_account.pubkey(),
+            &preferred_validator.stake_account,
+            &new_authority,
+            tokens_to_burn / 2,
+        )
+        .await;
+    assert!(error.is_none());
 }
 
 #[tokio::test]
