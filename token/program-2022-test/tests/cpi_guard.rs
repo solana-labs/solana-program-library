@@ -2,22 +2,27 @@
 
 mod program_test;
 use {
-    program_test::{TestContext, TokenContext},
+    program_test::{keypair_clone, TestContext, TokenContext},
     solana_program_test::{
         processor,
         tokio::{self, sync::Mutex},
         ProgramTest,
     },
-    solana_sdk::{pubkey::Pubkey, signature::Signer, signer::keypair::Keypair},
+    solana_sdk::{
+        instruction::InstructionError, pubkey::Pubkey, signature::Signer, signer::keypair::Keypair,
+        transaction::TransactionError, transport::TransportError,
+    },
     spl_instruction_padding::instruction::wrap_instruction,
     spl_token_2022::{
+        error::TokenError,
         extension::{
             cpi_guard::{self, CpiGuard},
             ExtensionType,
         },
-        instruction,
+        instruction::{self, AuthorityType},
         processor::Processor as SplToken2022Processor,
     },
+    spl_token_client::token::TokenError as TokenClientError,
     std::sync::Arc,
 };
 
@@ -71,6 +76,12 @@ async fn make_context() -> (TestContext, Pubkey) {
         .unwrap();
 
     (test_context, instruction_padding_id)
+}
+
+fn client_error(token_error: TokenError) -> TokenClientError {
+    TokenClientError::Client(Box::new(TransportError::TransactionError(
+        TransactionError::InstructionError(0, InstructionError::Custom(token_error as u32)),
+    )))
 }
 
 #[tokio::test]
@@ -208,7 +219,12 @@ async fn test_cpi_guard_transfer() {
         .await
         .unwrap();
 
-    // transfer works normally
+    token
+        .enable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
+        .await
+        .unwrap();
+
+    // transfer works normally with cpi guard enabled
     token
         .transfer(
             &alice.pubkey(),
@@ -225,11 +241,6 @@ async fn test_cpi_guard_transfer() {
     assert_eq!(alice_state.base.amount, amount);
 
     for do_checked in [true, false] {
-        token
-            .enable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
-            .await
-            .unwrap();
-
         // user-auth cpi transfer with cpi guard doesnt work
         token
             .process_ixs(&[mk_transfer(alice.pubkey(), do_checked)], &[&alice])
@@ -260,7 +271,7 @@ async fn test_cpi_guard_transfer() {
         let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
         assert_eq!(alice_state.base.amount, amount);
 
-        // make sure we didnt break backwards compat somehow
+        // transfer still works through cpi with cpi guard off
         token
             .disable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
             .await
@@ -274,6 +285,11 @@ async fn test_cpi_guard_transfer() {
 
         let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
         assert_eq!(alice_state.base.amount, amount);
+
+        token
+            .enable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
+            .await
+            .unwrap();
     }
 }
 
@@ -330,7 +346,12 @@ async fn test_cpi_guard_burn() {
         .await
         .unwrap();
 
-    // burn works normally
+    token
+        .enable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
+        .await
+        .unwrap();
+
+    // burn works normally with cpi guard enabled
     token
         .burn(&alice.pubkey(), &alice.pubkey(), 1, &[&alice])
         .await
@@ -341,11 +362,6 @@ async fn test_cpi_guard_burn() {
     assert_eq!(alice_state.base.amount, amount);
 
     for do_checked in [true, false] {
-        token
-            .enable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
-            .await
-            .unwrap();
-
         // user-auth cpi burn with cpi guard doesnt work
         token
             .process_ixs(&[mk_burn(alice.pubkey(), do_checked)], &[&alice])
@@ -376,7 +392,7 @@ async fn test_cpi_guard_burn() {
         let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
         assert_eq!(alice_state.base.amount, amount);
 
-        // make sure we didnt break backwards compat somehow
+        // burn still works through cpi with cpi guard off
         token
             .disable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
             .await
@@ -390,5 +406,176 @@ async fn test_cpi_guard_burn() {
 
         let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
         assert_eq!(alice_state.base.amount, amount);
+
+        token
+            .enable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
+            .await
+            .unwrap();
+    }
+}
+
+/*
+#[tokio::test]
+async fn test_cpi_guard_approve() {
+    let (context, instruction_padding_id) = make_context().await;
+    let TokenContext {
+        token,
+        alice,
+        bob,
+        ..
+    } = context.token_context.unwrap();
+
+    // approve works normally with cpi guard enabled
+
+    // XXX LOOP, checked and unchecked
+
+    // approve doesnt work through cpi
+
+    // approve still works through cpi with cpi guard off
+}
+
+#[tokio::test]
+async fn test_cpi_guard_close_account() {
+    let (context, instruction_padding_id) = make_context().await;
+    let TokenContext {
+        token,
+        alice,
+        bob,
+        ..
+    } = context.token_context.unwrap();
+
+    // close account works normally with cpi guard enabled
+
+    // XXX LOOP, user auth and external close
+
+    // close account doesnt work in cpi if funds diverted
+
+    // close account works in cpi if funds returned to owner
+
+    // close account still works through cpi with cpi guard off
+}
+*/
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum SetAuthTest {
+    ChangeOwner,
+    AddCloseAuth,
+    ChangeCloseAuth,
+    RemoveCloseAuth,
+}
+
+#[tokio::test]
+async fn test_cpi_guard_set_authority() {
+    let (context, instruction_padding_id) = make_context().await;
+    let TokenContext {
+        token, alice, bob, ..
+    } = context.token_context.unwrap();
+
+    // the behavior of cpi guard and close authority is so complicated that its best to test all cases exhaustively
+    let mut states = vec![];
+    for action in [
+        SetAuthTest::ChangeOwner,
+        SetAuthTest::AddCloseAuth,
+        SetAuthTest::ChangeCloseAuth,
+        SetAuthTest::RemoveCloseAuth,
+    ] {
+        for enable_cpi_guard in [true, false] {
+            for do_in_cpi in [true, false] {
+                states.push((action, enable_cpi_guard, do_in_cpi));
+            }
+        }
+    }
+
+    for state in states {
+        let (action, enable_cpi_guard, do_in_cpi) = state;
+
+        // make a new account
+        let account = Keypair::new();
+        token
+            .create_auxiliary_token_account_with_extension_space(
+                &account,
+                &alice.pubkey(),
+                vec![ExtensionType::CpiGuard],
+            )
+            .await
+            .unwrap();
+
+        // turn on cpi guard if we are testing that case
+        // all actions with cpi guard off should succeed unconditionally
+        // so half of these tests are backwards compat checks
+        if enable_cpi_guard {
+            token
+                .enable_cpi_guard(&account.pubkey(), &alice.pubkey(), &[&alice])
+                .await
+                .unwrap();
+        }
+
+        // if we are changing or removing close auth, we need to have one to change/remove
+        if action == SetAuthTest::ChangeCloseAuth || action == SetAuthTest::RemoveCloseAuth {
+            token
+                .set_authority(
+                    &account.pubkey(),
+                    &alice.pubkey(),
+                    Some(&bob.pubkey()),
+                    AuthorityType::CloseAccount,
+                    &[&alice],
+                )
+                .await
+                .unwrap();
+        }
+
+        // this produces the token instruction we want to execute
+        let (current_authority, new_authority) = match action {
+            SetAuthTest::ChangeOwner | SetAuthTest::AddCloseAuth => {
+                (keypair_clone(&alice), Some(bob.pubkey()))
+            }
+            SetAuthTest::ChangeCloseAuth => (keypair_clone(&bob), Some(alice.pubkey())),
+            SetAuthTest::RemoveCloseAuth => (keypair_clone(&bob), None),
+        };
+        let token_instruction = instruction::set_authority(
+            &spl_token_2022::id(),
+            &account.pubkey(),
+            new_authority.as_ref(),
+            if action == SetAuthTest::ChangeOwner {
+                AuthorityType::AccountOwner
+            } else {
+                AuthorityType::CloseAccount
+            },
+            &current_authority.pubkey(),
+            &[],
+        )
+        .unwrap();
+
+        // this wraps it or doesnt based on the test case
+        let instruction = if do_in_cpi {
+            wrap_instruction(instruction_padding_id, token_instruction, vec![], 0).unwrap()
+        } else {
+            token_instruction
+        };
+
+        // and here we go
+        let result = token
+            .process_ixs(&[instruction], &[&current_authority])
+            .await;
+
+        // truth table for our cases
+        match (action, enable_cpi_guard, do_in_cpi) {
+            // all actions succeed with cpi guard off
+            (_, false, _) => result.unwrap(),
+            // ownership cannot be transferred with guard
+            (SetAuthTest::ChangeOwner, true, false) => assert_eq!(
+                result.unwrap_err(),
+                client_error(TokenError::CpiGuardOwnerChangeBlocked)
+            ),
+            // all other actions succeed outside cpi with guard
+            (_, true, false) => result.unwrap(),
+            // removing a close authority succeeds in cpi with guard
+            (SetAuthTest::RemoveCloseAuth, true, true) => result.unwrap(),
+            // changing owner, adding close, or changing close all fail in cpi with guard
+            (_, true, true) => assert_eq!(
+                result.unwrap_err(),
+                client_error(TokenError::CpiGuardSetAuthorityBlocked)
+            ),
+        }
     }
 }
