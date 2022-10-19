@@ -171,6 +171,7 @@ async fn test_cpi_guard_transfer() {
     let (context, instruction_padding_id) = make_context().await;
     let TokenContext {
         token,
+        token_unchecked,
         mint_authority,
         alice,
         bob,
@@ -221,40 +222,41 @@ async fn test_cpi_guard_transfer() {
         .await
         .unwrap();
 
-    token
-        .enable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
-        .await
-        .unwrap();
-
-    // transfer works normally with cpi guard enabled
-    token
-        .transfer(
-            &alice.pubkey(),
-            &bob.pubkey(),
-            &alice.pubkey(),
-            1,
-            &[&alice],
-        )
-        .await
-        .unwrap();
-    amount -= 1;
-
-    let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
-    assert_eq!(alice_state.base.amount, amount);
-
     for do_checked in [true, false] {
+        let token_obj = if do_checked { &token } else { &token_unchecked };
+        token_obj
+            .enable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
+            .await
+            .unwrap();
+
+        // transfer works normally with cpi guard enabled
+        token_obj
+            .transfer(
+                &alice.pubkey(),
+                &bob.pubkey(),
+                &alice.pubkey(),
+                1,
+                &[&alice],
+            )
+            .await
+            .unwrap();
+        amount -= 1;
+
+        let alice_state = token_obj.get_account_info(&alice.pubkey()).await.unwrap();
+        assert_eq!(alice_state.base.amount, amount);
+
         // user-auth cpi transfer with cpi guard doesnt work
-        let error = token
+        let error = token_obj
             .process_ixs(&[mk_transfer(alice.pubkey(), do_checked)], &[&alice])
             .await
             .unwrap_err();
         assert_eq!(error, client_error(TokenError::CpiGuardTransferBlocked));
 
-        let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
+        let alice_state = token_obj.get_account_info(&alice.pubkey()).await.unwrap();
         assert_eq!(alice_state.base.amount, amount);
 
         // delegate-auth cpi transfer with cpi guard works
-        token
+        token_obj
             .approve(
                 &alice.pubkey(),
                 &bob.pubkey(),
@@ -265,34 +267,29 @@ async fn test_cpi_guard_transfer() {
             .await
             .unwrap();
 
-        token
+        token_obj
             .process_ixs(&[mk_transfer(bob.pubkey(), do_checked)], &[&bob])
             .await
             .unwrap();
         amount -= 1;
 
-        let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
+        let alice_state = token_obj.get_account_info(&alice.pubkey()).await.unwrap();
         assert_eq!(alice_state.base.amount, amount);
 
         // transfer still works through cpi with cpi guard off
-        token
+        token_obj
             .disable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
             .await
             .unwrap();
 
-        token
+        token_obj
             .process_ixs(&[mk_transfer(alice.pubkey(), do_checked)], &[&alice])
             .await
             .unwrap();
         amount -= 1;
 
-        let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
+        let alice_state = token_obj.get_account_info(&alice.pubkey()).await.unwrap();
         assert_eq!(alice_state.base.amount, amount);
-
-        token
-            .enable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
-            .await
-            .unwrap();
     }
 }
 
@@ -301,6 +298,7 @@ async fn test_cpi_guard_burn() {
     let (context, instruction_padding_id) = make_context().await;
     let TokenContext {
         token,
+        token_unchecked,
         mint_authority,
         alice,
         bob,
@@ -349,34 +347,35 @@ async fn test_cpi_guard_burn() {
         .await
         .unwrap();
 
-    token
-        .enable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
-        .await
-        .unwrap();
-
-    // burn works normally with cpi guard enabled
-    token
-        .burn(&alice.pubkey(), &alice.pubkey(), 1, &[&alice])
-        .await
-        .unwrap();
-    amount -= 1;
-
-    let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
-    assert_eq!(alice_state.base.amount, amount);
-
     for do_checked in [true, false] {
+        let token_obj = if do_checked { &token } else { &token_unchecked };
+        token_obj
+            .enable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
+            .await
+            .unwrap();
+
+        // burn works normally with cpi guard enabled
+        token_obj
+            .burn(&alice.pubkey(), &alice.pubkey(), 1, &[&alice])
+            .await
+            .unwrap();
+        amount -= 1;
+
+        let alice_state = token_obj.get_account_info(&alice.pubkey()).await.unwrap();
+        assert_eq!(alice_state.base.amount, amount);
+
         // user-auth cpi burn with cpi guard doesnt work
-        let error = token
+        let error = token_obj
             .process_ixs(&[mk_burn(alice.pubkey(), do_checked)], &[&alice])
             .await
             .unwrap_err();
         assert_eq!(error, client_error(TokenError::CpiGuardBurnBlocked));
 
-        let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
+        let alice_state = token_obj.get_account_info(&alice.pubkey()).await.unwrap();
         assert_eq!(alice_state.base.amount, amount);
 
         // delegate-auth cpi burn with cpi guard works
-        token
+        token_obj
             .approve(
                 &alice.pubkey(),
                 &bob.pubkey(),
@@ -387,65 +386,129 @@ async fn test_cpi_guard_burn() {
             .await
             .unwrap();
 
-        token
+        token_obj
             .process_ixs(&[mk_burn(bob.pubkey(), do_checked)], &[&bob])
             .await
             .unwrap();
         amount -= 1;
 
-        let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
+        let alice_state = token_obj.get_account_info(&alice.pubkey()).await.unwrap();
         assert_eq!(alice_state.base.amount, amount);
 
         // burn still works through cpi with cpi guard off
-        token
+        token_obj
             .disable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
             .await
             .unwrap();
 
-        token
+        token_obj
             .process_ixs(&[mk_burn(alice.pubkey(), do_checked)], &[&alice])
             .await
             .unwrap();
         amount -= 1;
 
-        let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
+        let alice_state = token_obj.get_account_info(&alice.pubkey()).await.unwrap();
         assert_eq!(alice_state.base.amount, amount);
-
-        token
-            .enable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
-            .await
-            .unwrap();
     }
 }
 
-/*
 #[tokio::test]
 async fn test_cpi_guard_approve() {
     let (context, instruction_padding_id) = make_context().await;
     let TokenContext {
         token,
+        token_unchecked,
         alice,
         bob,
         ..
     } = context.token_context.unwrap();
 
-    // approve works normally with cpi guard enabled
+    let mk_approve = |do_checked| {
+        wrap_instruction(
+            instruction_padding_id,
+            if do_checked {
+                instruction::approve_checked(
+                    &spl_token_2022::id(),
+                    &alice.pubkey(),
+                    token.get_address(),
+                    &bob.pubkey(),
+                    &alice.pubkey(),
+                    &[],
+                    1,
+                    9,
+                )
+                .unwrap()
+            } else {
+                instruction::approve(
+                    &spl_token_2022::id(),
+                    &alice.pubkey(),
+                    &bob.pubkey(),
+                    &alice.pubkey(),
+                    &[],
+                    1,
+                )
+                .unwrap()
+            },
+            vec![],
+            0,
+        )
+        .unwrap()
+    };
 
-    // XXX LOOP, checked and unchecked
+    for do_checked in [true, false] {
+        let token_obj = if do_checked { &token } else { &token_unchecked };
+        token_obj
+            .enable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
+            .await
+            .unwrap();
 
-    // approve doesnt work through cpi
+        // approve works normally with cpi guard enabled
+        token_obj
+            .approve(
+                &alice.pubkey(),
+                &bob.pubkey(),
+                &alice.pubkey(),
+                1,
+                &[&alice],
+            )
+            .await
+            .unwrap();
 
-    // approve still works through cpi with cpi guard off
+        token_obj
+            .revoke(&alice.pubkey(), &alice.pubkey(), &[&alice])
+            .await
+            .unwrap();
+
+        // approve doesnt work through cpi
+        let error = token_obj
+            .process_ixs(&[mk_approve(do_checked)], &[&alice])
+            .await
+            .unwrap_err();
+        assert_eq!(error, client_error(TokenError::CpiGuardApproveBlocked));
+
+        // approve still works through cpi with cpi guard off
+        token_obj
+            .disable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
+            .await
+            .unwrap();
+
+        token_obj
+            .process_ixs(&[mk_approve(do_checked)], &[&alice])
+            .await
+            .unwrap();
+
+        token_obj
+            .revoke(&alice.pubkey(), &alice.pubkey(), &[&alice])
+            .await
+            .unwrap();
+    }
 }
 
 #[tokio::test]
 async fn test_cpi_guard_close_account() {
     let (context, instruction_padding_id) = make_context().await;
     let TokenContext {
-        token,
-        alice,
-        bob,
-        ..
+        token, alice, bob, ..
     } = context.token_context.unwrap();
 
     // close account works normally with cpi guard enabled
@@ -458,7 +521,6 @@ async fn test_cpi_guard_close_account() {
 
     // close account still works through cpi with cpi guard off
 }
-*/
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum SetAuthTest {
