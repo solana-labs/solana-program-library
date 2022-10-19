@@ -17,6 +17,7 @@ members = [
   "governance/test-sdk",
   "governance/tools",
   "governance/chat/program",
+  "instruction-padding/program",
   "libraries/math",
   "libraries/concurrent-merkle-tree",
   "libraries/merkle-tree-reference",
