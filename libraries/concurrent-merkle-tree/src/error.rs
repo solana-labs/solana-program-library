@@ -31,10 +31,8 @@ pub enum ConcurrentMerkleTreeError {
     #[error("Root not found in changelog buffer")]
     RootNotFound,
 
-    /// Valid proof was passed to a leaf, but its value has changed since the proof was issued
-    #[error(
-        "Valid proof was passed to a leaf, but its value has changed since the proof was issued"
-    )]
+    /// The tree's current leaf value does not match the supplied proof's leaf value
+    #[error("This tree's current leaf value does not match the supplied proof's leaf value")]
     LeafContentsModified,
 
     /// Tree has at least 1 non-EMTPY leaf
