@@ -75,7 +75,7 @@ async fn make_context() -> (TestContext, Pubkey) {
 
 #[tokio::test]
 async fn test_cpi_guard_enable_disable() {
-    let (context, instruction_pad_id) = make_context().await;
+    let (context, instruction_padding_id) = make_context().await;
     let TokenContext { token, alice, .. } = context.token_context.unwrap();
 
     // enable guard properly
@@ -93,7 +93,7 @@ async fn test_cpi_guard_enable_disable() {
     token
         .process_ixs(
             &[wrap_instruction(
-                instruction_pad_id,
+                instruction_padding_id,
                 cpi_guard::instruction::disable_cpi_guard(
                     &spl_token_2022::id(),
                     &alice.pubkey(),
@@ -130,7 +130,7 @@ async fn test_cpi_guard_enable_disable() {
     token
         .process_ixs(
             &[wrap_instruction(
-                instruction_pad_id,
+                instruction_padding_id,
                 cpi_guard::instruction::enable_cpi_guard(
                     &spl_token_2022::id(),
                     &alice.pubkey(),
@@ -155,7 +155,7 @@ async fn test_cpi_guard_enable_disable() {
 
 #[tokio::test]
 async fn test_cpi_guard_transfer() {
-    let (context, instruction_pad_id) = make_context().await;
+    let (context, instruction_padding_id) = make_context().await;
     let TokenContext {
         token,
         mint_authority,
@@ -166,7 +166,7 @@ async fn test_cpi_guard_transfer() {
 
     let mk_transfer = |authority, do_checked| {
         wrap_instruction(
-            instruction_pad_id,
+            instruction_padding_id,
             if do_checked {
                 instruction::transfer_checked(
                     &spl_token_2022::id(),
@@ -279,7 +279,7 @@ async fn test_cpi_guard_transfer() {
 
 #[tokio::test]
 async fn test_cpi_guard_burn() {
-    let (context, instruction_pad_id) = make_context().await;
+    let (context, instruction_padding_id) = make_context().await;
     let TokenContext {
         token,
         mint_authority,
@@ -290,7 +290,7 @@ async fn test_cpi_guard_burn() {
 
     let mk_burn = |authority, do_checked| {
         wrap_instruction(
-            instruction_pad_id,
+            instruction_padding_id,
             if do_checked {
                 instruction::burn_checked(
                     &spl_token_2022::id(),

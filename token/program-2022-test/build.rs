@@ -38,18 +38,18 @@ fn main() {
         .join("program-2022");
     rerun_if_changed(&spl_token_2022_dir);
 
-    let instruction_pad_dir = cwd
+    let instruction_padding_dir = cwd
         .parent()
         .expect("Unable to get parent directory of current working dir")
         .parent()
         .expect("Unable to get grandparent directory of current working dir")
-        .join("instruction-pad")
+        .join("instruction-padding")
         .join("program");
-    rerun_if_changed(&instruction_pad_dir);
+    rerun_if_changed(&instruction_padding_dir);
 
     println!("cargo:rerun-if-changed=build.rs");
 
-    for program_dir in [spl_token_2022_dir, instruction_pad_dir] {
+    for program_dir in [spl_token_2022_dir, instruction_padding_dir] {
         let program_toml = program_dir.join("Cargo.toml");
         let program_toml = format!("{}", program_toml.display());
         let args = vec!["build-sbf", "--manifest-path", &program_toml];
