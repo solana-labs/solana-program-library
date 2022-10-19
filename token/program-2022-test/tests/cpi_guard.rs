@@ -101,7 +101,7 @@ async fn test_cpi_guard_enable_disable() {
     assert!(bool::from(extension.lock_cpi));
 
     // attempt to disable through cpi. this fails
-    token
+    let error = token
         .process_ixs(
             &[wrap_instruction(
                 instruction_padding_id,
@@ -120,6 +120,7 @@ async fn test_cpi_guard_enable_disable() {
         )
         .await
         .unwrap_err();
+    assert_eq!(error, client_error(TokenError::CpiGuardSettingsLocked));
 
     // guard remains enabled
     let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
@@ -138,7 +139,7 @@ async fn test_cpi_guard_enable_disable() {
     assert!(!bool::from(extension.lock_cpi));
 
     // attempt to enable through cpi. this fails
-    token
+    let error = token
         .process_ixs(
             &[wrap_instruction(
                 instruction_padding_id,
@@ -157,6 +158,7 @@ async fn test_cpi_guard_enable_disable() {
         )
         .await
         .unwrap_err();
+    assert_eq!(error, client_error(TokenError::CpiGuardSettingsLocked));
 
     // guard remains disabled
     let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
@@ -242,10 +244,11 @@ async fn test_cpi_guard_transfer() {
 
     for do_checked in [true, false] {
         // user-auth cpi transfer with cpi guard doesnt work
-        token
+        let error = token
             .process_ixs(&[mk_transfer(alice.pubkey(), do_checked)], &[&alice])
             .await
             .unwrap_err();
+        assert_eq!(error, client_error(TokenError::CpiGuardTransferBlocked));
 
         let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
         assert_eq!(alice_state.base.amount, amount);
@@ -363,10 +366,11 @@ async fn test_cpi_guard_burn() {
 
     for do_checked in [true, false] {
         // user-auth cpi burn with cpi guard doesnt work
-        token
+        let error = token
             .process_ixs(&[mk_burn(alice.pubkey(), do_checked)], &[&alice])
             .await
             .unwrap_err();
+        assert_eq!(error, client_error(TokenError::CpiGuardBurnBlocked));
 
         let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
         assert_eq!(alice_state.base.amount, amount);
