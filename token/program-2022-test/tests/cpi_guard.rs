@@ -332,12 +332,7 @@ async fn test_cpi_guard_burn() {
 
     // burn works normally
     token
-        .burn(
-            &alice.pubkey(),
-            &alice.pubkey(),
-            1,
-            &[&alice],
-        )
+        .burn(&alice.pubkey(), &alice.pubkey(), 1, &[&alice])
         .await
         .unwrap();
     amount -= 1;

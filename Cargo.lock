@@ -918,14 +918,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cpi-caller"
-version = "0.0.1"
-dependencies = [
- "solana-program",
- "spl-token-2022 0.4.3",
-]
-
-[[package]]
 name = "cpufeatures"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6200,7 +6192,6 @@ name = "spl-token-2022-test"
 version = "0.0.1"
 dependencies = [
  "async-trait",
- "cpi-caller",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
