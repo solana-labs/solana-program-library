@@ -2,7 +2,6 @@
 
 mod program_test;
 use {
-    cpi_caller::processor::Processor as CpiCallerProcessor,
     program_test::{TestContext, TokenContext},
     solana_program_test::{
         processor,
@@ -10,14 +9,19 @@ use {
         ProgramTest,
     },
     solana_sdk::{pubkey::Pubkey, signature::Signer, signer::keypair::Keypair},
+    spl_instruction_padding::instruction::wrap_instruction,
     spl_token_2022::{
-        extension::{cpi_guard::CpiGuard, ExtensionType},
+        extension::{
+            cpi_guard::{self, CpiGuard},
+            ExtensionType,
+        },
+        instruction,
         processor::Processor as SplToken2022Processor,
     },
     std::sync::Arc,
 };
 
-// set up a bank and bank client with spl token 2022 and the test cpi caller
+// set up a bank and bank client with spl token 2022 and the instruction padder
 // also creates a token with no extensions and inits two token accounts
 async fn make_context() -> (TestContext, Pubkey) {
     if std::env::var("BPF_OUT_DIR").is_err() && std::env::var("SBF_OUT_DIR").is_err() {
@@ -25,7 +29,7 @@ async fn make_context() -> (TestContext, Pubkey) {
                 In a non-BPF context, `get_stack_height()` always returns 0, and all tests WILL fail.");
     }
 
-    let cpi_caller_id = Keypair::new().pubkey();
+    let instruction_padding_id = Keypair::new().pubkey();
 
     let mut program_test = ProgramTest::new(
         "spl_token_2022",
@@ -34,9 +38,9 @@ async fn make_context() -> (TestContext, Pubkey) {
     );
 
     program_test.add_program(
-        "cpi_caller",
-        cpi_caller_id,
-        processor!(CpiCallerProcessor::process),
+        "spl_instruction_padding",
+        instruction_padding_id,
+        processor!(spl_instruction_padding::processor::process),
     );
 
     let program_context = program_test.start_with_context().await;
@@ -66,12 +70,12 @@ async fn make_context() -> (TestContext, Pubkey) {
         .await
         .unwrap();
 
-    (test_context, cpi_caller_id)
+    (test_context, instruction_padding_id)
 }
 
 #[tokio::test]
 async fn test_cpi_guard_enable_disable() {
-    let (context, cpi_caller_id) = make_context().await;
+    let (context, instruction_pad_id) = make_context().await;
     let TokenContext { token, alice, .. } = context.token_context.unwrap();
 
     // enable guard properly
@@ -88,11 +92,17 @@ async fn test_cpi_guard_enable_disable() {
     // attempt to disable through cpi. this fails
     token
         .process_ixs(
-            &[cpi_caller::instruction::disable_cpi_guard(
-                &cpi_caller_id,
-                &spl_token_2022::id(),
-                &alice.pubkey(),
-                &alice.pubkey(),
+            &[wrap_instruction(
+                instruction_pad_id,
+                cpi_guard::instruction::disable_cpi_guard(
+                    &spl_token_2022::id(),
+                    &alice.pubkey(),
+                    &alice.pubkey(),
+                    &[],
+                )
+                .unwrap(),
+                vec![],
+                0,
             )
             .unwrap()],
             &[&alice],
@@ -119,11 +129,17 @@ async fn test_cpi_guard_enable_disable() {
     // attempt to enable through cpi. this fails
     token
         .process_ixs(
-            &[cpi_caller::instruction::enable_cpi_guard(
-                &cpi_caller_id,
-                &spl_token_2022::id(),
-                &alice.pubkey(),
-                &alice.pubkey(),
+            &[wrap_instruction(
+                instruction_pad_id,
+                cpi_guard::instruction::enable_cpi_guard(
+                    &spl_token_2022::id(),
+                    &alice.pubkey(),
+                    &alice.pubkey(),
+                    &[],
+                )
+                .unwrap(),
+                vec![],
+                0,
             )
             .unwrap()],
             &[&alice],
@@ -139,7 +155,7 @@ async fn test_cpi_guard_enable_disable() {
 
 #[tokio::test]
 async fn test_cpi_guard_transfer() {
-    let (context, cpi_caller_id) = make_context().await;
+    let (context, instruction_pad_id) = make_context().await;
     let TokenContext {
         token,
         mint_authority,
@@ -147,6 +163,39 @@ async fn test_cpi_guard_transfer() {
         bob,
         ..
     } = context.token_context.unwrap();
+
+    let mk_transfer = |authority, do_checked| {
+        wrap_instruction(
+            instruction_pad_id,
+            if do_checked {
+                instruction::transfer_checked(
+                    &spl_token_2022::id(),
+                    &alice.pubkey(),
+                    token.get_address(),
+                    &bob.pubkey(),
+                    &authority,
+                    &[],
+                    1,
+                    9,
+                )
+                .unwrap()
+            } else {
+                #[allow(deprecated)]
+                instruction::transfer(
+                    &spl_token_2022::id(),
+                    &alice.pubkey(),
+                    &bob.pubkey(),
+                    &authority,
+                    &[],
+                    1,
+                )
+                .unwrap()
+            },
+            vec![],
+            0,
+        )
+        .unwrap()
+    };
 
     let mut amount = 100;
     token
@@ -183,19 +232,7 @@ async fn test_cpi_guard_transfer() {
 
         // user-auth cpi transfer with cpi guard doesnt work
         token
-            .process_ixs(
-                &[cpi_caller::instruction::transfer_one_token(
-                    &cpi_caller_id,
-                    &spl_token_2022::id(),
-                    &alice.pubkey(),
-                    token.get_address(),
-                    &bob.pubkey(),
-                    &alice.pubkey(),
-                    do_checked,
-                )
-                .unwrap()],
-                &[&alice],
-            )
+            .process_ixs(&[mk_transfer(alice.pubkey(), do_checked)], &[&alice])
             .await
             .unwrap_err();
 
@@ -215,19 +252,7 @@ async fn test_cpi_guard_transfer() {
             .unwrap();
 
         token
-            .process_ixs(
-                &[cpi_caller::instruction::transfer_one_token(
-                    &cpi_caller_id,
-                    &spl_token_2022::id(),
-                    &alice.pubkey(),
-                    token.get_address(),
-                    &bob.pubkey(),
-                    &bob.pubkey(),
-                    do_checked,
-                )
-                .unwrap()],
-                &[&bob],
-            )
+            .process_ixs(&[mk_transfer(bob.pubkey(), do_checked)], &[&bob])
             .await
             .unwrap();
         amount -= 1;
@@ -242,19 +267,128 @@ async fn test_cpi_guard_transfer() {
             .unwrap();
 
         token
-            .process_ixs(
-                &[cpi_caller::instruction::transfer_one_token(
-                    &cpi_caller_id,
+            .process_ixs(&[mk_transfer(alice.pubkey(), do_checked)], &[&alice])
+            .await
+            .unwrap();
+        amount -= 1;
+
+        let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
+        assert_eq!(alice_state.base.amount, amount);
+    }
+}
+
+#[tokio::test]
+async fn test_cpi_guard_burn() {
+    let (context, instruction_pad_id) = make_context().await;
+    let TokenContext {
+        token,
+        mint_authority,
+        alice,
+        bob,
+        ..
+    } = context.token_context.unwrap();
+
+    let mk_burn = |authority, do_checked| {
+        wrap_instruction(
+            instruction_pad_id,
+            if do_checked {
+                instruction::burn_checked(
                     &spl_token_2022::id(),
                     &alice.pubkey(),
                     token.get_address(),
-                    &bob.pubkey(),
-                    &alice.pubkey(),
-                    do_checked,
+                    &authority,
+                    &[],
+                    1,
+                    9,
                 )
-                .unwrap()],
+                .unwrap()
+            } else {
+                instruction::burn(
+                    &spl_token_2022::id(),
+                    &alice.pubkey(),
+                    token.get_address(),
+                    &authority,
+                    &[],
+                    1,
+                )
+                .unwrap()
+            },
+            vec![],
+            0,
+        )
+        .unwrap()
+    };
+
+    let mut amount = 100;
+    token
+        .mint_to(
+            &alice.pubkey(),
+            &mint_authority.pubkey(),
+            amount,
+            &[&mint_authority],
+        )
+        .await
+        .unwrap();
+
+    // burn works normally
+    token
+        .burn(
+            &alice.pubkey(),
+            &alice.pubkey(),
+            1,
+            &[&alice],
+        )
+        .await
+        .unwrap();
+    amount -= 1;
+
+    let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
+    assert_eq!(alice_state.base.amount, amount);
+
+    for do_checked in [true, false] {
+        token
+            .enable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
+            .await
+            .unwrap();
+
+        // user-auth cpi burn with cpi guard doesnt work
+        token
+            .process_ixs(&[mk_burn(alice.pubkey(), do_checked)], &[&alice])
+            .await
+            .unwrap_err();
+
+        let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
+        assert_eq!(alice_state.base.amount, amount);
+
+        // delegate-auth cpi burn with cpi guard works
+        token
+            .approve(
+                &alice.pubkey(),
+                &bob.pubkey(),
+                &alice.pubkey(),
+                1,
                 &[&alice],
             )
+            .await
+            .unwrap();
+
+        token
+            .process_ixs(&[mk_burn(bob.pubkey(), do_checked)], &[&bob])
+            .await
+            .unwrap();
+        amount -= 1;
+
+        let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
+        assert_eq!(alice_state.base.amount, amount);
+
+        // make sure we didnt break backwards compat somehow
+        token
+            .disable_cpi_guard(&alice.pubkey(), &alice.pubkey(), &[&alice])
+            .await
+            .unwrap();
+
+        token
+            .process_ixs(&[mk_burn(alice.pubkey(), do_checked)], &[&alice])
             .await
             .unwrap();
         amount -= 1;

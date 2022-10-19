@@ -6205,6 +6205,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-associated-token-account 1.1.1",
+ "spl-instruction-padding",
  "spl-memo 3.0.1",
  "spl-token-2022 0.4.3",
  "spl-token-client",

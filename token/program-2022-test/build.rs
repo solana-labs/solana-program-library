@@ -41,9 +41,18 @@ fn main() {
     let cpi_caller_dir = cwd.join("cpi-caller");
     rerun_if_changed(&cpi_caller_dir);
 
+    let instruction_pad_dir = cwd
+        .parent()
+        .expect("Unable to get parent directory of current working dir")
+        .parent()
+        .expect("Unable to get grandparent directory of current working dir")
+        .join("instruction-pad")
+        .join("program");
+    rerun_if_changed(&instruction_pad_dir);
+
     println!("cargo:rerun-if-changed=build.rs");
 
-    for program_dir in [spl_token_2022_dir, cpi_caller_dir] {
+    for program_dir in [spl_token_2022_dir, cpi_caller_dir, instruction_pad_dir] {
         let program_toml = program_dir.join("Cargo.toml");
         let program_toml = format!("{}", program_toml.display());
         let args = vec!["build-sbf", "--manifest-path", &program_toml];
