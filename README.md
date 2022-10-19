@@ -14,7 +14,7 @@ solana-runtime, and deployed to its mainnet.  As others implement Sealevel, we
 will graciously accept patches to ensure the programs here are portable across
 all implementations.
 
-Form more information see the [full documentation](https://spl.solana.com) and the [TypeDocs](https://solana-labs.github.io/solana-program-library/token/js/).
+For more information see the [SPL documentation](https://spl.solana.com) and the [Token TypeDocs](https://solana-labs.github.io/solana-program-library/token/js/).
 
 
 ## Development
