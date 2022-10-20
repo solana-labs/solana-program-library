@@ -180,7 +180,9 @@ pub enum TokenError {
     #[error("CPI Guard is enabled, and a program attempted to approve a delegate via CPI")]
     CpiGuardApproveBlocked,
     /// CPI Guard is enabled, and a program attempted to add or replace an authority
-    #[error("CPI Guard is enabled, and a program attempted to add or replace an authority via CPI")]
+    #[error(
+        "CPI Guard is enabled, and a program attempted to add or replace an authority via CPI"
+    )]
     CpiGuardSetAuthorityBlocked,
     /// Account ownership cannot be changed while CPI Guard is enabled
     #[error("Account ownership cannot be changed while CPI Guard is enabled")]
