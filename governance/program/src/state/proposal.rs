@@ -1083,7 +1083,7 @@ pub fn assert_valid_proposal_options(
     options: &[String],
     vote_type: &VoteType,
 ) -> Result<(), ProgramError> {
-    if options.is_empty() || options.len() > 10 {
+    if options.is_empty() {
         return Err(GovernanceError::InvalidProposalOptions.into());
     }
 

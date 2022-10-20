@@ -30,6 +30,7 @@ mod process_update_program_metadata;
 mod process_withdraw_governing_tokens;
 
 use crate::instruction::GovernanceInstruction;
+use crate::state::vote_record::Vote;
 
 use process_add_signatory::*;
 use process_cancel_proposal::*;
@@ -89,6 +90,31 @@ pub fn process_instruction(
             option_index,
             index,
             hold_up_time
+        );
+    } else if let GovernanceInstruction::CreateProposal {
+        name,
+        description_link,
+        vote_type,
+        options,
+        use_deny_option,
+    } = &instruction
+    {
+        // Do not iterate through options
+        msg!("GOVERNANCE-INSTRUCTION: CreateProposal {{name: {:?}, description_link: {:?}, vote_type: {:?}, use_deny_option: {:?}, number of options: {} }}",
+            name,
+            description_link,
+            vote_type,
+            use_deny_option,
+            options.len()
+        );
+    } else if let GovernanceInstruction::CastVote {
+        vote: Vote::Approve(v),
+    } = &instruction
+    {
+        // Do not iterate through options
+        msg!(
+            "GOVERNANCE-INSTRUCTION: CastVote {{Vote::Approve (number of options: {:?}) }}",
+            v.len()
         );
     } else {
         msg!("GOVERNANCE-INSTRUCTION: {:?}", instruction);
