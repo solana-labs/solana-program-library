@@ -91,7 +91,9 @@ fn client_error(token_error: TokenError) -> TokenClientError {
 #[tokio::test]
 async fn test_cpi_guard_enable_disable() {
     let (context, instruction_padding_id) = make_context().await;
-    let TokenContext { token, alice, .. } = context.token_context.unwrap();
+    let TokenContext {
+        token, alice, bob, ..
+    } = context.token_context.unwrap();
 
     // enable guard properly
     token
@@ -168,6 +170,26 @@ async fn test_cpi_guard_enable_disable() {
     let alice_state = token.get_account_info(&alice.pubkey()).await.unwrap();
     let extension = alice_state.get_extension::<CpiGuard>().unwrap();
     assert!(!bool::from(extension.lock_cpi));
+
+    // enable works with realloc
+    token
+        .reallocate(
+            &bob.pubkey(),
+            &bob.pubkey(),
+            &[ExtensionType::CpiGuard],
+            &[&bob],
+        )
+        .await
+        .unwrap();
+
+    token
+        .enable_cpi_guard(&bob.pubkey(), &bob.pubkey(), &[&bob])
+        .await
+        .unwrap();
+
+    let bob_state = token.get_account_info(&bob.pubkey()).await.unwrap();
+    let extension = bob_state.get_extension::<CpiGuard>().unwrap();
+    assert!(bool::from(extension.lock_cpi));
 }
 
 #[tokio::test]
