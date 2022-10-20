@@ -100,6 +100,18 @@ pub enum VoteType {
         #[allow(dead_code)]
         max_winning_options: u8,
     },
+
+    /// The multi weighted choice behaves the same way as the MultiChoice
+    /// while it considers the weight_percentage defined in the VoteChoice
+    MultiWeightedChoice {
+        /// The max number of options a voter can choose; see MultiChoice
+        #[allow(dead_code)]
+        max_voter_options: u8,
+
+        /// The max number of wining options; see MultiChoice
+        #[allow(dead_code)]
+        max_winning_options: u8,
+    },
 }
 
 /// Governance Proposal
@@ -465,6 +477,10 @@ impl ProposalV2 {
                 VoteType::MultiChoice {
                     max_voter_options: _n,
                     max_winning_options: _m,
+                }
+                | VoteType::MultiWeightedChoice {
+                    max_voter_options: _n,
+                    max_winning_options: _m,
                 } => {
                     // If any option succeeded for multi choice then the proposal as a whole succeeded as well
                     ProposalState::Succeeded
@@ -822,13 +838,24 @@ impl ProposalV2 {
                 }
 
                 let mut choice_count = 0u16;
+                let mut choice_weight_percentage_sum = 0u8;
 
                 for choice in choices {
                     if choice.rank > 0 {
                         return Err(GovernanceError::InvalidVote.into());
                     }
 
-                    if choice.weight_percentage == 100 {
+                    if let VoteType::MultiWeightedChoice {
+                        max_voter_options: _m,
+                        max_winning_options: _n,
+                    } = self.vote_type
+                    {
+                        // the sum of the percent numbers of all choices cannot be over 100%
+                        choice_weight_percentage_sum = choice_weight_percentage_sum
+                            .checked_add(choice.weight_percentage)
+                            .unwrap();
+                        choice_count = choice_count.checked_add(1).unwrap();
+                    } else if choice.weight_percentage == 100 {
                         choice_count = choice_count.checked_add(1).unwrap();
                     } else if choice.weight_percentage != 0 {
                         return Err(GovernanceError::InvalidVote.into());
@@ -846,6 +873,17 @@ impl ProposalV2 {
                         max_winning_options: _m,
                     } => {
                         if choice_count == 0 {
+                            return Err(GovernanceError::InvalidVote.into());
+                        }
+                    }
+                    VoteType::MultiWeightedChoice {
+                        max_voter_options: _n,
+                        max_winning_options: _m,
+                    } => {
+                        if choice_count == 0 {
+                            return Err(GovernanceError::InvalidVote.into());
+                        }
+                        if choice_weight_percentage_sum != 100 {
                             return Err(GovernanceError::InvalidVote.into());
                         }
                     }
@@ -1088,6 +1126,10 @@ pub fn assert_valid_proposal_options(
     }
 
     if let VoteType::MultiChoice {
+        max_voter_options,
+        max_winning_options,
+    }
+    | VoteType::MultiWeightedChoice {
         max_voter_options,
         max_winning_options,
     } = *vote_type
@@ -2541,6 +2583,42 @@ mod test {
     }
 
     #[test]
+    pub fn test_assert_valid_vote_with_not_full_percentage_choices_error() {
+        // Arrange
+        let mut proposal = create_test_multi_option_proposal();
+        proposal.vote_type = VoteType::MultiChoice {
+            max_voter_options: 3,
+            max_winning_options: 3,
+        };
+
+        let choices = vec![
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 50,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 50,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 0,
+            },
+        ];
+
+        let vote = Vote::Approve(choices.clone());
+
+        // Ensure
+        assert_eq!(proposal.options.len(), choices.len());
+
+        // Act
+        let result = proposal.assert_valid_vote(&vote);
+
+        // Assert
+        assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+    }
+
+    #[test]
     pub fn test_assert_valid_proposal_options_with_invalid_choice_number_for_multi_choice_vote_error(
     ) {
         // Arrange
@@ -2623,6 +2701,274 @@ mod test {
             "option 2".to_string(),
             "option 3".to_string(),
         ];
+
+        // Act
+        let result = assert_valid_proposal_options(&options, &vote_type);
+
+        // Assert
+        assert_eq!(result, Err(GovernanceError::InvalidProposalOptions.into()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_vote_for_multi_weighted_choice() {
+        // Multi weighted choice may be weighted but sum of choices has to be 100%
+        // Arrange
+        let mut proposal = create_test_multi_option_proposal();
+        proposal.vote_type = VoteType::MultiWeightedChoice {
+            max_voter_options: 3,
+            max_winning_options: 3,
+        };
+
+        let choices = vec![
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 42,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 42,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 16,
+            },
+        ];
+        let vote = Vote::Approve(choices.clone());
+
+        // Ensure
+        assert_eq!(proposal.options.len(), choices.len());
+
+        // Act
+        let result = proposal.assert_valid_vote(&vote);
+
+        // Assert
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_full_vote_for_multi_weighted_choice() {
+        // Multi weighted choice may be weighted to 100% and 0% rest
+        // Arrange
+        let mut proposal = create_test_multi_option_proposal();
+        proposal.vote_type = VoteType::MultiWeightedChoice {
+            max_voter_options: 3,
+            max_winning_options: 3,
+        };
+
+        let choices = vec![
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 0,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 100,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 0,
+            },
+        ];
+        let vote = Vote::Approve(choices.clone());
+
+        // Ensure
+        assert_eq!(proposal.options.len(), choices.len());
+
+        // Act
+        let result = proposal.assert_valid_vote(&vote);
+
+        // Assert
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_vote_with_no_choices_for_multi_weighted_choice_error() {
+        // Arrange
+        let mut proposal = create_test_multi_option_proposal();
+        proposal.vote_type = VoteType::MultiWeightedChoice {
+            max_voter_options: 2,
+            max_winning_options: 2,
+        };
+
+        let choices = vec![
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 34,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 34,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 34,
+            },
+        ];
+        let vote = Vote::Approve(choices.clone());
+
+        // Ensure
+        assert_eq!(proposal.options.len(), choices.len());
+
+        // Act
+        let result = proposal.assert_valid_vote(&vote);
+
+        // Assert
+        assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_vote_with_over_percentage_for_multi_weighted_choice_error() {
+        // Multi weighted choice does not permit vote with sum weight over 100%
+        // Arrange
+        let mut proposal = create_test_multi_option_proposal();
+        proposal.vote_type = VoteType::MultiWeightedChoice {
+            max_voter_options: 3,
+            max_winning_options: 3,
+        };
+
+        let choices = vec![
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 34,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 34,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 34,
+            },
+        ];
+        let vote = Vote::Approve(choices.clone());
+
+        // Ensure
+        assert_eq!(proposal.options.len(), choices.len());
+
+        // Act
+        let result = proposal.assert_valid_vote(&vote);
+
+        // Assert
+        assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_proposal_options_with_invalid_choice_number_for_multi_weighted_choice_vote_error(
+    ) {
+        // Arrange
+        let vote_type = VoteType::MultiWeightedChoice {
+            max_voter_options: 3,
+            max_winning_options: 3,
+        };
+
+        let options = vec!["option 1".to_string(), "option 2".to_string()];
+
+        // Act
+        let result = assert_valid_proposal_options(&options, &vote_type);
+
+        // Assert
+        assert_eq!(result, Err(GovernanceError::InvalidProposalOptions.into()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_proposal_options_with_no_options_for_multi_weighted_choice_vote_error()
+    {
+        // Arrange
+        let vote_type = VoteType::MultiWeightedChoice {
+            max_voter_options: 3,
+            max_winning_options: 3,
+        };
+
+        let options = vec![];
+
+        // Act
+        let result = assert_valid_proposal_options(&options, &vote_type);
+
+        // Assert
+        assert_eq!(result, Err(GovernanceError::InvalidProposalOptions.into()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_proposal_options_for_multi_weighted_choice_vote() {
+        // Arrange
+        let vote_type = VoteType::MultiWeightedChoice {
+            max_voter_options: 3,
+            max_winning_options: 3,
+        };
+
+        let options = vec![
+            "option 1".to_string(),
+            "option 2".to_string(),
+            "option 3".to_string(),
+        ];
+
+        // Act
+        let result = assert_valid_proposal_options(&options, &vote_type);
+
+        // Assert
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_proposal_options_for_multi_weighted_choice_vote_with_empty_option_error(
+    ) {
+        // Arrange
+        let vote_type = VoteType::MultiWeightedChoice {
+            max_voter_options: 3,
+            max_winning_options: 3,
+        };
+
+        let options = vec![
+            "".to_string(),
+            "option 2".to_string(),
+            "option 3".to_string(),
+        ];
+
+        // Act
+        let result = assert_valid_proposal_options(&options, &vote_type);
+
+        // Assert
+        assert_eq!(result, Err(GovernanceError::InvalidProposalOptions.into()));
+    }
+
+    #[test]
+    pub fn test_assert_more_than_ten_proposal_options_for_multi_weighted_choice_error() {
+        // Arrange
+        let vote_type = VoteType::MultiWeightedChoice {
+            max_voter_options: 3,
+            max_winning_options: 3,
+        };
+
+        let options = vec![
+            "option 1".to_string(),
+            "option 2".to_string(),
+            "option 3".to_string(),
+            "option 4".to_string(),
+            "option 5".to_string(),
+            "option 6".to_string(),
+            "option 7".to_string(),
+            "option 8".to_string(),
+            "option 9".to_string(),
+            "option 10".to_string(),
+            "option 11".to_string(),
+        ];
+
+        // Act
+        let result = assert_valid_proposal_options(&options, &vote_type);
+
+        // Assert
+        assert_eq!(result, Err(GovernanceError::InvalidProposalOptions.into()));
+    }
+
+    #[test]
+    pub fn test_assert_same_label_options_for_multi_weighted_choice_error() {
+        // Arrange
+        let vote_type = VoteType::MultiWeightedChoice {
+            max_voter_options: 1,
+            max_winning_options: 1,
+        };
+
+        let options = vec!["option 1".to_string(), "option 1".to_string()];
 
         // Act
         let result = assert_valid_proposal_options(&options, &vote_type);
