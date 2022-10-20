@@ -5,6 +5,7 @@ use solana_program_test::*;
 mod program_test;
 
 use program_test::*;
+use spl_governance::state::proposal::MultiChoiceType;
 use spl_governance::{
     error::GovernanceError,
     state::{
@@ -92,6 +93,7 @@ async fn test_create_proposal_with_multiple_choice_options_and_without_deny_opti
             options,
             false,
             VoteType::MultiChoice {
+                choice_type: MultiChoiceType::Approval,
                 max_winning_options: 2,
                 max_voter_options: 2,
             },
@@ -106,6 +108,7 @@ async fn test_create_proposal_with_multiple_choice_options_and_without_deny_opti
     assert_eq!(
         proposal_account.vote_type,
         VoteType::MultiChoice {
+            choice_type: MultiChoiceType::Approval,
             max_winning_options: 2,
             max_voter_options: 2,
         }
@@ -295,7 +298,7 @@ async fn test_vote_on_none_executable_single_choice_proposal_with_multiple_optio
         .await
         .unwrap();
 
-    // Advance timestamp past max_voting_time
+    // Advance timestamp past voting_base_time
     governance_test
         .advance_clock_past_timestamp(
             governance_cookie.account.config.voting_base_time as i64 + clock.unix_timestamp,
@@ -360,6 +363,7 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
             ],
             false,
             VoteType::MultiChoice {
+                choice_type: MultiChoiceType::Approval,
                 max_winning_options: 3,
                 max_voter_options: 3,
             },
@@ -400,7 +404,7 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
         .await
         .unwrap();
 
-    // Advance timestamp past max_voting_time
+    // Advance timestamp past voting_base_time
     governance_test
         .advance_clock_past_timestamp(
             governance_cookie.account.config.voting_base_time as i64 + clock.unix_timestamp,
@@ -488,6 +492,7 @@ async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_succ
             ],
             true,
             VoteType::MultiChoice {
+                choice_type: MultiChoiceType::Approval,
                 max_winning_options: 3,
                 max_voter_options: 3,
             },
@@ -560,7 +565,7 @@ async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_succ
         .await
         .unwrap();
 
-    // Advance timestamp past max_voting_time
+    // Advance timestamp past voting_base_time
     governance_test
         .advance_clock_past_timestamp(
             governance_cookie.account.config.voting_base_time as i64 + clock.unix_timestamp,
@@ -649,6 +654,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
             ],
             true,
             VoteType::MultiChoice {
+                choice_type: MultiChoiceType::Approval,
                 max_winning_options: 3,
                 max_voter_options: 3,
             },
@@ -753,7 +759,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
         .await
         .unwrap();
 
-    // Advance timestamp past max_voting_time
+    // Advance timestamp past voting_base_time
     governance_test
         .advance_clock_by_min_timespan(governance_cookie.account.config.voting_base_time as u64)
         .await;
@@ -856,6 +862,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
             ],
             true,
             VoteType::MultiChoice {
+                choice_type: MultiChoiceType::Approval,
                 max_winning_options: 3,
                 max_voter_options: 3,
             },
@@ -919,7 +926,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
         .await
         .unwrap();
 
-    // Advance timestamp past max_voting_time
+    // Advance timestamp past voting_base_time
     governance_test
         .advance_clock_by_min_timespan(governance_cookie.account.config.voting_base_time as u64)
         .await;
@@ -1021,6 +1028,7 @@ async fn test_create_proposal_with_10_options_and_cast_vote() {
             options,
             false,
             VoteType::MultiChoice {
+                choice_type: MultiChoiceType::Approval,
                 max_winning_options: options_len,
                 max_voter_options: options_len,
             },
@@ -1071,6 +1079,7 @@ async fn test_create_proposal_with_10_options_and_cast_vote() {
     assert_eq!(
         proposal_account.vote_type,
         VoteType::MultiChoice {
+            choice_type: MultiChoiceType::Approval,
             max_winning_options: options_len,
             max_voter_options: options_len,
         }
@@ -1117,7 +1126,8 @@ async fn test_vote_multi_weighted_choice_proposal_non_executable() {
                 "option 4".to_string(),
             ],
             false,
-            VoteType::MultiWeightedChoice {
+            VoteType::MultiChoice {
+                choice_type: MultiChoiceType::Weighted,
                 max_winning_options: 4,
                 max_voter_options: 4,
             },
@@ -1162,10 +1172,9 @@ async fn test_vote_multi_weighted_choice_proposal_non_executable() {
         .await
         .unwrap();
 
-    // Advance timestamp past max_voting_time
     governance_test
         .advance_clock_past_timestamp(
-            governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
+            governance_cookie.account.config.voting_base_time as i64 + clock.unix_timestamp,
         )
         .await;
 
@@ -1260,7 +1269,8 @@ async fn test_vote_multi_weighted_choice_proposal_with_partial_success() {
                 "option 4".to_string(),
             ],
             true,
-            VoteType::MultiWeightedChoice {
+            VoteType::MultiChoice {
+                choice_type: MultiChoiceType::Weighted,
                 max_winning_options: 4,
                 max_voter_options: 4,
             },
@@ -1382,9 +1392,11 @@ async fn test_vote_multi_weighted_choice_proposal_with_partial_success() {
         .await
         .expect("Casting deny vote of owner 3 should succeed");
 
-    // Advance timestamp past max_voting_time
+    let clock = governance_test.bench.get_clock().await;
     governance_test
-        .advance_clock_by_min_timespan(governance_cookie.account.config.max_voting_time as u64)
+        .advance_clock_past_timestamp(
+            governance_cookie.account.config.voting_base_time as i64 + clock.unix_timestamp,
+        )
         .await;
     governance_test
         .finalize_vote(&realm_cookie, &proposal_cookie, None)
@@ -1482,7 +1494,8 @@ async fn test_vote_multi_weighted_choice_proposal_with_multi_success() {
                 "option 3".to_string(),
             ],
             true,
-            VoteType::MultiWeightedChoice {
+            VoteType::MultiChoice {
+                choice_type: MultiChoiceType::Weighted,
                 max_winning_options: 3,
                 max_voter_options: 3,
             },
@@ -1577,9 +1590,12 @@ async fn test_vote_multi_weighted_choice_proposal_with_multi_success() {
         .await
         .expect("Voting the vote 1 of owner 1 should succeed");
 
-    // Advance timestamp past max_voting_time
+    // Advance timestamp past voting_base_time
+    let clock = governance_test.bench.get_clock().await;
     governance_test
-        .advance_clock_by_min_timespan(governance_cookie.account.config.max_voting_time as u64)
+        .advance_clock_past_timestamp(
+            governance_cookie.account.config.voting_base_time as i64 + clock.unix_timestamp,
+        )
         .await;
     governance_test
         .finalize_vote(&realm_cookie, &proposal_cookie, None)
@@ -1662,7 +1678,8 @@ async fn test_vote_multi_weighted_choice_proposal_executable_with_full_deny() {
             &mut governance_cookie,
             vec!["option 1".to_string(), "option 2".to_string()],
             true,
-            VoteType::MultiWeightedChoice {
+            VoteType::MultiChoice {
+                choice_type: MultiChoiceType::Weighted,
                 max_winning_options: 2,
                 max_voter_options: 2,
             },
@@ -1713,9 +1730,12 @@ async fn test_vote_multi_weighted_choice_proposal_executable_with_full_deny() {
         .await
         .expect("Casting deny vote for owner 1 should succeed");
 
-    // Advance timestamp past max_voting_time
+    // Advance timestamp past voting_base_time
+    let clock = governance_test.bench.get_clock().await;
     governance_test
-        .advance_clock_by_min_timespan(governance_cookie.account.config.max_voting_time as u64)
+        .advance_clock_past_timestamp(
+            governance_cookie.account.config.voting_base_time as i64 + clock.unix_timestamp,
+        )
         .await;
 
     governance_test
