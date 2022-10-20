@@ -31,37 +31,24 @@ fn rerun_if_changed(directory: &Path) {
 
 fn main() {
     let cwd = env::current_dir().expect("Unable to get current working directory");
-
     let spl_token_2022_dir = cwd
         .parent()
         .expect("Unable to get parent directory of current working dir")
         .join("program-2022");
     rerun_if_changed(&spl_token_2022_dir);
-
-    let instruction_padding_dir = cwd
-        .parent()
-        .expect("Unable to get parent directory of current working dir")
-        .parent()
-        .expect("Unable to get grandparent directory of current working dir")
-        .join("instruction-padding")
-        .join("program");
-    rerun_if_changed(&instruction_padding_dir);
-
     println!("cargo:rerun-if-changed=build.rs");
 
-    for program_dir in [spl_token_2022_dir, instruction_padding_dir] {
-        let program_toml = program_dir.join("Cargo.toml");
-        let program_toml = format!("{}", program_toml.display());
-        let args = vec!["build-sbf", "--manifest-path", &program_toml];
-        let output = Command::new("cargo")
-            .args(&args)
-            .output()
-            .expect("Error running cargo build-sbf");
-        if let Ok(output_str) = std::str::from_utf8(&output.stdout) {
-            let subs = output_str.split('\n');
-            for sub in subs {
-                println!("cargo:warning=(not a warning) {}", sub);
-            }
+    let spl_token_2022_toml = spl_token_2022_dir.join("Cargo.toml");
+    let spl_token_2022_toml = format!("{}", spl_token_2022_toml.display());
+    let args = vec!["build-sbf", "--manifest-path", &spl_token_2022_toml];
+    let output = Command::new("cargo")
+        .args(&args)
+        .output()
+        .expect("Error running cargo build-sbf");
+    if let Ok(output_str) = std::str::from_utf8(&output.stdout) {
+        let subs = output_str.split('\n');
+        for sub in subs {
+            println!("cargo:warning=(not a warning) {}", sub);
         }
     }
 
