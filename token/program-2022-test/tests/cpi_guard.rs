@@ -22,13 +22,17 @@ use {
         instruction::{self, AuthorityType},
         processor::Processor as SplToken2022Processor,
     },
-    spl_token_client::token::TokenError as TokenClientError,
+    spl_token_client::{
+        client::ProgramBanksClientProcessTransaction,
+        token::{Token, TokenError as TokenClientError},
+    },
     std::sync::Arc,
 };
 
 // set up a bank and bank client with spl token 2022 and the instruction padder
 // also creates a token with no extensions and inits two token accounts
 async fn make_context() -> (TestContext, Pubkey) {
+    // TODO this may be removed when we upgrade to a solana version with a fixed `get_stack_height()` stub
     if std::env::var("BPF_OUT_DIR").is_err() && std::env::var("SBF_OUT_DIR").is_err() {
         panic!("CpiGuard tests MUST be invoked with `cargo test-sbf`, NOT `cargo test --feature test-sbf`. \
                 In a non-BPF context, `get_stack_height()` always returns 0, and all tests WILL fail.");
@@ -504,6 +508,43 @@ async fn test_cpi_guard_approve() {
     }
 }
 
+async fn make_close_test_account<S: Signer>(
+    token: &Token<ProgramBanksClientProcessTransaction>,
+    owner: &S,
+    authority: Option<Pubkey>,
+) -> Pubkey {
+    let account = Keypair::new();
+
+    token
+        .create_auxiliary_token_account_with_extension_space(
+            &account,
+            &owner.pubkey(),
+            vec![ExtensionType::CpiGuard],
+        )
+        .await
+        .unwrap();
+
+    if authority.is_some() {
+        token
+            .set_authority(
+                &account.pubkey(),
+                &owner.pubkey(),
+                authority.as_ref(),
+                AuthorityType::CloseAccount,
+                &[owner],
+            )
+            .await
+            .unwrap();
+    }
+
+    token
+        .enable_cpi_guard(&account.pubkey(), &owner.pubkey(), &[owner])
+        .await
+        .unwrap();
+
+    account.pubkey()
+}
+
 #[tokio::test]
 async fn test_cpi_guard_close_account() {
     let (context, instruction_padding_id) = make_context().await;
@@ -511,15 +552,74 @@ async fn test_cpi_guard_close_account() {
         token, alice, bob, ..
     } = context.token_context.unwrap();
 
-    // close account works normally with cpi guard enabled
+    let mk_close = |account, destination, authority| {
+        wrap_instruction(
+            instruction_padding_id,
+            instruction::close_account(
+                &spl_token_2022::id(),
+                &account,
+                &destination,
+                &authority,
+                &[],
+            )
+            .unwrap(),
+            vec![],
+            0,
+        )
+        .unwrap()
+    };
 
-    // XXX LOOP, user auth and external close
+    // test closing through owner and closing through close authority
+    // the result should be the same eitehr way
+    for maybe_close_authority in [None, Some(bob.pubkey())] {
+        let authority = if maybe_close_authority.is_none() {
+            &alice
+        } else {
+            &bob
+        };
 
-    // close account doesnt work in cpi if funds diverted
+        // closing normally works
+        let account = make_close_test_account(&token, &alice, maybe_close_authority).await;
+        token
+            .close_account(&account, &bob.pubkey(), &authority.pubkey(), &[authority])
+            .await
+            .unwrap();
 
-    // close account works in cpi if funds returned to owner
+        // cpi close with guard enabled fails if lamports diverted to third party
+        let account = make_close_test_account(&token, &alice, maybe_close_authority).await;
+        let error = token
+            .process_ixs(
+                &[mk_close(account, bob.pubkey(), authority.pubkey())],
+                &[authority],
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(error, client_error(TokenError::CpiGuardCloseAccountBlocked));
 
-    // close account still works through cpi with cpi guard off
+        // but close suceeds if lamports are returned to owner
+        token
+            .process_ixs(
+                &[mk_close(account, alice.pubkey(), authority.pubkey())],
+                &[authority],
+            )
+            .await
+            .unwrap();
+
+        // close still works through cpi when guard disabled
+        let account = make_close_test_account(&token, &alice, maybe_close_authority).await;
+        token
+            .disable_cpi_guard(&account, &alice.pubkey(), &[&alice])
+            .await
+            .unwrap();
+
+        token
+            .process_ixs(
+                &[mk_close(account, bob.pubkey(), authority.pubkey())],
+                &[authority],
+            )
+            .await
+            .unwrap();
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
