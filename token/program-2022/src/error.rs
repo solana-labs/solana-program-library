@@ -164,23 +164,23 @@ pub enum TokenError {
     #[error("CPI Guard cannot be enabled or disabled in CPI")]
     CpiGuardSettingsLocked,
     /// CPI Guard is enabled, and a program attempted to transfer user funds without using a delegate
-    #[error("CPI Guard is enabled, and a program attempted to transfer user funds without using a delegate")]
+    #[error("CPI Guard is enabled, and a program attempted to transfer user funds via CPI without using a delegate")]
     CpiGuardTransferBlocked,
     /// CPI Guard is enabled, and a program attempted to burn user funds without using a delegate
     #[error(
-        "CPI Guard is enabled, and a program attempted to burn user funds without using a delegate"
+        "CPI Guard is enabled, and a program attempted to burn user funds via CPI without using a delegate"
     )]
     CpiGuardBurnBlocked,
     /// CPI Guard is enabled, and a program attempted to close an account without returning lamports to owner
-    #[error("CPI Guard is enabled, and a program attempted to close an account without returning lamports to owner")]
+    #[error("CPI Guard is enabled, and a program attempted to close an account via CPI without returning lamports to owner")]
     CpiGuardCloseAccountBlocked,
 
     // 45
     /// CPI Guard is enabled, and a program attempted to approve a delegate
-    #[error("CPI Guard is enabled, and a program attempted to approve a delegate")]
+    #[error("CPI Guard is enabled, and a program attempted to approve a delegate via CPI")]
     CpiGuardApproveBlocked,
     /// CPI Guard is enabled, and a program attempted to add or replace an authority
-    #[error("CPI Guard is enabled, and a program attempted to add or replace an authority")]
+    #[error("CPI Guard is enabled, and a program attempted to add or replace an authority via CPI")]
     CpiGuardSetAuthorityBlocked,
     /// Account ownership cannot be changed while CPI Guard is enabled
     #[error("Account ownership cannot be changed while CPI Guard is enabled")]

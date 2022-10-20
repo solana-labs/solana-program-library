@@ -36,7 +36,7 @@ pub enum CpiGuardInstruction {
     Enable,
     /// Allow all token operations to happen via CPI as normal.
     ///
-    /// Fails if the account does not have the extension present.
+    /// Implicitly initializes the extension in the case where it is not present.
     ///
     /// Accounts expected by this instruction:
     ///
