@@ -83,7 +83,8 @@ async fn test_bypass_initialize() {
             leaf,
             &off_chain_tree.get_proof_of_leaf(0),
             0,
-        ).unwrap_err(), 
+        )
+        .unwrap_err(),
         "Expected TreeNotInitialized error when filling an empty leaf or appending to uninitialized tree"
     );
 }
