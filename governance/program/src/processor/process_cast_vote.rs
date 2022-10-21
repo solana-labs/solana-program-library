@@ -53,7 +53,7 @@ pub fn process_cast_vote(
     let rent = Rent::get()?;
     let clock = Clock::get()?;
 
-    if !vote_record_info.data_is_empty() {
+    if !vote_record_info.data_is_empty() && !vote_record_info.data.borrow().iter().all(|x| *x == 0) {
         return Err(GovernanceError::VoteAlreadyExists.into());
     }
 

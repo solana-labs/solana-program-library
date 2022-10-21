@@ -158,17 +158,21 @@ pub fn create_and_serialize_account_with_owner_signed<'a, T: BorshSerialize + Ac
             )?;
         }
 
-        invoke_signed(
-            &system_instruction::allocate(account_info.key, account_size as u64),
-            &[account_info.clone(), system_info.clone()],
-            &[&signers_seeds[..]],
-        )?;
+        if account_info.data_len() != account_size {
+            invoke_signed(
+                &system_instruction::allocate(account_info.key, account_size as u64),
+                &[account_info.clone(), system_info.clone()],
+                &[&signers_seeds[..]],
+            )?;
+        }
 
-        invoke_signed(
-            &system_instruction::assign(account_info.key, owner_program_id),
-            &[account_info.clone(), system_info.clone()],
-            &[&signers_seeds[..]],
-        )?;
+        if account_info.owner != owner_program_id {
+            invoke_signed(
+                &system_instruction::assign(account_info.key, owner_program_id),
+                &[account_info.clone(), system_info.clone()],
+                &[&signers_seeds[..]],
+            )?;
+        }
     } else {
         // If the PDA doesn't exist use create_account to use lower compute budget
         let create_account_instruction = create_account(
