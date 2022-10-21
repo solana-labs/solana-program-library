@@ -38,8 +38,10 @@
     "run-tests": "jest tests --detectOpenHandles",
     "run-tests:events": "jest tests/events --detectOpenHandles",
     "run-tests:accounts": "jest tests/accounts --detectOpenHandles",
+    "run-tests:e2e": "jest accountCompression.test.ts --detectOpenHandles",
     "test:events": "start-server-and-test start-validator http://localhost:8899/health run-tests:events",
     "test:accounts": "start-server-and-test start-validator http://localhost:8899/health run-tests:accounts",
+    "test:e2e": "start-server-and-test start-validator http://localhost:8899/health run-tests:e2e",
     "test": "start-server-and-test start-validator http://localhost:8899/health run-tests"
   },
   "dependencies": {

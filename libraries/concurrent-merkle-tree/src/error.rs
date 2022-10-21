@@ -1,10 +1,10 @@
 use thiserror::Error;
 
 /// Concurrent merkle tree operation errors
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum ConcurrentMerkleTreeError {
     /// Received an index larger than the rightmost index
-    #[error("Received an index larger than the rightmost index")]
+    #[error("Received an index larger than the rightmost index, or greater than (1 << max_depth)")]
     LeafIndexOutOfBounds,
 
     /// Invalid root recomputed from proof
@@ -23,14 +23,16 @@ pub enum ConcurrentMerkleTreeError {
     #[error("Tree already initialized")]
     TreeAlreadyInitialized,
 
+    /// This tree has not yet been initialized
+    #[error("Tree needs to be initialized before using")]
+    TreeNotInitialized,
+
     /// Root passed as argument cannot be found in stored changelog buffer
     #[error("Root not found in changelog buffer")]
     RootNotFound,
 
-    /// Valid proof was passed to a leaf, but its value has changed since the proof was issued
-    #[error(
-        "Valid proof was passed to a leaf, but its value has changed since the proof was issued"
-    )]
+    /// The tree's current leaf value does not match the supplied proof's leaf value
+    #[error("This tree's current leaf value does not match the supplied proof's leaf value")]
     LeafContentsModified,
 
     /// Tree has at least 1 non-EMTPY leaf

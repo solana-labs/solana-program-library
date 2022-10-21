@@ -622,6 +622,11 @@
       "code": 6007,
       "name": "IncorrectAccountType",
       "msg": "Account provided has incorrect account type"
+    },
+    {
+      "code": 6008,
+      "name": "LeafIndexOutOfBounds",
+      "msg": "Leaf index of concurrent merkle tree is out of bounds"
     }
   ],
   "metadata": {

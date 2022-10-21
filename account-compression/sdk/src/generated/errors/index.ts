@@ -201,6 +201,29 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * LeafIndexOutOfBounds: 'Leaf index of concurrent merkle tree is out of bounds'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class LeafIndexOutOfBoundsError extends Error {
+  readonly code: number = 0x1778
+  readonly name: string = 'LeafIndexOutOfBounds'
+  constructor() {
+    super('Leaf index of concurrent merkle tree is out of bounds')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, LeafIndexOutOfBoundsError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1778, () => new LeafIndexOutOfBoundsError())
+createErrorFromNameLookup.set(
+  'LeafIndexOutOfBounds',
+  () => new LeafIndexOutOfBoundsError()
+)
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

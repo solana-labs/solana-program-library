@@ -42,6 +42,11 @@ pub enum AccountCompressionError {
     /// Incorrect account type
     #[msg("Account provided has incorrect account type")]
     IncorrectAccountType,
+
+    /// Tree information cannot be processed because the provided leaf_index
+    /// is out of bounds of tree's maximum leaf capacity
+    #[msg("Leaf index of concurrent merkle tree is out of bounds")]
+    LeafIndexOutOfBounds,
 }
 
 impl From<&ConcurrentMerkleTreeError> for AccountCompressionError {

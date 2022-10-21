@@ -650,4 +650,45 @@ describe("Account Compression", () => {
       }
     });
   });
+  describe(`Having created a tree with 8 leaves`, () => {
+    beforeEach(async () => {
+      [cmtKeypair, offChainTree] = await createTreeOnChain(
+        provider,
+        payer,
+        1 << 3,
+        3,
+        8,
+      );
+    });
+    it(`Attempt to replace a leaf beyond the tree's capacity`, async () => {
+      // Ensure that this fails
+      let outOfBoundsIndex = 8;
+      const index = outOfBoundsIndex;
+      const newLeaf = hash(
+        payer.publicKey.toBuffer(),
+        Buffer.from(new BN(outOfBoundsIndex).toArray())
+      );
+      let proof;
+      let node;
+      node = offChainTree.leaves[outOfBoundsIndex - 1].node
+      proof = getProofOfLeaf(offChainTree, index - 1);
+
+      const replaceIx = createReplaceIx(
+        payer,
+        cmtKeypair.publicKey,
+        offChainTree.root,
+        node,
+        newLeaf,
+        index,
+        proof.map((treeNode) => {
+          return treeNode.node;
+        })
+      );
+
+      try {
+        await execute(provider, [replaceIx], [payer]);
+        throw Error("This replace instruction should have failed because the leaf index is OOB");
+      } catch (_e) { }
+    });
+  });
 });

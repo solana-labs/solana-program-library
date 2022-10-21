@@ -40,6 +40,56 @@ async fn test_initialize() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_bypass_initialize() {
+    let (mut cmt, off_chain_tree) = setup();
+    let mut rng = thread_rng();
+    let leaf = rng.gen::<[u8; 32]>();
+
+    assert_eq!(
+        ConcurrentMerkleTreeError::TreeNotInitialized,
+        cmt.append(leaf).unwrap_err(),
+        "Expected TreeNotInitialized error when appending to uninitialized tree"
+    );
+
+    assert_eq!(
+        ConcurrentMerkleTreeError::TreeNotInitialized,
+        cmt.set_leaf(
+            off_chain_tree.get_root(),
+            [0; 32],
+            leaf,
+            &off_chain_tree.get_proof_of_leaf(0),
+            0
+        )
+        .unwrap_err(),
+        "Expected TreeNotInitialized error when setting a leaf on an uninitialized tree"
+    );
+
+    assert_eq!(
+        ConcurrentMerkleTreeError::TreeNotInitialized,
+        cmt.prove_leaf(
+            off_chain_tree.get_root(),
+            leaf,
+            &off_chain_tree.get_proof_of_leaf(0),
+            0,
+        )
+        .unwrap_err(),
+        "Expected TreeNotInitialized error when proving a leaf exists on an uninitialized tree"
+    );
+
+    assert_eq!(
+        ConcurrentMerkleTreeError::TreeNotInitialized,
+        cmt.fill_empty_or_append(
+            off_chain_tree.get_root(),
+            leaf,
+            &off_chain_tree.get_proof_of_leaf(0),
+            0,
+        )
+        .unwrap_err(),
+        "Expected TreeNotInitialized error when filling an empty leaf or appending to uninitialized tree"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_append() {
     let (mut cmt, mut off_chain_tree) = setup();
     let mut rng = thread_rng();

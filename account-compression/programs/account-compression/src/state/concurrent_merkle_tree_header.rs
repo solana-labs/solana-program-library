@@ -139,4 +139,11 @@ impl ConcurrentMerkleTreeHeader {
         }
         Ok(())
     }
+
+    pub fn assert_valid_leaf_index(&self, leaf_index: u32) -> Result<()> {
+        if leaf_index >= (1 << self.get_max_depth()) {
+            return Err(AccountCompressionError::LeafIndexOutOfBounds.into());
+        }
+        Ok(())
+    }
 }
