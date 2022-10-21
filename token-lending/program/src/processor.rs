@@ -949,8 +949,8 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
     obligation.deposited_value = deposited_value;
     obligation.borrowed_value = borrowed_value;
 
-    let global_unhealthy_borrow_value = Decimal::from(50000000u64);
-    let global_allowed_borrow_value = Decimal::from(45000000u64);
+    let global_unhealthy_borrow_value = Decimal::from(70000000u64);
+    let global_allowed_borrow_value = Decimal::from(65000000u64);
 
     obligation.allowed_borrow_value = min(allowed_borrow_value, global_allowed_borrow_value);
     obligation.unhealthy_borrow_value = min(unhealthy_borrow_value, global_unhealthy_borrow_value);
