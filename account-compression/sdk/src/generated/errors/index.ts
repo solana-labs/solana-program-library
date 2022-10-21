@@ -35,36 +35,13 @@ createErrorFromNameLookup.set(
 )
 
 /**
- * LeafIndexOutOfBounds: 'Leaf index of concurrent merkle tree is out of bounds'
- *
- * @category Errors
- * @category generated
- */
-export class LeafIndexOutOfBoundsError extends Error {
-  readonly code: number = 0x1771
-  readonly name: string = 'LeafIndexOutOfBounds'
-  constructor() {
-    super('Leaf index of concurrent merkle tree is out of bounds')
-    if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, LeafIndexOutOfBoundsError)
-    }
-  }
-}
-
-createErrorFromCodeLookup.set(0x1771, () => new LeafIndexOutOfBoundsError())
-createErrorFromNameLookup.set(
-  'LeafIndexOutOfBounds',
-  () => new LeafIndexOutOfBoundsError()
-)
-
-/**
  * ConcurrentMerkleTreeError: 'Concurrent merkle tree error'
  *
  * @category Errors
  * @category generated
  */
 export class ConcurrentMerkleTreeErrorError extends Error {
-  readonly code: number = 0x1772
+  readonly code: number = 0x1771
   readonly name: string = 'ConcurrentMerkleTreeError'
   constructor() {
     super('Concurrent merkle tree error')
@@ -75,7 +52,7 @@ export class ConcurrentMerkleTreeErrorError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x1772,
+  0x1771,
   () => new ConcurrentMerkleTreeErrorError()
 )
 createErrorFromNameLookup.set(
@@ -90,7 +67,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ZeroCopyErrorError extends Error {
-  readonly code: number = 0x1773
+  readonly code: number = 0x1772
   readonly name: string = 'ZeroCopyError'
   constructor() {
     super('Issue zero copying concurrent merkle tree data')
@@ -100,7 +77,7 @@ export class ZeroCopyErrorError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1773, () => new ZeroCopyErrorError())
+createErrorFromCodeLookup.set(0x1772, () => new ZeroCopyErrorError())
 createErrorFromNameLookup.set('ZeroCopyError', () => new ZeroCopyErrorError())
 
 /**
@@ -110,7 +87,7 @@ createErrorFromNameLookup.set('ZeroCopyError', () => new ZeroCopyErrorError())
  * @category generated
  */
 export class ConcurrentMerkleTreeConstantsErrorError extends Error {
-  readonly code: number = 0x1774
+  readonly code: number = 0x1773
   readonly name: string = 'ConcurrentMerkleTreeConstantsError'
   constructor() {
     super('An unsupported max depth or max buffer size constant was provided')
@@ -121,7 +98,7 @@ export class ConcurrentMerkleTreeConstantsErrorError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x1774,
+  0x1773,
   () => new ConcurrentMerkleTreeConstantsErrorError()
 )
 createErrorFromNameLookup.set(
@@ -136,7 +113,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class CanopyLengthMismatchError extends Error {
-  readonly code: number = 0x1775
+  readonly code: number = 0x1774
   readonly name: string = 'CanopyLengthMismatch'
   constructor() {
     super('Expected a different byte length for the merkle tree canopy')
@@ -146,7 +123,7 @@ export class CanopyLengthMismatchError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1775, () => new CanopyLengthMismatchError())
+createErrorFromCodeLookup.set(0x1774, () => new CanopyLengthMismatchError())
 createErrorFromNameLookup.set(
   'CanopyLengthMismatch',
   () => new CanopyLengthMismatchError()
@@ -159,7 +136,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class IncorrectAuthorityError extends Error {
-  readonly code: number = 0x1776
+  readonly code: number = 0x1775
   readonly name: string = 'IncorrectAuthority'
   constructor() {
     super('Provided authority does not match expected tree authority')
@@ -169,7 +146,7 @@ export class IncorrectAuthorityError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1776, () => new IncorrectAuthorityError())
+createErrorFromCodeLookup.set(0x1775, () => new IncorrectAuthorityError())
 createErrorFromNameLookup.set(
   'IncorrectAuthority',
   () => new IncorrectAuthorityError()
@@ -182,7 +159,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class IncorrectAccountOwnerError extends Error {
-  readonly code: number = 0x1777
+  readonly code: number = 0x1776
   readonly name: string = 'IncorrectAccountOwner'
   constructor() {
     super(
@@ -194,7 +171,7 @@ export class IncorrectAccountOwnerError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1777, () => new IncorrectAccountOwnerError())
+createErrorFromCodeLookup.set(0x1776, () => new IncorrectAccountOwnerError())
 createErrorFromNameLookup.set(
   'IncorrectAccountOwner',
   () => new IncorrectAccountOwnerError()
@@ -207,7 +184,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class IncorrectAccountTypeError extends Error {
-  readonly code: number = 0x1778
+  readonly code: number = 0x1777
   readonly name: string = 'IncorrectAccountType'
   constructor() {
     super('Account provided has incorrect account type')
@@ -217,10 +194,33 @@ export class IncorrectAccountTypeError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1778, () => new IncorrectAccountTypeError())
+createErrorFromCodeLookup.set(0x1777, () => new IncorrectAccountTypeError())
 createErrorFromNameLookup.set(
   'IncorrectAccountType',
   () => new IncorrectAccountTypeError()
+)
+
+/**
+ * LeafIndexOutOfBounds: 'Leaf index of concurrent merkle tree is out of bounds'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class LeafIndexOutOfBoundsError extends Error {
+  readonly code: number = 0x1778
+  readonly name: string = 'LeafIndexOutOfBounds'
+  constructor() {
+    super('Leaf index of concurrent merkle tree is out of bounds')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, LeafIndexOutOfBoundsError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1778, () => new LeafIndexOutOfBoundsError())
+createErrorFromNameLookup.set(
+  'LeafIndexOutOfBounds',
+  () => new LeafIndexOutOfBoundsError()
 )
 
 /**

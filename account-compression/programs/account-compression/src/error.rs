@@ -14,11 +14,6 @@ pub enum AccountCompressionError {
     #[msg("Incorrect leaf length. Expected vec of 32 bytes")]
     IncorrectLeafLength,
 
-    /// Tree information cannot be processed because the provided leaf_index
-    /// is out of bounds of tree's maximum leaf capacity
-    #[msg("Leaf index of concurrent merkle tree is out of bounds")]
-    LeafIndexOutOfBounds,
-
     /// A modification to the tree was invalid and a changelog was not emitted.
     /// The proof may be invalid or out-of-date, or the provided leaf hash was invalid.
     #[msg("Concurrent merkle tree error")]
@@ -47,6 +42,11 @@ pub enum AccountCompressionError {
     /// Incorrect account type
     #[msg("Account provided has incorrect account type")]
     IncorrectAccountType,
+
+    /// Tree information cannot be processed because the provided leaf_index
+    /// is out of bounds of tree's maximum leaf capacity
+    #[msg("Leaf index of concurrent merkle tree is out of bounds")]
+    LeafIndexOutOfBounds,
 }
 
 impl From<&ConcurrentMerkleTreeError> for AccountCompressionError {
