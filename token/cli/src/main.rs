@@ -21,6 +21,7 @@ use solana_clap_utils::{
     offline::{self, *},
     ArgConstant,
 };
+use solana_cli_config::CONFIG_FILE;
 use solana_cli_output::{
     return_signers_data, CliSignOnlyData, CliSignature, OutputFormat, QuietDisplay,
     ReturnSignersConfig, VerboseDisplay,
@@ -1923,15 +1924,20 @@ fn app<'a, 'b>(
         .about(crate_description!())
         .version(crate_version!())
         .setting(AppSettings::SubcommandRequiredElseHelp)
-        .arg(
-            Arg::with_name("config_file")
+        .arg({
+            let arg = Arg::with_name("config_file")
                 .short("C")
                 .long("config")
                 .value_name("PATH")
                 .takes_value(true)
                 .global(true)
-                .help("Configuration file to use"),
-        )
+                .help("Configuration file to use");
+            if let Some(ref config_file) = *CONFIG_FILE {
+                arg.default_value(config_file)
+            } else {
+                arg
+            }
+        })
         .arg(
             Arg::with_name("verbose")
                 .short("v")
