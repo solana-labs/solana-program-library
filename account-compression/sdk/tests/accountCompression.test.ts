@@ -233,7 +233,7 @@ describe('Account Compression', () => {
 
       const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
         connection,
-        cmtKeypair.publicKey
+        cmt,
       );
       const onChainRoot = splCMT.getCurrentRoot();
 
@@ -271,8 +271,8 @@ describe('Account Compression', () => {
       const replaceIndex = 0;
       const proof = getProofOfLeaf(offChainTree, replaceIndex);
       const replaceIx = createReplaceIx(
+        cmt,
         randomSigner,
-        cmtKeypair.publicKey,
         offChainTree.root,
         offChainTree.leaves[replaceIndex].node,
         newLeaf,
@@ -300,7 +300,7 @@ describe('Account Compression', () => {
 
       const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
         connection,
-        cmtKeypair.publicKey
+        cmt,
       );
 
       assert(
@@ -313,8 +313,8 @@ describe('Account Compression', () => {
       const replaceIndex = 0;
       const proof = getProofOfLeaf(offChainTree, replaceIndex);
       const replaceIx = createReplaceIx(
+        cmt,
         randomSigner,
-        cmtKeypair.publicKey,
         offChainTree.root,
         offChainTree.leaves[replaceIndex].node,
         newLeaf,
@@ -355,8 +355,8 @@ describe('Account Compression', () => {
         leavesToUpdate.push(newLeaf);
         const proof = getProofOfLeaf(offChainTree, index);
         const replaceIx = createReplaceIx(
+          cmt,
           payer,
-          cmtKeypair.publicKey,
           offChainTree.root,
           offChainTree.leaves[i].node,
           newLeaf,
@@ -381,7 +381,7 @@ describe('Account Compression', () => {
       // Compare on-chain & off-chain roots
       const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
         connection,
-        cmtKeypair.publicKey
+        cmt,
       );
       const onChainRoot = splCMT.getCurrentRoot();
 
@@ -403,8 +403,8 @@ describe('Account Compression', () => {
         leavesToUpdate.push(newLeaf);
         const proof = getProofOfLeaf(offChainTree, index);
         const replaceIx = createReplaceIx(
+          cmt,
           payer,
-          cmtKeypair.publicKey,
           offChainTree.root,
           offChainTree.leaves[i].node,
           Buffer.alloc(32), // Empty node
@@ -426,7 +426,7 @@ describe('Account Compression', () => {
         'confirmed'
       )!;
       let treeInfo = await provider.connection.getAccountInfo(
-        cmtKeypair.publicKey,
+        cmt,
         'confirmed'
       )!;
 
@@ -451,7 +451,7 @@ describe('Account Compression', () => {
       );
 
       treeInfo = await provider.connection.getAccountInfo(
-        cmtKeypair.publicKey,
+        cmt,
         'confirmed'
       );
       assert(
@@ -516,8 +516,8 @@ describe('Account Compression', () => {
 
       // Root - make this nonsense so it won't match what's in ChangeLog, thus forcing proof autocompletion
       const replaceIx = createReplaceIx(
+        cmt,
         payer,
-        cmtKeypair.publicKey,
         Buffer.alloc(32),
         maliciousLeafHash,
         maliciousLeafHash1,
@@ -535,7 +535,7 @@ describe('Account Compression', () => {
 
       const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
         connection,
-        cmtKeypair.publicKey
+        cmt,
       );
 
       assert(
@@ -556,8 +556,8 @@ describe('Account Compression', () => {
 
       // Root - make this nonsense so it won't match what's in CL, and force proof autocompletion
       const replaceIx = createReplaceIx(
+        cmt,
         payer,
-        cmtKeypair.publicKey,
         Buffer.alloc(32),
         maliciousLeafHash,
         maliciousLeafHash1,
@@ -575,7 +575,7 @@ describe('Account Compression', () => {
 
       const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
         provider.connection,
-        cmtKeypair.publicKey
+        cmt,
       );
 
       assert(
@@ -619,7 +619,7 @@ describe('Account Compression', () => {
       let ixs: TransactionInstruction[] = [];
       const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
         connection,
-        cmtKeypair.publicKey
+        cmt,
       );
       const root = splCMT.getCurrentRoot();
 
@@ -635,8 +635,8 @@ describe('Account Compression', () => {
         const newLeaf = crypto.randomBytes(32);
         newLeaves[i] = newLeaf;
         const replaceIx = createReplaceIx(
+          cmt,
           payer,
-          cmtKeypair.publicKey,
           root,
           Buffer.from(leaf),
           newLeaf,
@@ -672,7 +672,7 @@ describe('Account Compression', () => {
           console.log(` ${level}: ${bs58.encode(node)}`);
         }
         const replaceIx = createReplaceIx(
-          cmtKeypair.publicKey,
+          cmt,
           payer,
           root,
           newLeaves[i],
@@ -682,7 +682,7 @@ describe('Account Compression', () => {
         );
         updateTree(tree, newLeaf, i);
         const replaceBackIx = createReplaceIx(
-          cmtKeypair.publicKey,
+          cmt,
           payer,
           tree.root,
           newLeaf,
@@ -726,8 +726,8 @@ describe('Account Compression', () => {
       proof = getProofOfLeaf(offChainTree, index - 1);
 
       const replaceIx = createReplaceIx(
-        payer,
         cmt,
+        payer,
         offChainTree.root,
         node,
         newLeaf,

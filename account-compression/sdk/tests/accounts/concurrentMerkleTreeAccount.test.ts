@@ -52,23 +52,25 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
   // Configure the client to use the local cluster.
   let offChainTree: Tree;
   let cmtKeypair: Keypair;
-  let payer: Keypair;
+  let payerKeypair: Keypair;
+  let payer: PublicKey;
   let connection: Connection;
   let provider: AnchorProvider;
 
   beforeEach(async () => {
-    payer = Keypair.generate();
+    payerKeypair = Keypair.generate();
+    payer = payerKeypair.publicKey;
     connection = new Connection('http://localhost:8899', {
       commitment: 'confirmed',
     });
-    const wallet = new NodeWallet(payer);
+    const wallet = new NodeWallet(payerKeypair);
     provider = new AnchorProvider(connection, wallet, {
       commitment: connection.commitment,
       skipPreflight: true,
     });
 
     await provider.connection.confirmTransaction(
-      await provider.connection.requestAirdrop(payer.publicKey, 1e10),
+      await provider.connection.requestAirdrop(payer, 1e10),
       'confirmed'
     );
   });
@@ -80,7 +82,7 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
     beforeEach(async () => {
       [cmtKeypair, offChainTree] = await createTreeOnChain(
         provider,
-        payer,
+        payerKeypair,
         1,
         MAX_DEPTH,
         MAX_SIZE
@@ -98,7 +100,7 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
         cmt,
         MAX_DEPTH,
         MAX_SIZE,
-        payer.publicKey,
+        payer,
         offChainTree.root
       );
     });
@@ -117,7 +119,7 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
           'confirmed'
         );
         const airdropId = await connection.requestAirdrop(
-          payer.publicKey,
+          payer,
           rent + 5000 * 2
         );
         await connection.confirmTransaction(airdropId, 'confirmed');
@@ -125,7 +127,7 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
         // Create on chain tree
         cmtKeypair = await createEmptyTreeOnChain(
           provider,
-          payer,
+          payerKeypair,
           maxDepth,
           maxBufferSize
         );
@@ -140,7 +142,7 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
           cmt,
           maxDepth,
           maxBufferSize,
-          payer.publicKey,
+          payer,
           emptyNode(maxDepth)
         );
       }
@@ -164,7 +166,7 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
           'confirmed'
         );
         const airdropId = await connection.requestAirdrop(
-          payer.publicKey,
+          payer,
           rent + 5000 * 2
         );
         await connection.confirmTransaction(airdropId, 'confirmed');
@@ -172,7 +174,7 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
         // Create on chain tree
         cmtKeypair = await createEmptyTreeOnChain(
           provider,
-          payer,
+          payerKeypair,
           maxDepth,
           maxBufferSize,
           canopyDepth
@@ -188,7 +190,7 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
           cmt,
           maxDepth,
           maxBufferSize,
-          payer.publicKey,
+          payer,
           emptyNode(maxDepth),
           canopyDepth
         );

@@ -17,7 +17,8 @@ import { execute, createTreeOnChain } from '../utils';
 describe('Serde tests', () => {
   let offChainTree: Tree;
   let cmtKeypair: Keypair;
-  let payer: Keypair;
+  let payerKeypair: Keypair;
+  let payer: PublicKey;
   let connection: Connection;
   let provider: AnchorProvider;
 
@@ -25,18 +26,20 @@ describe('Serde tests', () => {
   const MAX_DEPTH = 14;
 
   beforeEach(async () => {
-    payer = Keypair.generate();
+    payerKeypair = Keypair.generate();
+    payer = payerKeypair.publicKey;
+
     connection = new Connection('http://localhost:8899', {
       commitment: 'confirmed',
     });
-    const wallet = new NodeWallet(payer);
+    const wallet = new NodeWallet(payerKeypair);
     provider = new AnchorProvider(connection, wallet, {
       commitment: connection.commitment,
       skipPreflight: true,
     });
 
     await provider.connection.confirmTransaction(
-      await provider.connection.requestAirdrop(payer.publicKey, 1e10),
+      await provider.connection.requestAirdrop(payer, 1e10),
       'confirmed'
     );
   });
@@ -45,7 +48,7 @@ describe('Serde tests', () => {
     beforeEach(async () => {
       [cmtKeypair, offChainTree] = await createTreeOnChain(
         provider,
-        payer,
+        payerKeypair,
         0,
         MAX_DEPTH,
         MAX_SIZE
@@ -56,8 +59,8 @@ describe('Serde tests', () => {
       const newLeaf = crypto.randomBytes(32);
       const txId = await execute(
         provider,
-        [createAppendIx(newLeaf, payer, cmt)],
-        [payer]
+        [createAppendIx(cmt, payer, newLeaf)],
+        [payerKeypair]
       );
       updateTree(offChainTree, newLeaf, 0);
 
