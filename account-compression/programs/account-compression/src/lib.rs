@@ -30,18 +30,18 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use std::mem::size_of;
 
 pub mod canopy;
-mod data_wrapper;
 pub mod error;
 pub mod events;
+mod noop;
 pub mod state;
 pub mod zero_copy;
 
-pub use crate::data_wrapper::{wrap_application_data_v1, Wrapper};
+pub use crate::noop::{wrap_application_data_v1, Noop};
 
 use crate::canopy::{fill_in_proof_from_canopy, update_canopy};
-use crate::data_wrapper::wrap_event;
 use crate::error::AccountCompressionError;
 use crate::events::{AccountCompressionEvent, ChangeLogEvent};
+use crate::noop::wrap_event;
 use crate::state::{ConcurrentMerkleTreeHeader, CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1};
 use crate::zero_copy::ZeroCopy;
 
@@ -63,9 +63,8 @@ pub struct Initialize<'info> {
     /// Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs.
     pub authority: Signer<'info>,
 
-    /// Program used to emit changelogs as instruction data.
-    /// See `WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh`
-    pub log_wrapper: Program<'info, Wrapper>,
+    /// Program used to emit changelogs as cpi instruction data.
+    pub noop: Program<'info, Noop>,
 }
 
 /// Context for inserting, appending, or replacing a leaf in the tree
@@ -82,9 +81,8 @@ pub struct Modify<'info> {
     /// Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs.
     pub authority: Signer<'info>,
 
-    /// Program used to emit changelogs as instruction data.
-    /// See `WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh`
-    pub log_wrapper: Program<'info, Wrapper>,
+    /// Program used to emit changelogs as cpi instruction data.
+    pub noop: Program<'info, Noop>,
 }
 
 /// Context for validating a provided proof against the SPL ConcurrentMerkleTree.
@@ -262,7 +260,7 @@ pub mod spl_account_compression {
         let change_log_event = merkle_tree_apply_fn!(header, id, tree_bytes, initialize,)?;
         wrap_event(
             &AccountCompressionEvent::ChangeLog(*change_log_event),
-            &ctx.accounts.log_wrapper,
+            &ctx.accounts.noop,
         )?;
         update_canopy(canopy_bytes, header.get_max_depth(), None)
     }
@@ -382,7 +380,7 @@ pub mod spl_account_compression {
         )?;
         wrap_event(
             &AccountCompressionEvent::ChangeLog(*change_log_event),
-            &ctx.accounts.log_wrapper,
+            &ctx.accounts.noop,
         )
     }
 
@@ -475,7 +473,7 @@ pub mod spl_account_compression {
         )?;
         wrap_event(
             &AccountCompressionEvent::ChangeLog(*change_log_event),
-            &ctx.accounts.log_wrapper,
+            &ctx.accounts.noop,
         )
     }
 
@@ -529,7 +527,7 @@ pub mod spl_account_compression {
         )?;
         wrap_event(
             &AccountCompressionEvent::ChangeLog(*change_log_event),
-            &ctx.accounts.log_wrapper,
+            &ctx.accounts.noop,
         )
     }
 
