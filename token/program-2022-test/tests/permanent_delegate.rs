@@ -47,7 +47,7 @@ async fn setup_accounts(token_context: &TokenContext, amount: u64) -> (Pubkey, P
 
 #[tokio::test]
 async fn success_init() {
-    let delegate = Some(Pubkey::new_unique());
+    let delegate = Pubkey::new_unique();
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![ExtensionInitializationParams::PermanentDelegate {
@@ -60,7 +60,7 @@ async fn success_init() {
     let state = token.get_mint_info().await.unwrap();
     assert!(state.base.is_initialized);
     let extension = state.get_extension::<PermanentDelegate>().unwrap();
-    assert_eq!(extension.delegate, delegate.try_into().unwrap(),);
+    assert_eq!(extension.delegate, Some(delegate).try_into().unwrap(),);
 }
 
 #[tokio::test]
@@ -69,7 +69,7 @@ async fn set_authority() {
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![ExtensionInitializationParams::PermanentDelegate {
-            delegate: Some(delegate.pubkey()),
+            delegate: delegate.pubkey(),
         }])
         .await
         .unwrap();
@@ -190,7 +190,7 @@ async fn success_transfer() {
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![ExtensionInitializationParams::PermanentDelegate {
-            delegate: Some(delegate.pubkey()),
+            delegate: delegate.pubkey(),
         }])
         .await
         .unwrap();
@@ -224,7 +224,7 @@ async fn success_burn() {
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![ExtensionInitializationParams::PermanentDelegate {
-            delegate: Some(delegate.pubkey()),
+            delegate: delegate.pubkey(),
         }])
         .await
         .unwrap();

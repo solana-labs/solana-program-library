@@ -123,7 +123,7 @@ pub enum ExtensionInitializationParams {
     },
     NonTransferable,
     PermanentDelegate {
-        delegate: Option<Pubkey>,
+        delegate: Pubkey,
     },
 }
 impl ExtensionInitializationParams {
@@ -192,11 +192,9 @@ impl ExtensionInitializationParams {
             Self::NonTransferable => {
                 instruction::initialize_non_transferable_mint(token_program_id, mint)
             }
-            Self::PermanentDelegate { delegate } => instruction::initialize_permanent_delegate(
-                token_program_id,
-                mint,
-                delegate.as_ref(),
-            ),
+            Self::PermanentDelegate { delegate } => {
+                instruction::initialize_permanent_delegate(token_program_id, mint, &delegate)
+            }
         }
     }
 }

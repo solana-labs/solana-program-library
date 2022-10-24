@@ -315,9 +315,8 @@ impl Processor {
 
             let maybe_permanent_delegate = mint
                 .get_extension::<PermanentDelegate>()
-                .map(|e| Option::<Pubkey>::from(e.delegate))
                 .ok()
-                .flatten();
+                .and_then(|e| Option::<Pubkey>::from(e.delegate));
             (fee, maybe_permanent_delegate)
         } else {
             // Transfer fee amount extension exists on the account, but no mint
@@ -1264,7 +1263,7 @@ impl Processor {
     /// Processes an [InitializePermanentDelegate](enum.TokenInstruction.html) instruction
     pub fn process_initialize_permanent_delegate(
         accounts: &[AccountInfo],
-        delegate: COption<Pubkey>,
+        delegate: Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let mint_account_info = next_account_info(account_info_iter)?;
@@ -1272,7 +1271,7 @@ impl Processor {
         let mut mint_data = mint_account_info.data.borrow_mut();
         let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
         let extension = mint.init_extension::<PermanentDelegate>(true)?;
-        extension.delegate = delegate.try_into()?;
+        extension.delegate = Some(delegate).try_into()?;
 
         Ok(())
     }

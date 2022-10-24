@@ -10,7 +10,7 @@ use {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct PermanentDelegate {
-    /// Optional authority to close the mint
+    /// Optional permanent delegate for transferring or burning tokens
     pub delegate: OptionalNonZeroPubkey,
 }
 impl Extension for PermanentDelegate {

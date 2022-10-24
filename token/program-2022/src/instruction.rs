@@ -622,10 +622,13 @@ pub enum TokenInstruction<'a> {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
+    ///
+    /// Data expected by this instruction:
+    ///   Pubkey for the permanent delegate
+    ///
     InitializePermanentDelegate {
-        /// Authority that may sign for `Transfer` instructions on any account
-        #[cfg_attr(feature = "serde-traits", serde(with = "coption_fromstr"))]
-        delegate: COption<Pubkey>,
+        /// Authority that may sign for `Transfer`s and `Burn`s on any account
+        delegate: Pubkey,
     },
 }
 impl<'a> TokenInstruction<'a> {
@@ -759,7 +762,7 @@ impl<'a> TokenInstruction<'a> {
             33 => Self::InterestBearingMintExtension,
             34 => Self::CpiGuardExtension,
             35 => {
-                let (delegate, _rest) = Self::unpack_pubkey_option(rest)?;
+                let (delegate, _rest) = Self::unpack_pubkey(rest)?;
                 Self::InitializePermanentDelegate { delegate }
             }
             _ => return Err(TokenError::InvalidInstruction.into()),
@@ -919,7 +922,7 @@ impl<'a> TokenInstruction<'a> {
             }
             &Self::InitializePermanentDelegate { ref delegate } => {
                 buf.push(35);
-                Self::pack_pubkey_option(delegate, &mut buf);
+                buf.extend_from_slice(delegate.as_ref());
             }
         };
         buf
@@ -1786,14 +1789,16 @@ pub fn initialize_non_transferable_mint(
 pub fn initialize_permanent_delegate(
     token_program_id: &Pubkey,
     mint_pubkey: &Pubkey,
-    delegate: Option<&Pubkey>,
+    delegate: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
-    let delegate = delegate.cloned().into();
     Ok(Instruction {
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new(*mint_pubkey, false)],
-        data: TokenInstruction::InitializePermanentDelegate { delegate }.pack(),
+        data: TokenInstruction::InitializePermanentDelegate {
+            delegate: *delegate,
+        }
+        .pack(),
     })
 }
 
@@ -2118,10 +2123,10 @@ mod test {
         assert_eq!(unpacked, check);
 
         let check = TokenInstruction::InitializePermanentDelegate {
-            delegate: COption::Some(Pubkey::new(&[11u8; 32])),
+            delegate: Pubkey::new(&[11u8; 32]),
         };
         let packed = check.pack();
-        let mut expect = vec![35u8, 1];
+        let mut expect = vec![35u8];
         expect.extend_from_slice(&[11u8; 32]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
