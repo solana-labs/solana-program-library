@@ -61,7 +61,6 @@ use sort::{sort_and_parse_token_accounts, AccountFilter};
 
 mod bench;
 use bench::*;
-use spl_token_2022::generic_token_account::GenericTokenAccount;
 
 pub const OWNER_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
     name: "owner",
@@ -98,6 +97,8 @@ pub const MULTISIG_SIGNER_ARG: ArgConstant<'static> = ArgConstant {
     long: "multisig-signer",
     help: "Member signer of a multisig account",
 };
+
+static VALID_TOKEN_PROGRAM_IDS: [Pubkey; 2] = [spl_token_2022::ID, spl_token::ID];
 
 #[derive(Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr)]
 #[strum(serialize_all = "kebab-case")]
@@ -227,6 +228,23 @@ fn is_multisig_minimum_signers(string: String) -> Result<(), String> {
         Err(format!("must be at most {}", MAX_SIGNERS))
     } else {
         Ok(())
+    }
+}
+
+fn is_valid_token_program_id<T>(string: T) -> Result<(), String>
+where
+    T: AsRef<str> + Display,
+{
+    match is_pubkey(string.as_ref()) {
+        Ok(()) => {
+            let program_id = string.as_ref().parse::<Pubkey>().unwrap();
+            if VALID_TOKEN_PROGRAM_IDS.contains(&program_id) {
+                Ok(())
+            } else {
+                Err(format!("Unrecognized token program id: {}", program_id))
+            }
+        }
+        Err(e) => Err(e),
     }
 }
 
@@ -849,23 +867,48 @@ async fn command_transfer(
         // in online mode we can fetch it and see
         let maybe_recipient_account_data = config.program_client.get_account(recipient).await?;
 
-        // if the account exists...
+        // if the account exists, and:
+        // * its a token for this program, we are happy
+        // * its a system account, we are happy
+        // * its a non-account for this program, we error helpfully
+        // * its a token account for a different program, we error helpfully
+        // * otherwise its probabaly a program account owner of an ata, in which case we gate transfer with a flag
         if let Some(recipient_account_data) = maybe_recipient_account_data {
-            // ...and its a token or system account, we are happy
-            // but if its something else, we gate transfer with a flag
-            let recipient_is_token_account = recipient_account_data.owner == config.program_id
-                && Account::valid_account_data(&recipient_account_data.data);
-            let recipient_is_system_account = recipient_account_data.owner == system_program::id();
+            let recipient_account_owner = recipient_account_data.owner;
+            let maybe_account_state =
+                StateWithExtensionsOwned::<Account>::unpack(recipient_account_data.data);
 
-            if !recipient_is_token_account
-                && !recipient_is_system_account
-                && !allow_non_system_account_recipient
-            {
+            if recipient_account_owner == config.program_id && maybe_account_state.is_ok() {
+                if let Ok(memo_transfer) = maybe_account_state?.get_extension::<MemoTransfer>() {
+                    if memo_transfer.require_incoming_transfer_memos.into() && memo.is_none() {
+                        return Err(
+                            "Error: Recipient expects a transfer memo, but none was provided. \
+                                    Provide a memo using `--with-memo`."
+                                .into(),
+                        );
+                    }
+                }
+
+                true
+            } else if recipient_account_owner == system_program::id() {
+                false
+            } else if recipient_account_owner == config.program_id {
+                return Err(
+                    "Error: Recipient is owned by this token program, but is not a token account."
+                        .into(),
+                );
+            } else if VALID_TOKEN_PROGRAM_IDS.contains(&recipient_account_owner) {
+                return Err(format!(
+                    "Error: Recipient is owned by {}, but the token mint is owned by {}.",
+                    recipient_account_owner, config.program_id
+                )
+                .into());
+            } else if allow_non_system_account_recipient {
+                false
+            } else {
                 return Err("Error: The recipient address is not owned by the System Program. \
                                      Add `--allow-non-system-account-recipient` to complete the transfer.".into());
             }
-
-            recipient_is_token_account
         }
         // if it doesnt exist, it definitely isnt a token account!
         // we gate transfer with a different flag
@@ -905,9 +948,25 @@ async fn command_transfer(
                 .get_account(recipient_token_account)
                 .await?
             {
-                if recipient_token_account_data.owner == system_program::id() {
+                let recipient_token_account_owner = recipient_token_account_data.owner;
+
+                if let Ok(account_state) =
+                    StateWithExtensionsOwned::<Account>::unpack(recipient_token_account_data.data)
+                {
+                    if let Ok(memo_transfer) = account_state.get_extension::<MemoTransfer>() {
+                        if memo_transfer.require_incoming_transfer_memos.into() && memo.is_none() {
+                            return Err(
+                                "Error: Recipient expects a transfer memo, but none was provided. \
+                                        Provide a memo using `--with-memo`."
+                                    .into(),
+                            );
+                        }
+                    }
+                }
+
+                if recipient_token_account_owner == system_program::id() {
                     true
-                } else if recipient_token_account_data.owner == config.program_id {
+                } else if recipient_token_account_owner == config.program_id {
                     false
                 } else {
                     return Err(
@@ -1895,23 +1954,6 @@ fn multisig_member_help_string() -> String {
         "The public keys for each of the N signing members of this account. [{} <= N <= {}]",
         MIN_SIGNERS, MAX_SIGNERS
     )
-}
-
-fn is_valid_token_program_id<T>(string: T) -> Result<(), String>
-where
-    T: AsRef<str> + Display,
-{
-    match is_pubkey(string.as_ref()) {
-        Ok(()) => {
-            let program_id = string.as_ref().parse::<Pubkey>().unwrap();
-            if program_id == spl_token_2022::id() || program_id == spl_token::id() {
-                Ok(())
-            } else {
-                Err(format!("Unrecognized token program id: {}", program_id))
-            }
-        }
-        Err(e) => Err(e),
-    }
 }
 
 fn app<'a, 'b>(
@@ -3810,8 +3852,8 @@ mod tests {
     #[serial]
     async fn create_token_default() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let result = process_test_command(
                 &config,
                 &payer,
@@ -3822,7 +3864,7 @@ mod tests {
             let mint =
                 Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
             let account = config.rpc_client.get_account(&mint).await.unwrap();
-            assert_eq!(account.owner, program_id);
+            assert_eq!(account.owner, *program_id);
         }
     }
 
@@ -3900,8 +3942,8 @@ mod tests {
     #[serial]
     async fn supply() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
             let result = process_test_command(
                 &config,
@@ -3919,8 +3961,8 @@ mod tests {
     #[serial]
     async fn create_account_default() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
             let result = process_test_command(
                 &config,
@@ -3940,8 +3982,8 @@ mod tests {
     #[serial]
     async fn account_info() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
             let _account = create_associated_account(&config, &payer, token).await;
             let result = process_test_command(
@@ -3973,8 +4015,8 @@ mod tests {
     #[serial]
     async fn balance() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
             let _account = create_associated_account(&config, &payer, token).await;
             let result = process_test_command(
@@ -3993,8 +4035,8 @@ mod tests {
     #[serial]
     async fn mint() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
             let account = create_associated_account(&config, &payer, token).await;
             let result = process_test_command(
@@ -4021,8 +4063,8 @@ mod tests {
     #[serial]
     async fn balance_after_mint() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
             let account = create_associated_account(&config, &payer, token).await;
             let ui_amount = 100.0;
@@ -4042,13 +4084,13 @@ mod tests {
     #[serial]
     async fn balance_after_mint_with_owner() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
             let account = create_associated_account(&config, &payer, token).await;
             let ui_amount = 100.0;
             mint_tokens(&config, &payer, token, ui_amount, account).await;
-            let config = test_config_without_default_signer(&test_validator, &program_id);
+            let config = test_config_without_default_signer(&test_validator, program_id);
             let result = process_test_command(
                 &config,
                 &payer,
@@ -4071,8 +4113,8 @@ mod tests {
     #[serial]
     async fn accounts() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token1 = create_token(&config, &payer).await;
             let _account1 = create_associated_account(&config, &payer, token1).await;
             let token2 = create_token(&config, &payer).await;
@@ -4095,14 +4137,14 @@ mod tests {
     #[serial]
     async fn accounts_with_owner() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token1 = create_token(&config, &payer).await;
             let _account1 = create_associated_account(&config, &payer, token1).await;
             let token2 = create_token(&config, &payer).await;
             let _account2 = create_associated_account(&config, &payer, token2).await;
             let token3 = create_token(&config, &payer).await;
-            let config = test_config_without_default_signer(&test_validator, &program_id);
+            let config = test_config_without_default_signer(&test_validator, program_id);
             let result = process_test_command(
                 &config,
                 &payer,
@@ -4125,15 +4167,15 @@ mod tests {
     #[serial]
     async fn wrap() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let native_mint = *Token::new_native(
                 config.program_client.clone(),
-                &program_id,
+                program_id,
                 config.fee_payer().unwrap().clone(),
             )
             .get_address();
-            do_create_native_mint(&config, &program_id, &payer).await;
+            do_create_native_mint(&config, program_id, &payer).await;
             let _result = process_test_command(
                 &config,
                 &payer,
@@ -4158,9 +4200,9 @@ mod tests {
     #[serial]
     async fn unwrap() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
-            do_create_native_mint(&config, &program_id, &payer).await;
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+            do_create_native_mint(&config, program_id, &payer).await;
             let (signer, account) = new_throwaway_signer();
             let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(&payer)), signer];
             command_wrap(
@@ -4192,8 +4234,8 @@ mod tests {
     #[serial]
     async fn transfer() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
             let source = create_associated_account(&config, &payer, token).await;
             let destination = create_auxiliary_account(&config, &payer, token).await;
@@ -4226,8 +4268,8 @@ mod tests {
     #[serial]
     async fn transfer_fund_recipient() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
             let source = create_associated_account(&config, &payer, token).await;
             let recipient = Keypair::new().pubkey().to_string();
@@ -4257,29 +4299,156 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn failing_to_allow_non_system_account_recipient() {
+    async fn transfer_non_standard_recipient() {
         let (test_validator, payer) = new_validator_for_test().await;
-        let config = test_config_with_default_signer(&test_validator, &payer, &spl_token::id());
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            for other_program_id in VALID_TOKEN_PROGRAM_IDS
+                .iter()
+                .filter(|id| *id != program_id)
+            {
+                let mut config =
+                    test_config_with_default_signer(&test_validator, &payer, other_program_id);
+                let wrong_program_token = create_token(&config, &payer).await;
+                let wrong_program_account =
+                    create_associated_account(&config, &payer, wrong_program_token).await;
+                config.program_id = *program_id;
+                let config = config;
 
-        let token = create_token(&config, &payer).await;
-        let source = create_associated_account(&config, &payer, token).await;
-        let recipient = token.to_string();
-        let ui_amount = 100.0;
-        mint_tokens(&config, &payer, token, ui_amount, source).await;
-        let result = process_test_command(
-            &config,
-            &payer,
-            &[
-                "spl-token",
-                CommandName::Transfer.into(),
-                "--fund-recipient",
-                &token.to_string(),
-                "10",
-                &recipient,
-            ],
-        )
-        .await;
-        assert!(result.is_err());
+                let token = create_token(&config, &payer).await;
+                let source = create_associated_account(&config, &payer, token).await;
+                let recipient = Keypair::new().pubkey();
+                let recipient_token_account = get_associated_token_address_with_program_id(
+                    &recipient,
+                    &token,
+                    &config.program_id,
+                );
+                let system_token_account = get_associated_token_address_with_program_id(
+                    &system_program::id(),
+                    &token,
+                    &config.program_id,
+                );
+                let amount = 100;
+                mint_tokens(&config, &payer, token, amount as f64, source).await;
+
+                // transfer fails to unfunded recipient without flag
+                process_test_command(
+                    &config,
+                    &payer,
+                    &[
+                        "spl-token",
+                        CommandName::Transfer.into(),
+                        "--fund-recipient",
+                        &token.to_string(),
+                        "1",
+                        &recipient.to_string(),
+                    ],
+                )
+                .await
+                .unwrap_err();
+
+                // with unfunded flag, transfer goes through
+                process_test_command(
+                    &config,
+                    &payer,
+                    &[
+                        "spl-token",
+                        CommandName::Transfer.into(),
+                        "--fund-recipient",
+                        "--allow-unfunded-recipient",
+                        &token.to_string(),
+                        "1",
+                        &recipient.to_string(),
+                    ],
+                )
+                .await
+                .unwrap();
+                let account = config
+                    .rpc_client
+                    .get_account(&recipient_token_account)
+                    .await
+                    .unwrap();
+                let token_account =
+                    StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+                assert_eq!(token_account.base.amount, 1);
+
+                // transfer fails to non-system recipient without flag
+                process_test_command(
+                    &config,
+                    &payer,
+                    &[
+                        "spl-token",
+                        CommandName::Transfer.into(),
+                        "--fund-recipient",
+                        &token.to_string(),
+                        "1",
+                        &system_program::id().to_string(),
+                    ],
+                )
+                .await
+                .unwrap_err();
+
+                // with non-system flag, transfer goes through
+                process_test_command(
+                    &config,
+                    &payer,
+                    &[
+                        "spl-token",
+                        CommandName::Transfer.into(),
+                        "--fund-recipient",
+                        "--allow-non-system-account-recipient",
+                        &token.to_string(),
+                        "1",
+                        &system_program::id().to_string(),
+                    ],
+                )
+                .await
+                .unwrap();
+                let account = config
+                    .rpc_client
+                    .get_account(&system_token_account)
+                    .await
+                    .unwrap();
+                let token_account =
+                    StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+                assert_eq!(token_account.base.amount, 1);
+
+                // transfer to same-program non-account fails
+                process_test_command(
+                    &config,
+                    &payer,
+                    &[
+                        "spl-token",
+                        CommandName::Transfer.into(),
+                        "--fund-recipient",
+                        "--allow-non-system-account-recipient",
+                        "--allow-unfunded-recipient",
+                        &token.to_string(),
+                        "1",
+                        &token.to_string(),
+                    ],
+                )
+                .await
+                .unwrap_err();
+
+                // transfer to other-program account fails
+                process_test_command(
+                    &config,
+                    &payer,
+                    &[
+                        "spl-token",
+                        CommandName::Transfer.into(),
+                        "--fund-recipient",
+                        "--allow-non-system-account-recipient",
+                        "--allow-unfunded-recipient",
+                        &token.to_string(),
+                        "1",
+                        &wrong_program_account.to_string(),
+                    ],
+                )
+                .await
+                .unwrap_err();
+            }
+        }
     }
 
     #[tokio::test]
@@ -4290,7 +4459,7 @@ mod tests {
 
         let token = create_token(&config, &payer).await;
         let source = create_associated_account(&config, &payer, token).await;
-        let recipient = token.to_string();
+        let recipient = Keypair::new().pubkey().to_string();
         let ui_amount = 100.0;
         mint_tokens(&config, &payer, token, ui_amount, source).await;
         let result = process_test_command(
@@ -4323,19 +4492,19 @@ mod tests {
     #[serial]
     async fn close_wrapped_sol_account() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(&payer))];
 
             let native_mint = *Token::new_native(
                 config.program_client.clone(),
-                &program_id,
+                program_id,
                 config.fee_payer().unwrap().clone(),
             )
             .get_address();
             let token = create_token(&config, &payer).await;
             let source = create_associated_account(&config, &payer, token).await;
-            do_create_native_mint(&config, &program_id, &payer).await;
+            do_create_native_mint(&config, program_id, &payer).await;
             let ui_amount = 10.0;
             command_wrap(
                 &config,
@@ -4351,7 +4520,7 @@ mod tests {
             let recipient = get_associated_token_address_with_program_id(
                 &payer.pubkey(),
                 &native_mint,
-                &program_id,
+                program_id,
             );
             let result = process_test_command(
                 &config,
@@ -4382,8 +4551,8 @@ mod tests {
     #[serial]
     async fn disable_mint_authority() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
             let result = process_test_command(
                 &config,
@@ -4409,8 +4578,8 @@ mod tests {
     #[serial]
     async fn gc() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let mut config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let mut config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
             let _account = create_associated_account(&config, &payer, token).await;
             let _aux1 = create_auxiliary_account(&config, &payer, token).await;
@@ -4562,8 +4731,8 @@ mod tests {
     #[serial]
     async fn set_owner() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
             let aux = create_auxiliary_account(&config, &payer, token).await;
             let aux_string = aux.to_string();
@@ -4591,8 +4760,8 @@ mod tests {
     #[serial]
     async fn transfer_with_account_delegate() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
 
             let token = create_token(&config, &payer).await;
             let source = create_associated_account(&config, &payer, token).await;
@@ -4696,8 +4865,8 @@ mod tests {
     #[serial]
     async fn burn_with_account_delegate() {
         let (test_validator, payer) = new_validator_for_test().await;
-        for program_id in [spl_token::id(), spl_token_2022::id()] {
-            let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
 
             let token = create_token(&config, &payer).await;
             let source = create_associated_account(&config, &payer, token).await;
@@ -4833,7 +5002,11 @@ mod tests {
         let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
         let token = create_token(&config, &payer).await;
         let token_account = create_associated_account(&config, &payer, token).await;
-        let result = process_test_command(
+        let source_account = create_auxiliary_account(&config, &payer, token).await;
+        mint_tokens(&config, &payer, token, 100.0, source_account).await;
+
+        // enable works
+        process_test_command(
             &config,
             &payer,
             &[
@@ -4842,8 +5015,8 @@ mod tests {
                 &token_account.to_string(),
             ],
         )
-        .await;
-        result.unwrap();
+        .await
+        .unwrap();
         let extensions = StateWithExtensionsOwned::<Account>::unpack(
             config
                 .rpc_client
@@ -4856,7 +5029,47 @@ mod tests {
         let memo_transfer = extensions.get_extension::<MemoTransfer>().unwrap();
         let enabled: bool = memo_transfer.require_incoming_transfer_memos.into();
         assert!(enabled);
-        let result = process_test_command(
+
+        // transfer requires a memo
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Transfer.into(),
+                "--from",
+                &source_account.to_string(),
+                &token.to_string(),
+                "1",
+                &token_account.to_string(),
+            ],
+        )
+        .await
+        .unwrap_err();
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Transfer.into(),
+                "--from",
+                &source_account.to_string(),
+                // malicious compliance
+                "--with-memo",
+                "memo",
+                &token.to_string(),
+                "1",
+                &token_account.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+        let account_data = config.rpc_client.get_account(&token_account).await.unwrap();
+        let account_state = StateWithExtensionsOwned::<Account>::unpack(account_data.data).unwrap();
+        assert_eq!(account_state.base.amount, 1);
+
+        // disable works
+        process_test_command(
             &config,
             &payer,
             &[
@@ -4865,8 +5078,8 @@ mod tests {
                 &token_account.to_string(),
             ],
         )
-        .await;
-        result.unwrap();
+        .await
+        .unwrap();
         let extensions = StateWithExtensionsOwned::<Account>::unpack(
             config
                 .rpc_client
