@@ -1,26 +1,19 @@
-import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
+import NodeWallet from '@project-serum/anchor/dist/cjs/nodewallet';
 import { BN } from 'bn.js';
-import { AnchorProvider } from "@project-serum/anchor";
-import {
-  Connection,
-  Keypair,
-  TransactionInstruction,
-} from "@solana/web3.js";
-import { assert } from "chai";
-import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
-import * as crypto from "crypto";
+import { AnchorProvider } from '@project-serum/anchor';
+import { Connection, Keypair, PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { assert } from 'chai';
+import { bs58 } from '@project-serum/anchor/dist/cjs/utils/bytes';
+import * as crypto from 'crypto';
 
-import {
-  createTreeOnChain,
-  execute
-} from './utils';
+import { createTreeOnChain, execute } from './utils';
 import {
   buildTree,
   hash,
   getProofOfLeaf,
   updateTree,
   Tree,
-} from "./merkleTree";
+} from './merkleTree';
 import {
   createReplaceIx,
   createAppendIx,
@@ -28,61 +21,69 @@ import {
   createVerifyLeafIx,
   ConcurrentMerkleTreeAccount,
   createCloseEmptyTreeInstruction,
-} from "../src";
+} from '../src';
 
-describe("Account Compression", () => {
+describe('Account Compression', () => {
   // Configure the client to use the local cluster.
   let offChainTree: Tree;
   let cmtKeypair: Keypair;
-  let payer: Keypair;
+  let cmt: PublicKey;
+  let payerKeypair: Keypair;
+  let payer: PublicKey;
   let connection: Connection;
   let provider: AnchorProvider;
 
   const MAX_SIZE = 64;
   const MAX_DEPTH = 14;
 
-
   beforeEach(async () => {
-    payer = Keypair.generate();
-    connection = new Connection("http://localhost:8899", {
-      commitment: "confirmed",
+    payerKeypair = Keypair.generate();
+    payer = payerKeypair.publicKey;
+    connection = new Connection('http://localhost:8899', {
+      commitment: 'confirmed',
     });
-    const wallet = new NodeWallet(payer);
+    const wallet = new NodeWallet(payerKeypair);
     provider = new AnchorProvider(connection, wallet, {
       commitment: connection.commitment,
       skipPreflight: true,
     });
 
     await provider.connection.confirmTransaction(
-      await provider.connection.requestAirdrop(payer.publicKey, 1e10),
-      "confirmed"
+      await provider.connection.requestAirdrop(payer, 1e10),
+      'confirmed'
     );
   });
 
-  describe("Having created a tree with a single leaf", () => {
+  describe('Having created a tree with a single leaf', () => {
     beforeEach(async () => {
-      [cmtKeypair, offChainTree] = await createTreeOnChain(provider, payer, 1, MAX_DEPTH, MAX_SIZE);
-    });
-    it("Append single leaf", async () => {
-      const newLeaf = crypto.randomBytes(32);
-      const appendIx = createAppendIx(
-        newLeaf,
-        payer,
-        cmtKeypair.publicKey
+      [cmtKeypair, offChainTree] = await createTreeOnChain(
+        provider,
+        payerKeypair,
+        1,
+        MAX_DEPTH,
+        MAX_SIZE
       );
+      cmt = cmtKeypair.publicKey;
+    });
+    it('Append single leaf', async () => {
+      const newLeaf = crypto.randomBytes(32);
+      const appendIx = createAppendIx(cmt, payer, newLeaf);
 
-      await execute(provider, [appendIx], [payer])
+      await execute(provider, [appendIx], [payerKeypair]);
       updateTree(offChainTree, newLeaf, 1);
 
-      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
+        connection,
+        cmt,
+      );
       const onChainRoot = splCMT.getCurrentRoot();
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
-        "Updated on chain root matches root of updated off chain tree"
+        'Updated on chain root matches root of updated off chain tree'
       );
     });
-    it("Verify proof works for that leaf", async () => {
+    it('Verify proof works for that leaf', async () => {
       const previousLeaf = offChainTree.leaves[0].node;
       const newLeaf = crypto.randomBytes(32);
       const index = 0;
@@ -91,34 +92,37 @@ describe("Account Compression", () => {
       });
 
       const verifyLeafIx = createVerifyLeafIx(
-        cmtKeypair.publicKey,
+        cmt,
         offChainTree.root,
         previousLeaf,
         index,
         proof
       );
       const replaceLeafIx = createReplaceIx(
+        cmt,
         payer,
-        cmtKeypair.publicKey,
         offChainTree.root,
         previousLeaf,
         newLeaf,
         index,
         proof
       );
-      await execute(provider, [verifyLeafIx, replaceLeafIx], [payer]);
+      await execute(provider, [verifyLeafIx, replaceLeafIx], [payerKeypair]);
 
       updateTree(offChainTree, newLeaf, index);
 
-      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
+        connection,
+        cmt,
+      );
       const onChainRoot = splCMT.getCurrentRoot();
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
-        "Updated on chain root matches root of updated off chain tree"
-      )
+        'Updated on chain root matches root of updated off chain tree'
+      );
     });
-    it("Verify leaf fails when proof fails", async () => {
+    it('Verify leaf fails when proof fails', async () => {
       const previousLeaf = offChainTree.leaves[0].node;
       const newLeaf = crypto.randomBytes(32);
       const index = 0;
@@ -129,21 +133,21 @@ describe("Account Compression", () => {
 
       // Verify proof is invalid
       const verifyLeafIx = createVerifyLeafIx(
-        cmtKeypair.publicKey,
+        cmt,
         offChainTree.root,
         previousLeaf,
         index,
         proof
       );
       try {
-        await execute(provider, [verifyLeafIx], [payer]);
-        assert(false, "Proof should have failed to verify");
+        await execute(provider, [verifyLeafIx], [payerKeypair]);
+        assert(false, 'Proof should have failed to verify');
       } catch { }
 
       // Replace instruction with same proof fails
       const replaceLeafIx = createReplaceIx(
+        cmt,
         payer,
-        cmtKeypair.publicKey,
         offChainTree.root,
         previousLeaf,
         newLeaf,
@@ -151,26 +155,29 @@ describe("Account Compression", () => {
         proof
       );
       try {
-        await execute(provider, [replaceLeafIx], [payer]);
-        assert(false, "Replace should have failed to verify");
+        await execute(provider, [replaceLeafIx], [payerKeypair]);
+        assert(false, 'Replace should have failed to verify');
       } catch { }
 
-      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
+        connection,
+        cmtKeypair.publicKey
+      );
       const onChainRoot = splCMT.getCurrentRoot();
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
-        "Updated on chain root matches root of updated off chain tree"
+        'Updated on chain root matches root of updated off chain tree'
       );
     });
-    it("Replace that leaf", async () => {
+    it('Replace that leaf', async () => {
       const previousLeaf = offChainTree.leaves[0].node;
       const newLeaf = crypto.randomBytes(32);
       const index = 0;
 
       const replaceLeafIx = createReplaceIx(
+        cmt,
         payer,
-        cmtKeypair.publicKey,
         offChainTree.root,
         previousLeaf,
         newLeaf,
@@ -184,27 +191,30 @@ describe("Account Compression", () => {
         `Failed to create proof for ${MAX_DEPTH}`
       );
 
-      await execute(provider, [replaceLeafIx], [payer]);
+      await execute(provider, [replaceLeafIx], [payerKeypair]);
 
       updateTree(offChainTree, newLeaf, index);
 
-      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
+        connection,
+        cmt,
+      );
       const onChainRoot = splCMT.getCurrentRoot();
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
-        "Updated on chain root matches root of updated off chain tree"
+        'Updated on chain root matches root of updated off chain tree'
       );
     });
 
-    it("Replace that leaf with a minimal proof", async () => {
+    it('Replace that leaf with a minimal proof', async () => {
       const previousLeaf = offChainTree.leaves[0].node;
       const newLeaf = crypto.randomBytes(32);
       const index = 0;
 
       const replaceLeafIx = createReplaceIx(
+        cmt,
         payer,
-        cmtKeypair.publicKey,
         offChainTree.root,
         previousLeaf,
         newLeaf,
@@ -215,42 +225,48 @@ describe("Account Compression", () => {
       );
       assert(
         replaceLeafIx.keys.length == 3 + 1,
-        "Failed to minimize proof to expected size of 1"
+        'Failed to minimize proof to expected size of 1'
       );
-      await execute(provider, [replaceLeafIx], [payer]);
+      await execute(provider, [replaceLeafIx], [payerKeypair]);
 
       updateTree(offChainTree, newLeaf, index);
 
-      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
+        connection,
+        cmtKeypair.publicKey
+      );
       const onChainRoot = splCMT.getCurrentRoot();
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
-        "Updated on chain root matches root of updated off chain tree"
+        'Updated on chain root matches root of updated off chain tree'
       );
     });
   });
 
-  describe("Examples transferring authority", () => {
-    const authority = Keypair.generate();
-    const randomSigner = Keypair.generate();
+  describe('Examples transferring authority', () => {
+    const authorityKeypair = Keypair.generate();
+    const authority = authorityKeypair.publicKey;
+    const randomSignerKeypair = Keypair.generate();
+    const randomSigner = randomSignerKeypair.publicKey;
 
     beforeEach(async () => {
       await provider.connection.confirmTransaction(
         await (connection as Connection).requestAirdrop(
-          authority.publicKey,
+          authority,
           1e10
         )
       );
       [cmtKeypair, offChainTree] = await createTreeOnChain(
         provider,
-        authority,
+        authorityKeypair,
         1,
         MAX_DEPTH,
         MAX_SIZE
       );
+      cmt = cmtKeypair.publicKey;
     });
-    it("Attempting to replace with random authority fails", async () => {
+    it('Attempting to replace with random authority fails', async () => {
       const newLeaf = crypto.randomBytes(32);
       const replaceIndex = 0;
       const proof = getProofOfLeaf(offChainTree, replaceIndex);
@@ -267,26 +283,29 @@ describe("Account Compression", () => {
       );
 
       try {
-        await execute(provider, [replaceIx], [randomSigner]);
+        await execute(provider, [replaceIx], [randomSignerKeypair]);
         assert(
           false,
-          "Transaction should have failed since incorrect authority cannot execute replaces"
+          'Transaction should have failed since incorrect authority cannot execute replaces'
         );
       } catch { }
     });
-    it("Can transfer authority", async () => {
+    it('Can transfer authority', async () => {
       const transferAuthorityIx = createTransferAuthorityIx(
+        cmt,
         authority,
-        cmtKeypair.publicKey,
-        randomSigner.publicKey
+        randomSigner,
       );
-      await execute(provider, [transferAuthorityIx], [authority]);
+      await execute(provider, [transferAuthorityIx], [authorityKeypair]);
 
-      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
+        connection,
+        cmtKeypair.publicKey
+      );
 
       assert(
-        splCMT.getAuthority().equals(randomSigner.publicKey),
-        `Upon transfering authority, authority should be ${randomSigner.publicKey.toString()}, but was instead updated to ${splCMT.getAuthority()}`
+        splCMT.getAuthority().equals(randomSigner),
+        `Upon transfering authority, authority should be ${randomSigner.toString()}, but was instead updated to ${splCMT.getAuthority()}`
       );
 
       // Attempting to replace with new authority now works
@@ -305,7 +324,7 @@ describe("Account Compression", () => {
         })
       );
 
-      await execute(provider, [replaceIx], [randomSigner]);
+      await execute(provider, [replaceIx], [randomSignerKeypair]);
     });
   });
 
@@ -313,11 +332,12 @@ describe("Account Compression", () => {
     beforeEach(async () => {
       [cmtKeypair, offChainTree] = await createTreeOnChain(
         provider,
-        payer,
+        payerKeypair,
         MAX_SIZE,
         MAX_DEPTH,
-        MAX_SIZE,
+        MAX_SIZE
       );
+      cmt = cmtKeypair.publicKey;
     });
     it(`Replace all of them in a block`, async () => {
       // Replace 64 leaves before syncing off-chain tree with on-chain tree
@@ -329,7 +349,7 @@ describe("Account Compression", () => {
       for (let i = 0; i < MAX_SIZE; i++) {
         const index = i;
         const newLeaf = hash(
-          payer.publicKey.toBuffer(),
+          payer.toBuffer(),
           Buffer.from(new BN(i).toArray())
         );
         leavesToUpdate.push(newLeaf);
@@ -348,11 +368,9 @@ describe("Account Compression", () => {
         ixArray.push(replaceIx);
       }
 
-      // Execute all replaces 
+      // Execute all replaces
       ixArray.map((ix) => {
-        txList.push(
-          execute(provider, [ix], [payer])
-        );
+        txList.push(execute(provider, [ix], [payerKeypair]));
       });
       await Promise.all(txList);
 
@@ -361,22 +379,25 @@ describe("Account Compression", () => {
       });
 
       // Compare on-chain & off-chain roots
-      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
+        connection,
+        cmtKeypair.publicKey
+      );
       const onChainRoot = splCMT.getCurrentRoot();
 
       assert(
         Buffer.from(onChainRoot).equals(offChainTree.root),
-        "Updated on chain root does not match root of updated off chain tree"
+        'Updated on chain root does not match root of updated off chain tree'
       );
     });
-    it("Empty all of the leaves and close the tree", async () => {
+    it('Empty all of the leaves and close the tree', async () => {
       let ixArray: TransactionInstruction[] = [];
       let txList: Promise<string>[] = [];
       const leavesToUpdate: Buffer[] = [];
       for (let i = 0; i < MAX_SIZE; i++) {
         const index = i;
         const newLeaf = hash(
-          payer.publicKey.toBuffer(),
+          payer.toBuffer(),
           Buffer.from(new BN(i).toArray())
         );
         leavesToUpdate.push(newLeaf);
@@ -394,45 +415,64 @@ describe("Account Compression", () => {
         );
         ixArray.push(replaceIx);
       }
-      // Execute all replaces 
+      // Execute all replaces
       ixArray.map((ix) => {
-        txList.push(
-          execute(provider, [ix], [payer])
-        );
+        txList.push(execute(provider, [ix], [payerKeypair]));
       });
       await Promise.all(txList);
 
-      let payerInfo = await provider.connection.getAccountInfo(payer.publicKey, "confirmed")!;
-      let treeInfo = await provider.connection.getAccountInfo(cmtKeypair.publicKey, "confirmed")!;
+      let payerInfo = await provider.connection.getAccountInfo(
+        payer,
+        'confirmed'
+      )!;
+      let treeInfo = await provider.connection.getAccountInfo(
+        cmtKeypair.publicKey,
+        'confirmed'
+      )!;
 
       let payerLamports = payerInfo!.lamports;
       let treeLamports = treeInfo!.lamports;
 
       const ix = createCloseEmptyTreeInstruction({
-        merkleTree: cmtKeypair.publicKey,
-        authority: payer.publicKey,
-        recipient: payer.publicKey,
-      })
-      await execute(provider, [ix], [payer]);
+        merkleTree: cmt,
+        authority: payer,
+        recipient: payer,
+      });
+      await execute(provider, [ix], [payerKeypair]);
 
-      payerInfo = await provider.connection.getAccountInfo(payer.publicKey, "confirmed")!;
+      payerInfo = await provider.connection.getAccountInfo(
+        payer,
+        'confirmed'
+      )!;
       const finalLamports = payerInfo!.lamports;
-      assert(finalLamports === (payerLamports + treeLamports - 5000), "Expected payer to have received the lamports from the closed tree account");
+      assert(
+        finalLamports === payerLamports + treeLamports - 5000,
+        'Expected payer to have received the lamports from the closed tree account'
+      );
 
-      treeInfo = await provider.connection.getAccountInfo(cmtKeypair.publicKey, "confirmed");
-      assert(treeInfo === null, "Expected the merkle tree account info to be null");
-    })
-    it("It cannot be closed until empty", async () => {
+      treeInfo = await provider.connection.getAccountInfo(
+        cmtKeypair.publicKey,
+        'confirmed'
+      );
+      assert(
+        treeInfo === null,
+        'Expected the merkle tree account info to be null'
+      );
+    });
+    it('It cannot be closed until empty', async () => {
       const ix = createCloseEmptyTreeInstruction({
-        merkleTree: cmtKeypair.publicKey,
-        authority: payer.publicKey,
-        recipient: payer.publicKey,
-      })
+        merkleTree: cmt,
+        authority: payer,
+        recipient: payer,
+      });
       try {
-        await execute(provider, [ix], [payer]);
-        assert(false, "Closing a tree account before it is empty should ALWAYS error")
+        await execute(provider, [ix], [payerKeypair]);
+        assert(
+          false,
+          'Closing a tree account before it is empty should ALWAYS error'
+        );
       } catch (e) { }
-    })
+    });
   });
 
   describe(`Having created a tree with depth 3`, () => {
@@ -440,36 +480,33 @@ describe("Account Compression", () => {
     beforeEach(async () => {
       [cmtKeypair, offChainTree] = await createTreeOnChain(
         provider,
-        payer,
+        payerKeypair,
         0,
         DEPTH,
         2 ** DEPTH
       );
+      cmt = cmtKeypair.publicKey;
 
       for (let i = 0; i < 2 ** DEPTH; i++) {
         const newLeaf = Array.from(Buffer.alloc(32, i + 1));
-        const appendIx = createAppendIx(
-          newLeaf,
-          payer,
-          cmtKeypair.publicKey
-        );
-        await execute(provider, [appendIx], [payer]);
+        const appendIx = createAppendIx(cmt, payer, newLeaf);
+        await execute(provider, [appendIx], [payerKeypair]);
       }
 
       // Compare on-chain & off-chain roots
-      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
+        connection,
+        cmt,
+      );
 
       assert(
         splCMT.getBufferSize() === 2 ** DEPTH,
-        "Not all changes were processed"
+        'Not all changes were processed'
       );
-      assert(
-        splCMT.getActiveIndex() === 0,
-        "Not all changes were processed"
-      );
+      assert(splCMT.getActiveIndex() === 0, 'Not all changes were processed');
     });
 
-    it("Random attacker fails to fake the existence of a leaf by autocompleting proof", async () => {
+    it('Random attacker fails to fake the existence of a leaf by autocompleting proof', async () => {
       const maliciousLeafHash = crypto.randomBytes(32);
       const maliciousLeafHash1 = crypto.randomBytes(32);
       const nodeProof: Buffer[] = [];
@@ -489,22 +526,25 @@ describe("Account Compression", () => {
       );
 
       try {
-        await execute(provider, [replaceIx], [payer]);
+        await execute(provider, [replaceIx], [payerKeypair]);
         assert(
           false,
-          "Attacker was able to succesfully write fake existence of a leaf"
+          'Attacker was able to succesfully write fake existence of a leaf'
         );
       } catch (e) { }
 
-      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
+        connection,
+        cmtKeypair.publicKey
+      );
 
       assert(
         splCMT.getActiveIndex() === 0,
         "CMT updated its active index after attacker's transaction, when it shouldn't have done anything"
       );
     });
-    it("Random attacker fails to fake the existence of a leaf by autocompleting proof", async () => {
-      // As an attacker, we want to set `maliciousLeafHash1` by 
+    it('Random attacker fails to fake the existence of a leaf by autocompleting proof', async () => {
+      // As an attacker, we want to set `maliciousLeafHash1` by
       // providing `maliciousLeafHash` and `nodeProof` which hash to the current merkle tree root.
       // If we can do this, then we can set leaves to arbitrary values.
       const maliciousLeafHash = crypto.randomBytes(32);
@@ -526,14 +566,17 @@ describe("Account Compression", () => {
       );
 
       try {
-        await execute(provider, [replaceIx], [payer]);
+        await execute(provider, [replaceIx], [payerKeypair]);
         assert(
           false,
-          "Attacker was able to succesfully write fake existence of a leaf"
+          'Attacker was able to succesfully write fake existence of a leaf'
         );
       } catch (e) { }
 
-      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(provider.connection, cmtKeypair.publicKey);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
+        provider.connection,
+        cmtKeypair.publicKey
+      );
 
       assert(
         splCMT.getActiveIndex() === 0,
@@ -543,15 +586,16 @@ describe("Account Compression", () => {
   });
   describe(`Canopy test`, () => {
     const DEPTH = 5;
-    it("Testing canopy for appends and replaces on a full on chain tree", async () => {
+    it('Testing canopy for appends and replaces on a full on chain tree', async () => {
       [cmtKeypair, offChainTree] = await createTreeOnChain(
         provider,
-        payer,
+        payerKeypair,
         0,
         DEPTH,
         8,
         DEPTH // Store full tree on chain
       );
+      cmt = cmtKeypair.publicKey;
 
       // Test that the canopy updates properly throughout multiple modifying instructions
       // in the same transaction
@@ -563,21 +607,20 @@ describe("Account Compression", () => {
         for (let j = 0; j < stepSize; ++j) {
           const newLeaf = Array.from(Buffer.alloc(32, i + 1));
           leaves.push(newLeaf);
-          const appendIx = createAppendIx(
-            newLeaf,
-            payer,
-            cmtKeypair.publicKey
-          );
+          const appendIx = createAppendIx(cmt, payer, newLeaf);
           ixs.push(appendIx);
         }
-        await execute(provider, ixs, [payer]);
+        await execute(provider, ixs, [payerKeypair]);
         i += stepSize;
-        console.log("Appended", i, "leaves");
+        console.log('Appended', i, 'leaves');
       }
 
       // Compare on-chain & off-chain roots
       let ixs: TransactionInstruction[] = [];
-      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmtKeypair.publicKey);
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
+        connection,
+        cmtKeypair.publicKey
+      );
       const root = splCMT.getCurrentRoot();
 
       // Test that the entire state of the tree is stored properly
@@ -603,50 +646,58 @@ describe("Account Compression", () => {
         ixs.push(replaceIx);
         if (ixs.length == stepSize) {
           replaces++;
-          await execute(provider, ixs, [payer]);
-          console.log("Replaced", replaces * stepSize, "leaves");
+          await execute(provider, ixs, [payerKeypair]);
+          console.log('Replaced', replaces * stepSize, 'leaves');
           ixs = [];
         }
       }
 
-      let newLeafList: Buffer[] = []
+      let newLeafList: Buffer[] = [];
       for (let i = 0; i < 32; ++i) {
-        newLeafList.push(newLeaves[i])
+        newLeafList.push(newLeaves[i]);
       }
 
       let tree = buildTree(newLeafList);
 
       for (let proofSize = 1; proofSize <= 5; ++proofSize) {
         const newLeaf = crypto.randomBytes(32);
-        let i = Math.floor(Math.random() * 32)
+        let i = Math.floor(Math.random() * 32);
         const leaf = newLeaves[i];
 
-        let partialProof = getProofOfLeaf(tree, i).slice(0, proofSize).map((n) => n.node)
-        console.log(`Replacing node ${i}, proof length = ${proofSize}`)
+        let partialProof = getProofOfLeaf(tree, i)
+          .slice(0, proofSize)
+          .map((n) => n.node);
+        console.log(`Replacing node ${i}, proof length = ${proofSize}`);
         for (const [level, node] of Object.entries(partialProof)) {
-          console.log(` ${level}: ${bs58.encode(node)}`)
+          console.log(` ${level}: ${bs58.encode(node)}`);
         }
         const replaceIx = createReplaceIx(
-          payer,
           cmtKeypair.publicKey,
+          payer,
           root,
           newLeaves[i],
           newLeaf,
           i,
-          partialProof,
+          partialProof
         );
         updateTree(tree, newLeaf, i);
         const replaceBackIx = createReplaceIx(
-          payer,
           cmtKeypair.publicKey,
+          payer,
           tree.root,
           newLeaf,
           newLeaves[i],
           i,
-          partialProof,
+          partialProof
         );
         updateTree(tree, leaf, i);
-        await execute(provider, [replaceIx, replaceBackIx], [payer], true, true);
+        await execute(
+          provider,
+          [replaceIx, replaceBackIx],
+          [payerKeypair],
+          true,
+          true
+        );
       }
     });
   });
@@ -654,28 +705,29 @@ describe("Account Compression", () => {
     beforeEach(async () => {
       [cmtKeypair, offChainTree] = await createTreeOnChain(
         provider,
-        payer,
+        payerKeypair,
         1 << 3,
         3,
-        8,
+        8
       );
+      cmt = cmtKeypair.publicKey;
     });
     it(`Attempt to replace a leaf beyond the tree's capacity`, async () => {
       // Ensure that this fails
       let outOfBoundsIndex = 8;
       const index = outOfBoundsIndex;
       const newLeaf = hash(
-        payer.publicKey.toBuffer(),
+        payer.toBuffer(),
         Buffer.from(new BN(outOfBoundsIndex).toArray())
       );
       let proof;
       let node;
-      node = offChainTree.leaves[outOfBoundsIndex - 1].node
+      node = offChainTree.leaves[outOfBoundsIndex - 1].node;
       proof = getProofOfLeaf(offChainTree, index - 1);
 
       const replaceIx = createReplaceIx(
         payer,
-        cmtKeypair.publicKey,
+        cmt,
         offChainTree.root,
         node,
         newLeaf,
@@ -686,8 +738,10 @@ describe("Account Compression", () => {
       );
 
       try {
-        await execute(provider, [replaceIx], [payer]);
-        throw Error("This replace instruction should have failed because the leaf index is OOB");
+        await execute(provider, [replaceIx], [payerKeypair]);
+        throw Error(
+          'This replace instruction should have failed because the leaf index is OOB'
+        );
       } catch (_e) { }
     });
   });
