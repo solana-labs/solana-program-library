@@ -1924,20 +1924,15 @@ fn app<'a, 'b>(
         .about(crate_description!())
         .version(crate_version!())
         .setting(AppSettings::SubcommandRequiredElseHelp)
-        .arg({
-            let arg = Arg::with_name("config_file")
+        .arg(
+            Arg::with_name("config_file")
                 .short("C")
                 .long("config")
                 .value_name("PATH")
                 .takes_value(true)
                 .global(true)
-                .help("Configuration file to use");
-            if let Some(ref config_file) = *CONFIG_FILE {
-                arg.default_value(config_file)
-            } else {
-                arg
-            }
-        })
+                .help("Configuration file to use")
+        )
         .arg(
             Arg::with_name("verbose")
                 .short("v")
