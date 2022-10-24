@@ -31,14 +31,12 @@ use {
 
 // set up a bank and bank client with spl token 2022 and the instruction padder
 // also creates a token with no extensions and inits two token accounts
-async fn make_context() -> (TestContext, Pubkey) {
+async fn make_context() -> TestContext {
     // TODO this may be removed when we upgrade to a solana version with a fixed `get_stack_height()` stub
     if std::env::var("BPF_OUT_DIR").is_err() && std::env::var("SBF_OUT_DIR").is_err() {
         panic!("CpiGuard tests MUST be invoked with `cargo test-sbf`, NOT `cargo test --feature test-sbf`. \
                 In a non-BPF context, `get_stack_height()` always returns 0, and all tests WILL fail.");
     }
-
-    let instruction_padding_id = Keypair::new().pubkey();
 
     let mut program_test = ProgramTest::new(
         "spl_token_2022",
@@ -48,7 +46,7 @@ async fn make_context() -> (TestContext, Pubkey) {
 
     program_test.add_program(
         "spl_instruction_padding",
-        instruction_padding_id,
+        spl_instruction_padding::id(),
         processor!(spl_instruction_padding::processor::process),
     );
 
@@ -79,7 +77,7 @@ async fn make_context() -> (TestContext, Pubkey) {
         .await
         .unwrap();
 
-    (test_context, instruction_padding_id)
+    test_context
 }
 
 fn client_error(token_error: TokenError) -> TokenClientError {
@@ -90,7 +88,7 @@ fn client_error(token_error: TokenError) -> TokenClientError {
 
 #[tokio::test]
 async fn test_cpi_guard_enable_disable() {
-    let (context, instruction_padding_id) = make_context().await;
+    let context = make_context().await;
     let TokenContext {
         token, alice, bob, ..
     } = context.token_context.unwrap();
@@ -110,7 +108,7 @@ async fn test_cpi_guard_enable_disable() {
     let error = token
         .process_ixs(
             &[wrap_instruction(
-                instruction_padding_id,
+                spl_instruction_padding::id(),
                 cpi_guard::instruction::disable_cpi_guard(
                     &spl_token_2022::id(),
                     &alice.pubkey(),
@@ -148,7 +146,7 @@ async fn test_cpi_guard_enable_disable() {
     let error = token
         .process_ixs(
             &[wrap_instruction(
-                instruction_padding_id,
+                spl_instruction_padding::id(),
                 cpi_guard::instruction::enable_cpi_guard(
                     &spl_token_2022::id(),
                     &alice.pubkey(),
@@ -194,7 +192,7 @@ async fn test_cpi_guard_enable_disable() {
 
 #[tokio::test]
 async fn test_cpi_guard_transfer() {
-    let (context, instruction_padding_id) = make_context().await;
+    let context = make_context().await;
     let TokenContext {
         token,
         token_unchecked,
@@ -206,7 +204,7 @@ async fn test_cpi_guard_transfer() {
 
     let mk_transfer = |authority, do_checked| {
         wrap_instruction(
-            instruction_padding_id,
+            spl_instruction_padding::id(),
             if do_checked {
                 instruction::transfer_checked(
                     &spl_token_2022::id(),
@@ -321,7 +319,7 @@ async fn test_cpi_guard_transfer() {
 
 #[tokio::test]
 async fn test_cpi_guard_burn() {
-    let (context, instruction_padding_id) = make_context().await;
+    let context = make_context().await;
     let TokenContext {
         token,
         token_unchecked,
@@ -333,7 +331,7 @@ async fn test_cpi_guard_burn() {
 
     let mk_burn = |authority, do_checked| {
         wrap_instruction(
-            instruction_padding_id,
+            spl_instruction_padding::id(),
             if do_checked {
                 instruction::burn_checked(
                     &spl_token_2022::id(),
@@ -440,7 +438,7 @@ async fn test_cpi_guard_burn() {
 
 #[tokio::test]
 async fn test_cpi_guard_approve() {
-    let (context, instruction_padding_id) = make_context().await;
+    let context = make_context().await;
     let TokenContext {
         token,
         token_unchecked,
@@ -451,7 +449,7 @@ async fn test_cpi_guard_approve() {
 
     let mk_approve = |do_checked| {
         wrap_instruction(
-            instruction_padding_id,
+            spl_instruction_padding::id(),
             if do_checked {
                 instruction::approve_checked(
                     &spl_token_2022::id(),
@@ -569,14 +567,14 @@ async fn make_close_test_account<S: Signer>(
 
 #[tokio::test]
 async fn test_cpi_guard_close_account() {
-    let (context, instruction_padding_id) = make_context().await;
+    let context = make_context().await;
     let TokenContext {
         token, alice, bob, ..
     } = context.token_context.unwrap();
 
     let mk_close = |account, destination, authority| {
         wrap_instruction(
-            instruction_padding_id,
+            spl_instruction_padding::id(),
             instruction::close_account(
                 &spl_token_2022::id(),
                 &account,
@@ -654,7 +652,7 @@ enum SetAuthTest {
 
 #[tokio::test]
 async fn test_cpi_guard_set_authority() {
-    let (context, instruction_padding_id) = make_context().await;
+    let context = make_context().await;
     let TokenContext {
         token, alice, bob, ..
     } = context.token_context.unwrap();
@@ -736,7 +734,7 @@ async fn test_cpi_guard_set_authority() {
 
         // this wraps it or doesnt based on the test case
         let instruction = if do_in_cpi {
-            wrap_instruction(instruction_padding_id, token_instruction, vec![], 0).unwrap()
+            wrap_instruction(spl_instruction_padding::id(), token_instruction, vec![], 0).unwrap()
         } else {
             token_instruction
         };

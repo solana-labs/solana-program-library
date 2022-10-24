@@ -860,12 +860,6 @@ impl Processor {
                     }
                 }
                 _ => {
-                    if let Ok(cpi_guard) = source_account.get_extension::<CpiGuard>() {
-                        if cpi_guard.lock_cpi.into() && in_cpi() {
-                            return Err(TokenError::CpiGuardBurnBlocked.into());
-                        }
-                    }
-
                     Self::validate_owner(
                         program_id,
                         &source_account.base.owner,
@@ -873,6 +867,12 @@ impl Processor {
                         authority_info_data_len,
                         account_info_iter.as_slice(),
                     )?;
+
+                    if let Ok(cpi_guard) = source_account.get_extension::<CpiGuard>() {
+                        if cpi_guard.lock_cpi.into() && in_cpi() {
+                            return Err(TokenError::CpiGuardBurnBlocked.into());
+                        }
+                    }
                 }
             }
         }
