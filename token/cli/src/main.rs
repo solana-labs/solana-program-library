@@ -21,7 +21,6 @@ use solana_clap_utils::{
     offline::{self, *},
     ArgConstant,
 };
-use solana_cli_config::CONFIG_FILE;
 use solana_cli_output::{
     return_signers_data, CliSignOnlyData, CliSignature, OutputFormat, QuietDisplay,
     ReturnSignersConfig, VerboseDisplay,
@@ -1931,7 +1930,7 @@ fn app<'a, 'b>(
                 .value_name("PATH")
                 .takes_value(true)
                 .global(true)
-                .help("Configuration file to use")
+                .help("Configuration file to use"),
         )
         .arg(
             Arg::with_name("verbose")
