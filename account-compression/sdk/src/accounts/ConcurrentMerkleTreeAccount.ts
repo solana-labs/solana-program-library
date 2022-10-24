@@ -76,10 +76,10 @@ export class ConcurrentMerkleTreeAccount {
   }
 
   getCurrentRoot(): Buffer {
-    return this.tree.changeLogs[this.getActiveIndex()].root.toBuffer();
+    return this.tree.changeLogs[this.getCurrentBufferIndex()].root.toBuffer();
   }
 
-  getActiveIndex(): number {
+  getCurrentBufferIndex(): number {
     return new BN.BN(this.tree.activeIndex).toNumber();
   }
 

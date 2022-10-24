@@ -503,7 +503,7 @@ describe('Account Compression', () => {
         splCMT.getBufferSize() === 2 ** DEPTH,
         'Not all changes were processed'
       );
-      assert(splCMT.getActiveIndex() === 0, 'Not all changes were processed');
+      assert(splCMT.getCurrentBufferIndex() === 0, 'Not all changes were processed');
     });
 
     it('Random attacker fails to fake the existence of a leaf by autocompleting proof', async () => {
@@ -539,7 +539,7 @@ describe('Account Compression', () => {
       );
 
       assert(
-        splCMT.getActiveIndex() === 0,
+        splCMT.getCurrentBufferIndex() === 0,
         "CMT updated its active index after attacker's transaction, when it shouldn't have done anything"
       );
     });
@@ -579,7 +579,7 @@ describe('Account Compression', () => {
       );
 
       assert(
-        splCMT.getActiveIndex() === 0,
+        splCMT.getCurrentBufferIndex() === 0,
         "CMT updated its active index after attacker's transaction, when it shouldn't have done anything"
       );
     });
