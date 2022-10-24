@@ -256,9 +256,12 @@ pub fn assert_is_valid_account_of_types<T: BorshDeserialize + PartialEq, F: Fn(&
     Ok(())
 }
 
-/// Disposes account by transferring its lamports to the beneficiary account and zeros its data
+/// Disposes account by transferring its lamports to the beneficiary account, resizing data to 0 and changing program owner to SystemProgram
 // After transaction completes the runtime would remove the account with no lamports
-pub fn dispose_account(account_info: &AccountInfo, beneficiary_info: &AccountInfo) {
+pub fn dispose_account(
+    account_info: &AccountInfo,
+    beneficiary_info: &AccountInfo,
+) -> Result<(), ProgramError> {
     let account_lamports = account_info.lamports();
     **account_info.lamports.borrow_mut() = 0;
 
@@ -267,7 +270,6 @@ pub fn dispose_account(account_info: &AccountInfo, beneficiary_info: &AccountInf
         .checked_add(account_lamports)
         .unwrap();
 
-    let mut account_data = account_info.data.borrow_mut();
-
-    account_data.fill(0);
+    account_info.assign(&system_program::id());
+    account_info.realloc(0, false)
 }

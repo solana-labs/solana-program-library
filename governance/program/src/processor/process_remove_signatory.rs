@@ -50,7 +50,7 @@ pub fn process_remove_signatory(
 
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
-    dispose_account(signatory_record_info, beneficiary_info);
+    dispose_account(signatory_record_info, beneficiary_info)?;
 
     Ok(())
 }
