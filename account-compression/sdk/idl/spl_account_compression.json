@@ -1,5 +1,5 @@
 {
-  "version": "0.1.3",
+  "version": "0.1.4",
   "name": "spl_account_compression",
   "instructions": [
     {
@@ -34,12 +34,11 @@
           ]
         },
         {
-          "name": "logWrapper",
+          "name": "noop",
           "isMut": false,
           "isSigner": false,
           "docs": [
-            "Program used to emit changelogs as instruction data.",
-            "See `WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh`"
+            "Program used to emit changelogs as cpi instruction data."
           ]
         }
       ],
@@ -86,12 +85,11 @@
           ]
         },
         {
-          "name": "logWrapper",
+          "name": "noop",
           "isMut": false,
           "isSigner": false,
           "docs": [
-            "Program used to emit changelogs as instruction data.",
-            "See `WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh`"
+            "Program used to emit changelogs as cpi instruction data."
           ]
         }
       ],
@@ -222,12 +220,11 @@
           ]
         },
         {
-          "name": "logWrapper",
+          "name": "noop",
           "isMut": false,
           "isSigner": false,
           "docs": [
-            "Program used to emit changelogs as instruction data.",
-            "See `WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh`"
+            "Program used to emit changelogs as cpi instruction data."
           ]
         }
       ],
@@ -267,12 +264,11 @@
           ]
         },
         {
-          "name": "logWrapper",
+          "name": "noop",
           "isMut": false,
           "isSigner": false,
           "docs": [
-            "Program used to emit changelogs as instruction data.",
-            "See `WRAPYChf58WFCnyjXKJHtrPgzKXgHp6MD9aVDqJBbGh`"
+            "Program used to emit changelogs as cpi instruction data."
           ]
         }
       ],

@@ -1,13 +1,16 @@
-import {
-  PublicKey,
-} from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 
 export const SPL_NOOP_ADDRESS = "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV";
 export const SPL_NOOP_PROGRAM_ID = new PublicKey(SPL_NOOP_ADDRESS);
 
-type DepthSizePair = {
-  maxDepth: number,
-  maxBufferSize: number
+/**
+ * DepthSizePair is a valid (`maxDepth`, `maxBufferSize`) tuple for an SPL ConcurrentMerkleTree
+ * Only the tuples listed in {@link ALL_DEPTH_SIZE_PAIRS} are valid for
+ * creating a new {@link ConcurrentMerkleTreeAccount}.
+ */
+export type DepthSizePair = {
+  maxDepth: number;
+  maxBufferSize: number;
 };
 
 const allPairs: number[][] = [
@@ -34,9 +37,12 @@ const allPairs: number[][] = [
   [30, 2048],
 ];
 
+/**
+ * Valid pairs for creating a new {@link ConcurrentMerkleTreeAccount}
+ */
 export const ALL_DEPTH_SIZE_PAIRS: DepthSizePair[] = allPairs.map((pair) => {
   return {
     maxDepth: pair[0],
-    maxBufferSize: pair[1]
-  }
-})
+    maxBufferSize: pair[1],
+  };
+});

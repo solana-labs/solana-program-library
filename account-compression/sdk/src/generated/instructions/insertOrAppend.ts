@@ -41,7 +41,7 @@ export const insertOrAppendStruct = new beet.BeetArgsStruct<
  *
  * @property [_writable_] merkleTree
  * @property [**signer**] authority
- * @property [] logWrapper
+ * @property [] noop
  * @category Instructions
  * @category InsertOrAppend
  * @category generated
@@ -49,7 +49,7 @@ export const insertOrAppendStruct = new beet.BeetArgsStruct<
 export type InsertOrAppendInstructionAccounts = {
   merkleTree: web3.PublicKey
   authority: web3.PublicKey
-  logWrapper: web3.PublicKey
+  noop: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -88,7 +88,7 @@ export function createInsertOrAppendInstruction(
       isSigner: true,
     },
     {
-      pubkey: accounts.logWrapper,
+      pubkey: accounts.noop,
       isWritable: false,
       isSigner: false,
     },

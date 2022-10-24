@@ -43,7 +43,7 @@ export const replaceLeafStruct = new beet.BeetArgsStruct<
  *
  * @property [_writable_] merkleTree
  * @property [**signer**] authority
- * @property [] logWrapper
+ * @property [] noop
  * @category Instructions
  * @category ReplaceLeaf
  * @category generated
@@ -51,7 +51,7 @@ export const replaceLeafStruct = new beet.BeetArgsStruct<
 export type ReplaceLeafInstructionAccounts = {
   merkleTree: web3.PublicKey
   authority: web3.PublicKey
-  logWrapper: web3.PublicKey
+  noop: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -90,7 +90,7 @@ export function createReplaceLeafInstruction(
       isSigner: true,
     },
     {
-      pubkey: accounts.logWrapper,
+      pubkey: accounts.noop,
       isWritable: false,
       isSigner: false,
     },
