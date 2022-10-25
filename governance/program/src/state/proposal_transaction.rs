@@ -9,6 +9,7 @@ use crate::{
     state::{
         enums::{GovernanceAccountType, TransactionExecutionStatus},
         legacy::ProposalInstructionV1,
+        ephemeral_signer::get_ephemeral_signer_address_and_seeds
     },
     PROGRAM_AUTHORITY_SEED,
 };
@@ -22,6 +23,7 @@ use solana_program::{
     program_pack::IsInitialized,
     pubkey::Pubkey,
 };
+
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
 /// InstructionData wrapper. It can be removed once Borsh serialization for Instruction is supported in the SDK
@@ -113,6 +115,7 @@ impl From<&InstructionData> for Instruction {
         }
     }
 }
+
 
 /// Account for an instruction to be executed for Proposal
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]

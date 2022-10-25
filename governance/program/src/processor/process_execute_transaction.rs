@@ -1,5 +1,7 @@
 //! Program state processor
 
+use std::iter;
+
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     clock::Clock,
@@ -15,8 +17,7 @@ use crate::state::{
     governance::get_governance_data,
     native_treasury::get_native_treasury_address_seeds,
     proposal::{get_proposal_data_for_governance, OptionVoteResult},
-    proposal_extra_account::get_proposal_extra_account_seeds,
-    proposal_transaction::get_proposal_transaction_data_for_proposal,
+    proposal_transaction::{get_proposal_transaction_data_for_proposal, SignerType}, ephemeral_signer::get_ephemeral_signer_address_and_seeds,
 };
 
 /// Processes ExecuteTransaction instruction
@@ -43,6 +44,30 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
     proposal_data
         .assert_can_execute_transaction(&proposal_transaction_data, clock.unix_timestamp)?;
 
+
+    // Resolve ephemeral signers
+    let account_seq_numbers : Vec<[u8;2]> = (0..(accounts.len() as u16)).map(|x| x.to_le_bytes()).collect();
+    let mut ephemeral_signer_seeds  = vec![];
+    let mut ephemeral_bump_seeds = vec![]; 
+    let mut i = 0usize;
+    for instruction in proposal_transaction_data.instructions.iter_mut() {
+        for account in instruction.accounts.iter_mut(){
+            if account.is_signer == SignerType::Ephemeral {
+                let (pubkey, bump_seed, seeds) = get_ephemeral_signer_address_and_seeds(program_id, proposal_transaction_info.key, &account_seq_numbers[i]);
+                ephemeral_bump_seeds.push([bump_seed]);
+                ephemeral_signer_seeds.push(seeds);
+                account.pubkey = pubkey;
+                i += 1;
+            }
+        }
+    }
+    
+    let mut signers_seeds = vec![];
+    for (bump, seeds) in ephemeral_bump_seeds.iter().zip(ephemeral_signer_seeds.iter_mut()) {
+        seeds.push(bump);
+        signers_seeds.push(seeds);
+    }
+
     // Execute instruction with Governance PDA as signer
     let instructions = proposal_transaction_data
         .instructions
@@ -55,14 +80,13 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
     // TODO: Optimize the invocation to split the provided accounts for each individual instruction
     let instruction_account_infos = account_info_iter.as_slice();
 
-    let mut signers_seeds: Vec<&[&[u8]]> = vec![];
-
     // Sign the transaction using the governance PDA
     let mut governance_seeds = governance_data.get_governance_address_seeds()?.to_vec();
     let (_, bump_seed) = Pubkey::find_program_address(&governance_seeds, program_id);
     let bump = &[bump_seed];
     governance_seeds.push(bump);
 
+    let mut signers_seeds = vec![];
     signers_seeds.push(&governance_seeds[..]);
 
     // Sign the transaction using the governance treasury PDA if required by the instruction
@@ -71,26 +95,12 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
         Pubkey::find_program_address(&treasury_seeds, program_id);
     let treasury_bump = &[treasury_bump_seed];
 
-    // Sign the transaction using the proposal's extra account. This is a fresh extra account that is unique per proposal.
-    // It is useful for example if the proposal aims to create an account
-    let mut extra_seeds = get_proposal_extra_account_seeds(proposal_info.key).to_vec();
-    let (extra_address, extra_bump_seed) = Pubkey::find_program_address(&extra_seeds, program_id);
-    let extra_bump = &[extra_bump_seed];
-
     if instruction_account_infos
         .iter()
         .any(|a| a.key == &treasury_address)
     {
         treasury_seeds.push(treasury_bump);
         signers_seeds.push(&treasury_seeds[..]);
-    }
-
-    if instruction_account_infos
-        .iter()
-        .any(|a| a.key == &extra_address)
-    {
-        extra_seeds.push(extra_bump);
-        signers_seeds.push(&extra_seeds[..]);
     }
 
     for instruction in instructions {
