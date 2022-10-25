@@ -13,6 +13,7 @@ import {
     createInitEmptyMerkleTreeIx,
     createAllocTreeIx,
     createAppendIx,
+    ValidDepthSizePair,
 } from '../src';
 import { buildTree, Tree } from './merkleTree';
 
@@ -72,13 +73,12 @@ export async function createTreeOnChain(
     provider: AnchorProvider,
     payer: Keypair,
     numLeaves: number,
-    maxDepth: number,
-    maxSize: number,
+    depthSizePair: ValidDepthSizePair,
     canopyDepth: number = 0
 ): Promise<[Keypair, Tree]> {
     const cmtKeypair = Keypair.generate();
 
-    const leaves = Array(2 ** maxDepth).fill(Buffer.alloc(32));
+    const leaves = Array(2 ** depthSizePair.maxDepth).fill(Buffer.alloc(32));
     for (let i = 0; i < numLeaves; i++) {
         leaves[i] = crypto.randomBytes(32);
     }
@@ -88,14 +88,13 @@ export async function createTreeOnChain(
         provider.connection,
         cmtKeypair.publicKey,
         payer.publicKey,
-        maxSize,
-        maxDepth,
+        depthSizePair,
         canopyDepth,
     );
 
     let ixs = [
         allocAccountIx,
-        createInitEmptyMerkleTreeIx(cmtKeypair.publicKey, payer.publicKey, maxDepth, maxSize),
+        createInitEmptyMerkleTreeIx(cmtKeypair.publicKey, payer.publicKey, depthSizePair),
     ];
 
     let txId = await execute(provider, ixs, [payer, cmtKeypair]);
@@ -120,8 +119,7 @@ export async function createTreeOnChain(
 export async function createEmptyTreeOnChain(
     provider: AnchorProvider,
     payer: Keypair,
-    maxDepth: number,
-    maxSize: number,
+    depthSizePair: ValidDepthSizePair,
     canopyDepth: number = 0
 ): Promise<Keypair> {
     const cmtKeypair = Keypair.generate();
@@ -129,14 +127,13 @@ export async function createEmptyTreeOnChain(
         provider.connection,
         cmtKeypair.publicKey,
         payer.publicKey,
-        maxSize,
-        maxDepth,
+        depthSizePair,
         canopyDepth,
     );
 
     let ixs = [
         allocAccountIx,
-        createInitEmptyMerkleTreeIx(cmtKeypair.publicKey, payer.publicKey, maxDepth, maxSize),
+        createInitEmptyMerkleTreeIx(cmtKeypair.publicKey, payer.publicKey, depthSizePair),
     ];
 
     let txId = await execute(provider, ixs, [payer, cmtKeypair]);

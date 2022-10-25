@@ -5,7 +5,7 @@ import {
   TransactionInstruction,
 } from '@solana/web3.js';
 
-import { SPL_NOOP_PROGRAM_ID } from '../constants';
+import { SPL_NOOP_PROGRAM_ID, ValidDepthSizePair } from '../constants';
 import { getConcurrentMerkleTreeAccountSize } from '../accounts';
 import {
   createReplaceLeafInstruction,
@@ -41,15 +41,13 @@ export function addProof(
  *
  * @param merkleTree
  * @param authority
- * @param maxDepth
- * @param maxBufferSize
+ * @param depthSizePair
  * @returns
  */
 export function createInitEmptyMerkleTreeIx(
   merkleTree: PublicKey,
   authority: PublicKey,
-  maxDepth: number,
-  maxBufferSize: number
+  depthSizePair: ValidDepthSizePair
 ): TransactionInstruction {
   return createInitEmptyMerkleTreeInstruction(
     {
@@ -57,10 +55,7 @@ export function createInitEmptyMerkleTreeIx(
       authority: authority,
       noop: SPL_NOOP_PROGRAM_ID,
     },
-    {
-      maxBufferSize,
-      maxDepth,
-    }
+    depthSizePair
   );
 }
 
@@ -188,8 +183,7 @@ export function createVerifyLeafIx(
  * @param connection
  * @param merkleTree
  * @param payer
- * @param maxBufferSize
- * @param maxDepth
+ * @param depthSizePair
  * @param canopyDepth
  * @returns
  */
@@ -197,13 +191,12 @@ export async function createAllocTreeIx(
   connection: Connection,
   merkleTree: PublicKey,
   payer: PublicKey,
-  maxBufferSize: number,
-  maxDepth: number,
+  depthSizePair: ValidDepthSizePair,
   canopyDepth: number
 ): Promise<TransactionInstruction> {
   const requiredSpace = getConcurrentMerkleTreeAccountSize(
-    maxDepth,
-    maxBufferSize,
+    depthSizePair.maxDepth,
+    depthSizePair.maxBufferSize,
     canopyDepth ?? 0
   );
   return SystemProgram.createAccount({

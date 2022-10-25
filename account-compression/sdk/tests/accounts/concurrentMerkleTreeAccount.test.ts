@@ -84,8 +84,7 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
         provider,
         payerKeypair,
         1,
-        MAX_DEPTH,
-        MAX_SIZE
+        { maxDepth: MAX_DEPTH, maxBufferSize: MAX_SIZE }
       );
     });
 
@@ -108,11 +107,11 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
 
   describe('Test deserialization for available depth-size pairs', () => {
     it('Test all pairs', async () => {
-      for (const { maxBufferSize, maxDepth } of ALL_DEPTH_SIZE_PAIRS) {
+      for (const depthSizePair of ALL_DEPTH_SIZE_PAIRS) {
         // Airdrop enough SOL to cover tree creation
         const size = getConcurrentMerkleTreeAccountSize(
-          maxDepth,
-          maxBufferSize
+          depthSizePair.maxDepth,
+          depthSizePair.maxBufferSize
         );
         const rent = await connection.getMinimumBalanceForRentExemption(
           size,
@@ -128,8 +127,7 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
         cmtKeypair = await createEmptyTreeOnChain(
           provider,
           payerKeypair,
-          maxDepth,
-          maxBufferSize
+          depthSizePair
         );
         const cmt = await ConcurrentMerkleTreeAccount.fromAccountAddress(
           connection,
@@ -140,10 +138,10 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
         // Verify it was initialized correctly
         await assertCMTProperties(
           cmt,
-          maxDepth,
-          maxBufferSize,
+          depthSizePair.maxDepth,
+          depthSizePair.maxBufferSize,
           payer,
-          emptyNode(maxDepth)
+          emptyNode(depthSizePair.maxDepth)
         );
       }
     });
@@ -175,8 +173,7 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
         cmtKeypair = await createEmptyTreeOnChain(
           provider,
           payerKeypair,
-          maxDepth,
-          maxBufferSize,
+          { maxDepth, maxBufferSize },
           canopyDepth
         );
         const cmt = await ConcurrentMerkleTreeAccount.fromAccountAddress(

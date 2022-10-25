@@ -21,6 +21,7 @@ import {
   createVerifyLeafIx,
   ConcurrentMerkleTreeAccount,
   createCloseEmptyTreeInstruction,
+  ValidDepthSizePair,
 } from '../src';
 
 describe('Account Compression', () => {
@@ -35,6 +36,10 @@ describe('Account Compression', () => {
 
   const MAX_SIZE = 64;
   const MAX_DEPTH = 14;
+  const DEPTH_SIZE_PAIR: ValidDepthSizePair = {
+    maxBufferSize: MAX_SIZE,
+    maxDepth: MAX_DEPTH
+  };
 
   beforeEach(async () => {
     payerKeypair = Keypair.generate();
@@ -60,8 +65,7 @@ describe('Account Compression', () => {
         provider,
         payerKeypair,
         1,
-        MAX_DEPTH,
-        MAX_SIZE
+        DEPTH_SIZE_PAIR
       );
       cmt = cmtKeypair.publicKey;
     });
@@ -261,8 +265,7 @@ describe('Account Compression', () => {
         provider,
         authorityKeypair,
         1,
-        MAX_DEPTH,
-        MAX_SIZE
+        DEPTH_SIZE_PAIR
       );
       cmt = cmtKeypair.publicKey;
     });
@@ -334,8 +337,7 @@ describe('Account Compression', () => {
         provider,
         payerKeypair,
         MAX_SIZE,
-        MAX_DEPTH,
-        MAX_SIZE
+        DEPTH_SIZE_PAIR
       );
       cmt = cmtKeypair.publicKey;
     });
@@ -482,8 +484,7 @@ describe('Account Compression', () => {
         provider,
         payerKeypair,
         0,
-        DEPTH,
-        2 ** DEPTH
+        { maxDepth: DEPTH, maxBufferSize: 8 }
       );
       cmt = cmtKeypair.publicKey;
 
@@ -591,8 +592,7 @@ describe('Account Compression', () => {
         provider,
         payerKeypair,
         0,
-        DEPTH,
-        8,
+        { maxDepth: DEPTH, maxBufferSize: 8 },
         DEPTH // Store full tree on chain
       );
       cmt = cmtKeypair.publicKey;
@@ -707,8 +707,7 @@ describe('Account Compression', () => {
         provider,
         payerKeypair,
         1 << 3,
-        3,
-        8
+        { maxDepth: 3, maxBufferSize: 8 },
       );
       cmt = cmtKeypair.publicKey;
     });

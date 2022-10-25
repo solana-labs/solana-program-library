@@ -50,8 +50,7 @@ describe('Serde tests', () => {
         provider,
         payerKeypair,
         0,
-        MAX_DEPTH,
-        MAX_SIZE
+        { maxDepth: MAX_DEPTH, maxBufferSize: MAX_SIZE }
       );
       cmt = cmtKeypair.publicKey;
     });
