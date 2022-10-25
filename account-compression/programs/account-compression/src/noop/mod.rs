@@ -11,9 +11,9 @@ use crate::events::{AccountCompressionEvent, ApplicationDataEvent, ApplicationDa
 use anchor_lang::{prelude::*, solana_program::program::invoke};
 
 #[derive(Clone)]
-pub struct Wrapper;
+pub struct Noop;
 
-impl anchor_lang::Id for Wrapper {
+impl anchor_lang::Id for Noop {
     fn id() -> Pubkey {
         spl_noop::id()
     }
@@ -21,11 +21,11 @@ impl anchor_lang::Id for Wrapper {
 
 pub fn wrap_event<'info>(
     event: &AccountCompressionEvent,
-    log_wrapper_program: &Program<'info, Wrapper>,
+    noop_program: &Program<'info, Noop>,
 ) -> Result<()> {
     invoke(
         &spl_noop::instruction(event.try_to_vec()?),
-        &[log_wrapper_program.to_account_info()],
+        &[noop_program.to_account_info()],
     )?;
     Ok(())
 }
@@ -33,13 +33,13 @@ pub fn wrap_event<'info>(
 /// Wraps a custom event in the most recent version of application event data
 pub fn wrap_application_data_v1<'info>(
     custom_data: Vec<u8>,
-    log_wrapper_program: &Program<'info, Wrapper>,
+    noop_program: &Program<'info, Noop>,
 ) -> Result<()> {
     let versioned_data = ApplicationDataEventV1 {
         application_data: custom_data,
     };
     wrap_event(
         &AccountCompressionEvent::ApplicationData(ApplicationDataEvent::V1(versioned_data)),
-        log_wrapper_program,
+        noop_program,
     )
 }
