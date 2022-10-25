@@ -28,7 +28,7 @@ import {
     const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
 
     const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
-    await connection.confirmTransaction(airdropSignature);
+    await connection.confirmTransaction({ signature: airdropSignature, ...(await connection.getLatestBlockhash()) });
 
     const extensions = [ExtensionType.MintCloseAuthority];
     const mintLen = getMintLen(extensions);

@@ -10,7 +10,10 @@ import { createMint, getOrCreateAssociatedTokenAccount, mintTo, transfer } from 
     const fromAirdropSignature = await connection.requestAirdrop(fromWallet.publicKey, LAMPORTS_PER_SOL);
 
     // Wait for airdrop confirmation
-    await connection.confirmTransaction(fromAirdropSignature);
+    await connection.confirmTransaction({
+        signature: fromAirdropSignature,
+        ...(await connection.getLatestBlockhash()),
+    });
 
     // Generate a new wallet to receive newly minted token
     const toWallet = Keypair.generate();

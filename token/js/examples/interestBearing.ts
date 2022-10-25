@@ -6,7 +6,7 @@ import { createInterestBearingMint, updateRateInterestBearingMint, TOKEN_2022_PR
 
     const payer = Keypair.generate();
     const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
-    await connection.confirmTransaction(airdropSignature);
+    await connection.confirmTransaction({ signature: airdropSignature, ...(await connection.getLatestBlockhash()) });
 
     const mintAuthority = Keypair.generate();
     const freezeAuthority = Keypair.generate();

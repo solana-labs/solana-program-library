@@ -22,7 +22,7 @@ import {
 
     const payer = Keypair.generate();
     const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
-    await connection.confirmTransaction(airdropSignature);
+    await connection.confirmTransaction({ signature: airdropSignature, ...(await connection.getLatestBlockhash()) });
 
     const mintAuthority = Keypair.generate();
     const decimals = 9;
