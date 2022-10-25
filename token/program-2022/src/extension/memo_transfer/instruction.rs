@@ -31,7 +31,7 @@ pub enum RequiredMemoTransfersInstruction {
     Enable,
     /// Stop requiring memos for transfers into this Account.
     ///
-    /// Implicitly initializes the extension in the case where it is not present.
+    /// Fails if the account does not have the extension present.
     ///
     /// Accounts expected by this instruction:
     ///

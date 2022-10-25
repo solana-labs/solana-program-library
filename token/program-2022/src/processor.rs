@@ -6,7 +6,6 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{self, ConfidentialTransferAccount},
-            cpi_guard::{self, in_cpi, CpiGuard},
             default_account_state::{self, DefaultAccountState},
             immutable_owner::ImmutableOwner,
             interest_bearing_mint::{self, InterestBearingConfig},
@@ -349,21 +348,13 @@ impl Processor {
                     }
                 }
             }
-            _ => {
-                Self::validate_owner(
-                    program_id,
-                    &source_account.base.owner,
-                    authority_info,
-                    authority_info_data_len,
-                    account_info_iter.as_slice(),
-                )?;
-
-                if let Ok(cpi_guard) = source_account.get_extension::<CpiGuard>() {
-                    if cpi_guard.lock_cpi.into() && in_cpi() {
-                        return Err(TokenError::CpiGuardTransferBlocked.into());
-                    }
-                }
-            }
+            _ => Self::validate_owner(
+                program_id,
+                &source_account.base.owner,
+                authority_info,
+                authority_info_data_len,
+                account_info_iter.as_slice(),
+            )?,
         };
 
         // Revisit this later to see if it's worth adding a check to reduce
@@ -485,12 +476,6 @@ impl Processor {
             account_info_iter.as_slice(),
         )?;
 
-        if let Ok(cpi_guard) = source_account.get_extension::<CpiGuard>() {
-            if cpi_guard.lock_cpi.into() && in_cpi() {
-                return Err(TokenError::CpiGuardApproveBlocked.into());
-            }
-        }
-
         source_account.base.delegate = COption::Some(*delegate_info.key);
         source_account.base.delegated_amount = amount;
         source_account.pack_base();
@@ -564,14 +549,6 @@ impl Processor {
                         return Err(TokenError::ImmutableOwner.into());
                     }
 
-                    if let Ok(cpi_guard) = account.get_extension::<CpiGuard>() {
-                        if cpi_guard.lock_cpi.into() && in_cpi() {
-                            return Err(TokenError::CpiGuardSetAuthorityBlocked.into());
-                        } else if cpi_guard.lock_cpi.into() {
-                            return Err(TokenError::CpiGuardOwnerChangeBlocked.into());
-                        }
-                    }
-
                     if let COption::Some(authority) = new_authority {
                         account.base.owner = authority;
                     } else {
@@ -594,13 +571,6 @@ impl Processor {
                         authority_info_data_len,
                         account_info_iter.as_slice(),
                     )?;
-
-                    if let Ok(cpi_guard) = account.get_extension::<CpiGuard>() {
-                        if cpi_guard.lock_cpi.into() && in_cpi() && new_authority != COption::None {
-                            return Err(TokenError::CpiGuardSetAuthorityBlocked.into());
-                        }
-                    }
-
                     account.base.close_authority = new_authority;
                 }
                 _ => {
@@ -859,21 +829,13 @@ impl Processor {
                         source_account.base.delegate = COption::None;
                     }
                 }
-                _ => {
-                    Self::validate_owner(
-                        program_id,
-                        &source_account.base.owner,
-                        authority_info,
-                        authority_info_data_len,
-                        account_info_iter.as_slice(),
-                    )?;
-
-                    if let Ok(cpi_guard) = source_account.get_extension::<CpiGuard>() {
-                        if cpi_guard.lock_cpi.into() && in_cpi() {
-                            return Err(TokenError::CpiGuardBurnBlocked.into());
-                        }
-                    }
-                }
+                _ => Self::validate_owner(
+                    program_id,
+                    &source_account.base.owner,
+                    authority_info,
+                    authority_info_data_len,
+                    account_info_iter.as_slice(),
+                )?,
             }
         }
 
@@ -927,15 +889,6 @@ impl Processor {
                 .base
                 .is_owned_by_system_program_or_incinerator()
             {
-                if let Ok(cpi_guard) = source_account.get_extension::<CpiGuard>() {
-                    if cpi_guard.lock_cpi.into()
-                        && in_cpi()
-                        && !cmp_pubkeys(destination_account_info.key, &source_account.base.owner)
-                    {
-                        return Err(TokenError::CpiGuardCloseAccountBlocked.into());
-                    }
-                }
-
                 Self::validate_owner(
                     program_id,
                     &authority,
@@ -1370,9 +1323,6 @@ impl Processor {
                     accounts,
                     &input[1..],
                 )
-            }
-            TokenInstruction::CpiGuardExtension => {
-                cpi_guard::processor::process_instruction(program_id, accounts, &input[1..])
             }
         }
     }
