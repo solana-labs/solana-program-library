@@ -15,6 +15,7 @@ import {
     approve,
     approveChecked,
     revoke,
+    MEMO_PROGRAM_ID,
 } from '../../src';
 
 import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
@@ -72,6 +73,27 @@ describe('transfer', () => {
     });
     it('transfer', async () => {
         await transfer(connection, payer, account1, account2, owner1, amount, [], undefined, TEST_PROGRAM_ID);
+
+        const destAccountInfo = await getAccount(connection, account2, undefined, TEST_PROGRAM_ID);
+        expect(destAccountInfo.amount).to.eql(amount);
+
+        const sourceAccountInfo = await getAccount(connection, account1, undefined, TEST_PROGRAM_ID);
+        expect(sourceAccountInfo.amount).to.eql(BigInt(0));
+    });
+    it('transfer() with memo', async () => {
+        await transfer(
+            connection,
+            payer,
+            account1,
+            account2,
+            owner1,
+            amount,
+            [],
+            undefined,
+            TEST_PROGRAM_ID,
+            MEMO_PROGRAM_ID,
+            'Concert tickets'
+        );
 
         const destAccountInfo = await getAccount(connection, account2, undefined, TEST_PROGRAM_ID);
         expect(destAccountInfo.amount).to.eql(amount);
