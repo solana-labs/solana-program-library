@@ -5,8 +5,9 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet'
-import { ChangeLogEventV1, changeLogEventV1Beet } from './ChangeLogEventV1'
+import * as beet from '@metaplex-foundation/beet';
+
+import { ChangeLogEventV1, changeLogEventV1Beet } from './ChangeLogEventV1';
 /**
  * This type is used to derive the {@link ChangeLogEvent} type as well as the de/serializer.
  * However don't refer to it in your code but use the {@link ChangeLogEvent} type instead.
@@ -17,8 +18,8 @@ import { ChangeLogEventV1, changeLogEventV1Beet } from './ChangeLogEventV1'
  * @private
  */
 export type ChangeLogEventRecord = {
-  V1: { fields: [ChangeLogEventV1] }
-}
+  V1: { fields: [ChangeLogEventV1] };
+};
 
 /**
  * Union type respresenting the ChangeLogEvent data enum defined in Rust.
@@ -31,11 +32,11 @@ export type ChangeLogEventRecord = {
  * @category enums
  * @category generated
  */
-export type ChangeLogEvent = beet.DataEnumKeyAsKind<ChangeLogEventRecord>
+export type ChangeLogEvent = beet.DataEnumKeyAsKind<ChangeLogEventRecord>;
 
 export const isChangeLogEventV1 = (
   x: ChangeLogEvent
-): x is ChangeLogEvent & { __kind: 'V1' } => x.__kind === 'V1'
+): x is ChangeLogEvent & { __kind: 'V1' } => x.__kind === 'V1';
 
 /**
  * @category userTypes
@@ -49,4 +50,4 @@ export const changeLogEventBeet = beet.dataEnum<ChangeLogEventRecord>([
       'ChangeLogEventRecord["V1"]'
     ),
   ],
-]) as beet.FixableBeet<ChangeLogEvent>
+]) as beet.FixableBeet<ChangeLogEvent>;

@@ -4,7 +4,7 @@ import type {
   Commitment,
   GetAccountInfoConfig,
 } from '@solana/web3.js';
-import * as BN from 'bn.js';
+import { BN } from 'bn.js';
 
 import {
   concurrentMerkleTreeHeaderBeet,
@@ -22,8 +22,8 @@ import {
 } from '../generated';
 
 /**
- * These are all the fields needed to deserialize the solana account
- * that the ConcurrentMerkleTree is stored in
+ * This class provides all the getter methods to deserialize
+ * information associated with an on-chain ConcurrentMerkleTree
  */
 export class ConcurrentMerkleTreeAccount {
   public header: ConcurrentMerkleTreeHeader;
@@ -63,38 +63,79 @@ export class ConcurrentMerkleTreeAccount {
     return this.header.header.fields[0];
   }
 
+  /**
+   * Returns the `maxBufferSize` for this tree, by reading the account's header
+   * @returns
+   */
   getMaxBufferSize(): number {
     return this.getHeaderV1().maxBufferSize;
   }
 
+  /**
+   * Returns the `maxDepth` of this tree, by reading the account's header
+   * @returns
+   */
   getMaxDepth(): number {
     return this.getHeaderV1().maxDepth;
   }
 
+  /**
+   * Returns `min(seq, maxBufferSize)`
+   * @returns
+   */
   getBufferSize(): number {
     return new BN.BN(this.tree.bufferSize).toNumber();
   }
 
+  /**
+   * Returns the current root hash for this on-chain tree
+   * @returns
+   */
   getCurrentRoot(): Buffer {
     return this.tree.changeLogs[this.getCurrentBufferIndex()].root.toBuffer();
   }
 
+  /**
+   * Returns the index to the spot in the on-chain buffer that stores the current
+   * root and last changelog
+   * @returns
+   */
   getCurrentBufferIndex(): number {
     return new BN.BN(this.tree.activeIndex).toNumber();
   }
 
+  /**
+   * Returns the PublicKey that can execute modifying operations
+   * on this tree
+   * @returns
+   */
   getAuthority(): PublicKey {
     return this.getHeaderV1().authority;
   }
 
-  getCreationSlot(): number {
-    return new BN.BN(this.getHeaderV1().creationSlot).toNumber();
+  /**
+   * Returns the slot that this tree was created in. Useful for indexing
+   * transactions associated with this tree.
+   * @returns
+   */
+  getCreationSlot() {
+    return new BN(this.getHeaderV1().creationSlot);
   }
 
-  getCurrentSeq(): number {
-    return new BN.BN(this.tree.sequenceNumber).toNumber();
+  /**
+   * Returns the number of modifying operations that have been performed
+   * on this tree.
+   * @returns
+   */
+  getCurrentSeq() {
+    return new BN(this.tree.sequenceNumber);
   }
 
+  /**
+   * Returns the depth of the on-chain tree-cache. Increasing the canopy depth reduces the size of the proofs
+   * that have to be passed for tree instructions.
+   * @returns the size
+   */
   getCanopyDepth(): number {
     return getCanopyDepth(this.canopy.canopyBytes.length);
   }

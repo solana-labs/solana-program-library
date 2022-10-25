@@ -5,12 +5,13 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet'
-import { ChangeLogEvent, changeLogEventBeet } from './ChangeLogEvent'
+import * as beet from '@metaplex-foundation/beet';
+
+import { ChangeLogEvent, changeLogEventBeet } from './ChangeLogEvent';
 import {
   ApplicationDataEvent,
   applicationDataEventBeet,
-} from './ApplicationDataEvent'
+} from './ApplicationDataEvent';
 /**
  * This type is used to derive the {@link AccountCompressionEvent} type as well as the de/serializer.
  * However don't refer to it in your code but use the {@link AccountCompressionEvent} type instead.
@@ -21,9 +22,9 @@ import {
  * @private
  */
 export type AccountCompressionEventRecord = {
-  ChangeLog: { fields: [ChangeLogEvent] }
-  ApplicationData: { fields: [ApplicationDataEvent] }
-}
+  ChangeLog: { fields: [ChangeLogEvent] };
+  ApplicationData: { fields: [ApplicationDataEvent] };
+};
 
 /**
  * Union type respresenting the AccountCompressionEvent data enum defined in Rust.
@@ -37,16 +38,16 @@ export type AccountCompressionEventRecord = {
  * @category generated
  */
 export type AccountCompressionEvent =
-  beet.DataEnumKeyAsKind<AccountCompressionEventRecord>
+  beet.DataEnumKeyAsKind<AccountCompressionEventRecord>;
 
 export const isAccountCompressionEventChangeLog = (
   x: AccountCompressionEvent
 ): x is AccountCompressionEvent & { __kind: 'ChangeLog' } =>
-  x.__kind === 'ChangeLog'
+  x.__kind === 'ChangeLog';
 export const isAccountCompressionEventApplicationData = (
   x: AccountCompressionEvent
 ): x is AccountCompressionEvent & { __kind: 'ApplicationData' } =>
-  x.__kind === 'ApplicationData'
+  x.__kind === 'ApplicationData';
 
 /**
  * @category userTypes
@@ -72,4 +73,4 @@ export const accountCompressionEventBeet =
         'AccountCompressionEventRecord["ApplicationData"]'
       ),
     ],
-  ]) as beet.FixableBeet<AccountCompressionEvent>
+  ]) as beet.FixableBeet<AccountCompressionEvent>;

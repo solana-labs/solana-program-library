@@ -5,11 +5,12 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet'
+import * as beet from '@metaplex-foundation/beet';
+
 import {
   ConcurrentMerkleTreeHeaderDataV1,
   concurrentMerkleTreeHeaderDataV1Beet,
-} from './ConcurrentMerkleTreeHeaderDataV1'
+} from './ConcurrentMerkleTreeHeaderDataV1';
 /**
  * This type is used to derive the {@link ConcurrentMerkleTreeHeaderData} type as well as the de/serializer.
  * However don't refer to it in your code but use the {@link ConcurrentMerkleTreeHeaderData} type instead.
@@ -20,8 +21,8 @@ import {
  * @private
  */
 export type ConcurrentMerkleTreeHeaderDataRecord = {
-  V1: { fields: [ConcurrentMerkleTreeHeaderDataV1] }
-}
+  V1: { fields: [ConcurrentMerkleTreeHeaderDataV1] };
+};
 
 /**
  * Union type respresenting the ConcurrentMerkleTreeHeaderData data enum defined in Rust.
@@ -35,11 +36,11 @@ export type ConcurrentMerkleTreeHeaderDataRecord = {
  * @category generated
  */
 export type ConcurrentMerkleTreeHeaderData =
-  beet.DataEnumKeyAsKind<ConcurrentMerkleTreeHeaderDataRecord>
+  beet.DataEnumKeyAsKind<ConcurrentMerkleTreeHeaderDataRecord>;
 
 export const isConcurrentMerkleTreeHeaderDataV1 = (
   x: ConcurrentMerkleTreeHeaderData
-): x is ConcurrentMerkleTreeHeaderData & { __kind: 'V1' } => x.__kind === 'V1'
+): x is ConcurrentMerkleTreeHeaderData & { __kind: 'V1' } => x.__kind === 'V1';
 
 /**
  * @category userTypes
@@ -59,4 +60,4 @@ export const concurrentMerkleTreeHeaderDataBeet =
         'ConcurrentMerkleTreeHeaderDataRecord["V1"]'
       ),
     ],
-  ]) as beet.FixableBeet<ConcurrentMerkleTreeHeaderData>
+  ]) as beet.FixableBeet<ConcurrentMerkleTreeHeaderData>;

@@ -5,16 +5,16 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as web3 from '@solana/web3.js'
-import * as beet from '@metaplex-foundation/beet'
-import * as beetSolana from '@metaplex-foundation/beet-solana'
+import * as web3 from '@solana/web3.js';
+import * as beet from '@metaplex-foundation/beet';
+import * as beetSolana from '@metaplex-foundation/beet-solana';
 export type ConcurrentMerkleTreeHeaderDataV1 = {
-  maxBufferSize: number
-  maxDepth: number
-  authority: web3.PublicKey
-  creationSlot: beet.bignum
-  padding: number[] /* size: 6 */
-}
+  maxBufferSize: number;
+  maxDepth: number;
+  authority: web3.PublicKey;
+  creationSlot: beet.bignum;
+  padding: number[] /* size: 6 */;
+};
 
 /**
  * @category userTypes
@@ -30,4 +30,4 @@ export const concurrentMerkleTreeHeaderDataV1Beet =
       ['padding', beet.uniformFixedSizeArray(beet.u8, 6)],
     ],
     'ConcurrentMerkleTreeHeaderDataV1'
-  )
+  );

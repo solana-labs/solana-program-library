@@ -5,8 +5,8 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet'
-import * as web3 from '@solana/web3.js'
+import * as beet from '@metaplex-foundation/beet';
+import * as web3 from '@solana/web3.js';
 
 /**
  * @category Instructions
@@ -14,11 +14,11 @@ import * as web3 from '@solana/web3.js'
  * @category generated
  */
 export const closeEmptyTreeStruct = new beet.BeetArgsStruct<{
-  instructionDiscriminator: number[] /* size: 8 */
+  instructionDiscriminator: number[] /* size: 8 */;
 }>(
   [['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)]],
   'CloseEmptyTreeInstructionArgs'
-)
+);
 /**
  * Accounts required by the _closeEmptyTree_ instruction
  *
@@ -30,15 +30,15 @@ export const closeEmptyTreeStruct = new beet.BeetArgsStruct<{
  * @category generated
  */
 export type CloseEmptyTreeInstructionAccounts = {
-  merkleTree: web3.PublicKey
-  authority: web3.PublicKey
-  recipient: web3.PublicKey
-  anchorRemainingAccounts?: web3.AccountMeta[]
-}
+  merkleTree: web3.PublicKey;
+  authority: web3.PublicKey;
+  recipient: web3.PublicKey;
+  anchorRemainingAccounts?: web3.AccountMeta[];
+};
 
 export const closeEmptyTreeInstructionDiscriminator = [
   50, 14, 219, 107, 78, 103, 16, 103,
-]
+];
 
 /**
  * Creates a _CloseEmptyTree_ instruction.
@@ -54,7 +54,7 @@ export function createCloseEmptyTreeInstruction(
 ) {
   const [data] = closeEmptyTreeStruct.serialize({
     instructionDiscriminator: closeEmptyTreeInstructionDiscriminator,
-  })
+  });
   const keys: web3.AccountMeta[] = [
     {
       pubkey: accounts.merkleTree,
@@ -71,11 +71,11 @@ export function createCloseEmptyTreeInstruction(
       isWritable: true,
       isSigner: false,
     },
-  ]
+  ];
 
   if (accounts.anchorRemainingAccounts != null) {
     for (const acc of accounts.anchorRemainingAccounts) {
-      keys.push(acc)
+      keys.push(acc);
     }
   }
 
@@ -83,6 +83,6 @@ export function createCloseEmptyTreeInstruction(
     programId,
     keys,
     data,
-  })
-  return ix
+  });
+  return ix;
 }

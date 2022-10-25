@@ -4,7 +4,11 @@ import * as beetSolana from '@metaplex-foundation/beet-solana';
 
 import { Path, pathBeetFactory } from './Path';
 
-type ChangeLog = {
+/**
+ * ChangeLog information necessary for deserializing an on-chain ConcurrentMerkleTree
+ * @private
+ */
+export type ChangeLogInternal = {
   root: PublicKey;
   pathNodes: PublicKey[];
   index: number; // u32
@@ -12,7 +16,7 @@ type ChangeLog = {
 };
 
 const changeLogBeetFactory = (maxDepth: number) => {
-  return new beet.BeetArgsStruct<ChangeLog>(
+  return new beet.BeetArgsStruct<ChangeLogInternal>(
     [
       ['root', beetSolana.publicKey],
       ['pathNodes', beet.uniformFixedSizeArray(beetSolana.publicKey, maxDepth)],
@@ -23,14 +27,25 @@ const changeLogBeetFactory = (maxDepth: number) => {
   );
 };
 
+/**
+ * ConcurrentMerkleTree fields necessary for deserializing an on-chain ConcurrentMerkleTree
+ */
 export type ConcurrentMerkleTree = {
   sequenceNumber: beet.bignum; // u64
   activeIndex: beet.bignum; // u64
   bufferSize: beet.bignum; // u64
-  changeLogs: ChangeLog[];
+  changeLogs: ChangeLogInternal[];
   rightMostPath: Path;
 };
 
+/**
+ * Factory function for generating a `beet` that can deserialize
+ * an on-chain {@link ConcurrentMerkleTree}
+ *
+ * @param maxDepth
+ * @param maxBufferSize
+ * @returns
+ */
 export const concurrentMerkleTreeBeetFactory = (
   maxDepth: number,
   maxBufferSize: number
