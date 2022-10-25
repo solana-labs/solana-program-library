@@ -35,13 +35,45 @@ pub struct InstructionData {
     pub data: Vec<u8>,
 }
 
+/// TO DO DOCS
+#[derive(Clone, Debug,PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum SignerType {
+    /// TO DO DOCS
+    None,
+    /// TO DO DOCS
+    Static,
+    /// TO DO DOCS
+    Ephemeral
+}
+
+impl From<bool> for SignerType {
+    fn from(signer: bool) -> Self {
+        if signer {
+            SignerType::Static
+        }
+        else {
+            SignerType::None
+        }
+    }
+}
+
+impl From<&SignerType> for bool {
+    fn from(signer_type: &SignerType) -> Self {
+        match signer_type {
+            SignerType::None => false,
+            SignerType::Static => true,
+            SignerType::Ephemeral => true
+        }
+    }
+}
+
 /// Account metadata used to define Instructions
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct AccountMetaData {
     /// An account's public key
     pub pubkey: Pubkey,
     /// True if an Instruction requires a Transaction signature matching `pubkey`.
-    pub is_signer: bool,
+    pub is_signer: SignerType,
     /// True if the `pubkey` can be loaded as a read-write account.
     pub is_writable: bool,
 }
@@ -55,7 +87,7 @@ impl From<Instruction> for InstructionData {
                 .iter()
                 .map(|a| AccountMetaData {
                     pubkey: a.pubkey,
-                    is_signer: a.is_signer,
+                    is_signer: a.is_signer.into(),
                     is_writable: a.is_writable,
                 })
                 .collect(),
@@ -73,7 +105,7 @@ impl From<&InstructionData> for Instruction {
                 .iter()
                 .map(|a| AccountMeta {
                     pubkey: a.pubkey,
-                    is_signer: a.is_signer,
+                    is_signer: bool::from(&a.is_signer),
                     is_writable: a.is_writable,
                 })
                 .collect(),
@@ -258,7 +290,7 @@ mod test {
     fn create_test_account_meta_data() -> AccountMetaData {
         AccountMetaData {
             pubkey: Pubkey::new_unique(),
-            is_signer: true,
+            is_signer: SignerType::Static,
             is_writable: false,
         }
     }
