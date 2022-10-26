@@ -66,6 +66,7 @@ impl<'a> EphemeralSeedGenerator<'a> {
             .flat_map(|ix| &ix.accounts)
             .filter(|acc| acc.is_signer == SignerType::Ephemeral)
             .count();
+
         let mut signer_seeds = vec![];
 
         self.account_seq_numbers = (0..number_of_ephemeral_accounts)
