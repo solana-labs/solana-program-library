@@ -187,6 +187,9 @@ pub enum TokenError {
     /// Account ownership cannot be changed while CPI Guard is enabled
     #[error("Account ownership cannot be changed while CPI Guard is enabled")]
     CpiGuardOwnerChangeBlocked,
+    /// Extension not found in account data
+    #[error("Extension not found in account data")]
+    ExtensionNotFound,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -322,6 +325,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::CpiGuardOwnerChangeBlocked => {
                 msg!("Account ownership cannot be changed while CPI Guard is enabled")
+            }
+            TokenError::ExtensionNotFound => {
+                msg!("Extension not found in account data")
             }
         }
     }
