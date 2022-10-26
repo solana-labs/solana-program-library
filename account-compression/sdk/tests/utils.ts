@@ -15,7 +15,7 @@ import {
     createAppendIx,
     ValidDepthSizePair,
 } from '../src';
-import { buildTree, Tree } from './merkleTree';
+import { MerkleTree } from './merkleTree';
 
 /// Wait for a transaction of a certain id to confirm and optionally log its messages
 export async function confirmAndLogTx(
@@ -75,14 +75,14 @@ export async function createTreeOnChain(
     numLeaves: number,
     depthSizePair: ValidDepthSizePair,
     canopyDepth: number = 0
-): Promise<[Keypair, Tree]> {
+): Promise<[Keypair, MerkleTree]> {
     const cmtKeypair = Keypair.generate();
 
     const leaves = Array(2 ** depthSizePair.maxDepth).fill(Buffer.alloc(32));
     for (let i = 0; i < numLeaves; i++) {
         leaves[i] = crypto.randomBytes(32);
     }
-    const tree = buildTree(leaves);
+    const tree = new MerkleTree(leaves);
 
     const allocAccountIx = await createAllocTreeIx(
         provider.connection,

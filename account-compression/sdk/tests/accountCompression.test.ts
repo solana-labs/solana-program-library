@@ -8,11 +8,8 @@ import * as crypto from 'crypto';
 
 import { createTreeOnChain, execute } from './utils';
 import {
-  buildTree,
   hash,
-  getProofOfLeaf,
-  updateTree,
-  Tree,
+  MerkleTree,
 } from './merkleTree';
 import {
   createReplaceIx,
@@ -26,7 +23,7 @@ import {
 
 describe('Account Compression', () => {
   // Configure the client to use the local cluster.
-  let offChainTree: Tree;
+  let offChainTree: MerkleTree;
   let cmtKeypair: Keypair;
   let cmt: PublicKey;
   let payerKeypair: Keypair;
@@ -74,7 +71,7 @@ describe('Account Compression', () => {
       const appendIx = createAppendIx(cmt, payer, newLeaf);
 
       await execute(provider, [appendIx], [payerKeypair]);
-      updateTree(offChainTree, newLeaf, 1);
+      offChainTree.updateLeaf(1, newLeaf);
 
       const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
         connection,
@@ -91,9 +88,7 @@ describe('Account Compression', () => {
       const previousLeaf = offChainTree.leaves[0].node;
       const newLeaf = crypto.randomBytes(32);
       const index = 0;
-      const proof = getProofOfLeaf(offChainTree, index).map((treeNode) => {
-        return treeNode.node;
-      });
+      const proof = offChainTree.getProof(index).proof;
 
       const verifyLeafIx = createVerifyLeafIx(
         cmt,
@@ -113,7 +108,7 @@ describe('Account Compression', () => {
       );
       await execute(provider, [verifyLeafIx, replaceLeafIx], [payerKeypair]);
 
-      updateTree(offChainTree, newLeaf, index);
+      offChainTree.updateLeaf(index, newLeaf);
 
       const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
         connection,
@@ -130,8 +125,8 @@ describe('Account Compression', () => {
       const previousLeaf = offChainTree.leaves[0].node;
       const newLeaf = crypto.randomBytes(32);
       const index = 0;
-      // Proof has random bytes: definitely wrong
-      const proof = getProofOfLeaf(offChainTree, index).map((treeNode) => {
+      // Replace valid proof with random bytes so it is wrong
+      const proof = offChainTree.getProof(index).proof.map((node) => {
         return crypto.randomBytes(32);
       });
 
@@ -186,9 +181,7 @@ describe('Account Compression', () => {
         previousLeaf,
         newLeaf,
         index,
-        getProofOfLeaf(offChainTree, index, false, -1).map((treeNode) => {
-          return treeNode.node;
-        })
+        offChainTree.getProof(index, false, -1).proof,
       );
       assert(
         replaceLeafIx.keys.length == 3 + MAX_DEPTH,
@@ -197,7 +190,7 @@ describe('Account Compression', () => {
 
       await execute(provider, [replaceLeafIx], [payerKeypair]);
 
-      updateTree(offChainTree, newLeaf, index);
+      offChainTree.updateLeaf(index, newLeaf);
 
       const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
         connection,
@@ -223,9 +216,7 @@ describe('Account Compression', () => {
         previousLeaf,
         newLeaf,
         index,
-        getProofOfLeaf(offChainTree, index, true, 1).map((treeNode) => {
-          return treeNode.node;
-        })
+        offChainTree.getProof(index, true, 1).proof,
       );
       assert(
         replaceLeafIx.keys.length == 3 + 1,
@@ -233,7 +224,7 @@ describe('Account Compression', () => {
       );
       await execute(provider, [replaceLeafIx], [payerKeypair]);
 
-      updateTree(offChainTree, newLeaf, index);
+      offChainTree.updateLeaf(index, newLeaf);
 
       const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
         connection,
@@ -272,7 +263,7 @@ describe('Account Compression', () => {
     it('Attempting to replace with random authority fails', async () => {
       const newLeaf = crypto.randomBytes(32);
       const replaceIndex = 0;
-      const proof = getProofOfLeaf(offChainTree, replaceIndex);
+      const proof = offChainTree.getProof(replaceIndex).proof;
       const replaceIx = createReplaceIx(
         cmt,
         randomSigner,
@@ -280,9 +271,7 @@ describe('Account Compression', () => {
         offChainTree.leaves[replaceIndex].node,
         newLeaf,
         replaceIndex,
-        proof.map((treeNode) => {
-          return treeNode.node;
-        })
+        proof
       );
 
       try {
@@ -314,7 +303,7 @@ describe('Account Compression', () => {
       // Attempting to replace with new authority now works
       const newLeaf = crypto.randomBytes(32);
       const replaceIndex = 0;
-      const proof = getProofOfLeaf(offChainTree, replaceIndex);
+      const proof = offChainTree.getProof(replaceIndex).proof;
       const replaceIx = createReplaceIx(
         cmt,
         randomSigner,
@@ -322,9 +311,7 @@ describe('Account Compression', () => {
         offChainTree.leaves[replaceIndex].node,
         newLeaf,
         replaceIndex,
-        proof.map((treeNode) => {
-          return treeNode.node;
-        })
+        proof
       );
 
       await execute(provider, [replaceIx], [randomSignerKeypair]);
@@ -355,7 +342,7 @@ describe('Account Compression', () => {
           Buffer.from(new BN(i).toArray())
         );
         leavesToUpdate.push(newLeaf);
-        const proof = getProofOfLeaf(offChainTree, index);
+        const proof = offChainTree.getProof(index).proof;
         const replaceIx = createReplaceIx(
           cmt,
           payer,
@@ -363,9 +350,7 @@ describe('Account Compression', () => {
           offChainTree.leaves[i].node,
           newLeaf,
           index,
-          proof.map((treeNode) => {
-            return treeNode.node;
-          })
+          proof
         );
         ixArray.push(replaceIx);
       }
@@ -377,7 +362,7 @@ describe('Account Compression', () => {
       await Promise.all(txList);
 
       leavesToUpdate.map((leaf, index) => {
-        updateTree(offChainTree, leaf, index);
+        offChainTree.updateLeaf(index, leaf)
       });
 
       // Compare on-chain & off-chain roots
@@ -403,7 +388,7 @@ describe('Account Compression', () => {
           Buffer.from(new BN(i).toArray())
         );
         leavesToUpdate.push(newLeaf);
-        const proof = getProofOfLeaf(offChainTree, index);
+        const proof = offChainTree.getProof(index).proof;
         const replaceIx = createReplaceIx(
           cmt,
           payer,
@@ -411,9 +396,7 @@ describe('Account Compression', () => {
           offChainTree.leaves[i].node,
           Buffer.alloc(32), // Empty node
           index,
-          proof.map((treeNode) => {
-            return treeNode.node;
-          })
+          proof
         );
         ixArray.push(replaceIx);
       }
@@ -657,16 +640,14 @@ describe('Account Compression', () => {
         newLeafList.push(newLeaves[i]);
       }
 
-      let tree = buildTree(newLeafList);
+      let tree = new MerkleTree(newLeafList);
 
       for (let proofSize = 1; proofSize <= 5; ++proofSize) {
         const newLeaf = crypto.randomBytes(32);
         let i = Math.floor(Math.random() * 32);
         const leaf = newLeaves[i];
 
-        let partialProof = getProofOfLeaf(tree, i)
-          .slice(0, proofSize)
-          .map((n) => n.node);
+        let partialProof = tree.getProof(i).proof.slice(0, proofSize);
         console.log(`Replacing node ${i}, proof length = ${proofSize}`);
         for (const [level, node] of Object.entries(partialProof)) {
           console.log(` ${level}: ${bs58.encode(node)}`);
@@ -680,7 +661,7 @@ describe('Account Compression', () => {
           i,
           partialProof
         );
-        updateTree(tree, newLeaf, i);
+        tree.updateLeaf(i, newLeaf);
         const replaceBackIx = createReplaceIx(
           cmt,
           payer,
@@ -690,7 +671,7 @@ describe('Account Compression', () => {
           i,
           partialProof
         );
-        updateTree(tree, leaf, i);
+        tree.updateLeaf(i, leaf);
         await execute(
           provider,
           [replaceIx, replaceBackIx],
@@ -722,7 +703,7 @@ describe('Account Compression', () => {
       let proof;
       let node;
       node = offChainTree.leaves[outOfBoundsIndex - 1].node;
-      proof = getProofOfLeaf(offChainTree, index - 1);
+      proof = offChainTree.getProof(index - 1).proof;
 
       const replaceIx = createReplaceIx(
         cmt,
@@ -731,9 +712,7 @@ describe('Account Compression', () => {
         node,
         newLeaf,
         index,
-        proof.map((treeNode) => {
-          return treeNode.node;
-        })
+        proof
       );
 
       try {

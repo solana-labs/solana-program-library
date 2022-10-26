@@ -11,11 +11,11 @@ import {
   deserializeChangeLogEventV1,
   SPL_NOOP_PROGRAM_ID,
 } from '../../src';
-import { Tree, updateTree } from '../merkleTree';
+import { MerkleTree } from '../merkleTree';
 import { execute, createTreeOnChain } from '../utils';
 
 describe('Serde tests', () => {
-  let offChainTree: Tree;
+  let offChainTree: MerkleTree;
   let cmtKeypair: Keypair;
   let payerKeypair: Keypair;
   let payer: PublicKey;
@@ -61,7 +61,7 @@ describe('Serde tests', () => {
         [createAppendIx(cmt, payer, newLeaf)],
         [payerKeypair]
       );
-      updateTree(offChainTree, newLeaf, 0);
+      offChainTree.updateLeaf(0, newLeaf);
 
       const transaction = await connection.getTransaction(txId, {
         commitment: 'confirmed',
