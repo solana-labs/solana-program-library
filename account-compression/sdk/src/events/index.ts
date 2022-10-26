@@ -6,8 +6,8 @@ import { ApplicationDataEvent, ChangeLogEventV1 as CLV1 } from '../generated';
 
 /**
  * Helper method for indexing a {@link ConcurrentMerkleTree}
- * @param data 
- * @returns 
+ * @param data
+ * @returns
  */
 export function deserializeChangeLogEventV1(data: Buffer): ChangeLogEventV1 {
   const event = accountCompressionEventBeet
@@ -29,8 +29,8 @@ export function deserializeChangeLogEventV1(data: Buffer): ChangeLogEventV1 {
 
 /**
  * Helper function for indexing data logged via `wrap_application_data_v1`
- * @param data 
- * @returns 
+ * @param data
+ * @returns
  */
 export function deserializeApplicationDataEvent(
   data: Buffer
