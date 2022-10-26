@@ -68,6 +68,7 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
     let (_, bump_seed) = Pubkey::find_program_address(&governance_seeds, program_id);
     let bump = &[bump_seed];
     governance_seeds.push(bump);
+    
     signers_seeds.push(&governance_seeds[..]);
 
     // Sign the transaction using the governance treasury PDA if required by the instruction
