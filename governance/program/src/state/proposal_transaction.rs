@@ -26,6 +26,8 @@ use solana_program::{
 
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
+use super::ephemeral_signer::get_ephemeral_signer_address;
+
 /// InstructionData wrapper. It can be removed once Borsh serialization for Instruction is supported in the SDK
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct InstructionData {
@@ -199,8 +201,20 @@ impl ProposalTransactionV2 {
 
             BorshSerialize::serialize(&proposal_transaction_data_v1, writer)?;
         }
-
         Ok(())
+    }
+
+    /// TO DO
+    pub fn resolve_ephemeral_accounts(&mut self, program_id : &Pubkey, proposal_transaction_pubkey : &Pubkey){
+        let mut i : u16 = 0;
+        for instruction in self.instructions.iter_mut() {
+            for account in instruction.accounts.iter_mut(){
+                if account.is_signer == SignerType::Ephemeral {
+                    account.pubkey = get_ephemeral_signer_address(program_id, proposal_transaction_pubkey, &i.to_le_bytes());
+                    i = i.checked_add(1).unwrap();
+                }
+            }
+        }
     }
 }
 

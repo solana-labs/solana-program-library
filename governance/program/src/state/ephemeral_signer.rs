@@ -13,3 +13,9 @@ pub fn get_ephemeral_signer_address_and_seeds<'a>(program_id: &Pubkey, proposal_
     let seeds_vec = seeds.to_vec();
     return (address, bump, seeds_vec)
 }
+
+/// Returns ProposalExtraAccount PDA address
+pub fn get_ephemeral_signer_address(program_id: &Pubkey, proposal_transaction_pubkey: &Pubkey, account_seq_number_le_bytes : &[u8; 2]) -> Pubkey  {
+    let seeds = &get_ephemeral_signer_seeds(proposal_transaction_pubkey, &account_seq_number_le_bytes);
+    Pubkey::find_program_address(seeds, program_id).0
+}

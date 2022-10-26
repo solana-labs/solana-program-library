@@ -85,7 +85,7 @@ pub fn process_insert_transaction(
     option.transactions_count = option.transactions_count.checked_add(1).unwrap();
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
-    let proposal_transaction_data = ProposalTransactionV2 {
+    let mut proposal_transaction_data = ProposalTransactionV2 {
         account_type: GovernanceAccountType::ProposalTransactionV2,
         option_index,
         transaction_index: instruction_index,
@@ -96,6 +96,8 @@ pub fn process_insert_transaction(
         proposal: *proposal_info.key,
         reserved_v2: [0; 8],
     };
+
+    proposal_transaction_data.resolve_ephemeral_accounts(&program_id, proposal_transaction_info.key);
 
     create_and_serialize_account_signed::<ProposalTransactionV2>(
         payer_info,
