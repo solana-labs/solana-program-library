@@ -64,8 +64,8 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
     // }
     
     let mut generator = EphemeralSeedGenerator::new(&proposal_transaction_data);
-    let mut signer_seeds : Vec<[&[u8];4]> = generator.generate(program_id, proposal_transaction_info.key, &proposal_transaction_data);
-
+    let mut signers_seeds : Vec<&[&[u8]]> = generator.generate(program_id, proposal_transaction_info.key, &proposal_transaction_data);
+    // let signers_seeds :  = res.iter().map(|x| &x[..]).collect();
     // for (bump, seeds) in ephemeral_bump_seeds.iter().zip(ephemeral_signer_seeds.iter_mut()) {
     //         seeds.push(bump);
     //         signers_seeds.push(&seeds[..]);
@@ -90,7 +90,7 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
     let bump = &[bump_seed];
     governance_seeds.push(bump);
 
-    let mut signers_seeds = vec![];
+    // let mut signers_seeds = vec![];
     signers_seeds.push(&governance_seeds[..]);
 
     // Sign the transaction using the governance treasury PDA if required by the instruction

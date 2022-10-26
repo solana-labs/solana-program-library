@@ -25,14 +25,16 @@ pub fn get_ephemeral_signer_address(program_id: &Pubkey, proposal_transaction_pu
 }
 
  /// DOCS
-pub struct EphemeralSeedGenerator {
+pub struct EphemeralSeedGenerator<'a> {
      /// DOCS
     pub account_seq_numbers : Vec<[u8;2]>,
      /// DOCS
     pub bump_seeds : Vec<[u8;1]>,
+    /// DOCS
+    pub signers_seeds_with_bump : Vec<[&'a [u8];4]>
 }
 
-impl EphemeralSeedGenerator {
+impl<'a> EphemeralSeedGenerator<'a> {
      /// DOCS
     pub fn new(proposal_transaction_data : &ProposalTransactionV2 ) -> Self{
         let number_of_ephemeral_accounts : usize = proposal_transaction_data.instructions.iter().map(|ix| &ix.accounts).flatten().filter(|acc| acc.is_signer == SignerType::Ephemeral).count();
@@ -40,31 +42,27 @@ impl EphemeralSeedGenerator {
         EphemeralSeedGenerator {
             account_seq_numbers : (0..number_of_ephemeral_accounts).map(|x| u16::try_from(x).unwrap().to_le_bytes()).collect(),
             bump_seeds : vec![],
+            signers_seeds_with_bump : vec![],
         }
     }
 
     /// DOCS
-    pub fn generate<'a>(&'a mut self, program_id : &Pubkey, proposal_transaction_pubkey : &'a Pubkey, proposal_transaction_data : &ProposalTransactionV2) -> Vec<[&'a [u8];4]>{
-        let mut ephemeral_signer_seeds = vec![];
+    pub fn generate(&'a mut self, program_id : &Pubkey, proposal_transaction_pubkey : &'a Pubkey, proposal_transaction_data : &ProposalTransactionV2) -> Vec<&[&'a [u8]]>{
+        let mut signer_seeds = vec![];
         let mut i = 0usize;
         for instruction in proposal_transaction_data.instructions.iter() {
             for account in instruction.accounts.iter(){
                 if account.is_signer == SignerType::Ephemeral {
                     let seeds : [&[u8];3] = get_ephemeral_signer_seeds(proposal_transaction_pubkey,  &self.account_seq_numbers[i]);
                     let (_, bump) = Pubkey::find_program_address(&seeds, program_id);
-                    self.bump_seeds.push([bump]);
-                    ephemeral_signer_seeds.push(seeds);
+                    self.bump_seeds.push([bump]);                    
+                    signer_seeds.push(seeds);
                     i = i.checked_add(1).unwrap();
                 }
             }
         }
-
-        let mut signers_seeds = vec![];
-        for (seeds, bump) in ephemeral_signer_seeds.iter().zip(self.bump_seeds.iter()) {
-            signers_seeds.push([seeds[0], seeds[1], seeds[2], bump]);
-        }
-
-        signers_seeds
+        self.signers_seeds_with_bump = signer_seeds.iter().zip(self.bump_seeds.iter()).map(|(seeds, bump)| [seeds[0], seeds[1], seeds[2], bump]).collect();
+        self.signers_seeds_with_bump.iter().map(|x| &x[..]).collect()
     }
 
 
