@@ -97,7 +97,7 @@ pub fn process_insert_transaction(
         reserved_v2: [0; 8],
     };
 
-    proposal_transaction_data.resolve_ephemeral_accounts(&program_id, proposal_transaction_info.key);
+    proposal_transaction_data.resolve_ephemeral_account_addresses(&program_id, proposal_transaction_info.key);
 
     create_and_serialize_account_signed::<ProposalTransactionV2>(
         payer_info,

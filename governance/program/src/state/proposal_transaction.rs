@@ -3,6 +3,8 @@
 use core::panic;
 
 use borsh::maybestd::io::Write;
+use std::convert::TryFrom;
+
 
 use crate::{
     error::GovernanceError,
@@ -26,7 +28,7 @@ use solana_program::{
 
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
-use super::ephemeral_signer::get_ephemeral_signer_address;
+use super::ephemeral_signer::{get_ephemeral_signer_address, get_ephemeral_signer_seeds};
 
 /// InstructionData wrapper. It can be removed once Borsh serialization for Instruction is supported in the SDK
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -171,6 +173,14 @@ impl IsInitialized for ProposalTransactionV2 {
         self.account_type == GovernanceAccountType::ProposalTransactionV2
     }
 }
+/// DOCS
+// pub struct EphemeralAccountsSeedData<'a> {
+//     /// DOCS
+//     pub account_seq_numbers : Vec<[u8;2]>,
+//     /// DOCS
+//     pub bump_seeds : Vec<[u8;1]>,
+//     pub ephemeral_signer_seeds : Vec<Vec<&'a [u8]>>
+// }
 
 impl ProposalTransactionV2 {
     /// Serializes account into the target buffer
@@ -204,8 +214,10 @@ impl ProposalTransactionV2 {
         Ok(())
     }
 
+
+
     /// TO DO
-    pub fn resolve_ephemeral_accounts(&mut self, program_id : &Pubkey, proposal_transaction_pubkey : &Pubkey){
+    pub fn resolve_ephemeral_account_addresses(&mut self, program_id : &Pubkey, proposal_transaction_pubkey : &Pubkey){
         let mut i : u16 = 0;
         for instruction in self.instructions.iter_mut() {
             for account in instruction.accounts.iter_mut(){
@@ -216,6 +228,39 @@ impl ProposalTransactionV2 {
             }
         }
     }
+
+    // pub fn resolve_ephemeral_account_seeds<'a>(&self, program_id : &Pubkey, proposal_transaction_pubkey : &'a Pubkey) -> EphemeralAccountsSeedData<'a>{
+
+    //     let number_of_ephemeral_accounts : usize = self.instructions.iter().map(|ix| &ix.accounts).flatten().filter(|acc| acc.is_signer == SignerType::Ephemeral).count();
+        
+    //     let mut result = EphemeralAccountsSeedData {
+    //         account_seq_numbers : (0..number_of_ephemeral_accounts).map(|x| u16::try_from(x).unwrap().to_le_bytes()).collect(),
+    //         bump_seeds : vec![],
+    //         ephemeral_signer_seeds : vec![]
+    //     };
+    // //  {   
+    //     let mut i = 0usize;
+    //     for instruction in self.instructions.iter() {
+    //         for account in instruction.accounts.iter(){
+    //             if account.is_signer == SignerType::Ephemeral {
+    //                 let seeds : Vec<&[u8]> = get_ephemeral_signer_seeds(proposal_transaction_pubkey,  &result.account_seq_numbers[i]).to_vec();
+    //                 let (_, bump) = Pubkey::find_program_address(&seeds, program_id);
+    //                 result.bump_seeds.push([bump]);
+    //                 result.ephemeral_signer_seeds.push(seeds);
+    //                 i = i.checked_add(1).unwrap();
+    //             }
+    //         }
+    //     }
+
+    //     let mut signers_seeds = vec![];
+    //     for (seeds, bump) in result.ephemeral_signer_seeds.iter_mut().zip(result.bump_seeds.iter()) {
+    //         seeds.push(bump);
+    //         signers_seeds.push(&seeds[..]);
+    //     }
+    // }
+
+    //     result
+    // }
 }
 
 /// Returns ProposalTransaction PDA seeds
