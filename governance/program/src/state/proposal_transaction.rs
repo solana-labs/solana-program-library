@@ -4,8 +4,6 @@ use core::panic;
 
 use borsh::maybestd::io::Write;
 
-
-
 use crate::{
     error::GovernanceError,
     state::{
@@ -27,7 +25,7 @@ use solana_program::{
 
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
-use super::ephemeral_signer::{get_ephemeral_signer_address};
+use super::ephemeral_signer::get_ephemeral_signer_address;
 
 /// InstructionData wrapper. It can be removed once Borsh serialization for Instruction is supported in the SDK
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -41,22 +39,21 @@ pub struct InstructionData {
 }
 
 /// TO DO DOCS
-#[derive(Clone, Debug,PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum SignerType {
     /// TO DO DOCS
     None,
     /// TO DO DOCS
     Static,
     /// TO DO DOCS
-    Ephemeral
+    Ephemeral,
 }
 
 impl From<bool> for SignerType {
     fn from(signer: bool) -> Self {
         if signer {
             SignerType::Static
-        }
-        else {
+        } else {
             SignerType::None
         }
     }
@@ -67,7 +64,7 @@ impl From<&SignerType> for bool {
         match signer_type {
             SignerType::None => false,
             SignerType::Static => true,
-            SignerType::Ephemeral => true
+            SignerType::Ephemeral => true,
         }
     }
 }
@@ -118,7 +115,6 @@ impl From<&InstructionData> for Instruction {
         }
     }
 }
-
 
 /// Account for an instruction to be executed for Proposal
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -213,15 +209,21 @@ impl ProposalTransactionV2 {
         Ok(())
     }
 
-
-
     /// TO DO
-    pub fn resolve_ephemeral_account_addresses(&mut self, program_id : &Pubkey, proposal_transaction_pubkey : &Pubkey){
-        let mut i : u16 = 0;
+    pub fn resolve_ephemeral_account_addresses(
+        &mut self,
+        program_id: &Pubkey,
+        proposal_transaction_pubkey: &Pubkey,
+    ) {
+        let mut i: u16 = 0;
         for instruction in self.instructions.iter_mut() {
-            for account in instruction.accounts.iter_mut(){
+            for account in instruction.accounts.iter_mut() {
                 if account.is_signer == SignerType::Ephemeral {
-                    account.pubkey = get_ephemeral_signer_address(program_id, proposal_transaction_pubkey, &i.to_le_bytes());
+                    account.pubkey = get_ephemeral_signer_address(
+                        program_id,
+                        proposal_transaction_pubkey,
+                        &i.to_le_bytes(),
+                    );
                     i = i.checked_add(1).unwrap();
                 }
             }
@@ -231,13 +233,13 @@ impl ProposalTransactionV2 {
     // pub fn resolve_ephemeral_account_seeds<'a>(&self, program_id : &Pubkey, proposal_transaction_pubkey : &'a Pubkey) -> EphemeralAccountsSeedData<'a>{
 
     //     let number_of_ephemeral_accounts : usize = self.instructions.iter().map(|ix| &ix.accounts).flatten().filter(|acc| acc.is_signer == SignerType::Ephemeral).count();
-        
+
     //     let mut result = EphemeralAccountsSeedData {
     //         account_seq_numbers : (0..number_of_ephemeral_accounts).map(|x| u16::try_from(x).unwrap().to_le_bytes()).collect(),
     //         bump_seeds : vec![],
     //         ephemeral_signer_seeds : vec![]
     //     };
-    // //  {   
+    // //  {
     //     let mut i = 0usize;
     //     for instruction in self.instructions.iter() {
     //         for account in instruction.accounts.iter(){

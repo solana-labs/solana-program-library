@@ -12,10 +12,11 @@ use solana_program::{
 
 use crate::state::{
     enums::{ProposalState, TransactionExecutionStatus},
+    ephemeral_signer::EphemeralSeedGenerator,
     governance::get_governance_data,
     native_treasury::get_native_treasury_address_seeds,
     proposal::{get_proposal_data_for_governance, OptionVoteResult},
-    proposal_transaction::{get_proposal_transaction_data_for_proposal}, ephemeral_signer::{EphemeralSeedGenerator},
+    proposal_transaction::get_proposal_transaction_data_for_proposal,
 };
 
 /// Processes ExecuteTransaction instruction
@@ -41,9 +42,14 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
 
     proposal_data
         .assert_can_execute_transaction(&proposal_transaction_data, clock.unix_timestamp)?;
-    
+
     let mut generator = EphemeralSeedGenerator::new();
-    let mut signers_seeds : Vec<&[&[u8]]> = generator.get_proposal_transaction_ephemeral_signer_seeds(program_id, proposal_transaction_info.key, &proposal_transaction_data);
+    let mut signers_seeds: Vec<&[&[u8]]> = generator
+        .get_proposal_transaction_ephemeral_signer_seeds(
+            program_id,
+            proposal_transaction_info.key,
+            &proposal_transaction_data,
+        );
 
     // Execute instruction with Governance PDA as signer
     let instructions = proposal_transaction_data
@@ -63,7 +69,7 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
     let bump = &[bump_seed];
     governance_seeds.push(bump);
     signers_seeds.push(&governance_seeds[..]);
-    
+
     // Sign the transaction using the governance treasury PDA if required by the instruction
     let mut treasury_seeds = get_native_treasury_address_seeds(governance_info.key).to_vec();
     let (treasury_address, treasury_bump_seed) =

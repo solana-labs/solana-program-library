@@ -1,12 +1,12 @@
 //! Program accounts
 
 pub mod enums;
+pub mod ephemeral_signer;
 pub mod governance;
 pub mod legacy;
 pub mod native_treasury;
 pub mod program_metadata;
 pub mod proposal;
-pub mod ephemeral_signer;
 pub mod proposal_transaction;
 pub mod realm;
 pub mod realm_config;

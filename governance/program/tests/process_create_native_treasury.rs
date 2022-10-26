@@ -190,7 +190,7 @@ async fn test_create_account_from_native_treasury() {
     governance_test
         .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
         .await;
-        
+
     // Act
     governance_test
         .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)

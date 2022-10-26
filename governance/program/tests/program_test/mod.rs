@@ -39,7 +39,7 @@ use spl_governance::{
         program_metadata::{get_program_metadata_address, ProgramMetadata},
         proposal::{get_proposal_address, OptionVoteResult, ProposalOption, ProposalV2, VoteType},
         proposal_transaction::{
-            get_proposal_transaction_address, InstructionData, ProposalTransactionV2, SignerType
+            get_proposal_transaction_address, InstructionData, ProposalTransactionV2, SignerType,
         },
         realm::{
             get_governing_token_holding_address, get_realm_address,
@@ -2589,10 +2589,10 @@ impl GovernanceProgramTest {
             owner,
         );
 
-        let mut create_ix_data : InstructionData =create_ix.into(); 
+        let mut create_ix_data: InstructionData = create_ix.into();
         create_ix_data.accounts[1].is_signer = SignerType::Ephemeral;
 
-        let mut create_ix_2_data : InstructionData =create_ix_2.into(); 
+        let mut create_ix_2_data: InstructionData = create_ix_2.into();
         create_ix_2_data.accounts[1].is_signer = SignerType::Ephemeral;
 
         self.with_proposal_transaction_with_ephemeral_accounts(
@@ -2845,10 +2845,14 @@ impl GovernanceProgramTest {
             reserved_v2: [0; 8],
         };
 
-        
-        proposal_transaction_data.resolve_ephemeral_account_addresses(&self.program_id, &proposal_transaction_address);
+        proposal_transaction_data
+            .resolve_ephemeral_account_addresses(&self.program_id, &proposal_transaction_address);
 
-        let mut instructions : Vec<Instruction> = proposal_transaction_data.instructions.iter().map(Instruction::from).collect();
+        let mut instructions: Vec<Instruction> = proposal_transaction_data
+            .instructions
+            .iter()
+            .map(Instruction::from)
+            .collect();
         for mut instruction in instructions.iter_mut() {
             instruction.accounts = instruction
                 .accounts
@@ -2864,7 +2868,7 @@ impl GovernanceProgramTest {
         let proposal_transaction_cookie = ProposalTransactionCookie {
             address: proposal_transaction_address,
             account: proposal_transaction_data,
-            instructions
+            instructions,
         };
 
         Ok(proposal_transaction_cookie)
@@ -2902,7 +2906,11 @@ impl GovernanceProgramTest {
         proposal_cookie: &ProposalCookie,
         proposal_transaction_cookie: &ProposalTransactionCookie,
     ) -> Result<(), ProgramError> {
-        let accounts : Vec<AccountMeta> = proposal_transaction_cookie.instructions.iter().flat_map(|x| x.accounts.clone()).collect();
+        let accounts: Vec<AccountMeta> = proposal_transaction_cookie
+            .instructions
+            .iter()
+            .flat_map(|x| x.accounts.clone())
+            .collect();
         let execute_proposal_transaction_ix = execute_transaction(
             &self.program_id,
             &proposal_cookie.account.governance,
