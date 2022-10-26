@@ -173,7 +173,7 @@ pub struct VoteRecordCookie {
 pub struct ProposalTransactionCookie {
     pub address: Pubkey,
     pub account: ProposalTransactionV2,
-    pub instruction: Instruction,
+    pub instructions: Vec<Instruction>,
 }
 
 #[derive(Debug, Clone)]

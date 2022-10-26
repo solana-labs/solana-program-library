@@ -39,7 +39,7 @@ use spl_governance::{
         program_metadata::{get_program_metadata_address, ProgramMetadata},
         proposal::{get_proposal_address, OptionVoteResult, ProposalOption, ProposalV2, VoteType},
         proposal_transaction::{
-            get_proposal_transaction_address, InstructionData, ProposalTransactionV2,
+            get_proposal_transaction_address, InstructionData, ProposalTransactionV2, SignerType
         },
         realm::{
             get_governing_token_holding_address, get_realm_address,
@@ -2559,41 +2559,52 @@ impl GovernanceProgramTest {
         .await
     }
 
-    // #[allow(dead_code)]
-    // pub async fn with_create_account_transaction(
-    //     &mut self,
-    //     governance_cookie: &GovernanceCookie,
-    //     proposal_cookie: &mut ProposalCookie,
-    //     token_owner_record_cookie: &TokenOwnerRecordCookie,
-    //     owner: &Pubkey,
-    //     space: u64,
-    // ) -> Result<ProposalTransactionCookie, ProgramError> {
-    //     let treasury_address =
-    //         get_native_treasury_address(&self.program_id, &governance_cookie.address);
+    #[allow(dead_code)]
+    pub async fn with_create_ephemeral_accounts(
+        &mut self,
+        governance_cookie: &GovernanceCookie,
+        proposal_cookie: &mut ProposalCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        owner: &Pubkey,
+        space: u64,
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
+        let treasury_address =
+            get_native_treasury_address(&self.program_id, &governance_cookie.address);
 
-    //     let extra_address =
-    //         get_proposal_extra_account_address(&self.program_id, &proposal_cookie.address);
+        let lamports = self.bench.rent.minimum_balance(space as usize);
 
-    //     let lamports = self.bench.rent.minimum_balance(space as usize);
+        let create_ix = system_instruction::create_account(
+            &treasury_address,
+            &Pubkey::new_unique(),
+            lamports,
+            space,
+            owner,
+        );
 
-    //     let mut create_ix = system_instruction::create_account(
-    //         &treasury_address,
-    //         &extra_address,
-    //         lamports,
-    //         space,
-    //         owner,
-    //     );
+        let create_ix_2 = system_instruction::create_account(
+            &treasury_address,
+            &Pubkey::new_unique(),
+            lamports,
+            space,
+            owner,
+        );
 
-    //     self.with_proposal_transaction(
-    //         proposal_cookie,
-    //         token_owner_record_cookie,
-    //         0,
-    //         None,
-    //         &mut create_ix,
-    //         None,
-    //     )
-    //     .await
-    // }
+        let mut create_ix_data : InstructionData =create_ix.into(); 
+        create_ix_data.accounts[1].is_signer = SignerType::Ephemeral;
+
+        let mut create_ix_2_data : InstructionData =create_ix_2.into(); 
+        create_ix_2_data.accounts[1].is_signer = SignerType::Ephemeral;
+
+        self.with_proposal_transaction_with_ephemeral_accounts(
+            proposal_cookie,
+            token_owner_record_cookie,
+            0,
+            None,
+            &[create_ix_data, create_ix_2_data],
+            None,
+        )
+        .await
+    }
 
     #[allow(dead_code)]
     pub async fn with_upgrade_program_transaction(
@@ -2771,7 +2782,89 @@ impl GovernanceProgramTest {
         let proposal_transaction_cookie = ProposalTransactionCookie {
             address: proposal_transaction_address,
             account: proposal_transaction_data,
-            instruction: instruction.clone(),
+            instructions: vec![instruction.clone()],
+        };
+
+        Ok(proposal_transaction_cookie)
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_proposal_transaction_with_ephemeral_accounts(
+        &mut self,
+        proposal_cookie: &mut ProposalCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        option_index: u8,
+        index: Option<u16>,
+        instruction_data: &[InstructionData],
+        hold_up_time: Option<u32>,
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
+        let hold_up_time = hold_up_time.unwrap_or(15);
+
+        let mut yes_option = &mut proposal_cookie.account.options[0];
+
+        let transaction_index = index.unwrap_or(yes_option.transactions_next_index);
+
+        yes_option.transactions_next_index += 1;
+
+        let insert_transaction_ix = insert_transaction(
+            &self.program_id,
+            &proposal_cookie.account.governance,
+            &proposal_cookie.address,
+            &token_owner_record_cookie.address,
+            &token_owner_record_cookie.token_owner.pubkey(),
+            &self.bench.payer.pubkey(),
+            option_index,
+            transaction_index,
+            hold_up_time,
+            instruction_data.to_vec(),
+        );
+
+        self.bench
+            .process_transaction(
+                &[insert_transaction_ix],
+                Some(&[&token_owner_record_cookie.token_owner]),
+            )
+            .await?;
+
+        let proposal_transaction_address = get_proposal_transaction_address(
+            &self.program_id,
+            &proposal_cookie.address,
+            &option_index.to_le_bytes(),
+            &transaction_index.to_le_bytes(),
+        );
+
+        let mut proposal_transaction_data = ProposalTransactionV2 {
+            account_type: GovernanceAccountType::ProposalTransactionV2,
+            option_index,
+            transaction_index,
+            hold_up_time,
+            instructions: instruction_data.to_vec(),
+            executed_at: None,
+            execution_status: TransactionExecutionStatus::None,
+            proposal: proposal_cookie.address,
+            reserved_v2: [0; 8],
+        };
+
+        
+        proposal_transaction_data.resolve_ephemeral_account_addresses(&self.program_id, &proposal_transaction_address);
+
+        let mut instructions : Vec<Instruction> = proposal_transaction_data.instructions.iter().map(|x| Instruction::from(x)).collect();
+        for mut instruction in instructions.iter_mut() {
+            instruction.accounts = instruction
+                .accounts
+                .iter()
+                .map(|a| AccountMeta {
+                    pubkey: a.pubkey,
+                    is_signer: false, // Remove signer since the Governance account PDA will be signing the instruction for us
+                    is_writable: a.is_writable,
+                })
+                .collect();
+        }
+
+        let proposal_transaction_cookie = ProposalTransactionCookie {
+            address: proposal_transaction_address,
+            account: proposal_transaction_data,
+            instructions
         };
 
         Ok(proposal_transaction_cookie)
@@ -2809,13 +2902,14 @@ impl GovernanceProgramTest {
         proposal_cookie: &ProposalCookie,
         proposal_transaction_cookie: &ProposalTransactionCookie,
     ) -> Result<(), ProgramError> {
+        let accounts : Vec<AccountMeta> = proposal_transaction_cookie.instructions.iter().map(|x| x.accounts.clone()).flatten().collect();
         let execute_proposal_transaction_ix = execute_transaction(
             &self.program_id,
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
             &proposal_transaction_cookie.address,
-            &proposal_transaction_cookie.instruction.program_id,
-            &proposal_transaction_cookie.instruction.accounts,
+            &proposal_transaction_cookie.instructions[0].program_id,
+            &accounts,
         );
 
         self.bench
