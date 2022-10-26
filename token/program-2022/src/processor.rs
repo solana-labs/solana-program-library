@@ -61,10 +61,6 @@ impl Processor {
         }
 
         let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
-        if mint.base.is_initialized {
-            return Err(TokenError::AlreadyInUse.into());
-        }
-
         let extension_types = mint.get_extension_types()?;
         if ExtensionType::get_account_len::<Mint>(&extension_types) != mint_data_len {
             return Err(ProgramError::InvalidAccountData);
