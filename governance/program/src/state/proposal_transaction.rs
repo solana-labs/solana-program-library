@@ -3,7 +3,7 @@
 use core::panic;
 
 use borsh::maybestd::io::Write;
-use std::convert::TryFrom;
+
 
 
 use crate::{
@@ -27,7 +27,7 @@ use solana_program::{
 
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
-use super::ephemeral_signer::{get_ephemeral_signer_address, get_ephemeral_signer_seeds};
+use super::ephemeral_signer::{get_ephemeral_signer_address};
 
 /// InstructionData wrapper. It can be removed once Borsh serialization for Instruction is supported in the SDK
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]

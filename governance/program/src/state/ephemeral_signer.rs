@@ -12,7 +12,7 @@ pub fn get_ephemeral_signer_seeds<'a>(proposal_transaction_pubkey: &'a Pubkey, a
 
 /// Returns ProposalExtraAccount PDA address
 pub fn get_ephemeral_signer_address(program_id: &Pubkey, proposal_transaction_pubkey: &Pubkey, account_seq_number_le_bytes : &[u8; 2]) -> Pubkey  {
-    let seeds = &get_ephemeral_signer_seeds(proposal_transaction_pubkey, &account_seq_number_le_bytes);
+    let seeds = &get_ephemeral_signer_seeds(proposal_transaction_pubkey, account_seq_number_le_bytes);
     Pubkey::find_program_address(seeds, program_id).0
 }
 
@@ -38,7 +38,7 @@ impl<'a> EphemeralSeedGenerator<'a> {
 
     /// DOCS
     pub fn get_proposal_transaction_ephemeral_signer_seeds(&'a mut self, program_id : &Pubkey, proposal_transaction_pubkey : &'a Pubkey, proposal_transaction_data : &ProposalTransactionV2) -> Vec<&[&'a [u8]]>{
-        let number_of_ephemeral_accounts : usize = proposal_transaction_data.instructions.iter().map(|ix| &ix.accounts).flatten().filter(|acc| acc.is_signer == SignerType::Ephemeral).count();
+        let number_of_ephemeral_accounts : usize = proposal_transaction_data.instructions.iter().flat_map(|ix| &ix.accounts).filter(|acc| acc.is_signer == SignerType::Ephemeral).count();
         let mut signer_seeds = vec![];
 
         self.account_seq_numbers = (0..number_of_ephemeral_accounts).map(|x| u16::try_from(x).unwrap().to_le_bytes()).collect();

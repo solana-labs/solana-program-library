@@ -15,7 +15,7 @@ use crate::state::{
     governance::get_governance_data,
     native_treasury::get_native_treasury_address_seeds,
     proposal::{get_proposal_data_for_governance, OptionVoteResult},
-    proposal_transaction::{get_proposal_transaction_data_for_proposal, SignerType}, ephemeral_signer::{get_ephemeral_signer_seeds, EphemeralSeedGenerator},
+    proposal_transaction::{get_proposal_transaction_data_for_proposal}, ephemeral_signer::{EphemeralSeedGenerator},
 };
 
 /// Processes ExecuteTransaction instruction
