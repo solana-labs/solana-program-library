@@ -221,7 +221,6 @@ impl ProposalTransactionV2 {
             }
         }
     }
-
 }
 
 /// Returns ProposalTransaction PDA seeds
