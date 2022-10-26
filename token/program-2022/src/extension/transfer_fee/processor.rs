@@ -119,6 +119,9 @@ fn process_withdraw_withheld_tokens_from_mint(
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
 
+    // unnecessary check, but helps for clarity
+    check_program_account(mint_account_info.owner)?;
+
     let mut mint_data = mint_account_info.data.borrow_mut();
     let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
     let extension = mint.get_extension_mut::<TransferFeeConfig>()?;
@@ -213,6 +216,9 @@ fn process_withdraw_withheld_tokens_from_accounts(
     let num_signers = account_infos
         .len()
         .saturating_sub(num_token_accounts as usize);
+
+    // unnecessary check, but helps for clarity
+    check_program_account(mint_account_info.owner)?;
 
     let mint_data = mint_account_info.data.borrow();
     let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
