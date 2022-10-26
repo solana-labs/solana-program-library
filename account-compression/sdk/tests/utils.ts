@@ -15,7 +15,7 @@ import {
     createAppendIx,
     ValidDepthSizePair,
 } from '../src';
-import { MerkleTree } from './merkleTree';
+import { MerkleTree } from '../src/merkle-tree';
 
 /// Wait for a transaction of a certain id to confirm and optionally log its messages
 export async function confirmAndLogTx(

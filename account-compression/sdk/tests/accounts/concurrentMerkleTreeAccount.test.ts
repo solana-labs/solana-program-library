@@ -8,7 +8,7 @@ import { AnchorProvider } from '@project-serum/anchor';
 import NodeWallet from '@project-serum/anchor/dist/cjs/nodewallet';
 import { assert } from 'chai';
 
-import { emptyNode, MerkleTree } from '../merkleTree';
+import { emptyNode, MerkleTree } from '../../src/merkle-tree';
 import { createTreeOnChain, createEmptyTreeOnChain } from '../utils';
 import {
   ALL_DEPTH_SIZE_PAIRS,

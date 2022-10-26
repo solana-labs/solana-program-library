@@ -10,7 +10,7 @@ import { createTreeOnChain, execute } from './utils';
 import {
   hash,
   MerkleTree,
-} from './merkleTree';
+} from '../src/merkle-tree';
 import {
   createReplaceIx,
   createAppendIx,

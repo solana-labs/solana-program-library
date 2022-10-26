@@ -2,7 +2,6 @@ import pkg from "js-sha3";
 const { keccak_256 } = pkg;
 import * as Collections from 'typescript-collections';
 import { PublicKey } from "@solana/web3.js";
-import { LeafIndexOutOfBoundsError } from "../src";
 
 let CACHE_EMPTY_NODE = new Map<number, Buffer>();
 export const LEAF_BUFFER_LENGTH: number = 32;

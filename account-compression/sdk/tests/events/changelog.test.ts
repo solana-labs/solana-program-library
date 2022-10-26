@@ -11,7 +11,7 @@ import {
   deserializeChangeLogEventV1,
   SPL_NOOP_PROGRAM_ID,
 } from '../../src';
-import { MerkleTree } from '../merkleTree';
+import { MerkleTree } from '../../src/merkle-tree';
 import { execute, createTreeOnChain } from '../utils';
 
 describe('Serde tests', () => {
