@@ -26,6 +26,12 @@ pub struct EphemeralSeedGenerator<'a> {
     pub signers_seeds_with_bump : Vec<[&'a [u8];4]>
 }
 
+impl<'a> Default for EphemeralSeedGenerator<'a> {
+     fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'a> EphemeralSeedGenerator<'a> {
      /// DOCS
     pub fn new() -> Self{

@@ -2848,7 +2848,7 @@ impl GovernanceProgramTest {
         
         proposal_transaction_data.resolve_ephemeral_account_addresses(&self.program_id, &proposal_transaction_address);
 
-        let mut instructions : Vec<Instruction> = proposal_transaction_data.instructions.iter().map(|x| Instruction::from(x)).collect();
+        let mut instructions : Vec<Instruction> = proposal_transaction_data.instructions.iter().map(Instruction::from).collect();
         for mut instruction in instructions.iter_mut() {
             instruction.accounts = instruction
                 .accounts
@@ -2902,7 +2902,7 @@ impl GovernanceProgramTest {
         proposal_cookie: &ProposalCookie,
         proposal_transaction_cookie: &ProposalTransactionCookie,
     ) -> Result<(), ProgramError> {
-        let accounts : Vec<AccountMeta> = proposal_transaction_cookie.instructions.iter().map(|x| x.accounts.clone()).flatten().collect();
+        let accounts : Vec<AccountMeta> = proposal_transaction_cookie.instructions.iter().flat_map(|x| x.accounts.clone()).collect();
         let execute_proposal_transaction_ix = execute_transaction(
             &self.program_id,
             &proposal_cookie.account.governance,
