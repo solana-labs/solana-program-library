@@ -4,10 +4,12 @@ on:
   pull_request:
     paths:
     - 'docs/**'
+    - '.github/workflows/pull-request-docs.yml'
   push:
     branches: [master]
     paths:
     - 'docs/**'
+    - '.github/workflows/pull-request-docs.yml'
 
 jobs:
   all_github_action_checks:
