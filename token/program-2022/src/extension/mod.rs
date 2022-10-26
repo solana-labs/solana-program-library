@@ -494,7 +494,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
                 pod_from_bytes_mut::<Length>(&mut self.tlv_data[length_start..value_start])?;
             // maybe this becomes smarter later for dynamically sized extensions
             let length = pod_get_packed_len::<V>();
-            *length_ref = Length::try_from(length).unwrap();
+            *length_ref = Length::try_from(length)?;
 
             let value_end = value_start.saturating_add(length);
             let extension_ref =
