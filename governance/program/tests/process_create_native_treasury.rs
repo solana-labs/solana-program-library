@@ -198,14 +198,14 @@ async fn test_create_accounts_from_native_treasury() {
         .unwrap();
 
     // Assert
+    let expected_lamports = governance_test.bench.rent.minimum_balance(1);
+
     let newly_created = proposal_transaction_cookie.instructions[0].accounts[1].pubkey;
     let newly_created = governance_test
         .bench
         .get_account(&newly_created)
         .await
         .unwrap();
-
-    let expected_lamports = governance_test.bench.rent.minimum_balance(1);
 
     assert_eq!(newly_created.lamports, expected_lamports);
     assert_eq!(newly_created.owner, expected_owner);
@@ -217,8 +217,6 @@ async fn test_create_accounts_from_native_treasury() {
         .get_account(&newly_created_2)
         .await
         .unwrap();
-
-    let expected_lamports = governance_test.bench.rent.minimum_balance(1);
 
     assert_eq!(newly_created_2.lamports, expected_lamports);
     assert_eq!(newly_created_2.owner, expected_owner);
