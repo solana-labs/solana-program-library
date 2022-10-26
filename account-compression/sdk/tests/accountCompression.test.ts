@@ -85,27 +85,12 @@ describe('Account Compression', () => {
       );
     });
     it('Verify proof works for that leaf', async () => {
-      const previousLeaf = offChainTree.leaves[0].node;
       const newLeaf = crypto.randomBytes(32);
       const index = 0;
-      const proof = offChainTree.getProof(index).proof;
+      const proof = offChainTree.getProof(index);
 
-      const verifyLeafIx = createVerifyLeafIx(
-        cmt,
-        offChainTree.root,
-        previousLeaf,
-        index,
-        proof
-      );
-      const replaceLeafIx = createReplaceIx(
-        cmt,
-        payer,
-        offChainTree.root,
-        previousLeaf,
-        newLeaf,
-        index,
-        proof
-      );
+      const verifyLeafIx = createVerifyLeafIx(cmt, proof);
+      const replaceLeafIx = createReplaceIx(cmt, payer, newLeaf, proof);
       await execute(provider, [verifyLeafIx, replaceLeafIx], [payerKeypair]);
 
       offChainTree.updateLeaf(index, newLeaf);
@@ -122,37 +107,23 @@ describe('Account Compression', () => {
       );
     });
     it('Verify leaf fails when proof fails', async () => {
-      const previousLeaf = offChainTree.leaves[0].node;
       const newLeaf = crypto.randomBytes(32);
       const index = 0;
       // Replace valid proof with random bytes so it is wrong
-      const proof = offChainTree.getProof(index).proof.map((node) => {
+      const proof = offChainTree.getProof(index);
+      proof.proof = proof.proof.map((_) => {
         return crypto.randomBytes(32);
       });
 
       // Verify proof is invalid
-      const verifyLeafIx = createVerifyLeafIx(
-        cmt,
-        offChainTree.root,
-        previousLeaf,
-        index,
-        proof
-      );
+      const verifyLeafIx = createVerifyLeafIx(cmt, proof);
       try {
         await execute(provider, [verifyLeafIx], [payerKeypair]);
         assert(false, 'Proof should have failed to verify');
       } catch { }
 
       // Replace instruction with same proof fails
-      const replaceLeafIx = createReplaceIx(
-        cmt,
-        payer,
-        offChainTree.root,
-        previousLeaf,
-        newLeaf,
-        index,
-        proof
-      );
+      const replaceLeafIx = createReplaceIx(cmt, payer, newLeaf, proof);
       try {
         await execute(provider, [replaceLeafIx], [payerKeypair]);
         assert(false, 'Replace should have failed to verify');
@@ -170,18 +141,14 @@ describe('Account Compression', () => {
       );
     });
     it('Replace that leaf', async () => {
-      const previousLeaf = offChainTree.leaves[0].node;
       const newLeaf = crypto.randomBytes(32);
       const index = 0;
 
       const replaceLeafIx = createReplaceIx(
         cmt,
         payer,
-        offChainTree.root,
-        previousLeaf,
         newLeaf,
-        index,
-        offChainTree.getProof(index, false, -1).proof,
+        offChainTree.getProof(index, false, -1),
       );
       assert(
         replaceLeafIx.keys.length == 3 + MAX_DEPTH,
@@ -205,19 +172,10 @@ describe('Account Compression', () => {
     });
 
     it('Replace that leaf with a minimal proof', async () => {
-      const previousLeaf = offChainTree.leaves[0].node;
       const newLeaf = crypto.randomBytes(32);
       const index = 0;
 
-      const replaceLeafIx = createReplaceIx(
-        cmt,
-        payer,
-        offChainTree.root,
-        previousLeaf,
-        newLeaf,
-        index,
-        offChainTree.getProof(index, true, 1).proof,
-      );
+      const replaceLeafIx = createReplaceIx(cmt, payer, newLeaf, offChainTree.getProof(index, true, 1));
       assert(
         replaceLeafIx.keys.length == 3 + 1,
         'Failed to minimize proof to expected size of 1'
@@ -263,16 +221,8 @@ describe('Account Compression', () => {
     it('Attempting to replace with random authority fails', async () => {
       const newLeaf = crypto.randomBytes(32);
       const replaceIndex = 0;
-      const proof = offChainTree.getProof(replaceIndex).proof;
-      const replaceIx = createReplaceIx(
-        cmt,
-        randomSigner,
-        offChainTree.root,
-        offChainTree.leaves[replaceIndex].node,
-        newLeaf,
-        replaceIndex,
-        proof
-      );
+      const proof = offChainTree.getProof(replaceIndex);
+      const replaceIx = createReplaceIx(cmt, randomSigner, newLeaf, proof);
 
       try {
         await execute(provider, [replaceIx], [randomSignerKeypair]);
@@ -283,17 +233,10 @@ describe('Account Compression', () => {
       } catch { }
     });
     it('Can transfer authority', async () => {
-      const transferAuthorityIx = createTransferAuthorityIx(
-        cmt,
-        authority,
-        randomSigner,
-      );
+      const transferAuthorityIx = createTransferAuthorityIx(cmt, authority, randomSigner,);
       await execute(provider, [transferAuthorityIx], [authorityKeypair]);
 
-      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
-        connection,
-        cmt,
-      );
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmt,);
 
       assert(
         splCMT.getAuthority().equals(randomSigner),
@@ -303,16 +246,8 @@ describe('Account Compression', () => {
       // Attempting to replace with new authority now works
       const newLeaf = crypto.randomBytes(32);
       const replaceIndex = 0;
-      const proof = offChainTree.getProof(replaceIndex).proof;
-      const replaceIx = createReplaceIx(
-        cmt,
-        randomSigner,
-        offChainTree.root,
-        offChainTree.leaves[replaceIndex].node,
-        newLeaf,
-        replaceIndex,
-        proof
-      );
+      const proof = offChainTree.getProof(replaceIndex);
+      const replaceIx = createReplaceIx(cmt, randomSigner, newLeaf, proof);
 
       await execute(provider, [replaceIx], [randomSignerKeypair]);
     });
@@ -330,7 +265,6 @@ describe('Account Compression', () => {
     });
     it(`Replace all of them in a block`, async () => {
       // Replace 64 leaves before syncing off-chain tree with on-chain tree
-
       let ixArray: TransactionInstruction[] = [];
       let txList: Promise<string>[] = [];
 
@@ -342,16 +276,8 @@ describe('Account Compression', () => {
           Buffer.from(new BN(i).toArray())
         );
         leavesToUpdate.push(newLeaf);
-        const proof = offChainTree.getProof(index).proof;
-        const replaceIx = createReplaceIx(
-          cmt,
-          payer,
-          offChainTree.root,
-          offChainTree.leaves[i].node,
-          newLeaf,
-          index,
-          proof
-        );
+        const proof = offChainTree.getProof(index);
+        const replaceIx = createReplaceIx(cmt, payer, newLeaf, proof);
         ixArray.push(replaceIx);
       }
 
@@ -388,16 +314,8 @@ describe('Account Compression', () => {
           Buffer.from(new BN(i).toArray())
         );
         leavesToUpdate.push(newLeaf);
-        const proof = offChainTree.getProof(index).proof;
-        const replaceIx = createReplaceIx(
-          cmt,
-          payer,
-          offChainTree.root,
-          offChainTree.leaves[i].node,
-          Buffer.alloc(32), // Empty node
-          index,
-          proof
-        );
+        const proof = offChainTree.getProof(index);
+        const replaceIx = createReplaceIx(cmt, payer, Buffer.alloc(32), proof);
         ixArray.push(replaceIx);
       }
       // Execute all replaces
@@ -406,14 +324,8 @@ describe('Account Compression', () => {
       });
       await Promise.all(txList);
 
-      let payerInfo = await provider.connection.getAccountInfo(
-        payer,
-        'confirmed'
-      )!;
-      let treeInfo = await provider.connection.getAccountInfo(
-        cmt,
-        'confirmed'
-      )!;
+      let payerInfo = await provider.connection.getAccountInfo(payer, 'confirmed')!;
+      let treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed')!;
 
       let payerLamports = payerInfo!.lamports;
       let treeLamports = treeInfo!.lamports;
@@ -502,11 +414,13 @@ describe('Account Compression', () => {
       const replaceIx = createReplaceIx(
         cmt,
         payer,
-        Buffer.alloc(32),
-        maliciousLeafHash,
         maliciousLeafHash1,
-        0,
-        nodeProof
+        {
+          root: Buffer.alloc(32),
+          leaf: maliciousLeafHash,
+          leafIndex: 0,
+          proof: nodeProof
+        }
       );
 
       try {
@@ -542,11 +456,13 @@ describe('Account Compression', () => {
       const replaceIx = createReplaceIx(
         cmt,
         payer,
-        Buffer.alloc(32),
-        maliciousLeafHash,
         maliciousLeafHash1,
-        0,
-        nodeProof
+        {
+          root: Buffer.alloc(32),
+          leaf: maliciousLeafHash,
+          leafIndex: 0,
+          proof: nodeProof
+        }
       );
 
       try {
@@ -600,10 +516,7 @@ describe('Account Compression', () => {
 
       // Compare on-chain & off-chain roots
       let ixs: TransactionInstruction[] = [];
-      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
-        connection,
-        cmt,
-      );
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmt,);
       const root = splCMT.getCurrentRoot();
 
       // Test that the entire state of the tree is stored properly
@@ -620,11 +533,13 @@ describe('Account Compression', () => {
         const replaceIx = createReplaceIx(
           cmt,
           payer,
-          root,
-          Buffer.from(leaf),
           newLeaf,
-          i,
-          [] // No proof necessary
+          {
+            root,
+            leaf: Buffer.from(Uint8Array.from(leaf)),
+            leafIndex: i,
+            proof: [] // No proof necessary
+          }
         );
         ixs.push(replaceIx);
         if (ixs.length == stepSize) {
@@ -647,30 +562,16 @@ describe('Account Compression', () => {
         let i = Math.floor(Math.random() * 32);
         const leaf = newLeaves[i];
 
-        let partialProof = tree.getProof(i).proof.slice(0, proofSize);
-        console.log(`Replacing node ${i}, proof length = ${proofSize}`);
-        for (const [level, node] of Object.entries(partialProof)) {
-          console.log(` ${level}: ${bs58.encode(node)}`);
-        }
-        const replaceIx = createReplaceIx(
-          cmt,
-          payer,
-          root,
-          newLeaves[i],
-          newLeaf,
-          i,
-          partialProof
-        );
+        let proof = tree.getProof(i);
+        let partialProof = proof.proof.slice(0, proofSize);
+
+        // Create an instruction to replace the leaf
+        const replaceIx = createReplaceIx(cmt, payer, newLeaf, { ...proof, proof: partialProof, });
         tree.updateLeaf(i, newLeaf);
-        const replaceBackIx = createReplaceIx(
-          cmt,
-          payer,
-          tree.root,
-          newLeaf,
-          newLeaves[i],
-          i,
-          partialProof
-        );
+
+        // Create an instruction to undo the previous replace, but using the now-outdated partialProof
+        proof = tree.getProof(i);
+        const replaceBackIx = createReplaceIx(cmt, payer, leaf, { ...proof, proof: partialProof });
         tree.updateLeaf(i, leaf);
         await execute(
           provider,
@@ -708,11 +609,13 @@ describe('Account Compression', () => {
       const replaceIx = createReplaceIx(
         cmt,
         payer,
-        offChainTree.root,
-        node,
         newLeaf,
-        index,
-        proof
+        {
+          root: offChainTree.root,
+          leaf: node,
+          leafIndex: index,
+          proof
+        }
       );
 
       try {

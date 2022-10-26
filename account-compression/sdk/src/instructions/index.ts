@@ -16,9 +16,11 @@ import {
   createInitEmptyMerkleTreeInstruction,
   createCloseEmptyTreeInstruction,
 } from '../generated';
+import { MerkleTreeProof } from '../merkle-tree';
 
 /**
- * Helper function that adds a node proof to a TransactionInstruction
+ * Helper function that adds proof nodes to a TransactionInstruction
+ * by adding extra keys to the transaction
  */
 export function addProof(
   instruction: TransactionInstruction,
@@ -63,21 +65,15 @@ export function createInitEmptyMerkleTreeIx(
  * Helper function for {@link createReplaceLeafInstruction}
  * @param merkleTree
  * @param authority
- * @param treeRoot
- * @param previousLeaf
- * @param newLeaf
- * @param index
  * @param proof
+ * @param newLeaf
  * @returns
  */
 export function createReplaceIx(
   merkleTree: PublicKey,
   authority: PublicKey,
-  treeRoot: Buffer,
-  previousLeaf: Buffer,
   newLeaf: Buffer,
-  index: number,
-  proof: Buffer[]
+  proof: MerkleTreeProof,
 ): TransactionInstruction {
   return addProof(
     createReplaceLeafInstruction(
@@ -87,13 +83,13 @@ export function createReplaceIx(
         noop: SPL_NOOP_PROGRAM_ID,
       },
       {
-        root: Array.from(treeRoot),
-        previousLeaf: Array.from(previousLeaf),
+        root: Array.from(proof.root),
+        previousLeaf: Array.from(proof.leaf),
         newLeaf: Array.from(newLeaf),
-        index,
+        index: proof.leafIndex,
       }
     ),
-    proof
+    proof.proof
   );
 }
 
@@ -147,18 +143,12 @@ export function createTransferAuthorityIx(
 /**
  * Helper function for {@link createVerifyLeafInstruction}
  * @param merkleTree
- * @param root
- * @param leaf
- * @param index
  * @param proof
  * @returns
  */
 export function createVerifyLeafIx(
   merkleTree: PublicKey,
-  root: Buffer,
-  leaf: Buffer,
-  index: number,
-  proof: Buffer[]
+  proof: MerkleTreeProof
 ): TransactionInstruction {
   return addProof(
     createVerifyLeafInstruction(
@@ -166,12 +156,12 @@ export function createVerifyLeafIx(
         merkleTree,
       },
       {
-        root: Array.from(root),
-        leaf: Array.from(leaf),
-        index,
+        root: Array.from(proof.root),
+        leaf: Array.from(proof.leaf),
+        index: proof.leafIndex,
       }
     ),
-    proof
+    proof.proof
   );
 }
 
