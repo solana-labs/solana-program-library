@@ -11,14 +11,6 @@ pub fn get_ephemeral_signer_seeds<'a>(proposal_transaction_pubkey: &'a Pubkey, a
 }
 
 /// Returns ProposalExtraAccount PDA address
-pub fn get_ephemeral_signer_address_and_seeds<'a>(program_id: &Pubkey, proposal_transaction_pubkey: &'a Pubkey, account_seq_number_le_bytes : &'a [u8; 2]) -> (Pubkey, u8, Vec<&'a [u8]>)  {
-    let seeds = &get_ephemeral_signer_seeds(proposal_transaction_pubkey, account_seq_number_le_bytes);
-    let (address, bump) = Pubkey::find_program_address(seeds, program_id);
-    let seeds_vec = seeds.to_vec();
-    return (address, bump, seeds_vec)
-}
-
-/// Returns ProposalExtraAccount PDA address
 pub fn get_ephemeral_signer_address(program_id: &Pubkey, proposal_transaction_pubkey: &Pubkey, account_seq_number_le_bytes : &[u8; 2]) -> Pubkey  {
     let seeds = &get_ephemeral_signer_seeds(proposal_transaction_pubkey, &account_seq_number_le_bytes);
     Pubkey::find_program_address(seeds, program_id).0
@@ -36,20 +28,23 @@ pub struct EphemeralSeedGenerator<'a> {
 
 impl<'a> EphemeralSeedGenerator<'a> {
      /// DOCS
-    pub fn new(proposal_transaction_data : &ProposalTransactionV2 ) -> Self{
-        let number_of_ephemeral_accounts : usize = proposal_transaction_data.instructions.iter().map(|ix| &ix.accounts).flatten().filter(|acc| acc.is_signer == SignerType::Ephemeral).count();
-
+    pub fn new() -> Self{
+        
         EphemeralSeedGenerator {
-            account_seq_numbers : (0..number_of_ephemeral_accounts).map(|x| u16::try_from(x).unwrap().to_le_bytes()).collect(),
+            account_seq_numbers : vec![],
             bump_seeds : vec![],
             signers_seeds_with_bump : vec![],
         }
     }
 
     /// DOCS
-    pub fn generate(&'a mut self, program_id : &Pubkey, proposal_transaction_pubkey : &'a Pubkey, proposal_transaction_data : &ProposalTransactionV2) -> Vec<&[&'a [u8]]>{
+    pub fn get_proposal_transaction_ephemeral_signer_seeds(&'a mut self, program_id : &Pubkey, proposal_transaction_pubkey : &'a Pubkey, proposal_transaction_data : &ProposalTransactionV2) -> Vec<&[&'a [u8]]>{
+        let number_of_ephemeral_accounts : usize = proposal_transaction_data.instructions.iter().map(|ix| &ix.accounts).flatten().filter(|acc| acc.is_signer == SignerType::Ephemeral).count();
         let mut signer_seeds = vec![];
         let mut i = 0usize;
+
+        self.account_seq_numbers = (0..number_of_ephemeral_accounts).map(|x| u16::try_from(x).unwrap().to_le_bytes()).collect();
+        
         for instruction in proposal_transaction_data.instructions.iter() {
             for account in instruction.accounts.iter(){
                 if account.is_signer == SignerType::Ephemeral {

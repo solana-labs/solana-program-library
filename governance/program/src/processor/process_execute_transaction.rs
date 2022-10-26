@@ -15,7 +15,7 @@ use crate::state::{
     governance::get_governance_data,
     native_treasury::get_native_treasury_address_seeds,
     proposal::{get_proposal_data_for_governance, OptionVoteResult},
-    proposal_transaction::{get_proposal_transaction_data_for_proposal, SignerType}, ephemeral_signer::{get_ephemeral_signer_address_and_seeds, get_ephemeral_signer_seeds, EphemeralSeedGenerator},
+    proposal_transaction::{get_proposal_transaction_data_for_proposal, SignerType}, ephemeral_signer::{get_ephemeral_signer_seeds, EphemeralSeedGenerator},
 };
 
 /// Processes ExecuteTransaction instruction
@@ -63,8 +63,8 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
     //     }
     // }
     
-    let mut generator = EphemeralSeedGenerator::new(&proposal_transaction_data);
-    let mut signers_seeds : Vec<&[&[u8]]> = generator.generate(program_id, proposal_transaction_info.key, &proposal_transaction_data);
+    let mut generator = EphemeralSeedGenerator::new();
+    let mut signers_seeds : Vec<&[&[u8]]> = generator.get_proposal_transaction_ephemeral_signer_seeds(program_id, proposal_transaction_info.key, &proposal_transaction_data);
     // let signers_seeds :  = res.iter().map(|x| &x[..]).collect();
     // for (bump, seeds) in ephemeral_bump_seeds.iter().zip(ephemeral_signer_seeds.iter_mut()) {
     //         seeds.push(bump);

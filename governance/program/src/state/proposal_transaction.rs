@@ -11,7 +11,6 @@ use crate::{
     state::{
         enums::{GovernanceAccountType, TransactionExecutionStatus},
         legacy::ProposalInstructionV1,
-        ephemeral_signer::get_ephemeral_signer_address_and_seeds
     },
     PROGRAM_AUTHORITY_SEED,
 };
