@@ -1,17 +1,17 @@
-import pkg from "js-sha3";
-const { keccak_256 } = pkg;
+import pkg from 'js-sha3';
 import * as Collections from 'typescript-collections';
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey } from '@solana/web3.js';
+const { keccak_256 } = pkg;
 
 let CACHE_EMPTY_NODE = new Map<number, Buffer>();
 export const LEAF_BUFFER_LENGTH: number = 32;
 
 export type MerkleTreeProof = {
-  leafIndex: number,
-  leaf: Buffer,
-  proof: Buffer[],
-  root: Buffer,
-}
+  leafIndex: number;
+  leaf: Buffer;
+  proof: Buffer[];
+  root: Buffer;
+};
 
 export class MerkleTree {
   leaves: TreeNode[];
@@ -40,8 +40,8 @@ export class MerkleTree {
         right: right,
         parent: undefined,
         level: level + 1,
-        id: seqNum
-      }
+        id: seqNum,
+      };
       left.parent = parent;
       right.parent = parent;
       nodes.enqueue(parent);
@@ -57,7 +57,12 @@ export class MerkleTree {
     return this.root;
   }
 
-  getProof(leafIndex: number, minimizeProofHeight: boolean = false, treeHeight: number = -1, verbose = false): MerkleTreeProof {
+  getProof(
+    leafIndex: number,
+    minimizeProofHeight: boolean = false,
+    treeHeight: number = -1,
+    verbose = false
+  ): MerkleTreeProof {
     let proof: TreeNode[] = [];
 
     let node = this.leaves[leafIndex];
@@ -78,7 +83,7 @@ export class MerkleTree {
         if (!hashed.equals(parent.node)) {
           console.log(hashed);
           console.log(parent.node);
-          throw new Error("Invariant broken when hashing left node")
+          throw new Error('Invariant broken when hashing left node');
         }
       } else {
         proof.push(parent.left!);
@@ -87,7 +92,7 @@ export class MerkleTree {
         if (!hashed.equals(parent.node)) {
           console.log(hashed);
           console.log(parent.node);
-          throw new Error("Invariant broken when hashing right node")
+          throw new Error('Invariant broken when hashing right node');
         }
       }
       node = parent;
@@ -98,8 +103,8 @@ export class MerkleTree {
       leafIndex,
       leaf: this.leaves[leafIndex].node,
       root: this.getRoot(),
-      proof: proof.map((treeNode) => treeNode.node)
-    }
+      proof: proof.map((treeNode) => treeNode.node),
+    };
   }
 
   updateLeaf(leafIndex: number, newLeaf: Buffer, verbose = false) {
@@ -122,7 +127,11 @@ export class MerkleTree {
     this.root = node.node;
   }
 
-  verify(root: string, merkleTreeProof: MerkleTreeProof, verbose = false): boolean {
+  verify(
+    root: string,
+    merkleTreeProof: MerkleTreeProof,
+    verbose = false
+  ): boolean {
     const { leaf, leafIndex, proof } = merkleTreeProof;
 
     let node = new PublicKey(leaf).toBuffer();
@@ -132,26 +141,26 @@ export class MerkleTree {
       } else {
         node = hash(new PublicKey(proof[i]).toBuffer(), node);
       }
-      if (verbose) console.log(`node ${i} ${new PublicKey(node).toString()}`)
+      if (verbose) console.log(`node ${i} ${new PublicKey(node).toString()}`);
     }
-    const rehashed = new PublicKey(node).toString()
+    const rehashed = new PublicKey(node).toString();
     const received = new PublicKey(root).toString();
-    if (verbose) console.log(`hashed ${rehashed} got ${received}`)
+    if (verbose) console.log(`hashed ${rehashed} got ${received}`);
     if (rehashed !== received) {
-      throw new Error("Roots don't match!!!")
+      throw new Error("Roots don't match!!!");
     }
     return rehashed === received;
   }
 }
 
 export type TreeNode = {
-  node: Buffer,
-  left: TreeNode | undefined,
-  right: TreeNode | undefined,
-  parent: TreeNode | undefined,
-  level: number,
-  id: number,
-}
+  node: Buffer;
+  left: TreeNode | undefined;
+  right: TreeNode | undefined;
+  parent: TreeNode | undefined;
+  level: number;
+  id: number;
+};
 
 /**
  * Uses on-chain hash fn to hash together buffers
@@ -187,16 +196,16 @@ export function hash(left: Buffer, right: Buffer): Buffer {
 
 /**
  * Creates the leaf node in a tree of empty leaves of height `level`.
- * Uses {@link CACHE_EMPTY_NODE} to efficiently produce 
- * @param level 
- * @returns 
+ * Uses {@link CACHE_EMPTY_NODE} to efficiently produce
+ * @param level
+ * @returns
  */
 export function emptyNode(level: number): Buffer {
   if (CACHE_EMPTY_NODE.has(level)) {
     return CACHE_EMPTY_NODE.get(level)!;
   }
   if (level == 0) {
-    return Buffer.alloc(32)
+    return Buffer.alloc(32);
   }
 
   let result = hash(emptyNode(level - 1), emptyNode(level - 1));
@@ -206,9 +215,9 @@ export function emptyNode(level: number): Buffer {
 
 /**
  * Helper function when creating a MerkleTree
- * @param level 
- * @param id 
- * @returns 
+ * @param level
+ * @param id
+ * @returns
  */
 function emptyTreeNode(level: number, id: number): TreeNode {
   return {
@@ -217,21 +226,25 @@ function emptyTreeNode(level: number, id: number): TreeNode {
     right: undefined,
     parent: undefined,
     level: level,
-    id
-  }
+    id,
+  };
 }
 
 /**
  * Helper function to build a MerkleTree
- * @param leaves 
- * @returns 
+ * @param leaves
+ * @returns
  */
-function buildLeaves(leaves: Buffer[]): [Collections.Queue<TreeNode>, TreeNode[]] {
+function buildLeaves(
+  leaves: Buffer[]
+): [Collections.Queue<TreeNode>, TreeNode[]] {
   let nodes = new Collections.Queue<TreeNode>();
   let finalLeaves: TreeNode[] = [];
   leaves.forEach((buffer, index) => {
     if (buffer.length != LEAF_BUFFER_LENGTH) {
-      throw Error(`Provided leaf has length: ${buffer.length}, but we need all leaves to be length ${LEAF_BUFFER_LENGTH}`);
+      throw Error(
+        `Provided leaf has length: ${buffer.length}, but we need all leaves to be length ${LEAF_BUFFER_LENGTH}`
+      );
     }
 
     const treeNode = {
@@ -240,10 +253,10 @@ function buildLeaves(leaves: Buffer[]): [Collections.Queue<TreeNode>, TreeNode[]
       right: undefined,
       parent: undefined,
       level: 0,
-      id: index
+      id: index,
     };
     nodes.enqueue(treeNode);
-    finalLeaves.push(treeNode)
-  })
+    finalLeaves.push(treeNode);
+  });
   return [nodes, finalLeaves];
 }

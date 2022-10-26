@@ -73,7 +73,7 @@ export function createReplaceIx(
   merkleTree: PublicKey,
   authority: PublicKey,
   newLeaf: Buffer,
-  proof: MerkleTreeProof,
+  proof: MerkleTreeProof
 ): TransactionInstruction {
   return addProof(
     createReplaceLeafInstruction(

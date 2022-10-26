@@ -98,7 +98,7 @@ export class ConcurrentMerkleTreeAccount {
   /**
    * Returns the index to the spot in the on-chain buffer that stores the current
    * root and last changelog.
-   * 
+   *
    * Should always be `this.getCurrentSeq() % this.getMaxBufferSize()`
    * @returns
    */
@@ -144,11 +144,11 @@ export class ConcurrentMerkleTreeAccount {
 }
 
 /**
- * Return expected depth of the cached {@link Canopy} tree just from the number 
+ * Return expected depth of the cached {@link Canopy} tree just from the number
  * of bytes used to store the Canopy
- * 
- * @param canopyByteLength 
- * @returns 
+ *
+ * @param canopyByteLength
+ * @returns
  */
 export function getCanopyDepth(canopyByteLength: number): number {
   if (canopyByteLength === 0) {
@@ -200,11 +200,11 @@ function deserializeConcurrentMerkleTree(
 
 /**
  * Calculate the expected size of an ConcurrentMerkleTreeAccount
- * @param maxDepth 
- * @param maxBufferSize 
- * @param canopyDepth 
- * @param headerVersion 
- * @returns 
+ * @param maxDepth
+ * @param maxBufferSize
+ * @param canopyDepth
+ * @param headerVersion
+ * @returns
  */
 export function getConcurrentMerkleTreeAccountSize(
   maxDepth: number,
