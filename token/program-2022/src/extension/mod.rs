@@ -129,20 +129,29 @@ fn get_extension_types(tlv_data: &[u8]) -> Result<Vec<ExtensionType>, ProgramErr
     let mut start_index = 0;
     while start_index < tlv_data.len() {
         let tlv_indices = get_tlv_indices(start_index);
-        if tlv_data.len() < tlv_indices.value_start {
-            return Ok(extension_types);
+        if tlv_data.len() < tlv_indices.length_start {
+            // not enough bytes to store the type, malformed
+            return Err(ProgramError::InvalidAccountData);
         }
         let extension_type =
             ExtensionType::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
         if extension_type == ExtensionType::Uninitialized {
             return Ok(extension_types);
         } else {
+            if tlv_data.len() < tlv_indices.value_start {
+                // not enough bytes to store the length, malformed
+                return Err(ProgramError::InvalidAccountData);
+            }
             extension_types.push(extension_type);
             let length = pod_from_bytes::<Length>(
                 &tlv_data[tlv_indices.length_start..tlv_indices.value_start],
             )?;
 
             let value_end_index = tlv_indices.value_start.saturating_add(usize::from(*length));
+            if value_end_index > tlv_data.len() {
+                // value blows past the size of the slice, malformed
+                return Err(ProgramError::InvalidAccountData);
+            }
             start_index = value_end_index;
         }
     }
@@ -946,6 +955,27 @@ mod test {
     }
 
     #[test]
+    fn get_extension_types_with_opaque_buffer() {
+        // incorrect due to the length
+        assert_eq!(
+            get_extension_types(&[1, 0, 1, 1]).unwrap_err(),
+            ProgramError::InvalidAccountData,
+        );
+        // incorrect due to the huge enum number
+        assert_eq!(
+            get_extension_types(&[0, 1, 0, 0]).unwrap_err(),
+            ProgramError::InvalidAccountData,
+        );
+        // correct due to the good enum number and zero length
+        assert_eq!(
+            get_extension_types(&[1, 0, 0, 0]).unwrap(),
+            vec![ExtensionType::try_from(1).unwrap()]
+        );
+        // correct since it's just uninitialized data at the end
+        assert_eq!(get_extension_types(&[0, 0]).unwrap(), vec![]);
+    }
+
+    #[test]
     fn mint_with_extension_pack_unpack() {
         let mint_size = ExtensionType::get_account_len::<Mint>(&[
             ExtensionType::MintCloseAuthority,
@@ -1578,12 +1608,21 @@ mod test {
         let err = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
 
-        let mut buffer = vec![0; BASE_ACCOUNT_LENGTH + 2];
+        // ok since there are two bytes for the type, which is `Uninitialized`
+        let mut buffer = vec![0; BASE_ACCOUNT_LENGTH + 3];
         let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
         let err = state.get_extension_mut::<MintCloseAuthority>().unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
 
         assert_eq!(state.get_extension_types().unwrap(), vec![]);
+
+        // malformed since there aren't too bytes for the type
+        let mut buffer = vec![0; BASE_ACCOUNT_LENGTH + 2];
+        let state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        assert_eq!(
+            state.get_extension_types().unwrap_err(),
+            ProgramError::InvalidAccountData
+        );
     }
 
     #[test]
