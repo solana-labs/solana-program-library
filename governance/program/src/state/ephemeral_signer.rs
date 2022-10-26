@@ -16,7 +16,7 @@ pub fn get_ephemeral_signer_seeds<'a>(
     ]
 }
 
-/// Returns ProposalExtraAccount PDA address
+/// TO DO
 pub fn get_ephemeral_signer_address(
     program_id: &Pubkey,
     proposal_transaction_pubkey: &Pubkey,

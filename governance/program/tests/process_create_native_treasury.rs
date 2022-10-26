@@ -128,7 +128,7 @@ async fn test_execute_transfer_from_native_treasury() {
 }
 
 #[tokio::test]
-async fn test_create_account_from_native_treasury() {
+async fn test_create_accounts_from_native_treasury() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -210,4 +210,17 @@ async fn test_create_account_from_native_treasury() {
     assert_eq!(newly_created.lamports, expected_lamports);
     assert_eq!(newly_created.owner, expected_owner);
     assert_eq!(newly_created.data, vec![0]);
+
+    let newly_created_2 = proposal_transaction_cookie.instructions[1].accounts[1].pubkey;
+    let newly_created_2 = governance_test
+        .bench
+        .get_account(&newly_created_2)
+        .await
+        .unwrap();
+
+    let expected_lamports = governance_test.bench.rent.minimum_balance(1);
+
+    assert_eq!(newly_created_2.lamports, expected_lamports);
+    assert_eq!(newly_created_2.owner, expected_owner);
+    assert_eq!(newly_created_2.data, vec![0]);
 }

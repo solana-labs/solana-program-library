@@ -168,14 +168,6 @@ impl IsInitialized for ProposalTransactionV2 {
         self.account_type == GovernanceAccountType::ProposalTransactionV2
     }
 }
-/// DOCS
-// pub struct EphemeralAccountsSeedData<'a> {
-//     /// DOCS
-//     pub account_seq_numbers : Vec<[u8;2]>,
-//     /// DOCS
-//     pub bump_seeds : Vec<[u8;1]>,
-//     pub ephemeral_signer_seeds : Vec<Vec<&'a [u8]>>
-// }
 
 impl ProposalTransactionV2 {
     /// Serializes account into the target buffer
@@ -230,38 +222,6 @@ impl ProposalTransactionV2 {
         }
     }
 
-    // pub fn resolve_ephemeral_account_seeds<'a>(&self, program_id : &Pubkey, proposal_transaction_pubkey : &'a Pubkey) -> EphemeralAccountsSeedData<'a>{
-
-    //     let number_of_ephemeral_accounts : usize = self.instructions.iter().map(|ix| &ix.accounts).flatten().filter(|acc| acc.is_signer == SignerType::Ephemeral).count();
-
-    //     let mut result = EphemeralAccountsSeedData {
-    //         account_seq_numbers : (0..number_of_ephemeral_accounts).map(|x| u16::try_from(x).unwrap().to_le_bytes()).collect(),
-    //         bump_seeds : vec![],
-    //         ephemeral_signer_seeds : vec![]
-    //     };
-    // //  {
-    //     let mut i = 0usize;
-    //     for instruction in self.instructions.iter() {
-    //         for account in instruction.accounts.iter(){
-    //             if account.is_signer == SignerType::Ephemeral {
-    //                 let seeds : Vec<&[u8]> = get_ephemeral_signer_seeds(proposal_transaction_pubkey,  &result.account_seq_numbers[i]).to_vec();
-    //                 let (_, bump) = Pubkey::find_program_address(&seeds, program_id);
-    //                 result.bump_seeds.push([bump]);
-    //                 result.ephemeral_signer_seeds.push(seeds);
-    //                 i = i.checked_add(1).unwrap();
-    //             }
-    //         }
-    //     }
-
-    //     let mut signers_seeds = vec![];
-    //     for (seeds, bump) in result.ephemeral_signer_seeds.iter_mut().zip(result.bump_seeds.iter()) {
-    //         seeds.push(bump);
-    //         signers_seeds.push(&seeds[..]);
-    //     }
-    // }
-
-    //     result
-    // }
 }
 
 /// Returns ProposalTransaction PDA seeds
