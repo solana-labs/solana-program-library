@@ -1759,11 +1759,21 @@ pub fn decode_instruction_type<T: TryFrom<u8>>(input: &[u8]) -> Result<T, Progra
 }
 
 /// Utility function for decoding instruction data
-pub fn decode_instruction_data<T: Pod>(input: &[u8]) -> Result<&T, ProgramError> {
-    if input.len() != pod_get_packed_len::<T>().saturating_add(1) {
+///
+/// Note: This function expects the entire instruction input, including the
+/// instruction type as the first byte.  This makes the code concise and safe
+/// at the expense of clarity, allowing flows such as:
+///
+/// match decode_instruction_type(input)? {
+///     InstructionType::First => {
+///         let FirstData { ... } = decode_instruction_data(input)?;
+///     }
+/// }
+pub fn decode_instruction_data<T: Pod>(input_with_type: &[u8]) -> Result<&T, ProgramError> {
+    if input_with_type.len() != pod_get_packed_len::<T>().saturating_add(1) {
         Err(ProgramError::InvalidInstructionData)
     } else {
-        pod_from_bytes(&input[1..])
+        pod_from_bytes(&input_with_type[1..])
     }
 }
 
