@@ -33,13 +33,13 @@ jobs:
         id: check_files
         run: |
           echo "========== check paths of modified files =========="
-          echo "::set-output name=run_all_github_action_checks::true"
+          echo "run_all_github_action_checks=true" >> $GITHUB_OUTPUT
           git diff --name-only HEAD^ HEAD > files.txt
           while IFS= read -r file
           do
             if [[ $file != docs/** ]]; then
               echo "Found modified non-'docs' file(s)"
-              echo "::set-output name=run_all_github_action_checks::false"
+              echo "run_all_github_action_checks=false" >> $GITHUB_OUTPUT
               break
             fi
           done < files.txt
