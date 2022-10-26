@@ -41,36 +41,9 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
 
     proposal_data
         .assert_can_execute_transaction(&proposal_transaction_data, clock.unix_timestamp)?;
-
-
-    // // Resolve ephemeral signer seeds
-    // let number_of_ephemeral_accounts : usize = proposal_transaction_data.instructions.iter().map(|ix| &ix.accounts).flatten().filter(|acc| acc.is_signer == SignerType::Ephemeral).count();
-    // let account_seq_numbers : Vec<[u8;2]> = (0..number_of_ephemeral_accounts).map(|x| u16::try_from(x).unwrap().to_le_bytes()).collect();
-    // let mut ephemeral_bump_seeds = vec![]; 
-    // let mut ephemeral_signer_seeds  = vec![];
-    
-
-    // let mut i = 0usize;
-    // for instruction in proposal_transaction_data.instructions.iter_mut() {
-    //     for account in instruction.accounts.iter_mut(){
-    //         if account.is_signer == SignerType::Ephemeral {
-    //             let seeds = get_ephemeral_signer_seeds(proposal_transaction_info.key, &account_seq_numbers[i]).to_vec();
-    //             let (_, bump) = Pubkey::find_program_address(&seeds, program_id);
-    //             ephemeral_bump_seeds.push([bump]);
-    //             ephemeral_signer_seeds.push(seeds);
-    //             i = i.checked_add(1).unwrap();
-    //         }
-    //     }
-    // }
     
     let mut generator = EphemeralSeedGenerator::new();
     let mut signers_seeds : Vec<&[&[u8]]> = generator.get_proposal_transaction_ephemeral_signer_seeds(program_id, proposal_transaction_info.key, &proposal_transaction_data);
-    // let signers_seeds :  = res.iter().map(|x| &x[..]).collect();
-    // for (bump, seeds) in ephemeral_bump_seeds.iter().zip(ephemeral_signer_seeds.iter_mut()) {
-    //         seeds.push(bump);
-    //         signers_seeds.push(&seeds[..]);
-    // }
-
 
     // Execute instruction with Governance PDA as signer
     let instructions = proposal_transaction_data
