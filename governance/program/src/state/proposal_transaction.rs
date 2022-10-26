@@ -38,14 +38,19 @@ pub struct InstructionData {
     pub data: Vec<u8>,
 }
 
-/// TO DO DOCS
+/// Signer information for an account passed in `InstructionData`
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum SignerType {
-    /// TO DO DOCS
+    /// A non signing account
     None,
-    /// TO DO DOCS
+    /// A signer
     Static,
-    /// TO DO DOCS
+    /// Each proposal transaction has access to an arbitrary number of ephemeral signers.
+    /// These are PDAs that will sign the proposal execution but can never sign again.
+    /// They are equivalent to generating a random keypair before the execution, using them
+    /// to sign the executed transaction and then throwing the key away.
+    /// Ephemeral accounts get resolved to represented PDAs of the governance program,
+    /// their address will be ovewriten in `process_insert_transaction`.
     Ephemeral,
 }
 
@@ -201,7 +206,8 @@ impl ProposalTransactionV2 {
         Ok(())
     }
 
-    /// TO DO
+    /// Replaces all ephemeral accounts by PDAs of the governance program that'll be able to sign
+    /// at the phase of execution.
     pub fn resolve_ephemeral_account_addresses(
         &mut self,
         program_id: &Pubkey,
