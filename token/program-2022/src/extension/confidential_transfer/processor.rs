@@ -1208,23 +1208,6 @@ pub(crate) fn process_instruction(
             #[cfg(not(feature = "zk-ops"))]
             Err(ProgramError::InvalidInstructionData)
         }
-        ConfidentialTransferInstruction::TransferWithFee => {
-            msg!("ConfidentialTransferInstruction::TransferWithFee");
-            #[cfg(feature = "zk-ops")]
-            {
-                let data = decode_instruction_data::<TransferInstructionData>(input)?;
-                process_transfer(
-                    program_id,
-                    accounts,
-                    data.new_source_decryptable_available_balance,
-                    data.proof_instruction_offset as i64,
-                )
-            }
-            #[cfg(not(feature = "zk-ops"))]
-            {
-                Err(ProgramError::InvalidInstructionData)
-            }
-        }
         ConfidentialTransferInstruction::ApplyPendingBalance => {
             msg!("ConfidentialTransferInstruction::ApplyPendingBalance");
             #[cfg(feature = "zk-ops")]
