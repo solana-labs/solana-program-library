@@ -252,6 +252,10 @@ fn process_empty_account(
         return Err(ProgramError::InvalidInstructionData);
     }
 
+    if confidential_transfer_account.encryption_pubkey != proof_data.pubkey {
+        return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+    }
+
     confidential_transfer_account.available_balance = EncryptedBalance::zeroed();
     confidential_transfer_account.closable()?;
 
