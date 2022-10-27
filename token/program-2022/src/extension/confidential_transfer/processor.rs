@@ -424,6 +424,10 @@ fn process_withdraw(
     let mut confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
 
+    if confidential_transfer_account.encryption_pubkey != proof_data.pubkey {
+        return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+    }
+
     confidential_transfer_account.available_balance =
         ops::subtract_from(&confidential_transfer_account.available_balance, amount)
             .ok_or(ProgramError::InvalidInstructionData)?;
