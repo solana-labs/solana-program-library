@@ -57,11 +57,20 @@ pub struct ConfidentialTransferMint {
     ///              `ConfidentialTransferInstruction::ConfigureAccount`)
     pub auto_approve_new_accounts: PodBool,
 
+    /// Authority to decode any transfer amount in a confidential transafer.
+    ///
     /// * If non-zero, transfers must include ElGamal cypertext with this public key permitting the
     /// auditor to decode the transfer amount.
     /// * If all zero, auditing is currently disabled.
     pub auditor_encryption_pubkey: EncryptionPubkey,
 
+    /// Authority to withraw withheld fees that are associated with accounts. It must be set to an
+    /// all zero pubkey if the mint is not extended for fees.
+    ///
+    /// Note that the withdraw withheld authority has the ability to decode any withheld fee
+    /// amount that are associated with accounts. When combined with the fee parameters, the
+    /// withheld fee amounts can reveal information about transfer amounts.
+    ///
     /// * If non-zero, transfers must include ElGamal cypertext of the transfer fee with this
     /// public key. If this is the case, but the base mint is not extended for fees, then any
     /// transfer will fail.
