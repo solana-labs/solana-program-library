@@ -45,6 +45,38 @@ fn decode_proof_instruction<T: Pod>(
     ProofInstruction::decode_data(&instruction.data).ok_or(ProgramError::InvalidInstructionData)
 }
 
+/// Checks if a confidential extension is configured to send funds
+fn check_source_confidential_account(
+    source_confidential_transfer_account: &ConfidentialTransferAccount,
+) -> ProgramResult {
+    source_confidential_transfer_account.approved()
+}
+
+/// Checks if a confidential extension is configured to receive funds
+fn check_destination_confidential_account(
+    destination_confidential_transfer_account: &ConfidentialTransferAccount,
+) -> ProgramResult {
+    destination_confidential_transfer_account.approved()?;
+
+    if !bool::from(&destination_confidential_transfer_account.allow_balance_credits) {
+        return Err(TokenError::ConfidentialTransferDepositsAndTransfersDisabled.into());
+    }
+
+    let new_destination_pending_balance_credit_counter =
+        u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
+            .checked_add(1)
+            .ok_or(ProgramError::InvalidInstructionData)?;
+    if new_destination_pending_balance_credit_counter
+        > u64::from(
+            destination_confidential_transfer_account.maximum_pending_balance_credit_counter,
+        )
+    {
+        return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
+    }
+
+    Ok(())
+}
+
 /// Processes an [InitializeMint] instruction.
 fn process_initialize_mint(
     accounts: &[AccountInfo],
@@ -326,11 +358,7 @@ fn process_deposit(
 
     let mut confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    confidential_transfer_account.approved()?;
-
-    if !bool::from(&confidential_transfer_account.allow_balance_credits) {
-        return Err(TokenError::ConfidentialTransferDepositsAndTransfersDisabled.into());
-    }
+    check_destination_confidential_account(confidential_transfer_account)?;
 
     // Divide the deposit amount into low 16 and high 48-bit numbers and then add to the
     // appropriate pending ciphertexts
@@ -351,12 +379,6 @@ fn process_deposit(
             .checked_add(1)
             .ok_or(ProgramError::InvalidInstructionData)?)
         .into();
-
-    if u64::from(confidential_transfer_account.pending_balance_credit_counter)
-        > u64::from(confidential_transfer_account.maximum_pending_balance_credit_counter)
-    {
-        return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
-    }
 
     Ok(())
 }
@@ -423,6 +445,7 @@ fn process_withdraw(
 
     let mut confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
+    check_source_confidential_account(confidential_transfer_account)?;
 
     if confidential_transfer_account.encryption_pubkey != proof_data.pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
@@ -664,7 +687,8 @@ fn process_source_for_transfer(
 
     let mut confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    confidential_transfer_account.approved()?;
+    check_source_confidential_account(confidential_transfer_account)?;
+
     if *source_encryption_pubkey != confidential_transfer_account.encryption_pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
@@ -713,11 +737,7 @@ fn process_destination_for_transfer(
 
     let mut destination_confidential_transfer_account =
         destination_token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    destination_confidential_transfer_account.approved()?;
-
-    if !bool::from(&destination_confidential_transfer_account.allow_balance_credits) {
-        return Err(TokenError::ConfidentialTransferDepositsAndTransfersDisabled.into());
-    }
+    check_destination_confidential_account(destination_confidential_transfer_account)?;
 
     if *destination_encryption_pubkey != destination_confidential_transfer_account.encryption_pubkey
     {
@@ -740,14 +760,6 @@ fn process_destination_for_transfer(
         u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
             .checked_add(1)
             .ok_or(ProgramError::InvalidInstructionData)?;
-
-    if new_destination_pending_balance_credit_counter
-        > u64::from(
-            destination_confidential_transfer_account.maximum_pending_balance_credit_counter,
-        )
-    {
-        return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
-    }
 
     destination_confidential_transfer_account.pending_balance_lo =
         new_destination_pending_balance_lo;
@@ -908,6 +920,7 @@ fn process_withdraw_withheld_tokens_from_mint(
     let mut destination_account_data = destination_account_info.data.borrow_mut();
     let mut destination_account =
         StateWithExtensionsMut::<Account>::unpack(&mut destination_account_data)?;
+
     if destination_account.base.mint != *mint_account_info.key {
         return Err(TokenError::MintMismatch.into());
     }
@@ -916,7 +929,8 @@ fn process_withdraw_withheld_tokens_from_mint(
     }
     let mut destination_confidential_transfer_account =
         destination_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    destination_confidential_transfer_account.approved()?;
+    check_destination_confidential_account(destination_confidential_transfer_account)?;
+
     // verify consistency of proof data
     let previous_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
@@ -954,6 +968,12 @@ fn process_withdraw_withheld_tokens_from_mint(
     .ok_or(ProgramError::InvalidInstructionData)?;
 
     destination_confidential_transfer_account.pending_balance_lo = new_destination_pending_balance;
+
+    destination_confidential_transfer_account.pending_balance_credit_counter =
+        (u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
+            .checked_add(1)
+            .ok_or(ProgramError::InvalidInstructionData)?)
+        .into();
 
     // fee is now withdrawn, so zero out mint withheld amount
     confidential_transfer_mint.withheld_amount = EncryptedWithheldAmount::zeroed();
@@ -1040,7 +1060,8 @@ fn process_withdraw_withheld_tokens_from_accounts(
 
     let mut destination_confidential_transfer_account =
         destination_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    destination_confidential_transfer_account.approved()?;
+    check_destination_confidential_account(destination_confidential_transfer_account)?;
+
     // verify consistency of proof data
     let previous_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
@@ -1074,6 +1095,12 @@ fn process_withdraw_withheld_tokens_from_accounts(
         &proof_data.destination_ciphertext,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
+
+    destination_confidential_transfer_account.pending_balance_credit_counter =
+        (u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
+            .checked_add(1)
+            .ok_or(ProgramError::InvalidInstructionData)?)
+        .into();
 
     destination_confidential_transfer_account.pending_balance_lo = new_destination_pending_balance;
 
