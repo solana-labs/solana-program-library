@@ -407,7 +407,7 @@ pub struct WithdrawInstructionData {
     pub amount: PodU64,
     /// Expected number of base 10 digits to the right of the decimal place
     pub decimals: u8,
-    /// The new decryptable balance if the withrawal succeeds
+    /// The new decryptable balance if the withdrawal succeeds
     pub new_decryptable_available_balance: DecryptableBalance,
     /// Relative location of the `ProofInstruction::VerifyWithdraw` instruction to the `Withdraw`
     /// instruction in the transaction
