@@ -16,11 +16,15 @@ yarn add @solana/spl-account-compression @solana/web3.js
 
 ## Information
 
-This on-chain program provides an interface for composing smart-contracts to create and use SPL ConcurrentMerkleTrees. The primary application of using SPL ConcurrentMerkleTrees is to make edits to off-chain data with on-chain verification.
+This on-chain program provides an interface for composing smart contracts to create and use SPL ConcurrentMerkleTrees. 
+The primary application of using SPL ConcurrentMerkleTrees is to synchronize off-chain databases with on-chain updates. 
+
+SPL ConcurrentMerkleTrees are Merkle Trees that have their roots on-chain with support for fast-forwarding proofs. Fast forwarding allows multiple updates to the tree in a single block and reduces the latency burden on indexers.
+
 
 In order to execute transactions that modify an SPL ConcurrentMerkleTree, an indexer will need to 
 parse through transactions that touch the tree in order to provide up-to-date merkle proofs. 
-For more information regarding merkle proofs, see this great [Ethereum explainer](https://ethereum.org/en/developers/tutorials/merkle-proofs-for-offline-data-integrity/).
+For more information regarding merkle proofs, see this great [explainer](https://ethereum.org/en/developers/tutorials/merkle-proofs-for-offline-data-integrity/).
 
 This program is targeted towards supporting [Metaplex Compressed NFTs](https://github.com/metaplex-foundation/metaplex-program-library/tree/master/bubblegum) and may be subject to change.
 
@@ -57,6 +61,8 @@ If you'd like to see more features added, please create an issue with the title 
 1. Create a tree
 
 ```typescript
+// Assume: known `payer` Keypair
+
 // Generate a keypair for the ConcurrentMerkleTree
 const cmtKeypair = Keypair.generate();
 
@@ -66,8 +72,7 @@ const allocAccountIx = await createAllocTreeIx(
     connection,
     cmtKeypair.publicKey,
     payer.publicKey,
-    maxSize,
-    maxDepth,
+    { maxDepth, maxBufferSize },
     canopyDepth,
 );
 
@@ -76,8 +81,7 @@ const allocAccountIx = await createAllocTreeIx(
 const initTreeIx = createInitEmptyMerkleTreeIx(
     cmtKeypair.publicKey, 
     payer.publicKey, 
-    maxDepth, 
-    maxSize
+    { maxDepth, maxBufferSize }
 );
 
 const tx = new Transaction().add(allocAccountIx).add(initTreeIx);
@@ -91,35 +95,71 @@ await sendAndConfirmTransaction(connection, tx, [cmtKeypair, payer]);
 // Create a new leaf
 const newLeaf: Buffer = crypto.randomBytes(32);
 
-// Add it to an existing tree
-const appendIx = createAppendIx(cmt, payer, newLeaf);
+// Add the new leaf to the existing tree
+const appendIx = createAppendIx(cmtKeypair.publicKey, payer.publicKey, newLeaf);
 
 const tx = new Transaction().add(appendIx);
+
 await sendAndConfirmTransaction(connection, tx, [payer]);
 ```
 
-3. Replace a leaf in the tree
+3. Replace a leaf in the tree, using the provided `MerkleTree` as an indexer
 
 This example assumes that `offChainTree` has been indexing all previous modifying transactions
-involving this tree. However, an indexer like `offChainTree` can be behind by a maximum of `maxBufferSize` transactions.
+involving this tree. 
+It is okay for the indexer to be behind by a maximum of `maxBufferSize` transactions.
+
+
+```typescript
+// Assume: `offChainTree` is a MerkleTree instance
+// that has been indexing the `cmtKeypair.publicKey` transactions
+
+// Get a new leaf
+const newLeaf: Buffer = crypto.randomBytes(32);
+
+// Query off-chain records for information about the leaf
+// you wish to replace by its index in the tree
+const leafIndex = 314;
+
+// Replace the leaf at `leafIndex` with `newLeaf`
+const replaceIx = createReplaceIx(
+    cmtKeypair.publicKey,          
+    payer.publicKey,
+    newLeaf,
+    offChainTree.getProof(leafIndex) 
+);
+
+const tx = new Transaction().add(replaceIx);
+
+await sendAndConfirmTransaction(connection, tx, [payer]);
+```
+
+4. Replace a leaf in the tree, using a 3rd party indexer
+
+This example assumes that some 3rd party service is indexing the the tree at `cmtKeypair.publicKey` for you, and providing MerkleProofs via some REST endpoint.
+The `getProofFromAnIndexer` function is a **placeholder** to exemplify this relationship.
 
 ```typescript
 // Get a new leaf
 const newLeaf: Buffer = crypto.randomBytes(32);
 
-// Query off-chain records for information about the leaf
-// you wish to replace
-const leafIndex = 314;
+// Query off-chain indexer for a MerkleProof
+// possibly by executing GET request against a REST api
+const proof = await getProofFromAnIndexer(myOldLeaf);
 
+// Replace `myOldLeaf` with `newLeaf` at the same index in the tree
 const replaceIx = createReplaceIx(
-    cmt,                                // ConcurrentMerkleTree
-    payer,                              // Authority of the Tree
-    newLeaf,                            // New leaf to append
-    offChainTree.getProof(leafIndex)    // Generate a merkle proof, using `offChainTree` as an indexer
+    cmtKeypair.publicKey,          
+    payer.publicKey,
+    newLeaf,
+    proof
 );
+
 const tx = new Transaction().add(replaceIx);
+
 await sendAndConfirmTransaction(connection, tx, [payer]);
 ```
+
 ## Reference examples
 
 Here are some examples using account compression in the wild:
