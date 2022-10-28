@@ -5,16 +5,17 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as web3 from '@solana/web3.js'
-import * as beet from '@metaplex-foundation/beet'
-import * as beetSolana from '@metaplex-foundation/beet-solana'
-import { PathNode, pathNodeBeet } from './PathNode'
+import * as web3 from '@solana/web3.js';
+import * as beet from '@metaplex-foundation/beet';
+import * as beetSolana from '@metaplex-foundation/beet-solana';
+
+import { PathNode, pathNodeBeet } from './PathNode';
 export type ChangeLogEventV1 = {
-  id: web3.PublicKey
-  path: PathNode[]
-  seq: beet.bignum
-  index: number
-}
+  id: web3.PublicKey;
+  path: PathNode[];
+  seq: beet.bignum;
+  index: number;
+};
 
 /**
  * @category userTypes
@@ -29,4 +30,4 @@ export const changeLogEventV1Beet =
       ['index', beet.u32],
     ],
     'ChangeLogEventV1'
-  )
+  );

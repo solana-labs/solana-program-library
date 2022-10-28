@@ -5,9 +5,9 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as web3 from '@solana/web3.js'
-import * as beetSolana from '@metaplex-foundation/beet-solana'
-import * as beet from '@metaplex-foundation/beet'
+import * as web3 from '@solana/web3.js';
+import * as beetSolana from '@metaplex-foundation/beet-solana';
+import * as beet from '@metaplex-foundation/beet';
 
 /**
  * @category Instructions
@@ -15,8 +15,8 @@ import * as beet from '@metaplex-foundation/beet'
  * @category generated
  */
 export type TransferAuthorityInstructionArgs = {
-  newAuthority: web3.PublicKey
-}
+  newAuthority: web3.PublicKey;
+};
 /**
  * @category Instructions
  * @category TransferAuthority
@@ -24,7 +24,7 @@ export type TransferAuthorityInstructionArgs = {
  */
 export const transferAuthorityStruct = new beet.BeetArgsStruct<
   TransferAuthorityInstructionArgs & {
-    instructionDiscriminator: number[] /* size: 8 */
+    instructionDiscriminator: number[] /* size: 8 */;
   }
 >(
   [
@@ -32,7 +32,7 @@ export const transferAuthorityStruct = new beet.BeetArgsStruct<
     ['newAuthority', beetSolana.publicKey],
   ],
   'TransferAuthorityInstructionArgs'
-)
+);
 /**
  * Accounts required by the _transferAuthority_ instruction
  *
@@ -43,14 +43,14 @@ export const transferAuthorityStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type TransferAuthorityInstructionAccounts = {
-  merkleTree: web3.PublicKey
-  authority: web3.PublicKey
-  anchorRemainingAccounts?: web3.AccountMeta[]
-}
+  merkleTree: web3.PublicKey;
+  authority: web3.PublicKey;
+  anchorRemainingAccounts?: web3.AccountMeta[];
+};
 
 export const transferAuthorityInstructionDiscriminator = [
   48, 169, 76, 72, 229, 180, 55, 161,
-]
+];
 
 /**
  * Creates a _TransferAuthority_ instruction.
@@ -70,7 +70,7 @@ export function createTransferAuthorityInstruction(
   const [data] = transferAuthorityStruct.serialize({
     instructionDiscriminator: transferAuthorityInstructionDiscriminator,
     ...args,
-  })
+  });
   const keys: web3.AccountMeta[] = [
     {
       pubkey: accounts.merkleTree,
@@ -82,11 +82,11 @@ export function createTransferAuthorityInstruction(
       isWritable: false,
       isSigner: true,
     },
-  ]
+  ];
 
   if (accounts.anchorRemainingAccounts != null) {
     for (const acc of accounts.anchorRemainingAccounts) {
-      keys.push(acc)
+      keys.push(acc);
     }
   }
 
@@ -94,6 +94,6 @@ export function createTransferAuthorityInstruction(
     programId,
     keys,
     data,
-  })
-  return ix
+  });
+  return ix;
 }

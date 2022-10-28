@@ -5,19 +5,20 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet'
+import * as beet from '@metaplex-foundation/beet';
+
 import {
   CompressionAccountType,
   compressionAccountTypeBeet,
-} from './CompressionAccountType'
+} from './CompressionAccountType';
 import {
   ConcurrentMerkleTreeHeaderData,
   concurrentMerkleTreeHeaderDataBeet,
-} from './ConcurrentMerkleTreeHeaderData'
+} from './ConcurrentMerkleTreeHeaderData';
 export type ConcurrentMerkleTreeHeader = {
-  accountType: CompressionAccountType
-  header: ConcurrentMerkleTreeHeaderData
-}
+  accountType: CompressionAccountType;
+  header: ConcurrentMerkleTreeHeaderData;
+};
 
 /**
  * @category userTypes
@@ -30,4 +31,4 @@ export const concurrentMerkleTreeHeaderBeet =
       ['header', concurrentMerkleTreeHeaderDataBeet],
     ],
     'ConcurrentMerkleTreeHeader'
-  )
+  );

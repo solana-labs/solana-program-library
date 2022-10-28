@@ -1,0 +1,7 @@
+/.eslintrc.js
+/.solitarc.js
+/jest.config.js
+/yarn.lock
+doc
+dist
+tests

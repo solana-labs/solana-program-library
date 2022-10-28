@@ -5,11 +5,12 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet'
+import * as beet from '@metaplex-foundation/beet';
+
 import {
   ApplicationDataEventV1,
   applicationDataEventV1Beet,
-} from './ApplicationDataEventV1'
+} from './ApplicationDataEventV1';
 /**
  * This type is used to derive the {@link ApplicationDataEvent} type as well as the de/serializer.
  * However don't refer to it in your code but use the {@link ApplicationDataEvent} type instead.
@@ -20,8 +21,8 @@ import {
  * @private
  */
 export type ApplicationDataEventRecord = {
-  V1: { fields: [ApplicationDataEventV1] }
-}
+  V1: { fields: [ApplicationDataEventV1] };
+};
 
 /**
  * Union type respresenting the ApplicationDataEvent data enum defined in Rust.
@@ -35,11 +36,11 @@ export type ApplicationDataEventRecord = {
  * @category generated
  */
 export type ApplicationDataEvent =
-  beet.DataEnumKeyAsKind<ApplicationDataEventRecord>
+  beet.DataEnumKeyAsKind<ApplicationDataEventRecord>;
 
 export const isApplicationDataEventV1 = (
   x: ApplicationDataEvent
-): x is ApplicationDataEvent & { __kind: 'V1' } => x.__kind === 'V1'
+): x is ApplicationDataEvent & { __kind: 'V1' } => x.__kind === 'V1';
 
 /**
  * @category userTypes
@@ -54,4 +55,4 @@ export const applicationDataEventBeet =
         'ApplicationDataEventRecord["V1"]'
       ),
     ],
-  ]) as beet.FixableBeet<ApplicationDataEvent>
+  ]) as beet.FixableBeet<ApplicationDataEvent>;

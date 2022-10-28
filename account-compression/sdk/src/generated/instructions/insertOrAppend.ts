@@ -5,8 +5,8 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet'
-import * as web3 from '@solana/web3.js'
+import * as beet from '@metaplex-foundation/beet';
+import * as web3 from '@solana/web3.js';
 
 /**
  * @category Instructions
@@ -14,10 +14,10 @@ import * as web3 from '@solana/web3.js'
  * @category generated
  */
 export type InsertOrAppendInstructionArgs = {
-  root: number[] /* size: 32 */
-  leaf: number[] /* size: 32 */
-  index: number
-}
+  root: number[] /* size: 32 */;
+  leaf: number[] /* size: 32 */;
+  index: number;
+};
 /**
  * @category Instructions
  * @category InsertOrAppend
@@ -25,7 +25,7 @@ export type InsertOrAppendInstructionArgs = {
  */
 export const insertOrAppendStruct = new beet.BeetArgsStruct<
   InsertOrAppendInstructionArgs & {
-    instructionDiscriminator: number[] /* size: 8 */
+    instructionDiscriminator: number[] /* size: 8 */;
   }
 >(
   [
@@ -35,27 +35,27 @@ export const insertOrAppendStruct = new beet.BeetArgsStruct<
     ['index', beet.u32],
   ],
   'InsertOrAppendInstructionArgs'
-)
+);
 /**
  * Accounts required by the _insertOrAppend_ instruction
  *
  * @property [_writable_] merkleTree
  * @property [**signer**] authority
- * @property [] logWrapper
+ * @property [] noop
  * @category Instructions
  * @category InsertOrAppend
  * @category generated
  */
 export type InsertOrAppendInstructionAccounts = {
-  merkleTree: web3.PublicKey
-  authority: web3.PublicKey
-  logWrapper: web3.PublicKey
-  anchorRemainingAccounts?: web3.AccountMeta[]
-}
+  merkleTree: web3.PublicKey;
+  authority: web3.PublicKey;
+  noop: web3.PublicKey;
+  anchorRemainingAccounts?: web3.AccountMeta[];
+};
 
 export const insertOrAppendInstructionDiscriminator = [
   6, 42, 50, 190, 51, 109, 178, 168,
-]
+];
 
 /**
  * Creates a _InsertOrAppend_ instruction.
@@ -75,7 +75,7 @@ export function createInsertOrAppendInstruction(
   const [data] = insertOrAppendStruct.serialize({
     instructionDiscriminator: insertOrAppendInstructionDiscriminator,
     ...args,
-  })
+  });
   const keys: web3.AccountMeta[] = [
     {
       pubkey: accounts.merkleTree,
@@ -88,15 +88,15 @@ export function createInsertOrAppendInstruction(
       isSigner: true,
     },
     {
-      pubkey: accounts.logWrapper,
+      pubkey: accounts.noop,
       isWritable: false,
       isSigner: false,
     },
-  ]
+  ];
 
   if (accounts.anchorRemainingAccounts != null) {
     for (const acc of accounts.anchorRemainingAccounts) {
-      keys.push(acc)
+      keys.push(acc);
     }
   }
 
@@ -104,6 +104,6 @@ export function createInsertOrAppendInstruction(
     programId,
     keys,
     data,
-  })
-  return ix
+  });
+  return ix;
 }
