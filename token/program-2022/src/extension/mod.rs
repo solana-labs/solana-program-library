@@ -1616,7 +1616,7 @@ mod test {
         let err = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
 
-        // ok since there are two bytes for the type, which is `Uninitialized`
+        // OK since there are two bytes for the type, which is `Uninitialized`
         let mut buffer = vec![0; BASE_ACCOUNT_LENGTH + 3];
         let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
         let err = state.get_extension_mut::<MintCloseAuthority>().unwrap_err();
@@ -1624,7 +1624,7 @@ mod test {
 
         assert_eq!(state.get_extension_types().unwrap(), vec![]);
 
-        // malformed since there aren't too bytes for the type
+        // malformed since there aren't two bytes for the type
         let mut buffer = vec![0; BASE_ACCOUNT_LENGTH + 2];
         let state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
         assert_eq!(

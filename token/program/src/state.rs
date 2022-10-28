@@ -435,7 +435,7 @@ mod tests {
         let result = Account::unpack_account_owner(&src);
         assert_eq!(result, Option::None);
 
-        // The right account data size and intialized, unpack will return some key
+        // The right account data size and initialized, unpack will return some key
         let mut src: [u8; Account::LEN] = [0; Account::LEN];
         src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Initialized as u8;
         let result = Account::unpack_account_owner(&src);

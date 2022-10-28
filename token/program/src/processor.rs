@@ -6066,7 +6066,7 @@ mod tests {
         let account = Account::unpack_unchecked(&account_account.data).unwrap();
         assert_eq!(account.amount, u64::MAX);
 
-        // atttempt to mint one more to the other account
+        // attempt to mint one more to the other account
         assert_eq!(
             Err(TokenError::Overflow.into()),
             do_process_instruction(

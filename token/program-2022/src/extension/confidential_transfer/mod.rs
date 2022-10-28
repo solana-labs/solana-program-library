@@ -59,7 +59,7 @@ pub struct ConfidentialTransferMint {
 
     /// Authority to decode any transfer amount in a confidential transafer.
     ///
-    /// * If non-zero, transfers must include ElGamal cypertext with this public key permitting the
+    /// * If non-zero, transfers must include ElGamal cyphertext with this public key permitting the
     /// auditor to decode the transfer amount.
     /// * If all zero, auditing is currently disabled.
     pub auditor_encryption_pubkey: EncryptionPubkey,
@@ -71,7 +71,7 @@ pub struct ConfidentialTransferMint {
     /// amount that are associated with accounts. When combined with the fee parameters, the
     /// withheld fee amounts can reveal information about transfer amounts.
     ///
-    /// * If non-zero, transfers must include ElGamal cypertext of the transfer fee with this
+    /// * If non-zero, transfers must include ElGamal cyphertext of the transfer fee with this
     /// public key. If this is the case, but the base mint is not extended for fees, then any
     /// transfer will fail.
     /// * If all zero, transfer fee is disabled. If this is the case, but the base mint is extended
