@@ -1,6 +1,6 @@
 # `@solana/spl-account-compression`
 
-A TypeScript library for interacting with SPL Account Compression and SPL NoOp.
+A TypeScript library for interacting with SPL Account Compression and SPL NoOp. [Docs here](https://solana-labs.github.io/solana-program-library/account-compression/sdk/docs/).
 
 ## Install
 
