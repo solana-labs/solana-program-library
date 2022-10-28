@@ -110,6 +110,9 @@ pub enum ConfidentialTransferInstruction {
     /// prior to account closing if no instructions beyond
     /// `ConfidentialTransferInstruction::ConfigureAccount` have affected the token account.
     ///
+    /// In order for this instruction to be successfully processed, it must be accompanied by the
+    /// `VerifyCloseAccount` instruction of the `zk_token_proof` program in the same transaction.
+    ///
     ///   * Single owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` Instructions sysvar.
@@ -157,6 +160,9 @@ pub enum ConfidentialTransferInstruction {
     /// Fails if the source or destination accounts are frozen.
     /// Fails if the associated mint is extended as `NonTransferable`.
     ///
+    /// In order for this instruction to be successfully processed, it must be accompanied by the
+    /// `VerifyWithdraw` instruction of the `zk_token_proof` program in the same transaction.
+    ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
@@ -178,6 +184,10 @@ pub enum ConfidentialTransferInstruction {
     Withdraw,
 
     /// Transfer tokens confidentially.
+    ///
+    /// In order for this instruction to be successfully processed, it must be accompanied by
+    /// either the `VerifyTransfer` or `VerifyTransferWithFee` instruction of the `zk_token_proof`
+    /// program in the same transaction.
     ///
     /// Fails if the associated mint is extended as `NonTransferable`.
     ///
@@ -266,6 +276,10 @@ pub enum ConfidentialTransferInstruction {
     /// Transfer all withheld confidential tokens in the mint to an account. Signed by the mint's
     /// withdraw withheld tokens authority.
     ///
+    /// In order for this instruction to be successfully processed, it must be accompanied by the
+    /// `VerifyWithdrawWithheldTokens` instruction of the `zk_token_proof` program in the same
+    /// transaction.
+    ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
@@ -306,6 +320,10 @@ pub enum ConfidentialTransferInstruction {
     /// authority can first move the withheld amount to the mint using
     /// `HarvestWithheldTokensToMint` and then move the withheld fees from mint to a specified
     /// destination account using `WithdrawWithheldTokensFromMint`.
+    ///
+    /// In order for this instruction to be successfully processed, it must be accompanied by the
+    /// `VerifyWithdrawWithheldTokens` instruction of the `zk_token_proof` program in the same
+    /// transaction.
     ///
     /// Accounts expected by this instruction:
     ///
