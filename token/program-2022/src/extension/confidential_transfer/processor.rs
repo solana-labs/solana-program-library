@@ -124,15 +124,15 @@ fn process_update_mint(
 fn process_configure_account(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    ConfigureAccountInstructionData {
-        encryption_pubkey,
-        decryptable_zero_balance,
-        maximum_pending_balance_credit_counter,
-    }: &ConfigureAccountInstructionData,
+    encryption_pubkey: &EncryptionPubkey,
+    decryptable_zero_balance: &DecryptableBalance,
+    maximum_pending_balance_credit_counter: &PodU64,
+    proof_instruction_offset: i64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
+    let instructions_sysvar_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
 
@@ -156,6 +156,17 @@ fn process_configure_account(
     let mint_data = &mut mint_info.data.borrow();
     let mint = StateWithExtensions::<Mint>::unpack(mint_data)?;
     let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
+
+    let previous_instruction =
+        get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
+    let proof_data = decode_proof_instruction::<PubkeyValidityData>(
+        ProofInstruction::VerifyPubkeyValidity,
+        &previous_instruction,
+    )?;
+
+    if proof_data.pubkey != *encryption_pubkey {
+        return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+    }
 
     // Note: The caller is expected to use the `Reallocate` instruction to ensure there is
     // sufficient room in their token account for the new `ConfidentialTransferAccount` extension
@@ -1186,10 +1197,14 @@ pub(crate) fn process_instruction(
         }
         ConfidentialTransferInstruction::ConfigureAccount => {
             msg!("ConfidentialTransferInstruction::ConfigureAccount");
+            let data = decode_instruction_data::<ConfigureAccountInstructionData>(input)?;
             process_configure_account(
                 program_id,
                 accounts,
-                decode_instruction_data::<ConfigureAccountInstructionData>(input)?,
+                &data.encryption_pubkey,
+                &data.decryptable_zero_balance,
+                &data.maximum_pending_balance_credit_counter,
+                data.proof_instruction_offset as i64,
             )
         }
         ConfidentialTransferInstruction::ApproveAccount => {

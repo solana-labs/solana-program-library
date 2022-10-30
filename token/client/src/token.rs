@@ -1501,9 +1501,8 @@ where
         authority: &S,
         maximum_pending_balance_credit_counter: u64,
     ) -> TokenResult<T::Output> {
-        let elgamal_pubkey = ElGamalKeypair::new(authority, token_account)
-            .map_err(TokenError::Key)?
-            .public;
+        let elgamal_keypair =
+            ElGamalKeypair::new(authority, token_account).map_err(TokenError::Key)?;
         let decryptable_zero_balance = AeKey::new(authority, token_account)
             .map_err(TokenError::Key)?
             .encrypt(0);
@@ -1512,7 +1511,7 @@ where
             token_account,
             authority,
             maximum_pending_balance_credit_counter,
-            elgamal_pubkey,
+            &elgamal_keypair,
             decryptable_zero_balance,
         )
         .await
@@ -1525,20 +1524,25 @@ where
         token_account: &Pubkey,
         authority: &S,
         maximum_pending_balance_credit_counter: u64,
-        elgamal_pubkey: ElGamalPubkey,
+        elgamal_keypair: &ElGamalKeypair,
         decryptable_zero_balance: AeCiphertext,
     ) -> TokenResult<T::Output> {
+        let proof_data =
+            confidential_transfer::instruction::PubkeyValidityData::new(elgamal_keypair)
+                .map_err(TokenError::Proof)?;
+
         self.process_ixs(
-            &[confidential_transfer::instruction::configure_account(
+            &confidential_transfer::instruction::configure_account(
                 &self.program_id,
                 token_account,
                 &self.pubkey,
-                elgamal_pubkey.into(),
+                elgamal_keypair.public.into(),
                 decryptable_zero_balance,
                 maximum_pending_balance_credit_counter,
                 &authority.pubkey(),
                 &[],
-            )?],
+                &proof_data,
+            )?,
             &[authority],
         )
         .await
