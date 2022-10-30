@@ -65,18 +65,23 @@ pub enum ConfidentialTransferInstruction {
     /// Upon success confidential deposits and transfers are enabled, use the
     /// `DisableBalanceCredits` instruction to disable.
     ///
+    /// In order for this instruction to be successfully processed, it must be accompanied by the
+    /// `VerifyPubkey` instruction of the `zk_token_proof` program in the same transaction.
+    ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
     ///   0. `[writeable]` The SPL Token account.
     ///   1. `[]` The corresponding SPL Token mint.
-    ///   2. `[signer]` The single source account owner.
+    ///   2. `[]` Instructions sysvar.
+    ///   3. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writeable]` The SPL Token account.
     ///   1. `[]` The corresponding SPL Token mint.
     ///   2. `[]` The multisig source account owner.
-    ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   3. `[]` Instructions sysvar.
+    ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
     /// Data expected by this instruction:
     ///   `ConfigureAccountInstructionData`
@@ -378,6 +383,9 @@ pub struct ConfigureAccountInstructionData {
     /// The maximum number of despots and transfers that an account can receiver before the
     /// `ApplyPendingBalance` is executed
     pub maximum_pending_balance_credit_counter: PodU64,
+    /// Relative location of the `ProofInstruction::VerifyPubkey` instruction to the
+    /// `ConfigureAccount` instruction in the transaction
+    pub proof_instruction_offset: i8,
 }
 
 /// Data expected by `ConfidentialTransferInstruction::EmptyAccount`
@@ -499,9 +507,11 @@ pub fn update_mint(
 }
 
 /// Create a `ConfigureAccount` instruction
+///
+/// This instruction is suitable for use with a cross-program `invoke`
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_os = "solana"))]
-pub fn configure_account(
+pub fn inner_configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     mint: &Pubkey,
@@ -510,11 +520,13 @@ pub fn configure_account(
     maximum_pending_balance_credit_counter: u64,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
+    proof_instruction_offset: i8,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
         AccountMeta::new(*token_account, false),
         AccountMeta::new_readonly(*mint, false),
+        AccountMeta::new_readonly(sysvar::instructions::id(), false),
         AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
@@ -531,8 +543,39 @@ pub fn configure_account(
             encryption_pubkey,
             decryptable_zero_balance: decryptable_zero_balance.into(),
             maximum_pending_balance_credit_counter: maximum_pending_balance_credit_counter.into(),
+            proof_instruction_offset,
         },
     ))
+}
+
+/// Create a `ConfigureAccount` instruction
+#[allow(clippy::too_many_arguments)]
+#[cfg(not(target_os = "solana"))]
+pub fn configure_account(
+    token_program_id: &Pubkey,
+    token_account: &Pubkey,
+    mint: &Pubkey,
+    encryption_pubkey: EncryptionPubkey,
+    decryptable_zero_balance: AeCiphertext,
+    maximum_pending_balance_credit_counter: u64,
+    authority: &Pubkey,
+    multisig_signers: &[&Pubkey],
+    proof_data: &PubkeyValidityData,
+) -> Result<Vec<Instruction>, ProgramError> {
+    Ok(vec![
+        inner_configure_account(
+            token_program_id,
+            token_account,
+            mint,
+            encryption_pubkey,
+            decryptable_zero_balance,
+            maximum_pending_balance_credit_counter,
+            authority,
+            multisig_signers,
+            1,
+        )?,
+        verify_pubkey_validity(proof_data),
+    ])
 }
 
 /// Create an `ApproveAccount` instruction
