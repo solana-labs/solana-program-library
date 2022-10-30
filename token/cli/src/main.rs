@@ -37,12 +37,12 @@ use solana_sdk::{
 use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::{
     extension::{
-        cpi_guard::CpiGuard, interest_bearing_mint::InterestBearingConfig,
-        memo_transfer::MemoTransfer, mint_close_authority::MintCloseAuthority, ExtensionType,
-        StateWithExtensionsOwned,
+        cpi_guard::CpiGuard, default_account_state::DefaultAccountState,
+        interest_bearing_mint::InterestBearingConfig, memo_transfer::MemoTransfer,
+        mint_close_authority::MintCloseAuthority, ExtensionType, StateWithExtensionsOwned,
     },
     instruction::*,
-    state::{Account, Mint},
+    state::{Account, AccountState, Mint},
 };
 use spl_token_client::{
     client::{ProgramRpcClientSendTransaction, RpcClientResponse},
@@ -134,6 +134,7 @@ pub enum CommandName {
     DisableRequiredTransferMemos,
     EnableCpiGuard,
     DisableCpiGuard,
+    UpdateDefaultAccountState,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -389,6 +390,7 @@ async fn command_create_token(
     enable_non_transferable: bool,
     memo: Option<String>,
     rate_bps: Option<i16>,
+    default_frozen_accounts: bool,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     println_display(
@@ -420,6 +422,15 @@ async fn command_create_token(
 
     if enable_non_transferable {
         extensions.push(ExtensionInitializationParams::NonTransferable);
+    }
+
+    if default_frozen_accounts {
+        if !enable_freeze {
+            return Err("Token requires a freeze authority to default to frozen accounts".into());
+        }
+        extensions.push(ExtensionInitializationParams::DefaultAccountState {
+            state: AccountState::Frozen,
+        })
     }
 
     if let Some(text) = memo {
@@ -1994,6 +2005,71 @@ async fn command_cpi_guard(
     })
 }
 
+async fn command_update_default_account_state(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    freeze_authority: Pubkey,
+    new_default_state: AccountState,
+    bulk_signers: BulkSigners,
+) -> CommandResult {
+    if !config.sign_only {
+        let mint_account = config.get_account_checked(&token_pubkey).await?;
+
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)
+            .map_err(|_| format!("Could not deserialize token mint {}", token_pubkey))?;
+        match mint_state.base.freeze_authority {
+            COption::None => {
+                return Err(format!("Mint {} has no freeze authority.", token_pubkey).into())
+            }
+            COption::Some(mint_freeze_authority) => {
+                if mint_freeze_authority != freeze_authority {
+                    return Err(format!(
+                        "Mint {} has a freeze authority {}, {} provided",
+                        token_pubkey, mint_freeze_authority, freeze_authority
+                    )
+                    .into());
+                }
+            }
+        }
+
+        if let Ok(default_account_state) = mint_state.get_extension::<DefaultAccountState>() {
+            if default_account_state.state == u8::from(new_default_state) {
+                let state_string = match new_default_state {
+                    AccountState::Frozen => "frozen",
+                    AccountState::Initialized => "initialized",
+                    _ => unreachable!(),
+                };
+                return Err(format!(
+                    "Mint {} already has default account state {}",
+                    token_pubkey, state_string
+                )
+                .into());
+            }
+        } else {
+            return Err(format!(
+                "Mint {} does not support default account states",
+                token_pubkey
+            )
+            .into());
+        }
+    }
+
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+    let res = token
+        .set_default_account_state(&freeze_authority, &new_default_state, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
 struct SignOnlyNeedsFullMintSpec {}
 impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
@@ -2173,6 +2249,12 @@ fn app<'a, 'b>(
                         .help(
                             "Permanently force tokens to be non-transferable. Thay may still be burned."
                         ),
+                )
+                .arg(
+                    Arg::with_name("default_frozen_accounts")
+                        .long("default-frozen-accounts")
+                        .requires("enable_freeze")
+                        .help("Specify that accounts are frozen by default."),
                 )
                 .nonce_args(true)
                 .arg(memo_arg())
@@ -3053,6 +3135,44 @@ fn app<'a, 'b>(
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
         )
+        .subcommand(
+            SubCommand::with_name(CommandName::UpdateDefaultAccountState.into())
+                .about("Updates default account state for the mint. Requires the default account state extension.")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The address of the token mint to update default account state"),
+                )
+                .arg(
+                    Arg::with_name("state")
+                        .value_name("STATE")
+                        .takes_value(true)
+                        .possible_values(&["initialized", "frozen"])
+                        .index(2)
+                        .required(true)
+                        .help("The new default account state."),
+                )
+                .arg(
+                    Arg::with_name("freeze_authority")
+                        .long("freeze-authority")
+                        .value_name("KEYPAIR")
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help(
+                            "Specify the token's freeze authority. \
+                            This may be a keypair file or the ASK keyword. \
+                            Defaults to the client keypair.",
+                        ),
+                )
+                .arg(owner_address_arg())
+                .arg(multisig_signer_arg())
+                .nonce_args(true)
+                .offline_args(),
+        )
 }
 
 #[tokio::main]
@@ -3131,6 +3251,7 @@ async fn process_command<'a>(
                 arg_matches.is_present("enable_non_transferable"),
                 memo,
                 rate_bps,
+                arg_matches.is_present("default_frozen_accounts"),
                 bulk_signers,
             )
             .await
@@ -3657,6 +3778,31 @@ async fn process_command<'a>(
                 config.pubkey_or_default(arg_matches, "account", &mut wallet_manager)?;
             command_cpi_guard(config, token_account, owner, bulk_signers, false).await
         }
+        (CommandName::UpdateDefaultAccountState, arg_matches) => {
+            // Since account is required argument it will always be present
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let (freeze_authority_signer, freeze_authority) =
+                config.signer_or_default(arg_matches, "freeze_authority", &mut wallet_manager);
+            if !bulk_signers.contains(&freeze_authority_signer) {
+                bulk_signers.push(freeze_authority_signer);
+            }
+            let new_default_state = arg_matches.value_of("state").unwrap();
+            let new_default_state = match new_default_state {
+                "initialized" => AccountState::Initialized,
+                "frozen" => AccountState::Frozen,
+                _ => unreachable!(),
+            };
+            command_update_default_account_state(
+                config,
+                token,
+                freeze_authority,
+                new_default_state,
+                bulk_signers,
+            )
+            .await
+        }
     }
 }
 
@@ -3847,6 +3993,7 @@ mod tests {
             false,
             None,
             None,
+            false,
             bulk_signers,
         )
         .await
@@ -3874,6 +4021,7 @@ mod tests {
             false,
             None,
             Some(rate_bps),
+            false,
             bulk_signers,
         )
         .await
@@ -5121,6 +5269,7 @@ mod tests {
             false,
             None,
             None,
+            false,
             bulk_signers,
         )
         .await
@@ -5454,5 +5603,67 @@ mod tests {
         )
         .await
         .unwrap_err();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn default_account_state() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let program_id = spl_token_2022::id();
+        let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        let token_keypair = Keypair::new();
+        let token_pubkey = token_keypair.pubkey();
+        let bulk_signers: Vec<Arc<dyn Signer>> =
+            vec![Arc::new(clone_keypair(&payer)), Arc::new(token_keypair)];
+
+        command_create_token(
+            &config,
+            TEST_DECIMALS,
+            token_pubkey,
+            payer.pubkey(),
+            true,
+            false,
+            None,
+            None,
+            true,
+            bulk_signers,
+        )
+        .await
+        .unwrap();
+
+        let mint_account = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+        let mint = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data).unwrap();
+        let extension = mint.get_extension::<DefaultAccountState>().unwrap();
+        assert_eq!(extension.state, u8::from(AccountState::Frozen));
+
+        let frozen_account = create_associated_account(&config, &payer, token_pubkey).await;
+        let token_account = config
+            .rpc_client
+            .get_account(&frozen_account)
+            .await
+            .unwrap();
+        let account = StateWithExtensionsOwned::<Account>::unpack(token_account.data).unwrap();
+        assert_eq!(account.base.state, AccountState::Frozen);
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::UpdateDefaultAccountState.into(),
+                &token_pubkey.to_string(),
+                "initialized",
+            ],
+        )
+        .await
+        .unwrap();
+        let unfrozen_account = create_auxiliary_account(&config, &payer, token_pubkey).await;
+        let token_account = config
+            .rpc_client
+            .get_account(&unfrozen_account)
+            .await
+            .unwrap();
+        let account = StateWithExtensionsOwned::<Account>::unpack(token_account.data).unwrap();
+        assert_eq!(account.base.state, AccountState::Initialized);
     }
 }
