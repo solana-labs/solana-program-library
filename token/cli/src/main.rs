@@ -816,6 +816,7 @@ async fn command_transfer(
     mint_decimals: Option<u8>,
     recipient_is_ata_owner: bool,
     use_unchecked_instruction: bool,
+    ui_fee: Option<f64>,
     memo: Option<String>,
     bulk_signers: BulkSigners,
     no_wait: bool,
@@ -890,6 +891,9 @@ async fn command_transfer(
     } else {
         maybe_transfer_balance.unwrap()
     };
+
+    let maybe_fee =
+        ui_fee.map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals));
 
     // determine whether recipient is a token account or an expected owner of one
     let recipient_is_token_account = if !config.sign_only {
@@ -1048,6 +1052,18 @@ async fn command_transfer(
                 &recipient_owner,
                 &sender_owner,
                 transfer_balance,
+                maybe_fee,
+                &bulk_signers,
+            )
+            .await?
+    } else if let Some(fee) = maybe_fee {
+        token
+            .transfer_with_fee(
+                &sender,
+                &recipient_token_account,
+                &sender_owner,
+                transfer_balance,
+                fee,
                 &bulk_signers,
             )
             .await?
@@ -2538,6 +2554,14 @@ fn app<'a, 'b>(
                         .requires("sign_only")
                         .help("In sign-only mode, specifies that the recipient is the owner of the associated token account rather than an actual token account"),
                 )
+                .arg(
+                    Arg::with_name("expected_fee")
+                        .long("expected-fee")
+                        .validator(is_amount)
+                        .value_name("TOKEN_AMOUNT")
+                        .takes_value(true)
+                        .help("Expected fee amount collected during the transfer"),
+                )
                 .arg(multisig_signer_arg())
                 .arg(mint_decimals_arg())
                 .nonce_args(true)
@@ -3432,6 +3456,7 @@ async fn process_command<'a>(
 
             let recipient_is_ata_owner = arg_matches.is_present("recipient_is_ata_owner");
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
+            let expected_fee = value_of::<f64>(arg_matches, "expected_fee");
             let memo = value_t!(arg_matches, "memo", String).ok();
 
             command_transfer(
@@ -3446,6 +3471,7 @@ async fn process_command<'a>(
                 mint_decimals,
                 recipient_is_ata_owner,
                 use_unchecked_instruction,
+                expected_fee,
                 memo,
                 bulk_signers,
                 arg_matches.is_present("no_wait"),
@@ -5768,5 +5794,29 @@ mod tests {
             u64::from(extension.newer_transfer_fee.maximum_fee),
             maximum_fee
         );
+
+        let total_amount = 1000.0;
+        let transfer_amount = 100.0;
+        let token_account = create_associated_account(&config, &payer, token_pubkey).await;
+        let source_account = create_auxiliary_account(&config, &payer, token_pubkey).await;
+        mint_tokens(&config, &payer, token_pubkey, total_amount, source_account).await;
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Transfer.into(),
+                "--from",
+                &source_account.to_string(),
+                &token_pubkey.to_string(),
+                &transfer_amount.to_string(),
+                &token_account.to_string(),
+                "--expected-fee",
+                "1",
+            ],
+        )
+        .await
+        .unwrap();
     }
 }
