@@ -6,8 +6,8 @@ use {
     program_test::{TestContext, TokenContext},
     solana_program_test::tokio,
     solana_sdk::{
-        epoch_info::EpochInfo, instruction::InstructionError, pubkey::Pubkey, signature::Signer,
-        signer::keypair::Keypair, transaction::TransactionError, transport::TransportError,
+        instruction::InstructionError, pubkey::Pubkey, signature::Signer, signer::keypair::Keypair,
+        transaction::TransactionError, transport::TransportError,
     },
     spl_token_2022::{
         error::TokenError,
@@ -19,7 +19,7 @@ use {
         },
         solana_zk_token_sdk::{
             encryption::{auth_encryption::*, elgamal::*},
-            zk_token_elgamal::{self, pod::Zeroable},
+            zk_token_elgamal::pod::Zeroable,
         },
     },
     spl_token_client::{
@@ -29,10 +29,16 @@ use {
     std::convert::TryInto,
 };
 
+#[cfg(feature = "zk-ops")]
+use {solana_sdk::epoch_info::EpochInfo, spl_token_2022::solana_zk_token_sdk::zk_token_elgamal};
+
+#[cfg(feature = "zk-ops")]
 const TEST_MAXIMUM_FEE: u64 = 100;
+#[cfg(feature = "zk-ops")]
 const TEST_FEE_BASIS_POINTS: u16 = 250;
 const TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER: u64 = 2;
 
+#[cfg(feature = "zk-ops")]
 fn test_epoch_info() -> EpochInfo {
     EpochInfo {
         epoch: 0,
@@ -49,6 +55,7 @@ struct ConfidentialTransferMintWithKeypairs {
     ct_mint_authority: Keypair,
     #[allow(dead_code)]
     ct_mint_transfer_auditor_encryption_keypair: ElGamalKeypair,
+    #[allow(dead_code)]
     ct_mint_withdraw_withheld_authority_encryption_keypair: ElGamalKeypair,
 }
 
@@ -123,6 +130,7 @@ impl ConfidentialTokenAccountMeta {
         }
     }
 
+    #[cfg(feature = "zk-ops")]
     async fn new_with_required_memo_transfers<T>(token: &Token<T>, owner: &Keypair) -> Self
     where
         T: SendTransaction,
@@ -165,6 +173,7 @@ impl ConfidentialTokenAccountMeta {
         }
     }
 
+    #[cfg(feature = "zk-ops")]
     async fn with_tokens<T>(
         token: &Token<T>,
         owner: &Keypair,
@@ -199,6 +208,7 @@ impl ConfidentialTokenAccountMeta {
         meta
     }
 
+    #[cfg(feature = "zk-ops")]
     async fn check_balances<T>(&self, token: &Token<T>, expected: ConfidentialTokenAccountBalances)
     where
         T: SendTransaction,
@@ -238,6 +248,7 @@ impl ConfidentialTokenAccountMeta {
     }
 }
 
+#[cfg(feature = "zk-ops")]
 struct ConfidentialTokenAccountBalances {
     pending_balance_lo: u64,
     pending_balance_hi: u64,
@@ -245,6 +256,7 @@ struct ConfidentialTokenAccountBalances {
     decryptable_available_balance: u64,
 }
 
+#[cfg(feature = "zk-ops")]
 async fn check_withheld_amount_in_mint<T>(
     token: &Token<T>,
     withdraw_withheld_authority_encryption_keypair: &ElGamalKeypair,
@@ -468,6 +480,7 @@ async fn ct_new_account_is_empty() {
         .unwrap();
 }
 
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn ct_deposit() {
     let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
@@ -591,6 +604,7 @@ async fn ct_deposit() {
     assert_eq!(extension.actual_pending_balance_credit_counter, 2.into());
 }
 
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn ct_withdraw() {
     let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
@@ -693,6 +707,7 @@ async fn ct_withdraw() {
         .unwrap();
 }
 
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn ct_transfer() {
     let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
@@ -920,6 +935,7 @@ async fn ct_transfer() {
         .await;
 }
 
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn ct_transfer_with_fee() {
     let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
@@ -1123,6 +1139,7 @@ async fn ct_transfer_with_fee() {
         .await;
 }
 
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn ct_withdraw_withheld_tokens_from_mint() {
     let ConfidentialTransferMintWithKeypairs {
@@ -1277,6 +1294,7 @@ async fn ct_withdraw_withheld_tokens_from_mint() {
         .await;
 }
 
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn ct_withdraw_withheld_tokens_from_accounts() {
     let ConfidentialTransferMintWithKeypairs {
@@ -1396,6 +1414,7 @@ async fn ct_withdraw_withheld_tokens_from_accounts() {
         .await;
 }
 
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn ct_transfer_memo() {
     let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
@@ -1496,6 +1515,7 @@ async fn ct_transfer_memo() {
         .await;
 }
 
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn ct_transfer_with_fee_memo() {
     let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
