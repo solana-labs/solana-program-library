@@ -4,8 +4,6 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{instruction::*, *},
-            memo_transfer::{check_previous_sibling_instruction_is_memo, memo_required},
-            non_transferable::NonTransferable,
             StateWithExtensions, StateWithExtensionsMut,
         },
         instruction::{decode_instruction_data, decode_instruction_type},
@@ -26,7 +24,11 @@ use {
 // Remove feature once zk ops syscalls are enabled on all networks
 #[cfg(feature = "zk-ops")]
 use {
-    crate::extension::transfer_fee::TransferFeeConfig,
+    crate::extension::{
+        memo_transfer::{check_previous_sibling_instruction_is_memo, memo_required},
+        non_transferable::NonTransferable,
+        transfer_fee::TransferFeeConfig,
+    },
     solana_program::{clock::Clock, sysvar::Sysvar},
     solana_zk_token_sdk::zk_token_elgamal::ops,
 };
@@ -46,6 +48,7 @@ fn decode_proof_instruction<T: Pod>(
 }
 
 /// Checks if a confidential extension is configured to send funds
+#[cfg(feature = "zk-ops")]
 fn check_source_confidential_account(
     source_confidential_transfer_account: &ConfidentialTransferAccount,
 ) -> ProgramResult {
@@ -53,6 +56,7 @@ fn check_source_confidential_account(
 }
 
 /// Checks if a confidential extension is configured to receive funds
+#[cfg(feature = "zk-ops")]
 fn check_destination_confidential_account(
     destination_confidential_transfer_account: &ConfidentialTransferAccount,
 ) -> ProgramResult {

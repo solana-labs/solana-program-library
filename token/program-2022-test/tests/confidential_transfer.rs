@@ -468,6 +468,7 @@ async fn ct_new_account_is_empty() {
         .unwrap();
 }
 
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn ct_deposit() {
     let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
@@ -591,6 +592,7 @@ async fn ct_deposit() {
     assert_eq!(extension.actual_pending_balance_credit_counter, 2.into());
 }
 
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn ct_withdraw() {
     let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
@@ -693,6 +695,7 @@ async fn ct_withdraw() {
         .unwrap();
 }
 
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn ct_transfer() {
     let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
@@ -920,6 +923,7 @@ async fn ct_transfer() {
         .await;
 }
 
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn ct_transfer_with_fee() {
     let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
@@ -1123,6 +1127,7 @@ async fn ct_transfer_with_fee() {
         .await;
 }
 
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn ct_withdraw_withheld_tokens_from_mint() {
     let ConfidentialTransferMintWithKeypairs {
@@ -1277,6 +1282,7 @@ async fn ct_withdraw_withheld_tokens_from_mint() {
         .await;
 }
 
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn ct_withdraw_withheld_tokens_from_accounts() {
     let ConfidentialTransferMintWithKeypairs {
@@ -1396,6 +1402,7 @@ async fn ct_withdraw_withheld_tokens_from_accounts() {
         .await;
 }
 
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn ct_transfer_memo() {
     let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
@@ -1496,6 +1503,7 @@ async fn ct_transfer_memo() {
         .await;
 }
 
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn ct_transfer_with_fee_memo() {
     let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =

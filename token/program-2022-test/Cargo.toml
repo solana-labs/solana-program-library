@@ -9,6 +9,7 @@ version = "0.0.1"
 
 [features]
 test-sbf = []
+zk-ops = []
 
 [build-dependencies]
 walkdir = "2"
