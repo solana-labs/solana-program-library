@@ -253,6 +253,10 @@ where
 }
 
 pub(crate) type Error = Box<dyn std::error::Error + Send + Sync>;
+fn print_error_and_exit<T, E: Display>(e: E) -> T {
+    eprintln!("error: {}", e);
+    exit(1)
+}
 
 type BulkSigners = Vec<Arc<dyn Signer>>;
 pub(crate) type CommandResult = Result<String, Error>;
@@ -269,11 +273,8 @@ fn get_signer(
     wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
 ) -> Option<(Arc<dyn Signer>, Pubkey)> {
     matches.value_of(keypair_name).map(|path| {
-        let signer =
-            signer_from_path(matches, path, keypair_name, wallet_manager).unwrap_or_else(|e| {
-                eprintln!("error: {}", e);
-                exit(1);
-            });
+        let signer = signer_from_path(matches, path, keypair_name, wallet_manager)
+            .unwrap_or_else(print_error_and_exit);
         let signer_pubkey = signer.pubkey();
         (Arc::from(signer), signer_pubkey)
     })
@@ -391,6 +392,7 @@ async fn command_create_token(
     memo: Option<String>,
     rate_bps: Option<i16>,
     default_account_state: Option<AccountState>,
+    transfer_fee: Option<(u16, u64)>,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     println_display(
@@ -430,6 +432,15 @@ async fn command_create_token(
             "Token requires a freeze authority to default to frozen accounts"
         );
         extensions.push(ExtensionInitializationParams::DefaultAccountState { state })
+    }
+
+    if let Some((transfer_fee_basis_points, maximum_fee)) = transfer_fee {
+        extensions.push(ExtensionInitializationParams::TransferFeeConfig {
+            transfer_fee_config_authority: Some(authority),
+            withdraw_withheld_authority: Some(authority),
+            transfer_fee_basis_points,
+            maximum_fee,
+        });
     }
 
     if let Some(text) = memo {
@@ -2261,6 +2272,17 @@ fn app<'a, 'b>(
                             This behavior is not the same as the default, which makes it \
                             impossible to specify a default account state in the future."),
                 )
+                .arg(
+                    Arg::with_name("transfer_fee")
+                        .long("transfer-fee")
+                        .value_names(&["FEE_IN_BASIS_POINTS", "MAXIMUM_FEE"])
+                        .takes_value(true)
+                        .number_of_values(2)
+                        .help(
+                            "Add a transfer fee to the mint. \
+                            The mint authority can set the fee and withdraw collected fees.",
+                        ),
+                )
                 .nonce_args(true)
                 .arg(memo_arg())
         )
@@ -3239,6 +3261,19 @@ async fn process_command<'a>(
             let memo = value_t!(arg_matches, "memo", String).ok();
             let rate_bps = value_t!(arg_matches, "interest_rate", i16).ok();
 
+            let transfer_fee = arg_matches.values_of("transfer_fee").map(|mut v| {
+                (
+                    v.next()
+                        .unwrap()
+                        .parse::<u16>()
+                        .unwrap_or_else(print_error_and_exit),
+                    v.next()
+                        .unwrap()
+                        .parse::<u64>()
+                        .unwrap_or_else(print_error_and_exit),
+                )
+            });
+
             let (token_signer, token) =
                 get_signer(arg_matches, "token_keypair", &mut wallet_manager)
                     .unwrap_or_else(new_throwaway_signer);
@@ -3266,6 +3301,7 @@ async fn process_command<'a>(
                 memo,
                 rate_bps,
                 default_account_state,
+                transfer_fee,
                 bulk_signers,
             )
             .await
@@ -3318,10 +3354,7 @@ async fn process_command<'a>(
             let minimum_signers = value_of::<u8>(arg_matches, "minimum_signers").unwrap();
             let multisig_members =
                 pubkeys_of_multiple_signers(arg_matches, "multisig_member", &mut wallet_manager)
-                    .unwrap_or_else(|e| {
-                        eprintln!("error: {}", e);
-                        exit(1);
-                    })
+                    .unwrap_or_else(print_error_and_exit)
                     .unwrap();
             if minimum_signers as usize > multisig_members.len() {
                 eprintln!(
@@ -3882,7 +3915,9 @@ mod tests {
             transaction::Transaction,
         },
         solana_test_validator::{ProgramInfo, TestValidator, TestValidatorGenesis},
-        spl_token_2022::extension::non_transferable::NonTransferable,
+        spl_token_2022::extension::{
+            non_transferable::NonTransferable, transfer_fee::TransferFeeConfig,
+        },
         spl_token_client::client::{
             ProgramClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
         },
@@ -4005,6 +4040,7 @@ mod tests {
             false,
             false,
             false,
+            None,
             None,
             None,
             None,
@@ -5284,6 +5320,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             bulk_signers,
         )
         .await
@@ -5681,5 +5718,55 @@ mod tests {
             .unwrap();
         let account = StateWithExtensionsOwned::<Account>::unpack(token_account.data).unwrap();
         assert_eq!(account.base.state, AccountState::Initialized);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn transfer_fee() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let config =
+            test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
+
+        let token_keypair = Keypair::new();
+        let token_pubkey = token_keypair.pubkey();
+        let bulk_signers: Vec<Arc<dyn Signer>> =
+            vec![Arc::new(clone_keypair(&payer)), Arc::new(token_keypair)];
+        let transfer_fee_basis_points = 100;
+        let maximum_fee = 2_000_000;
+
+        command_create_token(
+            &config,
+            TEST_DECIMALS,
+            token_pubkey,
+            payer.pubkey(),
+            false,
+            true,
+            None,
+            None,
+            Some((transfer_fee_basis_points, maximum_fee)),
+            bulk_signers,
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+        let test_mint = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+        let extension = test_mint.get_extension::<TransferFeeConfig>().unwrap();
+        assert_eq!(
+            u16::from(extension.older_transfer_fee.transfer_fee_basis_points),
+            transfer_fee_basis_points
+        );
+        assert_eq!(
+            u64::from(extension.older_transfer_fee.maximum_fee),
+            maximum_fee
+        );
+        assert_eq!(
+            u16::from(extension.newer_transfer_fee.transfer_fee_basis_points),
+            transfer_fee_basis_points
+        );
+        assert_eq!(
+            u64::from(extension.newer_transfer_fee.maximum_fee),
+            maximum_fee
+        );
     }
 }
