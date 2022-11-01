@@ -369,7 +369,7 @@ async fn ct_configure_token_account() {
         .get_extension::<ConfidentialTransferAccount>()
         .unwrap();
     assert!(!bool::from(&extension.approved));
-    assert!(bool::from(&extension.allow_balance_credits));
+    assert!(bool::from(&extension.allow_confidential_credits));
     assert_eq!(
         extension.encryption_pubkey,
         alice_meta.elgamal_keypair.public.into()
@@ -418,7 +418,7 @@ async fn ct_configure_token_account() {
 }
 
 #[tokio::test]
-async fn ct_enable_disable_balance_credits() {
+async fn ct_enable_disable_confidential_credits() {
     let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
         ConfidentialTransferMintWithKeypairs::new();
     let mut context = TestContext::new().await;
@@ -433,7 +433,7 @@ async fn ct_enable_disable_balance_credits() {
     let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice).await;
 
     token
-        .confidential_transfer_disable_balance_credits(&alice_meta.token_account, &alice)
+        .confidential_transfer_disable_confidential_credits(&alice_meta.token_account, &alice)
         .await
         .unwrap();
     let state = token
@@ -443,10 +443,10 @@ async fn ct_enable_disable_balance_credits() {
     let extension = state
         .get_extension::<ConfidentialTransferAccount>()
         .unwrap();
-    assert!(!bool::from(&extension.allow_balance_credits));
+    assert!(!bool::from(&extension.allow_confidential_credits));
 
     token
-        .confidential_transfer_enable_balance_credits(&alice_meta.token_account, &alice)
+        .confidential_transfer_enable_confidential_credits(&alice_meta.token_account, &alice)
         .await
         .unwrap();
     let state = token
@@ -456,7 +456,98 @@ async fn ct_enable_disable_balance_credits() {
     let extension = state
         .get_extension::<ConfidentialTransferAccount>()
         .unwrap();
-    assert!(bool::from(&extension.allow_balance_credits));
+    assert!(bool::from(&extension.allow_confidential_credits));
+}
+
+#[tokio::test]
+async fn ct_enable_disable_non_confidential_credits() {
+    let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
+        ConfidentialTransferMintWithKeypairs::new();
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+        ])
+        .await
+        .unwrap();
+
+    let TokenContext {
+        token,
+        alice,
+        bob,
+        mint_authority,
+        ..
+    } = context.token_context.unwrap();
+    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice).await;
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob).await;
+
+    token
+        .mint_to(
+            &alice_meta.token_account,
+            &mint_authority.pubkey(),
+            10,
+            &[&mint_authority],
+        )
+        .await
+        .unwrap();
+
+    token
+        .confidential_transfer_disable_non_confidential_credits(&bob_meta.token_account, &bob)
+        .await
+        .unwrap();
+    let state = token
+        .get_account_info(&bob_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert!(!bool::from(&extension.allow_non_confidential_credits));
+
+    let err = token
+        .transfer(
+            &alice_meta.token_account,
+            &bob_meta.token_account,
+            &alice.pubkey(),
+            10,
+            &[&alice],
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::NonConfidentialTransfersDisabled as u32)
+            )
+        )))
+    );
+
+    token
+        .confidential_transfer_enable_non_confidential_credits(&bob_meta.token_account, &bob)
+        .await
+        .unwrap();
+    let state = token
+        .get_account_info(&bob_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert!(bool::from(&extension.allow_non_confidential_credits));
+
+    token
+        .transfer(
+            &alice_meta.token_account,
+            &bob_meta.token_account,
+            &alice.pubkey(),
+            10,
+            &[&alice],
+        )
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
