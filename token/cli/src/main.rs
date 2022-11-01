@@ -390,7 +390,7 @@ async fn command_create_token(
     enable_non_transferable: bool,
     memo: Option<String>,
     rate_bps: Option<i16>,
-    default_frozen_accounts: bool,
+    default_account_state: Option<AccountState>,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     println_display(
@@ -424,13 +424,11 @@ async fn command_create_token(
         extensions.push(ExtensionInitializationParams::NonTransferable);
     }
 
-    if default_frozen_accounts {
+    if let Some(state) = default_account_state {
         if !enable_freeze {
             return Err("Token requires a freeze authority to default to frozen accounts".into());
         }
-        extensions.push(ExtensionInitializationParams::DefaultAccountState {
-            state: AccountState::Frozen,
-        })
+        extensions.push(ExtensionInitializationParams::DefaultAccountState { state })
     }
 
     if let Some(text) = memo {
@@ -2251,10 +2249,15 @@ fn app<'a, 'b>(
                         ),
                 )
                 .arg(
-                    Arg::with_name("default_frozen_accounts")
-                        .long("default-frozen-accounts")
+                    Arg::with_name("default_account_state")
+                        .long("default-account-state")
                         .requires("enable_freeze")
-                        .help("Specify that accounts are frozen by default."),
+                        .possible_values(&["initialized", "frozen"])
+                        .help("Specify that accounts have a default state. \
+                            Note: specifying \"initialized\" adds an extension, which gives \
+                            the option of specifying default frozen accounts in the future. \
+                            This behavior is not the same as the default, which makes it \
+                            impossible to specify a default account state in the future."),
                 )
                 .nonce_args(true)
                 .arg(memo_arg())
@@ -3241,6 +3244,15 @@ async fn process_command<'a>(
                 bulk_signers.push(token_signer);
             }
 
+            let default_account_state =
+                arg_matches
+                    .value_of("default_account_state")
+                    .map(|s| match s {
+                        "initialized" => AccountState::Initialized,
+                        "frozen" => AccountState::Frozen,
+                        _ => unreachable!(),
+                    });
+
             command_create_token(
                 config,
                 decimals,
@@ -3251,7 +3263,7 @@ async fn process_command<'a>(
                 arg_matches.is_present("enable_non_transferable"),
                 memo,
                 rate_bps,
-                arg_matches.is_present("default_frozen_accounts"),
+                default_account_state,
                 bulk_signers,
             )
             .await
@@ -3993,7 +4005,7 @@ mod tests {
             false,
             None,
             None,
-            false,
+            None,
             bulk_signers,
         )
         .await
@@ -4021,7 +4033,7 @@ mod tests {
             false,
             None,
             Some(rate_bps),
-            false,
+            None,
             bulk_signers,
         )
         .await
@@ -5269,7 +5281,7 @@ mod tests {
             false,
             None,
             None,
-            false,
+            None,
             bulk_signers,
         )
         .await
@@ -5625,7 +5637,7 @@ mod tests {
             false,
             None,
             None,
-            true,
+            Some(AccountState::Frozen),
             bulk_signers,
         )
         .await
