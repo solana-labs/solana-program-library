@@ -38,8 +38,10 @@ use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::{
     extension::{
         cpi_guard::CpiGuard, default_account_state::DefaultAccountState,
-        interest_bearing_mint::InterestBearingConfig, memo_transfer::MemoTransfer,
-        mint_close_authority::MintCloseAuthority, transfer_fee::TransferFeeAmount,
+        interest_bearing_mint::InterestBearingConfig,
+        memo_transfer::MemoTransfer,
+        mint_close_authority::MintCloseAuthority,
+        transfer_fee::{TransferFeeAmount, TransferFeeConfig},
         ExtensionType, StateWithExtensionsOwned,
     },
     instruction::*,
@@ -137,6 +139,7 @@ pub enum CommandName {
     DisableCpiGuard,
     UpdateDefaultAccountState,
     WithdrawWithheldTokens,
+    SetTransferFee,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -520,6 +523,83 @@ async fn command_set_interest_rate(
 
     let res = token
         .update_interest_rate(&rate_authority, rate_bps, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
+async fn command_set_transfer_fee(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    transfer_fee_authority: Pubkey,
+    transfer_fee_basis_points: u16,
+    maximum_fee: f64,
+    mint_decimals: Option<u8>,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    let decimals = if !config.sign_only {
+        let mint_account = config.get_account_checked(&token_pubkey).await?;
+
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)
+            .map_err(|_| format!("Could not deserialize token mint {}", token_pubkey))?;
+
+        if mint_decimals.is_some() && mint_decimals != Some(mint_state.base.decimals) {
+            return Err(format!(
+                "Decimals {} was provided, but actual value is {}",
+                mint_decimals.unwrap(),
+                mint_state.base.decimals
+            )
+            .into());
+        }
+
+        if let Ok(transfer_fee_config) = mint_state.get_extension::<TransferFeeConfig>() {
+            let mint_fee_authority_pubkey =
+                Option::<Pubkey>::from(transfer_fee_config.transfer_fee_config_authority);
+
+            if mint_fee_authority_pubkey != Some(transfer_fee_authority) {
+                return Err(format!(
+                    "Mint {} has transfer fee authority {}, but {} was provided",
+                    token_pubkey,
+                    mint_fee_authority_pubkey
+                        .map(|pubkey| pubkey.to_string())
+                        .unwrap_or_else(|| "disabled".to_string()),
+                    transfer_fee_authority
+                )
+                .into());
+            }
+        } else {
+            return Err(format!("Mint {} does not have a transfer fee", token_pubkey).into());
+        }
+        mint_state.base.decimals
+    } else {
+        mint_decimals.unwrap()
+    };
+
+    println_display(
+        config,
+        format!(
+            "Setting transfer fee for {} to {} bps, {} maximum",
+            token_pubkey, transfer_fee_basis_points, maximum_fee
+        ),
+    );
+
+    let token = token_client_from_config(config, &token_pubkey, Some(decimals))?;
+    let maximum_fee = spl_token::ui_amount_to_amount(maximum_fee, decimals);
+    let res = token
+        .set_transfer_fee(
+            &transfer_fee_authority,
+            transfer_fee_basis_points,
+            maximum_fee,
+            &bulk_signers,
+        )
         .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -3359,6 +3439,45 @@ fn app<'a, 'b>(
                 .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
         )
+        .subcommand(
+            SubCommand::with_name(CommandName::SetTransferFee.into())
+                .about("Set the transfer fee for a token with a configured transfer fee")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .help("The interest-bearing token address"),
+                )
+                .arg(
+                    Arg::with_name("transfer_fee_basis_points")
+                        .value_name("FEE_IN_BASIS_POINTS")
+                        .takes_value(true)
+                        .required(true)
+                        .help("The new transfer fee in basis points"),
+                )
+                .arg(
+                    Arg::with_name("maximum_fee")
+                        .value_name("TOKEN_AMOUNT")
+                        .validator(is_amount)
+                        .takes_value(true)
+                        .required(true)
+                        .help("The new maximum transfer fee in UI amount"),
+                )
+                .arg(
+                    Arg::with_name("transfer_fee_authority")
+                    .long("transfer-fee-authority")
+                    .validator(is_valid_signer)
+                    .value_name("SIGNER")
+                    .takes_value(true)
+                    .help(
+                        "Specify the rate authority keypair. \
+                        Defaults to the client keypair address."
+                    )
+                )
+                .arg(mint_decimals_arg())
+        )
 }
 
 #[tokio::main]
@@ -4042,6 +4161,29 @@ async fn process_command<'a>(
             )
             .await
         }
+        (CommandName::SetTransferFee, arg_matches) => {
+            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let transfer_fee_basis_points =
+                value_t_or_exit!(arg_matches, "transfer_fee_basis_points", u16);
+            let maximum_fee = value_t_or_exit!(arg_matches, "maximum_fee", f64);
+            let (transfer_fee_authority_signer, transfer_fee_authority_pubkey) = config
+                .signer_or_default(arg_matches, "transfer_fee_authority", &mut wallet_manager);
+            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
+            let bulk_signers = vec![transfer_fee_authority_signer];
+
+            command_set_transfer_fee(
+                config,
+                token_pubkey,
+                transfer_fee_authority_pubkey,
+                transfer_fee_basis_points,
+                maximum_fee,
+                mint_decimals,
+                bulk_signers,
+            )
+            .await
+        }
     }
 }
 
@@ -4107,9 +4249,7 @@ mod tests {
             transaction::Transaction,
         },
         solana_test_validator::{ProgramInfo, TestValidator, TestValidatorGenesis},
-        spl_token_2022::extension::{
-            non_transferable::NonTransferable, transfer_fee::TransferFeeConfig,
-        },
+        spl_token_2022::extension::non_transferable::NonTransferable,
         spl_token_client::client::{
             ProgramClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
         },
@@ -6094,5 +6234,35 @@ mod tests {
         let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint.data).unwrap();
         let extension = mint_state.get_extension::<TransferFeeConfig>().unwrap();
         assert_eq!(u64::from(extension.withheld_amount), 0);
+
+        // set the transfer fee
+        let new_transfer_fee_basis_points = 800;
+        let new_maximum_fee = 5_000_000.0;
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::SetTransferFee.into(),
+                &token_pubkey.to_string(),
+                &new_transfer_fee_basis_points.to_string(),
+                &new_maximum_fee.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let mint = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint.data).unwrap();
+        let extension = mint_state.get_extension::<TransferFeeConfig>().unwrap();
+        assert_eq!(
+            u16::from(extension.newer_transfer_fee.transfer_fee_basis_points),
+            new_transfer_fee_basis_points
+        );
+        let new_maximum_fee = spl_token::ui_amount_to_amount(new_maximum_fee, TEST_DECIMALS);
+        assert_eq!(
+            u64::from(extension.newer_transfer_fee.maximum_fee),
+            new_maximum_fee
+        );
     }
 }
