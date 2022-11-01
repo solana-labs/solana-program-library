@@ -1477,7 +1477,8 @@ async fn command_close(
     recipient: Pubkey,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let mint_pubkey = if !config.sign_only {
+    let mut results = vec![];
+    let token = if !config.sign_only {
         let source_account = config.get_account_checked(&account).await?;
 
         let source_state = StateWithExtensionsOwned::<Account>::unpack(source_account.data)
@@ -1492,26 +1493,42 @@ async fn command_close(
             .into());
         }
 
-        source_state.base.mint
+        let token = token_client_from_config(config, &source_state.base.mint, None)?;
+        if let Ok(extension) = source_state.get_extension::<TransferFeeAmount>() {
+            if u64::from(extension.withheld_amount) != 0 {
+                let res = token.harvest_withheld_tokens_to_mint(&[&account]).await?;
+                let tx_return = finish_tx(config, &res, false).await?;
+                results.push(match tx_return {
+                    TransactionReturnData::CliSignature(signature) => {
+                        config.output_format.formatted_string(&signature)
+                    }
+                    TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+                        config.output_format.formatted_string(&sign_only_data)
+                    }
+                });
+            }
+        }
+
+        token
     } else {
         // default is safe here because close doesnt use it
-        Pubkey::default()
+        token_client_from_config(config, &Pubkey::default(), None)?
     };
 
-    let token = token_client_from_config(config, &mint_pubkey, None)?;
     let res = token
         .close_account(&account, &recipient, &close_authority, &bulk_signers)
         .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
-    Ok(match tx_return {
+    results.push(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
         }
         TransactionReturnData::CliSignOnlyData(sign_only_data) => {
             config.output_format.formatted_string(&sign_only_data)
         }
-    })
+    });
+    Ok(results.join(""))
 }
 
 async fn command_close_mint(
@@ -4011,7 +4028,7 @@ async fn process_command<'a>(
             let include_mint = arg_matches.is_present("include_mint");
             let source_accounts = arg_matches
                 .values_of("source")
-                .unwrap()
+                .unwrap_or_default()
                 .into_iter()
                 .map(|s| Pubkey::from_str(s).unwrap_or_else(print_error_and_exit))
                 .collect::<Vec<_>>();
@@ -5992,6 +6009,90 @@ mod tests {
         let account = config.rpc_client.get_account(&token_account).await.unwrap();
         let account_state = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
         let extension = account_state.get_extension::<TransferFeeAmount>().unwrap();
+        assert_eq!(u64::from(extension.withheld_amount), 0);
+
+        // withdraw from mint after account closure
+        // gather fees
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Transfer.into(),
+                "--from",
+                &source_account.to_string(),
+                &token_pubkey.to_string(),
+                &(total_amount - transfer_amount).to_string(),
+                &token_account.to_string(),
+                "--expected-fee",
+                "9",
+            ],
+        )
+        .await
+        .unwrap();
+
+        // burn tokens
+        let account = config.rpc_client.get_account(&token_account).await.unwrap();
+        let account_state = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+        let burn_amount = spl_token::amount_to_ui_amount(account_state.base.amount, TEST_DECIMALS);
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Burn.into(),
+                &token_account.to_string(),
+                &burn_amount.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&token_account).await.unwrap();
+        let account_state = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+        let extension = account_state.get_extension::<TransferFeeAmount>().unwrap();
+        let withheld_amount =
+            spl_token::amount_to_ui_amount(u64::from(extension.withheld_amount), TEST_DECIMALS);
+        assert_eq!(withheld_amount, 9.0);
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Close.into(),
+                "--address",
+                &token_account.to_string(),
+                "--recipient",
+                &payer.pubkey().to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let mint = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint.data).unwrap();
+        let extension = mint_state.get_extension::<TransferFeeConfig>().unwrap();
+        let withheld_amount =
+            spl_token::amount_to_ui_amount(u64::from(extension.withheld_amount), TEST_DECIMALS);
+        assert_eq!(withheld_amount, 9.0);
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::WithdrawWithheldTokens.into(),
+                &source_account.to_string(),
+                "--include-mint",
+            ],
+        )
+        .await
+        .unwrap();
+
+        let mint = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint.data).unwrap();
+        let extension = mint_state.get_extension::<TransferFeeConfig>().unwrap();
         assert_eq!(u64::from(extension.withheld_amount), 0);
     }
 }
