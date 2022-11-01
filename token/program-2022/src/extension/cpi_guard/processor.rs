@@ -48,7 +48,7 @@ fn process_enable_cpi_guard(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pr
     Ok(())
 }
 
-fn process_diasble_cpi_guard(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+fn process_disable_cpi_guard(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
     let owner_info = next_account_info(account_info_iter)?;
@@ -92,7 +92,7 @@ pub(crate) fn process_instruction(
         }
         CpiGuardInstruction::Disable => {
             msg!("CpiGuardInstruction::Disable");
-            process_diasble_cpi_guard(program_id, accounts)
+            process_disable_cpi_guard(program_id, accounts)
         }
     }
 }
