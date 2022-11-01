@@ -39,7 +39,8 @@ use spl_token_2022::{
     extension::{
         cpi_guard::CpiGuard, default_account_state::DefaultAccountState,
         interest_bearing_mint::InterestBearingConfig, memo_transfer::MemoTransfer,
-        mint_close_authority::MintCloseAuthority, ExtensionType, StateWithExtensionsOwned,
+        mint_close_authority::MintCloseAuthority, transfer_fee::TransferFeeAmount,
+        ExtensionType, StateWithExtensionsOwned,
     },
     instruction::*,
     state::{Account, AccountState, Mint},
@@ -135,6 +136,7 @@ pub enum CommandName {
     EnableCpiGuard,
     DisableCpiGuard,
     UpdateDefaultAccountState,
+    WithdrawWithheldTokens,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -2096,6 +2098,79 @@ async fn command_update_default_account_state(
     })
 }
 
+async fn command_withdraw_withheld_tokens(
+    config: &Config<'_>,
+    destination_token_account: Pubkey,
+    source_token_accounts: Vec<Pubkey>,
+    authority: Pubkey,
+    include_mint: bool,
+    bulk_signers: BulkSigners,
+) -> CommandResult {
+    if config.sign_only {
+        panic!("Config can not be sign-only for withdrawing withheld tokens.");
+    }
+    let destination_account = config
+        .get_account_checked(&destination_token_account)
+        .await?;
+    let destination_state = StateWithExtensionsOwned::<Account>::unpack(destination_account.data)
+        .map_err(|_| {
+        format!(
+            "Could not deserialize token account {}",
+            destination_token_account
+        )
+    })?;
+    let token_pubkey = destination_state.base.mint;
+    destination_state
+        .get_extension::<TransferFeeAmount>()
+        .map_err(|_| format!("Token mint {} has no transfer fee configured", token_pubkey))?;
+
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+    let mut results = vec![];
+    if include_mint {
+        let res = token
+            .withdraw_withheld_tokens_from_mint(
+                &destination_token_account,
+                &authority,
+                &bulk_signers,
+            )
+            .await;
+        let tx_return = finish_tx(config, &res?, false).await?;
+        results.push(match tx_return {
+            TransactionReturnData::CliSignature(signature) => {
+                config.output_format.formatted_string(&signature)
+            }
+            TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+                config.output_format.formatted_string(&sign_only_data)
+            }
+        });
+    }
+
+    let source_refs = source_token_accounts.iter().collect::<Vec<_>>();
+    // this can be tweaked better, but keep it simple for now
+    const MAX_WITHDRAWAL_ACCOUNTS: usize = 25;
+    for sources in source_refs.chunks(MAX_WITHDRAWAL_ACCOUNTS) {
+        let res = token
+            .withdraw_withheld_tokens_from_accounts(
+                &destination_token_account,
+                &authority,
+                sources,
+                &bulk_signers,
+            )
+            .await;
+        let tx_return = finish_tx(config, &res?, false).await?;
+        results.push(match tx_return {
+            TransactionReturnData::CliSignature(signature) => {
+                config.output_format.formatted_string(&signature)
+            }
+            TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+                config.output_format.formatted_string(&sign_only_data)
+            }
+        });
+    }
+
+    Ok(results.join(""))
+}
+
 struct SignOnlyNeedsFullMintSpec {}
 impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
@@ -3224,6 +3299,49 @@ fn app<'a, 'b>(
                 .nonce_args(true)
                 .offline_args(),
         )
+        .subcommand(
+            SubCommand::with_name(CommandName::WithdrawWithheldTokens.into())
+                .about("Withdraw withheld transfer fee tokens from mint and / or account(s)")
+                .arg(
+                    Arg::with_name("account")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The address of the token account to receive withdrawn tokens"),
+                )
+                .arg(
+                    Arg::with_name("source")
+                        .validator(is_valid_pubkey)
+                        .value_name("ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .multiple(true)
+                        .min_values(0u64)
+                        .help("The token accounts to withdraw from")
+                )
+                .arg(
+                    Arg::with_name("include_mint")
+                        .long("include-mint")
+                        .takes_value(false)
+                        .help("Also withdraw withheld tokens from the mint"),
+                )
+                .arg(
+                    Arg::with_name("withdraw_withheld_authority")
+                        .long("withdraw-withheld-authority")
+                        .alias("owner")
+                        .value_name("KEYPAIR")
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help(
+                            "Specify the withdraw withheld authority keypair. \
+                             This may be a keypair file or the ASK keyword. \
+                             Defaults to the client keypair."
+                        ),
+                )
+                .arg(owner_address_arg())
+                .arg(multisig_signer_arg())
+        )
 }
 
 #[tokio::main]
@@ -3872,6 +3990,37 @@ async fn process_command<'a>(
                 token,
                 freeze_authority,
                 new_default_state,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::WithdrawWithheldTokens, arg_matches) => {
+            let (authority_signer, authority) = config.signer_or_default(
+                arg_matches,
+                "withdraw_withheld_authority",
+                &mut wallet_manager,
+            );
+            if !bulk_signers.contains(&authority_signer) {
+                bulk_signers.push(authority_signer);
+            }
+            // Since destination is required it will always be present
+            let destination_token_account =
+                pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
+            let include_mint = arg_matches.is_present("include_mint");
+            let source_accounts = arg_matches
+                .values_of("source")
+                .unwrap()
+                .into_iter()
+                .map(|s| Pubkey::from_str(s).unwrap_or_else(print_error_and_exit))
+                .collect::<Vec<_>>();
+            command_withdraw_withheld_tokens(
+                config,
+                destination_token_account,
+                source_accounts,
+                authority,
+                include_mint,
                 bulk_signers,
             )
             .await
@@ -5801,6 +5950,7 @@ mod tests {
         let source_account = create_auxiliary_account(&config, &payer, token_pubkey).await;
         mint_tokens(&config, &payer, token_pubkey, total_amount, source_account).await;
 
+        // withdraw from account directly
         process_test_command(
             &config,
             &payer,
@@ -5818,5 +5968,30 @@ mod tests {
         )
         .await
         .unwrap();
+
+        let account = config.rpc_client.get_account(&token_account).await.unwrap();
+        let account_state = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+        let extension = account_state.get_extension::<TransferFeeAmount>().unwrap();
+        let withheld_amount =
+            spl_token::amount_to_ui_amount(u64::from(extension.withheld_amount), TEST_DECIMALS);
+        assert_eq!(withheld_amount, 1.0);
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::WithdrawWithheldTokens.into(),
+                &token_account.to_string(),
+                &token_account.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&token_account).await.unwrap();
+        let account_state = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+        let extension = account_state.get_extension::<TransferFeeAmount>().unwrap();
+        assert_eq!(u64::from(extension.withheld_amount), 0);
     }
 }
