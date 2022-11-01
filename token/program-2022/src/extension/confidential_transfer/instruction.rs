@@ -62,8 +62,8 @@ pub enum ConfidentialTransferInstruction {
     /// The instruction fails if the `TokenInstruction::InitializeAccount` instruction has not yet
     /// successfully executed for the token account.
     ///
-    /// Upon success confidential deposits and transfers are enabled, use the
-    /// `DisableBalanceCredits` instruction to disable.
+    /// Upon success, confidential and non-confidential deposits and transfers are enabled. Use the
+    /// `DisableConfidentialCredits` and `DisableNonConfidentialCredits` instructions to disable.
     ///
     /// In order for this instruction to be successfully processed, it must be accompanied by the
     /// `VerifyPubkey` instruction of the `zk_token_proof` program in the same transaction.
@@ -108,8 +108,8 @@ pub enum ConfidentialTransferInstruction {
 
     /// Prepare a token account for closing.  The account must not hold any confidential tokens in
     /// its pending or available balances. Use
-    /// `ConfidentialTransferInstruction::DisableBalanceCredits` to block balance credit changes
-    /// first if necessary.
+    /// `ConfidentialTransferInstruction::DisableConfidentialCredits` to block balance credit
+    /// changes first if necessary.
     ///
     /// Note that a newly configured account is always empty, so this instruction is not required
     /// prior to account closing if no instructions beyond
@@ -242,7 +242,7 @@ pub enum ConfidentialTransferInstruction {
     ///
     ApplyPendingBalance,
 
-    /// Enable confidential transfer `Deposit` and `Transfer` instructions for a token account.
+    /// Configure a confidential extension account to accept incoming confidential transfers.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -258,9 +258,15 @@ pub enum ConfidentialTransferInstruction {
     /// Data expected by this instruction:
     ///   None
     ///
-    EnableBalanceCredits,
+    EnableConfidentialCredits,
 
-    /// Disable confidential transfer `Deposit` and `Transfer` instructions for a token account.
+    /// Configure a confidential extension account to reject any incoming confidential transfers.
+    ///
+    /// If the `allow_non_confidential_credits` field is `true`, then the base account can still
+    /// receive non-confidential transfers.
+    ///
+    /// This instruction can be used to disable confidential payments after a token account has
+    /// already been extended for confidential transfers.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -276,7 +282,48 @@ pub enum ConfidentialTransferInstruction {
     /// Data expected by this instruction:
     ///   None
     ///
-    DisableBalanceCredits,
+    DisableConfidentialCredits,
+
+    /// Configure a base account of a confidential extension to accept incoming non-confidential
+    /// transfers.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner/delegate
+    ///   0. `[writable]` The SPL Token account.
+    ///   1. `[signer]` The single account owner.
+    ///
+    ///   * Multisignature owner/delegate
+    ///   0. `[writable]` The SPL Token account.
+    ///   1. `[]` The multisig account owner.
+    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///
+    /// Data expected by this instruction:
+    ///   None
+    ///
+    EnableNonConfidentialCredits,
+
+    /// Configure a base account of a confidential extension to reject any incoming
+    /// non-confidential transfers.
+    ///
+    /// This instruction can be used to configure a confidential extension account to exclusively
+    /// receive confidential payments.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner/delegate
+    ///   0. `[writable]` The SPL Token account.
+    ///   1. `[signer]` The single account owner.
+    ///
+    ///   * Multisignature owner/delegate
+    ///   0. `[writable]` The SPL Token account.
+    ///   1. `[]` The multisig account owner.
+    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///
+    /// Data expected by this instruction:
+    ///   None
+    ///
+    DisableNonConfidentialCredits,
 
     /// Transfer all withheld confidential tokens in the mint to an account. Signed by the mint's
     /// withdraw withheld tokens authority.
@@ -931,15 +978,15 @@ fn enable_or_disable_balance_credits(
     ))
 }
 
-/// Create a `EnableBalanceCredits` instruction
-pub fn enable_balance_credits(
+/// Create a `EnableConfidentialCredits` instruction
+pub fn enable_confidential_credits(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
     enable_or_disable_balance_credits(
-        ConfidentialTransferInstruction::EnableBalanceCredits,
+        ConfidentialTransferInstruction::EnableConfidentialCredits,
         token_program_id,
         token_account,
         authority,
@@ -947,15 +994,47 @@ pub fn enable_balance_credits(
     )
 }
 
-/// Create a `DisableBalanceCredits` instruction
-pub fn disable_balance_credits(
+/// Create a `DisableConfidentialCredits` instruction
+pub fn disable_confidential_credits(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
     enable_or_disable_balance_credits(
-        ConfidentialTransferInstruction::DisableBalanceCredits,
+        ConfidentialTransferInstruction::DisableConfidentialCredits,
+        token_program_id,
+        token_account,
+        authority,
+        multisig_signers,
+    )
+}
+
+/// Create a `EnableNonConfidentialCredits` instruction
+pub fn enable_non_confidential_credits(
+    token_program_id: &Pubkey,
+    token_account: &Pubkey,
+    authority: &Pubkey,
+    multisig_signers: &[&Pubkey],
+) -> Result<Instruction, ProgramError> {
+    enable_or_disable_balance_credits(
+        ConfidentialTransferInstruction::EnableNonConfidentialCredits,
+        token_program_id,
+        token_account,
+        authority,
+        multisig_signers,
+    )
+}
+
+/// Create a `DisableNonConfidentialCredits` instruction
+pub fn disable_non_confidential_credits(
+    token_program_id: &Pubkey,
+    token_account: &Pubkey,
+    authority: &Pubkey,
+    multisig_signers: &[&Pubkey],
+) -> Result<Instruction, ProgramError> {
+    enable_or_disable_balance_credits(
+        ConfidentialTransferInstruction::DisableNonConfidentialCredits,
         token_program_id,
         token_account,
         authority,
