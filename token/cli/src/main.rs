@@ -386,6 +386,7 @@ async fn command_create_token(
     authority: Pubkey,
     enable_freeze: bool,
     enable_close: bool,
+    enable_non_transferable: bool,
     memo: Option<String>,
     rate_bps: Option<i16>,
     bulk_signers: Vec<Arc<dyn Signer>>,
@@ -415,6 +416,10 @@ async fn command_create_token(
             rate_authority: Some(authority),
             rate: rate_bps,
         })
+    }
+
+    if enable_non_transferable {
+        extensions.push(ExtensionInitializationParams::NonTransferable);
     }
 
     if let Some(text) = memo {
@@ -2160,6 +2165,14 @@ fn app<'a, 'b>(
                             Rate authority defaults to the mint authority."
                         ),
                 )
+                .arg(
+                    Arg::with_name("enable_non_transferable")
+                        .long("enable-non-transferable")
+                        .takes_value(false)
+                        .help(
+                            "Permanently force tokens to be non-transferable. Thay may still be burned."
+                        ),
+                )
                 .nonce_args(true)
                 .arg(memo_arg())
         )
@@ -3114,6 +3127,7 @@ async fn process_command<'a>(
                 mint_authority,
                 arg_matches.is_present("enable_freeze"),
                 arg_matches.is_present("enable_close"),
+                arg_matches.is_present("enable_non_transferable"),
                 memo,
                 rate_bps,
                 bulk_signers,
@@ -3707,6 +3721,7 @@ mod tests {
             transaction::Transaction,
         },
         solana_test_validator::{ProgramInfo, TestValidator, TestValidatorGenesis},
+        spl_token_2022::extension::non_transferable::NonTransferable,
         spl_token_client::client::{
             ProgramClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
         },
@@ -3828,6 +3843,7 @@ mod tests {
             payer.pubkey(),
             false,
             false,
+            false,
             None,
             None,
             bulk_signers,
@@ -3852,6 +3868,7 @@ mod tests {
             TEST_DECIMALS,
             token_pubkey,
             payer.pubkey(),
+            false,
             false,
             false,
             None,
@@ -5100,6 +5117,7 @@ mod tests {
             payer.pubkey(),
             false,
             true,
+            false,
             None,
             None,
             bulk_signers,
@@ -5382,5 +5400,58 @@ mod tests {
         )
         .await;
         result.unwrap_err();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn non_transferable() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let config =
+            test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
+
+        let token_keypair = Keypair::new();
+        let token_pubkey = token_keypair.pubkey();
+        let bulk_signers: Vec<Arc<dyn Signer>> =
+            vec![Arc::new(clone_keypair(&payer)), Arc::new(token_keypair)];
+
+        command_create_token(
+            &config,
+            TEST_DECIMALS,
+            token_pubkey,
+            payer.pubkey(),
+            false,
+            false,
+            true,
+            None,
+            None,
+            bulk_signers,
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+        let test_mint = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+        assert!(test_mint.get_extension::<NonTransferable>().is_ok());
+
+        let associated_account = create_associated_account(&config, &payer, token_pubkey).await;
+        let aux_account = create_auxiliary_account(&config, &payer, token_pubkey).await;
+        mint_tokens(&config, &payer, token_pubkey, 100.0, associated_account).await;
+
+        // transfer not allowed
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Transfer.into(),
+                "--from",
+                &associated_account.to_string(),
+                &token_pubkey.to_string(),
+                "1",
+                &aux_account.to_string(),
+            ],
+        )
+        .await
+        .unwrap_err();
     }
 }
