@@ -2168,6 +2168,7 @@ fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("enable_non_transferable")
                         .long("enable-non-transferable")
+                        .alias("enable-nontransferable")
                         .takes_value(false)
                         .help(
                             "Permanently force tokens to be non-transferable. Thay may still be burned."
