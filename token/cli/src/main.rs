@@ -425,9 +425,10 @@ async fn command_create_token(
     }
 
     if let Some(state) = default_account_state {
-        if !enable_freeze {
-            return Err("Token requires a freeze authority to default to frozen accounts".into());
-        }
+        assert!(
+            enable_freeze,
+            "Token requires a freeze authority to default to frozen accounts"
+        );
         extensions.push(ExtensionInitializationParams::DefaultAccountState { state })
     }
 
