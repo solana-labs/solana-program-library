@@ -5587,6 +5587,7 @@ mod tests {
             true,
             None,
             None,
+            None,
             bulk_signers,
         )
         .await
@@ -5635,6 +5636,7 @@ mod tests {
             token_pubkey,
             payer.pubkey(),
             true,
+            false,
             false,
             None,
             None,
