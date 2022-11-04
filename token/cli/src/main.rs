@@ -2253,6 +2253,7 @@ fn app<'a, 'b>(
                     Arg::with_name("default_account_state")
                         .long("default-account-state")
                         .requires("enable_freeze")
+                        .takes_value(true)
                         .possible_values(&["initialized", "frozen"])
                         .help("Specify that accounts have a default state. \
                             Note: specifying \"initialized\" adds an extension, which gives \
