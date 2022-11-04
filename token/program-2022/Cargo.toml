@@ -13,7 +13,7 @@ no-entrypoint = []
 test-sbf = []
 serde-traits = ["serde", "serde_with"]
 # Remove these features once the underlying syscalls are released on all networks
-default = []
+default = ["zk-ops"]
 zk-ops = []
 
 [dependencies]
