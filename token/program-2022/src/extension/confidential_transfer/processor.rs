@@ -596,11 +596,12 @@ fn process_transfer(
             proof_data.ciphertext_hi.destination_handle,
         ));
 
-        let fee_ciphertext = if token_account_info.key == destination_token_account_info.key {
-            None
-        } else {
-            Some(proof_data.fee_ciphertext)
-        };
+        let fee_ciphertext = None;
+        // let fee_ciphertext = if token_account_info.key == destination_token_account_info.key {
+        //     None
+        // } else {
+        //     Some(proof_data.fee_ciphertext)
+        // };
 
         process_destination_for_transfer(
             destination_token_account_info,
