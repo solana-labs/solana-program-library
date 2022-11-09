@@ -1214,11 +1214,14 @@ impl Processor {
             &[transient_stake_bump_seed],
         ];
 
+        let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
         let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
-        if lamports <= stake_rent {
+        let current_minimum_lamports =
+            stake_rent.saturating_add(minimum_delegation(stake_minimum_delegation));
+        if lamports < current_minimum_lamports {
             msg!(
-                "Need more than {} lamports for transient stake to be rent-exempt, {} provided",
-                stake_rent,
+                "Need at least {} lamports for transient stake meet minimum delegation and rent-exempt requirements, {} provided",
+                current_minimum_lamports,
                 lamports
             );
             return Err(ProgramError::AccountNotRentExempt);
@@ -1228,7 +1231,6 @@ impl Processor {
             .lamports()
             .checked_sub(lamports)
             .ok_or(ProgramError::InsufficientFunds)?;
-        let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
         let required_lamports = minimum_stake_lamports(&meta, stake_minimum_delegation);
         if remaining_lamports < required_lamports {
             msg!("Need at least {} lamports in the stake account after decrease, {} requested, {} is the current possible maximum",
