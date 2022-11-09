@@ -284,7 +284,7 @@ pub enum ConfidentialTransferInstruction {
     ///
     DisableConfidentialCredits,
 
-    /// Configure a base account of a confidential extension to accept incoming non-confidential
+    /// Configure an account with the confidential extension to accept incoming non-confidential
     /// transfers.
     ///
     /// Accounts expected by this instruction:
@@ -303,7 +303,7 @@ pub enum ConfidentialTransferInstruction {
     ///
     EnableNonConfidentialCredits,
 
-    /// Configure a base account of a confidential extension to reject any incoming
+    /// Configure an account with the confidential extension to reject any incoming
     /// non-confidential transfers.
     ///
     /// This instruction can be used to configure a confidential extension account to exclusively

@@ -867,7 +867,7 @@ fn process_apply_pending_balance(
     Ok(())
 }
 
-/// Processes an [DisableConfidentialCredits] or [EnableConfidentialCredits] instruction.
+/// Processes a [DisableConfidentialCredits] or [EnableConfidentialCredits] instruction.
 fn process_allow_confidential_credits(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
