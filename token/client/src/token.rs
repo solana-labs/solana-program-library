@@ -2210,7 +2210,7 @@ where
         .await
     }
 
-    /// Disable a confidential extension token account to receive non-confidential payments
+    /// Disable non-confidential payments for a confidential extension token account
     pub async fn confidential_transfer_disable_non_confidential_credits<S: Signer>(
         &self,
         token_account: &Pubkey,

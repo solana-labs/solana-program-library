@@ -113,7 +113,7 @@ pub struct ConfidentialTransferAccount {
     /// If `false`, the extended account rejects any incoming confidential transfers
     pub allow_confidential_credits: PodBool,
 
-    /// If `false`, the base account rejects any incoming confidential transfers
+    /// If `false`, the base account rejects any incoming transfers
     pub allow_non_confidential_credits: PodBool,
 
     /// The total number of `Deposit` and `Transfer` instructions that have credited
