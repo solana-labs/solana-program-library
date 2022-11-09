@@ -57,6 +57,7 @@ async fn setup(
             &stake_pool_accounts.withdraw_authority,
             vote_account_address,
             stake_amount,
+            StakeStatus::Active,
         );
     }
 
@@ -577,4 +578,63 @@ async fn withdraw() {
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
+}
+
+#[tokio::test]
+async fn cleanup_all() {
+    let mut program_test = program_test();
+    let mut vote_account_pubkeys = vec![];
+    let mut stake_pool_accounts = StakePoolAccounts::new();
+    let max_validators = HUGE_POOL_SIZE;
+    stake_pool_accounts.max_validators = max_validators;
+
+    let stake_pool_pubkey = stake_pool_accounts.stake_pool.pubkey();
+    let (mut stake_pool, mut validator_list) = stake_pool_accounts.state();
+
+    for _ in 0..max_validators {
+        vote_account_pubkeys.push(add_vote_account(&mut program_test));
+    }
+
+    for vote_account_address in vote_account_pubkeys.iter() {
+        add_validator_stake_account(
+            &mut program_test,
+            &mut stake_pool,
+            &mut validator_list,
+            &stake_pool_pubkey,
+            &stake_pool_accounts.withdraw_authority,
+            vote_account_address,
+            STAKE_AMOUNT,
+            StakeStatus::ReadyForRemoval,
+        );
+    }
+
+    add_stake_pool_account(
+        &mut program_test,
+        &stake_pool_accounts.stake_pool.pubkey(),
+        &stake_pool,
+    );
+    add_validator_list_account(
+        &mut program_test,
+        &stake_pool_accounts.validator_list.pubkey(),
+        &validator_list,
+        max_validators,
+    );
+    let mut context = program_test.start_with_context().await;
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::cleanup_removed_validator_entries(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.validator_list.pubkey(),
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err();
+    assert!(error.is_none());
 }

@@ -1706,6 +1706,7 @@ pub fn add_vote_account(program_test: &mut ProgramTest) -> Pubkey {
     vote_pubkey
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn add_validator_stake_account(
     program_test: &mut ProgramTest,
     stake_pool: &mut state::StakePool,
@@ -1714,6 +1715,7 @@ pub fn add_validator_stake_account(
     withdraw_authority: &Pubkey,
     voter_pubkey: &Pubkey,
     stake_amount: u64,
+    status: state::StakeStatus,
 ) {
     let meta = stake::state::Meta {
         rent_exempt_reserve: STAKE_ACCOUNT_RENT_EXEMPTION,
@@ -1756,7 +1758,7 @@ pub fn add_validator_stake_account(
     let active_stake_lamports = stake_amount - LAMPORTS_PER_SOL;
 
     validator_list.validators.push(state::ValidatorStakeInfo {
-        status: state::StakeStatus::Active,
+        status,
         vote_account_address: *voter_pubkey,
         active_stake_lamports,
         transient_stake_lamports: 0,
