@@ -678,3 +678,49 @@ async fn fail_with_wrong_reserve() {
         _ => panic!("Wrong error occurs while try to add validator stake address with wrong validator stake list account"),
     }
 }
+
+#[tokio::test]
+async fn fail_with_draining_reserve() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let current_minimum_delegation =
+        stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
+
+    let stake_pool_accounts = StakePoolAccounts::default();
+    stake_pool_accounts
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            current_minimum_delegation, // add exactly enough for a validator
+        )
+        .await
+        .unwrap();
+
+    let validator_stake =
+        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), None, 0);
+    create_vote(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &validator_stake.validator,
+        &validator_stake.vote,
+    )
+    .await;
+
+    let error = stake_pool_accounts
+        .add_validator_to_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(0, InstructionError::InsufficientFunds),
+    );
+}

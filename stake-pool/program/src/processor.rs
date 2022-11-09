@@ -883,6 +883,24 @@ impl Processor {
         let required_lamports = minimum_delegation(stake_minimum_delegation)
             .saturating_add(rent.minimum_balance(space));
 
+        // Check that we're not draining the reserve totally
+        let reserve_stake = try_from_slice_unchecked::<stake::state::StakeState>(
+            &reserve_stake_info.data.borrow(),
+        )?;
+        let reserve_meta = reserve_stake
+            .meta()
+            .ok_or(StakePoolError::WrongStakeState)?;
+        let minimum_lamports = minimum_reserve_lamports(&reserve_meta);
+        let reserve_lamports = reserve_stake_info.lamports();
+        if reserve_lamports.saturating_sub(required_lamports) < minimum_lamports {
+            msg!(
+                "Need to add {} lamports for the reserve stake to be rent-exempt after adding a validator, reserve currently has {} lamports",
+                required_lamports.saturating_add(minimum_lamports).saturating_sub(reserve_lamports),
+                reserve_lamports
+            );
+            return Err(ProgramError::InsufficientFunds);
+        }
+
         // Create new stake account
         create_stake_account(
             stake_info.clone(),
