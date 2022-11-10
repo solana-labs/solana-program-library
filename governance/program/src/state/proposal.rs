@@ -260,21 +260,86 @@ impl ProposalV2 {
         Ok(())
     }
 
-    /// Checks if Proposal can be voted on
+    /// Checks if the given vote kind can be cast for the Proposal
     pub fn assert_can_cast_vote(
         &self,
-        config: &GovernanceConfig,
+        vote_kind: &VoteKind,
+        governance_config: &GovernanceConfig,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
+        match vote_kind {
+            VoteKind::Electorate => {
+                self.assert_can_cast_electorate_vote(governance_config, current_unix_timestamp)
+            }
+            VoteKind::Veto => {
+                self.assert_can_cast_veto_vote(governance_config, current_unix_timestamp)
+            }
+        }
+    }
+
+    /// Checks if Electorate vote can be cast for the Proposal
+    pub fn assert_can_cast_electorate_vote(
+        &self,
+        governance_config: &GovernanceConfig,
+        current_unix_timestamp: UnixTimestamp,
+    ) -> Result<(), ProgramError> {
+        // Electorate vote can only be cast in Voting state
         self.assert_is_voting_state()
             .map_err(|_| GovernanceError::InvalidStateCannotVote)?;
 
+        // The Proposal can be still in Voting state after the voting time ends and before it's finalized
         // Check if we are still within the configured max_voting_time period
-        if self.has_vote_time_ended(config, current_unix_timestamp) {
+        if self.has_vote_time_ended(governance_config, current_unix_timestamp) {
             return Err(GovernanceError::ProposalVotingTimeExpired.into());
         }
 
         Ok(())
+    }
+
+    /// Checks if Veto vote can be cast for the Proposal
+    pub fn assert_can_cast_veto_vote(
+        &self,
+        governance_config: &GovernanceConfig,
+        current_unix_timestamp: UnixTimestamp,
+    ) -> Result<(), ProgramError> {
+        match self.state {
+            // Veto vote can be cast when:
+            // Proposal is in Voting state and within max_voting_time + min_transaction_hold_up_time period
+            ProposalState::Voting => {
+                if self
+                    .vote_end_time(governance_config)
+                    .checked_add(governance_config.min_transaction_hold_up_time as i64)
+                    .unwrap()
+                    < current_unix_timestamp
+                {
+                    Err(GovernanceError::ProposalVotingTimeExpired.into())
+                } else {
+                    Ok(())
+                }
+            }
+            // Proposal is in Succeeded state and within min_transaction_hold_up_time period calculated from the time when the vote ended (voting_completed_at)
+            ProposalState::Succeeded => {
+                if self
+                    .voting_completed_at
+                    .unwrap()
+                    .checked_add(governance_config.min_transaction_hold_up_time as i64)
+                    .unwrap()
+                    < current_unix_timestamp
+                {
+                    Err(GovernanceError::ProposalVotingTimeExpired.into())
+                } else {
+                    Ok(())
+                }
+            }
+            ProposalState::Draft
+            | ProposalState::Executing
+            | ProposalState::ExecutingWithErrors
+            | ProposalState::Completed
+            | ProposalState::Cancelled
+            | ProposalState::SigningOff
+            | ProposalState::Defeated
+            | ProposalState::Vetoed => Err(GovernanceError::InvalidStateCannotVote.into()),
+        }
     }
 
     /// Vote end time determined by the configured max_voting_time period
@@ -2227,9 +2292,11 @@ mod test {
         let current_timestamp =
             proposal.voting_at.unwrap() + governance_config.max_voting_time as i64 + 1;
 
+        let vote_kind = VoteKind::Electorate;
+
         // Act
         let err = proposal
-            .assert_can_cast_vote(&governance_config, current_timestamp)
+            .assert_can_cast_vote(&vote_kind, &governance_config, current_timestamp)
             .err()
             .unwrap();
 
@@ -2247,8 +2314,11 @@ mod test {
         let current_timestamp =
             proposal.voting_at.unwrap() + governance_config.max_voting_time as i64;
 
+        let vote_kind = VoteKind::Electorate;
+
         // Act
-        let result = proposal.assert_can_cast_vote(&governance_config, current_timestamp);
+        let result =
+            proposal.assert_can_cast_vote(&vote_kind, &governance_config, current_timestamp);
 
         // Assert
         assert_eq!(result, Ok(()));

@@ -31,6 +31,7 @@ pub struct GovernanceConfig {
     pub min_community_weight_to_create_proposal: u64,
 
     /// Minimum waiting time in seconds for a transaction to be executed after proposal is voted on
+    /// If Veto vote is enabled then it can also be cast within the hold up period after Proposal vote ends
     pub min_transaction_hold_up_time: u32,
 
     /// Time limit in seconds for proposal to be open for voting
