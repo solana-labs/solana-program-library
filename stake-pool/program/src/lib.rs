@@ -29,11 +29,11 @@ const AUTHORITY_WITHDRAW: &[u8] = b"withdraw";
 /// Seed for transient stake account
 const TRANSIENT_STAKE_SEED_PREFIX: &[u8] = b"transient";
 
-/// Minimum amount of staked SOL required in a validator stake account to allow
+/// Minimum amount of staked lamports required in a validator stake account to allow
 /// for merges without a mismatch on credits observed
 pub const MINIMUM_ACTIVE_STAKE: u64 = 1_000_000;
 
-/// Minimum amount of SOL in the reserve
+/// Minimum amount of lamports in the reserve
 /// NOTE: This can be changed to 0 once the `stake_allow_zero_undelegated_amount`
 /// feature is enabled on all clusters
 pub const MINIMUM_RESERVE_LAMPORTS: u64 = 1;
