@@ -135,6 +135,7 @@ pub enum CommandName {
     EnableCpiGuard,
     DisableCpiGuard,
     UpdateDefaultAccountState,
+    MigrateMultisigNative,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1860,6 +1861,33 @@ async fn command_sync_native(config: &Config<'_>, native_account_address: Pubkey
     })
 }
 
+#[allow(unreachable_code)]
+async fn command_migrate_multisig_native(
+    config: &Config<'_>,
+    multisig_account_address: Pubkey,
+    dest_token_account_address: Pubkey,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    todo!();
+    let token = native_token_client_from_config(config)?;
+
+    // let res = token
+    //     .migrate_multisig_native(&multisig_account_address)
+    //     .await?;
+    // let res = todo!();
+
+    // let tx_return = finish_tx(config, &res, false).await?;
+
+    // Ok(match tx_return {
+    //     TransactionReturnData::CliSignature(signature) => {
+    //         config.output_format.formatted_string(&signature)
+    //     }
+    //     TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+    //         config.output_format.formatted_string(&sign_only_data)
+    //     }
+    // })
+}
+
 // both enables and disables required transfer memos, via enable_memos bool
 async fn command_required_transfer_memos(
     config: &Config<'_>,
@@ -3178,6 +3206,20 @@ fn app<'a, 'b>(
                 .nonce_args(true)
                 .offline_args(),
         )
+        .subcommand(
+            SubCommand::with_name(CommandName::MigrateMultisigNative.into())
+                .about("Migrate native SOL from a multisig address to an associated token \
+                        account")
+                .arg(
+                    Arg::with_name("multisig-address")
+                        .validator(is_valid_pubkey)
+                        .value_name("MULTISIG_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Specify the address of the multisig to sync"),
+                )
+                .arg(multisig_signer_arg())
+        )
 }
 
 #[tokio::main]
@@ -3813,6 +3855,18 @@ async fn process_command<'a>(
                 token,
                 freeze_authority,
                 new_default_state,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::MigrateMultisigNative, arg_matches) => {
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            command_migrate_multisig_native(
+                config,
+                Pubkey::default(),
+                Pubkey::default(),
                 bulk_signers,
             )
             .await
