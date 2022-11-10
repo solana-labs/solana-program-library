@@ -5173,6 +5173,73 @@ mod tests {
 
     #[tokio::test]
     #[serial]
+    async fn close_account() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+
+            let native_mint = Token::new_native(
+                config.program_client.clone(),
+                program_id,
+                config.fee_payer().unwrap().clone(),
+            );
+            do_create_native_mint(&config, program_id, &payer).await;
+            native_mint
+                .get_or_create_associated_account_info(&payer.pubkey())
+                .await
+                .unwrap();
+
+            let token = create_token(&config, &payer).await;
+
+            let system_recipient = Keypair::new().pubkey();
+            let wsol_recipient = native_mint.get_associated_token_address(&payer.pubkey());
+
+            let token_rent_amount = config
+                .rpc_client
+                .get_account(&create_auxiliary_account(&config, &payer, token).await)
+                .await
+                .unwrap()
+                .lamports;
+
+            for recipient in [system_recipient, wsol_recipient] {
+                let base_balance = config
+                    .rpc_client
+                    .get_account(&recipient)
+                    .await
+                    .map(|account| account.lamports)
+                    .unwrap_or(0);
+
+                let source = create_auxiliary_account(&config, &payer, token).await;
+
+                process_test_command(
+                    &config,
+                    &payer,
+                    &[
+                        "spl-token",
+                        CommandName::Close.into(),
+                        "--address",
+                        &source.to_string(),
+                        "--recipient",
+                        &recipient.to_string(),
+                    ],
+                )
+                .await
+                .unwrap();
+
+                let recipient_data = config.rpc_client.get_account(&recipient).await.unwrap();
+
+                assert_eq!(recipient_data.lamports, base_balance + token_rent_amount);
+                if recipient == wsol_recipient {
+                    let recipient_account =
+                        StateWithExtensionsOwned::<Account>::unpack(recipient_data.data).unwrap();
+                    assert_eq!(recipient_account.base.amount, token_rent_amount);
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
     async fn close_wrapped_sol_account() {
         let (test_validator, payer) = new_validator_for_test().await;
         for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
