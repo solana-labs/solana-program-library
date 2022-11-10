@@ -191,7 +191,8 @@ async fn _success(token_program_id: Pubkey, test_type: SuccessTestType) {
         &stake_pool_accounts.token_program_id,
         &destination_keypair,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &Keypair::new().pubkey(),
+        &Keypair::new(),
+        &[],
     )
     .await
     .unwrap();

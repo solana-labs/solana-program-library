@@ -143,7 +143,8 @@ async fn setup(
         &stake_pool_accounts.token_program_id,
         &pool_token_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
+        &user,
+        &[],
     )
     .await
     .unwrap();

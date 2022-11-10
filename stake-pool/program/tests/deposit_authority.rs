@@ -103,7 +103,8 @@ async fn success_deposit() {
         &stake_pool_accounts.token_program_id,
         &user_pool_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
+        &user,
+        &[],
     )
     .await
     .unwrap();
@@ -185,7 +186,8 @@ async fn fail_deposit_without_authority_signature() {
         &stake_pool_accounts.token_program_id,
         &user_pool_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
+        &user,
+        &[],
     )
     .await
     .unwrap();

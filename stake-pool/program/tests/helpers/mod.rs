@@ -32,7 +32,7 @@ use {
         MINIMUM_RESERVE_LAMPORTS,
     },
     spl_token_2022::{
-        extension::StateWithExtensionsOwned,
+        extension::{ExtensionType, StateWithExtensionsOwned},
         state::{Account, Mint},
     },
     std::{convert::TryInto, num::NonZeroU32},
@@ -86,31 +86,71 @@ pub async fn create_mint(
     pool_mint: &Keypair,
     manager: &Pubkey,
     decimals: u8,
+    extension_types: &[ExtensionType],
 ) -> Result<(), TransportError> {
+    assert!(extension_types.is_empty() || program_id != &spl_token::id());
     let rent = banks_client.get_rent().await.unwrap();
-    let mint_rent = rent.minimum_balance(Mint::LEN);
+    let space = ExtensionType::get_account_len::<Mint>(extension_types);
+    let mint_rent = rent.minimum_balance(space);
+    let mint_pubkey = pool_mint.pubkey();
 
-    let mut transaction = Transaction::new_with_payer(
-        &[
-            system_instruction::create_account(
-                &payer.pubkey(),
-                &pool_mint.pubkey(),
-                mint_rent,
-                Mint::LEN as u64,
+    let mut instructions = vec![system_instruction::create_account(
+        &payer.pubkey(),
+        &mint_pubkey,
+        mint_rent,
+        space as u64,
+        program_id,
+    )];
+    for extension_type in extension_types {
+        let instruction = match extension_type {
+            ExtensionType::MintCloseAuthority =>
+                spl_token_2022::instruction::initialize_mint_close_authority(
+                    program_id,
+                    &mint_pubkey,
+                    Some(manager),
+                ),
+            ExtensionType::DefaultAccountState =>
+                spl_token_2022::extension::default_account_state::instruction::initialize_default_account_state(
+                    program_id,
+                    &mint_pubkey,
+                    &spl_token_2022::state::AccountState::Initialized,
+                ),
+            ExtensionType::TransferFeeConfig => spl_token_2022::extension::transfer_fee::instruction::initialize_transfer_fee_config(
                 program_id,
+                &mint_pubkey,
+                Some(manager),
+                Some(manager),
+                100,
+                1_000_000,
             ),
-            spl_token_2022::instruction::initialize_mint(
+            ExtensionType::InterestBearingConfig => spl_token_2022::extension::interest_bearing_mint::instruction::initialize(
                 program_id,
-                &pool_mint.pubkey(),
-                manager,
-                None,
-                decimals,
-            )
-            .unwrap(),
-        ],
-        Some(&payer.pubkey()),
+                &mint_pubkey,
+                Some(*manager),
+                600,
+            ),
+            ExtensionType::NonTransferable =>
+                spl_token_2022::instruction::initialize_non_transferable_mint(program_id, &mint_pubkey),
+            _ => unimplemented!(),
+        };
+        instructions.push(instruction.unwrap());
+    }
+    instructions.push(
+        spl_token_2022::instruction::initialize_mint(
+            program_id,
+            &pool_mint.pubkey(),
+            manager,
+            None,
+            decimals,
+        )
+        .unwrap(),
     );
-    transaction.sign(&[payer, pool_mint], *recent_blockhash);
+    let transaction = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&payer.pubkey()),
+        &[payer, pool_mint],
+        *recent_blockhash,
+    );
     #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     banks_client
         .process_transaction(transaction)
@@ -177,31 +217,85 @@ pub async fn create_token_account(
     program_id: &Pubkey,
     account: &Keypair,
     pool_mint: &Pubkey,
-    manager: &Pubkey,
+    authority: &Keypair,
+    extensions: &[ExtensionType],
 ) -> Result<(), TransportError> {
     let rent = banks_client.get_rent().await.unwrap();
-    let account_rent = rent.minimum_balance(Account::LEN);
+    let space = ExtensionType::get_account_len::<Account>(extensions);
+    let account_rent = rent.minimum_balance(space);
 
-    let mut transaction = Transaction::new_with_payer(
-        &[
-            system_instruction::create_account(
-                &payer.pubkey(),
-                &account.pubkey(),
-                account_rent,
-                Account::LEN as u64,
-                program_id,
+    let mut instructions = vec![system_instruction::create_account(
+        &payer.pubkey(),
+        &account.pubkey(),
+        account_rent,
+        space as u64,
+        program_id,
+    )];
+
+    for extension in extensions {
+        match extension {
+            ExtensionType::ImmutableOwner => instructions.push(
+                spl_token_2022::instruction::initialize_immutable_owner(
+                    program_id,
+                    &account.pubkey(),
+                )
+                .unwrap(),
             ),
-            spl_token_2022::instruction::initialize_account(
-                program_id,
-                &account.pubkey(),
-                pool_mint,
-                manager,
-            )
-            .unwrap(),
-        ],
-        Some(&payer.pubkey()),
+            ExtensionType::TransferFeeAmount
+            | ExtensionType::MemoTransfer
+            | ExtensionType::CpiGuard => (),
+            _ => unimplemented!(),
+        };
+    }
+
+    instructions.push(
+        spl_token_2022::instruction::initialize_account(
+            program_id,
+            &account.pubkey(),
+            pool_mint,
+            &authority.pubkey(),
+        )
+        .unwrap(),
     );
-    transaction.sign(&[payer, account], *recent_blockhash);
+
+    let mut signers = vec![payer, account];
+    for extension in extensions {
+        match extension {
+            ExtensionType::MemoTransfer => {
+                signers.push(authority);
+                instructions.push(
+                spl_token_2022::extension::memo_transfer::instruction::enable_required_transfer_memos(
+                    program_id,
+                    &account.pubkey(),
+                    &authority.pubkey(),
+                    &[],
+                )
+                .unwrap()
+                )
+            }
+            ExtensionType::CpiGuard => {
+                signers.push(authority);
+                instructions.push(
+                    spl_token_2022::extension::cpi_guard::instruction::enable_cpi_guard(
+                        program_id,
+                        &account.pubkey(),
+                        &authority.pubkey(),
+                        &[],
+                    )
+                    .unwrap(),
+                )
+            }
+            ExtensionType::ImmutableOwner | ExtensionType::TransferFeeAmount => (),
+            _ => unimplemented!(),
+        }
+    }
+
+    let transaction = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&payer.pubkey()),
+        &signers,
+        *recent_blockhash,
+    );
     #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     banks_client
         .process_transaction(transaction)
@@ -820,6 +914,7 @@ impl StakePoolAccounts {
             &self.pool_mint,
             &self.withdraw_authority,
             self.pool_decimals,
+            &[],
         )
         .await?;
         create_token_account(
@@ -829,7 +924,8 @@ impl StakePoolAccounts {
             &self.token_program_id,
             &self.pool_fee_account,
             &self.pool_mint.pubkey(),
-            &self.manager.pubkey(),
+            &self.manager,
+            &[],
         )
         .await?;
         create_independent_stake_account(
@@ -1542,7 +1638,8 @@ pub async fn simple_add_validator_to_pool(
         &stake_pool_accounts.token_program_id,
         &pool_token_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &payer.pubkey(),
+        payer,
+        &[],
     )
     .await
     .unwrap();
@@ -1660,7 +1757,8 @@ impl DepositStakeAccount {
             &stake_pool_accounts.token_program_id,
             &self.pool_account,
             &stake_pool_accounts.pool_mint.pubkey(),
-            &self.authority.pubkey(),
+            &self.authority,
+            &[],
         )
         .await
         .unwrap();
@@ -1726,7 +1824,8 @@ pub async fn simple_deposit_stake(
         &stake_pool_accounts.token_program_id,
         &pool_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &authority.pubkey(),
+        &authority,
+        &[],
     )
     .await
     .unwrap();

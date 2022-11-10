@@ -7,8 +7,8 @@ use {
         instruction::{FundingType, PreferredValidatorType, StakePoolInstruction},
         minimum_delegation, minimum_reserve_lamports, minimum_stake_lamports,
         state::{
-            AccountType, Fee, FeeType, StakePool, StakeStatus, StakeWithdrawSource, ValidatorList,
-            ValidatorListHeader, ValidatorStakeInfo,
+            is_extension_supported_for_mint, AccountType, Fee, FeeType, StakePool, StakeStatus,
+            StakeWithdrawSource, ValidatorList, ValidatorListHeader, ValidatorStakeInfo,
         },
         AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, TRANSIENT_STAKE_SEED_PREFIX,
     },
@@ -35,10 +35,7 @@ use {
     },
     spl_token_2022::{
         check_spl_token_program_account,
-        extension::{
-            mint_close_authority::MintCloseAuthority, non_transferable::NonTransferable,
-            BaseStateWithExtensions, StateWithExtensions,
-        },
+        extension::{BaseStateWithExtensions, StateWithExtensions},
         state::Mint,
     },
     std::num::NonZeroU32,
@@ -692,12 +689,12 @@ impl Processor {
                 return Err(StakePoolError::InvalidMintFreezeAuthority.into());
             }
 
-            if pool_mint.get_extension::<MintCloseAuthority>().is_ok() {
-                return Err(StakePoolError::InvalidMintFreezeAuthority.into());
-            }
-
-            if pool_mint.get_extension::<NonTransferable>().is_ok() {
-                return Err(StakePoolError::InvalidNonTransferableMint.into());
+            let extensions = pool_mint.get_extension_types()?;
+            if extensions
+                .iter()
+                .any(|x| !is_extension_supported_for_mint(x))
+            {
+                return Err(StakePoolError::UnsupportedMintExtension.into());
             }
         }
         stake_pool.check_manager_fee_info(manager_fee_info)?;
@@ -3242,8 +3239,8 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::InvalidSolWithdrawAuthority => msg!("Error: Provided sol withdraw authority does not match the program's"),
             StakePoolError::SolWithdrawalTooLarge => msg!("Error: Too much SOL withdrawn from the stake pool's reserve account"),
             StakePoolError::InvalidMetadataAccount => msg!("Error: Metadata account derived from pool mint account does not match the one passed to program"),
-            StakePoolError::InvalidMintCloseAuthority => msg!("Error: mint has an invalid close authority"),
-            StakePoolError::InvalidNonTransferableMint => msg!("Error: mint has non-transferable tokens"),
+            StakePoolError::UnsupportedMintExtension => msg!("Error: mint has an unsupported extension"),
+            StakePoolError::UnsupportedFeeAccountExtension => msg!("Error: fee account has an unsupported extension"),
         }
     }
 }

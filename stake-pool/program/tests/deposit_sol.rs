@@ -50,7 +50,8 @@ async fn setup(
         &stake_pool_accounts.token_program_id,
         &pool_token_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
+        &user,
+        &[],
     )
     .await
     .unwrap();
@@ -226,6 +227,7 @@ async fn fail_with_wrong_mint_for_receiver_acc() {
         &outside_mint,
         &outside_withdraw_auth.pubkey(),
         0,
+        &[],
     )
     .await
     .unwrap();
@@ -237,7 +239,8 @@ async fn fail_with_wrong_mint_for_receiver_acc() {
         &stake_pool_accounts.token_program_id,
         &outside_pool_fee_acc,
         &outside_mint.pubkey(),
-        &outside_manager.pubkey(),
+        &outside_manager,
+        &[],
     )
     .await
     .unwrap();
@@ -291,7 +294,8 @@ async fn success_with_sol_deposit_authority() {
         &stake_pool_accounts.token_program_id,
         &user_pool_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
+        &user,
+        &[],
     )
     .await
     .unwrap();
@@ -362,7 +366,8 @@ async fn fail_without_sol_deposit_authority_signature() {
         &stake_pool_accounts.token_program_id,
         &user_pool_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
+        &user,
+        &[],
     )
     .await
     .unwrap();
@@ -420,7 +425,8 @@ async fn success_with_referral_fee() {
         &stake_pool_accounts.token_program_id,
         &referrer_token_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &referrer.pubkey(),
+        &referrer,
+        &[],
     )
     .await
     .unwrap();

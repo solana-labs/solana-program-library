@@ -19,7 +19,7 @@ use {
         stake::state::Lockup,
     },
     spl_token_2022::{
-        extension::StateWithExtensions,
+        extension::{BaseStateWithExtensions, ExtensionType, StateWithExtensions},
         state::{Account, AccountState, Mint},
     },
     std::{borrow::Borrow, convert::TryFrom, fmt, matches},
@@ -299,6 +299,13 @@ impl StakePool {
             msg!("Manager fee account is not owned by token program, is not initialized, or does not match stake pool's mint");
             return Err(StakePoolError::InvalidFeeAccount.into());
         }
+        let extensions = token_account.get_extension_types()?;
+        if extensions
+            .iter()
+            .any(|x| !is_extension_supported_for_fee_account(x))
+        {
+            return Err(StakePoolError::UnsupportedFeeAccountExtension.into());
+        }
         Ok(())
     }
 
@@ -480,6 +487,45 @@ impl StakePool {
             FeeType::StakeDeposit(new_fee) => self.stake_deposit_fee = *new_fee,
         };
         Ok(())
+    }
+}
+
+/// Checks if the given extension is supported for the stake pool mint
+pub fn is_extension_supported_for_mint(extension_type: &ExtensionType) -> bool {
+    const SUPPORTED_EXTENSIONS: [ExtensionType; 5] = [
+        ExtensionType::Uninitialized,
+        ExtensionType::TransferFeeConfig,
+        ExtensionType::ConfidentialTransferMint,
+        ExtensionType::DefaultAccountState, // ok, but a freeze authority is not
+        ExtensionType::InterestBearingConfig,
+    ];
+    if !SUPPORTED_EXTENSIONS.contains(extension_type) {
+        msg!(
+            "Stake pool mint account cannot have the {:?} extension",
+            extension_type
+        );
+        false
+    } else {
+        true
+    }
+}
+
+/// Checks if the given extension is supported for the stake pool's fee account
+pub fn is_extension_supported_for_fee_account(extension_type: &ExtensionType) -> bool {
+    // Note: this does not include the `ConfidentialTransferAccount` extension
+    // because it is possible to block non-confidential transfers with the
+    // extension enabled.
+    const SUPPORTED_EXTENSIONS: [ExtensionType; 4] = [
+        ExtensionType::Uninitialized,
+        ExtensionType::TransferFeeAmount,
+        ExtensionType::ImmutableOwner,
+        ExtensionType::CpiGuard,
+    ];
+    if !SUPPORTED_EXTENSIONS.contains(extension_type) {
+        msg!("Fee account cannot have the {:?} extension", extension_type);
+        false
+    } else {
+        true
     }
 }
 
