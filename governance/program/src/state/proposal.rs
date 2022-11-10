@@ -2325,6 +2325,52 @@ mod test {
     }
 
     #[test]
+    pub fn test_assert_can_cast_veto_vote_for_voting_proposal_within_hold_up_time() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.state = ProposalState::Voting;
+        let governance_config = create_test_governance_config();
+
+        let current_timestamp = proposal.voting_at.unwrap()
+            + governance_config.max_voting_time as i64
+            + governance_config.min_transaction_hold_up_time as i64;
+
+        let vote_kind = VoteKind::Veto;
+
+        // Act
+        let result =
+            proposal.assert_can_cast_vote(&vote_kind, &governance_config, current_timestamp);
+
+        // Assert
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    pub fn test_assert_can_cast_veto_vote_for_voting_proposal_with_cannot_cast_after_hold_up_time_error(
+    ) {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.state = ProposalState::Voting;
+        let governance_config = create_test_governance_config();
+
+        let current_timestamp = proposal.voting_at.unwrap()
+            + governance_config.max_voting_time as i64
+            + governance_config.min_transaction_hold_up_time as i64
+            + 1;
+
+        let vote_kind = VoteKind::Veto;
+
+        // Act
+        let err = proposal
+            .assert_can_cast_vote(&vote_kind, &governance_config, current_timestamp)
+            .err()
+            .unwrap();
+
+        // Assert
+        assert_eq!(err, GovernanceError::ProposalVotingTimeExpired.into());
+    }
+
+    #[test]
     pub fn test_assert_valid_vote_with_deny_vote_for_survey_only_proposal_error() {
         // Arrange
         let mut proposal = create_test_proposal();
@@ -2338,6 +2384,52 @@ mod test {
 
         // Assert
         assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+    }
+
+    #[test]
+    pub fn test_assert_can_cast_veto_vote_for_succeeded_proposal_within_hold_up_time() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.state = ProposalState::Succeeded;
+
+        let governance_config = create_test_governance_config();
+
+        let current_timestamp = proposal.voting_completed_at.unwrap()
+            + governance_config.min_transaction_hold_up_time as i64;
+
+        let vote_kind = VoteKind::Veto;
+
+        // Act
+        let result =
+            proposal.assert_can_cast_vote(&vote_kind, &governance_config, current_timestamp);
+
+        // Assert
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    pub fn test_assert_can_cast_veto_vote_for_succeeded_proposal_with_cannot_cast_after_hold_up_time_error(
+    ) {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.state = ProposalState::Succeeded;
+
+        let governance_config = create_test_governance_config();
+
+        let current_timestamp = proposal.voting_completed_at.unwrap()
+            + governance_config.min_transaction_hold_up_time as i64
+            + 1;
+
+        let vote_kind = VoteKind::Veto;
+
+        // Act
+        let err = proposal
+            .assert_can_cast_vote(&vote_kind, &governance_config, current_timestamp)
+            .err()
+            .unwrap();
+
+        // Assert
+        assert_eq!(err, GovernanceError::ProposalVotingTimeExpired.into());
     }
 
     #[test]
