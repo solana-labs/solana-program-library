@@ -78,6 +78,7 @@ pub async fn get_account(banks_client: &mut BanksClient, pubkey: &Pubkey) -> Sol
         .expect("account empty")
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_mint(
     banks_client: &mut BanksClient,
     payer: &Keypair,
@@ -210,6 +211,7 @@ pub async fn transfer_spl_tokens(
     banks_client.process_transaction(transaction).await.unwrap();
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_token_account(
     banks_client: &mut BanksClient,
     payer: &Keypair,

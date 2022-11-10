@@ -46,7 +46,7 @@ async fn create_required_accounts(
     .await
     .unwrap();
 
-    let required_extensions = ExtensionType::get_required_init_account_extensions(&mint_extensions);
+    let required_extensions = ExtensionType::get_required_init_account_extensions(mint_extensions);
     create_token_account(
         banks_client,
         payer,
