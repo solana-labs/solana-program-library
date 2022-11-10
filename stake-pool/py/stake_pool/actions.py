@@ -164,7 +164,7 @@ async def remove_validator_from_pool(
             stake_pool.validator_list,
             validator,
             validator_info.validator_seed_suffix or None,
-            validator_info.transient_seed_suffix_start,
+            validator_info.transient_seed_suffix,
         )
     )
     await client.send_transaction(
@@ -417,7 +417,7 @@ async def update_stake_pool(client: AsyncClient, payer: Keypair, stake_pool_addr
                 STAKE_POOL_PROGRAM_ID,
                 validator.vote_account_address,
                 stake_pool_address,
-                validator.transient_seed_suffix_start,
+                validator.transient_seed_suffix,
             )
             validator_and_transient_stake_pairs.append(transient_stake_address)
         update_list_instructions.append(
@@ -491,7 +491,7 @@ async def increase_validator_stake(
     (withdraw_authority, seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
 
     validator_info = next(x for x in validator_list.validators if x.vote_account_address == validator_vote)
-    transient_stake_seed = validator_info.transient_seed_suffix_start + 1  # bump up by one to avoid reuse
+    transient_stake_seed = validator_info.transient_seed_suffix + 1  # bump up by one to avoid reuse
     validator_stake_seed = validator_info.validator_seed_suffix or None
     (transient_stake, _) = find_transient_stake_program_address(
         STAKE_POOL_PROGRAM_ID,
@@ -557,7 +557,7 @@ async def decrease_validator_stake(
         stake_pool_address,
         validator_stake_seed,
     )
-    transient_stake_seed = validator_info.transient_seed_suffix_start + 1  # bump up by one to avoid reuse
+    transient_stake_seed = validator_info.transient_seed_suffix + 1  # bump up by one to avoid reuse
     (transient_stake, _) = find_transient_stake_program_address(
         STAKE_POOL_PROGRAM_ID,
         validator_info.vote_account_address,

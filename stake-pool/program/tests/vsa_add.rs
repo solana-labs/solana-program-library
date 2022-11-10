@@ -115,8 +115,8 @@ async fn success() {
                 last_update_epoch: 0,
                 active_stake_lamports: stake_rent + current_minimum_delegation,
                 transient_stake_lamports: 0,
-                transient_seed_suffix_start: 0,
-                transient_seed_suffix_end: 0,
+                transient_seed_suffix: 0,
+                unused: 0,
                 validator_seed_suffix: validator_stake
                     .validator_stake_seed
                     .map(|s| s.get())

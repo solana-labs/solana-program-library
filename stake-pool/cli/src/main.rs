@@ -520,7 +520,7 @@ fn command_vsa_remove(
             stake_pool_address,
             vote_account,
             validator_seed,
-            validator_stake_info.transient_seed_suffix_start,
+            validator_stake_info.transient_seed_suffix,
         ),
     ];
     unique_signers!(signers);
@@ -559,7 +559,7 @@ fn command_increase_validator_stake(
                 vote_account,
                 lamports,
                 validator_seed,
-                validator_stake_info.transient_seed_suffix_start,
+                validator_stake_info.transient_seed_suffix,
             ),
         ],
         &signers,
@@ -598,7 +598,7 @@ fn command_decrease_validator_stake(
                 vote_account,
                 lamports,
                 validator_seed,
-                validator_stake_info.transient_seed_suffix_start,
+                validator_stake_info.transient_seed_suffix,
             ),
         ],
         &signers,
@@ -1095,7 +1095,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
                 &spl_stake_pool::id(),
                 &validator.vote_account_address,
                 stake_pool_address,
-                validator.transient_seed_suffix_start,
+                validator.transient_seed_suffix,
             );
             let update_required = validator.last_update_epoch != epoch_info.epoch;
             CliStakePoolStakeAccountInfo {
@@ -1279,7 +1279,7 @@ fn prepare_withdraw_accounts(
                 &spl_stake_pool::id(),
                 &validator.vote_account_address,
                 stake_pool_address,
-                validator.transient_seed_suffix_start,
+                validator.transient_seed_suffix,
             );
 
             (

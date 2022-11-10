@@ -619,9 +619,7 @@ pub(crate) enum StakeWithdrawSource {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorStakeInfo {
-    /// Amount of active stake delegated to this validator, minus the minimum
-    /// required stake amount of rent-exemption +
-    /// `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    /// Amount of lamports on the validator stake account, including rent
     ///
     /// Note that if `last_update_epoch` does not match the current epoch then
     /// this field may not be accurate
@@ -636,11 +634,11 @@ pub struct ValidatorStakeInfo {
     /// Last epoch the active and transient stake lamports fields were updated
     pub last_update_epoch: u64,
 
-    /// Start of the validator transient account seed suffixess
-    pub transient_seed_suffix_start: u64,
+    /// Transient account seed suffix, used to derive the transient stake account address
+    pub transient_seed_suffix: u64,
 
-    /// Offset of the end the validator transient account seed suffixes
-    pub transient_seed_suffix_end: u32,
+    /// Unused space, initially meant to specify the end of seed suffixes
+    pub unused: u32,
 
     /// Validator account seed suffix
     pub validator_seed_suffix: u32, // really `Option<NonZeroU32>` so 0 is `None`
@@ -942,8 +940,8 @@ mod test {
                     active_stake_lamports: u64::from_le_bytes([255; 8]),
                     transient_stake_lamports: u64::from_le_bytes([128; 8]),
                     last_update_epoch: u64::from_le_bytes([64; 8]),
-                    transient_seed_suffix_start: 0,
-                    transient_seed_suffix_end: 0,
+                    transient_seed_suffix: 0,
+                    unused: 0,
                     validator_seed_suffix: 0,
                 },
                 ValidatorStakeInfo {
@@ -952,8 +950,8 @@ mod test {
                     active_stake_lamports: 998877665544,
                     transient_stake_lamports: 222222222,
                     last_update_epoch: 11223445566,
-                    transient_seed_suffix_start: 0,
-                    transient_seed_suffix_end: 0,
+                    transient_seed_suffix: 0,
+                    unused: 0,
                     validator_seed_suffix: 0,
                 },
                 ValidatorStakeInfo {
@@ -962,8 +960,8 @@ mod test {
                     active_stake_lamports: 0,
                     transient_stake_lamports: 0,
                     last_update_epoch: 999999999999999,
-                    transient_seed_suffix_start: 0,
-                    transient_seed_suffix_end: 0,
+                    transient_seed_suffix: 0,
+                    unused: 0,
                     validator_seed_suffix: 0,
                 },
             ],

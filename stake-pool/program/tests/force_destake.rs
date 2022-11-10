@@ -68,8 +68,8 @@ async fn setup() -> (
         active_stake_lamports,
         transient_stake_lamports: 0,
         last_update_epoch: 0,
-        transient_seed_suffix_start: 0,
-        transient_seed_suffix_end: 0,
+        transient_seed_suffix: 0,
+        unused: 0,
         validator_seed_suffix: raw_validator_seed,
     });
 

@@ -549,8 +549,8 @@ async fn success_with_deactivating_transient_stake() {
             last_update_epoch: 0,
             active_stake_lamports: stake_rent + current_minimum_delegation,
             transient_stake_lamports: TEST_STAKE_AMOUNT + stake_rent,
-            transient_seed_suffix_start: validator_stake.transient_stake_seed,
-            transient_seed_suffix_end: 0,
+            transient_seed_suffix: validator_stake.transient_stake_seed,
+            unused: 0,
             validator_seed_suffix: validator_stake
                 .validator_stake_seed
                 .map(|s| s.get())

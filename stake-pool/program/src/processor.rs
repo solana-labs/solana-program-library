@@ -933,8 +933,8 @@ impl Processor {
             active_stake_lamports: required_lamports,
             transient_stake_lamports: 0,
             last_update_epoch: clock.epoch,
-            transient_seed_suffix_start: 0,
-            transient_seed_suffix_end: 0,
+            transient_seed_suffix: 0,
+            unused: 0,
             validator_seed_suffix: raw_validator_seed,
         })?;
 
@@ -1047,7 +1047,7 @@ impl Processor {
                 stake_pool_info.key,
                 transient_stake_account_info.key,
                 &vote_account_address,
-                validator_stake_info.transient_seed_suffix_start,
+                validator_stake_info.transient_seed_suffix,
             )?;
 
             match get_stake_state(transient_stake_account_info) {
@@ -1251,7 +1251,7 @@ impl Processor {
             .checked_sub(lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
         validator_stake_info.transient_stake_lamports = lamports;
-        validator_stake_info.transient_seed_suffix_start = transient_stake_seed;
+        validator_stake_info.transient_seed_suffix = transient_stake_seed;
 
         Ok(())
     }
@@ -1443,7 +1443,7 @@ impl Processor {
         )?;
 
         validator_stake_info.transient_stake_lamports = total_lamports;
-        validator_stake_info.transient_seed_suffix_start = transient_stake_seed;
+        validator_stake_info.transient_seed_suffix = transient_stake_seed;
 
         Ok(())
     }
@@ -1590,7 +1590,7 @@ impl Processor {
                 stake_pool_info.key,
                 transient_stake_info.key,
                 &validator_stake_record.vote_account_address,
-                validator_stake_record.transient_seed_suffix_start,
+                validator_stake_record.transient_seed_suffix,
             )
             .is_err()
             {
@@ -2000,6 +2000,9 @@ impl Processor {
         if stake_pool.manager_fee_account != *manager_fee_info.key {
             return Err(StakePoolError::InvalidFeeAccount.into());
         }
+        // There is no bypass if the manager fee account is invalid. Deposits
+        // don't hold user funds hostage, so if the fee account is invalid, users
+        // cannot deposit in the pool.  Let it fail here!
 
         if stake_pool.last_update_epoch < clock.epoch {
             return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
@@ -2256,6 +2259,9 @@ impl Processor {
         if stake_pool.manager_fee_account != *manager_fee_info.key {
             return Err(StakePoolError::InvalidFeeAccount.into());
         }
+        // There is no bypass if the manager fee account is invalid. Deposits
+        // don't hold user funds hostage, so if the fee account is invalid, users
+        // cannot deposit in the pool.  Let it fail here!
 
         // We want this to hold to ensure that deposit_sol mints pool tokens
         // at the right price
@@ -2511,7 +2517,7 @@ impl Processor {
                     stake_pool_info.key,
                     stake_split_from.key,
                     &vote_account_address,
-                    validator_stake_info.transient_seed_suffix_start,
+                    validator_stake_info.transient_seed_suffix,
                 )?;
                 StakeWithdrawSource::Transient
             } else {

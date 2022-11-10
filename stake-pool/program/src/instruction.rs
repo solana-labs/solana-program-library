@@ -819,7 +819,7 @@ pub fn update_validator_list_balance(
                         program_id,
                         vote_account_address,
                         stake_pool,
-                        validator_stake_info.transient_seed_suffix_start,
+                        validator_stake_info.transient_seed_suffix,
                     );
                     vec![
                         AccountMeta::new(validator_stake_account, false),
