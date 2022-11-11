@@ -120,7 +120,9 @@ impl SwapCurve {
         // https://github.com/balancer-labs/balancer-core/blob/f4ed5d65362a8d6cec21662fb6eae233b0babc1f/contracts/BMath.sol#L117
         let half_source_amount = std::cmp::max(1, source_amount.checked_div(2)?);
         let trade_fee = fees.trading_fee(half_source_amount)?;
-        let source_amount = source_amount.checked_sub(trade_fee)?;
+        let owner_fee = fees.owner_trading_fee(half_source_amount)?;
+        let total_fees = trade_fee.checked_add(owner_fee)?;
+        let source_amount = source_amount.checked_sub(total_fees)?;
         self.calculator.deposit_single_token_type(
             source_amount,
             swap_token_a_amount,
@@ -392,5 +394,62 @@ mod tests {
         assert_eq!(result.new_swap_source_amount, 1100);
         assert_eq!(result.destination_amount_swapped, 4545);
         assert_eq!(result.new_swap_destination_amount, 45455);
+    }
+
+    #[test]
+    fn one_sided_equals_swap_with_fee() {
+        let pool_supply: u128 = 1_000_000;
+        let swap_source_amount: u128 = 1_000_000;
+        let swap_destination_amount: u128 = 50_000_000;
+        let source_amount: u128 = 10_000;
+        let curve = ConstantProductCurve::default();
+        let fees = Fees {
+            trade_fee_numerator: 25,
+            trade_fee_denominator: 1_000,
+            owner_trade_fee_numerator: 5,
+            owner_trade_fee_denominator: 1_000,
+            ..Fees::default()
+        };
+        let swap_curve = SwapCurve {
+            curve_type: CurveType::ConstantProduct,
+            calculator: Arc::new(curve),
+        };
+        // do the A to B swap
+        let results = swap_curve
+            .swap(
+                source_amount,
+                swap_source_amount,
+                swap_destination_amount,
+                TradeDirection::AtoB,
+                &fees,
+            )
+            .unwrap();
+
+        // deposit just A, get pool tokens
+        let new_pool_tokens = swap_curve
+            .deposit_single_token_type(
+                results.source_amount_swapped,
+                swap_source_amount,
+                swap_destination_amount,
+                pool_supply,
+                TradeDirection::AtoB,
+                &fees,
+            )
+            .unwrap();
+        // withdraw B, should cost the same number of pool tokens or up to 2 more
+        // because of the two calculations
+        let withdrawn_pool_tokens = swap_curve
+            .withdraw_single_token_type_exact_out(
+                results.destination_amount_swapped,
+                swap_source_amount + results.source_amount_swapped,
+                swap_destination_amount,
+                pool_supply + new_pool_tokens,
+                TradeDirection::BtoA,
+                &fees,
+            )
+            .unwrap();
+        assert!(withdrawn_pool_tokens >= new_pool_tokens);
+        let epsilon = 2;
+        assert!(withdrawn_pool_tokens - new_pool_tokens <= epsilon);
     }
 }

@@ -61,6 +61,29 @@ pub fn calculate_fee(
     }
 }
 
+fn ceil_div(dividend: u128, divisor: u128) -> Option<u128> {
+    dividend
+        .checked_add(divisor)?
+        .checked_sub(1)?
+        .checked_div(divisor)
+}
+
+fn pre_fee_amount(
+    post_fee_amount: u128,
+    fee_numerator: u128,
+    fee_denominator: u128,
+) -> Option<u128> {
+    if fee_numerator == 0 {
+        Some(post_fee_amount)
+    } else if fee_numerator == fee_denominator || post_fee_amount == 0 {
+        Some(0)
+    } else {
+        let numerator = post_fee_amount.checked_mul(fee_denominator)?;
+        let denominator = fee_denominator.checked_sub(fee_numerator)?;
+        ceil_div(numerator, denominator)
+    }
+}
+
 fn validate_fraction(numerator: u64, denominator: u64) -> Result<(), SwapError> {
     if denominator == 0 && numerator == 0 {
         Ok(())
@@ -96,6 +119,32 @@ impl Fees {
             trading_tokens,
             u128::try_from(self.owner_trade_fee_numerator).ok()?,
             u128::try_from(self.owner_trade_fee_denominator).ok()?,
+        )
+    }
+
+    /// Calculate the inverse trading amount, how much input is needed to give the
+    /// provided output
+    pub fn pre_trading_fee_amount(&self, post_fee_amount: u128) -> Option<u128> {
+        let combined_fee_numerator =
+            match (self.trade_fee_numerator, self.owner_trade_fee_numerator) {
+                (0, 0) => 0,
+                (0, a) => a as u128,
+                (a, 0) => a as u128,
+                (a, b) => (a as u128)
+                    .checked_mul(self.owner_trade_fee_denominator as u128)?
+                    .checked_add((b as u128).checked_mul(self.trade_fee_denominator as u128)?)?,
+            };
+        let combined_fee_denominator =
+            match (self.trade_fee_denominator, self.owner_trade_fee_denominator) {
+                (0, 0) => 0,
+                (0, a) => a as u128,
+                (a, 0) => a as u128,
+                (a, b) => (a as u128).checked_mul(b as u128)?,
+            };
+        pre_fee_amount(
+            post_fee_amount,
+            combined_fee_numerator,
+            combined_fee_denominator,
         )
     }
 
