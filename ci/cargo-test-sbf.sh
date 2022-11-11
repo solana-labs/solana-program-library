@@ -3,7 +3,7 @@
 set -e
 cd "$(dirname "$0")/.."
 
-source ./ci/rust-version.sh stable
+RUST_STABLE_VERSION=1.59.0 source ./ci/rust-version.sh stable
 source ./ci/solana-version.sh
 
 export RUSTFLAGS="-D warnings"
