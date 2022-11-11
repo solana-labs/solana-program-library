@@ -37,7 +37,8 @@ use solana_sdk::{
 use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::{
     extension::{
-        cpi_guard::CpiGuard, default_account_state::DefaultAccountState,
+        cpi_guard::CpiGuard,
+        default_account_state::DefaultAccountState,
         interest_bearing_mint::InterestBearingConfig,
         memo_transfer::MemoTransfer,
         mint_close_authority::MintCloseAuthority,
@@ -4404,6 +4405,7 @@ mod tests {
             None,
             Some(rate_bps),
             None,
+            None,
             bulk_signers,
         )
         .await
@@ -5958,6 +5960,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             bulk_signers,
         )
         .await
@@ -6011,6 +6014,7 @@ mod tests {
             None,
             None,
             Some(AccountState::Frozen),
+            None,
             bulk_signers,
         )
         .await
@@ -6072,7 +6076,9 @@ mod tests {
             token_pubkey,
             payer.pubkey(),
             false,
-            true,
+            false,
+            false,
+            None,
             None,
             None,
             Some((transfer_fee_basis_points, maximum_fee)),
