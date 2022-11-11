@@ -897,7 +897,7 @@ fn process_allow_confidential_credits(
     Ok(())
 }
 
-/// Processes an [DisableConfidentialCredits] or [EnableConfidentialCredits] instruction.
+/// Processes an [DisableNonConfidentialCredits] or [EnableNonConfidentialCredits] instruction.
 fn process_allow_non_confidential_credits(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
