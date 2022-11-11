@@ -71,7 +71,7 @@ Integration testing may be performed via the per-project .js bindings.  See the
 Solutions to a few issues you might run into are mentioned here.
 
 1. `Failed to open: ../../deploy/spl_<program-name>.so`
-    
+
     Update your Rust and Cargo to the latest versions and re-run `cargo build-sbf` in the relevant `<program-name>` directory,
     or run it at the repository root to rebuild all on-chain programs.
 
@@ -117,10 +117,9 @@ master. Once a program is tested and deemed ready for release:
 ### Bump Version
 
   * Increment the version number in the program's Cargo.toml
-  * Generate a new program ID and replace in `<program>/program-id.md` and `<program>/src/lib.rs`
-  * Run `cargo build-sbf <program>` to update relevant C bindings. (Note the
+  * Run `cargo build-sbf <program>` to build binary. Note the
     location of the generated `spl_<program>.so` for attaching to the Github
-    release.)
+    release.
   * Open a PR with these version changes and merge after passing CI.
 
 ### Create Github tag
@@ -145,7 +144,7 @@ $ git push upstream --tags
 
 Navigate to the program directory and run `cargo package`
 to test the build. Then run `cargo publish`.
- 
+
  # Disclaimer
 
 All claims, content, designs, algorithms, estimates, roadmaps,
@@ -186,4 +185,3 @@ deploy, integrate, or use the Solana blockchain protocol code directly
 (e.g., as a node operator), and individuals that transact on the Solana
 blockchain through light clients, third party interfaces, and/or wallet
 software.
-
