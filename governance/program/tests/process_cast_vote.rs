@@ -2,19 +2,13 @@
 
 mod program_test;
 
-use solana_program::pubkey::Pubkey;
 use solana_program_test::tokio;
 
 use program_test::*;
 use spl_governance::{
     error::GovernanceError,
-    state::{
-        enums::{MintMaxVoterWeightSource, ProposalState, VoteThreshold, VoteTipping},
-        vote_record::Vote,
-    },
+    state::enums::{ProposalState, VoteThreshold, VoteTipping},
 };
-
-use crate::program_test::args::RealmSetupArgs;
 
 #[tokio::test]
 async fn test_cast_vote() {
