@@ -48,6 +48,7 @@ for program in $run_dir/program{,-*}; do
       set -x
       cd $program
       cargo +"$rust_stable" test-sbf -- --test process_cast_vote2 --  --nocapture 
+      cargo +"$rust_stable" test-sbf -- --test process_cast_vote --  --nocapture 
     )
   fi
 done
