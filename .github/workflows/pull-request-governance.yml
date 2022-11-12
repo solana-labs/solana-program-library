@@ -3,15 +3,15 @@ name: Governance Pull Request
 on:
   pull_request:
     paths:
-    - 'governance/**'
-    - 'token/**'
-    - 'ci/*-version.sh'
+      - "governance/**"
+      - "token/**"
+      - "ci/*-version.sh"
   push:
     branches: [master]
     paths:
-    - 'governance/**'
-    - 'token/**'
-    - 'ci/*-version.sh'
+      - "governance/**"
+      - "token/**"
+      - "ci/*-version.sh"
 
 jobs:
   cargo-test-sbf:
@@ -57,4 +57,4 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Build and test
-        run: ./ci/cargo-test-sbf.sh governance
+        run: ./ci/cargo-test-sbf.sh governance test_cast_vote

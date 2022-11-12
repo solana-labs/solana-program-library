@@ -27,6 +27,8 @@ fi
 cd $program_directory
 run_dir=$(pwd)
 
+
+
 if [[ -r $run_dir/Cargo.toml ]]; then
     # Build/test just one BPF program
     set -x
@@ -34,6 +36,8 @@ if [[ -r $run_dir/Cargo.toml ]]; then
     cargo +"$rust_stable" test-sbf -- --nocapture
     exit 0
 fi
+
+
 
 run_all=1
 for program in $run_dir/program{,-*}; do
@@ -43,10 +47,12 @@ for program in $run_dir/program{,-*}; do
     (
       set -x
       cd $program
-      cargo +"$rust_stable" test-sbf -- --nocapture
+      cargo +"$rust_stable" test-sbf -- $2 --nocapture
     )
   fi
 done
+
+
 
 if [[ -n $run_all ]]; then
   # Build/test all directories
@@ -56,3 +62,4 @@ if [[ -n $run_all ]]; then
     cargo +"$rust_stable" test-sbf -- --nocapture
   done
 fi
+

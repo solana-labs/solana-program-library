@@ -1,5 +1,5 @@
 #![cfg(feature = "test-sbf")]
-#![cfg(feature = "test-all")]
+//#![cfg(feature = "test-all")]
 
 mod program_test;
 
