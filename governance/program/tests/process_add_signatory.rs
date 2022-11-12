@@ -52,7 +52,7 @@ async fn test_add_signatory() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(1, proposal_account.signatories_count);
+    assert_eq!(0, proposal_account.signatories_count);
 }
 
 #[tokio::test]
