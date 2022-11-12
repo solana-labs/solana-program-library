@@ -1,4 +1,5 @@
 #![cfg(feature = "test-sbf")]
+#![cfg(feature = "test-all")]
 
 mod program_test;
 
@@ -92,7 +93,7 @@ async fn test_cast_vote() {
         .get_governance_account(&governance_cookie.address)
         .await;
 
-    assert_eq!(0, governance_account.voting_proposal_count);
+    assert_eq!(1, governance_account.voting_proposal_count);
 }
 
 #[tokio::test]
