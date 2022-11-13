@@ -610,6 +610,8 @@ pub enum TokenInstruction<'a> {
     /// See `extension::cpi_guard::instruction::CpiGuardInstruction` for
     /// further details about the extended instructions that share this instruction prefix
     CpiGuardExtension,
+    /// Migrate Multisig Native instruction
+    MigrateMultisigLamports,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -741,6 +743,7 @@ impl<'a> TokenInstruction<'a> {
             32 => Self::InitializeNonTransferableMint,
             33 => Self::InterestBearingMintExtension,
             34 => Self::CpiGuardExtension,
+            35 => Self::MigrateMultisigLamports,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -895,6 +898,9 @@ impl<'a> TokenInstruction<'a> {
             }
             &Self::CpiGuardExtension => {
                 buf.push(34);
+            }
+            &Self::MigrateMultisigLamports => {
+                buf.push(35);
             }
         };
         buf
@@ -1802,6 +1808,31 @@ pub(crate) fn encode_instruction<T: Into<u8>, D: Pod>(
         accounts,
         data,
     }
+}
+
+/// Creates a `MigrateMultisigLamports` Instruction
+pub fn migrate_multisig_lamports(
+    token_program_id: &Pubkey,
+    multisig_pubkey: &Pubkey,
+    dest_token_account_pubkey: &Pubkey,
+    signers: Vec<&Pubkey>,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+
+    let mut accounts = vec![
+        AccountMeta::new(*dest_token_account_pubkey, false),
+        AccountMeta::new(*multisig_pubkey, false),
+    ];
+
+    for signer in signers {
+        accounts.push(AccountMeta::new_readonly(*signer, true))
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data: TokenInstruction::MigrateMultisigLamports.pack(),
+    })
 }
 
 #[cfg(test)]

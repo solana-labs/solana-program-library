@@ -836,7 +836,7 @@ impl Processor {
     }
 
     /// Processes a [MigrateMultisigNative](enum.TokenInstruction.html) instruction
-    pub fn process_migrate_multisig_native(
+    pub fn process_migrate_multisig_lamports(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
@@ -1015,7 +1015,7 @@ impl Processor {
             }
             TokenInstruction::MigrateMultisigNative => {
                 msg!("Instruction: MigrateMultisigNative");
-                Self::process_migrate_multisig_native(program_id, accounts)
+                Self::process_migrate_multisig_lamports(program_id, accounts)
             }
         }
     }

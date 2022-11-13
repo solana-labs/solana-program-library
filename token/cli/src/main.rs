@@ -99,6 +99,12 @@ pub const MULTISIG_SIGNER_ARG: ArgConstant<'static> = ArgConstant {
     help: "Member signer of a multisig account",
 };
 
+pub const MULTISIG_ADDRESS: ArgConstant<'static> = ArgConstant {
+    name: "multisig_address",
+    long: "multisig-address",
+    help: "Address of the multisig account",
+};
+
 static VALID_TOKEN_PROGRAM_IDS: [Pubkey; 2] = [spl_token_2022::ID, spl_token::ID];
 
 #[derive(Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr)]
@@ -135,7 +141,7 @@ pub enum CommandName {
     EnableCpiGuard,
     DisableCpiGuard,
     UpdateDefaultAccountState,
-    MigrateMultisigNative,
+    MigrateMultisigLamports,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1861,31 +1867,41 @@ async fn command_sync_native(config: &Config<'_>, native_account_address: Pubkey
     })
 }
 
-#[allow(unreachable_code)]
-async fn command_migrate_multisig_native(
+async fn command_migrate_multisig_lamports(
     config: &Config<'_>,
     multisig_account_address: Pubkey,
-    dest_token_account_address: Pubkey,
-    bulk_signers: Vec<Arc<dyn Signer>>,
+    bulk_signers: &Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
-    todo!();
     let token = native_token_client_from_config(config)?;
+    let native_mint = *native_token_client_from_config(config)?.get_address();
 
-    // let res = token
-    //     .migrate_multisig_native(&multisig_account_address)
-    //     .await?;
-    // let res = todo!();
+    let wrapped_sol_ata = get_associated_token_address_with_program_id(
+        &multisig_account_address,
+        &native_mint,
+        &config.program_id,
+    );
+    println_display(
+        config,
+        format!(
+            "Migrating lamports from Multisig: {} to ATA: {}",
+            multisig_account_address, wrapped_sol_ata
+        ),
+    );
 
-    // let tx_return = finish_tx(config, &res, false).await?;
+    let res = token
+        .migrate_multisig_lamports(&multisig_account_address, &wrapped_sol_ata, bulk_signers)
+        .await?;
 
-    // Ok(match tx_return {
-    //     TransactionReturnData::CliSignature(signature) => {
-    //         config.output_format.formatted_string(&signature)
-    //     }
-    //     TransactionReturnData::CliSignOnlyData(sign_only_data) => {
-    //         config.output_format.formatted_string(&sign_only_data)
-    //     }
-    // })
+    let tx_return = finish_tx(config, &res, false).await?;
+
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 // both enables and disables required transfer memos, via enable_memos bool
@@ -3207,16 +3223,15 @@ fn app<'a, 'b>(
                 .offline_args(),
         )
         .subcommand(
-            SubCommand::with_name(CommandName::MigrateMultisigNative.into())
-                .about("Migrate native SOL from a multisig address to an associated token \
-                        account")
+            SubCommand::with_name(CommandName::MigrateMultisigLamports.into())
+                .about("Migrate native SOL from a multisig address to an associated token account")
                 .arg(
                     Arg::with_name("multisig-address")
                         .validator(is_valid_pubkey)
                         .value_name("MULTISIG_ADDRESS")
                         .takes_value(true)
                         .required(true)
-                        .help("Specify the address of the multisig to sync"),
+                        .help("Specify the address of the multisig account to sync"),
                 )
                 .arg(multisig_signer_arg())
         )
@@ -3859,17 +3874,25 @@ async fn process_command<'a>(
             )
             .await
         }
-        (CommandName::MigrateMultisigNative, arg_matches) => {
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
-                .unwrap()
+        (CommandName::MigrateMultisigLamports, arg_matches) => {
+            let multisig = config
+                .pubkey_or_default(arg_matches, "multisig-address", &mut wallet_manager)
                 .unwrap();
-            command_migrate_multisig_native(
+
+            println_display(
                 config,
-                Pubkey::default(),
-                Pubkey::default(),
-                bulk_signers,
-            )
-            .await
+                format!(
+                    "{:?}",
+                    &pubkeys_of_multiple_signers(
+                        arg_matches,
+                        "multisig_member",
+                        &mut wallet_manager,
+                    )
+                    .unwrap()
+                    .unwrap()
+                ),
+            );
+            command_migrate_multisig_lamports(config, multisig, &bulk_signers).await
         }
     }
 }
