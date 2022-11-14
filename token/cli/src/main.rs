@@ -2659,7 +2659,7 @@ fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("recipient")
                         .validator(is_valid_pubkey)
-                        .value_name("RECIPIENT_ADDRESS or RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
+                        .value_name("RECIPIENT_WALLET_ADDRESS or RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(3)
                         .required(true)
@@ -2794,9 +2794,19 @@ fn app<'a, 'b>(
                         .validator(is_valid_pubkey)
                         .value_name("RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
+                        .conflicts_with("recipient_owner")
                         .index(3)
                         .help("The token account address of recipient \
                             [default: associated token account for --mint-authority]"),
+                )
+                .arg(
+                    Arg::with_name("recipient_owner")
+                        .long("recipient-owner")
+                        .validator(is_valid_pubkey)
+                        .value_name("RECIPIENT_WALLET_ADDRESS")
+                        .takes_value(true)
+                        .conflicts_with("recipient")
+                        .help("The owner of the recipient associated token account"),
                 )
                 .arg(
                     Arg::with_name("mint_authority")
@@ -3777,6 +3787,10 @@ async fn process_command<'a>(
                 pubkey_of_signer(arg_matches, "recipient", &mut wallet_manager).unwrap()
             {
                 address
+            } else if let Some(address) =
+                pubkey_of_signer(arg_matches, "recipient_owner", &mut wallet_manager).unwrap()
+            {
+                get_associated_token_address_with_program_id(&address, &token, &config.program_id)
             } else {
                 let owner = config.default_signer()?.pubkey();
                 config.associated_token_address_for_token_and_program(
@@ -4718,21 +4732,74 @@ mod tests {
             let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
             let account = create_associated_account(&config, &payer, token).await;
-            let result = process_test_command(
+            let mut amount = 0;
+
+            // mint via implicit owner
+            process_test_command(
                 &config,
                 &payer,
                 &[
                     "spl-token",
                     CommandName::Mint.into(),
                     &token.to_string(),
-                    "100",
+                    "1",
                 ],
             )
-            .await;
-            result.unwrap();
-            let account = config.rpc_client.get_account(&account).await.unwrap();
-            let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
-            assert_eq!(token_account.base.amount, 100);
+            .await
+            .unwrap();
+            amount += 1;
+
+            let account_data = config.rpc_client.get_account(&account).await.unwrap();
+            let token_account =
+                StateWithExtensionsOwned::<Account>::unpack(account_data.data).unwrap();
+            assert_eq!(token_account.base.amount, amount);
+            assert_eq!(token_account.base.mint, token);
+            assert_eq!(token_account.base.owner, payer.pubkey());
+
+            // mint via explicit recipient
+            process_test_command(
+                &config,
+                &payer,
+                &[
+                    "spl-token",
+                    CommandName::Mint.into(),
+                    &token.to_string(),
+                    "1",
+                    &account.to_string(),
+                ],
+            )
+            .await
+            .unwrap();
+            amount += 1;
+
+            let account_data = config.rpc_client.get_account(&account).await.unwrap();
+            let token_account =
+                StateWithExtensionsOwned::<Account>::unpack(account_data.data).unwrap();
+            assert_eq!(token_account.base.amount, amount);
+            assert_eq!(token_account.base.mint, token);
+            assert_eq!(token_account.base.owner, payer.pubkey());
+
+            // mint via explicit owner
+            process_test_command(
+                &config,
+                &payer,
+                &[
+                    "spl-token",
+                    CommandName::Mint.into(),
+                    &token.to_string(),
+                    "1",
+                    "--recipient-owner",
+                    &payer.pubkey().to_string(),
+                ],
+            )
+            .await
+            .unwrap();
+            amount += 1;
+
+            let account_data = config.rpc_client.get_account(&account).await.unwrap();
+            let token_account =
+                StateWithExtensionsOwned::<Account>::unpack(account_data.data).unwrap();
+            assert_eq!(token_account.base.amount, amount);
             assert_eq!(token_account.base.mint, token);
             assert_eq!(token_account.base.owner, payer.pubkey());
         }
