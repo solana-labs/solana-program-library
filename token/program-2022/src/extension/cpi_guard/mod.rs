@@ -1,6 +1,6 @@
 use {
     crate::{
-        extension::{Extension, ExtensionType, StateWithExtensionsMut},
+        extension::{BaseStateWithExtensions, Extension, ExtensionType, StateWithExtensionsMut},
         pod::PodBool,
         state::Account,
     },

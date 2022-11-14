@@ -33,7 +33,7 @@ use spl_token_2022::{
     error::TokenError,
     extension::{
         mint_close_authority::MintCloseAuthority, transfer_fee::TransferFeeConfig,
-        StateWithExtensions,
+        BaseStateWithExtensions, StateWithExtensions,
     },
     state::{Account, Mint},
 };

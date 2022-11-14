@@ -466,25 +466,6 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         pod_from_bytes_mut::<V>(&mut self.tlv_data[value_start..value_end])
     }
 
-    /// Unpack a portion of the TLV data as the desired type
-    pub fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
-        if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        let TlvIndices {
-            type_start,
-            length_start,
-            value_start,
-        } = get_extension_indices::<V>(self.tlv_data, false)?;
-
-        if self.tlv_data[type_start..].len() < V::TYPE.get_tlv_len() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        let length = pod_from_bytes::<Length>(&self.tlv_data[length_start..value_start])?;
-        let value_end = value_start.saturating_add(usize::from(*length));
-        pod_from_bytes::<V>(&self.tlv_data[value_start..value_end])
-    }
-
     /// Packs base state data into the base data portion
     pub fn pack_base(&mut self) {
         S::pack_into_slice(&self.base, self.base_data);
