@@ -70,13 +70,13 @@ use bench::*;
 pub const OWNER_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
     name: "owner",
     long: "owner",
-    help: "Address of the token's owner. Defaults to the client keypair address.",
+    help: "Address of the primary authority controlling a mint or account. Defaults to the client keypair address.",
 };
 
 pub const OWNER_KEYPAIR_ARG: ArgConstant<'static> = ArgConstant {
     name: "owner",
     long: "owner",
-    help: "Keypair of the token's owner. Defaults to the client keypair.",
+    help: "Keypair of the primary authority controlling a mint or account. Defaults to the client keypair.",
 };
 
 pub const MINT_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
@@ -1345,13 +1345,8 @@ async fn command_wrap(
     let lamports = sol_to_lamports(sol);
     let token = native_token_client_from_config(config)?;
 
-    let account = wrapped_sol_account.unwrap_or_else(|| {
-        get_associated_token_address_with_program_id(
-            &wallet_address,
-            token.get_address(),
-            &config.program_id,
-        )
-    });
+    let account =
+        wrapped_sol_account.unwrap_or_else(|| token.get_associated_token_address(&wallet_address));
 
     println_display(config, format!("Wrapping {} SOL into {}", sol, account));
 
@@ -1404,13 +1399,8 @@ async fn command_unwrap(
     let use_associated_account = maybe_account.is_none();
     let token = native_token_client_from_config(config)?;
 
-    let account = maybe_account.unwrap_or_else(|| {
-        get_associated_token_address_with_program_id(
-            &wallet_address,
-            token.get_address(),
-            &config.program_id,
-        )
-    });
+    let account =
+        maybe_account.unwrap_or_else(|| token.get_associated_token_address(&wallet_address));
 
     println_display(config, format!("Unwrapping {}", account));
 
@@ -2802,7 +2792,8 @@ fn app<'a, 'b>(
                         .value_name("RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(3)
-                        .help("The token account address of recipient [default: associated token account for --owner]"),
+                        .help("The token account address of recipient \
+                            [default: associated token account for --mint-authority]"),
                 )
                 .arg(
                     Arg::with_name("mint_authority")
@@ -2950,6 +2941,7 @@ fn app<'a, 'b>(
                              Defaults to the client keypair."
                         ),
                 )
+                .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args(),
@@ -3024,7 +3016,6 @@ fn app<'a, 'b>(
                         .help("Token of the associated account to close. \
                               To close a specific account, use the `--address` parameter instead"),
                 )
-                .arg(owner_address_arg())
                 .arg(
                     Arg::with_name("recipient")
                         .long("recipient")
@@ -3057,6 +3048,7 @@ fn app<'a, 'b>(
                         .help("Specify the token account to close \
                             [default: owner's associated token account]"),
                 )
+                .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
         )
@@ -3072,7 +3064,6 @@ fn app<'a, 'b>(
                         .required(true)
                         .help("Token to close"),
                 )
-                .arg(owner_address_arg())
                 .arg(
                     Arg::with_name("recipient")
                         .long("recipient")
@@ -3093,6 +3084,7 @@ fn app<'a, 'b>(
                             Defaults to the client keypair.",
                         ),
                 )
+                .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args(),
