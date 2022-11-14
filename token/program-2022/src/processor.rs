@@ -1218,28 +1218,6 @@ impl Processor {
         let dest_token_account_info = next_account_info(account_info_iter)?;
         let multisig_account_info = next_account_info(account_info_iter)?;
 
-        // let multisig = Multisig::unpack(&multisig_account_info.data.borrow())?;
-        // {
-        //     let mut num_signers = 0;
-        //     let mut matched = [false; MAX_SIGNERS];
-        //     for signer in account_info_iter {
-        //         for (position, key) in multisig.signers[0..multisig.n as usize].iter().enumerate() {
-        //             if cmp_pubkeys(key, signer.key) && !matched[position] {
-        //                 if !signer.is_signer {
-        //                     return Err(ProgramError::MissingRequiredSignature);
-        //                 }
-        //                 matched[position] = true;
-        //                 num_signers += 1;
-        //             }
-        //         }
-        //     }
-        //     if num_signers < multisig.m {
-        //         return Err(ProgramError::MissingRequiredSignature);
-        //     } else if !multisig_account_info.is_signer {
-        //         return Err(ProgramError::MissingRequiredSignature);
-        //     }
-        // }
-
         // Validate our program owns the multisig and token accounts
         if multisig_account_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);

@@ -1870,7 +1870,7 @@ async fn command_sync_native(config: &Config<'_>, native_account_address: Pubkey
 async fn command_migrate_multisig_lamports(
     config: &Config<'_>,
     multisig_account_address: Pubkey,
-    bulk_signers: &Vec<Arc<dyn Signer>>,
+    bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     let token = native_token_client_from_config(config)?;
     let native_mint = *native_token_client_from_config(config)?.get_address();
@@ -1889,7 +1889,7 @@ async fn command_migrate_multisig_lamports(
     );
 
     let res = token
-        .migrate_multisig_lamports(&multisig_account_address, &wrapped_sol_ata, bulk_signers)
+        .migrate_multisig_lamports(&multisig_account_address, &wrapped_sol_ata, &bulk_signers)
         .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -3892,7 +3892,7 @@ async fn process_command<'a>(
                     .unwrap()
                 ),
             );
-            command_migrate_multisig_lamports(config, multisig, &bulk_signers).await
+            command_migrate_multisig_lamports(config, multisig, bulk_signers).await
         }
     }
 }
