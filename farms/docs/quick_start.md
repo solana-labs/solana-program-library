@@ -55,7 +55,7 @@ done
 To build Vaults, specify an additional argument that tells the compiler which strategy needs to be built:
 
 ```sh
-pusdh vaults
+pushd vaults
 cargo build-bpf --no-default-features --features SBR-STAKE-LP-COMPOUND
 popd
 ```
