@@ -835,6 +835,68 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes a [MigrateMultisigNative](enum.TokenInstruction.html) instruction
+    pub fn process_migrate_multisig_lamports(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        // Collect account info
+        let account_info_iter = &mut accounts.iter();
+        let dest_token_account_info = next_account_info(account_info_iter)?;
+        let multisig_account_info = next_account_info(account_info_iter)?;
+
+        // Validate our program owns the multisig and token accounts
+        if multisig_account_info.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        if dest_token_account_info.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        // Parse the accounts and check the signatures
+        let multisig = Multisig::unpack(&multisig_account_info.data.borrow())?;
+        for multisig_signer in &multisig.signers {
+            let transaction_signer = account_info_iter.next().unwrap();
+            if transaction_signer.key != multisig_signer || !transaction_signer.is_signer {
+                return Err(ProgramError::MissingRequiredSignature);
+            }
+        }
+
+        let token_account = Account::unpack(&dest_token_account_info.data.borrow())?;
+
+        // Make sure the multisig is the owner of the token account
+        if &token_account.owner != multisig_account_info.key {
+            return Err(TokenError::OwnerMismatch.into());
+        }
+        // Make sure that the token account is a native SOL account
+        if !token_account.is_native() {
+            return Err(TokenError::NonNativeNotSupported.into());
+        }
+
+        // Calculate the rent-exempt reservation for the multisig account
+        let multisig_rent_exempt_reserve =
+            Rent::get()?.minimum_balance(multisig_account_info.data_len());
+
+        let transfer_amount = multisig_account_info
+            .lamports()
+            .checked_sub(multisig_rent_exempt_reserve)
+            .ok_or(TokenError::NotRentExempt)?;
+
+        let multisig_starting_lamports = multisig_account_info.lamports();
+        **multisig_account_info.lamports.borrow_mut() = multisig_starting_lamports
+            .checked_sub(transfer_amount)
+            .ok_or(TokenError::Overflow)?;
+
+        let dest_token_account_starting_lamports = dest_token_account_info.lamports();
+        **dest_token_account_info.lamports.borrow_mut() = dest_token_account_starting_lamports
+            .checked_add(transfer_amount)
+            .ok_or(TokenError::Overflow)?;
+
+        Self::process_sync_native(program_id, accounts)?;
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -950,6 +1012,10 @@ impl Processor {
             TokenInstruction::UiAmountToAmount { ui_amount } => {
                 msg!("Instruction: UiAmountToAmount");
                 Self::process_ui_amount_to_amount(program_id, accounts, ui_amount)
+            }
+            TokenInstruction::MigrateMultisigNative => {
+                msg!("Instruction: MigrateMultisigNative");
+                Self::process_migrate_multisig_lamports(program_id, accounts)
             }
         }
     }

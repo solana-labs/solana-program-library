@@ -2316,4 +2316,23 @@ where
         )
         .await
     }
+
+    pub async fn migrate_multisig_lamports<S: Signers>(
+        &self,
+        multisig_pubkey: &Pubkey,
+        wrapped_sol_ata: &Pubkey,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(multisig_pubkey, &signing_pubkeys);
+
+        let instruction = instruction::migrate_multisig_lamports(
+            &self.program_id,
+            multisig_pubkey,
+            wrapped_sol_ata,
+            multisig_signers,
+        )?;
+
+        self.process_ixs(&[instruction], signing_keypairs).await
+    }
 }
