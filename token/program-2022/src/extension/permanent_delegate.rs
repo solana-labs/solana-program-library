@@ -1,9 +1,10 @@
 use {
     crate::{
-        extension::{Extension, ExtensionType},
+        extension::{BaseState, BaseStateWithExtensions, Extension, ExtensionType},
         pod::*,
     },
     bytemuck::{Pod, Zeroable},
+    solana_program::pubkey::Pubkey,
 };
 
 /// Permanent delegate extension data for mints.
@@ -15,4 +16,15 @@ pub struct PermanentDelegate {
 }
 impl Extension for PermanentDelegate {
     const TYPE: ExtensionType = ExtensionType::PermanentDelegate;
+}
+
+/// Attempts to get the permanent delegate from the TLV data, returning None
+/// if the extension is not found
+pub fn maybe_get_permanent_delegate<S: BaseState, BSE: BaseStateWithExtensions<S>>(
+    state: &BSE,
+) -> Option<Pubkey> {
+    state
+        .get_extension::<PermanentDelegate>()
+        .ok()
+        .and_then(|e| Option::<Pubkey>::from(e.delegate))
 }

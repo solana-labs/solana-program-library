@@ -16,7 +16,10 @@ use {
     },
     spl_token_2022::{
         error::TokenError,
-        extension::{mint_close_authority::MintCloseAuthority, transfer_fee, ExtensionType},
+        extension::{
+            mint_close_authority::MintCloseAuthority, transfer_fee, BaseStateWithExtensions,
+            ExtensionType,
+        },
         instruction, native_mint,
         state::Mint,
     },

@@ -21,7 +21,8 @@ use {
     spl_token_2022::{
         extension::{
             confidential_transfer, cpi_guard, default_account_state, interest_bearing_mint,
-            memo_transfer, transfer_fee, ExtensionType, StateWithExtensionsOwned,
+            memo_transfer, transfer_fee, BaseStateWithExtensions, ExtensionType,
+            StateWithExtensionsOwned,
         },
         instruction,
         solana_zk_token_sdk::{

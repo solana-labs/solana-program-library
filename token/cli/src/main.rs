@@ -43,7 +43,7 @@ use spl_token_2022::{
         memo_transfer::MemoTransfer,
         mint_close_authority::MintCloseAuthority,
         transfer_fee::{TransferFeeAmount, TransferFeeConfig},
-        ExtensionType, StateWithExtensionsOwned,
+        BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
     },
     instruction::*,
     state::{Account, AccountState, Mint},

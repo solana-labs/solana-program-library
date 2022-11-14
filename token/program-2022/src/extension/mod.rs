@@ -266,6 +266,27 @@ fn get_extension<S: BaseState, V: Extension>(tlv_data: &[u8]) -> Result<&V, Prog
     pod_from_bytes::<V>(&tlv_data[value_start..value_end])
 }
 
+/// Trait for base state with extension
+pub trait BaseStateWithExtensions<S: BaseState> {
+    /// Get the buffer containing all extension data
+    fn get_tlv_data(&self) -> &[u8];
+
+    /// Unpack a portion of the TLV data as the desired type
+    fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
+        get_extension::<S, V>(self.get_tlv_data())
+    }
+
+    /// Iterates through the TLV entries, returning only the types
+    fn get_extension_types(&self) -> Result<Vec<ExtensionType>, ProgramError> {
+        get_extension_types(self.get_tlv_data())
+    }
+
+    /// Get just the first extension type, useful to track mixed initializations
+    fn get_first_extension_type(&self) -> Result<Option<ExtensionType>, ProgramError> {
+        get_first_extension_type(self.get_tlv_data())
+    }
+}
+
 /// Encapsulates owned immutable base state data (mint or account) with possible extensions
 #[derive(Debug, PartialEq)]
 pub struct StateWithExtensionsOwned<S: BaseState> {
@@ -296,15 +317,11 @@ impl<S: BaseState> StateWithExtensionsOwned<S> {
             })
         }
     }
+}
 
-    /// Unpack a portion of the TLV data as the desired type
-    pub fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
-        get_extension::<S, V>(&self.tlv_data)
-    }
-
-    /// Iterates through the TLV entries, returning only the types
-    pub fn get_extension_types(&self) -> Result<Vec<ExtensionType>, ProgramError> {
-        get_extension_types(&self.tlv_data)
+impl<S: BaseState> BaseStateWithExtensions<S> for StateWithExtensionsOwned<S> {
+    fn get_tlv_data(&self) -> &[u8] {
+        &self.tlv_data
     }
 }
 
@@ -340,15 +357,10 @@ impl<'data, S: BaseState> StateWithExtensions<'data, S> {
             })
         }
     }
-
-    /// Unpack a portion of the TLV data as the desired type
-    pub fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
-        get_extension::<S, V>(self.tlv_data)
-    }
-
-    /// Iterates through the TLV entries, returning only the types
-    pub fn get_extension_types(&self) -> Result<Vec<ExtensionType>, ProgramError> {
-        get_extension_types(self.tlv_data)
+}
+impl<'a, S: BaseState> BaseStateWithExtensions<S> for StateWithExtensions<'a, S> {
+    fn get_tlv_data(&self) -> &[u8] {
+        self.tlv_data
     }
 }
 
@@ -565,14 +577,10 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         }
         Ok(())
     }
-
-    /// Iterates through the TLV entries, returning only the types
-    pub fn get_extension_types(&self) -> Result<Vec<ExtensionType>, ProgramError> {
-        get_extension_types(self.tlv_data)
-    }
-
-    fn get_first_extension_type(&self) -> Result<Option<ExtensionType>, ProgramError> {
-        get_first_extension_type(self.tlv_data)
+}
+impl<'a, S: BaseState> BaseStateWithExtensions<S> for StateWithExtensionsMut<'a, S> {
+    fn get_tlv_data(&self) -> &[u8] {
+        self.tlv_data
     }
 }
 

@@ -13,10 +13,10 @@ use {
             memo_transfer::{self, check_previous_sibling_instruction_is_memo, memo_required},
             mint_close_authority::MintCloseAuthority,
             non_transferable::NonTransferable,
-            permanent_delegate::PermanentDelegate,
+            permanent_delegate::{maybe_get_permanent_delegate, PermanentDelegate},
             reallocate,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
-            ExtensionType, StateWithExtensions, StateWithExtensionsMut,
+            BaseStateWithExtensions, ExtensionType, StateWithExtensions, StateWithExtensionsMut,
         },
         instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
         native_mint,
@@ -313,23 +313,19 @@ impl Processor {
                 0
             };
 
-            let maybe_permanent_delegate = mint
-                .get_extension::<PermanentDelegate>()
-                .ok()
-                .and_then(|e| Option::<Pubkey>::from(e.delegate));
+            let maybe_permanent_delegate = maybe_get_permanent_delegate(&mint);
             (fee, maybe_permanent_delegate)
         } else {
             // Transfer fee amount extension exists on the account, but no mint
             // was provided to calculate the fee, abort
-            let fee = if source_account
+            if source_account
                 .get_extension_mut::<TransferFeeAmount>()
                 .is_ok()
             {
                 return Err(TokenError::MintRequiredForTransfer.into());
             } else {
-                0
-            };
-            (fee, None)
+                (0, None)
+            }
         };
         if let Some(expected_fee) = expected_fee {
             if expected_fee != fee {
@@ -867,11 +863,7 @@ impl Processor {
                 return Err(TokenError::MintDecimalsMismatch.into());
             }
         }
-        let maybe_permanent_delegate = mint
-            .get_extension::<PermanentDelegate>()
-            .map(|e| Option::<Pubkey>::from(e.delegate))
-            .ok()
-            .flatten();
+        let maybe_permanent_delegate = maybe_get_permanent_delegate(&mint);
 
         if !source_account
             .base
