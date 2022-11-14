@@ -13,7 +13,7 @@ use {
             memo_transfer::{self, check_previous_sibling_instruction_is_memo, memo_required},
             mint_close_authority::MintCloseAuthority,
             non_transferable::NonTransferable,
-            permanent_delegate::{maybe_get_permanent_delegate, PermanentDelegate},
+            permanent_delegate::{get_permanent_delegate, PermanentDelegate},
             reallocate,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             BaseStateWithExtensions, ExtensionType, StateWithExtensions, StateWithExtensionsMut,
@@ -313,7 +313,7 @@ impl Processor {
                 0
             };
 
-            let maybe_permanent_delegate = maybe_get_permanent_delegate(&mint);
+            let maybe_permanent_delegate = get_permanent_delegate(&mint);
             (fee, maybe_permanent_delegate)
         } else {
             // Transfer fee amount extension exists on the account, but no mint
@@ -863,7 +863,7 @@ impl Processor {
                 return Err(TokenError::MintDecimalsMismatch.into());
             }
         }
-        let maybe_permanent_delegate = maybe_get_permanent_delegate(&mint);
+        let maybe_permanent_delegate = get_permanent_delegate(&mint);
 
         if !source_account
             .base

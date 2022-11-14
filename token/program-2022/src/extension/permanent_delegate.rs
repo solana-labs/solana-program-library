@@ -20,7 +20,7 @@ impl Extension for PermanentDelegate {
 
 /// Attempts to get the permanent delegate from the TLV data, returning None
 /// if the extension is not found
-pub fn maybe_get_permanent_delegate<S: BaseState, BSE: BaseStateWithExtensions<S>>(
+pub fn get_permanent_delegate<S: BaseState, BSE: BaseStateWithExtensions<S>>(
     state: &BSE,
 ) -> Option<Pubkey> {
     state
