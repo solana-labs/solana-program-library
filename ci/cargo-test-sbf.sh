@@ -27,11 +27,31 @@ fi
 cd $program_directory
 run_dir=$(pwd)
 
+# The CI build fails with linker errors when there are too many integrations tests in a project
+# In order to run the tests we have to split them and run one target at a time 
+if [[ $2 = "--split-tests" ]]; then
+  split_tests=1
+fi
+
+run_test_sbf() {
+  if [[ -n $split_tests ]]; then
+    # Run unit tests for project
+    cargo +"$rust_stable" test --lib
+    # Run integration tests one target at a time 
+    for test_file in tests/*.rs; do
+      test_target="$(basename $test_file .rs)"
+      cargo +"$rust_stable" test-sbf --test $test_target -- --nocapture
+    done
+  else
+    set -x
+    cargo +"$rust_stable" test-sbf -- --nocapture
+  fi
+}
+
 if [[ -r $run_dir/Cargo.toml ]]; then
     # Build/test just one BPF program
-    set -x
     cd $run_dir
-    cargo +"$rust_stable" test-sbf -- --nocapture
+    run_test_sbf 
     exit 0
 fi
 
@@ -41,18 +61,16 @@ for program in $run_dir/program{,-*}; do
   if [[ -r $program/Cargo.toml ]]; then
     run_all=
     (
-      set -x
       cd $program
-      cargo +"$rust_stable" test-sbf -- --nocapture
+      run_test_sbf
     )
   fi
 done
 
 if [[ -n $run_all ]]; then
   # Build/test all directories
-  set -x
   for directory in $(ls -d $run_dir/*/); do
     cd $directory
-    cargo +"$rust_stable" test-sbf -- --nocapture
+    run_test_sbf
   done
 fi
