@@ -86,7 +86,7 @@ jobs:
 
       - name: Set env vars
         run: |
-          echo "RUST_STABLE_VERSION=1.63.0" >> $GITHUB_ENV
+          echo "RUST_STABLE_VERSION=1.65.0" >> $GITHUB_ENV
           source ci/rust-version.sh
           echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
           source ci/solana-version.sh
