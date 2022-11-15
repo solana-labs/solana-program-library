@@ -39,6 +39,7 @@ run_test_sbf() {
     cargo +"$rust_stable" test --lib
     # Run integration tests one target at a time 
     for test_file in tests/*.rs; do
+      df -h
       test_target="$(basename $test_file .rs)"
       cargo +"$rust_stable" test-sbf --test $test_target -- --nocapture
     done
