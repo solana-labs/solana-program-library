@@ -7,7 +7,7 @@ use {
                 instruction::TransferFeeInstruction, TransferFee, TransferFeeAmount,
                 TransferFeeConfig, MAX_FEE_BASIS_POINTS,
             },
-            StateWithExtensions, StateWithExtensionsMut,
+            BaseStateWithExtensions, StateWithExtensions, StateWithExtensionsMut,
         },
         processor::Processor,
         state::{Account, Mint},

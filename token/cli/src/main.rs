@@ -43,7 +43,7 @@ use spl_token_2022::{
         memo_transfer::MemoTransfer,
         mint_close_authority::MintCloseAuthority,
         transfer_fee::{TransferFeeAmount, TransferFeeConfig},
-        ExtensionType, StateWithExtensionsOwned,
+        BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
     },
     instruction::*,
     state::{Account, AccountState, Mint},
@@ -744,6 +744,7 @@ async fn command_authorize(
         AuthorityType::TransferFeeConfig => "transfer fee authority",
         AuthorityType::WithheldWithdraw => "withdraw withheld authority",
         AuthorityType::InterestRate => "interest rate authority",
+        AuthorityType::PermanentDelegate => "permanent delegate",
     };
 
     let (mint_pubkey, previous_authority) = if !config.sign_only {
@@ -781,6 +782,7 @@ async fn command_authorize(
                         Err(format!("Mint `{}` is not interest-bearing", account))
                     }
                 }
+                AuthorityType::PermanentDelegate => unimplemented!(),
             }?;
 
             Ok((account, previous_authority))
@@ -813,7 +815,8 @@ async fn command_authorize(
                 | AuthorityType::CloseMint
                 | AuthorityType::TransferFeeConfig
                 | AuthorityType::WithheldWithdraw
-                | AuthorityType::InterestRate => Err(format!(
+                | AuthorityType::InterestRate
+                | AuthorityType::PermanentDelegate => Err(format!(
                     "Authority type `{}` not supported for SPL Token accounts",
                     auth_str
                 )),
@@ -3662,6 +3665,7 @@ async fn process_command<'a>(
                 "transfer-fee-config" => AuthorityType::TransferFeeConfig,
                 "withheld-withdraw" => AuthorityType::WithheldWithdraw,
                 "interest-rate" => AuthorityType::InterestRate,
+                "permanent-delegate" => AuthorityType::PermanentDelegate,
                 _ => unreachable!(),
             };
 

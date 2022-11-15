@@ -21,7 +21,8 @@ use {
     spl_token_2022::{
         extension::{
             confidential_transfer, cpi_guard, default_account_state, interest_bearing_mint,
-            memo_transfer, transfer_fee, ExtensionType, StateWithExtensionsOwned,
+            memo_transfer, transfer_fee, BaseStateWithExtensions, ExtensionType,
+            StateWithExtensionsOwned,
         },
         instruction,
         solana_zk_token_sdk::{
@@ -122,6 +123,9 @@ pub enum ExtensionInitializationParams {
         rate: i16,
     },
     NonTransferable,
+    PermanentDelegate {
+        delegate: Pubkey,
+    },
 }
 impl ExtensionInitializationParams {
     /// Get the extension type associated with the init params
@@ -133,6 +137,7 @@ impl ExtensionInitializationParams {
             Self::TransferFeeConfig { .. } => ExtensionType::TransferFeeConfig,
             Self::InterestBearingConfig { .. } => ExtensionType::InterestBearingConfig,
             Self::NonTransferable => ExtensionType::NonTransferable,
+            Self::PermanentDelegate { .. } => ExtensionType::PermanentDelegate,
         }
     }
     /// Generate an appropriate initialization instruction for the given mint
@@ -187,6 +192,9 @@ impl ExtensionInitializationParams {
             ),
             Self::NonTransferable => {
                 instruction::initialize_non_transferable_mint(token_program_id, mint)
+            }
+            Self::PermanentDelegate { delegate } => {
+                instruction::initialize_permanent_delegate(token_program_id, mint, &delegate)
             }
         }
     }

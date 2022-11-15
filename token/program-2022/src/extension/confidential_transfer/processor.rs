@@ -4,7 +4,7 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{instruction::*, *},
-            StateWithExtensions, StateWithExtensionsMut,
+            BaseStateWithExtensions, StateWithExtensions, StateWithExtensionsMut,
         },
         instruction::{decode_instruction_data, decode_instruction_type},
         processor::Processor,

@@ -12,6 +12,7 @@ use {
             memo_transfer::MemoTransfer,
             mint_close_authority::MintCloseAuthority,
             non_transferable::NonTransferable,
+            permanent_delegate::PermanentDelegate,
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
         },
         pod::*,
@@ -48,6 +49,8 @@ pub mod memo_transfer;
 pub mod mint_close_authority;
 /// Non Transferable extension
 pub mod non_transferable;
+/// Permanent Delegate extension
+pub mod permanent_delegate;
 /// Utility to reallocate token accounts
 pub mod reallocate;
 /// Transfer Fee extension
@@ -263,6 +266,27 @@ fn get_extension<S: BaseState, V: Extension>(tlv_data: &[u8]) -> Result<&V, Prog
     pod_from_bytes::<V>(&tlv_data[value_start..value_end])
 }
 
+/// Trait for base state with extension
+pub trait BaseStateWithExtensions<S: BaseState> {
+    /// Get the buffer containing all extension data
+    fn get_tlv_data(&self) -> &[u8];
+
+    /// Unpack a portion of the TLV data as the desired type
+    fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
+        get_extension::<S, V>(self.get_tlv_data())
+    }
+
+    /// Iterates through the TLV entries, returning only the types
+    fn get_extension_types(&self) -> Result<Vec<ExtensionType>, ProgramError> {
+        get_extension_types(self.get_tlv_data())
+    }
+
+    /// Get just the first extension type, useful to track mixed initializations
+    fn get_first_extension_type(&self) -> Result<Option<ExtensionType>, ProgramError> {
+        get_first_extension_type(self.get_tlv_data())
+    }
+}
+
 /// Encapsulates owned immutable base state data (mint or account) with possible extensions
 #[derive(Debug, PartialEq)]
 pub struct StateWithExtensionsOwned<S: BaseState> {
@@ -293,15 +317,11 @@ impl<S: BaseState> StateWithExtensionsOwned<S> {
             })
         }
     }
+}
 
-    /// Unpack a portion of the TLV data as the desired type
-    pub fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
-        get_extension::<S, V>(&self.tlv_data)
-    }
-
-    /// Iterates through the TLV entries, returning only the types
-    pub fn get_extension_types(&self) -> Result<Vec<ExtensionType>, ProgramError> {
-        get_extension_types(&self.tlv_data)
+impl<S: BaseState> BaseStateWithExtensions<S> for StateWithExtensionsOwned<S> {
+    fn get_tlv_data(&self) -> &[u8] {
+        &self.tlv_data
     }
 }
 
@@ -337,15 +357,10 @@ impl<'data, S: BaseState> StateWithExtensions<'data, S> {
             })
         }
     }
-
-    /// Unpack a portion of the TLV data as the desired type
-    pub fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
-        get_extension::<S, V>(self.tlv_data)
-    }
-
-    /// Iterates through the TLV entries, returning only the types
-    pub fn get_extension_types(&self) -> Result<Vec<ExtensionType>, ProgramError> {
-        get_extension_types(self.tlv_data)
+}
+impl<'a, S: BaseState> BaseStateWithExtensions<S> for StateWithExtensions<'a, S> {
+    fn get_tlv_data(&self) -> &[u8] {
+        self.tlv_data
     }
 }
 
@@ -451,25 +466,6 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         pod_from_bytes_mut::<V>(&mut self.tlv_data[value_start..value_end])
     }
 
-    /// Unpack a portion of the TLV data as the desired type
-    pub fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
-        if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        let TlvIndices {
-            type_start,
-            length_start,
-            value_start,
-        } = get_extension_indices::<V>(self.tlv_data, false)?;
-
-        if self.tlv_data[type_start..].len() < V::TYPE.get_tlv_len() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        let length = pod_from_bytes::<Length>(&self.tlv_data[length_start..value_start])?;
-        let value_end = value_start.saturating_add(usize::from(*length));
-        pod_from_bytes::<V>(&self.tlv_data[value_start..value_end])
-    }
-
     /// Packs base state data into the base data portion
     pub fn pack_base(&mut self) {
         S::pack_into_slice(&self.base, self.base_data);
@@ -562,14 +558,10 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         }
         Ok(())
     }
-
-    /// Iterates through the TLV entries, returning only the types
-    pub fn get_extension_types(&self) -> Result<Vec<ExtensionType>, ProgramError> {
-        get_extension_types(self.tlv_data)
-    }
-
-    fn get_first_extension_type(&self) -> Result<Option<ExtensionType>, ProgramError> {
-        get_first_extension_type(self.tlv_data)
+}
+impl<'a, S: BaseState> BaseStateWithExtensions<S> for StateWithExtensionsMut<'a, S> {
+    fn get_tlv_data(&self) -> &[u8] {
+        self.tlv_data
     }
 }
 
@@ -647,6 +639,8 @@ pub enum ExtensionType {
     InterestBearingConfig,
     /// Locks privileged token operations from happening via CPI
     CpiGuard,
+    /// Includes an optional permanent delegate
+    PermanentDelegate,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -688,6 +682,7 @@ impl ExtensionType {
             ExtensionType::NonTransferable => pod_get_packed_len::<NonTransferable>(),
             ExtensionType::InterestBearingConfig => pod_get_packed_len::<InterestBearingConfig>(),
             ExtensionType::CpiGuard => pod_get_packed_len::<CpiGuard>(),
+            ExtensionType::PermanentDelegate => pod_get_packed_len::<PermanentDelegate>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -744,7 +739,8 @@ impl ExtensionType {
             | ExtensionType::ConfidentialTransferMint
             | ExtensionType::DefaultAccountState
             | ExtensionType::NonTransferable
-            | ExtensionType::InterestBearingConfig => AccountType::Mint,
+            | ExtensionType::InterestBearingConfig
+            | ExtensionType::PermanentDelegate => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
