@@ -4181,6 +4181,69 @@ mod tests {
         .unwrap();
     }
 
+    async fn create_multisig(
+        config: &Config<'_>,
+        multisig: Arc<Keypair>,
+        minimum_signers: u8,
+        multisig_members: Vec<Pubkey>,
+    ) {
+        command_create_multisig(config, multisig, minimum_signers, multisig_members)
+            .await
+            .unwrap();
+    }
+
+    // async fn create_multisig(
+    //     config: &Config<'_>,
+    //     funder: &Keypair,
+    //     recipients: Vec<Pubkey>,
+    //     lamports: u64,
+    // ) {
+    //     for recipient in &recipients {
+    //         let instructions = &[solana_sdk::system_instruction::transfer(
+    //             &funder.pubkey(),
+    //             recipient,
+    //             lamports,
+    //         )];
+    //         let mut transfer_tx = Transaction::new_with_payer(instructions, Some(&funder.pubkey()));
+    //         let latest_blockhash = config.rpc_client.get_latest_blockhash().await.ok().unwrap();
+    //         transfer_tx
+    //             .try_partial_sign(&vec![funder], latest_blockhash)
+    //             .ok();
+
+    //         config
+    //             .rpc_client
+    //             .send_and_confirm_transaction(&transfer_tx)
+    //             .await
+    //             .ok();
+    //     }
+    // }
+
+    async fn fund_accounts(
+        config: &Config<'_>,
+        funder: &Keypair,
+        recipients: Vec<Pubkey>,
+        lamports: u64,
+    ) {
+        for recipient in &recipients {
+            let instructions = &[solana_sdk::system_instruction::transfer(
+                &funder.pubkey(),
+                recipient,
+                lamports,
+            )];
+            let mut transfer_tx = Transaction::new_with_payer(instructions, Some(&funder.pubkey()));
+            let latest_blockhash = config.rpc_client.get_latest_blockhash().await.ok().unwrap();
+            transfer_tx
+                .try_partial_sign(&vec![funder], latest_blockhash)
+                .ok();
+
+            config
+                .rpc_client
+                .send_and_confirm_transaction(&transfer_tx)
+                .await
+                .ok();
+        }
+    }
+
     async fn process_test_command(
         config: &Config<'_>,
         payer: &Keypair,
@@ -5758,5 +5821,35 @@ mod tests {
             .unwrap();
         let account = StateWithExtensionsOwned::<Account>::unpack(token_account.data).unwrap();
         assert_eq!(account.base.state, AccountState::Initialized);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_migrate_multisig_lamports() {
+        let (test_validator, payer) = new_validator_for_test().await;
+
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let signer_1 = Keypair::new();
+            let signer_2 = Keypair::new();
+            let multisig = Arc::new(clone_keypair(&Keypair::new()));
+
+            let config = test_config_with_default_signer(&test_validator, &multisig, program_id);
+
+            fund_accounts(
+                &config,
+                &payer,
+                vec![signer_1.pubkey(), signer_2.pubkey()],
+                LAMPORTS_PER_SOL,
+            )
+            .await;
+
+            create_multisig(
+                &config,
+                multisig,
+                1,
+                vec![signer_1.pubkey(), signer_2.pubkey()],
+            )
+            .await;
+        }
     }
 }
