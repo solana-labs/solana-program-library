@@ -158,7 +158,6 @@ async fn test_cancel_proposal_with_owner_or_delegate_must_sign_error() {
         .unwrap();
 
     // Assert
-
     assert_eq!(
         err,
         GovernanceError::GoverningTokenOwnerOrDelegateMustSign.into()
