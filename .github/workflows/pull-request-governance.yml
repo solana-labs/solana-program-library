@@ -68,4 +68,4 @@ jobs:
 
       - name: Build and test
         timeout-minutes: 60
-        run: ./ci/cargo-test-sbf.sh governance --split-tests
+        run: ./ci/cargo-test-sbf.sh governance
