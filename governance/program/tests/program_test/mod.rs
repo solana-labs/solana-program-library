@@ -18,9 +18,9 @@ use solana_sdk::signature::{Keypair, Signer};
 
 use spl_governance::{
     instruction::{
-        add_signatory, cancel_proposal, cast_vote, create_governance, create_mint_governance,
-        create_native_treasury, create_program_governance, create_proposal, create_realm,
-        create_token_governance, create_token_owner_record, deposit_governing_tokens,
+        add_signatory, cancel_proposal, cast_vote, complete_proposal, create_governance,
+        create_mint_governance, create_native_treasury, create_program_governance, create_proposal,
+        create_realm, create_token_governance, create_token_owner_record, deposit_governing_tokens,
         execute_transaction, finalize_vote, flag_transaction_error, insert_transaction,
         refund_proposal_deposit, relinquish_vote, remove_signatory, remove_transaction,
         revoke_governing_tokens, set_governance_config, set_governance_delegate,
@@ -3144,5 +3144,43 @@ impl GovernanceProgramTest {
             Some(max_voter_weight_record_cookie.clone());
 
         Ok(max_voter_weight_record_cookie)
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_complete_proposal(
+        &mut self,
+        governance_cookie: &mut GovernanceCookie,
+        proposal_cookie: &mut ProposalCookie,
+    ) -> Result<(), ProgramError> {
+        self.with_complete_proposal_using_instruction_impl(
+            governance_cookie,
+            proposal_cookie,
+            NopOverride,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_complete_proposal_using_instruction_impl<F: Fn(&mut Instruction)>(
+        &mut self,
+        governance_cookie: &mut GovernanceCookie,
+        proposal_cookie: &mut ProposalCookie,
+        instruction_override: F,
+    ) -> Result<(), ProgramError> {
+        let mut complete_proposal_ix = complete_proposal(
+            &self.program_id,
+            &governance_cookie.address,
+            &proposal_cookie.address,
+        );
+        instruction_override(&mut complete_proposal_ix);
+
+        self.bench
+            .process_transaction(&[complete_proposal_ix], None)
+            .await?;
+
+        let proposal_data = self.get_proposal_account(&proposal_cookie.address).await;
+        proposal_cookie.account = proposal_data;
+
+        Ok(())
     }
 }

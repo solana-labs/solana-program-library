@@ -523,6 +523,13 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` ProposalDeposit account. PDA seeds: ['proposal-deposit', proposal, deposit payer]
     ///   2. `[writable]` Proposal deposit payer (beneficiary) account
     RefundProposalDeposit {},
+
+    /// Verify the state and move the Proposal to Completed.
+    /// Permission-less operation whoever could call.
+    ///
+    ///   0. `[]` Governance account
+    ///   1. `[writable]` Proposal account.
+    CompleteProposal {},
 }
 
 /// Creates CreateRealm instruction
@@ -1653,6 +1660,28 @@ pub fn refund_proposal_deposit(
     ];
 
     let instruction = GovernanceInstruction::RefundProposalDeposit {};
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Complete proposal when proposal is stuck in Succeeded
+#[allow(clippy::too_many_arguments)]
+pub fn complete_proposal(
+    program_id: &Pubkey,
+    // Accounts
+    governance: &Pubkey,
+    proposal_address: &Pubkey,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*governance, false),
+        AccountMeta::new(*proposal_address, false),
+    ];
+
+    let instruction = GovernanceInstruction::CompleteProposal {};
 
     Instruction {
         program_id: *program_id,
