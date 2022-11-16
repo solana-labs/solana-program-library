@@ -4,6 +4,7 @@ use solana_program::{
     program::{invoke, invoke_signed},
     pubkey::Pubkey,
 };
+use spl_token::instruction::AuthorityType;
 
 pub(crate) fn initialize_mint<'a, 'b>(
     freeze_authority: &Pubkey,
@@ -151,6 +152,42 @@ pub(crate) fn burn<'a, 'b>(
     )
 }
 
+pub(crate) fn approve<'a, 'b>(
+    account: &'a AccountInfo<'b>,
+    owner: &'a AccountInfo<'b>,
+    delegate: &'a AccountInfo<'b>,
+    token_program: &'a AccountInfo<'b>,
+    amount: u64,
+) -> ProgramResult {
+    invoke(
+        &spl_token::instruction::approve(
+            token_program.key,
+            account.key,
+            delegate.key,
+            owner.key,
+            &[],
+            amount,
+        )?,
+        &[
+            token_program.clone(),
+            account.clone(),
+            delegate.clone(),
+            owner.clone(),
+        ],
+    )
+}
+
+pub(crate) fn revoke<'a, 'b>(
+    account: &'a AccountInfo<'b>,
+    owner: &'a AccountInfo<'b>,
+    token_program: &'a AccountInfo<'b>,
+) -> ProgramResult {
+    invoke(
+        &spl_token::instruction::revoke(token_program.key, account.key, owner.key, &[])?,
+        &[token_program.clone(), account.clone(), owner.clone()],
+    )
+}
+
 pub(crate) fn close<'a, 'b>(
     account: &'a AccountInfo<'b>,
     destination: &'a AccountInfo<'b>,
@@ -170,6 +207,30 @@ pub(crate) fn close<'a, 'b>(
             destination.clone(),
             account.clone(),
             owner.clone(),
+        ],
+    )
+}
+
+pub(crate) fn set_authority<'a, 'b>(
+    mint: &'a AccountInfo<'b>,
+    new_authority: &Pubkey,
+    authority_type: AuthorityType,
+    current_authority: &'a AccountInfo<'b>,
+    token_program: &'a AccountInfo<'b>,
+) -> ProgramResult {
+    invoke(
+        &spl_token::instruction::set_authority(
+            token_program.key,
+            mint.key,
+            Some(new_authority),
+            authority_type,
+            current_authority.key,
+            &[],
+        )?,
+        &[
+            token_program.clone(),
+            mint.clone(),
+            current_authority.clone(),
         ],
     )
 }
