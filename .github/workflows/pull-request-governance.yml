@@ -18,8 +18,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clean up space on runner machine
+        # Workaround to provide additional free space for testing.
+        #   https://github.com/actions/virtual-environments/issues/2840
         run: |
           sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
