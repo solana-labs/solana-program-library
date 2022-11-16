@@ -567,4 +567,67 @@ mod test {
             );
         }
     }
+
+    #[test]
+    fn owner_fee_calc() {
+        // setup
+        let pool_supply: u128 = 1_000_000_000;
+        let swap_source_amount: u128 = 2_000_000_000;
+        let swap_destination_amount: u128 = 50_000_000_000;
+        let source_amount: u128 = 10_000_000;
+        let fees = Fees {
+            owner_trade_fee_numerator: 1,
+            owner_trade_fee_denominator: 10,
+            ..Fees::default()
+        };
+        let curve = ConstantProductCurve::default();
+        let swap_curve = SwapCurve {
+            curve_type: CurveType::ConstantProduct,
+            calculator: Arc::new(curve),
+        };
+
+        // do the A to B swap
+        let trade_direction = TradeDirection::AtoB;
+        let results = swap_curve
+            .swap(
+                source_amount,
+                swap_source_amount,
+                swap_destination_amount,
+                trade_direction,
+                &fees,
+            )
+            .unwrap();
+
+        // mint pool tokens equal to the fee
+        let minted_pool_tokens = swap_curve
+            .calculator
+            .withdraw_single_token_type_exact_out(
+                results.owner_fee,
+                results.new_swap_source_amount,
+                results.new_swap_destination_amount,
+                pool_supply,
+                trade_direction,
+                RoundDirection::Floor,
+            )
+            .unwrap();
+
+        // How much does it cost to withdraw what we just received, even *without* fees?
+        // With fees, naturally, it's even worse
+        let withdraw_pool_tokens = swap_curve
+            .withdraw_single_token_type_exact_out(
+                results.owner_fee,
+                results.new_swap_source_amount,
+                results.new_swap_destination_amount,
+                pool_supply + minted_pool_tokens,
+                trade_direction,
+                &Fees::default(),
+            )
+            .unwrap();
+
+        // 248787 vs 248850, currently fails
+        assert_eq!(
+            minted_pool_tokens, withdraw_pool_tokens,
+            "minted pool tokens should allow us to withdraw the owner fee, but they don't"
+        );
+    }
 }
