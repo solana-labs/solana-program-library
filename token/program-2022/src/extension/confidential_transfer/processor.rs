@@ -62,7 +62,7 @@ fn check_destination_confidential_account(
 ) -> ProgramResult {
     destination_confidential_transfer_account.approved()?;
 
-    if !bool::from(&destination_confidential_transfer_account.allow_balance_credits) {
+    if !bool::from(&destination_confidential_transfer_account.allow_confidential_credits) {
         return Err(TokenError::ConfidentialTransferDepositsAndTransfersDisabled.into());
     }
 
@@ -215,10 +215,11 @@ fn process_configure_account(
     confidential_transfer_account.available_balance = EncryptedBalance::zeroed();
 
     confidential_transfer_account.decryptable_available_balance = *decryptable_zero_balance;
-    confidential_transfer_account.allow_balance_credits = true.into();
+    confidential_transfer_account.allow_confidential_credits = true.into();
     confidential_transfer_account.pending_balance_credit_counter = 0.into();
     confidential_transfer_account.expected_pending_balance_credit_counter = 0.into();
     confidential_transfer_account.actual_pending_balance_credit_counter = 0.into();
+    confidential_transfer_account.allow_non_confidential_credits = true.into();
     confidential_transfer_account.withheld_amount = EncryptedWithheldAmount::zeroed();
 
     Ok(())
@@ -866,11 +867,11 @@ fn process_apply_pending_balance(
     Ok(())
 }
 
-/// Processes an [DisableBalanceCredits] or [EnableBalanceCredits] instruction.
-fn process_allow_balance_credits(
+/// Processes a [DisableConfidentialCredits] or [EnableConfidentialCredits] instruction.
+fn process_allow_confidential_credits(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    allow_balance_credits: bool,
+    allow_confidential_credits: bool,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
@@ -891,7 +892,38 @@ fn process_allow_balance_credits(
 
     let mut confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    confidential_transfer_account.allow_balance_credits = allow_balance_credits.into();
+    confidential_transfer_account.allow_confidential_credits = allow_confidential_credits.into();
+
+    Ok(())
+}
+
+/// Processes an [DisableNonConfidentialCredits] or [EnableNonConfidentialCredits] instruction.
+fn process_allow_non_confidential_credits(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    allow_non_confidential_credits: bool,
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let token_account_info = next_account_info(account_info_iter)?;
+    let authority_info = next_account_info(account_info_iter)?;
+    let authority_info_data_len = authority_info.data_len();
+
+    check_program_account(token_account_info.owner)?;
+    let token_account_data = &mut token_account_info.data.borrow_mut();
+    let mut token_account = StateWithExtensionsMut::<Account>::unpack(token_account_data)?;
+
+    Processor::validate_owner(
+        program_id,
+        &token_account.base.owner,
+        authority_info,
+        authority_info_data_len,
+        account_info_iter.as_slice(),
+    )?;
+
+    let mut confidential_transfer_account =
+        token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
+    confidential_transfer_account.allow_non_confidential_credits =
+        allow_non_confidential_credits.into();
 
     Ok(())
 }
@@ -1278,13 +1310,21 @@ pub(crate) fn process_instruction(
                 Err(ProgramError::InvalidInstructionData)
             }
         }
-        ConfidentialTransferInstruction::DisableBalanceCredits => {
-            msg!("ConfidentialTransferInstruction::DisableBalanceCredits");
-            process_allow_balance_credits(program_id, accounts, false)
+        ConfidentialTransferInstruction::DisableConfidentialCredits => {
+            msg!("ConfidentialTransferInstruction::DisableConfidentialCredits");
+            process_allow_confidential_credits(program_id, accounts, false)
         }
-        ConfidentialTransferInstruction::EnableBalanceCredits => {
-            msg!("ConfidentialTransferInstruction::EnableBalanceCredits");
-            process_allow_balance_credits(program_id, accounts, true)
+        ConfidentialTransferInstruction::EnableConfidentialCredits => {
+            msg!("ConfidentialTransferInstruction::EnableConfidentialCredits");
+            process_allow_confidential_credits(program_id, accounts, true)
+        }
+        ConfidentialTransferInstruction::DisableNonConfidentialCredits => {
+            msg!("ConfidentialTransferInstruction::DisableNonConfidentialCredits");
+            process_allow_non_confidential_credits(program_id, accounts, false)
+        }
+        ConfidentialTransferInstruction::EnableNonConfidentialCredits => {
+            msg!("ConfidentialTransferInstruction::EnableNonConfidentialCredits");
+            process_allow_non_confidential_credits(program_id, accounts, true)
         }
         ConfidentialTransferInstruction::WithdrawWithheldTokensFromMint => {
             msg!("ConfidentialTransferInstruction::WithdrawWithheldTokensFromMint");

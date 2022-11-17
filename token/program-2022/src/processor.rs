@@ -412,6 +412,12 @@ impl Processor {
             check_previous_sibling_instruction_is_memo()?;
         }
 
+        if let Ok(confidential_transfer_state) =
+            destination_account.get_extension::<ConfidentialTransferAccount>()
+        {
+            confidential_transfer_state.non_confidential_transfer_allowed()?
+        }
+
         source_account.base.amount = source_account
             .base
             .amount
