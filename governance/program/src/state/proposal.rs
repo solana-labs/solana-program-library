@@ -308,8 +308,7 @@ impl ProposalV2 {
             ProposalState::Voting => {
                 if self
                     .vote_end_time(governance_config)
-                    .checked_add(governance_config.min_transaction_hold_up_time as i64)
-                    .unwrap()
+                    .saturating_add(governance_config.min_transaction_hold_up_time as i64)
                     < current_unix_timestamp
                 {
                     Err(GovernanceError::ProposalVotingTimeExpired.into())
@@ -322,8 +321,7 @@ impl ProposalV2 {
                 if self
                     .voting_completed_at
                     .unwrap()
-                    .checked_add(governance_config.min_transaction_hold_up_time as i64)
-                    .unwrap()
+                    .saturating_add(governance_config.min_transaction_hold_up_time as i64)
                     < current_unix_timestamp
                 {
                     Err(GovernanceError::ProposalVotingTimeExpired.into())
