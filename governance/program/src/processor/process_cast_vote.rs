@@ -82,7 +82,11 @@ pub fn process_cast_vote(
         governance_info.key,
         &proposal_governing_token_mint,
     )?;
-    proposal_data.assert_can_cast_vote(&governance_data.config, clock.unix_timestamp)?;
+    proposal_data.assert_can_cast_vote(
+        &vote_kind,
+        &governance_data.config,
+        clock.unix_timestamp,
+    )?;
 
     let mut voter_token_owner_record_data =
         get_token_owner_record_data_for_realm_and_governing_mint(
