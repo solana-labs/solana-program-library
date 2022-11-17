@@ -790,6 +790,7 @@ where
         destination_owner: &Pubkey,
         authority: &Pubkey,
         amount: u64,
+        fee: Option<u64>,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
@@ -808,7 +809,20 @@ where
             )),
         ];
 
-        if let Some(decimals) = self.decimals {
+        if let Some(fee) = fee {
+            let decimals = self.decimals.ok_or(TokenError::MissingDecimals)?;
+            instructions.push(transfer_fee::instruction::transfer_checked_with_fee(
+                &self.program_id,
+                source,
+                &self.pubkey,
+                destination,
+                authority,
+                &multisig_signers,
+                amount,
+                decimals,
+                fee,
+            )?);
+        } else if let Some(decimals) = self.decimals {
             instructions.push(instruction::transfer_checked(
                 &self.program_id,
                 source,
