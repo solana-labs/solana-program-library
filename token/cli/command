@@ -1,0 +1,4 @@
+./spl-token migrate-multisig-lamports 7J4n95nA8nFHsGv3mr5WnZYULTUWNrXMYs1Mw3kciHTD \
+--multisig-signer \
+/Users/dzonixy/Documents/Unique/Pics/UNQc364EDzKQqfSW1Fnhfam2fvsFGVdVqg77kpBqRSe.json \
+/Users/dzonixy/Documents/Unique/Pics/UNQdVcqxKicj3TXq8zYcFdFiUPTb65AjguJRSDjPHpk.json

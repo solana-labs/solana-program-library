@@ -471,7 +471,7 @@ pub enum TokenInstruction<'a> {
     /// 0. `[writable]` Destination WrappedSol token account owned by multisig
     /// 1. `[writable]` Multisig
     /// 2. ..2+M `[signer]` M signer accounts.
-    MigrateMultisigNative,
+    MigrateMultisigLamports,
     // Any new variants also need to be added to program-2022 `TokenInstruction`, so that the
     // latter remains a superset of this instruction set. New variants also need to be added to
     // token/js/src/instructions/types.ts to maintain @solana/spl-token compatibility
@@ -577,7 +577,7 @@ impl<'a> TokenInstruction<'a> {
                 let ui_amount = std::str::from_utf8(rest).map_err(|_| InvalidInstruction)?;
                 Self::UiAmountToAmount { ui_amount }
             }
-            25 => Self::MigrateMultisigNative,
+            25 => Self::MigrateMultisigLamports,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -688,7 +688,7 @@ impl<'a> TokenInstruction<'a> {
                 buf.push(24);
                 buf.extend_from_slice(ui_amount.as_bytes());
             }
-            &Self::MigrateMultisigNative => {
+            &Self::MigrateMultisigLamports => {
                 buf.push(25);
             }
         };
@@ -988,7 +988,7 @@ pub fn migrate_multisig_lamports(
     Ok(Instruction {
         program_id: *token_program_id,
         accounts,
-        data: TokenInstruction::MigrateMultisigNative.pack(),
+        data: TokenInstruction::MigrateMultisigLamports.pack(),
     })
 }
 

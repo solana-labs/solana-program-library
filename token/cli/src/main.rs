@@ -1873,12 +1873,12 @@ async fn command_migrate_multisig_lamports(
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     let token = native_token_client_from_config(config)?;
-    let native_mint = *native_token_client_from_config(config)?.get_address();
+    let native_mint = token.get_address();
 
     let wrapped_sol_ata = get_associated_token_address_with_program_id(
         &multisig_account_address,
-        &native_mint,
-        &config.program_id,
+        native_mint,
+        &spl_associated_token_account::id(),
     );
     println_display(
         config,
@@ -3879,19 +3879,6 @@ async fn process_command<'a>(
                 .pubkey_or_default(arg_matches, "multisig-address", &mut wallet_manager)
                 .unwrap();
 
-            println_display(
-                config,
-                format!(
-                    "{:?}",
-                    &pubkeys_of_multiple_signers(
-                        arg_matches,
-                        "multisig_member",
-                        &mut wallet_manager,
-                    )
-                    .unwrap()
-                    .unwrap()
-                ),
-            );
             command_migrate_multisig_lamports(config, multisig, bulk_signers).await
         }
     }
@@ -4184,7 +4171,7 @@ mod tests {
     async fn fund_accounts(
         config: &Config<'_>,
         funder: &Keypair,
-        recipients: Vec<Pubkey>,
+        recipients: Vec<&Pubkey>,
         lamports: u64,
     ) {
         for recipient in &recipients {
@@ -5793,28 +5780,64 @@ mod tests {
 
         for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
             let signer_1 = Keypair::new();
+            let signer_1_pk = signer_1.pubkey();
             let signer_2 = Keypair::new();
+            let signer_2_pk = signer_2.pubkey();
             let multisig = Arc::new(clone_keypair(&Keypair::new()));
-            let multisig_pk = multisig.pubkey();
 
             let config = test_config_with_default_signer(&test_validator, &payer, program_id);
 
             fund_accounts(
                 &config,
                 &payer,
-                vec![signer_1.pubkey(), signer_2.pubkey()],
+                vec![&signer_1_pk, &signer_2_pk],
                 LAMPORTS_PER_SOL,
             )
             .await;
 
-            command_create_multisig(
+            command_create_multisig(&config, multisig.clone(), 2, vec![signer_1_pk, signer_2_pk])
+                .await
+                .ok();
+
+            fund_accounts(
                 &config,
-                multisig,
-                1,
-                vec![signer_1.pubkey(), signer_2.pubkey()],
+                &payer,
+                vec![&multisig.pubkey()],
+                4000 * LAMPORTS_PER_SOL,
+            )
+            .await;
+
+            // let multisig_config = test_config_with_multiple_signers(
+            //     &test_validator,
+            //     &payer,
+            //     program_id,
+            //     vec![&signer_1_pk, &signer_2_pk],
+            // );
+
+            command_migrate_multisig_lamports(
+                &config,
+                multisig.pubkey(),
+                vec![Arc::new(signer_1), Arc::new(signer_2)],
             )
             .await
             .ok();
+
+            // println!("{:?}", res);
+            // let balance = config
+            //     .rpc_client
+            //     .get_balance(&multisig.pubkey())
+            //     .await
+            //     .unwrap();
+            // let balance = config
+            //     .rpc_client
+            //     .get_token_account_balance(&get_associated_token_address(
+            //         &multisig.pubkey(),
+            //         &native_mint::id(),
+            //     ))
+            //     .await
+            //     .ok()
+            //     .unwrap();
+            // println!("{:?}", balance);
         }
     }
 }
