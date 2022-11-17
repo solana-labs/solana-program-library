@@ -3369,6 +3369,7 @@ dependencies = [
  "solana-program",
  "solana-sdk",
  "solend-program",
+ "spl-associated-token-account",
  "spl-token",
 ]
 
