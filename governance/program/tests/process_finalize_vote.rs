@@ -82,7 +82,7 @@ async fn test_finalize_vote_to_succeeded() {
 
     assert_eq!(proposal_account.state, ProposalState::Succeeded);
     assert_eq!(
-        Some(proposal_account.vote_end_time(&governance_cookie.account.config)),
+        Some(proposal_account.expected_vote_end_time(&governance_cookie.account.config)),
         proposal_account.voting_completed_at
     );
 
@@ -385,7 +385,7 @@ async fn test_finalize_council_vote() {
 
     assert_eq!(proposal_account.state, ProposalState::Succeeded);
     assert_eq!(
-        Some(proposal_account.vote_end_time(&governance_cookie.account.config)),
+        Some(proposal_account.expected_vote_end_time(&governance_cookie.account.config)),
         proposal_account.voting_completed_at
     );
 
