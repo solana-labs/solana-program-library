@@ -65,7 +65,7 @@ pub enum TokenInstruction<'a> {
     InitializeAccount,
     /// Initializes a multisignature account with N provided signers.
     ///
-    /// Multisignature accounts can used in place of any single owner/delegate
+    /// Multisignature accounts can be used in place of any single owner/delegate
     /// accounts in any token instruction that require an owner/delegate to be
     /// present.  The variant field represents the number of signers (M)
     /// required to validate this multisignature account.
@@ -464,6 +464,14 @@ pub enum TokenInstruction<'a> {
         /// The ui_amount of tokens to reformat.
         ui_amount: &'a str,
     },
+    /// This instruction is to be used to rescue SOLs sent to multisig account with
+    /// system_instruction::transfer by sending them to a WrappedSol token account
+    /// and invoking sync_native, leaving behind only lamports for rent exemption.
+    ///
+    /// 0. `[writable]` Destination WrappedSol token account owned by multisig
+    /// 1. `[writable]` Multisig
+    /// 2. ..2+M `[signer]` M signer accounts.
+    MigrateMultisigLamports,
     // Any new variants also need to be added to program-2022 `TokenInstruction`, so that the
     // latter remains a superset of this instruction set. New variants also need to be added to
     // token/js/src/instructions/types.ts to maintain @solana/spl-token compatibility
@@ -569,6 +577,7 @@ impl<'a> TokenInstruction<'a> {
                 let ui_amount = std::str::from_utf8(rest).map_err(|_| InvalidInstruction)?;
                 Self::UiAmountToAmount { ui_amount }
             }
+            25 => Self::MigrateMultisigLamports,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -678,6 +687,9 @@ impl<'a> TokenInstruction<'a> {
             Self::UiAmountToAmount { ui_amount } => {
                 buf.push(24);
                 buf.extend_from_slice(ui_amount.as_bytes());
+            }
+            &Self::MigrateMultisigLamports => {
+                buf.push(25);
             }
         };
         buf
@@ -952,6 +964,31 @@ pub fn initialize_multisig2(
         program_id: *token_program_id,
         accounts,
         data,
+    })
+}
+
+/// Creates a `MigrateMultisigLamports` Instruction
+pub fn migrate_multisig_lamports(
+    token_program_id: &Pubkey,
+    multisig_pubkey: &Pubkey,
+    dest_token_account_pubkey: &Pubkey,
+    signers: Vec<&Pubkey>,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+
+    let mut accounts = vec![
+        AccountMeta::new(*dest_token_account_pubkey, false),
+        AccountMeta::new(*multisig_pubkey, false),
+    ];
+
+    for signer in signers {
+        accounts.push(AccountMeta::new_readonly(*signer, true))
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data: TokenInstruction::MigrateMultisigLamports.pack(),
     })
 }
 

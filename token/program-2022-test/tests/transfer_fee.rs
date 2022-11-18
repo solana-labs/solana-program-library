@@ -10,8 +10,11 @@ use {
     },
     spl_token_2022::{
         error::TokenError,
-        extension::transfer_fee::{
-            TransferFee, TransferFeeAmount, TransferFeeConfig, MAX_FEE_BASIS_POINTS,
+        extension::{
+            transfer_fee::{
+                TransferFee, TransferFeeAmount, TransferFeeConfig, MAX_FEE_BASIS_POINTS,
+            },
+            BaseStateWithExtensions,
         },
         instruction,
     },

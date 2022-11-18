@@ -37,9 +37,13 @@ use solana_sdk::{
 use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::{
     extension::{
-        cpi_guard::CpiGuard, default_account_state::DefaultAccountState,
-        interest_bearing_mint::InterestBearingConfig, memo_transfer::MemoTransfer,
-        mint_close_authority::MintCloseAuthority, ExtensionType, StateWithExtensionsOwned,
+        cpi_guard::CpiGuard,
+        default_account_state::DefaultAccountState,
+        interest_bearing_mint::InterestBearingConfig,
+        memo_transfer::MemoTransfer,
+        mint_close_authority::MintCloseAuthority,
+        transfer_fee::{TransferFeeAmount, TransferFeeConfig},
+        BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
     },
     instruction::*,
     state::{Account, AccountState, Mint},
@@ -66,13 +70,13 @@ use bench::*;
 pub const OWNER_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
     name: "owner",
     long: "owner",
-    help: "Address of the token's owner. Defaults to the client keypair address.",
+    help: "Address of the primary authority controlling a mint or account. Defaults to the client keypair address.",
 };
 
 pub const OWNER_KEYPAIR_ARG: ArgConstant<'static> = ArgConstant {
     name: "owner",
     long: "owner",
-    help: "Keypair of the token's owner. Defaults to the client keypair.",
+    help: "Keypair of the primary authority controlling a mint or account. Defaults to the client keypair.",
 };
 
 pub const MINT_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
@@ -97,6 +101,12 @@ pub const MULTISIG_SIGNER_ARG: ArgConstant<'static> = ArgConstant {
     name: "multisig_signer",
     long: "multisig-signer",
     help: "Member signer of a multisig account",
+};
+
+pub const MULTISIG_ADDRESS: ArgConstant<'static> = ArgConstant {
+    name: "multisig_address",
+    long: "multisig-address",
+    help: "Address of the multisig account",
 };
 
 static VALID_TOKEN_PROGRAM_IDS: [Pubkey; 2] = [spl_token_2022::ID, spl_token::ID];
@@ -135,6 +145,9 @@ pub enum CommandName {
     EnableCpiGuard,
     DisableCpiGuard,
     UpdateDefaultAccountState,
+    WithdrawWithheldTokens,
+    SetTransferFee,
+    MigrateMultisigLamports,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -253,6 +266,10 @@ where
 }
 
 pub(crate) type Error = Box<dyn std::error::Error + Send + Sync>;
+fn print_error_and_exit<T, E: Display>(e: E) -> T {
+    eprintln!("error: {}", e);
+    exit(1)
+}
 
 type BulkSigners = Vec<Arc<dyn Signer>>;
 pub(crate) type CommandResult = Result<String, Error>;
@@ -269,11 +286,8 @@ fn get_signer(
     wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
 ) -> Option<(Arc<dyn Signer>, Pubkey)> {
     matches.value_of(keypair_name).map(|path| {
-        let signer =
-            signer_from_path(matches, path, keypair_name, wallet_manager).unwrap_or_else(|e| {
-                eprintln!("error: {}", e);
-                exit(1);
-            });
+        let signer = signer_from_path(matches, path, keypair_name, wallet_manager)
+            .unwrap_or_else(print_error_and_exit);
         let signer_pubkey = signer.pubkey();
         (Arc::from(signer), signer_pubkey)
     })
@@ -391,6 +405,7 @@ async fn command_create_token(
     memo: Option<String>,
     rate_bps: Option<i16>,
     default_account_state: Option<AccountState>,
+    transfer_fee: Option<(u16, u64)>,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     println_display(
@@ -430,6 +445,15 @@ async fn command_create_token(
             "Token requires a freeze authority to default to frozen accounts"
         );
         extensions.push(ExtensionInitializationParams::DefaultAccountState { state })
+    }
+
+    if let Some((transfer_fee_basis_points, maximum_fee)) = transfer_fee {
+        extensions.push(ExtensionInitializationParams::TransferFeeConfig {
+            transfer_fee_config_authority: Some(authority),
+            withdraw_withheld_authority: Some(authority),
+            transfer_fee_basis_points,
+            maximum_fee,
+        });
     }
 
     if let Some(text) = memo {
@@ -507,6 +531,83 @@ async fn command_set_interest_rate(
 
     let res = token
         .update_interest_rate(&rate_authority, rate_bps, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
+async fn command_set_transfer_fee(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    transfer_fee_authority: Pubkey,
+    transfer_fee_basis_points: u16,
+    maximum_fee: f64,
+    mint_decimals: Option<u8>,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    let decimals = if !config.sign_only {
+        let mint_account = config.get_account_checked(&token_pubkey).await?;
+
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)
+            .map_err(|_| format!("Could not deserialize token mint {}", token_pubkey))?;
+
+        if mint_decimals.is_some() && mint_decimals != Some(mint_state.base.decimals) {
+            return Err(format!(
+                "Decimals {} was provided, but actual value is {}",
+                mint_decimals.unwrap(),
+                mint_state.base.decimals
+            )
+            .into());
+        }
+
+        if let Ok(transfer_fee_config) = mint_state.get_extension::<TransferFeeConfig>() {
+            let mint_fee_authority_pubkey =
+                Option::<Pubkey>::from(transfer_fee_config.transfer_fee_config_authority);
+
+            if mint_fee_authority_pubkey != Some(transfer_fee_authority) {
+                return Err(format!(
+                    "Mint {} has transfer fee authority {}, but {} was provided",
+                    token_pubkey,
+                    mint_fee_authority_pubkey
+                        .map(|pubkey| pubkey.to_string())
+                        .unwrap_or_else(|| "disabled".to_string()),
+                    transfer_fee_authority
+                )
+                .into());
+            }
+        } else {
+            return Err(format!("Mint {} does not have a transfer fee", token_pubkey).into());
+        }
+        mint_state.base.decimals
+    } else {
+        mint_decimals.unwrap()
+    };
+
+    println_display(
+        config,
+        format!(
+            "Setting transfer fee for {} to {} bps, {} maximum",
+            token_pubkey, transfer_fee_basis_points, maximum_fee
+        ),
+    );
+
+    let token = token_client_from_config(config, &token_pubkey, Some(decimals))?;
+    let maximum_fee = spl_token::ui_amount_to_amount(maximum_fee, decimals);
+    let res = token
+        .set_transfer_fee(
+            &transfer_fee_authority,
+            transfer_fee_basis_points,
+            maximum_fee,
+            &bulk_signers,
+        )
         .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -650,6 +751,7 @@ async fn command_authorize(
         AuthorityType::TransferFeeConfig => "transfer fee authority",
         AuthorityType::WithheldWithdraw => "withdraw withheld authority",
         AuthorityType::InterestRate => "interest rate authority",
+        AuthorityType::PermanentDelegate => "permanent delegate",
     };
 
     let (mint_pubkey, previous_authority) = if !config.sign_only {
@@ -687,6 +789,7 @@ async fn command_authorize(
                         Err(format!("Mint `{}` is not interest-bearing", account))
                     }
                 }
+                AuthorityType::PermanentDelegate => unimplemented!(),
             }?;
 
             Ok((account, previous_authority))
@@ -719,7 +822,8 @@ async fn command_authorize(
                 | AuthorityType::CloseMint
                 | AuthorityType::TransferFeeConfig
                 | AuthorityType::WithheldWithdraw
-                | AuthorityType::InterestRate => Err(format!(
+                | AuthorityType::InterestRate
+                | AuthorityType::PermanentDelegate => Err(format!(
                     "Authority type `{}` not supported for SPL Token accounts",
                     auth_str
                 )),
@@ -805,6 +909,7 @@ async fn command_transfer(
     mint_decimals: Option<u8>,
     recipient_is_ata_owner: bool,
     use_unchecked_instruction: bool,
+    ui_fee: Option<f64>,
     memo: Option<String>,
     bulk_signers: BulkSigners,
     no_wait: bool,
@@ -879,6 +984,9 @@ async fn command_transfer(
     } else {
         maybe_transfer_balance.unwrap()
     };
+
+    let maybe_fee =
+        ui_fee.map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals));
 
     // determine whether recipient is a token account or an expected owner of one
     let recipient_is_token_account = if !config.sign_only {
@@ -1037,6 +1145,18 @@ async fn command_transfer(
                 &recipient_owner,
                 &sender_owner,
                 transfer_balance,
+                maybe_fee,
+                &bulk_signers,
+            )
+            .await?
+    } else if let Some(fee) = maybe_fee {
+        token
+            .transfer_with_fee(
+                &sender,
+                &recipient_token_account,
+                &sender_owner,
+                transfer_balance,
+                fee,
                 &bulk_signers,
             )
             .await?
@@ -1235,13 +1355,8 @@ async fn command_wrap(
     let lamports = sol_to_lamports(sol);
     let token = native_token_client_from_config(config)?;
 
-    let account = wrapped_sol_account.unwrap_or_else(|| {
-        get_associated_token_address_with_program_id(
-            &wallet_address,
-            token.get_address(),
-            &config.program_id,
-        )
-    });
+    let account =
+        wrapped_sol_account.unwrap_or_else(|| token.get_associated_token_address(&wallet_address));
 
     println_display(config, format!("Wrapping {} SOL into {}", sol, account));
 
@@ -1294,13 +1409,8 @@ async fn command_unwrap(
     let use_associated_account = maybe_account.is_none();
     let token = native_token_client_from_config(config)?;
 
-    let account = maybe_account.unwrap_or_else(|| {
-        get_associated_token_address_with_program_id(
-            &wallet_address,
-            token.get_address(),
-            &config.program_id,
-        )
-    });
+    let account =
+        maybe_account.unwrap_or_else(|| token.get_associated_token_address(&wallet_address));
 
     println_display(config, format!("Unwrapping {}", account));
 
@@ -1448,7 +1558,8 @@ async fn command_close(
     recipient: Pubkey,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let mint_pubkey = if !config.sign_only {
+    let mut results = vec![];
+    let token = if !config.sign_only {
         let source_account = config.get_account_checked(&account).await?;
 
         let source_state = StateWithExtensionsOwned::<Account>::unpack(source_account.data)
@@ -1463,26 +1574,42 @@ async fn command_close(
             .into());
         }
 
-        source_state.base.mint
+        let token = token_client_from_config(config, &source_state.base.mint, None)?;
+        if let Ok(extension) = source_state.get_extension::<TransferFeeAmount>() {
+            if u64::from(extension.withheld_amount) != 0 {
+                let res = token.harvest_withheld_tokens_to_mint(&[&account]).await?;
+                let tx_return = finish_tx(config, &res, false).await?;
+                results.push(match tx_return {
+                    TransactionReturnData::CliSignature(signature) => {
+                        config.output_format.formatted_string(&signature)
+                    }
+                    TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+                        config.output_format.formatted_string(&sign_only_data)
+                    }
+                });
+            }
+        }
+
+        token
     } else {
         // default is safe here because close doesnt use it
-        Pubkey::default()
+        token_client_from_config(config, &Pubkey::default(), None)?
     };
 
-    let token = token_client_from_config(config, &mint_pubkey, None)?;
     let res = token
         .close_account(&account, &recipient, &close_authority, &bulk_signers)
         .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
-    Ok(match tx_return {
+    results.push(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
             config.output_format.formatted_string(&signature)
         }
         TransactionReturnData::CliSignOnlyData(sign_only_data) => {
             config.output_format.formatted_string(&sign_only_data)
         }
-    })
+    });
+    Ok(results.join(""))
 }
 
 async fn command_close_mint(
@@ -1860,6 +1987,43 @@ async fn command_sync_native(config: &Config<'_>, native_account_address: Pubkey
     })
 }
 
+async fn command_migrate_multisig_lamports(
+    config: &Config<'_>,
+    multisig_account_address: Pubkey,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    let token = native_token_client_from_config(config)?;
+    let native_mint = token.get_address();
+
+    let wrapped_sol_ata = get_associated_token_address_with_program_id(
+        &multisig_account_address,
+        native_mint,
+        &spl_token::id(),
+    );
+    println_display(
+        config,
+        format!(
+            "Migrating lamports from Multisig: {} to ATA: {}",
+            multisig_account_address, wrapped_sol_ata
+        ),
+    );
+
+    let res = token
+        .migrate_multisig_lamports(&multisig_account_address, &wrapped_sol_ata, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
 // both enables and disables required transfer memos, via enable_memos bool
 async fn command_required_transfer_memos(
     config: &Config<'_>,
@@ -2069,6 +2233,79 @@ async fn command_update_default_account_state(
     })
 }
 
+async fn command_withdraw_withheld_tokens(
+    config: &Config<'_>,
+    destination_token_account: Pubkey,
+    source_token_accounts: Vec<Pubkey>,
+    authority: Pubkey,
+    include_mint: bool,
+    bulk_signers: BulkSigners,
+) -> CommandResult {
+    if config.sign_only {
+        panic!("Config can not be sign-only for withdrawing withheld tokens.");
+    }
+    let destination_account = config
+        .get_account_checked(&destination_token_account)
+        .await?;
+    let destination_state = StateWithExtensionsOwned::<Account>::unpack(destination_account.data)
+        .map_err(|_| {
+        format!(
+            "Could not deserialize token account {}",
+            destination_token_account
+        )
+    })?;
+    let token_pubkey = destination_state.base.mint;
+    destination_state
+        .get_extension::<TransferFeeAmount>()
+        .map_err(|_| format!("Token mint {} has no transfer fee configured", token_pubkey))?;
+
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+    let mut results = vec![];
+    if include_mint {
+        let res = token
+            .withdraw_withheld_tokens_from_mint(
+                &destination_token_account,
+                &authority,
+                &bulk_signers,
+            )
+            .await;
+        let tx_return = finish_tx(config, &res?, false).await?;
+        results.push(match tx_return {
+            TransactionReturnData::CliSignature(signature) => {
+                config.output_format.formatted_string(&signature)
+            }
+            TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+                config.output_format.formatted_string(&sign_only_data)
+            }
+        });
+    }
+
+    let source_refs = source_token_accounts.iter().collect::<Vec<_>>();
+    // this can be tweaked better, but keep it simple for now
+    const MAX_WITHDRAWAL_ACCOUNTS: usize = 25;
+    for sources in source_refs.chunks(MAX_WITHDRAWAL_ACCOUNTS) {
+        let res = token
+            .withdraw_withheld_tokens_from_accounts(
+                &destination_token_account,
+                &authority,
+                sources,
+                &bulk_signers,
+            )
+            .await;
+        let tx_return = finish_tx(config, &res?, false).await?;
+        results.push(match tx_return {
+            TransactionReturnData::CliSignature(signature) => {
+                config.output_format.formatted_string(&signature)
+            }
+            TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+                config.output_format.formatted_string(&sign_only_data)
+            }
+        });
+    }
+
+    Ok(results.join(""))
+}
+
 struct SignOnlyNeedsFullMintSpec {}
 impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
@@ -2260,6 +2497,17 @@ fn app<'a, 'b>(
                             the option of specifying default frozen accounts in the future. \
                             This behavior is not the same as the default, which makes it \
                             impossible to specify a default account state in the future."),
+                )
+                .arg(
+                    Arg::with_name("transfer_fee")
+                        .long("transfer-fee")
+                        .value_names(&["FEE_IN_BASIS_POINTS", "MAXIMUM_FEE"])
+                        .takes_value(true)
+                        .number_of_values(2)
+                        .help(
+                            "Add a transfer fee to the mint. \
+                            The mint authority can set the fee and withdraw collected fees.",
+                        ),
                 )
                 .nonce_args(true)
                 .arg(memo_arg())
@@ -2455,7 +2703,7 @@ fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("recipient")
                         .validator(is_valid_pubkey)
-                        .value_name("RECIPIENT_ADDRESS or RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
+                        .value_name("RECIPIENT_WALLET_ADDRESS or RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(3)
                         .required(true)
@@ -2515,6 +2763,14 @@ fn app<'a, 'b>(
                         .takes_value(false)
                         .requires("sign_only")
                         .help("In sign-only mode, specifies that the recipient is the owner of the associated token account rather than an actual token account"),
+                )
+                .arg(
+                    Arg::with_name("expected_fee")
+                        .long("expected-fee")
+                        .validator(is_amount)
+                        .value_name("TOKEN_AMOUNT")
+                        .takes_value(true)
+                        .help("Expected fee amount collected during the transfer"),
                 )
                 .arg(multisig_signer_arg())
                 .arg(mint_decimals_arg())
@@ -2582,8 +2838,19 @@ fn app<'a, 'b>(
                         .validator(is_valid_pubkey)
                         .value_name("RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
+                        .conflicts_with("recipient_owner")
                         .index(3)
-                        .help("The token account address of recipient [default: associated token account for --owner]"),
+                        .help("The token account address of recipient \
+                            [default: associated token account for --mint-authority]"),
+                )
+                .arg(
+                    Arg::with_name("recipient_owner")
+                        .long("recipient-owner")
+                        .validator(is_valid_pubkey)
+                        .value_name("RECIPIENT_WALLET_ADDRESS")
+                        .takes_value(true)
+                        .conflicts_with("recipient")
+                        .help("The owner of the recipient associated token account"),
                 )
                 .arg(
                     Arg::with_name("mint_authority")
@@ -2731,6 +2998,7 @@ fn app<'a, 'b>(
                              Defaults to the client keypair."
                         ),
                 )
+                .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args(),
@@ -2805,7 +3073,6 @@ fn app<'a, 'b>(
                         .help("Token of the associated account to close. \
                               To close a specific account, use the `--address` parameter instead"),
                 )
-                .arg(owner_address_arg())
                 .arg(
                     Arg::with_name("recipient")
                         .long("recipient")
@@ -2838,6 +3105,7 @@ fn app<'a, 'b>(
                         .help("Specify the token account to close \
                             [default: owner's associated token account]"),
                 )
+                .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
         )
@@ -2853,7 +3121,6 @@ fn app<'a, 'b>(
                         .required(true)
                         .help("Token to close"),
                 )
-                .arg(owner_address_arg())
                 .arg(
                     Arg::with_name("recipient")
                         .long("recipient")
@@ -2874,6 +3141,7 @@ fn app<'a, 'b>(
                             Defaults to the client keypair.",
                         ),
                 )
+                .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args(),
@@ -3178,6 +3446,101 @@ fn app<'a, 'b>(
                 .nonce_args(true)
                 .offline_args(),
         )
+        .subcommand(
+            SubCommand::with_name(CommandName::WithdrawWithheldTokens.into())
+                .about("Withdraw withheld transfer fee tokens from mint and / or account(s)")
+                .arg(
+                    Arg::with_name("account")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The address of the token account to receive withdrawn tokens"),
+                )
+                .arg(
+                    Arg::with_name("source")
+                        .validator(is_valid_pubkey)
+                        .value_name("ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .multiple(true)
+                        .min_values(0u64)
+                        .help("The token accounts to withdraw from")
+                )
+                .arg(
+                    Arg::with_name("include_mint")
+                        .long("include-mint")
+                        .takes_value(false)
+                        .help("Also withdraw withheld tokens from the mint"),
+                )
+                .arg(
+                    Arg::with_name("withdraw_withheld_authority")
+                        .long("withdraw-withheld-authority")
+                        .alias("owner")
+                        .value_name("KEYPAIR")
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help(
+                            "Specify the withdraw withheld authority keypair. \
+                             This may be a keypair file or the ASK keyword. \
+                             Defaults to the client keypair."
+                        ),
+                )
+                .arg(owner_address_arg())
+                .arg(multisig_signer_arg())
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::SetTransferFee.into())
+                .about("Set the transfer fee for a token with a configured transfer fee")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .help("The interest-bearing token address"),
+                )
+                .arg(
+                    Arg::with_name("transfer_fee_basis_points")
+                        .value_name("FEE_IN_BASIS_POINTS")
+                        .takes_value(true)
+                        .required(true)
+                        .help("The new transfer fee in basis points"),
+                )
+                .arg(
+                    Arg::with_name("maximum_fee")
+                        .value_name("TOKEN_AMOUNT")
+                        .validator(is_amount)
+                        .takes_value(true)
+                        .required(true)
+                        .help("The new maximum transfer fee in UI amount"),
+                )
+                .arg(
+                    Arg::with_name("transfer_fee_authority")
+                    .long("transfer-fee-authority")
+                    .validator(is_valid_signer)
+                    .value_name("SIGNER")
+                    .takes_value(true)
+                    .help(
+                        "Specify the rate authority keypair. \
+                        Defaults to the client keypair address."
+                    )
+                )
+                .arg(mint_decimals_arg())
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::MigrateMultisigLamports.into())
+                .about("Migrate native SOL from a multisig address to an associated token account")
+                .arg(
+                    Arg::with_name("multisig-address")
+                        .validator(is_valid_pubkey)
+                        .value_name("MULTISIG_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Specify the address of the multisig account to sync"),
+                )
+                .arg(multisig_signer_arg())
+        )
 }
 
 #[tokio::main]
@@ -3239,6 +3602,19 @@ async fn process_command<'a>(
             let memo = value_t!(arg_matches, "memo", String).ok();
             let rate_bps = value_t!(arg_matches, "interest_rate", i16).ok();
 
+            let transfer_fee = arg_matches.values_of("transfer_fee").map(|mut v| {
+                (
+                    v.next()
+                        .unwrap()
+                        .parse::<u16>()
+                        .unwrap_or_else(print_error_and_exit),
+                    v.next()
+                        .unwrap()
+                        .parse::<u64>()
+                        .unwrap_or_else(print_error_and_exit),
+                )
+            });
+
             let (token_signer, token) =
                 get_signer(arg_matches, "token_keypair", &mut wallet_manager)
                     .unwrap_or_else(new_throwaway_signer);
@@ -3266,6 +3642,7 @@ async fn process_command<'a>(
                 memo,
                 rate_bps,
                 default_account_state,
+                transfer_fee,
                 bulk_signers,
             )
             .await
@@ -3318,10 +3695,7 @@ async fn process_command<'a>(
             let minimum_signers = value_of::<u8>(arg_matches, "minimum_signers").unwrap();
             let multisig_members =
                 pubkeys_of_multiple_signers(arg_matches, "multisig_member", &mut wallet_manager)
-                    .unwrap_or_else(|e| {
-                        eprintln!("error: {}", e);
-                        exit(1);
-                    })
+                    .unwrap_or_else(print_error_and_exit)
                     .unwrap();
             if minimum_signers as usize > multisig_members.len() {
                 eprintln!(
@@ -3350,6 +3724,7 @@ async fn process_command<'a>(
                 "transfer-fee-config" => AuthorityType::TransferFeeConfig,
                 "withheld-withdraw" => AuthorityType::WithheldWithdraw,
                 "interest-rate" => AuthorityType::InterestRate,
+                "permanent-delegate" => AuthorityType::PermanentDelegate,
                 _ => unreachable!(),
             };
 
@@ -3399,6 +3774,7 @@ async fn process_command<'a>(
 
             let recipient_is_ata_owner = arg_matches.is_present("recipient_is_ata_owner");
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
+            let expected_fee = value_of::<f64>(arg_matches, "expected_fee");
             let memo = value_t!(arg_matches, "memo", String).ok();
 
             command_transfer(
@@ -3413,6 +3789,7 @@ async fn process_command<'a>(
                 mint_decimals,
                 recipient_is_ata_owner,
                 use_unchecked_instruction,
+                expected_fee,
                 memo,
                 bulk_signers,
                 arg_matches.is_present("no_wait"),
@@ -3467,6 +3844,10 @@ async fn process_command<'a>(
                 pubkey_of_signer(arg_matches, "recipient", &mut wallet_manager).unwrap()
             {
                 address
+            } else if let Some(address) =
+                pubkey_of_signer(arg_matches, "recipient_owner", &mut wallet_manager).unwrap()
+            {
+                get_associated_token_address_with_program_id(&address, &token, &config.program_id)
             } else {
                 let owner = config.default_signer()?.pubkey();
                 config.associated_token_address_for_token_and_program(
@@ -3817,6 +4198,67 @@ async fn process_command<'a>(
             )
             .await
         }
+        (CommandName::WithdrawWithheldTokens, arg_matches) => {
+            let (authority_signer, authority) = config.signer_or_default(
+                arg_matches,
+                "withdraw_withheld_authority",
+                &mut wallet_manager,
+            );
+            if !bulk_signers.contains(&authority_signer) {
+                bulk_signers.push(authority_signer);
+            }
+            // Since destination is required it will always be present
+            let destination_token_account =
+                pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
+            let include_mint = arg_matches.is_present("include_mint");
+            let source_accounts = arg_matches
+                .values_of("source")
+                .unwrap_or_default()
+                .into_iter()
+                .map(|s| Pubkey::from_str(s).unwrap_or_else(print_error_and_exit))
+                .collect::<Vec<_>>();
+            command_withdraw_withheld_tokens(
+                config,
+                destination_token_account,
+                source_accounts,
+                authority,
+                include_mint,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::SetTransferFee, arg_matches) => {
+            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let transfer_fee_basis_points =
+                value_t_or_exit!(arg_matches, "transfer_fee_basis_points", u16);
+            let maximum_fee = value_t_or_exit!(arg_matches, "maximum_fee", f64);
+            let (transfer_fee_authority_signer, transfer_fee_authority_pubkey) = config
+                .signer_or_default(arg_matches, "transfer_fee_authority", &mut wallet_manager);
+            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
+            let bulk_signers = vec![transfer_fee_authority_signer];
+
+            command_set_transfer_fee(
+                config,
+                token_pubkey,
+                transfer_fee_authority_pubkey,
+                transfer_fee_basis_points,
+                maximum_fee,
+                mint_decimals,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::MigrateMultisigLamports, arg_matches) => {
+            let multisig = config
+                .pubkey_or_default(arg_matches, "multisig-address", &mut wallet_manager)
+                .unwrap();
+
+            command_migrate_multisig_lamports(config, multisig, bulk_signers).await
+        }
     }
 }
 
@@ -4008,6 +4450,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             bulk_signers,
         )
         .await
@@ -4035,6 +4478,7 @@ mod tests {
             false,
             None,
             Some(rate_bps),
+            None,
             None,
             bulk_signers,
         )
@@ -4352,21 +4796,74 @@ mod tests {
             let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
             let account = create_associated_account(&config, &payer, token).await;
-            let result = process_test_command(
+            let mut amount = 0;
+
+            // mint via implicit owner
+            process_test_command(
                 &config,
                 &payer,
                 &[
                     "spl-token",
                     CommandName::Mint.into(),
                     &token.to_string(),
-                    "100",
+                    "1",
                 ],
             )
-            .await;
-            result.unwrap();
-            let account = config.rpc_client.get_account(&account).await.unwrap();
-            let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
-            assert_eq!(token_account.base.amount, 100);
+            .await
+            .unwrap();
+            amount += 1;
+
+            let account_data = config.rpc_client.get_account(&account).await.unwrap();
+            let token_account =
+                StateWithExtensionsOwned::<Account>::unpack(account_data.data).unwrap();
+            assert_eq!(token_account.base.amount, amount);
+            assert_eq!(token_account.base.mint, token);
+            assert_eq!(token_account.base.owner, payer.pubkey());
+
+            // mint via explicit recipient
+            process_test_command(
+                &config,
+                &payer,
+                &[
+                    "spl-token",
+                    CommandName::Mint.into(),
+                    &token.to_string(),
+                    "1",
+                    &account.to_string(),
+                ],
+            )
+            .await
+            .unwrap();
+            amount += 1;
+
+            let account_data = config.rpc_client.get_account(&account).await.unwrap();
+            let token_account =
+                StateWithExtensionsOwned::<Account>::unpack(account_data.data).unwrap();
+            assert_eq!(token_account.base.amount, amount);
+            assert_eq!(token_account.base.mint, token);
+            assert_eq!(token_account.base.owner, payer.pubkey());
+
+            // mint via explicit owner
+            process_test_command(
+                &config,
+                &payer,
+                &[
+                    "spl-token",
+                    CommandName::Mint.into(),
+                    &token.to_string(),
+                    "1",
+                    "--recipient-owner",
+                    &payer.pubkey().to_string(),
+                ],
+            )
+            .await
+            .unwrap();
+            amount += 1;
+
+            let account_data = config.rpc_client.get_account(&account).await.unwrap();
+            let token_account =
+                StateWithExtensionsOwned::<Account>::unpack(account_data.data).unwrap();
+            assert_eq!(token_account.base.amount, amount);
             assert_eq!(token_account.base.mint, token);
             assert_eq!(token_account.base.owner, payer.pubkey());
         }
@@ -4799,6 +5296,73 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(ui_account.token_amount.amount, "90");
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn close_account() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+
+            let native_mint = Token::new_native(
+                config.program_client.clone(),
+                program_id,
+                config.fee_payer().unwrap().clone(),
+            );
+            do_create_native_mint(&config, program_id, &payer).await;
+            native_mint
+                .get_or_create_associated_account_info(&payer.pubkey())
+                .await
+                .unwrap();
+
+            let token = create_token(&config, &payer).await;
+
+            let system_recipient = Keypair::new().pubkey();
+            let wsol_recipient = native_mint.get_associated_token_address(&payer.pubkey());
+
+            let token_rent_amount = config
+                .rpc_client
+                .get_account(&create_auxiliary_account(&config, &payer, token).await)
+                .await
+                .unwrap()
+                .lamports;
+
+            for recipient in [system_recipient, wsol_recipient] {
+                let base_balance = config
+                    .rpc_client
+                    .get_account(&recipient)
+                    .await
+                    .map(|account| account.lamports)
+                    .unwrap_or(0);
+
+                let source = create_auxiliary_account(&config, &payer, token).await;
+
+                process_test_command(
+                    &config,
+                    &payer,
+                    &[
+                        "spl-token",
+                        CommandName::Close.into(),
+                        "--address",
+                        &source.to_string(),
+                        "--recipient",
+                        &recipient.to_string(),
+                    ],
+                )
+                .await
+                .unwrap();
+
+                let recipient_data = config.rpc_client.get_account(&recipient).await.unwrap();
+
+                assert_eq!(recipient_data.lamports, base_balance + token_rent_amount);
+                if recipient == wsol_recipient {
+                    let recipient_account =
+                        StateWithExtensionsOwned::<Account>::unpack(recipient_data.data).unwrap();
+                    assert_eq!(recipient_account.base.amount, token_rent_amount);
+                }
+            }
+        }
     }
 
     #[tokio::test]
@@ -5284,6 +5848,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             bulk_signers,
         )
         .await
@@ -5589,6 +6154,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             bulk_signers,
         )
         .await
@@ -5642,6 +6208,7 @@ mod tests {
             None,
             None,
             Some(AccountState::Frozen),
+            None,
             bulk_signers,
         )
         .await
@@ -5681,5 +6248,221 @@ mod tests {
             .unwrap();
         let account = StateWithExtensionsOwned::<Account>::unpack(token_account.data).unwrap();
         assert_eq!(account.base.state, AccountState::Initialized);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn transfer_fee() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let config =
+            test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
+
+        let token_keypair = Keypair::new();
+        let token_pubkey = token_keypair.pubkey();
+        let bulk_signers: Vec<Arc<dyn Signer>> =
+            vec![Arc::new(clone_keypair(&payer)), Arc::new(token_keypair)];
+        let transfer_fee_basis_points = 100;
+        let maximum_fee = 2_000_000;
+
+        command_create_token(
+            &config,
+            TEST_DECIMALS,
+            token_pubkey,
+            payer.pubkey(),
+            false,
+            false,
+            false,
+            None,
+            None,
+            None,
+            Some((transfer_fee_basis_points, maximum_fee)),
+            bulk_signers,
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+        let test_mint = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+        let extension = test_mint.get_extension::<TransferFeeConfig>().unwrap();
+        assert_eq!(
+            u16::from(extension.older_transfer_fee.transfer_fee_basis_points),
+            transfer_fee_basis_points
+        );
+        assert_eq!(
+            u64::from(extension.older_transfer_fee.maximum_fee),
+            maximum_fee
+        );
+        assert_eq!(
+            u16::from(extension.newer_transfer_fee.transfer_fee_basis_points),
+            transfer_fee_basis_points
+        );
+        assert_eq!(
+            u64::from(extension.newer_transfer_fee.maximum_fee),
+            maximum_fee
+        );
+
+        let total_amount = 1000.0;
+        let transfer_amount = 100.0;
+        let token_account = create_associated_account(&config, &payer, token_pubkey).await;
+        let source_account = create_auxiliary_account(&config, &payer, token_pubkey).await;
+        mint_tokens(&config, &payer, token_pubkey, total_amount, source_account).await;
+
+        // withdraw from account directly
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Transfer.into(),
+                "--from",
+                &source_account.to_string(),
+                &token_pubkey.to_string(),
+                &transfer_amount.to_string(),
+                &token_account.to_string(),
+                "--expected-fee",
+                "1",
+            ],
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&token_account).await.unwrap();
+        let account_state = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+        let extension = account_state.get_extension::<TransferFeeAmount>().unwrap();
+        let withheld_amount =
+            spl_token::amount_to_ui_amount(u64::from(extension.withheld_amount), TEST_DECIMALS);
+        assert_eq!(withheld_amount, 1.0);
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::WithdrawWithheldTokens.into(),
+                &token_account.to_string(),
+                &token_account.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&token_account).await.unwrap();
+        let account_state = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+        let extension = account_state.get_extension::<TransferFeeAmount>().unwrap();
+        assert_eq!(u64::from(extension.withheld_amount), 0);
+
+        // withdraw from mint after account closure
+        // gather fees
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Transfer.into(),
+                "--from",
+                &source_account.to_string(),
+                &token_pubkey.to_string(),
+                &(total_amount - transfer_amount).to_string(),
+                &token_account.to_string(),
+                "--expected-fee",
+                "9",
+            ],
+        )
+        .await
+        .unwrap();
+
+        // burn tokens
+        let account = config.rpc_client.get_account(&token_account).await.unwrap();
+        let account_state = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+        let burn_amount = spl_token::amount_to_ui_amount(account_state.base.amount, TEST_DECIMALS);
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Burn.into(),
+                &token_account.to_string(),
+                &burn_amount.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&token_account).await.unwrap();
+        let account_state = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+        let extension = account_state.get_extension::<TransferFeeAmount>().unwrap();
+        let withheld_amount =
+            spl_token::amount_to_ui_amount(u64::from(extension.withheld_amount), TEST_DECIMALS);
+        assert_eq!(withheld_amount, 9.0);
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Close.into(),
+                "--address",
+                &token_account.to_string(),
+                "--recipient",
+                &payer.pubkey().to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let mint = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint.data).unwrap();
+        let extension = mint_state.get_extension::<TransferFeeConfig>().unwrap();
+        let withheld_amount =
+            spl_token::amount_to_ui_amount(u64::from(extension.withheld_amount), TEST_DECIMALS);
+        assert_eq!(withheld_amount, 9.0);
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::WithdrawWithheldTokens.into(),
+                &source_account.to_string(),
+                "--include-mint",
+            ],
+        )
+        .await
+        .unwrap();
+
+        let mint = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint.data).unwrap();
+        let extension = mint_state.get_extension::<TransferFeeConfig>().unwrap();
+        assert_eq!(u64::from(extension.withheld_amount), 0);
+
+        // set the transfer fee
+        let new_transfer_fee_basis_points = 800;
+        let new_maximum_fee = 5_000_000.0;
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::SetTransferFee.into(),
+                &token_pubkey.to_string(),
+                &new_transfer_fee_basis_points.to_string(),
+                &new_maximum_fee.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let mint = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint.data).unwrap();
+        let extension = mint_state.get_extension::<TransferFeeConfig>().unwrap();
+        assert_eq!(
+            u16::from(extension.newer_transfer_fee.transfer_fee_basis_points),
+            new_transfer_fee_basis_points
+        );
+        let new_maximum_fee = spl_token::ui_amount_to_amount(new_maximum_fee, TEST_DECIMALS);
+        assert_eq!(
+            u64::from(extension.newer_transfer_fee.maximum_fee),
+            new_maximum_fee
+        );
     }
 }

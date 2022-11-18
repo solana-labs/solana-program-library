@@ -17,7 +17,7 @@ use {
         error::TokenError,
         extension::{
             transfer_fee::{self, TransferFeeAmount},
-            ExtensionType, StateWithExtensions,
+            BaseStateWithExtensions, ExtensionType, StateWithExtensions,
         },
         instruction,
         state::{Account, Mint},

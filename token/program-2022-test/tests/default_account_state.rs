@@ -9,8 +9,10 @@ use {
         signer::keypair::Keypair, transaction::TransactionError, transport::TransportError,
     },
     spl_token_2022::{
-        error::TokenError, extension::default_account_state::DefaultAccountState,
-        instruction::AuthorityType, state::AccountState,
+        error::TokenError,
+        extension::{default_account_state::DefaultAccountState, BaseStateWithExtensions},
+        instruction::AuthorityType,
+        state::AccountState,
     },
     spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
     std::convert::TryFrom,

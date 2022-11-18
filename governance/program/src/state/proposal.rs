@@ -1177,7 +1177,7 @@ mod test {
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(40),
-            reserved: [0; 3],
+            reserved: [0; 5],
         }
     }
 

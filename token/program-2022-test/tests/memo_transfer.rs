@@ -17,7 +17,7 @@ use {
     },
     spl_token_2022::{
         error::TokenError,
-        extension::{memo_transfer::MemoTransfer, ExtensionType},
+        extension::{memo_transfer::MemoTransfer, BaseStateWithExtensions, ExtensionType},
     },
     spl_token_client::token::TokenError as TokenClientError,
     std::sync::Arc,

@@ -190,6 +190,9 @@ pub enum TokenError {
     /// Extension not found in account data
     #[error("Extension not found in account data")]
     ExtensionNotFound,
+    /// Account does not accept non-confidential transfers
+    #[error("Non-confidential transfers disabled")]
+    NonConfidentialTransfersDisabled,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -328,6 +331,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::ExtensionNotFound => {
                 msg!("Extension not found in account data")
+            }
+            TokenError::NonConfidentialTransfersDisabled => {
+                msg!("Non-confidential transfers disabled")
             }
         }
     }
