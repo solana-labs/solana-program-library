@@ -504,6 +504,67 @@ mod test {
 
     use super::*;
 
+    fn create_test_governance_config() -> GovernanceConfig {
+        GovernanceConfig {
+            min_community_weight_to_create_proposal: 5,
+            min_council_weight_to_create_proposal: 1,
+            min_transaction_hold_up_time: 10,
+            max_voting_time: 5,
+            community_vote_threshold: VoteThreshold::YesVotePercentage(60),
+            community_vote_tipping: VoteTipping::Strict,
+            council_vote_threshold: VoteThreshold::YesVotePercentage(60),
+            council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
+            council_vote_tipping: VoteTipping::Strict,
+            community_veto_vote_threshold: VoteThreshold::YesVotePercentage(40),
+            reserved: [0; 5],
+        }
+    }
+
+    fn create_test_governance() -> GovernanceV2 {
+        GovernanceV2 {
+            account_type: GovernanceAccountType::GovernanceV2,
+            realm: Pubkey::new_unique(),
+            governed_account: Pubkey::new_unique(),
+            proposals_count: 10,
+            config: create_test_governance_config(),
+            reserved_v2: [0; 128],
+        }
+    }
+
+    fn create_test_v1_governance() -> GovernanceV1 {
+        GovernanceV1 {
+            account_type: GovernanceAccountType::GovernanceV1,
+            realm: Pubkey::new_unique(),
+            governed_account: Pubkey::new_unique(),
+            proposals_count: 10,
+            config: create_test_governance_config(),
+        }
+    }
+
+    #[test]
+    fn test_governance_size() {
+        // Arrange
+        let governance = create_test_governance();
+
+        // Act
+        let size = governance.try_to_vec().unwrap().len();
+
+        // Assert
+        assert_eq!(236, size);
+    }
+
+    #[test]
+    fn test_v1_governance_size() {
+        // Arrange
+        let governance = create_test_v1_governance();
+
+        // Act
+        let size = governance.try_to_vec().unwrap().len();
+
+        // Assert
+        assert_eq!(108, size);
+    }
+
     #[test]
     fn test_deserialize_legacy_governance_account_without_council_vote_thresholds() {
         // Arrange
@@ -554,6 +615,13 @@ mod test {
             governance.config.council_vote_threshold,
             governance.config.council_veto_vote_threshold
         );
+
+        assert_eq!(
+            governance.config.council_vote_tipping,
+            governance.config.community_vote_tipping
+        );
+
+        assert_eq!(governance.config.reserved, [0; 5]);
     }
 
     #[test]
