@@ -840,14 +840,11 @@ impl Processor {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
-        // Collect account info
-
         let account_info_iter = &mut accounts.iter();
 
         let dest_token_account_info = next_account_info(account_info_iter)?;
         let multisig_account_info = next_account_info(account_info_iter)?;
 
-        // Validate our program owns the multisig and token accounts
         if multisig_account_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
         }
@@ -859,34 +856,23 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        // Parse the accounts and check the signatures
-        let multisig = Multisig::unpack(&multisig_account_info.data.borrow())?;
-
-        // TODO: Handle signatures
-        // let mut signatures = Box::new(0);
-        // for multisig_signer in &multisig.signers {
-        //     let transaction_signer = account_info_iter.next().unwrap();
-        //     if transaction_signer.key != multisig_signer || !transaction_signer.is_signer {
-        //         return Err(ProgramError::MissingRequiredSignature);
-        //     }
-        //     *signatures += 1;
-        // }
-        // if *signatures < multisig.m {
-        //     return Err(ProgramError::MissingRequiredSignature);
-        // }
+        Self::validate_owner(
+            program_id,
+            multisig_account_info.key,
+            multisig_account_info,
+            account_info_iter.as_slice(),
+        )?;
 
         let token_account = Account::unpack(&dest_token_account_info.data.borrow())?;
 
-        // Make sure the multisig is the owner of the token account
         if &token_account.owner != multisig_account_info.key {
             return Err(TokenError::OwnerMismatch.into());
         }
-        // Make sure that the token account is a native SOL account
+
         if !token_account.is_native() {
             return Err(TokenError::NonNativeNotSupported.into());
         }
 
-        // Calculate the rent-exempt reservation for the multisig account
         let multisig_rent_exempt_reserve =
             Rent::get()?.minimum_balance(multisig_account_info.data_len());
 
