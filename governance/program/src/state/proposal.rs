@@ -282,7 +282,7 @@ impl ProposalV2 {
                 if self.vote_end_time(config) - (config.voting_cool_off_time as i64)
                     < current_unix_timestamp
                 {
-                    Err(GovernanceError::ProposalVotingTimeExpired.into())
+                    Err(GovernanceError::VoteNotAllowedInCoolOffTime.into())
                 } else {
                     Ok(())
                 }
@@ -2266,6 +2266,94 @@ mod test {
             proposal.voting_at.unwrap() + governance_config.max_voting_time as i64;
 
         let vote = Vote::Approve(vec![]);
+
+        // Act
+        let result = proposal.assert_can_cast_vote(&governance_config, &vote, current_timestamp);
+
+        // Assert
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    pub fn test_assert_can_vote_approve_before_voting_cool_off_time() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.state = ProposalState::Voting;
+
+        let mut governance_config = create_test_governance_config();
+        governance_config.voting_cool_off_time = 2;
+
+        let current_timestamp = proposal.voting_at.unwrap()
+            + governance_config.max_voting_time as i64
+            - governance_config.voting_cool_off_time as i64;
+
+        let vote = Vote::Approve(vec![]);
+
+        // Act
+        let result = proposal.assert_can_cast_vote(&governance_config, &vote, current_timestamp);
+
+        // Assert
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    pub fn test_assert_cannot_vote_approve_within_voting_cool_off_time() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.state = ProposalState::Voting;
+
+        let mut governance_config = create_test_governance_config();
+        governance_config.voting_cool_off_time = 2;
+
+        let current_timestamp =
+            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64 - 1;
+
+        let vote = Vote::Approve(vec![]);
+
+        // Act
+        let err = proposal
+            .assert_can_cast_vote(&governance_config, &vote, current_timestamp)
+            .err()
+            .unwrap();
+
+        // Assert
+        assert_eq!(err, GovernanceError::VoteNotAllowedInCoolOffTime.into());
+    }
+
+    #[test]
+    pub fn test_assert_can_vote_veto_within_voting_cool_off_time() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.state = ProposalState::Voting;
+
+        let mut governance_config = create_test_governance_config();
+        governance_config.voting_cool_off_time = 2;
+
+        let current_timestamp =
+            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64 - 1;
+
+        let vote = Vote::Veto;
+
+        // Act
+        let result = proposal.assert_can_cast_vote(&governance_config, &vote, current_timestamp);
+
+        // Assert
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    pub fn test_assert_can_vote_deny_within_voting_cool_off_time() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.state = ProposalState::Voting;
+
+        let mut governance_config = create_test_governance_config();
+        governance_config.voting_cool_off_time = 2;
+
+        let current_timestamp =
+            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64 - 1;
+
+        let vote = Vote::Deny;
 
         // Act
         let result = proposal.assert_can_cast_vote(&governance_config, &vote, current_timestamp);

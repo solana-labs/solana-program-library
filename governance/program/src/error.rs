@@ -438,6 +438,14 @@ pub enum GovernanceError {
     /// Voter weight threshold disabled
     #[error("Voter weight threshold disabled")]
     VoterWeightThresholdDisabled, // 605
+
+    /// Vote not allowed in cool off time
+    #[error("Vote not allowed in cool off time")]
+    VoteNotAllowedInCoolOffTime, // 606
+
+    /// Invalid voting cool off time
+    #[error("Invalid voting cool off time")]
+    InvalidVotingCoolOffTime, // 607
 }
 
 impl PrintProgramError for GovernanceError {

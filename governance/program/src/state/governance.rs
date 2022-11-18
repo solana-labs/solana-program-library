@@ -491,6 +491,14 @@ pub fn assert_is_valid_governance_config(
         return Err(GovernanceError::AtLeastOneVoteThresholdRequired.into());
     }
 
+    if governance_config.voting_cool_off_time > governance_config.max_voting_time {
+        return Err(GovernanceError::InvalidVotingCoolOffTime.into());
+    }
+
+    if governance_config.reserved != 0 {
+        return Err(GovernanceError::ReservedBufferMustBeEmpty.into());
+    }
+
     Ok(())
 }
 
