@@ -835,13 +835,15 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [MigrateMultisigNative](enum.TokenInstruction.html) instruction
+    /// Processes a [MigrateMultisigLamports](enum.TokenInstruction.html) instruction
     pub fn process_migrate_multisig_lamports(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         // Collect account info
+
         let account_info_iter = &mut accounts.iter();
+
         let dest_token_account_info = next_account_info(account_info_iter)?;
         let multisig_account_info = next_account_info(account_info_iter)?;
 
@@ -849,23 +851,29 @@ impl Processor {
         if multisig_account_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
         }
+
+        if dest_token_account_info.data_is_empty() {
+            return Err(ProgramError::UninitializedAccount);
+        }
         if dest_token_account_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
         }
 
         // Parse the accounts and check the signatures
         let multisig = Multisig::unpack(&multisig_account_info.data.borrow())?;
-        let mut signatures = Box::new(0);
-        for multisig_signer in &multisig.signers {
-            let transaction_signer = account_info_iter.next().unwrap();
-            if transaction_signer.key != multisig_signer || !transaction_signer.is_signer {
-                return Err(ProgramError::MissingRequiredSignature);
-            }
-            *signatures += 1;
-        }
-        if *signatures < multisig.m {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
+
+        // TODO: Handle signatures
+        // let mut signatures = Box::new(0);
+        // for multisig_signer in &multisig.signers {
+        //     let transaction_signer = account_info_iter.next().unwrap();
+        //     if transaction_signer.key != multisig_signer || !transaction_signer.is_signer {
+        //         return Err(ProgramError::MissingRequiredSignature);
+        //     }
+        //     *signatures += 1;
+        // }
+        // if *signatures < multisig.m {
+        //     return Err(ProgramError::MissingRequiredSignature);
+        // }
 
         let token_account = Account::unpack(&dest_token_account_info.data.borrow())?;
 
@@ -1019,7 +1027,7 @@ impl Processor {
                 Self::process_ui_amount_to_amount(program_id, accounts, ui_amount)
             }
             TokenInstruction::MigrateMultisigLamports => {
-                msg!("Instruction: MigrateMultisigNative");
+                msg!("Instruction: MigrateMultisigLamports");
                 Self::process_migrate_multisig_lamports(program_id, accounts)
             }
         }

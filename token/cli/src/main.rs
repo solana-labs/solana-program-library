@@ -2005,7 +2005,7 @@ async fn command_migrate_multisig_lamports(
     let wrapped_sol_ata = get_associated_token_address_with_program_id(
         &multisig_account_address,
         native_mint,
-        &spl_associated_token_account::id(),
+        &spl_token::id(),
     );
     println_display(
         config,

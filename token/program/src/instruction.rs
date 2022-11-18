@@ -967,7 +967,7 @@ pub fn initialize_multisig2(
     })
 }
 
-/// Creates a `MigrateMultisigNative` Instruction
+/// Creates a `MigrateMultisigLamports` Instruction
 pub fn migrate_multisig_lamports(
     token_program_id: &Pubkey,
     multisig_pubkey: &Pubkey,

@@ -2326,13 +2326,15 @@ where
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(multisig_pubkey, &signing_pubkeys);
 
-        let instrucions = vec![spl_token::instruction::migrate_multisig_lamports(
-            &self.program_id,
-            multisig_pubkey,
-            wrapped_sol_ata,
-            multisig_signers,
-        )?];
-
-        self.process_ixs(&instrucions, signing_keypairs).await
+        self.process_ixs(
+            &[spl_token::instruction::migrate_multisig_lamports(
+                &spl_token::id(),
+                multisig_pubkey,
+                wrapped_sol_ata,
+                multisig_signers,
+            )?],
+            signing_keypairs,
+        )
+        .await
     }
 }
