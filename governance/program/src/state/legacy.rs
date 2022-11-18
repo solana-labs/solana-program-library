@@ -125,14 +125,6 @@ pub struct GovernanceV1 {
 
     /// Governance config
     pub config: GovernanceConfig,
-
-    /// Reserved space for future versions
-    pub reserved: [u8; 6],
-
-    /// The number of proposals in voting state in the Governance
-    /// Note: This is field introduced in V2 but it took space from reserved
-    /// and we have preserve it for V1 serialization roundtrip
-    pub voting_proposal_count: u16,
 }
 
 /// Checks if the given account type is one of the Governance V1 account types
