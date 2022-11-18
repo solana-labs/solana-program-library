@@ -491,7 +491,7 @@ pub fn assert_is_valid_governance_config(
         return Err(GovernanceError::AtLeastOneVoteThresholdRequired.into());
     }
 
-    if governance_config.voting_cool_off_time > governance_config.max_voting_time {
+    if governance_config.voting_cool_off_time >= governance_config.max_voting_time {
         return Err(GovernanceError::InvalidVotingCoolOffTime.into());
     }
 
@@ -650,20 +650,8 @@ mod test {
     #[test]
     fn test_assert_config_invalid_with_council_zero_yes_vote_threshold() {
         // Arrange
-        let governance_config = GovernanceConfig {
-            community_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            min_community_weight_to_create_proposal: 1,
-            min_transaction_hold_up_time: 1,
-            max_voting_time: 1,
-            community_vote_tipping: VoteTipping::Strict,
-            council_vote_threshold: VoteThreshold::YesVotePercentage(0),
-            council_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            min_council_weight_to_create_proposal: 1,
-            council_vote_tipping: VoteTipping::Strict,
-            community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            reserved: 0,
-            voting_cool_off_time: 1,
-        };
+        let mut governance_config = create_test_governance_config();
+        governance_config.council_vote_threshold = VoteThreshold::YesVotePercentage(0);
 
         // Act
         let err = assert_is_valid_governance_config(&governance_config)
@@ -738,20 +726,8 @@ mod test {
     #[test]
     fn test_assert_config_invalid_with_community_zero_yes_vote_threshold() {
         // Arrange
-        let governance_config = GovernanceConfig {
-            community_vote_threshold: VoteThreshold::YesVotePercentage(0),
-            min_community_weight_to_create_proposal: 1,
-            min_transaction_hold_up_time: 1,
-            max_voting_time: 1,
-            community_vote_tipping: VoteTipping::Strict,
-            council_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            council_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            min_council_weight_to_create_proposal: 1,
-            council_vote_tipping: VoteTipping::Strict,
-            community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            reserved: 0,
-            voting_cool_off_time: 1,
-        };
+        let mut governance_config = create_test_governance_config();
+        governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(0);
 
         // Act
         let err = assert_is_valid_governance_config(&governance_config)
@@ -765,20 +741,9 @@ mod test {
     #[test]
     fn test_assert_config_invalid_with_all_vote_thresholds_disabled() {
         // Arrange
-        let governance_config = GovernanceConfig {
-            community_vote_threshold: VoteThreshold::Disabled,
-            min_community_weight_to_create_proposal: 1,
-            min_transaction_hold_up_time: 1,
-            max_voting_time: 1,
-            community_vote_tipping: VoteTipping::Strict,
-            council_vote_threshold: VoteThreshold::Disabled,
-            council_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            min_council_weight_to_create_proposal: 1,
-            council_vote_tipping: VoteTipping::Strict,
-            community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            reserved: 0,
-            voting_cool_off_time: 1,
-        };
+        let mut governance_config = create_test_governance_config();
+        governance_config.community_vote_threshold = VoteThreshold::Disabled;
+        governance_config.council_vote_threshold = VoteThreshold::Disabled;
 
         // Act
         let err = assert_is_valid_governance_config(&governance_config)
@@ -792,20 +757,8 @@ mod test {
     #[test]
     fn test_assert_config_invalid_with_council_zero_yes_veto_vote_threshold() {
         // Arrange
-        let governance_config = GovernanceConfig {
-            community_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            min_community_weight_to_create_proposal: 1,
-            min_transaction_hold_up_time: 1,
-            max_voting_time: 1,
-            community_vote_tipping: VoteTipping::Strict,
-            council_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            council_veto_vote_threshold: VoteThreshold::YesVotePercentage(0),
-            min_council_weight_to_create_proposal: 1,
-            council_vote_tipping: VoteTipping::Strict,
-            community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            reserved: 0,
-            voting_cool_off_time: 1,
-        };
+        let mut governance_config = create_test_governance_config();
+        governance_config.council_veto_vote_threshold = VoteThreshold::YesVotePercentage(0);
 
         // Act
         let err = assert_is_valid_governance_config(&governance_config)
@@ -819,20 +772,8 @@ mod test {
     #[test]
     fn test_assert_config_invalid_with_community_zero_yes_veto_vote_threshold() {
         // Arrange
-        let governance_config = GovernanceConfig {
-            community_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            min_community_weight_to_create_proposal: 1,
-            min_transaction_hold_up_time: 1,
-            max_voting_time: 1,
-            council_vote_tipping: VoteTipping::Strict,
-            council_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            council_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            min_council_weight_to_create_proposal: 1,
-            community_veto_vote_threshold: VoteThreshold::YesVotePercentage(0),
-            community_vote_tipping: VoteTipping::Strict,
-            reserved: 0,
-            voting_cool_off_time: 1,
-        };
+        let mut governance_config = create_test_governance_config();
+        governance_config.community_veto_vote_threshold = VoteThreshold::YesVotePercentage(0);
 
         // Act
         let err = assert_is_valid_governance_config(&governance_config)
