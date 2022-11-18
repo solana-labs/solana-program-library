@@ -610,7 +610,10 @@ pub enum TokenInstruction<'a> {
     /// See `extension::cpi_guard::instruction::CpiGuardInstruction` for
     /// further details about the extended instructions that share this instruction prefix
     CpiGuardExtension,
-    /// Migrate Multisig Native instruction
+    /// Migrate Multisig Native instruction.
+    ///
+    /// This instruction transfers all the lamports from a Multisig account (apart from rent exemption)
+    /// to a WrappedSol associated token account owned by the Multisig account and was previously initialized
     MigrateMultisigLamports,
 }
 impl<'a> TokenInstruction<'a> {
