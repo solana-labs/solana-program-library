@@ -123,6 +123,10 @@ pub fn process_cast_vote(
                     .checked_add(choice.get_choice_weight(voter_weight)?)
                     .unwrap();
             }
+            proposal_data.approve_vote_weight = proposal_data
+                .approve_vote_weight
+                .checked_add(voter_weight)
+                .unwrap();
         }
         Vote::Deny => {
             proposal_data.deny_vote_weight = Some(

@@ -415,8 +415,9 @@ pub enum GovernanceInstruction {
 
     /// Sets GovernanceConfig for a Governance
     ///
-    ///   0. `[]` Realm account the Governance account belongs to    
-    ///   1. `[writable, signer]` The Governance account the config is for
+    ///   0. `[writable, signer]` The Governance account the config is for
+    ///   1. `[signer]` Payer in case of resizing the governance account
+    ///   2. `[]` System
     SetGovernanceConfig {
         #[allow(dead_code)]
         /// New governance config
@@ -1324,10 +1325,15 @@ pub fn set_governance_config(
     program_id: &Pubkey,
     // Accounts
     governance: &Pubkey,
+    payer: &Pubkey,
     // Args
     config: GovernanceConfig,
 ) -> Instruction {
-    let accounts = vec![AccountMeta::new(*governance, true)];
+    let accounts = vec![
+        AccountMeta::new(*governance, true),
+        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
 
     let instruction = GovernanceInstruction::SetGovernanceConfig { config };
 

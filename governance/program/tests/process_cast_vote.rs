@@ -68,6 +68,14 @@ async fn test_cast_vote() {
             .governing_token_deposit_amount,
         proposal_account.options[0].vote_weight
     );
+    assert_eq!(
+        proposal_account
+            .options
+            .iter()
+            .map(|o| o.vote_weight)
+            .sum::<u64>(),
+        proposal_account.approve_vote_weight
+    );
 
     assert_eq!(proposal_account.state, ProposalState::Succeeded);
     assert_eq!(

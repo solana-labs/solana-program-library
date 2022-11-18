@@ -222,7 +222,11 @@ pub struct ProposalV2 {
     pub vote_threshold: Option<VoteThreshold>,
 
     /// Reserved space for future versions
-    pub reserved: [u8; 64],
+    pub reserved: [u8; 32],
+    /// Reserved space for future versions
+    pub reserved2: [u8; 16],
+    /// Reserved space for future versions
+    pub reserved3: [u8; 8],
 
     /// Proposal name
     pub name: String,
@@ -232,6 +236,11 @@ pub struct ProposalV2 {
 
     /// The total weight of Veto votes
     pub veto_vote_weight: u64,
+
+    /// The total weight of Approve votes on proposal.
+    /// For MultiChoice vote type voter may use the weight on multiple options, this is sum of the actual weight
+    /// of approval votes, i.e., the same weight is not counted multiple times
+    pub approve_vote_weight: u64,
 }
 
 impl AccountMaxSize for ProposalV2 {
@@ -246,6 +255,8 @@ impl IsInitialized for ProposalV2 {
         self.account_type == GovernanceAccountType::ProposalV2
     }
 }
+
+struct SucceededOptionsData(u64, u16);
 
 impl ProposalV2 {
     /// Checks if Signatories can be edited (added or removed) for the Proposal in the given state
@@ -422,29 +433,22 @@ impl ProposalV2 {
         Ok(())
     }
 
-    /// Resolves final proposal state after vote ends
-    /// It inspects all proposals options and resolves their final vote results
-    fn resolve_final_vote_state(
+    fn resolve_min_vote_threshold_options(
         &mut self,
-        max_vote_weight: u64,
-        vote_threshold: &VoteThreshold,
-    ) -> Result<ProposalState, ProgramError> {
-        // Get the min vote weight required for options to pass
-        let min_vote_threshold_weight =
-            get_min_vote_threshold_weight(vote_threshold, max_vote_weight).unwrap();
-
-        // If the proposal has a reject option then any other option must beat it regardless of the configured min_vote_threshold_weight
-        let deny_vote_weight = self.deny_vote_weight.unwrap_or(0);
-
+        min_vote_threshold_weight: u64,
+    ) -> SucceededOptionsData {
         let mut best_succeeded_option_weight = 0;
         let mut best_succeeded_option_count = 0u16;
+
+        // If the proposal has a reject option then any other option must beat it regardless of the configured min_vote_threshold_weight
+        let deny_vote_weight = self.deny_vote_weight;
 
         for option in self.options.iter_mut() {
             // Any positive vote (Yes) must be equal or above the required min_vote_threshold_weight and higher than the reject option vote (No)
             // The same number of positive (Yes) and rejecting (No) votes is a tie and resolved as Defeated
             // In other words  +1 vote as a tie breaker is required to succeed for the positive option vote
             if option.vote_weight >= min_vote_threshold_weight
-                && option.vote_weight > deny_vote_weight
+                && (deny_vote_weight.is_none() || deny_vote_weight.unwrap() < option.vote_weight)
             {
                 option.vote_result = OptionVoteResult::Succeeded;
 
@@ -463,6 +467,56 @@ impl ProposalV2 {
                 option.vote_result = OptionVoteResult::Defeated;
             }
         }
+        SucceededOptionsData(best_succeeded_option_weight, best_succeeded_option_count)
+    }
+
+    /// Resolves final proposal state after vote ends
+    /// It inspects all proposals options and resolves their final vote results
+    fn resolve_final_vote_state(
+        &mut self,
+        max_vote_weight: u64,
+        vote_threshold: &VoteThreshold,
+    ) -> Result<ProposalState, ProgramError> {
+        // Get the min vote weight required for options to pass
+        let min_vote_threshold_weight =
+            get_min_vote_threshold_weight(vote_threshold, max_vote_weight).unwrap();
+
+        let SucceededOptionsData(mut best_succeeded_option_weight, best_succeeded_option_count) =
+            match vote_threshold {
+                VoteThreshold::YesVotePercentage(_) => {
+                    self.resolve_min_vote_threshold_options(min_vote_threshold_weight)
+                }
+                VoteThreshold::AttendanceQuorum {
+                    threshold: _,
+                    pass_level,
+                } => {
+                    // first pass quorum on approve vote weight of the whole proposal
+                    // second verify pass_level for particular option to succeed
+                    if self.approve_vote_weight + self.deny_vote_weight.unwrap_or(0)
+                        >= min_vote_threshold_weight
+                    {
+                        let pass_level_vote_threshold_weight = get_min_vote_threshold_weight(
+                            &VoteThreshold::AttendanceQuorum {
+                                threshold: (*pass_level as u16) * 100,
+                                pass_level: 0,
+                            },
+                            max_vote_weight,
+                        )
+                        .unwrap();
+                        self.resolve_min_vote_threshold_options(pass_level_vote_threshold_weight)
+                    } else {
+                        self.options
+                            .iter_mut()
+                            .for_each(|o| o.vote_result = OptionVoteResult::Defeated);
+                        SucceededOptionsData(0, 0)
+                    }
+                }
+                _ => {
+                    // this should not happen
+                    // what are the supported vote thresholds have been handled before
+                    return Err(ProgramError::InvalidArgument);
+                }
+            };
 
         let mut final_state = if best_succeeded_option_count == 0 {
             // If none of the individual options succeeded then the proposal as a whole is defeated
@@ -655,8 +709,29 @@ impl ProposalV2 {
         vote_threshold: &VoteThreshold,
         vote_kind: &VoteKind,
     ) -> Option<ProposalState> {
-        let min_vote_threshold_weight =
+        let mut min_vote_threshold_weight =
             get_min_vote_threshold_weight(vote_threshold, max_voter_weight).unwrap();
+
+        if let VoteThreshold::AttendanceQuorum {
+            threshold: _,
+            pass_level,
+        } = *vote_threshold
+        {
+            // if all votes weight exceeds the quorum size then pass_level is used to calculate
+            // the minimal vote threshold weight that's needed to tip the vote
+            if self.approve_vote_weight + self.deny_vote_weight.unwrap_or(0)
+                >= min_vote_threshold_weight
+            {
+                min_vote_threshold_weight = get_min_vote_threshold_weight(
+                    &VoteThreshold::AttendanceQuorum {
+                        threshold: (pass_level as u16) * 100,
+                        pass_level: 0,
+                    },
+                    max_voter_weight,
+                )
+                .unwrap();
+            }
+        };
 
         match vote_kind {
             VoteKind::Electorate => self.try_get_tipped_electorate_vote_state(
@@ -1016,26 +1091,30 @@ fn get_min_vote_threshold_weight(
     vote_threshold: &VoteThreshold,
     max_voter_weight: u64,
 ) -> Result<u64, ProgramError> {
-    let yes_vote_threshold_percentage = match vote_threshold {
+    let threshold_basis_points: u16 = match vote_threshold {
         VoteThreshold::YesVotePercentage(yes_vote_threshold_percentage) => {
-            *yes_vote_threshold_percentage
+            (*yes_vote_threshold_percentage as u16) * 100
         }
+        VoteThreshold::AttendanceQuorum {
+            threshold,
+            pass_level: _,
+        } => *threshold,
         _ => {
             return Err(GovernanceError::VoteThresholdTypeNotSupported.into());
         }
     };
 
-    let numerator = (yes_vote_threshold_percentage as u128)
+    let numerator = (threshold_basis_points as u128)
         .checked_mul(max_voter_weight as u128)
         .unwrap();
 
-    let mut yes_vote_threshold = numerator.checked_div(100).unwrap();
+    let mut threshold = numerator.checked_div(10000).unwrap();
 
-    if yes_vote_threshold.checked_mul(100).unwrap() < numerator {
-        yes_vote_threshold = yes_vote_threshold.checked_add(1).unwrap();
+    if threshold.checked_mul(10000).unwrap() < numerator {
+        threshold = threshold.checked_add(1).unwrap();
     }
 
-    Ok(yes_vote_threshold as u64)
+    Ok(threshold as u64)
 }
 
 /// Deserializes Proposal account and checks owner program
@@ -1095,7 +1174,10 @@ pub fn get_proposal_data(
             vote_threshold: proposal_data_v1.vote_threshold,
             name: proposal_data_v1.name,
             description_link: proposal_data_v1.description_link,
-            reserved: [0; 64],
+            approve_vote_weight: 0,
+            reserved: [0; 32],
+            reserved2: [0; 16],
+            reserved3: [0; 8],
             reserved1: 0,
         });
     }
@@ -1247,13 +1329,16 @@ mod test {
             deny_vote_weight: Some(0),
             abstain_vote_weight: Some(0),
             veto_vote_weight: 0,
+            approve_vote_weight: 0,
 
             execution_flags: InstructionExecutionFlags::Ordered,
 
             max_voting_time: Some(0),
             vote_threshold: Some(VoteThreshold::YesVotePercentage(100)),
 
-            reserved: [0; 64],
+            reserved: [0; 32],
+            reserved2: [0; 16],
+            reserved3: [0; 8],
             reserved1: 0,
         }
     }
@@ -1986,6 +2071,51 @@ mod test {
         assert_eq!(proposal.max_vote_weight, Some(100));
     }
 
+    proptest! {
+        #[test]
+        fn test_finalize_vote_with_quorum_attendance(
+            (yes_votes_count, no_votes_count, governing_token_supply, yes_vote_threshold_percentage) in full_vote_results(),
+
+        ) {
+            // Arrange
+            let mut proposal = create_test_proposal();
+
+            proposal.options[0].vote_weight = yes_votes_count;
+            proposal.deny_vote_weight = Some(no_votes_count.min(governing_token_supply-yes_votes_count));
+
+            proposal.state = ProposalState::Voting;
+
+
+            let governance_config = create_test_governance_config();
+            let  yes_vote_threshold_percentage = VoteThreshold::YesVotePercentage(yes_vote_threshold_percentage);
+
+
+            let current_timestamp = 16_i64;
+
+            let realm = create_test_realm();
+            let governing_token_mint = proposal.governing_token_mint;
+            let vote_kind = VoteKind::Electorate;
+
+            let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,&governing_token_mint,governing_token_supply,&vote_kind).unwrap();
+            let vote_threshold = yes_vote_threshold_percentage.clone();
+
+            // Act
+            proposal.finalize_vote(max_voter_weight, &governance_config,current_timestamp,&vote_threshold).unwrap();
+
+            // Assert
+            let no_vote_weight = proposal.deny_vote_weight.unwrap();
+
+            let yes_vote_threshold_count = get_min_vote_threshold_weight(&yes_vote_threshold_percentage,governing_token_supply).unwrap();
+
+            if yes_votes_count >= yes_vote_threshold_count &&  yes_votes_count > no_vote_weight
+            {
+                assert_eq!(proposal.state,ProposalState::Succeeded);
+            } else {
+                assert_eq!(proposal.state,ProposalState::Defeated);
+            }
+        }
+    }
+
     #[test]
     fn test_try_tip_vote_with_reduced_absolute_community_mint_max_vote_weight() {
         // Arrange
@@ -2533,7 +2663,7 @@ mod test {
         let vote = Vote::Approve(choices.clone());
 
         // Ensure
-        assert!(proposal.options.len() != choices.len());
+        assert_ne!(proposal.options.len(), choices.len());
 
         // Act
         let result = proposal.assert_valid_vote(&vote);

@@ -143,7 +143,7 @@ impl Default for ProposalState {
 
 /// The type of the vote threshold used to resolve a vote on a Proposal
 ///
-/// Note: In the current version only YesVotePercentage and Disabled thresholds are supported
+/// Note: In the current version only YesVotePercentage, AttendanceQuorum and Disabled thresholds are supported
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoteThreshold {
     /// Voting threshold of Yes votes in % required to tip the vote (Approval Quorum)
@@ -152,11 +152,19 @@ pub enum VoteThreshold {
     /// In other words a '+1 vote' tie breaker is always required to have a successful vote
     YesVotePercentage(u8),
 
-    /// The minimum number of votes in % out of the entire pool of governance tokens eligible to vote
-    /// which must be cast for the vote to be valid
-    /// Once the quorum is achieved a simple majority (50%+1) of Yes votes is required for the vote to succeed
-    /// Note: Quorum is not implemented in the current version
-    QuorumPercentage(u8),
+    /// The minimum number of votes in basis points (1/10000) out of the entire pool of governance tokens eligible to vote
+    /// which must be cast for the proposal to be considered valid.
+    /// Once the quorum is achieved then pass level (in %) has to be casted for an option to succeed,
+    /// if defined to 50% it's a simple majority (50%+1) of Yes votes for the option to succeed
+    AttendanceQuorum {
+        #[allow(dead_code)]
+        /// The minimum number of votes in basis points (1/10000) out of the entire pool of governance tokens eligible to vote
+        /// which must be cast for the proposal being considered as successful
+        threshold: u16,
+        #[allow(dead_code)]
+        /// The minimum number of Yes votes in % required to be voted on an option for an option being successful
+        pass_level: u8,
+    },
 
     /// Disabled vote threshold indicates the given voting population (community or council) is not allowed to vote
     /// on proposals for the given Governance

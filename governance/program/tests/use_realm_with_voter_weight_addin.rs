@@ -189,6 +189,7 @@ async fn test_cast_vote_with_voter_weight_addin() {
         .await;
 
     assert_eq!(120, proposal_account.options[0].vote_weight);
+    assert_eq!(120, proposal_account.approve_vote_weight);
 }
 
 #[tokio::test]

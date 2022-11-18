@@ -147,7 +147,7 @@ pub fn process_instruction(
         GovernanceInstruction::CreateProposal {
             name,
             description_link,
-            vote_type: proposal_type,
+            vote_type,
             options,
             use_deny_option,
             proposal_seed,
@@ -156,7 +156,7 @@ pub fn process_instruction(
             accounts,
             name,
             description_link,
-            proposal_type,
+            vote_type,
             options,
             use_deny_option,
             proposal_seed,

@@ -99,6 +99,7 @@ async fn test_set_governance_config_with_governance_must_sign_error() {
     let mut set_governance_config_ix = set_governance_config(
         &governance_test.program_id,
         &realm_cookie.address,
+        &governance_test.bench.payer.pubkey(),
         new_governance_config.clone(),
     );
 
@@ -129,6 +130,7 @@ async fn test_set_governance_config_with_fake_governance_signer_error() {
     let mut set_governance_config_ix = set_governance_config(
         &governance_test.program_id,
         &realm_cookie.address,
+        &governance_test.bench.payer.pubkey(),
         new_governance_config.clone(),
     );
 
@@ -197,6 +199,7 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
     let mut set_governance_config_ix = set_governance_config(
         &governance_test.program_id,
         &governance_cookie2.address,
+        &governance_test.bench.payer.pubkey(),
         new_governance_config,
     );
 

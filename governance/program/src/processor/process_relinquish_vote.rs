@@ -86,6 +86,10 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
                         .checked_sub(choice.get_choice_weight(vote_record_data.voter_weight)?)
                         .unwrap();
                 }
+                proposal_data.approve_vote_weight = proposal_data
+                    .approve_vote_weight
+                    .checked_sub(vote_record_data.voter_weight)
+                    .unwrap();
             }
             Vote::Deny => {
                 proposal_data.deny_vote_weight = Some(

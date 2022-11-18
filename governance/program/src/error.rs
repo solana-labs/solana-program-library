@@ -498,6 +498,14 @@ pub enum GovernanceError {
     /// Invalid multi choice proposal parameters
     #[error("Invalid multi choice proposal parameters")]
     InvalidMultiChoiceProposalParameters, // 620
+
+    /// Invalid Governance config: Vote threshold basis points out of range"
+    #[error("Invalid Governance config: Vote threshold basis points out of range")]
+    InvalidVoteThresholdBasisPoints, // 621
+
+    /// Failed to calculate governance data size
+    #[error("Failed to calculate governance data size")]
+    CannotCalculateSizeOfGovernanceData, // 622
 }
 
 impl PrintProgramError for GovernanceError {

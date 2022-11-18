@@ -605,6 +605,7 @@ async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_succ
         OptionVoteResult::Defeated,
         proposal_account.options[2].vote_result
     );
+    assert_eq!(100 + 100, proposal_account.approve_vote_weight);
 }
 
 #[tokio::test]

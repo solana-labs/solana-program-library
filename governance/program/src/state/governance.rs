@@ -13,7 +13,7 @@ use crate::{
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
-    account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
+    account_info::AccountInfo, msg, program_error::ProgramError, program_pack::IsInitialized,
     pubkey::Pubkey, rent::Rent,
 };
 use spl_governance_tools::{
@@ -116,7 +116,7 @@ pub struct GovernanceV2 {
 
 impl AccountMaxSize for GovernanceV2 {
     fn get_max_size(&self) -> Option<usize> {
-        Some(236)
+        Some(244)
     }
 }
 
@@ -277,7 +277,7 @@ impl GovernanceV2 {
         // If the Governance account is GovernanceV1 reallocate its size and change type to GovernanceV2
         if let Some(governance_v2_type) = try_get_governance_v2_type_for_v1(&self.account_type) {
             // Change type to GovernanceV2
-            // Note: Only type change is required because the account data was translated to GovernanceV2 during deserialisation
+            // Note: Only type change is required because the account data was translated to GovernanceV2 during deserialization
             self.account_type = governance_v2_type;
 
             extend_account_size(
@@ -611,8 +611,17 @@ pub fn assert_is_valid_vote_threshold(vote_threshold: &VoteThreshold) -> Result<
                 return Err(GovernanceError::InvalidVoteThresholdPercentage.into());
             }
         }
-        VoteThreshold::QuorumPercentage(_) => {
-            return Err(GovernanceError::VoteThresholdTypeNotSupported.into());
+        VoteThreshold::AttendanceQuorum {
+            threshold,
+            pass_level,
+        } => {
+            if !(0..=10000).contains(&threshold) {
+                return Err(GovernanceError::InvalidVoteThresholdBasisPoints.into());
+            }
+            if !(1..=100).contains(&pass_level) {
+                msg!("pass_level has to be in interval [1,100]");
+                return Err(GovernanceError::InvalidVoteThresholdPercentage.into());
+            }
         }
         VoteThreshold::Disabled => {}
     }
@@ -628,16 +637,28 @@ mod test {
 
     fn create_test_governance_config() -> GovernanceConfig {
         GovernanceConfig {
-            community_vote_threshold: VoteThreshold::YesVotePercentage(60),
+            community_vote_threshold: VoteThreshold::AttendanceQuorum {
+                threshold: 1000,
+                pass_level: 99,
+            },
             min_community_weight_to_create_proposal: 5,
             min_transaction_hold_up_time: 10,
             voting_base_time: 5,
             community_vote_tipping: VoteTipping::Strict,
-            council_vote_threshold: VoteThreshold::YesVotePercentage(60),
-            council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
+            council_vote_threshold: VoteThreshold::AttendanceQuorum {
+                threshold: 1000,
+                pass_level: 99,
+            },
+            council_veto_vote_threshold: VoteThreshold::AttendanceQuorum {
+                threshold: 1000,
+                pass_level: 99,
+            },
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
-            community_veto_vote_threshold: VoteThreshold::YesVotePercentage(40),
+            community_veto_vote_threshold: VoteThreshold::AttendanceQuorum {
+                threshold: 1000,
+                pass_level: 99,
+            },
             voting_cool_off_time: 2,
             deposit_exempt_proposal_count: 0,
         }
@@ -686,7 +707,7 @@ mod test {
         let size = governance.try_to_vec().unwrap().len();
 
         // Assert
-        assert_eq!(108, size);
+        assert_eq!(116, size);
     }
 
     #[test]
@@ -958,5 +979,73 @@ mod test {
             err,
             GovernanceError::InvalidDepositExemptProposalCount.into()
         );
+    }
+
+    #[test]
+    fn test_assert_config_quorum_vote_threshold() {
+        // Arrange
+        let governance_config = GovernanceConfig {
+            community_vote_threshold: VoteThreshold::AttendanceQuorum {
+                threshold: 0,
+                pass_level: 1,
+            },
+            council_vote_threshold: VoteThreshold::AttendanceQuorum {
+                threshold: 10000,
+                pass_level: 100,
+            },
+            council_veto_vote_threshold: VoteThreshold::AttendanceQuorum {
+                threshold: 1,
+                pass_level: 1,
+            },
+            community_veto_vote_threshold: VoteThreshold::AttendanceQuorum {
+                threshold: 9999,
+                pass_level: 99,
+            },
+            voting_cool_off_time: 0,
+            min_community_weight_to_create_proposal: 1,
+            min_transaction_hold_up_time: 1,
+            council_vote_tipping: VoteTipping::Strict,
+            min_council_weight_to_create_proposal: 1,
+            community_vote_tipping: VoteTipping::Strict,
+            voting_base_time: 0,
+            deposit_exempt_proposal_count: 0,
+        };
+
+        // Act
+        assert_is_valid_governance_config(&governance_config).unwrap();
+    }
+
+    #[test]
+    fn test_assert_invalid_quorum_attendance_threshold_over_threshold_basis_points_error() {
+        // Arrange
+        let vote_threshold = VoteThreshold::AttendanceQuorum {
+            threshold: 10001,
+            pass_level: 100,
+        };
+
+        // Act
+        let err = assert_is_valid_vote_threshold(&vote_threshold)
+            .err()
+            .unwrap();
+
+        // Assert
+        assert_eq!(err, GovernanceError::InvalidVoteThresholdBasisPoints.into());
+    }
+
+    #[test]
+    fn test_assert_invalid_quorum_attendance_threshold_over_pass_level_percentage_error() {
+        // Arrange
+        let vote_threshold = VoteThreshold::AttendanceQuorum {
+            threshold: 10000,
+            pass_level: 101,
+        };
+
+        // Act
+        let err = assert_is_valid_vote_threshold(&vote_threshold)
+            .err()
+            .unwrap();
+
+        // Assert
+        assert_eq!(err, GovernanceError::InvalidVoteThresholdPercentage.into());
     }
 }

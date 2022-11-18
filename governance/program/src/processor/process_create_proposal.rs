@@ -156,12 +156,15 @@ pub fn process_create_proposal(
 
         veto_vote_weight: 0,
         abstain_vote_weight: None,
+        approve_vote_weight: 0,
 
         max_vote_weight: None,
         max_voting_time: None,
         vote_threshold: None,
 
-        reserved: [0; 64],
+        reserved: [0; 32],
+        reserved2: [0; 16],
+        reserved3: [0; 8],
         reserved1: 0,
     };
 

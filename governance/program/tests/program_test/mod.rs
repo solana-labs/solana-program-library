@@ -1967,6 +1967,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    #[allow(clippy::too_many_arguments)]
     pub async fn with_proposal_using_instruction_impl<F: Fn(&mut Instruction)>(
         &mut self,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
@@ -2062,13 +2063,16 @@ impl GovernanceProgramTest {
 
             veto_vote_weight: 0,
             abstain_vote_weight: None,
+            approve_vote_weight: 0,
 
             execution_flags: InstructionExecutionFlags::None,
             max_vote_weight: None,
             max_voting_time: None,
             vote_threshold: None,
 
-            reserved: [0; 64],
+            reserved: [0; 32],
+            reserved2: [0; 16],
+            reserved3: [0; 8],
             reserved1: 0,
         };
 
@@ -2505,6 +2509,7 @@ impl GovernanceProgramTest {
         let mut set_governance_config_ix = set_governance_config(
             &self.program_id,
             &proposal_cookie.account.governance,
+            &self.bench.payer.pubkey(),
             governance_config.clone(),
         );
 
