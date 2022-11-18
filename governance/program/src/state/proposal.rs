@@ -264,6 +264,7 @@ impl ProposalV2 {
     pub fn assert_can_cast_vote(
         &self,
         config: &GovernanceConfig,
+        vote: &Vote,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         self.assert_is_voting_state()
@@ -274,7 +275,21 @@ impl ProposalV2 {
             return Err(GovernanceError::ProposalVotingTimeExpired.into());
         }
 
-        Ok(())
+        match vote {
+            // Once in the voting cool off time approving votes are no longer accepted
+            // Abstain is considered as positive vote because when attendance quorum is used it can tip the scales
+            Vote::Approve(_) | Vote::Abstain => {
+                if self.vote_end_time(config) - (config.voting_cool_off_time as i64)
+                    < current_unix_timestamp
+                {
+                    Err(GovernanceError::ProposalVotingTimeExpired.into())
+                } else {
+                    Ok(())
+                }
+            }
+            // Within voting cool off time only counter votes are allowed
+            Vote::Deny | Vote::Veto => Ok(()),
+        }
     }
 
     /// Vote end time determined by the configured max_voting_time period
@@ -1177,7 +1192,8 @@ mod test {
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(40),
-            reserved: [0; 5],
+            reserved: 0,
+            voting_cool_off_time: 0,
         }
     }
 
@@ -2227,9 +2243,11 @@ mod test {
         let current_timestamp =
             proposal.voting_at.unwrap() + governance_config.max_voting_time as i64 + 1;
 
+        let vote = Vote::Approve(vec![]);
+
         // Act
         let err = proposal
-            .assert_can_cast_vote(&governance_config, current_timestamp)
+            .assert_can_cast_vote(&governance_config, &vote, current_timestamp)
             .err()
             .unwrap();
 
@@ -2247,8 +2265,10 @@ mod test {
         let current_timestamp =
             proposal.voting_at.unwrap() + governance_config.max_voting_time as i64;
 
+        let vote = Vote::Approve(vec![]);
+
         // Act
-        let result = proposal.assert_can_cast_vote(&governance_config, current_timestamp);
+        let result = proposal.assert_can_cast_vote(&governance_config, &vote, current_timestamp);
 
         // Assert
         assert_eq!(result, Ok(()));

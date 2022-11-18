@@ -55,8 +55,11 @@ pub struct GovernanceConfig {
     /// The threshold for Community Veto votes
     pub community_veto_vote_threshold: VoteThreshold,
 
+    /// Voting cool of time
+    pub voting_cool_off_time: u32,
+
     /// Reserved space for future versions
-    pub reserved: [u8; 5],
+    pub reserved: u8,
 }
 
 /// Governance Account
@@ -178,7 +181,7 @@ impl GovernanceV2 {
         } else if is_governance_v1_account_type(&self.account_type) {
             // V1 account can't be resized and we have to translate it back to the original format
 
-            // If reserved_v2 is used it must be individually assesed for v1 backward compatibility impact
+            // If reserved_v2 is used it must be individually assessed for v1 backward compatibility impact
             if self.reserved_v2 != [0; 128] {
                 panic!("Extended data not supported by GovernanceV1")
             }
@@ -310,7 +313,8 @@ pub fn get_governance_data(
         governance_data.config.community_veto_vote_threshold = VoteThreshold::Disabled;
 
         // Reset reserved space previously used for voting_proposal_count
-        governance_data.config.reserved = [0; 5];
+        governance_data.config.voting_cool_off_time = 0;
+        governance_data.config.reserved = 0;
     }
 
     Ok(governance_data)
@@ -516,7 +520,8 @@ mod test {
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(40),
-            reserved: [0; 5],
+            reserved: 0,
+            voting_cool_off_time: 2,
         }
     }
 
@@ -621,7 +626,8 @@ mod test {
             governance.config.community_vote_tipping
         );
 
-        assert_eq!(governance.config.reserved, [0; 5]);
+        assert_eq!(governance.config.reserved, 0);
+        assert_eq!(governance.config.voting_cool_off_time, 0);
     }
 
     #[test]
@@ -638,7 +644,8 @@ mod test {
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            reserved: [0; 5],
+            reserved: 0,
+            voting_cool_off_time: 1,
         };
 
         // Act
@@ -664,7 +671,8 @@ mod test {
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            reserved: [0; 5],
+            reserved: 0,
+            voting_cool_off_time: 1,
         };
 
         // Act
@@ -690,7 +698,8 @@ mod test {
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            reserved: [0; 5],
+            reserved: 0,
+            voting_cool_off_time: 1,
         };
 
         // Act
@@ -716,7 +725,8 @@ mod test {
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            reserved: [0; 5],
+            reserved: 0,
+            voting_cool_off_time: 1,
         };
 
         // Act
@@ -742,7 +752,8 @@ mod test {
             min_council_weight_to_create_proposal: 1,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(0),
             community_vote_tipping: VoteTipping::Strict,
-            reserved: [0; 5],
+            reserved: 0,
+            voting_cool_off_time: 1,
         };
 
         // Act
