@@ -29,7 +29,7 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
 
     let mut realm_data = get_realm_data(program_id, realm_info)?;
 
-    let mut governance_data =
+    let _governance_data =
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
     let mut proposal_data =
@@ -88,12 +88,6 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
 
     realm_data.voting_proposal_count = realm_data.voting_proposal_count.checked_add(1).unwrap();
     realm_data.serialize(&mut *realm_info.data.borrow_mut())?;
-
-    governance_data.voting_proposal_count = governance_data
-        .voting_proposal_count
-        .checked_add(1)
-        .unwrap();
-    governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
 
     Ok(())
 }

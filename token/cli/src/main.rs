@@ -43,7 +43,7 @@ use spl_token_2022::{
         memo_transfer::MemoTransfer,
         mint_close_authority::MintCloseAuthority,
         transfer_fee::{TransferFeeAmount, TransferFeeConfig},
-        ExtensionType, StateWithExtensionsOwned,
+        BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
     },
     instruction::*,
     state::{Account, AccountState, Mint},
@@ -70,13 +70,13 @@ use bench::*;
 pub const OWNER_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
     name: "owner",
     long: "owner",
-    help: "Address of the token's owner. Defaults to the client keypair address.",
+    help: "Address of the primary authority controlling a mint or account. Defaults to the client keypair address.",
 };
 
 pub const OWNER_KEYPAIR_ARG: ArgConstant<'static> = ArgConstant {
     name: "owner",
     long: "owner",
-    help: "Keypair of the token's owner. Defaults to the client keypair.",
+    help: "Keypair of the primary authority controlling a mint or account. Defaults to the client keypair.",
 };
 
 pub const MINT_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
@@ -751,6 +751,7 @@ async fn command_authorize(
         AuthorityType::TransferFeeConfig => "transfer fee authority",
         AuthorityType::WithheldWithdraw => "withdraw withheld authority",
         AuthorityType::InterestRate => "interest rate authority",
+        AuthorityType::PermanentDelegate => "permanent delegate",
     };
 
     let (mint_pubkey, previous_authority) = if !config.sign_only {
@@ -788,6 +789,7 @@ async fn command_authorize(
                         Err(format!("Mint `{}` is not interest-bearing", account))
                     }
                 }
+                AuthorityType::PermanentDelegate => unimplemented!(),
             }?;
 
             Ok((account, previous_authority))
@@ -820,7 +822,8 @@ async fn command_authorize(
                 | AuthorityType::CloseMint
                 | AuthorityType::TransferFeeConfig
                 | AuthorityType::WithheldWithdraw
-                | AuthorityType::InterestRate => Err(format!(
+                | AuthorityType::InterestRate
+                | AuthorityType::PermanentDelegate => Err(format!(
                     "Authority type `{}` not supported for SPL Token accounts",
                     auth_str
                 )),
@@ -1352,13 +1355,8 @@ async fn command_wrap(
     let lamports = sol_to_lamports(sol);
     let token = native_token_client_from_config(config)?;
 
-    let account = wrapped_sol_account.unwrap_or_else(|| {
-        get_associated_token_address_with_program_id(
-            &wallet_address,
-            token.get_address(),
-            &config.program_id,
-        )
-    });
+    let account =
+        wrapped_sol_account.unwrap_or_else(|| token.get_associated_token_address(&wallet_address));
 
     println_display(config, format!("Wrapping {} SOL into {}", sol, account));
 
@@ -1411,13 +1409,8 @@ async fn command_unwrap(
     let use_associated_account = maybe_account.is_none();
     let token = native_token_client_from_config(config)?;
 
-    let account = maybe_account.unwrap_or_else(|| {
-        get_associated_token_address_with_program_id(
-            &wallet_address,
-            token.get_address(),
-            &config.program_id,
-        )
-    });
+    let account =
+        maybe_account.unwrap_or_else(|| token.get_associated_token_address(&wallet_address));
 
     println_display(config, format!("Unwrapping {}", account));
 
@@ -2710,7 +2703,7 @@ fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("recipient")
                         .validator(is_valid_pubkey)
-                        .value_name("RECIPIENT_ADDRESS or RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
+                        .value_name("RECIPIENT_WALLET_ADDRESS or RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(3)
                         .required(true)
@@ -2845,8 +2838,19 @@ fn app<'a, 'b>(
                         .validator(is_valid_pubkey)
                         .value_name("RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
+                        .conflicts_with("recipient_owner")
                         .index(3)
-                        .help("The token account address of recipient [default: associated token account for --owner]"),
+                        .help("The token account address of recipient \
+                            [default: associated token account for --mint-authority]"),
+                )
+                .arg(
+                    Arg::with_name("recipient_owner")
+                        .long("recipient-owner")
+                        .validator(is_valid_pubkey)
+                        .value_name("RECIPIENT_WALLET_ADDRESS")
+                        .takes_value(true)
+                        .conflicts_with("recipient")
+                        .help("The owner of the recipient associated token account"),
                 )
                 .arg(
                     Arg::with_name("mint_authority")
@@ -2994,6 +2998,7 @@ fn app<'a, 'b>(
                              Defaults to the client keypair."
                         ),
                 )
+                .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args(),
@@ -3068,7 +3073,6 @@ fn app<'a, 'b>(
                         .help("Token of the associated account to close. \
                               To close a specific account, use the `--address` parameter instead"),
                 )
-                .arg(owner_address_arg())
                 .arg(
                     Arg::with_name("recipient")
                         .long("recipient")
@@ -3101,6 +3105,7 @@ fn app<'a, 'b>(
                         .help("Specify the token account to close \
                             [default: owner's associated token account]"),
                 )
+                .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
         )
@@ -3116,7 +3121,6 @@ fn app<'a, 'b>(
                         .required(true)
                         .help("Token to close"),
                 )
-                .arg(owner_address_arg())
                 .arg(
                     Arg::with_name("recipient")
                         .long("recipient")
@@ -3137,6 +3141,7 @@ fn app<'a, 'b>(
                             Defaults to the client keypair.",
                         ),
                 )
+                .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .offline_args(),
@@ -3719,6 +3724,7 @@ async fn process_command<'a>(
                 "transfer-fee-config" => AuthorityType::TransferFeeConfig,
                 "withheld-withdraw" => AuthorityType::WithheldWithdraw,
                 "interest-rate" => AuthorityType::InterestRate,
+                "permanent-delegate" => AuthorityType::PermanentDelegate,
                 _ => unreachable!(),
             };
 
@@ -3838,6 +3844,10 @@ async fn process_command<'a>(
                 pubkey_of_signer(arg_matches, "recipient", &mut wallet_manager).unwrap()
             {
                 address
+            } else if let Some(address) =
+                pubkey_of_signer(arg_matches, "recipient_owner", &mut wallet_manager).unwrap()
+            {
+                get_associated_token_address_with_program_id(&address, &token, &config.program_id)
             } else {
                 let owner = config.default_signer()?.pubkey();
                 config.associated_token_address_for_token_and_program(
@@ -4786,21 +4796,74 @@ mod tests {
             let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
             let account = create_associated_account(&config, &payer, token).await;
-            let result = process_test_command(
+            let mut amount = 0;
+
+            // mint via implicit owner
+            process_test_command(
                 &config,
                 &payer,
                 &[
                     "spl-token",
                     CommandName::Mint.into(),
                     &token.to_string(),
-                    "100",
+                    "1",
                 ],
             )
-            .await;
-            result.unwrap();
-            let account = config.rpc_client.get_account(&account).await.unwrap();
-            let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
-            assert_eq!(token_account.base.amount, 100);
+            .await
+            .unwrap();
+            amount += 1;
+
+            let account_data = config.rpc_client.get_account(&account).await.unwrap();
+            let token_account =
+                StateWithExtensionsOwned::<Account>::unpack(account_data.data).unwrap();
+            assert_eq!(token_account.base.amount, amount);
+            assert_eq!(token_account.base.mint, token);
+            assert_eq!(token_account.base.owner, payer.pubkey());
+
+            // mint via explicit recipient
+            process_test_command(
+                &config,
+                &payer,
+                &[
+                    "spl-token",
+                    CommandName::Mint.into(),
+                    &token.to_string(),
+                    "1",
+                    &account.to_string(),
+                ],
+            )
+            .await
+            .unwrap();
+            amount += 1;
+
+            let account_data = config.rpc_client.get_account(&account).await.unwrap();
+            let token_account =
+                StateWithExtensionsOwned::<Account>::unpack(account_data.data).unwrap();
+            assert_eq!(token_account.base.amount, amount);
+            assert_eq!(token_account.base.mint, token);
+            assert_eq!(token_account.base.owner, payer.pubkey());
+
+            // mint via explicit owner
+            process_test_command(
+                &config,
+                &payer,
+                &[
+                    "spl-token",
+                    CommandName::Mint.into(),
+                    &token.to_string(),
+                    "1",
+                    "--recipient-owner",
+                    &payer.pubkey().to_string(),
+                ],
+            )
+            .await
+            .unwrap();
+            amount += 1;
+
+            let account_data = config.rpc_client.get_account(&account).await.unwrap();
+            let token_account =
+                StateWithExtensionsOwned::<Account>::unpack(account_data.data).unwrap();
+            assert_eq!(token_account.base.amount, amount);
             assert_eq!(token_account.base.mint, token);
             assert_eq!(token_account.base.owner, payer.pubkey());
         }
@@ -5233,6 +5296,73 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(ui_account.token_amount.amount, "90");
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn close_account() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+
+            let native_mint = Token::new_native(
+                config.program_client.clone(),
+                program_id,
+                config.fee_payer().unwrap().clone(),
+            );
+            do_create_native_mint(&config, program_id, &payer).await;
+            native_mint
+                .get_or_create_associated_account_info(&payer.pubkey())
+                .await
+                .unwrap();
+
+            let token = create_token(&config, &payer).await;
+
+            let system_recipient = Keypair::new().pubkey();
+            let wsol_recipient = native_mint.get_associated_token_address(&payer.pubkey());
+
+            let token_rent_amount = config
+                .rpc_client
+                .get_account(&create_auxiliary_account(&config, &payer, token).await)
+                .await
+                .unwrap()
+                .lamports;
+
+            for recipient in [system_recipient, wsol_recipient] {
+                let base_balance = config
+                    .rpc_client
+                    .get_account(&recipient)
+                    .await
+                    .map(|account| account.lamports)
+                    .unwrap_or(0);
+
+                let source = create_auxiliary_account(&config, &payer, token).await;
+
+                process_test_command(
+                    &config,
+                    &payer,
+                    &[
+                        "spl-token",
+                        CommandName::Close.into(),
+                        "--address",
+                        &source.to_string(),
+                        "--recipient",
+                        &recipient.to_string(),
+                    ],
+                )
+                .await
+                .unwrap();
+
+                let recipient_data = config.rpc_client.get_account(&recipient).await.unwrap();
+
+                assert_eq!(recipient_data.lamports, base_balance + token_rent_amount);
+                if recipient == wsol_recipient {
+                    let recipient_account =
+                        StateWithExtensionsOwned::<Account>::unpack(recipient_data.data).unwrap();
+                    assert_eq!(recipient_account.base.amount, token_rent_amount);
+                }
+            }
+        }
     }
 
     #[tokio::test]

@@ -110,8 +110,11 @@ pub struct ConfidentialTransferAccount {
     /// The decryptable available balance
     pub decryptable_available_balance: DecryptableBalance,
 
-    /// `pending_balance` may only be credited by `Deposit` or `Transfer` instructions if `true`
-    pub allow_balance_credits: PodBool,
+    /// If `false`, the extended account rejects any incoming confidential transfers
+    pub allow_confidential_credits: PodBool,
+
+    /// If `false`, the base account rejects any incoming transfers
+    pub allow_non_confidential_credits: PodBool,
 
     /// The total number of `Deposit` and `Transfer` instructions that have credited
     /// `pending_balance`
@@ -157,6 +160,16 @@ impl ConfidentialTransferAccount {
             Ok(())
         } else {
             Err(TokenError::ConfidentialTransferAccountHasBalance.into())
+        }
+    }
+
+    /// Check if a base account of a `ConfidentialTransferAccount` accepts non-confidential
+    /// transfers
+    pub fn non_confidential_transfer_allowed(&self) -> ProgramResult {
+        if bool::from(&self.allow_non_confidential_credits) {
+            Ok(())
+        } else {
+            Err(TokenError::NonConfidentialTransfersDisabled.into())
         }
     }
 }

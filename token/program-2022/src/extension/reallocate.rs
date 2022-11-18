@@ -1,7 +1,10 @@
 use {
     crate::{
         error::TokenError,
-        extension::{set_account_type, AccountType, ExtensionType, StateWithExtensions},
+        extension::{
+            set_account_type, AccountType, BaseStateWithExtensions, ExtensionType,
+            StateWithExtensions,
+        },
         processor::Processor,
         state::Account,
     },
