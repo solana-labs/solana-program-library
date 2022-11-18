@@ -61,12 +61,6 @@ async fn test_cancel_proposal() {
         .await;
 
     assert_eq!(0, realm_account.voting_proposal_count);
-
-    let governance_account = governance_test
-        .get_governance_account(&governance_cookie.address)
-        .await;
-
-    assert_eq!(0, governance_account.voting_proposal_count);
 }
 
 #[tokio::test]
@@ -158,7 +152,6 @@ async fn test_cancel_proposal_with_owner_or_delegate_must_sign_error() {
         .unwrap();
 
     // Assert
-
     assert_eq!(
         err,
         GovernanceError::GoverningTokenOwnerOrDelegateMustSign.into()
@@ -263,10 +256,4 @@ async fn test_cancel_proposal_in_voting_state() {
         .await;
 
     assert_eq!(0, realm_account.voting_proposal_count);
-
-    let governance_account = governance_test
-        .get_governance_account(&governance_cookie.address)
-        .await;
-
-    assert_eq!(0, governance_account.voting_proposal_count);
 }

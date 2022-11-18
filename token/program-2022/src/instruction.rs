@@ -610,6 +610,26 @@ pub enum TokenInstruction<'a> {
     /// See `extension::cpi_guard::instruction::CpiGuardInstruction` for
     /// further details about the extended instructions that share this instruction prefix
     CpiGuardExtension,
+    /// Initialize the permanent delegate on a new mint.
+    ///
+    /// Fails if the mint has already been initialized, so must be called before
+    /// `InitializeMint`.
+    ///
+    /// The mint must have exactly enough space allocated for the base mint (82
+    /// bytes), plus 83 bytes of padding, 1 byte reserved for the account type,
+    /// then space required for this extension, plus any others.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` The mint to initialize.
+    ///
+    /// Data expected by this instruction:
+    ///   Pubkey for the permanent delegate
+    ///
+    InitializePermanentDelegate {
+        /// Authority that may sign for `Transfer`s and `Burn`s on any account
+        delegate: Pubkey,
+    },
     /// Migrate Multisig Native instruction.
     ///
     /// This instruction transfers all the lamports from a Multisig account (apart from rent exemption)
@@ -746,7 +766,11 @@ impl<'a> TokenInstruction<'a> {
             32 => Self::InitializeNonTransferableMint,
             33 => Self::InterestBearingMintExtension,
             34 => Self::CpiGuardExtension,
-            35 => Self::MigrateMultisigLamports,
+            35 => {
+                let (delegate, _rest) = Self::unpack_pubkey(rest)?;
+                Self::InitializePermanentDelegate { delegate }
+            }
+            36 => Self::MigrateMultisigLamports,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -902,8 +926,12 @@ impl<'a> TokenInstruction<'a> {
             &Self::CpiGuardExtension => {
                 buf.push(34);
             }
-            &Self::MigrateMultisigLamports => {
+            &Self::InitializePermanentDelegate { ref delegate } => {
                 buf.push(35);
+                buf.extend_from_slice(delegate.as_ref());
+            }
+            &Self::MigrateMultisigLamports => {
+                buf.push(36);
             }
         };
         buf
@@ -986,6 +1014,8 @@ pub enum AuthorityType {
     CloseMint,
     /// Authority to set the interest rate
     InterestRate,
+    /// Authority to transfer or burn any tokens for a mint
+    PermanentDelegate,
 }
 
 impl AuthorityType {
@@ -999,6 +1029,7 @@ impl AuthorityType {
             AuthorityType::WithheldWithdraw => 5,
             AuthorityType::CloseMint => 6,
             AuthorityType::InterestRate => 7,
+            AuthorityType::PermanentDelegate => 8,
         }
     }
 
@@ -1012,6 +1043,7 @@ impl AuthorityType {
             5 => Ok(AuthorityType::WithheldWithdraw),
             6 => Ok(AuthorityType::CloseMint),
             7 => Ok(AuthorityType::InterestRate),
+            8 => Ok(AuthorityType::PermanentDelegate),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }
@@ -1762,6 +1794,23 @@ pub fn initialize_non_transferable_mint(
     })
 }
 
+/// Creates an `InitializePermanentDelegate` instruction
+pub fn initialize_permanent_delegate(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+    delegate: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new(*mint_pubkey, false)],
+        data: TokenInstruction::InitializePermanentDelegate {
+            delegate: *delegate,
+        }
+        .pack(),
+    })
+}
+
 /// Utility function that checks index is between MIN_SIGNERS and MAX_SIGNERS
 pub fn is_valid_signer_index(index: usize) -> bool {
     (MIN_SIGNERS..=MAX_SIGNERS).contains(&index)
@@ -2103,6 +2152,16 @@ mod test {
         let check = TokenInstruction::CreateNativeMint;
         let packed = check.pack();
         let expect = vec![31u8];
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializePermanentDelegate {
+            delegate: Pubkey::new(&[11u8; 32]),
+        };
+        let packed = check.pack();
+        let mut expect = vec![35u8];
+        expect.extend_from_slice(&[11u8; 32]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);

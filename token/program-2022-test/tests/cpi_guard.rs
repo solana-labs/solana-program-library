@@ -17,7 +17,7 @@ use {
         error::TokenError,
         extension::{
             cpi_guard::{self, CpiGuard},
-            ExtensionType,
+            BaseStateWithExtensions, ExtensionType,
         },
         instruction::{self, AuthorityType},
         processor::Processor as SplToken2022Processor,

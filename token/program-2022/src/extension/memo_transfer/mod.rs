@@ -1,7 +1,7 @@
 use {
     crate::{
         error::TokenError,
-        extension::{Extension, ExtensionType, StateWithExtensionsMut},
+        extension::{BaseStateWithExtensions, Extension, ExtensionType, StateWithExtensionsMut},
         pod::PodBool,
         state::Account,
     },

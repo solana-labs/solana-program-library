@@ -17,7 +17,9 @@ use {
     },
     spl_token_2022::{
         error::TokenError,
-        extension::{transfer_fee, ExtensionType, StateWithExtensionsOwned},
+        extension::{
+            transfer_fee, BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
+        },
         state::{Account, Mint},
     },
 };
