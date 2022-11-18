@@ -56,7 +56,7 @@ pub struct GovernanceConfig {
     pub community_veto_vote_threshold: VoteThreshold,
 
     /// Reserved space for future versions
-    pub reserved: [u8; 3],
+    pub reserved: [u8; 5],
 }
 
 /// Governance Account
@@ -84,9 +84,6 @@ pub struct GovernanceV2 {
 
     /// Governance config
     pub config: GovernanceConfig,
-
-    /// The number of proposals in voting state in the Governance
-    pub voting_proposal_count: u16,
 
     /// Reserved space for versions v2 and onwards
     /// Note: This space won't be available to v1 accounts until runtime supports resizing
@@ -192,8 +189,6 @@ impl GovernanceV2 {
                 governed_account: self.governed_account,
                 proposals_count: self.proposals_count,
                 config: self.config,
-                reserved: [0; 6],
-                voting_proposal_count: self.voting_proposal_count,
             };
 
             BorshSerialize::serialize(&governance_data_v1, writer)?;
@@ -284,8 +279,6 @@ pub fn get_governance_data(
             governed_account: governance_data_v1.governed_account,
             proposals_count: governance_data_v1.proposals_count,
             config: governance_data_v1.config,
-            voting_proposal_count: governance_data_v1.voting_proposal_count,
-
             // Add the extra reserved_v2 padding
             reserved_v2: [0; 128],
         }
@@ -313,8 +306,11 @@ pub fn get_governance_data(
         governance_data.config.council_vote_tipping =
             governance_data.config.community_vote_tipping.clone();
 
-        // For legacy accoutns set the community Veto threshold to Disabled
+        // For legacy accounts set the community Veto threshold to Disabled
         governance_data.config.community_veto_vote_threshold = VoteThreshold::Disabled;
+
+        // Reset reserved space previously used for voting_proposal_count
+        governance_data.config.reserved = [0; 5];
     }
 
     Ok(governance_data)
@@ -574,7 +570,7 @@ mod test {
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            reserved: [0; 3],
+            reserved: [0; 5],
         };
 
         // Act
@@ -600,7 +596,7 @@ mod test {
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            reserved: [0; 3],
+            reserved: [0; 5],
         };
 
         // Act
@@ -626,7 +622,7 @@ mod test {
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            reserved: [0; 3],
+            reserved: [0; 5],
         };
 
         // Act
@@ -652,7 +648,7 @@ mod test {
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(1),
-            reserved: [0; 3],
+            reserved: [0; 5],
         };
 
         // Act
@@ -678,7 +674,7 @@ mod test {
             min_council_weight_to_create_proposal: 1,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(0),
             community_vote_tipping: VoteTipping::Strict,
-            reserved: [0; 3],
+            reserved: [0; 5],
         };
 
         // Act

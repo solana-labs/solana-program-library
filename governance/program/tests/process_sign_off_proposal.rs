@@ -70,12 +70,6 @@ async fn test_sign_off_proposal() {
         .await;
 
     assert_eq!(1, realm_account.voting_proposal_count);
-
-    let governance_account = governance_test
-        .get_governance_account(&governance_cookie.address)
-        .await;
-
-    assert_eq!(1, governance_account.voting_proposal_count);
 }
 
 #[tokio::test]

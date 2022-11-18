@@ -67,7 +67,6 @@ pub fn process_create_token_governance(
         governed_account: *governed_token_info.key,
         config,
         proposals_count: 0,
-        voting_proposal_count: 0,
         reserved_v2: [0; 128],
     };
 
