@@ -4241,6 +4241,7 @@ async fn process_command<'a>(
                 bulk_signers,
             )
             .await
+        }
         (CommandName::MigrateMultisigLamports, arg_matches) => {
             let multisig = config
                 .pubkey_or_default(arg_matches, "multisig-address", &mut wallet_manager)
@@ -6359,7 +6360,10 @@ mod tests {
             u64::from(extension.newer_transfer_fee.maximum_fee),
             new_maximum_fee
         );
-        
+    }
+
+    #[tokio::test]
+    #[serial]
     async fn test_migrate_multisig_lamports() {
         let (test_validator, payer) = new_validator_for_test().await;
 
