@@ -12,6 +12,7 @@ use {
     solana_program_test::*,
     solana_sdk::{signature::Signer, transaction::TransactionError},
     spl_stake_pool::{error::StakePoolError, instruction, state, MINIMUM_RESERVE_LAMPORTS},
+    test_case::test_case,
 };
 
 #[tokio::test]
@@ -87,8 +88,11 @@ async fn fail_remove_validator() {
     );
 }
 
+#[test_case(1; "1 to 1")]
+#[test_case(5; "bigger multiple")]
+#[test_case(11; "biggest multiple")]
 #[tokio::test]
-async fn success_remove_validator() {
+async fn success_remove_validator(multiple: u64) {
     let (
         mut context,
         stake_pool_accounts,
@@ -99,10 +103,29 @@ async fn success_remove_validator() {
         _,
     ) = setup_for_withdraw(spl_token::id()).await;
 
+    // make pool tokens very valuable, so it isn't possible to exactly get down to the minimum
+    transfer(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        deposit_info.stake_lamports * multiple, // each pool token is worth more than one lamport
+    )
+    .await;
+    stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &[validator_stake.vote.pubkey()],
+            false,
+        )
+        .await;
+
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
 
-    // decrease all of stake
+    // decrease all of stake except for 7 lamports, should be withdrawable
     let error = stake_pool_accounts
         .decrease_validator_stake(
             &mut context.banks_client,
@@ -110,7 +133,7 @@ async fn success_remove_validator() {
             &context.last_blockhash,
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
-            deposit_info.stake_lamports + stake_rent,
+            deposit_info.stake_lamports + stake_rent - multiple,
             validator_stake.transient_stake_seed,
         )
         .await;
@@ -137,8 +160,23 @@ async fn success_remove_validator() {
     let validator_stake_account =
         get_account(&mut context.banks_client, &validator_stake.stake_account).await;
     let remaining_lamports = validator_stake_account.lamports;
+    let stake_minimum_delegation = stake_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
+    // make sure it's actually more than the minimum
+    assert_ne!(remaining_lamports, stake_rent + stake_minimum_delegation);
+
+    let stake_pool = stake_pool_accounts
+        .get_stake_pool(&mut context.banks_client)
+        .await;
+    // round up to force one more pool token than needed
+    let pool_tokens_post_fee =
+        remaining_lamports * stake_pool.pool_token_supply / stake_pool.total_lamports + 1;
     let new_user_authority = Pubkey::new_unique();
-    let pool_tokens = stake_pool_accounts.calculate_inverse_withdrawal_fee(remaining_lamports);
+    let pool_tokens = stake_pool_accounts.calculate_inverse_withdrawal_fee(pool_tokens_post_fee);
     let error = stake_pool_accounts
         .withdraw_stake(
             &mut context.banks_client,
@@ -548,7 +586,7 @@ async fn fail_withdraw_from_transient() {
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
 
-    // decrease to minimum stake + 1 lamport
+    // decrease to minimum stake + 2 lamports
     let error = stake_pool_accounts
         .decrease_validator_stake(
             &mut context.banks_client,
@@ -556,7 +594,7 @@ async fn fail_withdraw_from_transient() {
             &context.last_blockhash,
             &validator_stake_account.stake_account,
             &validator_stake_account.transient_stake_account,
-            deposit_info.stake_lamports + stake_rent - 1,
+            deposit_info.stake_lamports + stake_rent - 2,
             validator_stake_account.transient_stake_seed,
         )
         .await;
