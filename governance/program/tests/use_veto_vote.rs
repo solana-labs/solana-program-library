@@ -1004,7 +1004,7 @@ async fn test_cast_council_veto_vote_within_cool_off_time() {
         .await
         .unwrap();
 
-    // Advance timestamp past max_voting_time
+    // Advance timestamp into voting_cool_off_time
     let clock = governance_test.bench.get_clock().await;
 
     governance_test

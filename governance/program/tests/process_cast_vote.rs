@@ -1584,7 +1584,7 @@ async fn test_cast_approve_vote_with_cannot_vote_in_cool_off_time_error() {
         .await
         .unwrap();
 
-    // Advance timestamp past max_voting_time
+    // Advance timestamp into voting_cool_off_time
     let clock = governance_test.bench.get_clock().await;
 
     governance_test
