@@ -279,7 +279,7 @@ impl ProposalV2 {
             // Once in the voting cool off time approving votes are no longer accepted
             // Abstain is considered as positive vote because when attendance quorum is used it can tip the scales
             Vote::Approve(_) | Vote::Abstain => {
-                if self.vote_end_time(config) - (config.voting_cool_off_time as i64)
+                if self.expected_vote_end_time(config) - (config.voting_cool_off_time as i64)
                     < current_unix_timestamp
                 {
                     Err(GovernanceError::VoteNotAllowedInCoolOffTime.into())
@@ -292,8 +292,8 @@ impl ProposalV2 {
         }
     }
 
-    /// Vote end time determined by the configured max_voting_time period
-    pub fn vote_end_time(&self, config: &GovernanceConfig) -> UnixTimestamp {
+    /// Expected vote end time determined by the configured max_voting_time period
+    pub fn expected_vote_end_time(&self, config: &GovernanceConfig) -> UnixTimestamp {
         self.voting_at
             .unwrap()
             .checked_add(config.max_voting_time as i64)
@@ -307,7 +307,7 @@ impl ProposalV2 {
         current_unix_timestamp: UnixTimestamp,
     ) -> bool {
         // Check if we passed vote_end_time
-        self.vote_end_time(config) < current_unix_timestamp
+        self.expected_vote_end_time(config) < current_unix_timestamp
     }
 
     /// Checks if Proposal can be finalized
@@ -339,7 +339,7 @@ impl ProposalV2 {
         self.assert_can_finalize_vote(config, current_unix_timestamp)?;
 
         self.state = self.resolve_final_vote_state(max_voter_weight, vote_threshold)?;
-        self.voting_completed_at = Some(self.vote_end_time(config));
+        self.voting_completed_at = Some(self.expected_vote_end_time(config));
 
         // Capture vote params to correctly display historical results
         self.max_vote_weight = Some(max_voter_weight);
@@ -1668,7 +1668,7 @@ mod test {
             // Assert
             assert_eq!(proposal.state,test_case.expected_finalized_state,"CASE: {:?}",test_case);
             assert_eq!(
-                Some(proposal.vote_end_time(&governance_config)),
+                Some(proposal.expected_vote_end_time(&governance_config)),
                 proposal.voting_completed_at
             );
 
