@@ -856,6 +856,9 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
+        Multisig::unpack(&multisig_account_info.data.borrow())
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+
         Self::validate_owner(
             program_id,
             multisig_account_info.key,
