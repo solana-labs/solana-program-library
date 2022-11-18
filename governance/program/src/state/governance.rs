@@ -291,13 +291,14 @@ pub fn get_governance_data(
 
     // In previous versions of spl-gov (< 3) we had config.proposal_cool_off_time:u32 which was unused and always 0
     // In version 3.0.0 proposal_cool_off_time was replaced with council_vote_threshold:VoteThreshold and council_veto_vote_threshold:VoteThreshold
-    //
     // If we read a legacy account then council_vote_threshold == VoteThreshold::YesVotePercentage(0)
-    // and we coerce it to be equal to community_vote_threshold which was used for both council and community thresholds before
     //
     // Note: assert_is_valid_governance_config() prevents setting council_vote_threshold to VoteThreshold::YesVotePercentage(0)
     // which gives as guarantee that it is a legacy account layout set with proposal_cool_off_time = 0
+    //
+    // Note: All the settings below are one time config migration from V1 & V2 account data to V3
     if governance_data.config.council_vote_threshold == VoteThreshold::YesVotePercentage(0) {
+        // Set council_vote_threshold to community_vote_threshold which was used for both council and community thresholds before
         governance_data.config.council_vote_threshold =
             governance_data.config.community_vote_threshold.clone();
 
@@ -312,8 +313,16 @@ pub fn get_governance_data(
         // For legacy accounts set the community Veto threshold to Disabled
         governance_data.config.community_veto_vote_threshold = VoteThreshold::Disabled;
 
-        // Reset reserved space previously used for voting_proposal_count
-        governance_data.config.voting_cool_off_time = 0;
+        // Reset voting_cool_off_time and reserved space previously used for voting_proposal_count
+
+        // Default voting_cool_off_time to 1h for max_voting_time >= 10h
+        governance_data.config.voting_cool_off_time =
+            if governance_data.config.max_voting_time >= 36000 {
+                3600
+            } else {
+                0
+            };
+
         governance_data.config.reserved = 0;
     }
 
@@ -655,6 +664,67 @@ mod test {
 
         // Assert
         assert_eq!(err, GovernanceError::InvalidVoteThresholdPercentage.into());
+    }
+
+    #[test]
+    fn test_migrate_governance_config_from_legacy_data_to_v3() {
+        // Arrange
+        let mut governance_legacy_data = create_test_governance();
+
+        governance_legacy_data.config.council_vote_threshold = VoteThreshold::YesVotePercentage(0);
+        governance_legacy_data.config.council_veto_vote_threshold =
+            VoteThreshold::YesVotePercentage(0);
+        governance_legacy_data.config.council_vote_tipping = VoteTipping::Disabled;
+        governance_legacy_data.config.community_veto_vote_threshold =
+            VoteThreshold::YesVotePercentage(0);
+        governance_legacy_data.config.voting_cool_off_time = 1;
+        governance_legacy_data.config.max_voting_time = 36000;
+
+        let mut legacy_data = vec![];
+        governance_legacy_data.serialize(&mut legacy_data).unwrap();
+
+        let program_id = Pubkey::new_unique();
+
+        let info_key = Pubkey::new_unique();
+        let mut lamports = 10u64;
+
+        let legacy_account_info = AccountInfo::new(
+            &info_key,
+            false,
+            false,
+            &mut lamports,
+            &mut legacy_data[..],
+            &program_id,
+            false,
+            Epoch::default(),
+        );
+        // Act
+        let governance_v3 = get_governance_data(&program_id, &legacy_account_info).unwrap();
+
+        // Assert
+        assert_eq!(
+            governance_v3.config.council_vote_threshold,
+            VoteThreshold::YesVotePercentage(60)
+        );
+
+        assert_eq!(
+            governance_v3.config.council_veto_vote_threshold,
+            VoteThreshold::YesVotePercentage(60)
+        );
+
+        assert_eq!(
+            governance_v3.config.community_veto_vote_threshold,
+            VoteThreshold::Disabled
+        );
+
+        assert_eq!(
+            governance_v3.config.council_vote_tipping,
+            VoteTipping::Strict
+        );
+
+        assert_eq!(governance_v3.config.voting_cool_off_time, 3600);
+
+        assert_eq!(governance_v3.config.reserved, 0);
     }
 
     #[test]
