@@ -5814,7 +5814,7 @@ dependencies = [
  "num-traits",
  "solana-program",
  "spl-token 3.5.0",
- "spl-token-2022 0.4.3",
+ "spl-token-2022 0.5.0",
  "thiserror",
 ]
 
@@ -5843,7 +5843,7 @@ dependencies = [
  "solana-sdk",
  "spl-associated-token-account 1.1.1",
  "spl-token 3.5.0",
- "spl-token-2022 0.4.3",
+ "spl-token-2022 0.5.0",
 ]
 
 [[package]]
@@ -6271,7 +6271,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-2022"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "arrayref",
  "bytemuck",
@@ -6304,7 +6304,7 @@ dependencies = [
  "spl-associated-token-account 1.1.1",
  "spl-instruction-padding",
  "spl-memo 3.0.1",
- "spl-token-2022 0.4.3",
+ "spl-token-2022 0.5.0",
  "spl-token-client",
  "walkdir",
 ]
@@ -6334,7 +6334,7 @@ dependencies = [
  "spl-associated-token-account 1.1.1",
  "spl-memo 3.0.1",
  "spl-token 3.5.0",
- "spl-token-2022 0.4.3",
+ "spl-token-2022 0.5.0",
  "spl-token-client",
  "strum",
  "strum_macros",
@@ -6355,7 +6355,7 @@ dependencies = [
  "spl-associated-token-account 1.1.1",
  "spl-memo 3.0.1",
  "spl-token 3.5.0",
- "spl-token-2022 0.4.3",
+ "spl-token-2022 0.5.0",
  "thiserror",
 ]
 
@@ -6411,7 +6411,7 @@ dependencies = [
  "solana-sdk",
  "spl-math",
  "spl-token 3.5.0",
- "spl-token-2022 0.4.3",
+ "spl-token-2022 0.5.0",
  "test-case",
  "thiserror",
 ]
@@ -6439,7 +6439,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-token 3.5.0",
- "spl-token-2022 0.4.3",
+ "spl-token-2022 0.5.0",
  "spl-token-client",
  "test-case",
  "thiserror",
@@ -6460,7 +6460,7 @@ dependencies = [
  "solana-test-validator",
  "spl-associated-token-account 1.1.1",
  "spl-token 3.5.0",
- "spl-token-2022 0.4.3",
+ "spl-token-2022 0.5.0",
  "spl-token-client",
  "spl-token-upgrade",
  "tokio",
