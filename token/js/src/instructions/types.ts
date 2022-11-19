@@ -34,4 +34,5 @@ export enum TokenInstruction {
     CreateNativeMint = 31,
     InitializeNonTransferableMint = 32,
     InterestBearingMintExtension = 33,
+    InitializePermanentDelegate = 35,
 }
