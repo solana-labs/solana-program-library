@@ -39,7 +39,7 @@ pub fn process_set_realm_config(
         return Err(GovernanceError::RealmAuthorityMustSign.into());
     }
 
-    // Until we have Veto implemented it's better to allow config change as the defence of last resort against governance attacks
+    // Until we have Veto implemented it's better to allow config change as the defense of last resort against governance attacks
     // Note: Config change leaves voting proposals in unpredictable state and it's DAOs responsibility
     // to ensure the changes are made when there are no proposals in voting state
     // For example changing voter-weight or max-voter-weight addin could accidentally make proposals to succeed which would otherwise be defeated

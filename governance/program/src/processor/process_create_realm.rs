@@ -88,7 +88,7 @@ pub fn process_create_realm(
         None
     };
 
-    // Create and serialzie RealmConfig
+    // Create and serialize RealmConfig
     let realm_config_info = next_account_info(account_info_iter)?; // 10
 
     // 11, 12
