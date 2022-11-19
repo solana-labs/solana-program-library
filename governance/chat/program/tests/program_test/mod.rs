@@ -186,18 +186,18 @@ impl GovernanceChatProgramTest {
         let governed_account_address = Pubkey::new_unique();
 
         let governance_config = GovernanceConfig {
+            community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             min_community_weight_to_create_proposal: 5,
-            min_council_weight_to_create_proposal: 2,
             min_transaction_hold_up_time: 10,
             max_voting_time: 10,
-            community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             community_vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(10),
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
+            min_council_weight_to_create_proposal: 2,
             council_vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(55),
-            reserved: 0,
             voting_cool_off_time: 1,
+            reserved: 0,
         };
 
         let token_owner_record_address = get_token_owner_record_address(

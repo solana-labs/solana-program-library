@@ -527,18 +527,18 @@ mod test {
 
     fn create_test_governance_config() -> GovernanceConfig {
         GovernanceConfig {
+            community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             min_community_weight_to_create_proposal: 5,
-            min_council_weight_to_create_proposal: 1,
             min_transaction_hold_up_time: 10,
             max_voting_time: 5,
-            community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             community_vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(60),
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
+            min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(40),
-            reserved: 0,
             voting_cool_off_time: 2,
+            reserved: 0,
         }
     }
 
