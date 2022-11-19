@@ -65,15 +65,15 @@ pub struct GoverningTokenConfigArgs {
     pub token_type: GoverningTokenType,
 }
 
-/// Realm Config instruction args with account parametres
+/// Realm Config instruction args with account parameters
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, Default)]
 pub struct GoverningTokenConfigAccountArgs {
     /// Specifies an external plugin program which should be used to provide voters weights
-    /// for the given goventing token
+    /// for the given governing token
     pub voter_weight_addin: Option<Pubkey>,
 
     /// Specifies an external an external plugin program should be used to provide max voters weight
-    /// for the given goventing token
+    /// for the given governing token
     pub max_voter_weight_addin: Option<Pubkey>,
 
     /// Governing token type defines how the token is used for governance power
@@ -99,12 +99,12 @@ pub enum SetRealmAuthorityAction {
 /// Realm Config defining Realm parameters.
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfig {
-    /// Legacy field introdcued and used in V2 as use_community_voter_weight_addin: bool
+    /// Legacy field introduced and used in V2 as use_community_voter_weight_addin: bool
     /// If the field is going to be reused in future version it must be taken under consideration
     /// that for some Realms it might be already set to 1
     pub legacy1: u8,
 
-    /// Legacy field introdcued and used in V2 as use_max_community_voter_weight_addin: bool
+    /// Legacy field introduced and used in V2 as use_max_community_voter_weight_addin: bool
     /// If the field is going to be reused in future version it must be taken under consideration
     /// that for some Realms it might be already set to 1
     pub legacy2: u8,

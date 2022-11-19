@@ -125,7 +125,7 @@ impl TokenOwnerRecordV2 {
             };
 
         // If the weight threshold is set to u64::MAX then it indicates explicitly Disabled value
-        // which should prevent any possiblity of using it
+        // which should prevent any possibility of using it
         if min_weight_to_create_proposal == u64::MAX {
             return Err(GovernanceError::VoterWeightThresholdDisabled.into());
         }
@@ -160,7 +160,7 @@ impl TokenOwnerRecordV2 {
             };
 
         // If the weight threshold is set to u64::MAX then it indicates explicitly Disabled value
-        // which should prevent any possiblity of using it
+        // which should prevent any possibility of using it
         if min_weight_to_create_governance == u64::MAX {
             return Err(GovernanceError::VoterWeightThresholdDisabled.into());
         }
