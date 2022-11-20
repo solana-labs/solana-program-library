@@ -390,3 +390,122 @@ async fn test_finalize_council_vote() {
         proposal_account.vote_threshold
     );
 }
+
+#[tokio::test]
+async fn test_finalize_vote_with_cannot_finalize_during_voting_time_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_cookie = governance_test
+        .with_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    // Total 210 tokens
+    governance_test
+        .mint_community_tokens(&realm_cookie, 110)
+        .await;
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    governance_test
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .await
+        .unwrap();
+
+    governance_test.advance_clock().await;
+
+    // Act
+
+    let err = governance_test
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(err, GovernanceError::CannotFinalizeVotingInProgress.into());
+}
+
+#[tokio::test]
+async fn test_finalize_vote_with_cannot_finalize_during_cool_off_time_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Set cool off time to start in the middle of the voting time
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.max_voting_time = 100;
+    governance_config.voting_cool_off_time = 50;
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    // Total 210 tokens
+    governance_test
+        .mint_community_tokens(&realm_cookie, 110)
+        .await;
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    governance_test
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .await
+        .unwrap();
+
+    // Advance timestamp into voting_cool_off_time
+    let clock = governance_test.bench.get_clock().await;
+
+    governance_test
+        .advance_clock_past_timestamp(
+            clock.unix_timestamp
+                + (governance_cookie.account.config.max_voting_time
+                    - governance_config.voting_cool_off_time) as i64,
+        )
+        .await;
+
+    // Act
+
+    let err = governance_test
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(err, GovernanceError::CannotFinalizeVotingInProgress.into());
+}
