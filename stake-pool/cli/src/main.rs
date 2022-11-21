@@ -51,7 +51,7 @@ use {
         MINIMUM_RESERVE_LAMPORTS,
     },
     std::cmp::Ordering,
-    std::{process::exit, sync::Arc},
+    std::{num::NonZeroU32, process::exit, sync::Arc},
 };
 // use instruction::create_associated_token_account once ATA 1.0.5 is released
 #[allow(deprecated)]
@@ -421,12 +421,6 @@ fn command_vsa_add(
     stake_pool_address: &Pubkey,
     vote_account: &Pubkey,
 ) -> CommandResult {
-    let (stake_account_address, _) =
-        find_stake_program_address(&spl_stake_pool::id(), vote_account, stake_pool_address);
-    println!(
-        "Adding stake account {}, delegated to {}",
-        stake_account_address, vote_account
-    );
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
     if validator_list.contains(vote_account) {
@@ -441,6 +435,35 @@ fn command_vsa_add(
         command_update(config, stake_pool_address, false, false)?;
     }
 
+    // iterate until a free account is found
+    let (stake_account_address, validator_seed) = {
+        let mut i = 0;
+        loop {
+            let seed = NonZeroU32::new(i);
+            let (address, _) = find_stake_program_address(
+                &spl_stake_pool::id(),
+                vote_account,
+                stake_pool_address,
+                seed,
+            );
+            let maybe_account = config
+                .rpc_client
+                .get_account_with_commitment(
+                    &stake_pool.reserve_stake,
+                    config.rpc_client.commitment(),
+                )?
+                .value;
+            if maybe_account.is_some() {
+                break (address, seed);
+            }
+            i += 1;
+        }
+    };
+    println!(
+        "Adding stake account {}, delegated to {}",
+        stake_account_address, vote_account
+    );
+
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
     unique_signers!(signers);
     let transaction = checked_transaction_with_signers(
@@ -450,8 +473,8 @@ fn command_vsa_add(
                 &spl_stake_pool::id(),
                 &stake_pool,
                 stake_pool_address,
-                &config.fee_payer.pubkey(),
                 vote_account,
+                validator_seed,
             ),
         ],
         &signers,
@@ -465,60 +488,41 @@ fn command_vsa_remove(
     config: &Config,
     stake_pool_address: &Pubkey,
     vote_account: &Pubkey,
-    new_authority: &Option<Pubkey>,
-    stake_receiver: &Option<Pubkey>,
 ) -> CommandResult {
     if !config.no_update {
         command_update(config, stake_pool_address, false, false)?;
     }
 
-    let (stake_account_address, _) =
-        find_stake_program_address(&spl_stake_pool::id(), vote_account, stake_pool_address);
-    println!(
-        "Removing stake account {}, delegated to {}",
-        stake_account_address, vote_account
-    );
-
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
-
-    let mut instructions = vec![];
-    let mut stake_keypair = None;
-
-    let stake_receiver = stake_receiver.unwrap_or_else(|| {
-        let new_stake_keypair = new_stake_account(
-            &config.fee_payer.pubkey(),
-            &mut instructions,
-            /* stake_receiver_account_balance = */ 0,
-        );
-        let stake_pubkey = new_stake_keypair.pubkey();
-        stake_keypair = Some(new_stake_keypair);
-        stake_pubkey
-    });
-
-    let staker_pubkey = config.staker.pubkey();
-    let new_authority = new_authority.as_ref().unwrap_or(&staker_pubkey);
-
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
     let validator_stake_info = validator_list
         .find(vote_account)
         .ok_or("Vote account not found in validator list")?;
 
+    let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix);
+    let (stake_account_address, _) = find_stake_program_address(
+        &spl_stake_pool::id(),
+        vote_account,
+        stake_pool_address,
+        validator_seed,
+    );
+    println!(
+        "Removing stake account {}, delegated to {}",
+        stake_account_address, vote_account
+    );
+
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
-    if let Some(stake_keypair) = stake_keypair.as_ref() {
-        signers.push(stake_keypair);
-    }
-    instructions.push(
+    let instructions = vec![
         // Create new validator stake account address
         spl_stake_pool::instruction::remove_validator_from_pool_with_vote(
             &spl_stake_pool::id(),
             &stake_pool,
             stake_pool_address,
             vote_account,
-            new_authority,
-            validator_stake_info.transient_seed_suffix_start,
-            &stake_receiver,
+            validator_seed,
+            validator_stake_info.transient_seed_suffix,
         ),
-    );
+    ];
     unique_signers!(signers);
     let transaction = checked_transaction_with_signers(config, &instructions, &signers)?;
     send_transaction(config, transaction)?;
@@ -541,6 +545,7 @@ fn command_increase_validator_stake(
     let validator_stake_info = validator_list
         .find(vote_account)
         .ok_or("Vote account not found in validator list")?;
+    let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix);
 
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
     unique_signers!(signers);
@@ -553,7 +558,8 @@ fn command_increase_validator_stake(
                 stake_pool_address,
                 vote_account,
                 lamports,
-                validator_stake_info.transient_seed_suffix_start,
+                validator_seed,
+                validator_stake_info.transient_seed_suffix,
             ),
         ],
         &signers,
@@ -578,6 +584,7 @@ fn command_decrease_validator_stake(
     let validator_stake_info = validator_list
         .find(vote_account)
         .ok_or("Vote account not found in validator list")?;
+    let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix);
 
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
     unique_signers!(signers);
@@ -590,7 +597,8 @@ fn command_decrease_validator_stake(
                 stake_pool_address,
                 vote_account,
                 lamports,
-                validator_stake_info.transient_seed_suffix_start,
+                validator_seed,
+                validator_stake_info.transient_seed_suffix,
             ),
         ],
         &signers,
@@ -681,13 +689,18 @@ fn command_deposit_stake(
 
     // Check if this vote account has staking account in the pool
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
-    if !validator_list.contains(&vote_account) {
-        return Err("Stake account for this validator does not exist in the pool.".into());
-    }
+    let validator_stake_info = validator_list
+        .find(&vote_account)
+        .ok_or("Vote account not found in the stake pool")?;
+    let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix);
 
     // Calculate validator stake account address linked to the pool
-    let (validator_stake_account, _) =
-        find_stake_program_address(&spl_stake_pool::id(), &vote_account, stake_pool_address);
+    let (validator_stake_account, _) = find_stake_program_address(
+        &spl_stake_pool::id(),
+        &vote_account,
+        stake_pool_address,
+        validator_seed,
+    );
 
     let validator_stake_state = get_stake_state(&config.rpc_client, &validator_stake_account)?;
     println!(
@@ -856,13 +869,18 @@ fn command_deposit_all_stake(
             _ => Err("Wrong stake account state, must be delegated to validator"),
         }?;
 
-        if !validator_list.contains(&vote_account) {
-            return Err("Stake account for this validator does not exist in the pool.".into());
-        }
+        let validator_stake_info = validator_list
+            .find(&vote_account)
+            .ok_or("Vote account not found in the stake pool")?;
+        let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix);
 
         // Calculate validator stake account address linked to the pool
-        let (validator_stake_account, _) =
-            find_stake_program_address(&spl_stake_pool::id(), &vote_account, stake_pool_address);
+        let (validator_stake_account, _) = find_stake_program_address(
+            &spl_stake_pool::id(),
+            &vote_account,
+            stake_pool_address,
+            validator_seed,
+        );
 
         let validator_stake_state = get_stake_state(&config.rpc_client, &validator_stake_account)?;
         println!("Depositing user stake {}: {:?}", stake_address, stake_state);
@@ -1066,16 +1084,18 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         .validators
         .iter()
         .map(|validator| {
+            let validator_seed = NonZeroU32::new(validator.validator_seed_suffix);
             let (stake_account_address, _) = find_stake_program_address(
                 &spl_stake_pool::id(),
                 &validator.vote_account_address,
                 stake_pool_address,
+                validator_seed,
             );
             let (transient_stake_account_address, _) = find_transient_stake_program_address(
                 &spl_stake_pool::id(),
                 &validator.vote_account_address,
                 stake_pool_address,
-                validator.transient_seed_suffix_start,
+                validator.transient_seed_suffix,
             );
             let update_required = validator.last_update_epoch != epoch_info.epoch;
             CliStakePoolStakeAccountInfo {
@@ -1235,10 +1255,12 @@ fn prepare_withdraw_accounts(
         &validator_list,
         stake_pool,
         |validator| {
+            let validator_seed = NonZeroU32::new(validator.validator_seed_suffix);
             let (stake_account_address, _) = find_stake_program_address(
                 &spl_stake_pool::id(),
                 &validator.vote_account_address,
                 stake_pool_address,
+                validator_seed,
             );
 
             (
@@ -1257,7 +1279,7 @@ fn prepare_withdraw_accounts(
                 &spl_stake_pool::id(),
                 &validator.vote_account_address,
                 stake_pool_address,
-                validator.transient_seed_suffix_start,
+                validator.transient_seed_suffix,
             );
 
             (
@@ -1413,47 +1435,51 @@ fn command_withdraw_stake(
         }
         // Check if the vote account exists in the stake pool
         let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
-        if validator_list
-            .validators
-            .into_iter()
-            .any(|x| x.vote_account_address == vote_account)
-        {
-            let (stake_account_address, _) = find_stake_program_address(
-                &spl_stake_pool::id(),
-                &vote_account,
-                stake_pool_address,
-            );
-            let stake_account = config.rpc_client.get_account(&stake_account_address)?;
+        let validator_stake_info = validator_list
+            .find(&vote_account)
+            .ok_or(format!("Provided stake account is delegated to a vote account {} which does not exist in the stake pool", vote_account))?;
+        let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix);
+        let (stake_account_address, _) = find_stake_program_address(
+            &spl_stake_pool::id(),
+            &vote_account,
+            stake_pool_address,
+            validator_seed,
+        );
+        let stake_account = config.rpc_client.get_account(&stake_account_address)?;
 
-            let available_for_withdrawal = stake_pool
-                .calc_lamports_withdraw_amount(
-                    stake_account
-                        .lamports
-                        .saturating_sub(stake_pool_minimum_delegation)
-                        .saturating_sub(stake_account_rent_exemption),
-                )
-                .unwrap();
+        let available_for_withdrawal = stake_pool
+            .calc_lamports_withdraw_amount(
+                stake_account
+                    .lamports
+                    .saturating_sub(stake_pool_minimum_delegation)
+                    .saturating_sub(stake_account_rent_exemption),
+            )
+            .unwrap();
 
-            if available_for_withdrawal < pool_amount {
-                return Err(format!(
-                    "Not enough lamports available for withdrawal from {}, {} asked, {} available",
-                    stake_account_address, pool_amount, available_for_withdrawal
-                )
-                .into());
-            }
-            vec![WithdrawAccount {
-                stake_address: stake_account_address,
-                vote_address: Some(vote_account),
-                pool_amount,
-            }]
-        } else {
-            return Err(format!("Provided stake account is delegated to a vote account {} which does not exist in the stake pool", vote_account).into());
+        if available_for_withdrawal < pool_amount {
+            return Err(format!(
+                "Not enough lamports available for withdrawal from {}, {} asked, {} available",
+                stake_account_address, pool_amount, available_for_withdrawal
+            )
+            .into());
         }
+        vec![WithdrawAccount {
+            stake_address: stake_account_address,
+            vote_address: Some(vote_account),
+            pool_amount,
+        }]
     } else if let Some(vote_account_address) = vote_account_address {
+        let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
+        let validator_stake_info = validator_list.find(vote_account_address).ok_or(format!(
+            "Provided vote account address {} does not exist in the stake pool",
+            vote_account_address
+        ))?;
+        let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix);
         let (stake_account_address, _) = find_stake_program_address(
             &spl_stake_pool::id(),
             vote_account_address,
             stake_pool_address,
+            validator_seed,
         );
         let stake_account = config.rpc_client.get_account(&stake_account_address)?;
 
@@ -2119,23 +2145,6 @@ fn main() {
                     .takes_value(true)
                     .required(true)
                     .help("Vote account for the validator to remove from the pool"),
-            )
-            .arg(
-                Arg::with_name("new_authority")
-                    .long("new-authority")
-                    .validator(is_pubkey)
-                    .value_name("ADDRESS")
-                    .takes_value(true)
-                    .help("New authority to set as Staker and Withdrawer in the stake account removed from the pool.
-                          Defaults to the client keypair."),
-            )
-            .arg(
-                Arg::with_name("stake_receiver")
-                    .long("stake-receiver")
-                    .validator(is_pubkey)
-                    .value_name("ADDRESS")
-                    .takes_value(true)
-                    .help("Stake account to receive SOL from the stake pool. Defaults to a new stake account."),
             )
         )
         .subcommand(SubCommand::with_name("increase-validator-stake")
@@ -2810,15 +2819,7 @@ fn main() {
         ("remove-validator", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let vote_account = pubkey_of(arg_matches, "vote_account").unwrap();
-            let new_authority = pubkey_of(arg_matches, "new_authority");
-            let stake_receiver = pubkey_of(arg_matches, "stake_receiver");
-            command_vsa_remove(
-                &config,
-                &stake_pool_address,
-                &vote_account,
-                &new_authority,
-                &stake_receiver,
-            )
+            command_vsa_remove(&config, &stake_pool_address, &vote_account)
         }
         ("increase-validator-stake", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();

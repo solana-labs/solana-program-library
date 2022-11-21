@@ -17,6 +17,7 @@ pub use solana_program;
 use {
     crate::state::Fee,
     solana_program::{pubkey::Pubkey, stake::state::Meta},
+    std::num::NonZeroU32,
 };
 
 /// Seed for deposit authority seed
@@ -28,11 +29,11 @@ const AUTHORITY_WITHDRAW: &[u8] = b"withdraw";
 /// Seed for transient stake account
 const TRANSIENT_STAKE_SEED_PREFIX: &[u8] = b"transient";
 
-/// Minimum amount of staked SOL required in a validator stake account to allow
+/// Minimum amount of staked lamports required in a validator stake account to allow
 /// for merges without a mismatch on credits observed
 pub const MINIMUM_ACTIVE_STAKE: u64 = 1_000_000;
 
-/// Minimum amount of SOL in the reserve
+/// Minimum amount of lamports in the reserve
 /// NOTE: This can be changed to 0 once the `stake_allow_zero_undelegated_amount`
 /// feature is enabled on all clusters
 pub const MINIMUM_RESERVE_LAMPORTS: u64 = 1;
@@ -86,7 +87,7 @@ pub fn find_deposit_authority_program_address(
     stake_pool_address: &Pubkey,
 ) -> (Pubkey, u8) {
     Pubkey::find_program_address(
-        &[&stake_pool_address.to_bytes()[..32], AUTHORITY_DEPOSIT],
+        &[stake_pool_address.as_ref(), AUTHORITY_DEPOSIT],
         program_id,
     )
 }
@@ -97,7 +98,7 @@ pub fn find_withdraw_authority_program_address(
     stake_pool_address: &Pubkey,
 ) -> (Pubkey, u8) {
     Pubkey::find_program_address(
-        &[&stake_pool_address.to_bytes(), AUTHORITY_WITHDRAW],
+        &[stake_pool_address.as_ref(), AUTHORITY_WITHDRAW],
         program_id,
     )
 }
@@ -107,11 +108,14 @@ pub fn find_stake_program_address(
     program_id: &Pubkey,
     vote_account_address: &Pubkey,
     stake_pool_address: &Pubkey,
+    seed: Option<NonZeroU32>,
 ) -> (Pubkey, u8) {
+    let seed = seed.map(|s| s.get().to_le_bytes());
     Pubkey::find_program_address(
         &[
-            &vote_account_address.to_bytes(),
-            &stake_pool_address.to_bytes(),
+            vote_account_address.as_ref(),
+            stake_pool_address.as_ref(),
+            seed.as_ref().map(|s| s.as_slice()).unwrap_or(&[]),
         ],
         program_id,
     )
@@ -127,8 +131,8 @@ pub fn find_transient_stake_program_address(
     Pubkey::find_program_address(
         &[
             TRANSIENT_STAKE_SEED_PREFIX,
-            &vote_account_address.to_bytes(),
-            &stake_pool_address.to_bytes(),
+            vote_account_address.as_ref(),
+            stake_pool_address.as_ref(),
             &seed.to_le_bytes(),
         ],
         program_id,
@@ -136,3 +140,18 @@ pub fn find_transient_stake_program_address(
 }
 
 solana_program::declare_id!("SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy");
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn validator_stake_account_derivation() {
+        let vote = Pubkey::new_unique();
+        let stake_pool = Pubkey::new_unique();
+        let function_derived = find_stake_program_address(&id(), &vote, &stake_pool, None);
+        let hand_derived =
+            Pubkey::find_program_address(&[vote.as_ref(), stake_pool.as_ref()], &id());
+        assert_eq!(function_derived, hand_derived);
+    }
+}

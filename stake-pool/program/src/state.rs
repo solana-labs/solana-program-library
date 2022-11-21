@@ -18,7 +18,10 @@ use {
         pubkey::{Pubkey, PUBKEY_BYTES},
         stake::state::Lockup,
     },
-    spl_token::state::{Account, AccountState},
+    spl_token_2022::{
+        extension::{BaseStateWithExtensions, ExtensionType, StateWithExtensions},
+        state::{Account, AccountState, Mint},
+    },
     std::{borrow::Borrow, convert::TryFrom, fmt, matches},
 };
 
@@ -287,13 +290,21 @@ impl StakePool {
         &self,
         manager_fee_info: &AccountInfo,
     ) -> Result<(), ProgramError> {
-        let token_account = Account::unpack(&manager_fee_info.try_borrow_data()?)?;
+        let account_data = manager_fee_info.try_borrow_data()?;
+        let token_account = StateWithExtensions::<Account>::unpack(&account_data)?;
         if manager_fee_info.owner != &self.token_program_id
-            || token_account.state != AccountState::Initialized
-            || token_account.mint != self.pool_mint
+            || token_account.base.state != AccountState::Initialized
+            || token_account.base.mint != self.pool_mint
         {
             msg!("Manager fee account is not owned by token program, is not initialized, or does not match stake pool's mint");
             return Err(StakePoolError::InvalidFeeAccount.into());
+        }
+        let extensions = token_account.get_extension_types()?;
+        if extensions
+            .iter()
+            .any(|x| !is_extension_supported_for_fee_account(x))
+        {
+            return Err(StakePoolError::UnsupportedFeeAccountExtension.into());
         }
         Ok(())
     }
@@ -370,11 +381,13 @@ impl StakePool {
 
     /// Check mint is correct
     #[inline]
-    pub(crate) fn check_mint(&self, mint_info: &AccountInfo) -> Result<(), ProgramError> {
+    pub(crate) fn check_mint(&self, mint_info: &AccountInfo) -> Result<u8, ProgramError> {
         if *mint_info.key != self.pool_mint {
             Err(StakePoolError::WrongPoolMint.into())
         } else {
-            Ok(())
+            let mint_data = mint_info.try_borrow_data()?;
+            let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+            Ok(mint.base.decimals)
         }
     }
 
@@ -477,6 +490,45 @@ impl StakePool {
     }
 }
 
+/// Checks if the given extension is supported for the stake pool mint
+pub fn is_extension_supported_for_mint(extension_type: &ExtensionType) -> bool {
+    const SUPPORTED_EXTENSIONS: [ExtensionType; 5] = [
+        ExtensionType::Uninitialized,
+        ExtensionType::TransferFeeConfig,
+        ExtensionType::ConfidentialTransferMint,
+        ExtensionType::DefaultAccountState, // ok, but a freeze authority is not
+        ExtensionType::InterestBearingConfig,
+    ];
+    if !SUPPORTED_EXTENSIONS.contains(extension_type) {
+        msg!(
+            "Stake pool mint account cannot have the {:?} extension",
+            extension_type
+        );
+        false
+    } else {
+        true
+    }
+}
+
+/// Checks if the given extension is supported for the stake pool's fee account
+pub fn is_extension_supported_for_fee_account(extension_type: &ExtensionType) -> bool {
+    // Note: this does not include the `ConfidentialTransferAccount` extension
+    // because it is possible to block non-confidential transfers with the
+    // extension enabled.
+    const SUPPORTED_EXTENSIONS: [ExtensionType; 4] = [
+        ExtensionType::Uninitialized,
+        ExtensionType::TransferFeeAmount,
+        ExtensionType::ImmutableOwner,
+        ExtensionType::CpiGuard,
+    ];
+    if !SUPPORTED_EXTENSIONS.contains(extension_type) {
+        msg!("Fee account cannot have the {:?} extension", extension_type);
+        false
+    } else {
+        true
+    }
+}
+
 /// Storage list for all validator stake accounts in the pool.
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -512,12 +564,48 @@ pub enum StakeStatus {
     /// No more validator stake accounts exist, entry ready for removal during
     /// `UpdateStakePoolBalance`
     ReadyForRemoval,
+    /// Only the validator stake account is deactivating, no transient stake
+    /// account exists
+    DeactivatingValidator,
+    /// Both the transient and validator stake account are deactivating, when
+    /// a validator is removed with a transient stake active
+    DeactivatingAll,
 }
-
+impl StakeStatus {
+    /// Downgrade the status towards ready for removal by removing the validator stake
+    pub fn remove_validator_stake(&mut self) {
+        let new_self = match self {
+            Self::Active | Self::DeactivatingTransient | Self::ReadyForRemoval => *self,
+            Self::DeactivatingAll => Self::DeactivatingTransient,
+            Self::DeactivatingValidator => Self::ReadyForRemoval,
+        };
+        *self = new_self;
+    }
+    /// Downgrade the status towards ready for removal by removing the transient stake
+    pub fn remove_transient_stake(&mut self) {
+        let new_self = match self {
+            Self::Active | Self::DeactivatingValidator | Self::ReadyForRemoval => *self,
+            Self::DeactivatingAll => Self::DeactivatingValidator,
+            Self::DeactivatingTransient => Self::ReadyForRemoval,
+        };
+        *self = new_self;
+    }
+}
 impl Default for StakeStatus {
     fn default() -> Self {
         Self::Active
     }
+}
+
+/// Withdrawal type, figured out during process_withdraw_stake
+#[derive(Debug, PartialEq)]
+pub(crate) enum StakeWithdrawSource {
+    /// Some of an active stake account, but not all
+    Active,
+    /// Some of a transient stake account
+    Transient,
+    /// Take a whole validator stake account
+    ValidatorRemoval,
 }
 
 /// Information about a validator in the pool
@@ -531,9 +619,7 @@ impl Default for StakeStatus {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorStakeInfo {
-    /// Amount of active stake delegated to this validator, minus the minimum
-    /// required stake amount of rent-exemption +
-    /// `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    /// Amount of lamports on the validator stake account, including rent
     ///
     /// Note that if `last_update_epoch` does not match the current epoch then
     /// this field may not be accurate
@@ -548,11 +634,14 @@ pub struct ValidatorStakeInfo {
     /// Last epoch the active and transient stake lamports fields were updated
     pub last_update_epoch: u64,
 
-    /// Start of the validator transient account seed suffixess
-    pub transient_seed_suffix_start: u64,
+    /// Transient account seed suffix, used to derive the transient stake account address
+    pub transient_seed_suffix: u64,
 
-    /// End of the validator transient account seed suffixes
-    pub transient_seed_suffix_end: u64,
+    /// Unused space, initially meant to specify the end of seed suffixes
+    pub unused: u32,
+
+    /// Validator account seed suffix
+    pub validator_seed_suffix: u32, // really `Option<NonZeroU32>` so 0 is `None`
 
     /// Status of the validator stake account
     pub status: StakeStatus,
@@ -562,7 +651,7 @@ pub struct ValidatorStakeInfo {
 }
 
 impl ValidatorStakeInfo {
-    /// Get the total lamports delegated to this validator (active and transient)
+    /// Get the total lamports on this validator (active and transient)
     pub fn stake_lamports(&self) -> u64 {
         self.active_stake_lamports
             .checked_add(self.transient_stake_lamports)
@@ -851,8 +940,9 @@ mod test {
                     active_stake_lamports: u64::from_le_bytes([255; 8]),
                     transient_stake_lamports: u64::from_le_bytes([128; 8]),
                     last_update_epoch: u64::from_le_bytes([64; 8]),
-                    transient_seed_suffix_start: 0,
-                    transient_seed_suffix_end: 0,
+                    transient_seed_suffix: 0,
+                    unused: 0,
+                    validator_seed_suffix: 0,
                 },
                 ValidatorStakeInfo {
                     status: StakeStatus::DeactivatingTransient,
@@ -860,8 +950,9 @@ mod test {
                     active_stake_lamports: 998877665544,
                     transient_stake_lamports: 222222222,
                     last_update_epoch: 11223445566,
-                    transient_seed_suffix_start: 0,
-                    transient_seed_suffix_end: 0,
+                    transient_seed_suffix: 0,
+                    unused: 0,
+                    validator_seed_suffix: 0,
                 },
                 ValidatorStakeInfo {
                     status: StakeStatus::ReadyForRemoval,
@@ -869,8 +960,9 @@ mod test {
                     active_stake_lamports: 0,
                     transient_stake_lamports: 0,
                     last_update_epoch: 999999999999999,
-                    transient_seed_suffix_start: 0,
-                    transient_seed_suffix_end: 0,
+                    transient_seed_suffix: 0,
+                    unused: 0,
+                    validator_seed_suffix: 0,
                 },
             ],
         }

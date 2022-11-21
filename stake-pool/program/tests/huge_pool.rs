@@ -20,7 +20,7 @@ use {
     },
 };
 
-const HUGE_POOL_SIZE: u32 = 2_950;
+const HUGE_POOL_SIZE: u32 = 2_300;
 const STAKE_AMOUNT: u64 = 200_000_000_000;
 
 async fn setup(
@@ -38,11 +38,14 @@ async fn setup(
 ) {
     let mut program_test = program_test();
     let mut vote_account_pubkeys = vec![];
-    let mut stake_pool_accounts = StakePoolAccounts::new();
-    stake_pool_accounts.max_validators = max_validators;
+    let stake_pool_accounts = StakePoolAccounts {
+        max_validators,
+        ..Default::default()
+    };
 
     let stake_pool_pubkey = stake_pool_accounts.stake_pool.pubkey();
     let (mut stake_pool, mut validator_list) = stake_pool_accounts.state();
+    stake_pool.last_update_epoch = FIRST_NORMAL_EPOCH;
 
     for _ in 0..max_validators {
         vote_account_pubkeys.push(add_vote_account(&mut program_test));
@@ -81,18 +84,23 @@ async fn setup(
 
     add_mint_account(
         &mut program_test,
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.withdraw_authority,
         stake_pool.pool_token_supply,
     );
     add_token_account(
         &mut program_test,
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.manager.pubkey(),
     );
 
     let mut context = program_test.start_with_context().await;
+    let epoch_schedule = context.genesis_config().epoch_schedule;
+    let slot = epoch_schedule.first_normal_slot + epoch_schedule.slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
 
     let vote_pubkey = vote_account_pubkeys[HUGE_POOL_SIZE as usize - 1];
     // make stake account
@@ -132,9 +140,11 @@ async fn setup(
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &pool_token_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
+        &user,
+        &[],
     )
     .await
     .unwrap();
@@ -227,8 +237,12 @@ async fn remove_validator_from_pool() {
         setup(HUGE_POOL_SIZE, HUGE_POOL_SIZE, LAMPORTS_PER_SOL).await;
 
     let first_vote = vote_account_pubkeys[0];
-    let (stake_address, _) =
-        find_stake_program_address(&id(), &first_vote, &stake_pool_accounts.stake_pool.pubkey());
+    let (stake_address, _) = find_stake_program_address(
+        &id(),
+        &first_vote,
+        &stake_pool_accounts.stake_pool.pubkey(),
+        None,
+    );
     let transient_stake_seed = u64::MAX;
     let (transient_stake_address, _) = find_transient_stake_program_address(
         &id(),
@@ -237,17 +251,13 @@ async fn remove_validator_from_pool() {
         transient_stake_seed,
     );
 
-    let new_authority = Pubkey::new_unique();
-    let destination_stake = Keypair::new();
     let error = stake_pool_accounts
         .remove_validator_from_pool(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &new_authority,
             &stake_address,
             &transient_stake_address,
-            &destination_stake,
         )
         .await;
     assert!(error.is_none());
@@ -258,6 +268,7 @@ async fn remove_validator_from_pool() {
         &id(),
         &middle_vote,
         &stake_pool_accounts.stake_pool.pubkey(),
+        None,
     );
     let (transient_stake_address, _) = find_transient_stake_program_address(
         &id(),
@@ -266,25 +277,25 @@ async fn remove_validator_from_pool() {
         transient_stake_seed,
     );
 
-    let new_authority = Pubkey::new_unique();
-    let destination_stake = Keypair::new();
     let error = stake_pool_accounts
         .remove_validator_from_pool(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &new_authority,
             &stake_address,
             &transient_stake_address,
-            &destination_stake,
         )
         .await;
     assert!(error.is_none());
 
     let last_index = HUGE_POOL_SIZE as usize - 1;
     let last_vote = vote_account_pubkeys[last_index];
-    let (stake_address, _) =
-        find_stake_program_address(&id(), &last_vote, &stake_pool_accounts.stake_pool.pubkey());
+    let (stake_address, _) = find_stake_program_address(
+        &id(),
+        &last_vote,
+        &stake_pool_accounts.stake_pool.pubkey(),
+        None,
+    );
     let (transient_stake_address, _) = find_transient_stake_program_address(
         &id(),
         &last_vote,
@@ -292,17 +303,13 @@ async fn remove_validator_from_pool() {
         transient_stake_seed,
     );
 
-    let new_authority = Pubkey::new_unique();
-    let destination_stake = Keypair::new();
     let error = stake_pool_accounts
         .remove_validator_from_pool(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &new_authority,
             &stake_address,
             &transient_stake_address,
-            &destination_stake,
         )
         .await;
     assert!(error.is_none());
@@ -315,19 +322,97 @@ async fn remove_validator_from_pool() {
     let validator_list =
         try_from_slice_unchecked::<ValidatorList>(validator_list.data.as_slice()).unwrap();
     let first_element = &validator_list.validators[0];
-    assert_eq!(first_element.status, StakeStatus::ReadyForRemoval);
-    assert_eq!(first_element.active_stake_lamports, 0);
+    assert_eq!(first_element.status, StakeStatus::DeactivatingValidator);
+    assert_eq!(
+        first_element.active_stake_lamports,
+        LAMPORTS_PER_SOL + STAKE_ACCOUNT_RENT_EXEMPTION
+    );
     assert_eq!(first_element.transient_stake_lamports, 0);
 
     let middle_element = &validator_list.validators[middle_index];
-    assert_eq!(middle_element.status, StakeStatus::ReadyForRemoval);
-    assert_eq!(middle_element.active_stake_lamports, 0);
+    assert_eq!(middle_element.status, StakeStatus::DeactivatingValidator);
+    assert_eq!(
+        middle_element.active_stake_lamports,
+        LAMPORTS_PER_SOL + STAKE_ACCOUNT_RENT_EXEMPTION
+    );
     assert_eq!(middle_element.transient_stake_lamports, 0);
 
     let last_element = &validator_list.validators[last_index];
-    assert_eq!(last_element.status, StakeStatus::ReadyForRemoval);
-    assert_eq!(last_element.active_stake_lamports, 0);
+    assert_eq!(last_element.status, StakeStatus::DeactivatingValidator);
+    assert_eq!(
+        last_element.active_stake_lamports,
+        LAMPORTS_PER_SOL + STAKE_ACCOUNT_RENT_EXEMPTION
+    );
     assert_eq!(last_element.transient_stake_lamports, 0);
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::update_validator_list_balance(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
+            &stake_pool_accounts.validator_list.pubkey(),
+            &stake_pool_accounts.reserve_stake.pubkey(),
+            &validator_list,
+            &[first_vote],
+            0,
+            /* no_merge = */ false,
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err();
+    assert!(error.is_none());
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::update_validator_list_balance(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
+            &stake_pool_accounts.validator_list.pubkey(),
+            &stake_pool_accounts.reserve_stake.pubkey(),
+            &validator_list,
+            &[middle_vote],
+            middle_index as u32,
+            /* no_merge = */ false,
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err();
+    assert!(error.is_none());
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::update_validator_list_balance(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
+            &stake_pool_accounts.validator_list.pubkey(),
+            &stake_pool_accounts.reserve_stake.pubkey(),
+            &validator_list,
+            &[last_vote],
+            last_index as u32,
+            /* no_merge = */ false,
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err();
+    assert!(error.is_none());
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::cleanup_removed_validator_entries(
@@ -396,7 +481,7 @@ async fn add_validator_to_pool() {
     let last_index = HUGE_POOL_SIZE as usize - 1;
     let stake_pool_pubkey = stake_pool_accounts.stake_pool.pubkey();
     let (stake_address, _) =
-        find_stake_program_address(&id(), &test_vote_address, &stake_pool_pubkey);
+        find_stake_program_address(&id(), &test_vote_address, &stake_pool_pubkey, None);
 
     let error = stake_pool_accounts
         .add_validator_to_pool(
@@ -405,6 +490,7 @@ async fn add_validator_to_pool() {
             &context.last_blockhash,
             &stake_address,
             &test_vote_address,
+            None,
         )
         .await;
     assert!(error.is_none());
@@ -419,7 +505,10 @@ async fn add_validator_to_pool() {
     assert_eq!(validator_list.validators.len(), last_index + 1);
     let last_element = validator_list.validators[last_index];
     assert_eq!(last_element.status, StakeStatus::Active);
-    assert_eq!(last_element.active_stake_lamports, 0);
+    assert_eq!(
+        last_element.active_stake_lamports,
+        LAMPORTS_PER_SOL + STAKE_ACCOUNT_RENT_EXEMPTION
+    );
     assert_eq!(last_element.transient_stake_lamports, 0);
     assert_eq!(last_element.vote_account_address, test_vote_address);
 
@@ -454,7 +543,10 @@ async fn add_validator_to_pool() {
         try_from_slice_unchecked::<ValidatorList>(validator_list.data.as_slice()).unwrap();
     let last_element = validator_list.validators[last_index];
     assert_eq!(last_element.status, StakeStatus::Active);
-    assert_eq!(last_element.active_stake_lamports, 0);
+    assert_eq!(
+        last_element.active_stake_lamports,
+        LAMPORTS_PER_SOL + STAKE_ACCOUNT_RENT_EXEMPTION
+    );
     assert_eq!(
         last_element.transient_stake_lamports,
         increase_amount + STAKE_ACCOUNT_RENT_EXEMPTION
@@ -514,6 +606,7 @@ async fn deposit_stake() {
         &id(),
         &vote_pubkey,
         &stake_pool_accounts.stake_pool.pubkey(),
+        None,
     );
 
     let error = stake_pool_accounts
@@ -539,6 +632,7 @@ async fn withdraw() {
         &id(),
         &vote_pubkey,
         &stake_pool_accounts.stake_pool.pubkey(),
+        None,
     );
 
     let error = stake_pool_accounts
@@ -584,7 +678,7 @@ async fn withdraw() {
 async fn cleanup_all() {
     let mut program_test = program_test();
     let mut vote_account_pubkeys = vec![];
-    let mut stake_pool_accounts = StakePoolAccounts::new();
+    let mut stake_pool_accounts = StakePoolAccounts::default();
     let max_validators = HUGE_POOL_SIZE;
     stake_pool_accounts.max_validators = max_validators;
 

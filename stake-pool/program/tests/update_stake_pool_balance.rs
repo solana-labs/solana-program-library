@@ -11,18 +11,28 @@ use {
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
+        stake,
         transaction::TransactionError,
     },
     spl_stake_pool::{error::StakePoolError, state::StakePool, MINIMUM_RESERVE_LAMPORTS},
+    std::num::NonZeroU32,
 };
 
-async fn setup() -> (
+const NUM_VALIDATORS: u64 = 3;
+
+async fn setup(
+    num_validators: u64,
+) -> (
     ProgramTestContext,
     StakePoolAccounts,
     Vec<ValidatorStakeAccount>,
+    u64,
 ) {
     let mut context = program_test().start_with_context().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    context.warp_to_slot(slot).unwrap();
+
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut context.banks_client,
@@ -33,38 +43,87 @@ async fn setup() -> (
         .await
         .unwrap();
 
-    // Add several accounts
-    let mut stake_accounts: Vec<ValidatorStakeAccount> = vec![];
-    const STAKE_ACCOUNTS: u64 = 3;
-    for _ in 0..STAKE_ACCOUNTS {
-        let validator_stake_account = simple_add_validator_to_pool(
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let current_minimum_delegation = stake_pool_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
+
+    let error = stake_pool_accounts
+        .deposit_sol(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &stake_pool_accounts,
+            &stake_pool_accounts.pool_fee_account.pubkey(),
+            (stake_rent + current_minimum_delegation) * num_validators,
+            None,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // Add several accounts
+    let mut stake_accounts: Vec<ValidatorStakeAccount> = vec![];
+    for i in 0..num_validators {
+        let stake_account = ValidatorStakeAccount::new(
+            &stake_pool_accounts.stake_pool.pubkey(),
+            NonZeroU32::new(i as u32),
+            u64::MAX,
+        );
+        create_vote(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &stake_account.validator,
+            &stake_account.vote,
         )
         .await;
 
-        let _deposit_info = simple_deposit_stake(
-            &mut context.banks_client,
-            &context.payer,
-            &context.last_blockhash,
-            &stake_pool_accounts,
-            &validator_stake_account,
-            TEST_STAKE_AMOUNT,
-        )
-        .await
-        .unwrap();
+        let error = stake_pool_accounts
+            .add_validator_to_pool(
+                &mut context.banks_client,
+                &context.payer,
+                &context.last_blockhash,
+                &stake_account.stake_account,
+                &stake_account.vote.pubkey(),
+                stake_account.validator_stake_seed,
+            )
+            .await;
+        assert!(error.is_none());
 
-        stake_accounts.push(validator_stake_account);
+        let mut deposit_account = DepositStakeAccount::new_with_vote(
+            stake_account.vote.pubkey(),
+            stake_account.stake_account,
+            TEST_STAKE_AMOUNT,
+        );
+        deposit_account
+            .create_and_delegate(
+                &mut context.banks_client,
+                &context.payer,
+                &context.last_blockhash,
+            )
+            .await;
+
+        deposit_account
+            .deposit_stake(
+                &mut context.banks_client,
+                &context.payer,
+                &context.last_blockhash,
+                &stake_pool_accounts,
+            )
+            .await;
+
+        stake_accounts.push(stake_account);
     }
 
-    (context, stake_pool_accounts, stake_accounts)
+    (context, stake_pool_accounts, stake_accounts, slot)
 }
 
 #[tokio::test]
 async fn success() {
-    let (mut context, stake_pool_accounts, stake_accounts) = setup().await;
+    let (mut context, stake_pool_accounts, stake_accounts, slot) = setup(NUM_VALIDATORS).await;
 
     let pre_fee = get_token_balance(
         &mut context.banks_client,
@@ -108,11 +167,8 @@ async fn success() {
     }
 
     // Update epoch
-    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context
-        .warp_to_slot(first_normal_slot + slots_per_epoch)
-        .unwrap();
+    context.warp_to_slot(slot + slots_per_epoch).unwrap();
 
     // Update list and pool
     let error = stake_pool_accounts
@@ -172,8 +228,8 @@ async fn success() {
 }
 
 #[tokio::test]
-async fn success_ignoring_extra_lamports() {
-    let (mut context, stake_pool_accounts, stake_accounts) = setup().await;
+async fn success_absorbing_extra_lamports() {
+    let (mut context, stake_pool_accounts, stake_accounts, slot) = setup(NUM_VALIDATORS).await;
 
     let pre_balance = get_validator_list_sum(
         &mut context.banks_client,
@@ -204,7 +260,7 @@ async fn success_ignoring_extra_lamports() {
         .await;
     assert!(error.is_none());
 
-    // Transfer extra funds, should not be taken into account
+    // Transfer extra funds, will be absorbed during update
     const EXTRA_STAKE_AMOUNT: u64 = 1_000_000;
     for stake_account in &stake_accounts {
         transfer(
@@ -217,12 +273,12 @@ async fn success_ignoring_extra_lamports() {
         .await;
     }
 
+    let extra_lamports = EXTRA_STAKE_AMOUNT * stake_accounts.len() as u64;
+    let expected_fee = stake_pool.calc_epoch_fee_amount(extra_lamports).unwrap();
+
     // Update epoch
-    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context
-        .warp_to_slot(first_normal_slot + slots_per_epoch)
-        .unwrap();
+    context.warp_to_slot(slot + slots_per_epoch).unwrap();
 
     // Update list and pool
     let error = stake_pool_accounts
@@ -240,26 +296,26 @@ async fn success_ignoring_extra_lamports() {
         .await;
     assert!(error.is_none());
 
-    // Check fee
+    // Check extra lamports are absorbed and fee'd as rewards
     let post_balance = get_validator_list_sum(
         &mut context.banks_client,
         &stake_pool_accounts.reserve_stake.pubkey(),
         &stake_pool_accounts.validator_list.pubkey(),
     )
     .await;
-    assert_eq!(post_balance, pre_balance);
+    assert_eq!(post_balance, pre_balance + extra_lamports);
     let pool_token_supply = get_token_supply(
         &mut context.banks_client,
         &stake_pool_accounts.pool_mint.pubkey(),
     )
     .await;
-    assert_eq!(pool_token_supply, pre_token_supply);
+    assert_eq!(pool_token_supply, pre_token_supply + expected_fee);
 }
 
 #[tokio::test]
 async fn fail_with_wrong_validator_list() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
+    let mut stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -293,7 +349,7 @@ async fn fail_with_wrong_validator_list() {
 #[tokio::test]
 async fn fail_with_wrong_pool_fee_account() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
+    let mut stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -327,7 +383,7 @@ async fn fail_with_wrong_pool_fee_account() {
 #[tokio::test]
 async fn fail_with_wrong_reserve() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
+    let mut stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,

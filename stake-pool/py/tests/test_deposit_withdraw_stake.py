@@ -13,7 +13,7 @@ from stake_pool.state import StakePool
 
 @pytest.mark.asyncio
 async def test_deposit_withdraw_stake(async_client, validators, payer, stake_pool_addresses, waiter):
-    (stake_pool_address, validator_list_address) = stake_pool_addresses
+    (stake_pool_address, validator_list_address, _) = stake_pool_addresses
     resp = await async_client.get_account_info(stake_pool_address, commitment=Confirmed)
     data = resp['result']['value']['data']
     stake_pool = StakePool.decode(data[0], data[1])
@@ -26,18 +26,20 @@ async def test_deposit_withdraw_stake(async_client, validators, payer, stake_poo
     resp = await async_client.get_account_info(stake, commitment=Confirmed)
     data = resp['result']['value']['data']
     stake_state = StakeState.decode(data[0], data[1])
+    token_account = get_associated_token_address(payer.public_key, stake_pool.pool_mint)
+    pre_pool_token_balance = await async_client.get_token_account_balance(token_account, Confirmed)
+    pre_pool_token_balance = int(pre_pool_token_balance['result']['value']['amount'])
     print(stake_state)
 
     await waiter.wait_for_next_epoch(async_client)
 
     await update_stake_pool(async_client, payer, stake_pool_address)
-    token_account = get_associated_token_address(payer.public_key, stake_pool.pool_mint)
     await deposit_stake(async_client, payer, stake_pool_address, validator, stake, token_account)
     pool_token_balance = await async_client.get_token_account_balance(token_account, Confirmed)
     pool_token_balance = pool_token_balance['result']['value']['amount']
     resp = await async_client.get_minimum_balance_for_rent_exemption(STAKE_LEN)
     stake_rent_exemption = resp['result']
-    assert pool_token_balance == str(stake_amount + stake_rent_exemption)
+    assert pool_token_balance == str(stake_amount + stake_rent_exemption + pre_pool_token_balance)
 
     destination_stake = Keypair()
     await withdraw_stake(
@@ -47,4 +49,4 @@ async def test_deposit_withdraw_stake(async_client, validators, payer, stake_poo
 
     pool_token_balance = await async_client.get_token_account_balance(token_account, Confirmed)
     pool_token_balance = pool_token_balance['result']['value']['amount']
-    assert pool_token_balance == str(stake_rent_exemption)
+    assert pool_token_balance == str(stake_rent_exemption + pre_pool_token_balance)

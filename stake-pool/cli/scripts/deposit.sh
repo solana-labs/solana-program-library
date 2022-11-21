@@ -69,5 +69,3 @@ echo "If you are running on localnet with 32 slots per epoch, wait 12 seconds...
 sleep 12
 echo "Depositing stakes into stake pool"
 deposit_stakes "$stake_pool_pubkey" "$validator_list" $authority
-echo "Depositing SOL into stake pool"
-$spl_stake_pool deposit-sol "$stake_pool_pubkey" "$sol_amount"

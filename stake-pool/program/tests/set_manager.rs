@@ -30,7 +30,7 @@ async fn setup() -> (
     Keypair,
 ) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -47,9 +47,11 @@ async fn setup() -> (
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &new_pool_fee,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &new_manager.pubkey(),
+        &new_manager,
+        &[],
     )
     .await
     .unwrap();
@@ -219,7 +221,7 @@ async fn test_set_manager_without_new_signature() {
 #[tokio::test]
 async fn test_set_manager_with_wrong_mint_for_pool_fee_acc() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -239,8 +241,11 @@ async fn test_set_manager_with_wrong_mint_for_pool_fee_acc() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &new_mint,
         &new_withdraw_auth.pubkey(),
+        0,
+        &[],
     )
     .await
     .unwrap();
@@ -248,9 +253,11 @@ async fn test_set_manager_with_wrong_mint_for_pool_fee_acc() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &new_pool_fee,
         &new_mint.pubkey(),
-        &new_manager.pubkey(),
+        &new_manager,
+        &[],
     )
     .await
     .unwrap();
@@ -282,7 +289,7 @@ async fn test_set_manager_with_wrong_mint_for_pool_fee_acc() {
             _,
             InstructionError::Custom(error_index),
         )) => {
-            let program_error = error::StakePoolError::WrongAccountMint as u32;
+            let program_error = error::StakePoolError::InvalidFeeAccount as u32;
             assert_eq!(error_index, program_error);
         }
         _ => panic!("Wrong error occurs while try to set new manager with wrong mint"),

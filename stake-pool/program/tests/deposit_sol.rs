@@ -20,12 +20,15 @@ use {
         state, MINIMUM_RESERVE_LAMPORTS,
     },
     spl_token::error as token_error,
+    test_case::test_case,
 };
 
-async fn setup() -> (ProgramTestContext, StakePoolAccounts, Keypair, Pubkey) {
+async fn setup(
+    token_program_id: Pubkey,
+) -> (ProgramTestContext, StakePoolAccounts, Keypair, Pubkey) {
     let mut context = program_test().start_with_context().await;
 
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::new_with_token_program(token_program_id);
     stake_pool_accounts
         .initialize_stake_pool(
             &mut context.banks_client,
@@ -44,9 +47,11 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts, Keypair, Pubkey) {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &pool_token_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
+        &user,
+        &[],
     )
     .await
     .unwrap();
@@ -59,9 +64,12 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts, Keypair, Pubkey) {
     )
 }
 
+#[test_case(spl_token::id(); "token")]
+#[test_case(spl_token_2022::id(); "token-2022")]
 #[tokio::test]
-async fn success() {
-    let (mut context, stake_pool_accounts, _user, pool_token_account) = setup().await;
+async fn success(token_program_id: Pubkey) {
+    let (mut context, stake_pool_accounts, _user, pool_token_account) =
+        setup(token_program_id).await;
 
     // Save stake pool state before depositing
     let pre_stake_pool = get_account(
@@ -133,7 +141,8 @@ async fn success() {
 
 #[tokio::test]
 async fn fail_with_wrong_token_program_id() {
-    let (mut context, stake_pool_accounts, _user, pool_token_account) = setup().await;
+    let (mut context, stake_pool_accounts, _user, pool_token_account) =
+        setup(spl_token::id()).await;
 
     let wrong_token_program = Keypair::new();
 
@@ -173,7 +182,8 @@ async fn fail_with_wrong_token_program_id() {
 
 #[tokio::test]
 async fn fail_with_wrong_withdraw_authority() {
-    let (mut context, mut stake_pool_accounts, _user, pool_token_account) = setup().await;
+    let (mut context, mut stake_pool_accounts, _user, pool_token_account) =
+        setup(spl_token::id()).await;
 
     stake_pool_accounts.withdraw_authority = Pubkey::new_unique();
 
@@ -201,7 +211,8 @@ async fn fail_with_wrong_withdraw_authority() {
 
 #[tokio::test]
 async fn fail_with_wrong_mint_for_receiver_acc() {
-    let (mut context, stake_pool_accounts, _user, _pool_token_account) = setup().await;
+    let (mut context, stake_pool_accounts, _user, _pool_token_account) =
+        setup(spl_token::id()).await;
 
     let outside_mint = Keypair::new();
     let outside_withdraw_auth = Keypair::new();
@@ -212,8 +223,11 @@ async fn fail_with_wrong_mint_for_receiver_acc() {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &outside_mint,
         &outside_withdraw_auth.pubkey(),
+        0,
+        &[],
     )
     .await
     .unwrap();
@@ -222,9 +236,11 @@ async fn fail_with_wrong_mint_for_receiver_acc() {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &outside_pool_fee_acc,
         &outside_mint.pubkey(),
-        &outside_manager.pubkey(),
+        &outside_manager,
+        &[],
     )
     .await
     .unwrap();
@@ -256,7 +272,7 @@ async fn fail_with_wrong_mint_for_receiver_acc() {
 #[tokio::test]
 async fn success_with_sol_deposit_authority() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -275,9 +291,11 @@ async fn success_with_sol_deposit_authority() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &user_pool_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
+        &user,
+        &[],
     )
     .await
     .unwrap();
@@ -326,7 +344,7 @@ async fn success_with_sol_deposit_authority() {
 async fn fail_without_sol_deposit_authority_signature() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let sol_deposit_authority = Keypair::new();
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -345,9 +363,11 @@ async fn fail_without_sol_deposit_authority_signature() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &user_pool_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
+        &user,
+        &[],
     )
     .await
     .unwrap();
@@ -393,7 +413,8 @@ async fn fail_without_sol_deposit_authority_signature() {
 
 #[tokio::test]
 async fn success_with_referral_fee() {
-    let (mut context, stake_pool_accounts, _user, pool_token_account) = setup().await;
+    let (mut context, stake_pool_accounts, _user, pool_token_account) =
+        setup(spl_token::id()).await;
 
     let referrer = Keypair::new();
     let referrer_token_account = Keypair::new();
@@ -401,9 +422,11 @@ async fn success_with_referral_fee() {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &referrer_token_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &referrer.pubkey(),
+        &referrer,
+        &[],
     )
     .await
     .unwrap();
@@ -445,7 +468,8 @@ async fn success_with_referral_fee() {
 
 #[tokio::test]
 async fn fail_with_invalid_referrer() {
-    let (mut context, stake_pool_accounts, _user, pool_token_account) = setup().await;
+    let (mut context, stake_pool_accounts, _user, pool_token_account) =
+        setup(spl_token::id()).await;
 
     let invalid_token_account = Keypair::new();
 

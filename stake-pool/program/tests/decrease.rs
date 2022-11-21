@@ -32,7 +32,10 @@ async fn setup() -> (
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let rent = banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let current_minimum_delegation =
+        stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
+
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -48,11 +51,9 @@ async fn setup() -> (
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        None,
     )
     .await;
-
-    let current_minimum_delegation =
-        stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
 
     let deposit_info = simple_deposit_stake(
         &mut banks_client,
@@ -285,7 +286,7 @@ async fn fail_with_unknown_validator() {
         error,
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(StakePoolError::InvalidStakeAccountAddress as u32)
+            InstructionError::Custom(StakePoolError::ValidatorNotFound as u32)
         )
     );
 }

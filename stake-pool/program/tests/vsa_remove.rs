@@ -4,7 +4,6 @@
 mod helpers;
 
 use {
-    bincode::deserialize,
     borsh::BorshSerialize,
     helpers::*,
     solana_program::{
@@ -23,17 +22,12 @@ use {
         error::StakePoolError, find_transient_stake_program_address, id, instruction, state,
         MINIMUM_RESERVE_LAMPORTS,
     },
+    std::num::NonZeroU32,
 };
 
-async fn setup() -> (
-    ProgramTestContext,
-    StakePoolAccounts,
-    ValidatorStakeAccount,
-    Pubkey,
-    Keypair,
-) {
+async fn setup() -> (ProgramTestContext, StakePoolAccounts, ValidatorStakeAccount) {
     let mut context = program_test().start_with_context().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut context.banks_client,
@@ -44,8 +38,11 @@ async fn setup() -> (
         .await
         .unwrap();
 
-    let validator_stake =
-        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), u64::MAX);
+    let validator_stake = ValidatorStakeAccount::new(
+        &stake_pool_accounts.stake_pool.pubkey(),
+        NonZeroU32::new(u32::MAX),
+        u64::MAX,
+    );
     create_vote(
         &mut context.banks_client,
         &context.payer,
@@ -62,45 +59,35 @@ async fn setup() -> (
             &context.last_blockhash,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await;
     assert!(error.is_none());
-
-    let new_authority = Pubkey::new_unique();
-    let destination_stake = Keypair::new();
-
-    (
-        context,
-        stake_pool_accounts,
-        validator_stake,
-        new_authority,
-        destination_stake,
-    )
+    (context, stake_pool_accounts, validator_stake)
 }
 
 #[tokio::test]
 async fn success() {
-    let (mut context, stake_pool_accounts, validator_stake, new_authority, destination_stake) =
-        setup().await;
+    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
 
     let error = stake_pool_accounts
         .remove_validator_from_pool(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &new_authority,
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
-            &destination_stake,
         )
         .await;
     assert!(error.is_none());
 
     let error = stake_pool_accounts
-        .cleanup_removed_validator_entries(
+        .update_all(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
+            &[validator_stake.vote.pubkey()],
+            false,
         )
         .await;
     assert!(error.is_none());
@@ -131,21 +118,11 @@ async fn success() {
         .await
         .unwrap();
     assert!(account.is_none());
-    let stake = get_account(&mut context.banks_client, &destination_stake.pubkey()).await;
-    let stake_state = deserialize::<stake::state::StakeState>(&stake.data).unwrap();
-    match stake_state {
-        stake::state::StakeState::Stake(meta, _) => {
-            assert_eq!(&meta.authorized.staker, &new_authority);
-            assert_eq!(&meta.authorized.withdrawer, &new_authority);
-        }
-        _ => panic!(),
-    }
 }
 
 #[tokio::test]
 async fn fail_with_wrong_stake_program_id() {
-    let (mut context, stake_pool_accounts, validator_stake, new_authority, destination_stake) =
-        setup().await;
+    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
 
     let wrong_stake_program = Pubkey::new_unique();
 
@@ -153,11 +130,9 @@ async fn fail_with_wrong_stake_program_id() {
         AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), false),
         AccountMeta::new_readonly(stake_pool_accounts.staker.pubkey(), true),
         AccountMeta::new_readonly(stake_pool_accounts.withdraw_authority, false),
-        AccountMeta::new_readonly(new_authority, false),
         AccountMeta::new(stake_pool_accounts.validator_list.pubkey(), false),
         AccountMeta::new(validator_stake.stake_account, false),
         AccountMeta::new_readonly(validator_stake.transient_stake_account, false),
-        AccountMeta::new(destination_stake.pubkey(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(wrong_stake_program, false),
     ];
@@ -197,8 +172,7 @@ async fn fail_with_wrong_stake_program_id() {
 
 #[tokio::test]
 async fn fail_with_wrong_validator_list_account() {
-    let (mut context, stake_pool_accounts, validator_stake, new_authority, destination_stake) =
-        setup().await;
+    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
 
     let wrong_validator_list = Keypair::new();
 
@@ -208,11 +182,9 @@ async fn fail_with_wrong_validator_list_account() {
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.staker.pubkey(),
             &stake_pool_accounts.withdraw_authority,
-            &new_authority,
             &wrong_validator_list.pubkey(),
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
-            &destination_stake.pubkey(),
         )],
         Some(&context.payer.pubkey()),
     );
@@ -243,8 +215,7 @@ async fn fail_with_wrong_validator_list_account() {
 
 #[tokio::test]
 async fn fail_not_at_minimum() {
-    let (mut context, stake_pool_accounts, validator_stake, new_authority, destination_stake) =
-        setup().await;
+    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
 
     transfer(
         &mut context.banks_client,
@@ -260,10 +231,8 @@ async fn fail_not_at_minimum() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &new_authority,
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
-            &destination_stake,
         )
         .await
         .unwrap()
@@ -271,7 +240,7 @@ async fn fail_not_at_minimum() {
     assert_eq!(
         error,
         TransactionError::InstructionError(
-            1,
+            0,
             InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)
         ),
     );
@@ -279,58 +248,60 @@ async fn fail_not_at_minimum() {
 
 #[tokio::test]
 async fn fail_double_remove() {
-    let (mut context, stake_pool_accounts, validator_stake, new_authority, destination_stake) =
-        setup().await;
+    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
 
     let error = stake_pool_accounts
         .remove_validator_from_pool(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &new_authority,
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
-            &destination_stake,
         )
         .await;
     assert!(error.is_none());
 
     let error = stake_pool_accounts
-        .cleanup_removed_validator_entries(
+        .update_all(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
+            &[validator_stake.vote.pubkey()],
+            false,
         )
         .await;
     assert!(error.is_none());
 
-    let _latest_blockhash = context.banks_client.get_latest_blockhash().await.unwrap();
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
 
-    let destination_stake = Keypair::new();
     let error = stake_pool_accounts
         .remove_validator_from_pool(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
-            &new_authority,
+            &last_blockhash,
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
-            &destination_stake,
         )
         .await
         .unwrap()
         .unwrap();
 
-    assert!(matches!(
+    assert_eq!(
         error,
-        TransactionError::InstructionError(1, InstructionError::BorshIoError(_),)
-    ));
+        TransactionError::InstructionError(
+            0,
+            InstructionError::BorshIoError("Unknown".to_string())
+        )
+    );
 }
 
 #[tokio::test]
 async fn fail_wrong_staker() {
-    let (mut context, stake_pool_accounts, validator_stake, new_authority, destination_stake) =
-        setup().await;
+    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
 
     let malicious = Keypair::new();
 
@@ -340,11 +311,9 @@ async fn fail_wrong_staker() {
             &stake_pool_accounts.stake_pool.pubkey(),
             &malicious.pubkey(),
             &stake_pool_accounts.withdraw_authority,
-            &new_authority,
             &stake_pool_accounts.validator_list.pubkey(),
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
-            &destination_stake.pubkey(),
         )],
         Some(&context.payer.pubkey()),
     );
@@ -374,18 +343,15 @@ async fn fail_wrong_staker() {
 
 #[tokio::test]
 async fn fail_no_signature() {
-    let (mut context, stake_pool_accounts, validator_stake, new_authority, destination_stake) =
-        setup().await;
+    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
 
     let accounts = vec![
         AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), false),
         AccountMeta::new_readonly(stake_pool_accounts.staker.pubkey(), false),
         AccountMeta::new_readonly(stake_pool_accounts.withdraw_authority, false),
-        AccountMeta::new_readonly(new_authority, false),
         AccountMeta::new(stake_pool_accounts.validator_list.pubkey(), false),
         AccountMeta::new(validator_stake.stake_account, false),
         AccountMeta::new_readonly(validator_stake.transient_stake_account, false),
-        AccountMeta::new(destination_stake.pubkey(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(stake::program::id(), false),
     ];
@@ -426,8 +392,7 @@ async fn fail_no_signature() {
 
 #[tokio::test]
 async fn fail_with_activating_transient_stake() {
-    let (mut context, stake_pool_accounts, validator_stake, new_authority, destination_stake) =
-        setup().await;
+    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
 
     // increase the validator stake
     let error = stake_pool_accounts
@@ -449,10 +414,8 @@ async fn fail_with_activating_transient_stake() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &new_authority,
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
-            &destination_stake,
         )
         .await
         .unwrap()
@@ -471,11 +434,16 @@ async fn fail_with_activating_transient_stake() {
 
 #[tokio::test]
 async fn success_with_deactivating_transient_stake() {
-    let (mut context, stake_pool_accounts, validator_stake, new_authority, destination_stake) =
-        setup().await;
+    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let current_minimum_delegation = stake_pool_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
     let deposit_info = simple_deposit_stake(
         &mut context.banks_client,
         &context.payer,
@@ -506,10 +474,8 @@ async fn success_with_deactivating_transient_stake() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &new_authority,
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
-            &destination_stake,
         )
         .await;
     assert!(error.is_none());
@@ -542,6 +508,7 @@ async fn success_with_deactivating_transient_stake() {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &deposit_info.pool_account.pubkey(),
         &deposit_info.authority,
         &user_transfer_authority.pubkey(),
@@ -577,18 +544,22 @@ async fn success_with_deactivating_transient_stake() {
             max_validators: stake_pool_accounts.max_validators,
         },
         validators: vec![state::ValidatorStakeInfo {
-            status: state::StakeStatus::DeactivatingTransient,
+            status: state::StakeStatus::DeactivatingAll,
             vote_account_address: validator_stake.vote.pubkey(),
             last_update_epoch: 0,
-            active_stake_lamports: 0,
+            active_stake_lamports: stake_rent + current_minimum_delegation,
             transient_stake_lamports: TEST_STAKE_AMOUNT + stake_rent,
-            transient_seed_suffix_start: validator_stake.transient_stake_seed,
-            transient_seed_suffix_end: 0,
+            transient_seed_suffix: validator_stake.transient_stake_seed,
+            unused: 0,
+            validator_seed_suffix: validator_stake
+                .validator_stake_seed
+                .map(|s| s.get())
+                .unwrap_or(0),
         }],
     };
     assert_eq!(validator_list, expected_list);
 
-    // Update, should not change, no merges yet
+    // Update will merge since activation and deactivation were in the same epoch
     let error = stake_pool_accounts
         .update_all(
             &mut context.banks_client,
@@ -607,13 +578,19 @@ async fn success_with_deactivating_transient_stake() {
     .await;
     let validator_list =
         try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
+    let expected_list = state::ValidatorList {
+        header: state::ValidatorListHeader {
+            account_type: state::AccountType::ValidatorList,
+            max_validators: stake_pool_accounts.max_validators,
+        },
+        validators: vec![],
+    };
     assert_eq!(validator_list, expected_list);
 }
 
 #[tokio::test]
 async fn success_resets_preferred_validator() {
-    let (mut context, stake_pool_accounts, validator_stake, new_authority, destination_stake) =
-        setup().await;
+    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
 
     stake_pool_accounts
         .set_preferred_validator(
@@ -639,19 +616,19 @@ async fn success_resets_preferred_validator() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &new_authority,
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
-            &destination_stake,
         )
         .await;
     assert!(error.is_none());
 
     let error = stake_pool_accounts
-        .cleanup_removed_validator_entries(
+        .update_all(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
+            &[validator_stake.vote.pubkey()],
+            false,
         )
         .await;
     assert!(error.is_none());
@@ -675,22 +652,18 @@ async fn success_resets_preferred_validator() {
         }
     );
 
-    // Check of stake account authority has changed
-    let stake = get_account(&mut context.banks_client, &destination_stake.pubkey()).await;
-    let stake_state = deserialize::<stake::state::StakeState>(&stake.data).unwrap();
-    match stake_state {
-        stake::state::StakeState::Stake(meta, _) => {
-            assert_eq!(&meta.authorized.staker, &new_authority);
-            assert_eq!(&meta.authorized.withdrawer, &new_authority);
-        }
-        _ => panic!(),
-    }
+    // Check stake account no longer exists
+    let account = context
+        .banks_client
+        .get_account(validator_stake.stake_account)
+        .await
+        .unwrap();
+    assert!(account.is_none());
 }
 
 #[tokio::test]
 async fn success_with_hijacked_transient_account() {
-    let (mut context, stake_pool_accounts, validator_stake, new_authority, destination_stake) =
-        setup().await;
+    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
     let current_minimum_delegation = stake_pool_get_minimum_delegation(
@@ -831,19 +804,23 @@ async fn success_with_hijacked_transient_account() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &new_authority,
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
-            &destination_stake,
         )
         .await;
     assert!(error.is_none());
 
+    // warp forward to merge
+    slot += slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
+
     let error = stake_pool_accounts
-        .cleanup_removed_validator_entries(
+        .update_all(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
+            &[validator_stake.vote.pubkey()],
+            false,
         )
         .await;
     assert!(error.is_none());

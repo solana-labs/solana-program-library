@@ -26,7 +26,9 @@ use {
     },
 };
 
-async fn setup() -> (
+async fn setup(
+    num_validators: u64,
+) -> (
     BanksClient,
     Keypair,
     Hash,
@@ -34,18 +36,25 @@ async fn setup() -> (
     ValidatorStakeAccount,
 ) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let rent = banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let current_minimum_delegation =
+        stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
+    let minimum_for_validator = stake_rent + current_minimum_delegation;
+
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
             &payer,
             &recent_blockhash,
-            MINIMUM_RESERVE_LAMPORTS,
+            MINIMUM_RESERVE_LAMPORTS + num_validators * minimum_for_validator,
         )
         .await
         .unwrap();
 
-    let validator_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), 0);
+    let validator_stake =
+        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), None, 0);
     create_vote(
         &mut banks_client,
         &payer,
@@ -67,7 +76,7 @@ async fn setup() -> (
 #[tokio::test]
 async fn success() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(1).await;
 
     let error = stake_pool_accounts
         .add_validator_to_pool(
@@ -76,6 +85,7 @@ async fn success() {
             &recent_blockhash,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await;
     assert!(error.is_none());
@@ -88,6 +98,10 @@ async fn success() {
     .await;
     let validator_list =
         try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
+    let rent = banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let current_minimum_delegation =
+        stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
     assert_eq!(
         validator_list,
         state::ValidatorList {
@@ -99,10 +113,14 @@ async fn success() {
                 status: state::StakeStatus::Active,
                 vote_account_address: validator_stake.vote.pubkey(),
                 last_update_epoch: 0,
-                active_stake_lamports: 0,
+                active_stake_lamports: stake_rent + current_minimum_delegation,
                 transient_stake_lamports: 0,
-                transient_seed_suffix_start: 0,
-                transient_seed_suffix_end: 0,
+                transient_seed_suffix: 0,
+                unused: 0,
+                validator_seed_suffix: validator_stake
+                    .validator_stake_seed
+                    .map(|s| s.get())
+                    .unwrap_or(0),
             }]
         }
     );
@@ -128,7 +146,7 @@ async fn success() {
 #[tokio::test]
 async fn fail_with_wrong_validator_list_account() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(1).await;
 
     let wrong_validator_list = Keypair::new();
 
@@ -137,11 +155,12 @@ async fn fail_with_wrong_validator_list_account() {
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.staker.pubkey(),
-            &payer.pubkey(),
+            &stake_pool_accounts.reserve_stake.pubkey(),
             &stake_pool_accounts.withdraw_authority,
             &wrong_validator_list.pubkey(),
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )],
         Some(&payer.pubkey()),
     );
@@ -169,7 +188,7 @@ async fn fail_with_wrong_validator_list_account() {
 #[tokio::test]
 async fn fail_double_add() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(2).await;
 
     stake_pool_accounts
         .add_validator_to_pool(
@@ -178,6 +197,7 @@ async fn fail_double_add() {
             &recent_blockhash,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await;
 
@@ -190,6 +210,7 @@ async fn fail_double_add() {
             &latest_blockhash,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await
         .unwrap();
@@ -209,7 +230,7 @@ async fn fail_double_add() {
 #[tokio::test]
 async fn fail_wrong_staker() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(1).await;
 
     let malicious = Keypair::new();
 
@@ -218,11 +239,12 @@ async fn fail_wrong_staker() {
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &malicious.pubkey(),
-            &payer.pubkey(),
+            &stake_pool_accounts.reserve_stake.pubkey(),
             &stake_pool_accounts.withdraw_authority,
             &stake_pool_accounts.validator_list.pubkey(),
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )],
         Some(&payer.pubkey()),
     );
@@ -250,7 +272,7 @@ async fn fail_wrong_staker() {
 #[tokio::test]
 async fn fail_without_signature() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(1).await;
 
     let accounts = vec![
         AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), false),
@@ -270,9 +292,14 @@ async fn fail_without_signature() {
     let instruction = Instruction {
         program_id: id(),
         accounts,
-        data: instruction::StakePoolInstruction::AddValidatorToPool
-            .try_to_vec()
-            .unwrap(),
+        data: instruction::StakePoolInstruction::AddValidatorToPool(
+            validator_stake
+                .validator_stake_seed
+                .map(|s| s.get())
+                .unwrap_or(0),
+        )
+        .try_to_vec()
+        .unwrap(),
     };
 
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
@@ -300,7 +327,7 @@ async fn fail_without_signature() {
 #[tokio::test]
 async fn fail_with_wrong_stake_program_id() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(1).await;
 
     let wrong_stake_program = Pubkey::new_unique();
     let accounts = vec![
@@ -321,9 +348,14 @@ async fn fail_with_wrong_stake_program_id() {
     let instruction = Instruction {
         program_id: id(),
         accounts,
-        data: instruction::StakePoolInstruction::AddValidatorToPool
-            .try_to_vec()
-            .unwrap(),
+        data: instruction::StakePoolInstruction::AddValidatorToPool(
+            validator_stake
+                .validator_stake_seed
+                .map(|s| s.get())
+                .unwrap_or(0),
+        )
+        .try_to_vec()
+        .unwrap(),
     };
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
     transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
@@ -348,7 +380,7 @@ async fn fail_with_wrong_stake_program_id() {
 #[tokio::test]
 async fn fail_with_wrong_system_program_id() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(1).await;
 
     let wrong_system_program = Pubkey::new_unique();
 
@@ -370,9 +402,14 @@ async fn fail_with_wrong_system_program_id() {
     let instruction = Instruction {
         program_id: id(),
         accounts,
-        data: instruction::StakePoolInstruction::AddValidatorToPool
-            .try_to_vec()
-            .unwrap(),
+        data: instruction::StakePoolInstruction::AddValidatorToPool(
+            validator_stake
+                .validator_stake_seed
+                .map(|s| s.get())
+                .unwrap_or(0),
+        )
+        .try_to_vec()
+        .unwrap(),
     };
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
     transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
@@ -397,19 +434,28 @@ async fn fail_with_wrong_system_program_id() {
 #[tokio::test]
 async fn fail_add_too_many_validator_stake_accounts() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
-    stake_pool_accounts.max_validators = 1;
+    let rent = banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let current_minimum_delegation =
+        stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
+    let minimum_for_validator = stake_rent + current_minimum_delegation;
+
+    let stake_pool_accounts = StakePoolAccounts {
+        max_validators: 1,
+        ..Default::default()
+    };
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
             &payer,
             &recent_blockhash,
-            MINIMUM_RESERVE_LAMPORTS,
+            MINIMUM_RESERVE_LAMPORTS + 2 * minimum_for_validator,
         )
         .await
         .unwrap();
 
-    let validator_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), 0);
+    let validator_stake =
+        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), None, 0);
     create_vote(
         &mut banks_client,
         &payer,
@@ -426,11 +472,13 @@ async fn fail_add_too_many_validator_stake_accounts() {
             &recent_blockhash,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await;
     assert!(error.is_none());
 
-    let validator_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), 0);
+    let validator_stake =
+        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), None, 0);
     create_vote(
         &mut banks_client,
         &payer,
@@ -446,6 +494,7 @@ async fn fail_add_too_many_validator_stake_accounts() {
             &recent_blockhash,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await
         .unwrap()
@@ -464,11 +513,15 @@ async fn fail_with_uninitialized_validator_list_account() {} // TODO
 
 #[tokio::test]
 async fn fail_on_non_vote_account() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, _) = setup().await;
+    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, _) = setup(1).await;
 
     let validator = Pubkey::new_unique();
-    let (stake_account, _) =
-        find_stake_program_address(&id(), &validator, &stake_pool_accounts.stake_pool.pubkey());
+    let (stake_account, _) = find_stake_program_address(
+        &id(),
+        &validator,
+        &stake_pool_accounts.stake_pool.pubkey(),
+        None,
+    );
 
     let error = stake_pool_accounts
         .add_validator_to_pool(
@@ -477,6 +530,7 @@ async fn fail_on_non_vote_account() {
             &recent_blockhash,
             &stake_account,
             &validator,
+            None,
         )
         .await
         .unwrap()
@@ -491,7 +545,7 @@ async fn fail_on_non_vote_account() {
 #[tokio::test]
 async fn fail_on_incorrectly_derived_stake_account() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(1).await;
 
     let bad_stake_account = Pubkey::new_unique();
     let error = stake_pool_accounts
@@ -501,6 +555,7 @@ async fn fail_on_incorrectly_derived_stake_account() {
             &recent_blockhash,
             &bad_stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await
         .unwrap()
@@ -518,7 +573,7 @@ async fn fail_on_incorrectly_derived_stake_account() {
 #[tokio::test]
 async fn success_with_lamports_in_account() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(1).await;
 
     transfer(
         &mut banks_client,
@@ -536,6 +591,7 @@ async fn success_with_lamports_in_account() {
             &recent_blockhash,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
         )
         .await;
     assert!(error.is_none());
@@ -556,4 +612,115 @@ async fn success_with_lamports_in_account() {
         }
         _ => panic!(),
     }
+}
+
+#[tokio::test]
+async fn fail_with_not_enough_reserve_lamports() {
+    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
+        setup(0).await;
+
+    let error = stake_pool_accounts
+        .add_validator_to_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(0, InstructionError::InsufficientFunds)
+    );
+}
+
+#[tokio::test]
+async fn fail_with_wrong_reserve() {
+    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
+        setup(1).await;
+
+    let wrong_reserve = Pubkey::new_unique();
+
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::add_validator_to_pool(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.staker.pubkey(),
+            &wrong_reserve,
+            &stake_pool_accounts.withdraw_authority,
+            &stake_pool_accounts.validator_list.pubkey(),
+            &validator_stake.stake_account,
+            &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
+        )],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
+    let transaction_error = banks_client
+        .process_transaction(transaction)
+        .await
+        .err()
+        .unwrap()
+        .into();
+
+    match transaction_error {
+        TransportError::TransactionError(TransactionError::InstructionError(
+            _,
+            InstructionError::Custom(error_index),
+        )) => {
+            let program_error = StakePoolError::InvalidProgramAddress as u32;
+            assert_eq!(error_index, program_error);
+        }
+        _ => panic!("Wrong error occurs while try to add validator stake address with wrong validator stake list account"),
+    }
+}
+
+#[tokio::test]
+async fn fail_with_draining_reserve() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let current_minimum_delegation =
+        stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
+
+    let stake_pool_accounts = StakePoolAccounts::default();
+    stake_pool_accounts
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            current_minimum_delegation, // add exactly enough for a validator
+        )
+        .await
+        .unwrap();
+
+    let validator_stake =
+        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), None, 0);
+    create_vote(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &validator_stake.validator,
+        &validator_stake.vote,
+    )
+    .await;
+
+    let error = stake_pool_accounts
+        .add_validator_to_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(0, InstructionError::InsufficientFunds),
+    );
 }

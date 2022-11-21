@@ -12,12 +12,15 @@ from solana.publickey import PublicKey
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Confirmed
 
+from spl.token.instructions import get_associated_token_address
+
 from vote.actions import create_vote
 from system.actions import airdrop
-from stake_pool.actions import create_all, add_validator_to_pool
+from stake_pool.actions import deposit_sol, create_all, add_validator_to_pool
 from stake_pool.state import Fee
 
 NUM_SLOTS_PER_EPOCH: int = 32
+AIRDROP_LAMPORTS: int = 30_000_000_000
 
 
 @pytest.fixture(scope="session")
@@ -51,14 +54,20 @@ async def validators(async_client, payer) -> List[PublicKey]:
 
 
 @pytest_asyncio.fixture
-async def stake_pool_addresses(async_client, payer, validators, waiter) -> Tuple[PublicKey, PublicKey]:
+async def stake_pool_addresses(
+    async_client, payer, validators, waiter
+) -> Tuple[PublicKey, PublicKey, PublicKey]:
     fee = Fee(numerator=1, denominator=1000)
     referral_fee = 20
     # Change back to `wait_for_next_epoch_if_soon` once https://github.com/solana-labs/solana/pull/26851 is available
     await waiter.wait_for_next_epoch(async_client)
     stake_pool_addresses = await create_all(async_client, payer, fee, referral_fee)
+    stake_pool = stake_pool_addresses[0]
+    pool_mint = stake_pool_addresses[2]
+    token_account = get_associated_token_address(payer.public_key, pool_mint)
+    await deposit_sol(async_client, payer, stake_pool, token_account, AIRDROP_LAMPORTS // 2)
     for validator in validators:
-        await add_validator_to_pool(async_client, payer, stake_pool_addresses[0], validator)
+        await add_validator_to_pool(async_client, payer, stake_pool, validator)
     return stake_pool_addresses
 
 
@@ -80,8 +89,7 @@ async def async_client(solana_test_validator) -> AsyncIterator[AsyncClient]:
 @pytest_asyncio.fixture
 async def payer(async_client) -> Keypair:
     payer = Keypair()
-    airdrop_lamports = 20_000_000_000
-    await airdrop(async_client, payer.public_key, airdrop_lamports)
+    await airdrop(async_client, payer.public_key, AIRDROP_LAMPORTS)
     return payer
 
 
