@@ -18,9 +18,14 @@ use {
         state::{StakePool, StakeStatus, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE,
     },
+    test_case::test_case,
 };
 
-const HUGE_POOL_SIZE: u32 = 3_300;
+// Note: this is not the real max! The testing framework starts to blow out because
+// the test require so many helper accounts.
+// 20k is also a very safe number for the current upper bound of the network.
+const MAX_POOL_SIZE_WITH_REQUESTED_COMPUTE_UNITS: u32 = 20_000;
+const MAX_POOL_SIZE: u32 = 3_300;
 const STAKE_AMOUNT: u64 = 200_000_000_000;
 
 async fn setup(
@@ -38,10 +43,13 @@ async fn setup(
 ) {
     let mut program_test = program_test();
     let mut vote_account_pubkeys = vec![];
-    let stake_pool_accounts = StakePoolAccounts {
+    let mut stake_pool_accounts = StakePoolAccounts {
         max_validators,
         ..Default::default()
     };
+    if max_validators > MAX_POOL_SIZE {
+        stake_pool_accounts.compute_unit_limit = Some(1_400_000);
+    }
 
     let stake_pool_pubkey = stake_pool_accounts.stake_pool.pubkey();
     let (mut stake_pool, mut validator_list) = stake_pool_accounts.state();
@@ -102,7 +110,7 @@ async fn setup(
     let slot = epoch_schedule.first_normal_slot + epoch_schedule.slots_per_epoch;
     context.warp_to_slot(slot).unwrap();
 
-    let vote_pubkey = vote_account_pubkeys[HUGE_POOL_SIZE as usize - 1];
+    let vote_pubkey = vote_account_pubkeys[max_validators as usize - 1];
     // make stake account
     let user = Keypair::new();
     let deposit_stake = Keypair::new();
@@ -160,81 +168,49 @@ async fn setup(
     )
 }
 
+#[test_case(MAX_POOL_SIZE_WITH_REQUESTED_COMPUTE_UNITS; "compute-budget")]
+#[test_case(MAX_POOL_SIZE; "no-compute-budget")]
 #[tokio::test]
-async fn update() {
+async fn update(max_validators: u32) {
     let (mut context, stake_pool_accounts, vote_account_pubkeys, _, _, _, _) =
-        setup(HUGE_POOL_SIZE, HUGE_POOL_SIZE, STAKE_AMOUNT).await;
+        setup(max_validators, max_validators, STAKE_AMOUNT).await;
 
-    let validator_list = stake_pool_accounts
-        .get_validator_list(&mut context.banks_client)
-        .await;
-    let transaction = Transaction::new_signed_with_payer(
-        &[instruction::update_validator_list_balance(
-            &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.withdraw_authority,
-            &stake_pool_accounts.validator_list.pubkey(),
-            &stake_pool_accounts.reserve_stake.pubkey(),
-            &validator_list,
+    let error = stake_pool_accounts
+        .update_validator_list_balance(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
             &vote_account_pubkeys[0..MAX_VALIDATORS_TO_UPDATE],
-            0,
-            /* no_merge = */ false,
-        )],
-        Some(&context.payer.pubkey()),
-        &[&context.payer],
-        context.last_blockhash,
-    );
-    let error = context
-        .banks_client
-        .process_transaction(transaction)
-        .await
-        .err();
+            false, /* no_merge */
+        )
+        .await;
     assert!(error.is_none());
 
-    let transaction = Transaction::new_signed_with_payer(
-        &[instruction::update_stake_pool_balance(
-            &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.withdraw_authority,
-            &stake_pool_accounts.validator_list.pubkey(),
-            &stake_pool_accounts.reserve_stake.pubkey(),
-            &stake_pool_accounts.pool_fee_account.pubkey(),
-            &stake_pool_accounts.pool_mint.pubkey(),
-            &spl_token::id(),
-        )],
-        Some(&context.payer.pubkey()),
-        &[&context.payer],
-        context.last_blockhash,
-    );
-    let error = context
-        .banks_client
-        .process_transaction(transaction)
-        .await
-        .err();
+    let error = stake_pool_accounts
+        .update_stake_pool_balance(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+        )
+        .await;
     assert!(error.is_none());
 
-    let transaction = Transaction::new_signed_with_payer(
-        &[instruction::cleanup_removed_validator_entries(
-            &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.validator_list.pubkey(),
-        )],
-        Some(&context.payer.pubkey()),
-        &[&context.payer],
-        context.last_blockhash,
-    );
-    let error = context
-        .banks_client
-        .process_transaction(transaction)
-        .await
-        .err();
+    let error = stake_pool_accounts
+        .cleanup_removed_validator_entries(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+        )
+        .await;
     assert!(error.is_none());
 }
 
+//#[test_case(MAX_POOL_SIZE_WITH_REQUESTED_COMPUTE_UNITS; "compute-budget")]
+#[test_case(MAX_POOL_SIZE; "no-compute-budget")]
 #[tokio::test]
-async fn remove_validator_from_pool() {
+async fn remove_validator_from_pool(max_validators: u32) {
     let (mut context, stake_pool_accounts, vote_account_pubkeys, _, _, _, _) =
-        setup(HUGE_POOL_SIZE, HUGE_POOL_SIZE, LAMPORTS_PER_SOL).await;
+        setup(max_validators, max_validators, LAMPORTS_PER_SOL).await;
 
     let first_vote = vote_account_pubkeys[0];
     let (stake_address, _) = find_stake_program_address(
@@ -262,7 +238,7 @@ async fn remove_validator_from_pool() {
         .await;
     assert!(error.is_none());
 
-    let middle_index = HUGE_POOL_SIZE as usize / 2;
+    let middle_index = max_validators as usize / 2;
     let middle_vote = vote_account_pubkeys[middle_index];
     let (stake_address, _) = find_stake_program_address(
         &id(),
@@ -288,7 +264,7 @@ async fn remove_validator_from_pool() {
         .await;
     assert!(error.is_none());
 
-    let last_index = HUGE_POOL_SIZE as usize - 1;
+    let last_index = max_validators as usize - 1;
     let last_vote = vote_account_pubkeys[last_index];
     let (stake_address, _) = find_stake_program_address(
         &id(),
@@ -345,18 +321,31 @@ async fn remove_validator_from_pool() {
     );
     assert_eq!(last_element.transient_stake_lamports, 0);
 
-    let transaction = Transaction::new_signed_with_payer(
-        &[instruction::update_validator_list_balance(
-            &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.withdraw_authority,
-            &stake_pool_accounts.validator_list.pubkey(),
-            &stake_pool_accounts.reserve_stake.pubkey(),
-            &validator_list,
+    let error = stake_pool_accounts
+        .update_validator_list_balance(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
             &[first_vote],
-            0,
-            /* no_merge = */ false,
-        )],
+            false, /* no_merge */
+        )
+        .await;
+    assert!(error.is_none());
+
+    let mut instructions = vec![instruction::update_validator_list_balance(
+        &id(),
+        &stake_pool_accounts.stake_pool.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+        &stake_pool_accounts.validator_list.pubkey(),
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &validator_list,
+        &[middle_vote],
+        middle_index as u32,
+        /* no_merge = */ false,
+    )];
+    stake_pool_accounts.maybe_add_compute_budget_instruction(&mut instructions);
+    let transaction = Transaction::new_signed_with_payer(
+        &instructions,
         Some(&context.payer.pubkey()),
         &[&context.payer],
         context.last_blockhash,
@@ -368,18 +357,20 @@ async fn remove_validator_from_pool() {
         .err();
     assert!(error.is_none());
 
+    let mut instructions = vec![instruction::update_validator_list_balance(
+        &id(),
+        &stake_pool_accounts.stake_pool.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+        &stake_pool_accounts.validator_list.pubkey(),
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &validator_list,
+        &[last_vote],
+        last_index as u32,
+        /* no_merge = */ false,
+    )];
+    stake_pool_accounts.maybe_add_compute_budget_instruction(&mut instructions);
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::update_validator_list_balance(
-            &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.withdraw_authority,
-            &stake_pool_accounts.validator_list.pubkey(),
-            &stake_pool_accounts.reserve_stake.pubkey(),
-            &validator_list,
-            &[middle_vote],
-            middle_index as u32,
-            /* no_merge = */ false,
-        )],
+        &instructions,
         Some(&context.payer.pubkey()),
         &[&context.payer],
         context.last_blockhash,
@@ -391,45 +382,13 @@ async fn remove_validator_from_pool() {
         .err();
     assert!(error.is_none());
 
-    let transaction = Transaction::new_signed_with_payer(
-        &[instruction::update_validator_list_balance(
-            &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.withdraw_authority,
-            &stake_pool_accounts.validator_list.pubkey(),
-            &stake_pool_accounts.reserve_stake.pubkey(),
-            &validator_list,
-            &[last_vote],
-            last_index as u32,
-            /* no_merge = */ false,
-        )],
-        Some(&context.payer.pubkey()),
-        &[&context.payer],
-        context.last_blockhash,
-    );
-    let error = context
-        .banks_client
-        .process_transaction(transaction)
-        .await
-        .err();
-    assert!(error.is_none());
-
-    let transaction = Transaction::new_signed_with_payer(
-        &[instruction::cleanup_removed_validator_entries(
-            &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.validator_list.pubkey(),
-        )],
-        Some(&context.payer.pubkey()),
-        &[&context.payer],
-        context.last_blockhash,
-    );
-
-    let error = context
-        .banks_client
-        .process_transaction(transaction)
-        .await
-        .err();
+    let error = stake_pool_accounts
+        .cleanup_removed_validator_entries(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+        )
+        .await;
     assert!(error.is_none());
 
     let validator_list = get_account(
@@ -439,7 +398,7 @@ async fn remove_validator_from_pool() {
     .await;
     let validator_list =
         try_from_slice_unchecked::<ValidatorList>(validator_list.data.as_slice()).unwrap();
-    assert_eq!(validator_list.validators.len() as u32, HUGE_POOL_SIZE - 3);
+    assert_eq!(validator_list.validators.len() as u32, max_validators - 3);
     // assert they're gone
     assert!(!validator_list
         .validators
@@ -473,12 +432,14 @@ async fn remove_validator_from_pool() {
         .any(|x| x.vote_account_address == vote_account_pubkeys[last_index - 1]));
 }
 
+//#[test_case(MAX_POOL_SIZE_WITH_REQUESTED_COMPUTE_UNITS; "compute-budget")]
+#[test_case(MAX_POOL_SIZE; "no-compute-budget")]
 #[tokio::test]
-async fn add_validator_to_pool() {
+async fn add_validator_to_pool(max_validators: u32) {
     let (mut context, stake_pool_accounts, _, test_vote_address, _, _, _) =
-        setup(HUGE_POOL_SIZE, HUGE_POOL_SIZE - 1, STAKE_AMOUNT).await;
+        setup(max_validators, max_validators - 1, STAKE_AMOUNT).await;
 
-    let last_index = HUGE_POOL_SIZE as usize - 1;
+    let last_index = max_validators as usize - 1;
     let stake_pool_pubkey = stake_pool_accounts.stake_pool.pubkey();
     let (stake_address, _) =
         find_stake_program_address(&id(), &test_vote_address, &stake_pool_pubkey, None);
@@ -554,10 +515,12 @@ async fn add_validator_to_pool() {
     assert_eq!(last_element.vote_account_address, test_vote_address);
 }
 
+//#[test_case(MAX_POOL_SIZE_WITH_REQUESTED_COMPUTE_UNITS; "compute-budget")]
+#[test_case(MAX_POOL_SIZE; "no-compute-budget")]
 #[tokio::test]
-async fn set_preferred() {
+async fn set_preferred(max_validators: u32) {
     let (mut context, stake_pool_accounts, _, vote_account_address, _, _, _) =
-        setup(HUGE_POOL_SIZE, HUGE_POOL_SIZE, STAKE_AMOUNT).await;
+        setup(max_validators, max_validators, STAKE_AMOUNT).await;
 
     let error = stake_pool_accounts
         .set_preferred_validator(
@@ -597,10 +560,12 @@ async fn set_preferred() {
     );
 }
 
+#[test_case(MAX_POOL_SIZE_WITH_REQUESTED_COMPUTE_UNITS; "compute-budget")]
+#[test_case(MAX_POOL_SIZE; "no-compute-budget")]
 #[tokio::test]
-async fn deposit_stake() {
+async fn deposit_stake(max_validators: u32) {
     let (mut context, stake_pool_accounts, _, vote_pubkey, user, stake_pubkey, pool_account_pubkey) =
-        setup(HUGE_POOL_SIZE, HUGE_POOL_SIZE, STAKE_AMOUNT).await;
+        setup(max_validators, max_validators, STAKE_AMOUNT).await;
 
     let (stake_address, _) = find_stake_program_address(
         &id(),
@@ -623,10 +588,12 @@ async fn deposit_stake() {
     assert!(error.is_none());
 }
 
+#[test_case(MAX_POOL_SIZE_WITH_REQUESTED_COMPUTE_UNITS; "compute-budget")]
+#[test_case(MAX_POOL_SIZE; "no-compute-budget")]
 #[tokio::test]
-async fn withdraw() {
+async fn withdraw(max_validators: u32) {
     let (mut context, stake_pool_accounts, _, vote_pubkey, user, stake_pubkey, pool_account_pubkey) =
-        setup(HUGE_POOL_SIZE, HUGE_POOL_SIZE, STAKE_AMOUNT).await;
+        setup(max_validators, max_validators, STAKE_AMOUNT).await;
 
     let (stake_address, _) = find_stake_program_address(
         &id(),
@@ -674,13 +641,19 @@ async fn withdraw() {
     assert!(error.is_none(), "{:?}", error);
 }
 
+//#[test_case(MAX_POOL_SIZE_WITH_REQUESTED_COMPUTE_UNITS; "compute-budget")]
+#[test_case(MAX_POOL_SIZE; "no-compute-budget")]
 #[tokio::test]
-async fn cleanup_all() {
+async fn cleanup_all(max_validators: u32) {
     let mut program_test = program_test();
     let mut vote_account_pubkeys = vec![];
-    let mut stake_pool_accounts = StakePoolAccounts::default();
-    let max_validators = HUGE_POOL_SIZE;
-    stake_pool_accounts.max_validators = max_validators;
+    let mut stake_pool_accounts = StakePoolAccounts {
+        max_validators,
+        ..Default::default()
+    };
+    if max_validators > MAX_POOL_SIZE {
+        stake_pool_accounts.compute_unit_limit = Some(1_400_000);
+    }
 
     let stake_pool_pubkey = stake_pool_accounts.stake_pool.pubkey();
     let (mut stake_pool, mut validator_list) = stake_pool_accounts.state();
@@ -715,20 +688,12 @@ async fn cleanup_all() {
     );
     let mut context = program_test.start_with_context().await;
 
-    let transaction = Transaction::new_signed_with_payer(
-        &[instruction::cleanup_removed_validator_entries(
-            &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.validator_list.pubkey(),
-        )],
-        Some(&context.payer.pubkey()),
-        &[&context.payer],
-        context.last_blockhash,
-    );
-    let error = context
-        .banks_client
-        .process_transaction(transaction)
-        .await
-        .err();
+    let error = stake_pool_accounts
+        .cleanup_removed_validator_entries(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+        )
+        .await;
     assert!(error.is_none());
 }
