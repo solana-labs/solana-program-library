@@ -42,6 +42,7 @@ use spl_token_2022::{
         interest_bearing_mint::InterestBearingConfig,
         memo_transfer::MemoTransfer,
         mint_close_authority::MintCloseAuthority,
+        permanent_delegate::PermanentDelegate,
         transfer_fee::{TransferFeeAmount, TransferFeeConfig},
         BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
     },
@@ -395,6 +396,7 @@ async fn command_create_token(
     enable_freeze: bool,
     enable_close: bool,
     enable_non_transferable: bool,
+    enable_permanent_delegate: bool,
     memo: Option<String>,
     rate_bps: Option<i16>,
     default_account_state: Option<AccountState>,
@@ -418,6 +420,12 @@ async fn command_create_token(
     if enable_close {
         extensions.push(ExtensionInitializationParams::MintCloseAuthority {
             close_authority: Some(authority),
+        });
+    }
+
+    if enable_permanent_delegate {
+        extensions.push(ExtensionInitializationParams::PermanentDelegate {
+            delegate: authority,
         });
     }
 
@@ -782,7 +790,16 @@ async fn command_authorize(
                         Err(format!("Mint `{}` is not interest-bearing", account))
                     }
                 }
-                AuthorityType::PermanentDelegate => unimplemented!(),
+                AuthorityType::PermanentDelegate => {
+                    if let Ok(permanent_delegate) = mint.get_extension::<PermanentDelegate>() {
+                        Ok(COption::<Pubkey>::from(permanent_delegate.delegate))
+                    } else {
+                        Err(format!(
+                            "Mint `{}` does not support permanent delegate",
+                            account
+                        ))
+                    }
+                }
             }?;
 
             Ok((account, previous_authority))
@@ -2465,6 +2482,14 @@ fn app<'a, 'b>(
                             The mint authority can set the fee and withdraw collected fees.",
                         ),
                 )
+                .arg(
+                    Arg::with_name("enable_permanent_delegate")
+                        .long("enable-permanent-delegate")
+                        .takes_value(false)
+                        .help(
+                            "Enable the mint authority to be permanent delegate for this mint"
+                        ),
+                )
                 .nonce_args(true)
                 .arg(memo_arg())
         )
@@ -2589,7 +2614,7 @@ fn app<'a, 'b>(
                         .possible_values(&[
                             "mint", "freeze", "owner", "close",
                             "close-mint", "transfer-fee-config", "withheld-withdraw",
-                            "interest-rate",
+                            "interest-rate", "permanent-delegate",
                         ])
                         .index(2)
                         .required(true)
@@ -3582,6 +3607,7 @@ async fn process_command<'a>(
                 arg_matches.is_present("enable_freeze"),
                 arg_matches.is_present("enable_close"),
                 arg_matches.is_present("enable_non_transferable"),
+                arg_matches.is_present("enable_permanent_delegate"),
                 memo,
                 rate_bps,
                 default_account_state,
@@ -4383,6 +4409,7 @@ mod tests {
             false,
             false,
             false,
+            false,
             None,
             None,
             None,
@@ -4409,6 +4436,7 @@ mod tests {
             TEST_DECIMALS,
             token_pubkey,
             payer.pubkey(),
+            false,
             false,
             false,
             false,
@@ -5781,6 +5809,7 @@ mod tests {
             false,
             true,
             false,
+            false,
             None,
             None,
             None,
@@ -5808,6 +5837,227 @@ mod tests {
 
         let account = config.rpc_client.get_account(&token_pubkey).await;
         assert!(account.is_err());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn burn_with_permanent_delegate() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let config =
+            test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
+
+        let token_keypair = Keypair::new();
+        let token = token_keypair.pubkey();
+        let bulk_signers: Vec<Arc<dyn Signer>> =
+            vec![Arc::new(clone_keypair(&payer)), Arc::new(token_keypair)];
+
+        command_create_token(
+            &config,
+            TEST_DECIMALS,
+            token,
+            payer.pubkey(),
+            false,
+            false,
+            false,
+            true,
+            None,
+            None,
+            None,
+            None,
+            bulk_signers,
+        )
+        .await
+        .unwrap();
+
+        let source = Keypair::new();
+
+        let permanent_delegate_keypair_file = NamedTempFile::new().unwrap();
+        write_keypair_file(&payer, &permanent_delegate_keypair_file).unwrap();
+
+        let source_keypair_file = NamedTempFile::new().unwrap();
+        write_keypair_file(&source, &source_keypair_file).unwrap();
+
+        let unknown_owner = Keypair::new();
+
+        exec_test_cmd(
+            &config,
+            &[
+                "spl-token",
+                CommandName::CreateAccount.into(),
+                &token.to_string(),
+                source_keypair_file.path().to_str().unwrap(),
+                "--owner",
+                &unknown_owner.pubkey().to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let ui_amount = 100.0;
+
+        mint_tokens(&config, &payer, token, ui_amount, source.pubkey()).await;
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&source.pubkey())
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(ui_account.token_amount.amount, "100");
+
+        exec_test_cmd(
+            &config,
+            &[
+                "spl-token",
+                CommandName::Burn.into(),
+                &source.pubkey().to_string(),
+                "10",
+                "--owner",
+                permanent_delegate_keypair_file.path().to_str().unwrap(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&source.pubkey())
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(ui_account.token_amount.amount, "90");
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn transfer_with_permanent_delegate() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let config =
+            test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
+
+        let token_keypair = Keypair::new();
+        let token = token_keypair.pubkey();
+        let bulk_signers: Vec<Arc<dyn Signer>> =
+            vec![Arc::new(clone_keypair(&payer)), Arc::new(token_keypair)];
+
+        command_create_token(
+            &config,
+            TEST_DECIMALS,
+            token,
+            payer.pubkey(),
+            false,
+            false,
+            false,
+            true,
+            None,
+            None,
+            None,
+            None,
+            bulk_signers,
+        )
+        .await
+        .unwrap();
+
+        let source = Keypair::new();
+        let destination = Keypair::new();
+
+        let permanent_delegate_keypair_file = NamedTempFile::new().unwrap();
+        write_keypair_file(&payer, &permanent_delegate_keypair_file).unwrap();
+
+        let source_keypair_file = NamedTempFile::new().unwrap();
+        write_keypair_file(&source, &source_keypair_file).unwrap();
+
+        let destination_keypair_file = NamedTempFile::new().unwrap();
+        write_keypair_file(&destination, &destination_keypair_file).unwrap();
+
+        let unknown_owner = Keypair::new();
+
+        exec_test_cmd(
+            &config,
+            &[
+                "spl-token",
+                CommandName::CreateAccount.into(),
+                &token.to_string(),
+                source_keypair_file.path().to_str().unwrap(),
+                "--owner",
+                &unknown_owner.pubkey().to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        exec_test_cmd(
+            &config,
+            &[
+                "spl-token",
+                CommandName::CreateAccount.into(),
+                &token.to_string(),
+                destination_keypair_file.path().to_str().unwrap(),
+                "--owner",
+                &payer.pubkey().to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let ui_amount = 100.0;
+
+        mint_tokens(&config, &payer, token, ui_amount, source.pubkey()).await;
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&source.pubkey())
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(ui_account.token_amount.amount, "100");
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&destination.pubkey())
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(ui_account.token_amount.amount, "0");
+
+        exec_test_cmd(
+            &config,
+            &[
+                "spl-token",
+                CommandName::Transfer.into(),
+                &token.to_string(),
+                "50",
+                &destination.pubkey().to_string(),
+                "--from",
+                &source.pubkey().to_string(),
+                "--owner",
+                permanent_delegate_keypair_file.path().to_str().unwrap(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&destination.pubkey())
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(ui_account.token_amount.amount, "50");
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&source.pubkey())
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(ui_account.token_amount.amount, "50");
     }
 
     #[tokio::test]
@@ -6087,6 +6337,7 @@ mod tests {
             false,
             false,
             true,
+            false,
             None,
             None,
             None,
@@ -6139,6 +6390,7 @@ mod tests {
             token_pubkey,
             payer.pubkey(),
             true,
+            false,
             false,
             false,
             None,
@@ -6205,6 +6457,7 @@ mod tests {
             TEST_DECIMALS,
             token_pubkey,
             payer.pubkey(),
+            false,
             false,
             false,
             false,
