@@ -981,7 +981,7 @@ async fn test_cast_council_veto_vote_within_cool_off_time() {
 
     // Set cool off time to start in the middle of the voting time
     let mut governance_config = governance_test.get_default_governance_config();
-    governance_config.max_voting_time = 100;
+    governance_config.base_voting_time = 100;
     governance_config.voting_cool_off_time = 50;
 
     let mut governance_cookie = governance_test
@@ -1009,9 +1009,7 @@ async fn test_cast_council_veto_vote_within_cool_off_time() {
 
     governance_test
         .advance_clock_past_timestamp(
-            clock.unix_timestamp
-                + (governance_cookie.account.config.max_voting_time
-                    - governance_config.voting_cool_off_time) as i64,
+            clock.unix_timestamp + governance_cookie.account.config.base_voting_time as i64,
         )
         .await;
 

@@ -190,7 +190,7 @@ async fn test_cancel_proposal_with_vote_time_expired_error() {
     // Advance timestamp past max_voting_time
     governance_test
         .advance_clock_past_timestamp(
-            governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
+            governance_cookie.account.config.base_voting_time as i64 + clock.unix_timestamp,
         )
         .await;
 

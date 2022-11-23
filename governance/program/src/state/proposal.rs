@@ -270,18 +270,16 @@ impl ProposalV2 {
         self.assert_is_voting_state()
             .map_err(|_| GovernanceError::InvalidStateCannotVote)?;
 
-        // Check if we are still within the configured max_voting_time period
-        if self.has_vote_time_ended(config, current_unix_timestamp) {
+        // Check if we are still within the configured max voting time period
+        if self.has_max_voting_time_ended(config, current_unix_timestamp) {
             return Err(GovernanceError::ProposalVotingTimeExpired.into());
         }
 
         match vote {
-            // Once in the voting cool off time approving votes are no longer accepted
+            // Once the base voting time passes and we are in the voting cool off time approving votes are no longer accepted
             // Abstain is considered as positive vote because when attendance quorum is used it can tip the scales
             Vote::Approve(_) | Vote::Abstain => {
-                if self.expected_vote_end_time(config) - (config.voting_cool_off_time as i64)
-                    < current_unix_timestamp
-                {
+                if self.base_voting_end_time(config) < current_unix_timestamp {
                     Err(GovernanceError::VoteNotAllowedInCoolOffTime.into())
                 } else {
                     Ok(())
@@ -292,22 +290,28 @@ impl ProposalV2 {
         }
     }
 
-    /// Expected vote end time determined by the configured max_voting_time period
-    pub fn expected_vote_end_time(&self, config: &GovernanceConfig) -> UnixTimestamp {
+    /// Expected base vote end time determined by the configured base_voting_time and actual voting start time
+    pub fn base_voting_end_time(&self, config: &GovernanceConfig) -> UnixTimestamp {
         self.voting_at
             .unwrap()
-            .checked_add(config.max_voting_time as i64)
+            .checked_add(config.base_voting_time as i64)
+            .unwrap()
+    }
+    /// Expected max vote end time determined by the configured base_voting_time, optional voting_cool_off_time and actual voting start time
+    pub fn max_voting_end_time(&self, config: &GovernanceConfig) -> UnixTimestamp {
+        self.base_voting_end_time(config)
+            .checked_add(config.voting_cool_off_time as i64)
             .unwrap()
     }
 
-    /// Checks whether the voting time has ended for the proposal
-    pub fn has_vote_time_ended(
+    /// Checks whether the max voting time has ended for the proposal
+    pub fn has_max_voting_time_ended(
         &self,
         config: &GovernanceConfig,
         current_unix_timestamp: UnixTimestamp,
     ) -> bool {
-        // Check if we passed vote_end_time
-        self.expected_vote_end_time(config) < current_unix_timestamp
+        // Check if we passed the max vote end time
+        self.max_voting_end_time(config) < current_unix_timestamp
     }
 
     /// Checks if Proposal can be finalized
@@ -320,7 +324,7 @@ impl ProposalV2 {
             .map_err(|_| GovernanceError::InvalidStateCannotFinalize)?;
 
         // We can only finalize the vote after the configured max_voting_time has expired and vote time ended
-        if !self.has_vote_time_ended(config, current_unix_timestamp) {
+        if !self.has_max_voting_time_ended(config, current_unix_timestamp) {
             return Err(GovernanceError::CannotFinalizeVotingInProgress.into());
         }
 
@@ -339,7 +343,7 @@ impl ProposalV2 {
         self.assert_can_finalize_vote(config, current_unix_timestamp)?;
 
         self.state = self.resolve_final_vote_state(max_voter_weight, vote_threshold)?;
-        self.voting_completed_at = Some(self.expected_vote_end_time(config));
+        self.voting_completed_at = Some(self.max_voting_end_time(config));
 
         // Capture vote params to correctly display historical results
         self.max_vote_weight = Some(max_voter_weight);
@@ -674,7 +678,7 @@ impl ProposalV2 {
             ProposalState::Voting => {
                 // Note: If there is no tipping point the proposal can be still in Voting state but already past the configured max_voting_time
                 // In that case we treat the proposal as finalized and it's no longer allowed to be canceled
-                if self.has_vote_time_ended(config, current_unix_timestamp) {
+                if self.has_max_voting_time_ended(config, current_unix_timestamp) {
                     return Err(GovernanceError::ProposalVotingTimeExpired.into());
                 }
                 Ok(())
@@ -1185,7 +1189,7 @@ mod test {
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             min_community_weight_to_create_proposal: 5,
             min_transaction_hold_up_time: 10,
-            max_voting_time: 5,
+            base_voting_time: 5,
             community_vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(60),
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
@@ -1668,7 +1672,7 @@ mod test {
             // Assert
             assert_eq!(proposal.state,test_case.expected_finalized_state,"CASE: {:?}",test_case);
             assert_eq!(
-                Some(proposal.expected_vote_end_time(&governance_config)),
+                Some(proposal.max_voting_end_time(&governance_config)),
                 proposal.voting_completed_at
             );
 
@@ -2174,7 +2178,7 @@ mod test {
         let governance_config = create_test_governance_config();
 
         let current_timestamp =
-            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64;
+            proposal.voting_at.unwrap() + governance_config.base_voting_time as i64;
 
         let realm = create_test_realm();
         let governing_token_mint = proposal.governing_token_mint;
@@ -2209,7 +2213,7 @@ mod test {
         let governance_config = create_test_governance_config();
 
         let current_timestamp =
-            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64 + 1;
+            proposal.voting_at.unwrap() + governance_config.base_voting_time as i64 + 1;
 
         let realm = create_test_realm();
         let governing_token_mint = proposal.governing_token_mint;
@@ -2241,7 +2245,7 @@ mod test {
         let governance_config = create_test_governance_config();
 
         let current_timestamp =
-            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64 + 1;
+            proposal.voting_at.unwrap() + governance_config.base_voting_time as i64 + 1;
 
         let vote = Vote::Approve(vec![]);
 
@@ -2263,7 +2267,7 @@ mod test {
         let governance_config = create_test_governance_config();
 
         let current_timestamp =
-            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64;
+            proposal.voting_at.unwrap() + governance_config.base_voting_time as i64;
 
         let vote = Vote::Approve(vec![]);
 
@@ -2284,7 +2288,7 @@ mod test {
         governance_config.voting_cool_off_time = 2;
 
         let current_timestamp = proposal.voting_at.unwrap()
-            + governance_config.max_voting_time as i64
+            + governance_config.base_voting_time as i64
             - governance_config.voting_cool_off_time as i64;
 
         let vote = Vote::Approve(vec![]);
@@ -2306,7 +2310,7 @@ mod test {
         governance_config.voting_cool_off_time = 2;
 
         let current_timestamp =
-            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64 - 1;
+            proposal.voting_at.unwrap() + governance_config.base_voting_time as i64 + 1;
 
         let vote = Vote::Approve(vec![]);
 
@@ -2330,7 +2334,7 @@ mod test {
         governance_config.voting_cool_off_time = 2;
 
         let current_timestamp =
-            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64 - 1;
+            proposal.voting_at.unwrap() + governance_config.base_voting_time as i64 - 1;
 
         let vote = Vote::Veto;
 
@@ -2351,7 +2355,7 @@ mod test {
         governance_config.voting_cool_off_time = 2;
 
         let current_timestamp =
-            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64 - 1;
+            proposal.voting_at.unwrap() + governance_config.base_voting_time as i64 - 1;
 
         let vote = Vote::Deny;
 
