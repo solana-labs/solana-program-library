@@ -276,9 +276,9 @@ impl ProposalV2 {
         }
 
         match vote {
-            // Once the base voting time passes and we are in the voting cool off time approving votes are no longer accepted
-            // Abstain is considered as positive vote because when attendance quorum is used it can tip the scales
             Vote::Approve(_) | Vote::Abstain => {
+                // Once the base voting time passes and we are in the voting cool off time approving votes are no longer accepted
+                // Abstain is considered as positive vote because when attendance quorum is used it can tip the scales
                 if self.base_voting_end_time(config) < current_unix_timestamp {
                     Err(GovernanceError::VoteNotAllowedInCoolOffTime.into())
                 } else {
@@ -2287,9 +2287,8 @@ mod test {
         let mut governance_config = create_test_governance_config();
         governance_config.voting_cool_off_time = 2;
 
-        let current_timestamp = proposal.voting_at.unwrap()
-            + governance_config.base_voting_time as i64
-            - governance_config.voting_cool_off_time as i64;
+        let current_timestamp =
+            proposal.voting_at.unwrap() + governance_config.base_voting_time as i64 - 1;
 
         let vote = Vote::Approve(vec![]);
 
@@ -2334,7 +2333,7 @@ mod test {
         governance_config.voting_cool_off_time = 2;
 
         let current_timestamp =
-            proposal.voting_at.unwrap() + governance_config.base_voting_time as i64 - 1;
+            proposal.voting_at.unwrap() + governance_config.base_voting_time as i64 + 1;
 
         let vote = Vote::Veto;
 
@@ -2352,10 +2351,10 @@ mod test {
         proposal.state = ProposalState::Voting;
 
         let mut governance_config = create_test_governance_config();
-        governance_config.voting_cool_off_time = 2;
+        governance_config.voting_cool_off_time = 1;
 
         let current_timestamp =
-            proposal.voting_at.unwrap() + governance_config.base_voting_time as i64 - 1;
+            proposal.voting_at.unwrap() + governance_config.base_voting_time as i64 + 1;
 
         let vote = Vote::Deny;
 

@@ -612,10 +612,9 @@ async fn test_change_yes_vote_to_no_within_cool_off_time() {
         .await
         .unwrap();
 
-    // Set cool off time to start in the middle of the voting time
+    // Set none default voting cool off time
     let mut governance_config = governance_test.get_default_governance_config();
     governance_config.base_voting_time = 100;
-    governance_config.voting_cool_off_time = 50;
 
     let mut governance_cookie = governance_test
         .with_governance_using_config(

@@ -1564,9 +1564,8 @@ async fn test_cast_approve_vote_with_cannot_vote_in_cool_off_time_error() {
         .await
         .unwrap();
 
-    // Set cool off time to start in the middle of the voting time
+    // Set none default voting cool off time
     let mut governance_config = governance_test.get_default_governance_config();
-    governance_config.base_voting_time = 100;
     governance_config.voting_cool_off_time = 50;
 
     let mut governance_cookie = governance_test

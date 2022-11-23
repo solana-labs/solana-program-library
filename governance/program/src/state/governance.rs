@@ -316,10 +316,7 @@ pub fn get_governance_data(
         governance_data.config.community_veto_vote_threshold = VoteThreshold::Disabled;
 
         // Reset voting_cool_off_time and reserved space previously used for voting_proposal_count
-
-        // Default voting_cool_off_time to 1h for max_voting_time >= 10h
         governance_data.config.voting_cool_off_time = 0;
-
         governance_data.config.reserved = 0;
     }
 
@@ -660,7 +657,12 @@ mod test {
         // Arrange
         let mut governance_legacy_data = create_test_governance();
 
+        governance_legacy_data.config.community_vote_threshold =
+            VoteThreshold::YesVotePercentage(60);
+
+        // council_vote_threshold == YesVotePercentage(0) indicates legacy account from V1 & V2 program versions
         governance_legacy_data.config.council_vote_threshold = VoteThreshold::YesVotePercentage(0);
+
         governance_legacy_data.config.council_veto_vote_threshold =
             VoteThreshold::YesVotePercentage(0);
         governance_legacy_data.config.council_vote_tipping = VoteTipping::Disabled;
