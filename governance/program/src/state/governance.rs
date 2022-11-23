@@ -316,12 +316,7 @@ pub fn get_governance_data(
         // Reset voting_cool_off_time and reserved space previously used for voting_proposal_count
 
         // Default voting_cool_off_time to 1h for max_voting_time >= 10h
-        governance_data.config.voting_cool_off_time =
-            if governance_data.config.max_voting_time >= 36000 {
-                3600
-            } else {
-                0
-            };
+        governance_data.config.voting_cool_off_time = 0;
 
         governance_data.config.reserved = 0;
     }
@@ -718,7 +713,7 @@ mod test {
             VoteTipping::Strict
         );
 
-        assert_eq!(governance_v3.config.voting_cool_off_time, 3600);
+        assert_eq!(governance_v3.config.voting_cool_off_time, 0);
 
         assert_eq!(governance_v3.config.reserved, 0);
     }
