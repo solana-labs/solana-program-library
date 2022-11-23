@@ -9,6 +9,7 @@ import { INTEREST_BEARING_MINT_CONFIG_STATE_SIZE } from './interestBearingMint/s
 import { MEMO_TRANSFER_SIZE } from './memoTransfer/index.js';
 import { MINT_CLOSE_AUTHORITY_SIZE } from './mintCloseAuthority.js';
 import { NON_TRANSFERABLE_SIZE } from './nonTransferable.js';
+import { PERMANENT_DELEGATE_SIZE } from './permanentDelegate.js';
 import { TRANSFER_FEE_AMOUNT_SIZE, TRANSFER_FEE_CONFIG_SIZE } from './transferFee/index.js';
 
 export enum ExtensionType {
@@ -23,6 +24,7 @@ export enum ExtensionType {
     MemoTransfer,
     NonTransferable,
     InterestBearingMint,
+    PermanentDelegate,
 }
 
 export const TYPE_SIZE = 2;
@@ -54,6 +56,8 @@ export function getTypeLen(e: ExtensionType): number {
             return NON_TRANSFERABLE_SIZE;
         case ExtensionType.InterestBearingMint:
             return INTEREST_BEARING_MINT_CONFIG_STATE_SIZE;
+        case ExtensionType.PermanentDelegate:
+            return PERMANENT_DELEGATE_SIZE;
         default:
             throw Error(`Unknown extension type: ${e}`);
     }
@@ -74,6 +78,7 @@ export function getAccountTypeOfMintType(e: ExtensionType): ExtensionType {
         case ExtensionType.NonTransferable:
         case ExtensionType.Uninitialized:
         case ExtensionType.InterestBearingMint:
+        case ExtensionType.PermanentDelegate:
             return ExtensionType.Uninitialized;
     }
 }

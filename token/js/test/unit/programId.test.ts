@@ -14,6 +14,7 @@ import {
     TOKEN_PROGRAM_ID,
     TOKEN_2022_PROGRAM_ID,
     TokenUnsupportedInstructionError,
+    createInitializePermanentDelegateInstruction,
 } from '../../src';
 chai.use(chaiAsPromised);
 
@@ -68,6 +69,14 @@ describe('unsupported extensions in spl-token', () => {
         }).to.throw(TokenUnsupportedInstructionError);
         expect(function () {
             createInitializeNonTransferableMintInstruction(mint, TOKEN_2022_PROGRAM_ID);
+        }).to.not.throw(TokenUnsupportedInstructionError);
+    });
+    it('initializePermanentDelegate', () => {
+        expect(function () {
+            createInitializePermanentDelegateInstruction(mint, null, TOKEN_PROGRAM_ID);
+        }).to.throw(TokenUnsupportedInstructionError);
+        expect(function () {
+            createInitializePermanentDelegateInstruction(mint, null, TOKEN_2022_PROGRAM_ID);
         }).to.not.throw(TokenUnsupportedInstructionError);
     });
 });
