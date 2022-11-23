@@ -377,42 +377,6 @@
         "type": "u8",
         "value": 7
       }
-    },
-    {
-      "name": "Wrap",
-      "accounts": [
-        {
-          "name": "mint",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "mintAuthority",
-          "isMut": false,
-          "isSigner": true
-        },
-        {
-          "name": "freezeAuthority",
-          "isMut": false,
-          "isSigner": true
-        },
-        {
-          "name": "upstreamAuthority",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false,
-          "desc": "Token program"
-        }
-      ],
-      "args": [],
-      "discriminant": {
-        "type": "u8",
-        "value": 8
-      }
     }
   ],
   "metadata": {
