@@ -211,7 +211,7 @@ impl RealmConfigAccount {
             && realm_config_args.community_token_config_args.token_type
                 == GoverningTokenType::Membership
         {
-            return Err(GovernanceError::CannotChangeCommunityTokenTypeToMemebership.into());
+            return Err(GovernanceError::CannotChangeCommunityTokenTypeToMembership.into());
         }
 
         Ok(())

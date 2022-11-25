@@ -1405,17 +1405,18 @@ impl GovernanceProgramTest {
 
     pub fn get_default_governance_config(&mut self) -> GovernanceConfig {
         GovernanceConfig {
-            min_community_weight_to_create_proposal: 5,
-            min_council_weight_to_create_proposal: 2,
-            min_transaction_hold_up_time: 10,
-            max_voting_time: 10,
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
+            min_community_weight_to_create_proposal: 5,
+            min_transaction_hold_up_time: 10,
+            voting_base_time: 10,
             community_vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(80),
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(55),
+            min_council_weight_to_create_proposal: 2,
             council_vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(80),
-            reserved: [0; 5],
+            voting_cool_off_time: 0,
+            reserved: 0,
         }
     }
 
@@ -2897,7 +2898,7 @@ impl GovernanceProgramTest {
         let clock = self.bench.get_clock().await;
 
         self.advance_clock_past_timestamp(
-            clock.unix_timestamp + governance_cookie.account.config.max_voting_time as i64,
+            clock.unix_timestamp + governance_cookie.account.config.voting_base_time as i64,
         )
         .await;
     }

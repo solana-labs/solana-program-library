@@ -190,7 +190,63 @@ async fn test_cancel_proposal_with_vote_time_expired_error() {
     // Advance timestamp past max_voting_time
     governance_test
         .advance_clock_past_timestamp(
-            governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
+            governance_cookie.account.config.voting_base_time as i64 + clock.unix_timestamp,
+        )
+        .await;
+
+    // Act
+
+    let err = governance_test
+        .cancel_proposal(&proposal_cookie, &token_owner_record_cookie)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(err, GovernanceError::ProposalVotingTimeExpired.into());
+}
+
+#[tokio::test]
+async fn test_cancel_proposal_after_voting_cool_off_with_vote_time_expired_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Set none default voting cool off time
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.voting_cool_off_time = 10;
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    let clock = governance_test.bench.get_clock().await;
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    // Advance timestamp past max_voting_time
+    governance_test
+        .advance_clock_past_timestamp(
+            (governance_cookie.account.config.voting_base_time
+                + governance_cookie.account.config.voting_cool_off_time) as i64
+                + clock.unix_timestamp,
         )
         .await;
 

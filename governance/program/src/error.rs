@@ -431,13 +431,17 @@ pub enum GovernanceError {
     #[error("Invalid GoverningToken source")]
     InvalidGoverningTokenSource, // 603
 
-    /// Cannot change community TokenType to Memebership
-    #[error("Cannot change community TokenType to Memebership")]
-    CannotChangeCommunityTokenTypeToMemebership, // 604
+    /// Cannot change community TokenType to Membership
+    #[error("Cannot change community TokenType to Membership")]
+    CannotChangeCommunityTokenTypeToMembership, // 604
 
     /// Voter weight threshold disabled
     #[error("Voter weight threshold disabled")]
     VoterWeightThresholdDisabled, // 605
+
+    /// Vote not allowed in cool off time
+    #[error("Vote not allowed in cool off time")]
+    VoteNotAllowedInCoolOffTime, // 606
 }
 
 impl PrintProgramError for GovernanceError {
