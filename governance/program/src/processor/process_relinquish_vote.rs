@@ -68,7 +68,7 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
     // Note: If there is no tipping point the proposal can be still in Voting state but already past the configured max voting time (base + cool off voting time)
     //       It means it awaits manual finalization (FinalizeVote) and it should no longer be possible to withdraw the vote
     if proposal_data.state == ProposalState::Voting
-        && !proposal_data.has_max_voting_time_ended(&governance_data.config, clock.unix_timestamp)
+        && !proposal_data.has_voting_max_time_ended(&governance_data.config, clock.unix_timestamp)
     {
         let governance_authority_info = next_account_info(account_info_iter)?; // 5
         let beneficiary_info = next_account_info(account_info_iter)?; // 6

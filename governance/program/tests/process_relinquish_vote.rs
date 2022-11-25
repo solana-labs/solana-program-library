@@ -497,7 +497,7 @@ async fn test_relinquish_proposal_with_cannot_relinquish_in_finalizing_state_err
     // Advance timestamp past max_voting_time
     governance_test
         .advance_clock_past_timestamp(
-            governance_cookie.account.config.base_voting_time as i64 + clock.unix_timestamp,
+            governance_cookie.account.config.voting_base_time as i64 + clock.unix_timestamp,
         )
         .await;
 
@@ -646,7 +646,7 @@ async fn test_change_yes_vote_to_no_within_cool_off_time() {
 
     governance_test
         .advance_clock_past_timestamp(
-            clock.unix_timestamp + governance_cookie.account.config.base_voting_time as i64,
+            clock.unix_timestamp + governance_cookie.account.config.voting_base_time as i64,
         )
         .await;
 

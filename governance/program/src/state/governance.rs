@@ -36,7 +36,7 @@ pub struct GovernanceConfig {
     /// The base voting time in seconds for proposal to be open for voting
     /// Voting is unrestricted during the base voting time and any vote types can be cast
     /// The base voting time can be extend by optional cool off time when only negative votes (Veto and Deny) are allowed
-    pub base_voting_time: u32,
+    pub voting_base_time: u32,
 
     /// Conditions under which a Community vote will complete early
     pub community_vote_tipping: VoteTipping,
@@ -520,7 +520,7 @@ mod test {
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             min_community_weight_to_create_proposal: 5,
             min_transaction_hold_up_time: 10,
-            base_voting_time: 5,
+            voting_base_time: 5,
             community_vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(60),
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
@@ -669,7 +669,7 @@ mod test {
         governance_legacy_data.config.community_veto_vote_threshold =
             VoteThreshold::YesVotePercentage(0);
         governance_legacy_data.config.voting_cool_off_time = 1;
-        governance_legacy_data.config.base_voting_time = 36000;
+        governance_legacy_data.config.voting_base_time = 36000;
 
         let mut legacy_data = vec![];
         governance_legacy_data.serialize(&mut legacy_data).unwrap();

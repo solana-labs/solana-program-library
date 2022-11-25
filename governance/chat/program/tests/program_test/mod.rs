@@ -189,7 +189,7 @@ impl GovernanceChatProgramTest {
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             min_community_weight_to_create_proposal: 5,
             min_transaction_hold_up_time: 10,
-            base_voting_time: 10,
+            voting_base_time: 10,
             community_vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(10),
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),

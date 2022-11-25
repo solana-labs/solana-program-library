@@ -1408,7 +1408,7 @@ impl GovernanceProgramTest {
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             min_community_weight_to_create_proposal: 5,
             min_transaction_hold_up_time: 10,
-            base_voting_time: 10,
+            voting_base_time: 10,
             community_vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(80),
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(55),
@@ -2898,7 +2898,7 @@ impl GovernanceProgramTest {
         let clock = self.bench.get_clock().await;
 
         self.advance_clock_past_timestamp(
-            clock.unix_timestamp + governance_cookie.account.config.base_voting_time as i64,
+            clock.unix_timestamp + governance_cookie.account.config.voting_base_time as i64,
         )
         .await;
     }

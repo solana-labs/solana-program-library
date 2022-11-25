@@ -1008,7 +1008,7 @@ async fn test_cast_council_veto_vote_within_cool_off_time() {
 
     governance_test
         .advance_clock_past_timestamp(
-            clock.unix_timestamp + governance_cookie.account.config.base_voting_time as i64,
+            clock.unix_timestamp + governance_cookie.account.config.voting_base_time as i64,
         )
         .await;
 

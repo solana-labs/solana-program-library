@@ -1017,7 +1017,7 @@ async fn test_cast_vote_with_voting_time_expired_error() {
         .await;
 
     let vote_expired_at = proposal_account.voting_at.unwrap()
-        + governance_cookie.account.config.base_voting_time as i64;
+        + governance_cookie.account.config.voting_base_time as i64;
 
     governance_test
         .advance_clock_past_timestamp(vote_expired_at)
@@ -1588,7 +1588,7 @@ async fn test_cast_approve_vote_with_cannot_vote_in_cool_off_time_error() {
 
     governance_test
         .advance_clock_past_timestamp(
-            clock.unix_timestamp + governance_cookie.account.config.base_voting_time as i64,
+            clock.unix_timestamp + governance_cookie.account.config.voting_base_time as i64,
         )
         .await;
 
