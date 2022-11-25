@@ -279,7 +279,7 @@ impl ProposalV2 {
             Vote::Approve(_) | Vote::Abstain => {
                 // Once the base voting time passes and we are in the voting cool off time approving votes are no longer accepted
                 // Abstain is considered as positive vote because when attendance quorum is used it can tip the scales
-                if self.voting_base_time_end(config) < current_unix_timestamp {
+                if self.has_voting_base_time_ended(config, current_unix_timestamp) {
                     Err(GovernanceError::VoteNotAllowedInCoolOffTime.into())
                 } else {
                     Ok(())
@@ -297,6 +297,17 @@ impl ProposalV2 {
             .checked_add(config.voting_base_time as i64)
             .unwrap()
     }
+
+    /// Checks whether the base voting time has ended for the proposal
+    pub fn has_voting_base_time_ended(
+        &self,
+        config: &GovernanceConfig,
+        current_unix_timestamp: UnixTimestamp,
+    ) -> bool {
+        // Check if we passed the configured base vote end time
+        self.voting_base_time_end(config) < current_unix_timestamp
+    }
+
     /// Expected max vote end time determined by the configured base_voting_time, optional voting_cool_off_time and actual voting start time
     pub fn voting_max_time_end(&self, config: &GovernanceConfig) -> UnixTimestamp {
         self.voting_base_time_end(config)
