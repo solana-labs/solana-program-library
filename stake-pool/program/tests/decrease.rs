@@ -235,6 +235,7 @@ async fn fail_with_unknown_validator() {
         &context.payer,
         &context.last_blockhash,
         &stake_pool_accounts.stake_pool.pubkey(),
+        0,
     )
     .await;
 
