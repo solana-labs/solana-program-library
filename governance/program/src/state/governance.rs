@@ -84,8 +84,8 @@ pub struct GovernanceV2 {
     /// or upgrade_authority for a Program account should be transferred to the Governance PDA
     pub governed_account: Pubkey,
 
-    /// Running count of proposals
-    pub proposals_count: u32,
+    /// Reserved space for future versions
+    pub reserved1: u32,
 
     /// Governance config
     pub config: GovernanceConfig,
@@ -192,7 +192,7 @@ impl GovernanceV2 {
                 account_type: self.account_type,
                 realm: self.realm,
                 governed_account: self.governed_account,
-                proposals_count: self.proposals_count,
+                proposals_count: 0,
                 config: self.config,
             };
 
@@ -282,9 +282,8 @@ pub fn get_governance_data(
             account_type,
             realm: governance_data_v1.realm,
             governed_account: governance_data_v1.governed_account,
-            proposals_count: governance_data_v1.proposals_count,
+            reserved1: 0,
             config: governance_data_v1.config,
-            // Add the extra reserved_v2 padding
             reserved_v2: [0; 128],
         }
     } else {
@@ -318,6 +317,9 @@ pub fn get_governance_data(
         // Reset voting_cool_off_time and reserved space previously used for voting_proposal_count
         governance_data.config.voting_cool_off_time = 0;
         governance_data.config.reserved = 0;
+
+        // Reset reserved space previously used for proposal_count
+        governance_data.reserved1 = 0;
     }
 
     Ok(governance_data)
@@ -537,7 +539,7 @@ mod test {
             account_type: GovernanceAccountType::GovernanceV2,
             realm: Pubkey::new_unique(),
             governed_account: Pubkey::new_unique(),
-            proposals_count: 10,
+            reserved1: 0,
             config: create_test_governance_config(),
             reserved_v2: [0; 128],
         }

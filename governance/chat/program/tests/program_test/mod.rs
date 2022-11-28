@@ -259,8 +259,9 @@ impl GovernanceChatProgramTest {
         let proposal_name = "Proposal #1".to_string();
         let description_link = "Proposal Description".to_string();
         let options = vec!["Yes".to_string()];
-        let proposal_index: u32 = 0;
+
         let use_deny_option = true;
+        let proposal_seed = Pubkey::new_unique();
 
         let create_proposal_ix = create_proposal(
             &self.governance_program_id,
@@ -276,7 +277,7 @@ impl GovernanceChatProgramTest {
             VoteType::SingleChoice,
             options,
             use_deny_option,
-            proposal_index,
+            &proposal_seed,
         );
 
         self.bench
@@ -288,7 +289,7 @@ impl GovernanceChatProgramTest {
             &self.governance_program_id,
             &governance_address,
             &governing_token_mint_keypair.pubkey(),
-            &proposal_index.to_le_bytes(),
+            &proposal_seed,
         );
 
         ProposalCookie {

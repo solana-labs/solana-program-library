@@ -146,6 +146,7 @@ pub fn process_instruction(
             vote_type: proposal_type,
             options,
             use_deny_option,
+            proposal_seed,
         } => process_create_proposal(
             program_id,
             accounts,
@@ -154,6 +155,7 @@ pub fn process_instruction(
             proposal_type,
             options,
             use_deny_option,
+            proposal_seed,
         ),
         GovernanceInstruction::AddSignatory { signatory } => {
             process_add_signatory(program_id, accounts, signatory)

@@ -68,7 +68,7 @@ pub fn process_create_program_governance(
         realm: *realm_info.key,
         governed_account: *governed_program_info.key,
         config,
-        proposals_count: 0,
+        reserved1: 0,
         reserved_v2: [0; 128],
     };
 

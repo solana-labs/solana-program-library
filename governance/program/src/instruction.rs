@@ -165,8 +165,8 @@ pub enum GovernanceInstruction {
     /// Creates Proposal account for Transactions which will be executed at some point in the future
     ///
     ///   0. `[]` Realm account the created Proposal belongs to
-    ///   1. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_index]
-    ///   2. `[writable]` Governance account
+    ///   1. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_seed]
+    ///   2. `[]` Governance account
     ///   3. `[writable]` TokenOwnerRecord account of the Proposal owner
     ///   4. `[]` Governing Token Mint the Proposal is created for
     ///   5. `[signer]` Governance Authority (Token Owner or Governance Delegate)
@@ -196,6 +196,10 @@ pub enum GovernanceInstruction {
         /// A proposal without the rejecting option is a non binding survey
         /// Only proposals with the rejecting option can have executable transactions
         use_deny_option: bool,
+
+        #[allow(dead_code)]
+        /// Unique seed for the Proposal PDA
+        proposal_seed: Pubkey,
     },
 
     /// Adds a signatory to the Proposal which means this Proposal can't leave Draft state until yet another Signatory signs
@@ -897,19 +901,15 @@ pub fn create_proposal(
     vote_type: VoteType,
     options: Vec<String>,
     use_deny_option: bool,
-    proposal_index: u32,
+    proposal_seed: &Pubkey,
 ) -> Instruction {
-    let proposal_address = get_proposal_address(
-        program_id,
-        governance,
-        governing_token_mint,
-        &proposal_index.to_le_bytes(),
-    );
+    let proposal_address =
+        get_proposal_address(program_id, governance, governing_token_mint, proposal_seed);
 
     let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(proposal_address, false),
-        AccountMeta::new(*governance, false),
+        AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governing_token_mint, false),
         AccountMeta::new_readonly(*governance_authority, true),
@@ -925,6 +925,7 @@ pub fn create_proposal(
         vote_type,
         options,
         use_deny_option,
+        proposal_seed: *proposal_seed,
     };
 
     Instruction {

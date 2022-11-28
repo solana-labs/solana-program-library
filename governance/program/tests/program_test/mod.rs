@@ -1490,7 +1490,7 @@ impl GovernanceProgramTest {
             realm: realm_cookie.address,
             governed_account: governed_account_cookie.address,
             config: governance_config.clone(),
-            proposals_count: 0,
+            reserved1: 0,
             reserved_v2: [0; 128],
         };
 
@@ -1659,7 +1659,7 @@ impl GovernanceProgramTest {
             realm: realm_cookie.address,
             governed_account: governed_program_cookie.address,
             config,
-            proposals_count: 0,
+            reserved1: 0,
             reserved_v2: [0; 128],
         };
 
@@ -1779,7 +1779,7 @@ impl GovernanceProgramTest {
             realm: realm_cookie.address,
             governed_account: governed_mint_cookie.address,
             config: governance_config.clone(),
-            proposals_count: 0,
+            reserved1: 0,
             reserved_v2: [0; 128],
         };
 
@@ -1859,7 +1859,7 @@ impl GovernanceProgramTest {
             realm: realm_cookie.address,
             governed_account: governed_token_cookie.address,
             config,
-            proposals_count: 0,
+            reserved1: 0,
             reserved_v2: [0; 128],
         };
 
@@ -1974,6 +1974,8 @@ impl GovernanceProgramTest {
             .as_ref()
             .map(|voter_weight_record| voter_weight_record.address);
 
+        let proposal_seed = Pubkey::new_unique();
+
         let mut create_proposal_transaction = create_proposal(
             &self.program_id,
             &governance_cookie.address,
@@ -1988,7 +1990,7 @@ impl GovernanceProgramTest {
             vote_type.clone(),
             options.clone(),
             use_deny_option,
-            proposal_index,
+            &proposal_seed,
         );
 
         instruction_override(&mut create_proposal_transaction);
@@ -2058,7 +2060,7 @@ impl GovernanceProgramTest {
             &self.program_id,
             &governance_cookie.address,
             &token_owner_record_cookie.account.governing_token_mint,
-            &proposal_index.to_le_bytes(),
+            &proposal_seed,
         );
 
         Ok(ProposalCookie {

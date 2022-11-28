@@ -1023,13 +1023,13 @@ pub fn get_proposal_data_for_governance(
 pub fn get_proposal_address_seeds<'a>(
     governance: &'a Pubkey,
     governing_token_mint: &'a Pubkey,
-    proposal_index_le_bytes: &'a [u8],
+    proposal_seed: &'a Pubkey,
 ) -> [&'a [u8]; 4] {
     [
         PROGRAM_AUTHORITY_SEED,
         governance.as_ref(),
         governing_token_mint.as_ref(),
-        proposal_index_le_bytes,
+        proposal_seed.as_ref(),
     ]
 }
 
@@ -1038,10 +1038,10 @@ pub fn get_proposal_address<'a>(
     program_id: &Pubkey,
     governance: &'a Pubkey,
     governing_token_mint: &'a Pubkey,
-    proposal_index_le_bytes: &'a [u8],
+    proposal_seed: &'a Pubkey,
 ) -> Pubkey {
     Pubkey::find_program_address(
-        &get_proposal_address_seeds(governance, governing_token_mint, proposal_index_le_bytes),
+        &get_proposal_address_seeds(governance, governing_token_mint, proposal_seed),
         program_id,
     )
     .0

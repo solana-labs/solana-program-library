@@ -28,6 +28,7 @@ use crate::{
 };
 
 /// Processes CreateProposal instruction
+#[allow(clippy::too_many_arguments)]
 pub fn process_create_proposal(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -36,6 +37,7 @@ pub fn process_create_proposal(
     vote_type: VoteType,
     options: Vec<String>,
     use_deny_option: bool,
+    proposal_seed: Pubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -63,7 +65,7 @@ pub fn process_create_proposal(
         governing_token_mint_info.key,
     )?;
 
-    let mut governance_data =
+    let governance_data =
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
     governance_data.assert_governing_token_mint_can_vote(
@@ -169,15 +171,12 @@ pub fn process_create_proposal(
         &get_proposal_address_seeds(
             governance_info.key,
             governing_token_mint_info.key,
-            &governance_data.proposals_count.to_le_bytes(),
+            &proposal_seed,
         ),
         program_id,
         system_info,
         &rent,
     )?;
-
-    governance_data.proposals_count = governance_data.proposals_count.checked_add(1).unwrap();
-    governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
 
     Ok(())
 }

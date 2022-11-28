@@ -44,12 +44,6 @@ async fn test_create_community_proposal() {
 
     assert_eq!(proposal_cookie.account, proposal_account);
 
-    let governance_account = governance_test
-        .get_governance_account(&governance_cookie.address)
-        .await;
-
-    assert_eq!(1, governance_account.proposals_count);
-
     let token_owner_record_account = governance_test
         .get_token_owner_record_account(&token_owner_record_cookie.address)
         .await;
@@ -110,12 +104,6 @@ async fn test_create_multiple_proposals() {
         .await;
 
     assert_eq!(council_proposal_cookie.account, council_proposal_account);
-
-    let governance_account = governance_test
-        .get_governance_account(&governance_cookie.address)
-        .await;
-
-    assert_eq!(2, governance_account.proposals_count);
 }
 
 #[tokio::test]
