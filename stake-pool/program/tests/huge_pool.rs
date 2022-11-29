@@ -20,7 +20,7 @@ use {
     },
 };
 
-const HUGE_POOL_SIZE: u32 = 2_300;
+const HUGE_POOL_SIZE: u32 = 2_000;
 const STAKE_AMOUNT: u64 = 200_000_000_000;
 
 async fn setup(
