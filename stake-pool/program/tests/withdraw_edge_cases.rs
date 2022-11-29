@@ -88,9 +88,10 @@ async fn fail_remove_validator() {
     );
 }
 
-#[test_case(1; "1 to 1")]
-#[test_case(5; "bigger multiple")]
-#[test_case(11; "biggest multiple")]
+#[test_case(0; "equal")]
+#[test_case(5; "big")]
+#[test_case(11; "bigger")]
+#[test_case(29; "biggest")]
 #[tokio::test]
 async fn success_remove_validator(multiple: u64) {
     let (
@@ -124,8 +125,12 @@ async fn success_remove_validator(multiple: u64) {
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_pool = stake_pool_accounts
+        .get_stake_pool(&mut context.banks_client)
+        .await;
+    let lamports_per_pool_token = stake_pool.get_lamports_per_pool_token().unwrap();
 
-    // decrease all of stake except for 7 lamports, should be withdrawable
+    // decrease all of stake except for lamports_per_pool_token lamports, must be withdrawable
     let error = stake_pool_accounts
         .decrease_validator_stake(
             &mut context.banks_client,
@@ -133,7 +138,7 @@ async fn success_remove_validator(multiple: u64) {
             &context.last_blockhash,
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
-            deposit_info.stake_lamports + stake_rent - multiple,
+            deposit_info.stake_lamports + stake_rent - lamports_per_pool_token,
             validator_stake.transient_stake_seed,
         )
         .await;
@@ -167,14 +172,12 @@ async fn success_remove_validator(multiple: u64) {
     )
     .await;
     // make sure it's actually more than the minimum
-    assert_ne!(remaining_lamports, stake_rent + stake_minimum_delegation);
+    assert!(remaining_lamports > stake_rent + stake_minimum_delegation);
 
-    let stake_pool = stake_pool_accounts
-        .get_stake_pool(&mut context.banks_client)
-        .await;
-    // round up to force one more pool token than needed
+    // round up to force one more pool token if needed
     let pool_tokens_post_fee =
-        remaining_lamports * stake_pool.pool_token_supply / stake_pool.total_lamports + 1;
+        (remaining_lamports * stake_pool.pool_token_supply + stake_pool.total_lamports - 1)
+            / stake_pool.total_lamports;
     let new_user_authority = Pubkey::new_unique();
     let pool_tokens = stake_pool_accounts.calculate_inverse_withdrawal_fee(pool_tokens_post_fee);
     let error = stake_pool_accounts

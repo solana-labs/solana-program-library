@@ -2551,7 +2551,23 @@ impl Processor {
                 }
                 StakeWithdrawSource::ValidatorRemoval => {
                     let split_from_lamports = stake_split_from.lamports();
-                    let upper_bound = split_from_lamports.saturating_add(lamports_per_pool_token);
+                    // The upper bound for reasonable tolerance is twice the lamports per
+                    // pool token because we have two sources of rounding. The first happens
+                    // when reducing the stake account to as close to the minimum as possible,
+                    // and the second happens on this withdrawal.
+                    //
+                    // For example, if the pool token is extremely valuable, it might only
+                    // be possible to reduce the stake account to a minimum of
+                    // `stake_rent + minimum_delegation + lamports_per_pool_token - 1`.
+                    //
+                    // After that, the minimum amount of pool tokens to get to this amount
+                    // may actually be worth
+                    // `stake_rent + minimum_delegation + lamports_per_pool_token * 2 - 2`.
+                    // We give an extra grace on this check of two lamports, which should be
+                    // reasonable. At worst, it just means that a withdrawer is losing out
+                    // on two lamports.
+                    let upper_bound = split_from_lamports
+                        .saturating_add(lamports_per_pool_token.saturating_mul(2));
                     if withdraw_lamports < split_from_lamports || withdraw_lamports > upper_bound {
                         msg!(
                             "Cannot withdraw a whole account worth {} lamports, \
