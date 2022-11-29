@@ -5,14 +5,13 @@ use solana_program::account_info::next_account_info;
 use std::cmp::Ordering;
 use std::slice::Iter;
 
-use solana_program::borsh::try_from_slice_unchecked;
 use solana_program::clock::{Slot, UnixTimestamp};
 
 use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
     pubkey::Pubkey,
 };
-use spl_governance_tools::account::{get_account_data, AccountMaxSize};
+use spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize};
 
 use crate::addins::max_voter_weight::{
     assert_is_valid_max_voter_weight,
@@ -927,8 +926,7 @@ pub fn get_proposal_data(
     program_id: &Pubkey,
     proposal_info: &AccountInfo,
 ) -> Result<ProposalV2, ProgramError> {
-    let account_type: GovernanceAccountType =
-        try_from_slice_unchecked(&proposal_info.data.borrow())?;
+    let account_type: GovernanceAccountType = get_account_type(program_id, proposal_info)?;
 
     // If the account is V1 version then translate to V2
     if account_type == GovernanceAccountType::ProposalV1 {
@@ -1190,7 +1188,7 @@ mod test {
                     MintMaxVoterWeightSource::FULL_SUPPLY_FRACTION,
                 min_community_weight_to_create_governance: 10,
             },
-            voting_proposal_count: 0,
+            legacy1: 0,
             reserved_v2: [0; 128],
         }
     }

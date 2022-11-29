@@ -12,11 +12,13 @@ use crate::{
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
-    account_info::AccountInfo, borsh::try_from_slice_unchecked, program_error::ProgramError,
-    program_pack::IsInitialized, pubkey::Pubkey,
+    account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
+    pubkey::Pubkey,
 };
 use spl_governance_tools::{
-    account::{assert_is_valid_account_of_types, get_account_data, AccountMaxSize},
+    account::{
+        assert_is_valid_account_of_types, get_account_data, get_account_type, AccountMaxSize,
+    },
     error::GovernanceToolsError,
 };
 
@@ -267,12 +269,7 @@ pub fn get_governance_data(
     program_id: &Pubkey,
     governance_info: &AccountInfo,
 ) -> Result<GovernanceV2, ProgramError> {
-    if governance_info.data_is_empty() {
-        return Err(GovernanceToolsError::AccountDoesNotExist.into());
-    }
-
-    let account_type: GovernanceAccountType =
-        try_from_slice_unchecked(&governance_info.data.borrow())?;
+    let account_type: GovernanceAccountType = get_account_type(program_id, governance_info)?;
 
     // If the account is V1 version then translate to V2
     let mut governance_data = if is_governance_v1_account_type(&account_type) {

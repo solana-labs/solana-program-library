@@ -348,7 +348,7 @@ impl GovernanceProgramTest {
                 legacy1: 0,
                 legacy2: 0,
             },
-            voting_proposal_count: 0,
+            legacy1: 0,
             reserved_v2: [0; 128],
         };
 
@@ -449,7 +449,7 @@ impl GovernanceProgramTest {
                 legacy1: 0,
                 legacy2: 0,
             },
-            voting_proposal_count: 0,
+            legacy1: 0,
             reserved_v2: [0; 128],
         };
 

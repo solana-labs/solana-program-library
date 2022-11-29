@@ -18,13 +18,12 @@ use crate::{
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
-    borsh::try_from_slice_unchecked,
     program_error::ProgramError,
     program_pack::IsInitialized,
     pubkey::Pubkey,
 };
 use spl_governance_addin_api::voter_weight::VoterWeightAction;
-use spl_governance_tools::account::{get_account_data, AccountMaxSize};
+use spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize};
 
 use crate::state::realm_config::RealmConfigAccount;
 
@@ -301,7 +300,7 @@ pub fn get_token_owner_record_data(
     token_owner_record_info: &AccountInfo,
 ) -> Result<TokenOwnerRecordV2, ProgramError> {
     let account_type: GovernanceAccountType =
-        try_from_slice_unchecked(&token_owner_record_info.data.borrow())?;
+        get_account_type(program_id, token_owner_record_info)?;
 
     // If the account is V1 version then translate to V2
     if account_type == GovernanceAccountType::TokenOwnerRecordV1 {

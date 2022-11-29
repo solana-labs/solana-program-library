@@ -139,7 +139,7 @@ pub fn process_create_realm(
             legacy1: 0,
             legacy2: 0,
         },
-        voting_proposal_count: 0,
+        legacy1: 0,
         reserved_v2: [0; 128],
     };
 

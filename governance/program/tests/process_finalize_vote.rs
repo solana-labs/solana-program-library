@@ -98,12 +98,6 @@ async fn test_finalize_vote_to_succeeded() {
         .await;
 
     assert_eq!(0, proposal_owner_record.outstanding_proposal_count);
-
-    let realm_account = governance_test
-        .get_realm_account(&realm_cookie.address)
-        .await;
-
-    assert_eq!(0, realm_account.voting_proposal_count);
 }
 
 #[tokio::test]

@@ -222,6 +222,24 @@ pub fn get_account_data<T: BorshDeserialize + IsInitialized>(
     }
 }
 
+/// Deserializes account type and checks if the given account_info is owned by owner_program_id
+pub fn get_account_type<T: BorshDeserialize>(
+    owner_program_id: &Pubkey,
+    account_info: &AccountInfo,
+) -> Result<T, ProgramError> {
+    if account_info.data_is_empty() {
+        return Err(GovernanceToolsError::AccountDoesNotExist.into());
+    }
+
+    if account_info.owner != owner_program_id {
+        return Err(GovernanceToolsError::InvalidAccountOwner.into());
+    }
+
+    let account_type: T = try_from_slice_unchecked(&account_info.data.borrow())?;
+
+    Ok(account_type)
+}
+
 /// Asserts the given account is not empty, owned by the given program and of the expected type
 /// Note: The function assumes the account type T is stored as the first element in the account data
 pub fn assert_is_valid_account_of_type<T: BorshDeserialize + PartialEq>(

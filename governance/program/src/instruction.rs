@@ -269,7 +269,7 @@ pub enum GovernanceInstruction {
 
     /// Cancels Proposal by changing its state to Canceled
     ///
-    ///   0. `[writable]` Realm account
+    ///   0. `[]` Realm account
     ///   1. `[]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]`  TokenOwnerRecord account of the  Proposal owner
@@ -282,7 +282,7 @@ pub enum GovernanceInstruction {
     /// it's entirely at the discretion of the Proposal owner
     /// If Proposal owner doesn't designate any signatories then can sign off the Proposal themself
     ///
-    ///   0. `[writable]` Realm account
+    ///   0. `[]` Realm account
     ///   1. `[]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[signer]` Signatory account signing off the Proposal
@@ -295,7 +295,7 @@ pub enum GovernanceInstruction {
     ///  By doing so you indicate you approve or disapprove of running the Proposal set of transactions
     ///  If you tip the consensus then the transactions can begin to be run after their hold up time
     ///
-    ///   0. `[writable]` Realm account
+    ///   0. `[]` Realm account
     ///   1. `[]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]` TokenOwnerRecord of the Proposal owner
@@ -320,7 +320,7 @@ pub enum GovernanceInstruction {
 
     /// Finalizes vote in case the Vote was not automatically tipped within max_voting_time period
     ///
-    ///   0. `[writable]` Realm account    
+    ///   0. `[]` Realm account    
     ///   1. `[]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]` TokenOwnerRecord of the Proposal owner        
@@ -1010,7 +1010,7 @@ pub fn sign_off_proposal(
     proposal_owner_record: Option<&Pubkey>,
 ) -> Instruction {
     let mut accounts = vec![
-        AccountMeta::new(*realm, false),
+        AccountMeta::new_readonly(*realm, false),
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new_readonly(*signatory, true),
@@ -1055,7 +1055,7 @@ pub fn cast_vote(
         get_vote_record_address(program_id, proposal, voter_token_owner_record);
 
     let mut accounts = vec![
-        AccountMeta::new(*realm, false),
+        AccountMeta::new_readonly(*realm, false),
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
@@ -1096,7 +1096,7 @@ pub fn finalize_vote(
     max_voter_weight_record: Option<Pubkey>,
 ) -> Instruction {
     let mut accounts = vec![
-        AccountMeta::new(*realm, false),
+        AccountMeta::new_readonly(*realm, false),
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
@@ -1169,7 +1169,7 @@ pub fn cancel_proposal(
     governance_authority: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
-        AccountMeta::new(*realm, false),
+        AccountMeta::new_readonly(*realm, false),
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),

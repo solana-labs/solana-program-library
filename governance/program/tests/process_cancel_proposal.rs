@@ -55,12 +55,6 @@ async fn test_cancel_proposal() {
         .await;
 
     assert_eq!(0, token_owner_record_account.outstanding_proposal_count);
-
-    let realm_account = governance_test
-        .get_realm_account(&realm_cookie.address)
-        .await;
-
-    assert_eq!(0, realm_account.voting_proposal_count);
 }
 
 #[tokio::test]
@@ -306,10 +300,4 @@ async fn test_cancel_proposal_in_voting_state() {
         .await;
 
     assert_eq!(ProposalState::Cancelled, proposal_account.state);
-
-    let realm_account = governance_test
-        .get_realm_account(&realm_cookie.address)
-        .await;
-
-    assert_eq!(0, realm_account.voting_proposal_count);
 }
