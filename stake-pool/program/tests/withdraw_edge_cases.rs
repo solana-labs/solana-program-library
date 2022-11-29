@@ -474,7 +474,7 @@ async fn success_with_reserve() {
 }
 
 #[tokio::test]
-async fn success_and_fail_with_preferred_withdraw() {
+async fn success_with_empty_preferred_withdraw() {
     let (
         mut context,
         stake_pool_accounts,
@@ -520,16 +520,38 @@ async fn success_and_fail_with_preferred_withdraw() {
         )
         .await;
     assert!(error.is_none());
+}
 
-    // Deposit into preferred, then fail
-    let user_stake_recipient = Keypair::new();
-    create_blank_stake_account(
+#[tokio::test]
+async fn success_and_fail_with_preferred_withdraw() {
+    let (
+        mut context,
+        stake_pool_accounts,
+        validator_stake,
+        deposit_info,
+        user_transfer_authority,
+        user_stake_recipient,
+        tokens_to_burn,
+    ) = setup(spl_token::id()).await;
+
+    let preferred_validator = simple_add_validator_to_pool(
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
-        &user_stake_recipient,
+        &stake_pool_accounts,
+        None,
     )
     .await;
+
+    stake_pool_accounts
+        .set_preferred_validator(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            instruction::PreferredValidatorType::Withdraw,
+            Some(preferred_validator.vote.pubkey()),
+        )
+        .await;
 
     let _preferred_deposit = simple_deposit_stake(
         &mut context.banks_client,
@@ -542,6 +564,7 @@ async fn success_and_fail_with_preferred_withdraw() {
     .await
     .unwrap();
 
+    let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
         .withdraw_stake(
             &mut context.banks_client,
