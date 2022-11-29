@@ -2422,7 +2422,7 @@ impl Processor {
             .checked_sub(pool_tokens_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
-        let withdraw_lamports = stake_pool
+        let mut withdraw_lamports = stake_pool
             .calc_lamports_withdraw_amount(pool_tokens_burnt)
             .ok_or(StakePoolError::CalculationFailure)?;
 
@@ -2550,11 +2550,21 @@ impl Processor {
                     }
                 }
                 StakeWithdrawSource::ValidatorRemoval => {
-                    if withdraw_lamports != stake_split_from.lamports() {
-                        msg!("Cannot withdraw a whole account worth {} lamports, must withdraw exactly {} lamports worth of pool tokens",
-                            withdraw_lamports, stake_split_from.lamports());
+                    let split_from_lamports = stake_split_from.lamports();
+                    let upper_bound = split_from_lamports.saturating_add(lamports_per_pool_token);
+                    if withdraw_lamports < split_from_lamports || withdraw_lamports > upper_bound {
+                        msg!(
+                            "Cannot withdraw a whole account worth {} lamports, \
+                              must withdraw at least {} lamports worth of pool tokens \
+                              with a margin of {} lamports",
+                            withdraw_lamports,
+                            split_from_lamports,
+                            lamports_per_pool_token
+                        );
                         return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
                     }
+                    // truncate the lamports down to the amount in the account
+                    withdraw_lamports = split_from_lamports;
                 }
             }
             Some((validator_stake_info, withdraw_source))
