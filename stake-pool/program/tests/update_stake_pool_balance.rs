@@ -26,12 +26,8 @@ async fn setup(
     ProgramTestContext,
     StakePoolAccounts,
     Vec<ValidatorStakeAccount>,
-    u64,
 ) {
     let mut context = program_test().start_with_context().await;
-    let slot = context.genesis_config().epoch_schedule.first_normal_slot;
-    context.warp_to_slot(slot).unwrap();
-
     let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
@@ -118,12 +114,12 @@ async fn setup(
         stake_accounts.push(stake_account);
     }
 
-    (context, stake_pool_accounts, stake_accounts, slot)
+    (context, stake_pool_accounts, stake_accounts)
 }
 
 #[tokio::test]
 async fn success() {
-    let (mut context, stake_pool_accounts, stake_accounts, slot) = setup(NUM_VALIDATORS).await;
+    let (mut context, stake_pool_accounts, stake_accounts) = setup(NUM_VALIDATORS).await;
 
     let pre_fee = get_token_balance(
         &mut context.banks_client,
@@ -167,8 +163,8 @@ async fn success() {
     }
 
     // Update epoch
-    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context.warp_to_slot(slot + slots_per_epoch).unwrap();
+    let slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    context.warp_to_slot(slot).unwrap();
 
     // Update list and pool
     let error = stake_pool_accounts
@@ -229,7 +225,7 @@ async fn success() {
 
 #[tokio::test]
 async fn success_absorbing_extra_lamports() {
-    let (mut context, stake_pool_accounts, stake_accounts, slot) = setup(NUM_VALIDATORS).await;
+    let (mut context, stake_pool_accounts, stake_accounts) = setup(NUM_VALIDATORS).await;
 
     let pre_balance = get_validator_list_sum(
         &mut context.banks_client,
@@ -277,8 +273,8 @@ async fn success_absorbing_extra_lamports() {
     let expected_fee = stake_pool.calc_epoch_fee_amount(extra_lamports).unwrap();
 
     // Update epoch
-    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context.warp_to_slot(slot + slots_per_epoch).unwrap();
+    let slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    context.warp_to_slot(slot).unwrap();
 
     // Update list and pool
     let error = stake_pool_accounts
