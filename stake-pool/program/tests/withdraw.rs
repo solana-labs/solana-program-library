@@ -678,6 +678,8 @@ async fn fail_with_not_enough_tokens() {
     )
     .await;
 
+    // generate a new authority each time to make each transaction unique
+    let new_authority = Pubkey::new_unique();
     let transaction_error = stake_pool_accounts
         .withdraw_stake(
             &mut context.banks_client,
@@ -715,6 +717,7 @@ async fn fail_with_not_enough_tokens() {
     )
     .await;
 
+    // generate a new authority each time to make each transaction unique
     let new_authority = Pubkey::new_unique();
     let transaction_error = stake_pool_accounts
         .withdraw_stake(
