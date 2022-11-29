@@ -10,6 +10,7 @@ use {
     },
     solana_program_test::*,
     solana_sdk::{
+        hash::Hash,
         signature::{Keypair, Signer},
         stake,
         transaction::TransactionError,
@@ -24,6 +25,7 @@ async fn setup(
     num_validators: u64,
 ) -> (
     ProgramTestContext,
+    Hash,
     StakePoolAccounts,
     Vec<ValidatorStakeAccount>,
 ) {
@@ -60,6 +62,12 @@ async fn setup(
         .await;
     assert!(error.is_none());
 
+    let mut last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
+
     // Add several accounts
     let mut stake_accounts: Vec<ValidatorStakeAccount> = vec![];
     for i in 0..num_validators {
@@ -71,7 +79,7 @@ async fn setup(
         create_vote(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &stake_account.validator,
             &stake_account.vote,
         )
@@ -81,7 +89,7 @@ async fn setup(
             .add_validator_to_pool(
                 &mut context.banks_client,
                 &context.payer,
-                &context.last_blockhash,
+                &last_blockhash,
                 &stake_account.stake_account,
                 &stake_account.vote.pubkey(),
                 stake_account.validator_stake_seed,
@@ -95,31 +103,34 @@ async fn setup(
             TEST_STAKE_AMOUNT,
         );
         deposit_account
-            .create_and_delegate(
-                &mut context.banks_client,
-                &context.payer,
-                &context.last_blockhash,
-            )
+            .create_and_delegate(&mut context.banks_client, &context.payer, &last_blockhash)
             .await;
 
         deposit_account
             .deposit_stake(
                 &mut context.banks_client,
                 &context.payer,
-                &context.last_blockhash,
+                &last_blockhash,
                 &stake_pool_accounts,
             )
             .await;
 
+        last_blockhash = context
+            .banks_client
+            .get_new_latest_blockhash(&last_blockhash)
+            .await
+            .unwrap();
+
         stake_accounts.push(stake_account);
     }
 
-    (context, stake_pool_accounts, stake_accounts)
+    (context, last_blockhash, stake_pool_accounts, stake_accounts)
 }
 
 #[tokio::test]
 async fn success() {
-    let (mut context, stake_pool_accounts, stake_accounts) = setup(NUM_VALIDATORS).await;
+    let (mut context, last_blockhash, stake_pool_accounts, stake_accounts) =
+        setup(NUM_VALIDATORS).await;
 
     let pre_fee = get_token_balance(
         &mut context.banks_client,
@@ -157,12 +168,18 @@ async fn success() {
     let slot = context.genesis_config().epoch_schedule.first_normal_slot;
     context.warp_to_slot(slot).unwrap();
 
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&last_blockhash)
+        .await
+        .unwrap();
+
     // Update list and pool
     let error = stake_pool_accounts
         .update_all(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             stake_accounts
                 .iter()
                 .map(|v| v.vote.pubkey())
@@ -216,7 +233,8 @@ async fn success() {
 
 #[tokio::test]
 async fn success_absorbing_extra_lamports() {
-    let (mut context, stake_pool_accounts, stake_accounts) = setup(NUM_VALIDATORS).await;
+    let (mut context, mut last_blockhash, stake_pool_accounts, stake_accounts) =
+        setup(NUM_VALIDATORS).await;
 
     let pre_balance = get_validator_list_sum(
         &mut context.banks_client,
@@ -244,11 +262,17 @@ async fn success_absorbing_extra_lamports() {
         transfer(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &stake_account.stake_account,
             EXTRA_STAKE_AMOUNT,
         )
         .await;
+
+        last_blockhash = context
+            .banks_client
+            .get_new_latest_blockhash(&last_blockhash)
+            .await
+            .unwrap();
     }
 
     let extra_lamports = EXTRA_STAKE_AMOUNT * stake_accounts.len() as u64;
@@ -257,13 +281,18 @@ async fn success_absorbing_extra_lamports() {
     // Update epoch
     let slot = context.genesis_config().epoch_schedule.first_normal_slot;
     context.warp_to_slot(slot).unwrap();
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&last_blockhash)
+        .await
+        .unwrap();
 
     // Update list and pool
     let error = stake_pool_accounts
         .update_all(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             stake_accounts
                 .iter()
                 .map(|v| v.vote.pubkey())
