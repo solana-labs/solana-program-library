@@ -147,15 +147,6 @@ async fn success() {
     )
     .await;
 
-    let error = stake_pool_accounts
-        .update_stake_pool_balance(
-            &mut context.banks_client,
-            &context.payer,
-            &context.last_blockhash,
-        )
-        .await;
-    assert!(error.is_none());
-
     // Increment vote credits to earn rewards
     const VOTE_CREDITS: u64 = 1_000;
     for stake_account in &stake_accounts {
@@ -246,15 +237,6 @@ async fn success_absorbing_extra_lamports() {
         &stake_pool_accounts.pool_mint.pubkey(),
     )
     .await;
-
-    let error = stake_pool_accounts
-        .update_stake_pool_balance(
-            &mut context.banks_client,
-            &context.payer,
-            &context.last_blockhash,
-        )
-        .await;
-    assert!(error.is_none());
 
     // Transfer extra funds, will be absorbed during update
     const EXTRA_STAKE_AMOUNT: u64 = 1_000_000;
