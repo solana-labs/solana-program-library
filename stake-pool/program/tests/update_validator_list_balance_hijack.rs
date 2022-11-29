@@ -8,6 +8,7 @@ use {
     solana_program::{borsh::try_from_slice_unchecked, pubkey::Pubkey, stake},
     solana_program_test::*,
     solana_sdk::{
+        hash::Hash,
         instruction::InstructionError,
         signature::Signer,
         stake::state::{Authorized, Lockup, StakeState},
@@ -26,6 +27,7 @@ async fn setup(
     num_validators: usize,
 ) -> (
     ProgramTestContext,
+    Hash,
     StakePoolAccounts,
     Vec<ValidatorStakeAccount>,
     Vec<DepositStakeAccount>,
@@ -130,11 +132,17 @@ async fn setup(
     slot += slots_per_epoch;
     context.warp_to_slot(slot).unwrap();
 
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
+
     stake_pool_accounts
         .update_all(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             stake_accounts
                 .iter()
                 .map(|v| v.vote.pubkey())
@@ -144,8 +152,15 @@ async fn setup(
         )
         .await;
 
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&last_blockhash)
+        .await
+        .unwrap();
+
     (
         context,
+        last_blockhash,
         stake_pool_accounts,
         stake_accounts,
         deposit_accounts,
@@ -179,8 +194,16 @@ async fn check_ignored_hijacked_transient_stake(
     hijack_lockup: Option<&Lockup>,
 ) {
     let num_validators = 1;
-    let (mut context, stake_pool_accounts, stake_accounts, _, lamports, _, mut slot) =
-        setup(num_validators).await;
+    let (
+        mut context,
+        last_blockhash,
+        stake_pool_accounts,
+        stake_accounts,
+        _,
+        lamports,
+        _,
+        mut slot,
+    ) = setup(num_validators).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeState>());
@@ -200,7 +223,7 @@ async fn check_ignored_hijacked_transient_stake(
         .decrease_validator_stake(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &stake_account.stake_account,
             &stake_account.transient_stake_account,
             lamports,
@@ -266,7 +289,7 @@ async fn check_ignored_hijacked_transient_stake(
         ],
         Some(&context.payer.pubkey()),
         &[&context.payer],
-        context.last_blockhash,
+        last_blockhash,
     );
     let error = context
         .banks_client
@@ -276,11 +299,16 @@ async fn check_ignored_hijacked_transient_stake(
     assert!(error.is_none());
 
     println!("Update again normally, should be no change in the lamports");
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&last_blockhash)
+        .await
+        .unwrap();
     stake_pool_accounts
         .update_all(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             stake_accounts
                 .iter()
                 .map(|v| v.vote.pubkey())
@@ -331,8 +359,16 @@ async fn check_ignored_hijacked_validator_stake(
     hijack_lockup: Option<&Lockup>,
 ) {
     let num_validators = 1;
-    let (mut context, stake_pool_accounts, stake_accounts, _, lamports, _, mut slot) =
-        setup(num_validators).await;
+    let (
+        mut context,
+        last_blockhash,
+        stake_pool_accounts,
+        stake_accounts,
+        _,
+        lamports,
+        _,
+        mut slot,
+    ) = setup(num_validators).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeState>());
@@ -351,7 +387,7 @@ async fn check_ignored_hijacked_validator_stake(
         .decrease_validator_stake(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &stake_account.stake_account,
             &stake_account.transient_stake_account,
             lamports,
@@ -364,7 +400,7 @@ async fn check_ignored_hijacked_validator_stake(
         .remove_validator_from_pool(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &stake_account.stake_account,
             &stake_account.transient_stake_account,
         )
@@ -421,7 +457,7 @@ async fn check_ignored_hijacked_validator_stake(
         ],
         Some(&context.payer.pubkey()),
         &[&context.payer],
-        context.last_blockhash,
+        last_blockhash,
     );
     let error = context
         .banks_client
@@ -431,11 +467,16 @@ async fn check_ignored_hijacked_validator_stake(
     assert!(error.is_none());
 
     println!("Update again normally, should be no change in the lamports");
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&last_blockhash)
+        .await
+        .unwrap();
     stake_pool_accounts
         .update_all(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             stake_accounts
                 .iter()
                 .map(|v| v.vote.pubkey())
@@ -466,7 +507,7 @@ async fn check_ignored_hijacked_validator_stake(
         .add_validator_to_pool(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &stake_account.stake_account,
             &stake_account.vote.pubkey(),
             stake_account.validator_stake_seed,
@@ -495,7 +536,7 @@ async fn check_ignored_hijacked_validator_stake(
         .add_validator_to_pool(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &stake_account,
             &validator,
             seed,

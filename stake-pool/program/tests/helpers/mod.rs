@@ -11,7 +11,7 @@ use {
         pubkey::Pubkey,
         stake, system_instruction, system_program,
     },
-    solana_program_test::{processor, BanksClient, ProgramTest},
+    solana_program_test::{processor, BanksClient, ProgramTest, ProgramTestContext},
     solana_sdk::{
         account::{Account as SolanaAccount, WritableAccount},
         clock::{Clock, Epoch},
@@ -2109,4 +2109,91 @@ pub fn add_token_account(
         Epoch::default(),
     );
     program_test.add_account(*account_key, fee_account);
+}
+
+pub async fn setup_for_withdraw(
+    token_program_id: Pubkey,
+) -> (
+    ProgramTestContext,
+    StakePoolAccounts,
+    ValidatorStakeAccount,
+    DepositStakeAccount,
+    Keypair,
+    Keypair,
+    u64,
+) {
+    let mut context = program_test().start_with_context().await;
+    let stake_pool_accounts = StakePoolAccounts::new_with_token_program(token_program_id);
+    stake_pool_accounts
+        .initialize_stake_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
+        .await
+        .unwrap();
+
+    let validator_stake_account = simple_add_validator_to_pool(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &stake_pool_accounts,
+        None,
+    )
+    .await;
+
+    let current_minimum_delegation = stake_pool_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
+
+    let deposit_info = simple_deposit_stake(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &stake_pool_accounts,
+        &validator_stake_account,
+        current_minimum_delegation * 3,
+    )
+    .await
+    .unwrap();
+
+    let tokens_to_withdraw = deposit_info.pool_tokens;
+
+    // Delegate tokens for withdrawing
+    let user_transfer_authority = Keypair::new();
+    delegate_tokens(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
+        &deposit_info.pool_account.pubkey(),
+        &deposit_info.authority,
+        &user_transfer_authority.pubkey(),
+        tokens_to_withdraw,
+    )
+    .await;
+
+    // Create stake account to withdraw to
+    let user_stake_recipient = Keypair::new();
+    create_blank_stake_account(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &user_stake_recipient,
+    )
+    .await;
+
+    (
+        context,
+        stake_pool_accounts,
+        validator_stake_account,
+        deposit_info,
+        user_transfer_authority,
+        user_stake_recipient,
+        tokens_to_withdraw,
+    )
 }
