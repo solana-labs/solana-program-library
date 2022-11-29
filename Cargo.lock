@@ -2714,7 +2714,7 @@ dependencies = [
  "num-traits",
  "shank",
  "solana-program",
- "spl-associated-token-account 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-associated-token-account 1.1.1",
  "spl-token 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
 ]
@@ -5674,7 +5674,7 @@ dependencies = [
  "solana-metrics",
  "solana-sdk",
  "solana-vote-program",
- "spl-associated-token-account 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-associated-token-account 1.1.1",
  "spl-memo 3.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-token 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-token-2022 0.4.2",
@@ -5807,20 +5807,6 @@ dependencies = [
 [[package]]
 name = "spl-associated-token-account"
 version = "1.1.1"
-dependencies = [
- "assert_matches",
- "borsh",
- "num-derive",
- "num-traits",
- "solana-program",
- "spl-token 3.5.0",
- "spl-token-2022 0.5.0",
- "thiserror",
-]
-
-[[package]]
-name = "spl-associated-token-account"
-version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "16a33ecc83137583902c3e13c02f34151c8b2f2b74120f9c2b3ff841953e083d"
 dependencies = [
@@ -5835,13 +5821,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-associated-token-account"
+version = "1.1.2"
+dependencies = [
+ "assert_matches",
+ "borsh",
+ "num-derive",
+ "num-traits",
+ "solana-program",
+ "spl-token 3.5.0",
+ "spl-token-2022 0.5.0",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-associated-token-account-test"
 version = "0.0.1"
 dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 1.1.1",
+ "spl-associated-token-account 1.1.2",
  "spl-token 3.5.0",
  "spl-token-2022 0.5.0",
 ]
@@ -6084,7 +6084,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-associated-token-account 1.1.1",
  "spl-token 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
  "tokio",
@@ -6215,7 +6215,7 @@ dependencies = [
  "solana-program",
  "solana-remote-wallet",
  "solana-sdk",
- "spl-associated-token-account 1.1.1",
+ "spl-associated-token-account 1.1.2",
  "spl-stake-pool",
  "spl-token 3.5.0",
 ]
@@ -6303,7 +6303,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 1.1.1",
+ "spl-associated-token-account 1.1.2",
  "spl-instruction-padding",
  "spl-memo 3.0.1",
  "spl-token-2022 0.5.0",
@@ -6333,7 +6333,7 @@ dependencies = [
  "solana-sdk",
  "solana-test-validator",
  "solana-transaction-status",
- "spl-associated-token-account 1.1.1",
+ "spl-associated-token-account 1.1.2",
  "spl-memo 3.0.1",
  "spl-token 3.5.0",
  "spl-token-2022 0.5.0",
@@ -6354,7 +6354,7 @@ dependencies = [
  "solana-client",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 1.1.1",
+ "spl-associated-token-account 1.1.2",
  "spl-memo 3.0.1",
  "spl-token 3.5.0",
  "spl-token-2022 0.5.0",
@@ -6460,7 +6460,7 @@ dependencies = [
  "solana-remote-wallet",
  "solana-sdk",
  "solana-test-validator",
- "spl-associated-token-account 1.1.1",
+ "spl-associated-token-account 1.1.2",
  "spl-token 3.5.0",
  "spl-token-2022 0.5.0",
  "spl-token-client",
@@ -6478,7 +6478,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 1.1.1",
+ "spl-associated-token-account 1.1.2",
  "spl-token 3.5.0",
  "thiserror",
 ]
