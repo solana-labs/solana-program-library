@@ -5869,37 +5869,18 @@ mod tests {
         .await
         .unwrap();
 
-        let source = Keypair::new();
-
         let permanent_delegate_keypair_file = NamedTempFile::new().unwrap();
         write_keypair_file(&payer, &permanent_delegate_keypair_file).unwrap();
 
-        let source_keypair_file = NamedTempFile::new().unwrap();
-        write_keypair_file(&source, &source_keypair_file).unwrap();
-
         let unknown_owner = Keypair::new();
-
-        exec_test_cmd(
-            &config,
-            &[
-                "spl-token",
-                CommandName::CreateAccount.into(),
-                &token.to_string(),
-                source_keypair_file.path().to_str().unwrap(),
-                "--owner",
-                &unknown_owner.pubkey().to_string(),
-            ],
-        )
-        .await
-        .unwrap();
-
+        let source = create_associated_account(&config, &unknown_owner, token).await;
         let ui_amount = 100.0;
 
-        mint_tokens(&config, &payer, token, ui_amount, source.pubkey()).await;
+        mint_tokens(&config, &payer, token, ui_amount, source).await;
 
         let ui_account = config
             .rpc_client
-            .get_token_account(&source.pubkey())
+            .get_token_account(&source)
             .await
             .unwrap()
             .unwrap();
@@ -5911,7 +5892,7 @@ mod tests {
             &[
                 "spl-token",
                 CommandName::Burn.into(),
-                &source.pubkey().to_string(),
+                &source.to_string(),
                 "10",
                 "--owner",
                 permanent_delegate_keypair_file.path().to_str().unwrap(),
@@ -5922,7 +5903,7 @@ mod tests {
 
         let ui_account = config
             .rpc_client
-            .get_token_account(&source.pubkey())
+            .get_token_account(&source)
             .await
             .unwrap()
             .unwrap();
@@ -5960,55 +5941,19 @@ mod tests {
         .await
         .unwrap();
 
-        let source = Keypair::new();
-        let destination = Keypair::new();
+        let unknown_owner = Keypair::new();
+        let source = create_associated_account(&config, &unknown_owner, token).await;
+        let destination = create_associated_account(&config, &payer, token).await;
 
         let permanent_delegate_keypair_file = NamedTempFile::new().unwrap();
         write_keypair_file(&payer, &permanent_delegate_keypair_file).unwrap();
 
-        let source_keypair_file = NamedTempFile::new().unwrap();
-        write_keypair_file(&source, &source_keypair_file).unwrap();
-
-        let destination_keypair_file = NamedTempFile::new().unwrap();
-        write_keypair_file(&destination, &destination_keypair_file).unwrap();
-
-        let unknown_owner = Keypair::new();
-
-        exec_test_cmd(
-            &config,
-            &[
-                "spl-token",
-                CommandName::CreateAccount.into(),
-                &token.to_string(),
-                source_keypair_file.path().to_str().unwrap(),
-                "--owner",
-                &unknown_owner.pubkey().to_string(),
-            ],
-        )
-        .await
-        .unwrap();
-
-        exec_test_cmd(
-            &config,
-            &[
-                "spl-token",
-                CommandName::CreateAccount.into(),
-                &token.to_string(),
-                destination_keypair_file.path().to_str().unwrap(),
-                "--owner",
-                &payer.pubkey().to_string(),
-            ],
-        )
-        .await
-        .unwrap();
-
         let ui_amount = 100.0;
-
-        mint_tokens(&config, &payer, token, ui_amount, source.pubkey()).await;
+        mint_tokens(&config, &payer, token, ui_amount, source).await;
 
         let ui_account = config
             .rpc_client
-            .get_token_account(&source.pubkey())
+            .get_token_account(&source)
             .await
             .unwrap()
             .unwrap();
@@ -6017,7 +5962,7 @@ mod tests {
 
         let ui_account = config
             .rpc_client
-            .get_token_account(&destination.pubkey())
+            .get_token_account(&destination)
             .await
             .unwrap()
             .unwrap();
@@ -6031,9 +5976,9 @@ mod tests {
                 CommandName::Transfer.into(),
                 &token.to_string(),
                 "50",
-                &destination.pubkey().to_string(),
+                &destination.to_string(),
                 "--from",
-                &source.pubkey().to_string(),
+                &source.to_string(),
                 "--owner",
                 permanent_delegate_keypair_file.path().to_str().unwrap(),
             ],
@@ -6043,7 +5988,7 @@ mod tests {
 
         let ui_account = config
             .rpc_client
-            .get_token_account(&destination.pubkey())
+            .get_token_account(&destination)
             .await
             .unwrap()
             .unwrap();
@@ -6052,7 +5997,7 @@ mod tests {
 
         let ui_account = config
             .rpc_client
-            .get_token_account(&source.pubkey())
+            .get_token_account(&source)
             .await
             .unwrap()
             .unwrap();
