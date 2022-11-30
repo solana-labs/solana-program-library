@@ -95,7 +95,7 @@ pub fn process_set_realm_config(
 
     // Update or create RealmConfigAccount
     if realm_config_info.data_is_empty() {
-        // For older Realms (pre v3) RealmConfigAccount might not exist yet and we have to create it
+        // For older Realm accounts (pre program V3) RealmConfigAccount might not exist yet and we have to create it
 
         // We need the payer to pay for the new account if it's created
         let payer_info = next_account_info(account_info_iter)?; // 10

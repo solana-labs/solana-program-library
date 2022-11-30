@@ -100,11 +100,6 @@ pub fn process_cast_vote(
         .checked_add(1)
         .unwrap();
 
-    voter_token_owner_record_data.total_votes_count = voter_token_owner_record_data
-        .total_votes_count
-        .checked_add(1)
-        .unwrap();
-
     let realm_config_info = next_account_info(account_info_iter)?; // 9
     let realm_config_data =
         get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;

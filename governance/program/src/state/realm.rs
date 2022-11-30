@@ -137,7 +137,7 @@ pub struct RealmV2 {
     /// Reserved space for future versions
     pub reserved: [u8; 6],
 
-    /// Legacy field not used since V3 any longer
+    /// Legacy field not used since program V3 any longer
     /// Note: If the field is going to be reused in future version it must be taken under consideration
     /// that for some Realms it might be already set to none zero because it was used as voting_proposal_count before
     pub legacy1: u16,

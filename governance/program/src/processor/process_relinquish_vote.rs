@@ -110,11 +110,6 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
         proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
         dispose_account(vote_record_info, beneficiary_info)?;
-
-        token_owner_record_data.total_votes_count = token_owner_record_data
-            .total_votes_count
-            .checked_sub(1)
-            .unwrap();
     } else {
         // After Proposal voting time ends and it's not tipped then it enters implicit (time based) Finalizing state
         // and releasing tokens in this state should be disallowed

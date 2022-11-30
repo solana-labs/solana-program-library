@@ -8,8 +8,9 @@ mod program_test;
 use program_test::*;
 use solana_sdk::signature::{Keypair, Signer};
 use spl_governance::{
-    error::GovernanceError, instruction::deposit_governing_tokens,
-    state::realm_config::GoverningTokenType,
+    error::GovernanceError,
+    instruction::deposit_governing_tokens,
+    state::{realm_config::GoverningTokenType, token_owner_record::TOKEN_OWNER_RECORD_VERSION},
 };
 
 use crate::program_test::args::*;
@@ -33,6 +34,9 @@ async fn test_deposit_initial_community_tokens() {
         .await;
 
     assert_eq!(token_owner_record_cookie.account, token_owner_record);
+
+    assert_eq!(TOKEN_OWNER_RECORD_VERSION, token_owner_record.version);
+    assert_eq!(0, token_owner_record.unrelinquished_votes_count);
 
     let source_account = governance_test
         .get_token_account(&token_owner_record_cookie.token_source)

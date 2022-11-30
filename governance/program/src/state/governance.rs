@@ -294,7 +294,7 @@ pub fn get_governance_data(
     // Note: assert_is_valid_governance_config() prevents setting council_vote_threshold to VoteThreshold::YesVotePercentage(0)
     // which gives as guarantee that it is a legacy account layout set with proposal_cool_off_time = 0
     //
-    // Note: All the settings below are one time config migration from V1 & V2 account data to V3
+    // Note: All the settings below are one time config migration from program V1 & V2 account data to V3
     if governance_data.config.council_vote_threshold == VoteThreshold::YesVotePercentage(0) {
         // Set council_vote_threshold to community_vote_threshold which was used for both council and community thresholds before
         governance_data.config.council_vote_threshold =
@@ -652,7 +652,7 @@ mod test {
     }
 
     #[test]
-    fn test_migrate_governance_config_from_legacy_data_to_v3() {
+    fn test_migrate_governance_config_from_legacy_data_to_program_v3() {
         // Arrange
         let mut governance_legacy_data = create_test_governance();
 
@@ -689,32 +689,32 @@ mod test {
             Epoch::default(),
         );
         // Act
-        let governance_v3 = get_governance_data(&program_id, &legacy_account_info).unwrap();
+        let governance_program_v3 = get_governance_data(&program_id, &legacy_account_info).unwrap();
 
         // Assert
         assert_eq!(
-            governance_v3.config.council_vote_threshold,
+            governance_program_v3.config.council_vote_threshold,
             VoteThreshold::YesVotePercentage(60)
         );
 
         assert_eq!(
-            governance_v3.config.council_veto_vote_threshold,
+            governance_program_v3.config.council_veto_vote_threshold,
             VoteThreshold::YesVotePercentage(60)
         );
 
         assert_eq!(
-            governance_v3.config.community_veto_vote_threshold,
+            governance_program_v3.config.community_veto_vote_threshold,
             VoteThreshold::Disabled
         );
 
         assert_eq!(
-            governance_v3.config.council_vote_tipping,
+            governance_program_v3.config.council_vote_tipping,
             VoteTipping::Strict
         );
 
-        assert_eq!(governance_v3.config.voting_cool_off_time, 0);
+        assert_eq!(governance_program_v3.config.voting_cool_off_time, 0);
 
-        assert_eq!(governance_v3.config.reserved, 0);
+        assert_eq!(governance_program_v3.config.reserved, 0);
     }
 
     #[test]

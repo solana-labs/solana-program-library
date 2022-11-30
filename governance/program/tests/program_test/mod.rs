@@ -49,7 +49,9 @@ use spl_governance::{
             get_realm_config_address, GoverningTokenConfig, RealmConfigAccount, Reserved110,
         },
         signatory_record::{get_signatory_record_address, SignatoryRecordV2},
-        token_owner_record::{get_token_owner_record_address, TokenOwnerRecordV2},
+        token_owner_record::{
+            get_token_owner_record_address, TokenOwnerRecordV2, TOKEN_OWNER_RECORD_VERSION,
+        },
         vote_record::{get_vote_record_address, Vote, VoteChoice, VoteRecordV2},
     },
     tools::bpf_loader_upgradeable::get_program_data_address,
@@ -555,9 +557,9 @@ impl GovernanceProgramTest {
             governing_token_deposit_amount: 0,
             governance_delegate: None,
             unrelinquished_votes_count: 0,
-            total_votes_count: 0,
             outstanding_proposal_count: 0,
-            reserved: [0; 7],
+            version: TOKEN_OWNER_RECORD_VERSION,
+            reserved: [0; 6],
             reserved_v2: [0; 128],
         };
 
@@ -793,9 +795,9 @@ impl GovernanceProgramTest {
             governing_token_deposit_amount: amount,
             governance_delegate: None,
             unrelinquished_votes_count: 0,
-            total_votes_count: 0,
             outstanding_proposal_count: 0,
-            reserved: [0; 7],
+            version: TOKEN_OWNER_RECORD_VERSION,
+            reserved: [0; 6],
             reserved_v2: [0; 128],
         };
 
@@ -860,9 +862,9 @@ impl GovernanceProgramTest {
             governing_token_deposit_amount: amount,
             governance_delegate: None,
             unrelinquished_votes_count: 0,
-            total_votes_count: 0,
             outstanding_proposal_count: 0,
-            reserved: [0; 7],
+            version: TOKEN_OWNER_RECORD_VERSION,
+            reserved: [0; 6],
             reserved_v2: [0; 128],
         };
 

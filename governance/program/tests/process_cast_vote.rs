@@ -86,7 +86,6 @@ async fn test_cast_vote() {
         .await;
 
     assert_eq!(1, token_owner_record.unrelinquished_votes_count);
-    assert_eq!(1, token_owner_record.total_votes_count);
 }
 
 #[tokio::test]
