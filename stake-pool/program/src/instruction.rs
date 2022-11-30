@@ -504,11 +504,10 @@ pub enum StakePoolInstruction {
     ///  8. `[w]` Destination stake account to receive transient stake after activation
     ///  9. `[]` Destination validator vote account
     /// 10. `[]` Clock sysvar
-    /// 11. `[]` Rent sysvar
-    /// 12. `[]` Stake History sysvar
-    /// 13. `[]` Stake Config sysvar
-    /// 14. `[]` System program
-    /// 15. `[]` Stake program
+    /// 11. `[]` Stake History sysvar
+    /// 12. `[]` Stake Config sysvar
+    /// 13. `[]` System program
+    /// 14. `[]` Stake program
     Redelegate {
         /// Amount of lamports to redelegate
         #[allow(dead_code)] // but it's not
@@ -838,7 +837,6 @@ pub fn redelegate(
         AccountMeta::new_readonly(*destination_validator_stake, false),
         AccountMeta::new_readonly(*validator, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),

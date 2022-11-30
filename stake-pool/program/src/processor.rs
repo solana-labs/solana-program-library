@@ -1797,8 +1797,6 @@ impl Processor {
         let validator_vote_account_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
-        let rent_info = next_account_info(account_info_iter)?;
-        let rent = &Rent::from_account_info(rent_info)?;
         let stake_history_info = next_account_info(account_info_iter)?;
         let stake_config_info = next_account_info(account_info_iter)?;
         let system_program_info = next_account_info(account_info_iter)?;
@@ -1835,6 +1833,7 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
+        let rent = Rent::get()?;
         let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
         let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
