@@ -538,6 +538,7 @@ async fn success_and_fail_with_preferred_withdraw() {
     );
 
     // success from preferred
+    let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
         .withdraw_stake(
             &mut context.banks_client,
