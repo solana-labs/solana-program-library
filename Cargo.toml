@@ -43,6 +43,8 @@ members = [
   "utils/cgen",
   "utils/test-client",
   "token-lending/flash_loan_receiver",
+  "token-multi-delegate/program",
+  #"token-multi-delegate/program-test",
 ]
 exclude = [
   "farms/farm-client",

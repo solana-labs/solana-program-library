@@ -6134,6 +6134,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-multi-delegate"
+version = "0.0.1"
+dependencies = [
+ "assert_matches",
+ "borsh",
+ "num-derive",
+ "num-traits",
+ "solana-program",
+ "spl-token 3.5.0",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-name-service"
 version = "0.2.0"
 dependencies = [

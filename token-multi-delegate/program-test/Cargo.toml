@@ -1,0 +1,19 @@
+[package]
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+description = "SPL Associated Token Account Program Tests"
+edition = "2018"
+license = "Apache-2.0"
+name = "spl-multi-delegate-test"
+repository = "https://github.com/solana-labs/solana-program-library"
+version = "0.0.1"
+
+[features]
+test-sbf = []
+
+[dev-dependencies]
+solana-program = "1.14.6"
+solana-program-test = "1.14.6"
+solana-sdk = "1.14.6"
+spl-multi-delegate = { path = "../program", features = ["no-entrypoint"] }
+spl-token = { version = "3.5", path = "../../token/program", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "0.5", path = "../../token/program-2022", features = ["no-entrypoint"] }
