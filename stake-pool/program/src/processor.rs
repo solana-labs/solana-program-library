@@ -2488,7 +2488,7 @@ impl Processor {
                     .ok_or(StakePoolError::ValidatorNotFound)?;
                 let available_lamports = preferred_validator_info
                     .active_stake_lamports
-                    .saturating_sub(required_lamports);
+                    .saturating_sub(minimum_lamports_with_tolerance);
                 if preferred_withdraw_validator != vote_account_address && available_lamports > 0 {
                     msg!("Validator vote address {} is preferred for withdrawals, it currently has {} lamports available. Please withdraw those before using other validator stake accounts.", preferred_withdraw_validator, preferred_validator_info.active_stake_lamports);
                     return Err(StakePoolError::IncorrectWithdrawVoteAddress.into());
