@@ -151,12 +151,18 @@ async fn success_remove_validator(multiple: u64) {
         .warp_to_slot(first_normal_slot + slots_per_epoch)
         .unwrap();
 
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
+
     // update to merge deactivated stake into reserve
     stake_pool_accounts
         .update_all(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &[validator_stake.vote.pubkey()],
             false,
         )
@@ -165,12 +171,9 @@ async fn success_remove_validator(multiple: u64) {
     let validator_stake_account =
         get_account(&mut context.banks_client, &validator_stake.stake_account).await;
     let remaining_lamports = validator_stake_account.lamports;
-    let stake_minimum_delegation = stake_get_minimum_delegation(
-        &mut context.banks_client,
-        &context.payer,
-        &context.last_blockhash,
-    )
-    .await;
+    let stake_minimum_delegation =
+        stake_get_minimum_delegation(&mut context.banks_client, &context.payer, &last_blockhash)
+            .await;
     // make sure it's actually more than the minimum
     assert!(remaining_lamports > stake_rent + stake_minimum_delegation);
 
@@ -184,7 +187,7 @@ async fn success_remove_validator(multiple: u64) {
         .withdraw_stake(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &user_stake_recipient.pubkey(),
             &user_transfer_authority,
             &deposit_info.pool_account.pubkey(),
@@ -216,7 +219,7 @@ async fn success_remove_validator(multiple: u64) {
         .cleanup_removed_validator_entries(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
         )
         .await;
 
