@@ -187,9 +187,10 @@ amount. Specifically, a transaction fee is determined by two paramters:
   the fee rate of 1%, and `bp = 10000` represents the fee rate of 100%.
 
 - `max_fee`: the max fee rate. A transfer fee is calculated using the fee rate
-  that is determined by `bp`, but it is capped by `max_fee`. 
+  that is determined by `bp`, but it is capped by `max_fee`.
 
   For example, consider a transfer amount of 200 tokens.
+
   - For fee parameter `bp = 100` and `max_fee = 3`, the fee is simply 1% of the
     transfer amount, which is 2.
   - For fee parameter `bp = 200` and `max_fee = 3`, the fee is 3 since 2% of 200
@@ -221,7 +222,7 @@ The actual amount of a transfer fee cannot be included in the confidential
 extension `TransferWithFee` instruction in the clear since the transfer amount
 can be inferred from the fee. Therefore, in the confidential extension, the
 transfer fee is encrypted under the destination and withheld authority ElGamal
-public key. 
+public key.
 
 ```rust
 struct FeeEncryption {
@@ -264,11 +265,22 @@ We refer to the proof specifications below for the additional details.
 
 ## Sigma Protocols
 
-### Validity Proof
+### (Public-key) Validity Proof
 
-A validity proof certifies that a twisted ElGamal ciphertext is a well-formed
-ciphertext. The precise description of the system is specified in the following
-notes.
+A public-key validity proof certifies that a twisted ElGamal public-key is a
+well-formed public key. The precise description of the system is specified in
+the following notes.
+
+[[Notes]](./pubkey_proof.pdf)
+
+The public-key validity proof is required for the `ConfigureAccount`
+instruction.
+
+### (Ciphertext) Validity Proof
+
+A ciphertext validity proof certifies that a twisted ElGamal ciphertext is a
+well-formed ciphertext. The precise description of the system is specified in
+the following notes.
 
 [[Notes]](./validity_proof.pdf)
 
