@@ -585,6 +585,7 @@ fn process_transfer(
             &proof_data.transfer_with_fee_pubkeys.source_pubkey,
             &source_ciphertext_lo,
             &source_ciphertext_hi,
+            &proof_data.new_source_ciphertext,
             new_source_decryptable_available_balance,
         )?;
 
@@ -643,6 +644,7 @@ fn process_transfer(
             &proof_data.transfer_pubkeys.source_pubkey,
             &source_ciphertext_lo,
             &source_ciphertext_hi,
+            &proof_data.new_source_ciphertext,
             new_source_decryptable_available_balance,
         )?;
 
@@ -679,6 +681,7 @@ fn process_source_for_transfer(
     source_encryption_pubkey: &EncryptionPubkey,
     source_ciphertext_lo: &EncryptedBalance,
     source_ciphertext_hi: &EncryptedBalance,
+    expected_new_source_available_balance: &EncryptedBalance,
     new_source_decryptable_available_balance: DecryptableBalance,
 ) -> ProgramResult {
     check_program_account(token_account_info.owner)?;
@@ -718,6 +721,10 @@ fn process_source_for_transfer(
         )
         .ok_or(ProgramError::InvalidInstructionData)?
     };
+
+    if new_source_available_balance != *expected_new_source_available_balance {
+        return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
+    }
 
     confidential_transfer_account.available_balance = new_source_available_balance;
     confidential_transfer_account.decryptable_available_balance =
