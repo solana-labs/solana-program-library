@@ -6,6 +6,7 @@ use {
     solana_program::{
         borsh::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
         hash::Hash,
+        instruction::Instruction,
         program_option::COption,
         program_pack::Pack,
         pubkey::Pubkey,
@@ -15,6 +16,7 @@ use {
     solana_sdk::{
         account::{Account as SolanaAccount, WritableAccount},
         clock::{Clock, Epoch},
+        compute_budget::ComputeBudgetInstruction,
         signature::{Keypair, Signer},
         transaction::Transaction,
         transport::TransportError,
@@ -858,6 +860,7 @@ pub struct StakePoolAccounts {
     pub sol_deposit_fee: state::Fee,
     pub sol_referral_fee: u8,
     pub max_validators: u32,
+    pub compute_unit_limit: Option<u32>,
 }
 
 impl StakePoolAccounts {
@@ -1007,7 +1010,7 @@ impl StakePoolAccounts {
         referrer: &Pubkey,
     ) -> Option<TransportError> {
         let mut signers = vec![payer, current_staker];
-        let instructions =
+        let mut instructions =
             if let Some(stake_deposit_authority) = self.stake_deposit_authority_keypair.as_ref() {
                 signers.push(stake_deposit_authority);
                 instruction::deposit_stake_with_authority(
@@ -1043,6 +1046,7 @@ impl StakePoolAccounts {
                     &self.token_program_id,
                 )
             };
+        self.maybe_add_compute_budget_instruction(&mut instructions);
         let transaction = Transaction::new_signed_with_payer(
             &instructions,
             Some(&payer.pubkey()),
@@ -1099,8 +1103,10 @@ impl StakePoolAccounts {
                 amount,
             )
         };
+        let mut instructions = vec![instruction];
+        self.maybe_add_compute_budget_instruction(&mut instructions);
         let transaction = Transaction::new_signed_with_payer(
-            &[instruction],
+            &instructions,
             Some(&payer.pubkey()),
             &signers,
             *recent_blockhash,
@@ -1126,22 +1132,24 @@ impl StakePoolAccounts {
         recipient_new_authority: &Pubkey,
         amount: u64,
     ) -> Option<TransportError> {
+        let mut instructions = vec![instruction::withdraw_stake(
+            &id(),
+            &self.stake_pool.pubkey(),
+            &self.validator_list.pubkey(),
+            &self.withdraw_authority,
+            validator_stake_account,
+            stake_recipient,
+            recipient_new_authority,
+            &user_transfer_authority.pubkey(),
+            pool_account,
+            &self.pool_fee_account.pubkey(),
+            &self.pool_mint.pubkey(),
+            &self.token_program_id,
+            amount,
+        )];
+        self.maybe_add_compute_budget_instruction(&mut instructions);
         let transaction = Transaction::new_signed_with_payer(
-            &[instruction::withdraw_stake(
-                &id(),
-                &self.stake_pool.pubkey(),
-                &self.validator_list.pubkey(),
-                &self.withdraw_authority,
-                validator_stake_account,
-                stake_recipient,
-                recipient_new_authority,
-                &user_transfer_authority.pubkey(),
-                pool_account,
-                &self.pool_fee_account.pubkey(),
-                &self.pool_mint.pubkey(),
-                &self.token_program_id,
-                amount,
-            )],
+            &instructions,
             Some(&payer.pubkey()),
             &[payer, user_transfer_authority],
             *recent_blockhash,
@@ -1197,8 +1205,10 @@ impl StakePoolAccounts {
                 amount,
             )
         };
+        let mut instructions = vec![instruction];
+        self.maybe_add_compute_budget_instruction(&mut instructions);
         let transaction = Transaction::new_signed_with_payer(
-            &[instruction],
+            &instructions,
             Some(&payer.pubkey()),
             &signers,
             *recent_blockhash,
@@ -1230,18 +1240,20 @@ impl StakePoolAccounts {
         no_merge: bool,
     ) -> Option<TransportError> {
         let validator_list = self.get_validator_list(banks_client).await;
+        let mut instructions = vec![instruction::update_validator_list_balance(
+            &id(),
+            &self.stake_pool.pubkey(),
+            &self.withdraw_authority,
+            &self.validator_list.pubkey(),
+            &self.reserve_stake.pubkey(),
+            &validator_list,
+            validator_vote_accounts,
+            0,
+            no_merge,
+        )];
+        self.maybe_add_compute_budget_instruction(&mut instructions);
         let transaction = Transaction::new_signed_with_payer(
-            &[instruction::update_validator_list_balance(
-                &id(),
-                &self.stake_pool.pubkey(),
-                &self.withdraw_authority,
-                &self.validator_list.pubkey(),
-                &self.reserve_stake.pubkey(),
-                &validator_list,
-                validator_vote_accounts,
-                0,
-                no_merge,
-            )],
+            &instructions,
             Some(&payer.pubkey()),
             &[payer],
             *recent_blockhash,
@@ -1260,17 +1272,19 @@ impl StakePoolAccounts {
         payer: &Keypair,
         recent_blockhash: &Hash,
     ) -> Option<TransportError> {
+        let mut instructions = vec![instruction::update_stake_pool_balance(
+            &id(),
+            &self.stake_pool.pubkey(),
+            &self.withdraw_authority,
+            &self.validator_list.pubkey(),
+            &self.reserve_stake.pubkey(),
+            &self.pool_fee_account.pubkey(),
+            &self.pool_mint.pubkey(),
+            &self.token_program_id,
+        )];
+        self.maybe_add_compute_budget_instruction(&mut instructions);
         let transaction = Transaction::new_signed_with_payer(
-            &[instruction::update_stake_pool_balance(
-                &id(),
-                &self.stake_pool.pubkey(),
-                &self.withdraw_authority,
-                &self.validator_list.pubkey(),
-                &self.reserve_stake.pubkey(),
-                &self.pool_fee_account.pubkey(),
-                &self.pool_mint.pubkey(),
-                &self.token_program_id,
-            )],
+            &instructions,
             Some(&payer.pubkey()),
             &[payer],
             *recent_blockhash,
@@ -1289,12 +1303,14 @@ impl StakePoolAccounts {
         payer: &Keypair,
         recent_blockhash: &Hash,
     ) -> Option<TransportError> {
+        let mut instructions = vec![instruction::cleanup_removed_validator_entries(
+            &id(),
+            &self.stake_pool.pubkey(),
+            &self.validator_list.pubkey(),
+        )];
+        self.maybe_add_compute_budget_instruction(&mut instructions);
         let transaction = Transaction::new_signed_with_payer(
-            &[instruction::cleanup_removed_validator_entries(
-                &id(),
-                &self.stake_pool.pubkey(),
-                &self.validator_list.pubkey(),
-            )],
+            &instructions,
             Some(&payer.pubkey()),
             &[payer],
             *recent_blockhash,
@@ -1316,35 +1332,37 @@ impl StakePoolAccounts {
         no_merge: bool,
     ) -> Option<TransportError> {
         let validator_list = self.get_validator_list(banks_client).await;
+        let mut instructions = vec![
+            instruction::update_validator_list_balance(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.withdraw_authority,
+                &self.validator_list.pubkey(),
+                &self.reserve_stake.pubkey(),
+                &validator_list,
+                validator_vote_accounts,
+                0,
+                no_merge,
+            ),
+            instruction::update_stake_pool_balance(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.withdraw_authority,
+                &self.validator_list.pubkey(),
+                &self.reserve_stake.pubkey(),
+                &self.pool_fee_account.pubkey(),
+                &self.pool_mint.pubkey(),
+                &self.token_program_id,
+            ),
+            instruction::cleanup_removed_validator_entries(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.validator_list.pubkey(),
+            ),
+        ];
+        self.maybe_add_compute_budget_instruction(&mut instructions);
         let transaction = Transaction::new_signed_with_payer(
-            &[
-                instruction::update_validator_list_balance(
-                    &id(),
-                    &self.stake_pool.pubkey(),
-                    &self.withdraw_authority,
-                    &self.validator_list.pubkey(),
-                    &self.reserve_stake.pubkey(),
-                    &validator_list,
-                    validator_vote_accounts,
-                    0,
-                    no_merge,
-                ),
-                instruction::update_stake_pool_balance(
-                    &id(),
-                    &self.stake_pool.pubkey(),
-                    &self.withdraw_authority,
-                    &self.validator_list.pubkey(),
-                    &self.reserve_stake.pubkey(),
-                    &self.pool_fee_account.pubkey(),
-                    &self.pool_mint.pubkey(),
-                    &self.token_program_id,
-                ),
-                instruction::cleanup_removed_validator_entries(
-                    &id(),
-                    &self.stake_pool.pubkey(),
-                    &self.validator_list.pubkey(),
-                ),
-            ],
+            &instructions,
             Some(&payer.pubkey()),
             &[payer],
             *recent_blockhash,
@@ -1366,18 +1384,20 @@ impl StakePoolAccounts {
         validator: &Pubkey,
         seed: Option<NonZeroU32>,
     ) -> Option<TransportError> {
+        let mut instructions = vec![instruction::add_validator_to_pool(
+            &id(),
+            &self.stake_pool.pubkey(),
+            &self.staker.pubkey(),
+            &self.reserve_stake.pubkey(),
+            &self.withdraw_authority,
+            &self.validator_list.pubkey(),
+            stake,
+            validator,
+            seed,
+        )];
+        self.maybe_add_compute_budget_instruction(&mut instructions);
         let transaction = Transaction::new_signed_with_payer(
-            &[instruction::add_validator_to_pool(
-                &id(),
-                &self.stake_pool.pubkey(),
-                &self.staker.pubkey(),
-                &self.reserve_stake.pubkey(),
-                &self.withdraw_authority,
-                &self.validator_list.pubkey(),
-                stake,
-                validator,
-                seed,
-            )],
+            &instructions,
             Some(&payer.pubkey()),
             &[payer, &self.staker],
             *recent_blockhash,
@@ -1399,16 +1419,18 @@ impl StakePoolAccounts {
         validator_stake: &Pubkey,
         transient_stake: &Pubkey,
     ) -> Option<TransportError> {
+        let mut instructions = vec![instruction::remove_validator_from_pool(
+            &id(),
+            &self.stake_pool.pubkey(),
+            &self.staker.pubkey(),
+            &self.withdraw_authority,
+            &self.validator_list.pubkey(),
+            validator_stake,
+            transient_stake,
+        )];
+        self.maybe_add_compute_budget_instruction(&mut instructions);
         let transaction = Transaction::new_signed_with_payer(
-            &[instruction::remove_validator_from_pool(
-                &id(),
-                &self.stake_pool.pubkey(),
-                &self.staker.pubkey(),
-                &self.withdraw_authority,
-                &self.validator_list.pubkey(),
-                validator_stake,
-                transient_stake,
-            )],
+            &instructions,
             Some(&payer.pubkey()),
             &[payer, &self.staker],
             *recent_blockhash,
@@ -1432,18 +1454,20 @@ impl StakePoolAccounts {
         lamports: u64,
         transient_stake_seed: u64,
     ) -> Option<TransportError> {
+        let mut instructions = vec![instruction::decrease_validator_stake(
+            &id(),
+            &self.stake_pool.pubkey(),
+            &self.staker.pubkey(),
+            &self.withdraw_authority,
+            &self.validator_list.pubkey(),
+            validator_stake,
+            transient_stake,
+            lamports,
+            transient_stake_seed,
+        )];
+        self.maybe_add_compute_budget_instruction(&mut instructions);
         let transaction = Transaction::new_signed_with_payer(
-            &[instruction::decrease_validator_stake(
-                &id(),
-                &self.stake_pool.pubkey(),
-                &self.staker.pubkey(),
-                &self.withdraw_authority,
-                &self.validator_list.pubkey(),
-                validator_stake,
-                transient_stake,
-                lamports,
-                transient_stake_seed,
-            )],
+            &instructions,
             Some(&payer.pubkey()),
             &[payer, &self.staker],
             *recent_blockhash,
@@ -1468,20 +1492,22 @@ impl StakePoolAccounts {
         lamports: u64,
         transient_stake_seed: u64,
     ) -> Option<TransportError> {
+        let mut instructions = vec![instruction::increase_validator_stake(
+            &id(),
+            &self.stake_pool.pubkey(),
+            &self.staker.pubkey(),
+            &self.withdraw_authority,
+            &self.validator_list.pubkey(),
+            &self.reserve_stake.pubkey(),
+            transient_stake,
+            validator_stake,
+            validator,
+            lamports,
+            transient_stake_seed,
+        )];
+        self.maybe_add_compute_budget_instruction(&mut instructions);
         let transaction = Transaction::new_signed_with_payer(
-            &[instruction::increase_validator_stake(
-                &id(),
-                &self.stake_pool.pubkey(),
-                &self.staker.pubkey(),
-                &self.withdraw_authority,
-                &self.validator_list.pubkey(),
-                &self.reserve_stake.pubkey(),
-                transient_stake,
-                validator_stake,
-                validator,
-                lamports,
-                transient_stake_seed,
-            )],
+            &instructions,
             Some(&payer.pubkey()),
             &[payer, &self.staker],
             *recent_blockhash,
@@ -1502,15 +1528,17 @@ impl StakePoolAccounts {
         validator_type: instruction::PreferredValidatorType,
         validator: Option<Pubkey>,
     ) -> Option<TransportError> {
+        let mut instructions = vec![instruction::set_preferred_validator(
+            &id(),
+            &self.stake_pool.pubkey(),
+            &self.staker.pubkey(),
+            &self.validator_list.pubkey(),
+            validator_type,
+            validator,
+        )];
+        self.maybe_add_compute_budget_instruction(&mut instructions);
         let transaction = Transaction::new_signed_with_payer(
-            &[instruction::set_preferred_validator(
-                &id(),
-                &self.stake_pool.pubkey(),
-                &self.staker.pubkey(),
-                &self.validator_list.pubkey(),
-                validator_type,
-                validator,
-            )],
+            &instructions,
             Some(&payer.pubkey()),
             &[payer, &self.staker],
             *recent_blockhash,
@@ -1562,6 +1590,15 @@ impl StakePoolAccounts {
         validator_list.validators = vec![];
         (stake_pool, validator_list)
     }
+
+    pub fn maybe_add_compute_budget_instruction(&self, instructions: &mut Vec<Instruction>) {
+        if let Some(compute_unit_limit) = self.compute_unit_limit {
+            instructions.insert(
+                0,
+                ComputeBudgetInstruction::set_compute_unit_limit(compute_unit_limit),
+            );
+        }
+    }
 }
 impl Default for StakePoolAccounts {
     fn default() -> Self {
@@ -1610,6 +1647,7 @@ impl Default for StakePoolAccounts {
             },
             sol_referral_fee: 50,
             max_validators: MAX_TEST_VALIDATORS,
+            compute_unit_limit: None,
         }
     }
 }
