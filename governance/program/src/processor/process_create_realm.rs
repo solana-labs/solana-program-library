@@ -19,10 +19,9 @@ use crate::{
         },
         realm_config::{
             get_realm_config_address_seeds, resolve_governing_token_config, RealmConfigAccount,
-            Reserved110,
         },
     },
-    tools::spl_token::create_spl_token_account_signed,
+    tools::{spl_token::create_spl_token_account_signed, structs::Reserved110},
 };
 
 /// Processes CreateRealm instruction

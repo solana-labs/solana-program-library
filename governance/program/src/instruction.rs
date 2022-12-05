@@ -166,7 +166,7 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[]` Realm account the created Proposal belongs to
     ///   1. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_seed]
-    ///   2. `[]` Governance account
+    ///   2. `[writable]` Governance account
     ///   3. `[writable]` TokenOwnerRecord account of the Proposal owner
     ///   4. `[]` Governing Token Mint the Proposal is created for
     ///   5. `[signer]` Governance Authority (Token Owner or Governance Delegate)
@@ -270,7 +270,7 @@ pub enum GovernanceInstruction {
     /// Cancels Proposal by changing its state to Canceled
     ///
     ///   0. `[]` Realm account
-    ///   1. `[]` Governance account
+    ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]`  TokenOwnerRecord account of the  Proposal owner
     ///   4. `[signer]` Governance Authority (Token Owner or Governance Delegate)
@@ -296,7 +296,7 @@ pub enum GovernanceInstruction {
     ///  If you tip the consensus then the transactions can begin to be run after their hold up time
     ///
     ///   0. `[]` Realm account
-    ///   1. `[]` Governance account
+    ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]` TokenOwnerRecord of the Proposal owner
     ///   4. `[writable]` TokenOwnerRecord of the voter. PDA seeds: ['governance',realm, vote_governing_token_mint, governing_token_owner]
@@ -321,7 +321,7 @@ pub enum GovernanceInstruction {
     /// Finalizes vote in case the Vote was not automatically tipped within max_voting_time period
     ///
     ///   0. `[]` Realm account    
-    ///   1. `[]` Governance account
+    ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]` TokenOwnerRecord of the Proposal owner        
     ///   4. `[]` Governing Token Mint
@@ -909,7 +909,7 @@ pub fn create_proposal(
     let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(proposal_address, false),
-        AccountMeta::new_readonly(*governance, false),
+        AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governing_token_mint, false),
         AccountMeta::new_readonly(*governance_authority, true),
@@ -1056,7 +1056,7 @@ pub fn cast_vote(
 
     let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
-        AccountMeta::new_readonly(*governance, false),
+        AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new(*voter_token_owner_record, false),
@@ -1097,7 +1097,7 @@ pub fn finalize_vote(
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
-        AccountMeta::new_readonly(*governance, false),
+        AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governing_token_mint, false),
@@ -1170,7 +1170,7 @@ pub fn cancel_proposal(
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new_readonly(*realm, false),
-        AccountMeta::new_readonly(*governance, false),
+        AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),

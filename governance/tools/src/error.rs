@@ -23,9 +23,13 @@ pub enum GovernanceToolsError {
     #[error("Invalid account owner")]
     InvalidAccountOwner,
 
-    /// Invalid Account type
-    #[error("Invalid Account type")]
+    /// Invalid account type
+    #[error("Invalid account type")]
     InvalidAccountType,
+
+    /// Invalid new account size
+    #[error("Invalid new account size")]
+    InvalidNewAccountSize,
 }
 
 impl PrintProgramError for GovernanceToolsError {

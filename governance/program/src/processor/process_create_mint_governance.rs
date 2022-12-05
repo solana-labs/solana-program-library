@@ -9,8 +9,9 @@ use crate::{
         },
         realm::get_realm_data,
     },
-    tools::spl_token::{
-        assert_spl_token_mint_authority_is_signer, set_spl_token_account_authority,
+    tools::{
+        spl_token::{assert_spl_token_mint_authority_is_signer, set_spl_token_account_authority},
+        structs::Reserved120,
     },
 };
 use solana_program::{
@@ -69,7 +70,8 @@ pub fn process_create_mint_governance(
         governed_account: *governed_mint_info.key,
         config,
         reserved1: 0,
-        reserved_v2: [0; 128],
+        reserved_v2: Reserved120::default(),
+        active_proposal_count: 0,
     };
 
     create_and_serialize_account_signed::<GovernanceV2>(

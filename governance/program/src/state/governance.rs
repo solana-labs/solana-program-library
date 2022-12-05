@@ -9,15 +9,17 @@ use crate::{
         realm::{assert_is_valid_realm, RealmV2},
         vote_record::VoteKind,
     },
+    tools::structs::Reserved120,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
-    pubkey::Pubkey,
+    pubkey::Pubkey, rent::Rent,
 };
 use spl_governance_tools::{
     account::{
-        assert_is_valid_account_of_types, get_account_data, get_account_type, AccountMaxSize,
+        assert_is_valid_account_of_types, extend_account_size, get_account_data, get_account_type,
+        AccountMaxSize,
     },
     error::GovernanceToolsError,
 };
@@ -93,11 +95,23 @@ pub struct GovernanceV2 {
     pub config: GovernanceConfig,
 
     /// Reserved space for versions v2 and onwards
-    /// Note: This space won't be available to v1 accounts until runtime supports resizing
-    pub reserved_v2: [u8; 128],
+    /// Note 1: V1 accounts must be resized before using this space
+    /// Note 2: The reserved space should be used from the end to also allow the config to grow if needed
+    pub reserved_v2: Reserved120,
+
+    /// The number of active proposals where active means Draft, SigningOff or Voting state
+    ///
+    /// Note: The counter was introduced in program V3 and didn't exist in program V1 & V2
+    /// If the program is upgraded from program V1 or V2 while there are any outstanding active proposals
+    /// the counter won't be accurate until all the preexisting proposal are transitioned to an inactive final state
+    pub active_proposal_count: u64,
 }
 
-impl AccountMaxSize for GovernanceV2 {}
+impl AccountMaxSize for GovernanceV2 {
+    fn get_max_size(&self) -> Option<usize> {
+        Some(236)
+    }
+}
 
 /// Checks if the given account type is one of the Governance V2 account types
 pub fn is_governance_v2_account_type(account_type: &GovernanceAccountType) -> bool {
@@ -125,6 +139,39 @@ pub fn is_governance_v2_account_type(account_type: &GovernanceAccountType) -> bo
         | GovernanceAccountType::VoteRecordV1
         | GovernanceAccountType::VoteRecordV2
         | GovernanceAccountType::ProgramMetadata => false,
+    }
+}
+
+/// Returns GovernanceV2 type for given GovernanceV1 type or None if the given account type is not GovernanceV1
+pub fn try_get_governance_v2_type_for_v1(
+    account_type: &GovernanceAccountType,
+) -> Option<GovernanceAccountType> {
+    match account_type {
+        GovernanceAccountType::GovernanceV1 => Some(GovernanceAccountType::GovernanceV2),
+        GovernanceAccountType::ProgramGovernanceV1 => {
+            Some(GovernanceAccountType::ProgramGovernanceV2)
+        }
+        GovernanceAccountType::MintGovernanceV1 => Some(GovernanceAccountType::MintGovernanceV2),
+        GovernanceAccountType::TokenGovernanceV1 => Some(GovernanceAccountType::TokenGovernanceV2),
+        GovernanceAccountType::Uninitialized
+        | GovernanceAccountType::RealmV1
+        | GovernanceAccountType::RealmV2
+        | GovernanceAccountType::RealmConfig
+        | GovernanceAccountType::TokenOwnerRecordV1
+        | GovernanceAccountType::TokenOwnerRecordV2
+        | GovernanceAccountType::GovernanceV2
+        | GovernanceAccountType::ProgramGovernanceV2
+        | GovernanceAccountType::MintGovernanceV2
+        | GovernanceAccountType::TokenGovernanceV2
+        | GovernanceAccountType::ProposalV1
+        | GovernanceAccountType::ProposalV2
+        | GovernanceAccountType::SignatoryRecordV1
+        | GovernanceAccountType::SignatoryRecordV2
+        | GovernanceAccountType::ProposalInstructionV1
+        | GovernanceAccountType::ProposalTransactionV2
+        | GovernanceAccountType::VoteRecordV1
+        | GovernanceAccountType::VoteRecordV2
+        | GovernanceAccountType::ProgramMetadata => None,
     }
 }
 
@@ -185,10 +232,13 @@ impl GovernanceV2 {
         } else if is_governance_v1_account_type(&self.account_type) {
             // V1 account can't be resized and we have to translate it back to the original format
 
-            // If reserved_v2 is used it must be individually assessed for v1 backward compatibility impact
-            if self.reserved_v2 != [0; 128] {
+            // If reserved_v2 is used it must be individually assessed for GovernanceV1 account backward compatibility impact
+            if self.reserved_v2 != Reserved120::default() {
                 panic!("Extended data not supported by GovernanceV1")
             }
+
+            // Note: active_proposal_count is not preserved on GovernanceV1 account until it's migrated to GovernanceV2
+            // during Proposal creation
 
             let governance_data_v1 = GovernanceV1 {
                 account_type: self.account_type,
@@ -202,6 +252,34 @@ impl GovernanceV2 {
         }
 
         Ok(())
+    }
+
+    /// Serializes Governance accounts as GovernanceV2
+    /// If the account is GovernanceV1 then it changes its type to GovernanceV2 and resizes account data
+    /// Note: It supports all the specialized Governance account types (Governance, ProgramGovernance, MintGovernance and TokenGovernance)
+    pub fn serialize_as_governance_v2<'a>(
+        mut self,
+        governance_info: &AccountInfo<'a>,
+        payer_info: &AccountInfo<'a>,
+        system_info: &AccountInfo<'a>,
+        rent: &Rent,
+    ) -> Result<(), ProgramError> {
+        // If the Governance account is GovernanceV1 reallocate its size and change type to GovernanceV2
+        if let Some(governance_v2_type) = try_get_governance_v2_type_for_v1(&self.account_type) {
+            // Change type to GovernanceV2
+            // Note: Only type change is required because the account data was translated to GovernanceV2 during deserialisation
+            self.account_type = governance_v2_type;
+
+            extend_account_size(
+                governance_info,
+                payer_info,
+                self.get_max_size().unwrap(),
+                rent,
+                system_info,
+            )?;
+        }
+
+        self.serialize(&mut *governance_info.data.borrow_mut())
     }
 
     /// Asserts the provided voting population represented by the given governing_token_mint
@@ -281,7 +359,10 @@ pub fn get_governance_data(
             governed_account: governance_data_v1.governed_account,
             reserved1: 0,
             config: governance_data_v1.config,
-            reserved_v2: [0; 128],
+            reserved_v2: Reserved120::default(),
+            // GovernanceV1 layout doesn't support active_proposal_count
+            // For any legacy GovernanceV1 account it's not preserved until the account layout is migrated to GovernanceV2 in CreateProposal
+            active_proposal_count: 0,
         }
     } else {
         get_account_data::<GovernanceV2>(program_id, governance_info)?
@@ -538,7 +619,8 @@ mod test {
             governed_account: Pubkey::new_unique(),
             reserved1: 0,
             config: create_test_governance_config(),
-            reserved_v2: [0; 128],
+            reserved_v2: Reserved120::default(),
+            active_proposal_count: 10,
         }
     }
 
@@ -553,15 +635,15 @@ mod test {
     }
 
     #[test]
-    fn test_governance_size() {
+    fn test_max_governance_size() {
         // Arrange
-        let governance = create_test_governance();
+        let governance_data = create_test_governance();
 
         // Act
-        let size = governance.try_to_vec().unwrap().len();
+        let size = governance_data.try_to_vec().unwrap().len();
 
         // Assert
-        assert_eq!(236, size);
+        assert_eq!(governance_data.get_max_size(), Some(size));
     }
 
     #[test]

@@ -10,7 +10,7 @@ use solana_program::{
 
 use crate::state::{
     enums::ProposalState, governance::get_governance_data_for_realm,
-    proposal::get_proposal_data_for_governance, realm::get_realm_data,
+    proposal::get_proposal_data_for_governance, realm::assert_is_valid_realm,
     signatory_record::get_signatory_record_data_for_seeds,
     token_owner_record::get_token_owner_record_data_for_proposal_owner,
 };
@@ -27,8 +27,7 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
 
     let clock = Clock::get()?;
 
-    // Realm is deserialized to validate the account
-    let _realm_data = get_realm_data(program_id, realm_info)?;
+    assert_is_valid_realm(program_id, realm_info)?;
 
     // Governance account data is no longer used in the current version but we still have to load it to validate Realm -> Governance -> Proposal relationship
     // It could be replaced with PDA check but the account is going to be needed in future versions once we support mandatory signatories

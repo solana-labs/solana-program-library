@@ -63,7 +63,7 @@ pub fn process_cast_vote(
         vote_governing_token_mint_info.key,
     )?;
 
-    let governance_data =
+    let mut governance_data =
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
     let vote_kind = get_vote_kind(&vote);
@@ -181,6 +181,11 @@ pub fn process_cast_vote(
             proposal_owner_record_data
                 .serialize(&mut *proposal_owner_record_info.data.borrow_mut())?;
         };
+
+        // If the proposal is tipped decrease Governance active_proposal_count
+        governance_data.active_proposal_count =
+            governance_data.active_proposal_count.saturating_sub(1);
+        governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
     }
 
     let governing_token_owner = voter_token_owner_record_data.governing_token_owner;

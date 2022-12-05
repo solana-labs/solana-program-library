@@ -65,7 +65,7 @@ pub fn process_create_proposal(
         governing_token_mint_info.key,
     )?;
 
-    let governance_data =
+    let mut governance_data =
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
     governance_data.assert_governing_token_mint_can_vote(
@@ -177,6 +177,14 @@ pub fn process_create_proposal(
         system_info,
         &rent,
     )?;
+
+    governance_data.active_proposal_count = governance_data
+        .active_proposal_count
+        .checked_add(1)
+        .unwrap();
+
+    // Serialize the governance account update to GovernanceV2 if needed
+    governance_data.serialize_as_governance_v2(governance_info, payer_info, system_info, &rent)?;
 
     Ok(())
 }

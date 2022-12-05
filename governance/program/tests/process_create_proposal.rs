@@ -49,6 +49,12 @@ async fn test_create_community_proposal() {
         .await;
 
     assert_eq!(1, token_owner_record_account.outstanding_proposal_count);
+
+    let governance_account = governance_test
+        .get_governance_account(&governance_cookie.address)
+        .await;
+
+    assert_eq!(1, governance_account.active_proposal_count);
 }
 
 #[tokio::test]

@@ -98,6 +98,12 @@ async fn test_finalize_vote_to_succeeded() {
         .await;
 
     assert_eq!(0, proposal_owner_record.outstanding_proposal_count);
+
+    let governance_account = governance_test
+        .get_governance_account(&governance_cookie.address)
+        .await;
+
+    assert_eq!(0, governance_account.active_proposal_count);
 }
 
 #[tokio::test]

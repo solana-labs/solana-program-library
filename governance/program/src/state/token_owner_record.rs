@@ -82,7 +82,7 @@ pub struct TokenOwnerRecordV2 {
     pub governance_delegate: Option<Pubkey>,
 
     /// Reserved space for versions v2 and onwards
-    /// Note: This space won't be available to v1 accounts until runtime supports resizing
+    /// Note: V1 accounts must be resized before using this space
     pub reserved_v2: [u8; 128],
 }
 

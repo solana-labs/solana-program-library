@@ -257,12 +257,11 @@ pub fn assert_is_valid_account_of_types<T: BorshDeserialize + PartialEq, F: Fn(&
     account_info: &AccountInfo,
     is_account_type: F,
 ) -> Result<(), ProgramError> {
-    if account_info.owner != owner_program_id {
-        return Err(GovernanceToolsError::InvalidAccountOwner.into());
-    }
-
     if account_info.data_is_empty() {
         return Err(GovernanceToolsError::AccountDoesNotExist.into());
+    }
+    if account_info.owner != owner_program_id {
+        return Err(GovernanceToolsError::InvalidAccountOwner.into());
     }
 
     let account_type: T = try_from_slice_unchecked(&account_info.data.borrow())?;
@@ -290,4 +289,33 @@ pub fn dispose_account(
 
     account_info.assign(&system_program::id());
     account_info.realloc(0, false)
+}
+
+/// Extends account size to the new account size
+pub fn extend_account_size<'a>(
+    account_info: &AccountInfo<'a>,
+    payer_info: &AccountInfo<'a>,
+    new_account_size: usize,
+    rent: &Rent,
+    system_info: &AccountInfo<'a>,
+) -> Result<(), ProgramError> {
+    if new_account_size <= account_info.data_len() {
+        return Err(GovernanceToolsError::InvalidNewAccountSize.into());
+    }
+
+    let rent_exempt_lamports = rent.minimum_balance(new_account_size).max(1);
+    let top_up_lamports = rent_exempt_lamports.saturating_sub(account_info.lamports());
+
+    if top_up_lamports > 0 {
+        invoke(
+            &system_instruction::transfer(payer_info.key, account_info.key, top_up_lamports),
+            &[
+                payer_info.clone(),
+                account_info.clone(),
+                system_info.clone(),
+            ],
+        )?;
+    }
+
+    account_info.realloc(new_account_size, false)
 }

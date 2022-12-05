@@ -33,7 +33,7 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         realm_info,
         governing_token_mint_info.key,
     )?;
-    let governance_data =
+    let mut governance_data =
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
     let mut proposal_data = get_proposal_data_for_governance_and_governing_mint(
@@ -79,6 +79,10 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     proposal_owner_record_data.serialize(&mut *proposal_owner_record_info.data.borrow_mut())?;
 
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
+
+    // Update  Governance active_proposal_count
+    governance_data.active_proposal_count = governance_data.active_proposal_count.saturating_sub(1);
+    governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
 
     Ok(())
 }

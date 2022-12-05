@@ -1,6 +1,7 @@
 #![allow(clippy::integer_arithmetic)]
 use std::str::FromStr;
 
+use borsh::BorshSerialize;
 use solana_program::{
     bpf_loader_upgradeable::{self, UpgradeableLoaderState},
     clock::{Slot, UnixTimestamp},
@@ -45,16 +46,17 @@ use spl_governance::{
             get_governing_token_holding_address, get_realm_address,
             GoverningTokenConfigAccountArgs, RealmConfig, RealmV2, SetRealmAuthorityAction,
         },
-        realm_config::{
-            get_realm_config_address, GoverningTokenConfig, RealmConfigAccount, Reserved110,
-        },
+        realm_config::{get_realm_config_address, GoverningTokenConfig, RealmConfigAccount},
         signatory_record::{get_signatory_record_address, SignatoryRecordV2},
         token_owner_record::{
             get_token_owner_record_address, TokenOwnerRecordV2, TOKEN_OWNER_RECORD_VERSION,
         },
         vote_record::{get_vote_record_address, Vote, VoteChoice, VoteRecordV2},
     },
-    tools::bpf_loader_upgradeable::get_program_data_address,
+    tools::{
+        bpf_loader_upgradeable::get_program_data_address,
+        structs::{Reserved110, Reserved120},
+    },
 };
 use spl_governance_addin_api::{
     max_voter_weight::MaxVoterWeightRecord,
@@ -66,6 +68,7 @@ use spl_governance_addin_mock::instruction::{
 
 pub mod args;
 pub mod cookies;
+pub mod legacy;
 
 use crate::program_test::cookies::{
     RealmConfigCookie, SignatoryRecordCookie, VoterWeightRecordCookie,
@@ -1493,7 +1496,8 @@ impl GovernanceProgramTest {
             governed_account: governed_account_cookie.address,
             config: governance_config.clone(),
             reserved1: 0,
-            reserved_v2: [0; 128],
+            reserved_v2: Reserved120::default(),
+            active_proposal_count: 0,
         };
 
         let default_signers = &[create_authority];
@@ -1662,7 +1666,8 @@ impl GovernanceProgramTest {
             governed_account: governed_program_cookie.address,
             config,
             reserved1: 0,
-            reserved_v2: [0; 128],
+            reserved_v2: Reserved120::default(),
+            active_proposal_count: 0,
         };
 
         let program_governance_address = get_program_governance_address(
@@ -1782,7 +1787,8 @@ impl GovernanceProgramTest {
             governed_account: governed_mint_cookie.address,
             config: governance_config.clone(),
             reserved1: 0,
-            reserved_v2: [0; 128],
+            reserved_v2: Reserved120::default(),
+            active_proposal_count: 0,
         };
 
         let mint_governance_address = get_mint_governance_address(
@@ -1862,7 +1868,8 @@ impl GovernanceProgramTest {
             governed_account: governed_token_cookie.address,
             config,
             reserved1: 0,
-            reserved_v2: [0; 128],
+            reserved_v2: Reserved120::default(),
+            active_proposal_count: 0,
         };
 
         let token_governance_address = get_token_governance_address(
@@ -2895,6 +2902,12 @@ impl GovernanceProgramTest {
             .get_packed_account_data::<T>(*address)
             .await
             .unwrap()
+    }
+
+    #[allow(dead_code)]
+    pub fn set_account<T: BorshSerialize>(&mut self, address: &Pubkey, account: &T) {
+        self.bench
+            .set_borsh_account(&self.program_id, address, account);
     }
 
     #[allow(dead_code)]
