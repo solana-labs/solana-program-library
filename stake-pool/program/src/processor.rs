@@ -1881,10 +1881,10 @@ impl Processor {
         let (_, stake) = get_stake_state(source_validator_stake_account_info)?;
         let vote_account_address = stake.delegation.voter_pubkey;
         {
-            let maybe_validator_stake_info = validator_list.find_mut::<ValidatorStakeInfo>(
-                vote_account_address.as_ref(),
-                ValidatorStakeInfo::memcmp_pubkey,
-            );
+            let maybe_validator_stake_info =
+                validator_list.find_mut::<ValidatorStakeInfo, _>(|x| {
+                    ValidatorStakeInfo::memcmp_pubkey(x, &vote_account_address)
+                });
             if maybe_validator_stake_info.is_none() {
                 msg!(
                     "Source vote account {} not found in stake pool",
@@ -1984,10 +1984,10 @@ impl Processor {
         {
             // check destination stake and transient stake accounts
             let vote_account_address = validator_vote_account_info.key;
-            let maybe_validator_stake_info = validator_list.find_mut::<ValidatorStakeInfo>(
-                vote_account_address.as_ref(),
-                ValidatorStakeInfo::memcmp_pubkey,
-            );
+            let maybe_validator_stake_info =
+                validator_list.find_mut::<ValidatorStakeInfo, _>(|x| {
+                    ValidatorStakeInfo::memcmp_pubkey(x, vote_account_address)
+                });
             if maybe_validator_stake_info.is_none() {
                 msg!(
                     "Destination vote account {} not found in stake pool",
