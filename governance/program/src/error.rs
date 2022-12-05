@@ -442,6 +442,14 @@ pub enum GovernanceError {
     /// Vote not allowed in cool off time
     #[error("Vote not allowed in cool off time")]
     VoteNotAllowedInCoolOffTime, // 606
+
+    /// Cannot refund ProposalDeposit
+    #[error("Cannot refund ProposalDeposit")]
+    CannotRefundProposalDeposit, // 607
+
+    /// Invalid ProposalDeposit account address
+    #[error("Invalid ProposalDeposit account address")]
+    InvalidProposalDepositAccountAddress, // 608
 }
 
 impl PrintProgramError for GovernanceError {

@@ -6,7 +6,11 @@ mod program_test;
 
 use program_test::legacy::*;
 use program_test::*;
-use spl_governance::state::enums::{VoteThreshold, VoteTipping};
+
+use spl_governance::state::{
+    enums::{VoteThreshold, VoteTipping},
+    governance::DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
+};
 
 #[tokio::test]
 async fn test_create_proposal_and_migrate_governance_v1_to_v2() {
@@ -64,7 +68,10 @@ async fn test_create_proposal_and_migrate_governance_v1_to_v2() {
         governance_account.config.community_veto_vote_threshold
     );
 
-    assert_eq!(0, governance_account.config.reserved);
+    assert_eq!(
+        DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
+        governance_account.config.deposit_exempt_proposal_count
+    );
 
     assert_eq!(0, governance_account.reserved1);
 

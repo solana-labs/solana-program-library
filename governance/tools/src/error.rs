@@ -21,7 +21,7 @@ pub enum GovernanceToolsError {
 
     /// Invalid account owner
     #[error("Invalid account owner")]
-    InvalidAccountOwner,
+    InvalidAccountOwner, // 1102
 
     /// Invalid account type
     #[error("Invalid account type")]

@@ -20,6 +20,7 @@ use crate::{
             assert_valid_proposal_options, get_proposal_address_seeds, OptionVoteResult,
             ProposalOption, ProposalV2, VoteType,
         },
+        proposal_deposit::{get_proposal_deposit_address_seeds, ProposalDeposit},
         realm::get_realm_data_for_governing_token_mint,
         realm_config::get_realm_config_data_for_realm,
         token_owner_record::get_token_owner_record_data_for_realm,
@@ -176,12 +177,31 @@ pub fn process_create_proposal(
         program_id,
         system_info,
         &rent,
+        None,
     )?;
 
     governance_data.active_proposal_count = governance_data
         .active_proposal_count
         .checked_add(1)
         .unwrap();
+
+    // Take Proposal deposit if needed
+    let proposal_deposit_amount = governance_data.get_proposal_deposit_amount();
+    if proposal_deposit_amount > 0 {
+        let proposal_deposit_info = next_account_info(account_info_iter)?; // *8
+        let proposal_deposit_data = ProposalDeposit {};
+
+        create_and_serialize_account_signed::<ProposalDeposit>(
+            payer_info,
+            proposal_deposit_info,
+            &proposal_deposit_data,
+            &get_proposal_deposit_address_seeds(proposal_info.key, payer_info.key),
+            program_id,
+            system_info,
+            &rent,
+            Some(proposal_deposit_amount),
+        )?;
+    }
 
     // Serialize the governance account update to GovernanceV2 if needed
     governance_data.serialize_as_governance_v2(governance_info, payer_info, system_info, &rent)?;

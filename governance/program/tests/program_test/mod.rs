@@ -22,9 +22,10 @@ use spl_governance::{
         create_native_treasury, create_program_governance, create_proposal, create_realm,
         create_token_governance, create_token_owner_record, deposit_governing_tokens,
         execute_transaction, finalize_vote, flag_transaction_error, insert_transaction,
-        relinquish_vote, remove_signatory, remove_transaction, revoke_governing_tokens,
-        set_governance_config, set_governance_delegate, set_realm_authority, set_realm_config,
-        sign_off_proposal, upgrade_program_metadata, withdraw_governing_tokens,
+        refund_proposal_deposit, relinquish_vote, remove_signatory, remove_transaction,
+        revoke_governing_tokens, set_governance_config, set_governance_delegate,
+        set_realm_authority, set_realm_config, sign_off_proposal, upgrade_program_metadata,
+        withdraw_governing_tokens,
     },
     processor::process_instruction,
     state::{
@@ -35,10 +36,12 @@ use spl_governance::{
         governance::{
             get_governance_address, get_mint_governance_address, get_program_governance_address,
             get_token_governance_address, GovernanceConfig, GovernanceV2,
+            DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
         },
         native_treasury::{get_native_treasury_address, NativeTreasury},
         program_metadata::{get_program_metadata_address, ProgramMetadata},
         proposal::{get_proposal_address, OptionVoteResult, ProposalOption, ProposalV2, VoteType},
+        proposal_deposit::{get_proposal_deposit_address, ProposalDeposit},
         proposal_transaction::{
             get_proposal_transaction_address, InstructionData, ProposalTransactionV2,
         },
@@ -1421,7 +1424,7 @@ impl GovernanceProgramTest {
             council_vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(80),
             voting_cool_off_time: 0,
-            reserved: 0,
+            deposit_exempt_proposal_count: DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
         }
     }
 
@@ -2072,11 +2075,19 @@ impl GovernanceProgramTest {
             &proposal_seed,
         );
 
+        let proposal_deposit_payer = self.bench.payer.pubkey();
+
         Ok(ProposalCookie {
             address: proposal_address,
             account,
             proposal_owner: governance_authority.pubkey(),
             realm: governance_cookie.account.realm,
+            proposal_deposit: get_proposal_deposit_address(
+                &self.program_id,
+                &proposal_address,
+                &proposal_deposit_payer,
+            ),
+            proposal_deposit_payer,
         })
     }
 
@@ -2235,6 +2246,37 @@ impl GovernanceProgramTest {
 
         self.bench
             .process_transaction(&[sign_off_proposal_ix], Some(signers))
+            .await?;
+
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub async fn refund_proposal_deposit(
+        &mut self,
+        proposal_cookie: &ProposalCookie,
+    ) -> Result<(), ProgramError> {
+        self.refund_proposal_deposit_using_instruction(proposal_cookie, NopOverride, None)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn refund_proposal_deposit_using_instruction<F: Fn(&mut Instruction)>(
+        &mut self,
+        proposal_cookie: &ProposalCookie,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<(), ProgramError> {
+        let mut refund_proposal_deposit_ix = refund_proposal_deposit(
+            &self.program_id,
+            &proposal_cookie.address,
+            &proposal_cookie.proposal_deposit_payer,
+        );
+
+        instruction_override(&mut refund_proposal_deposit_ix);
+
+        self.bench
+            .process_transaction(&[refund_proposal_deposit_ix], signers_override)
             .await?;
 
         Ok(())
@@ -2835,6 +2877,13 @@ impl GovernanceProgramTest {
     pub async fn get_native_treasury_account(&mut self, address: &Pubkey) -> NativeTreasury {
         self.bench
             .get_borsh_account::<NativeTreasury>(address)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_proposal_deposit_account(&mut self, address: &Pubkey) -> ProposalDeposit {
+        self.bench
+            .get_borsh_account::<ProposalDeposit>(address)
             .await
     }
 

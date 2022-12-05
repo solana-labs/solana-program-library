@@ -84,6 +84,7 @@ pub fn process_create_program_governance(
         program_id,
         system_info,
         &rent,
+        None,
     )?;
 
     if transfer_upgrade_authority {

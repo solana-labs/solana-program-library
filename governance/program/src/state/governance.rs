@@ -64,9 +64,16 @@ pub struct GovernanceConfig {
     /// Voting cool of time
     pub voting_cool_off_time: u32,
 
-    /// Reserved space for future versions
-    pub reserved: u8,
+    /// The number of active proposals exempt from the Proposal security deposit
+    pub deposit_exempt_proposal_count: u8,
 }
+
+/// The default number of active proposals exempt from security deposit
+pub const DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT: u8 = 10;
+
+/// Security deposit is paid when a Proposal is created and can be refunded after voting ends
+/// or the Proposals is cancelled
+pub const SECURITY_DEPOSIT_BASE_LAMPORTS: u64 = 100_000_000; // 0.1 SOL
 
 /// Governance Account
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -340,6 +347,17 @@ impl GovernanceV2 {
 
         Ok(vote_tipping)
     }
+
+    /// Returns the required deposit amount for creating a Proposal based on the number of active proposals
+    /// and the configured number of proposals exempt from the deposits  
+    /// The deposit is not payed until there are more active Proposal than the exempt amount
+    pub fn get_proposal_deposit_amount(&self) -> u64 {
+        // Charge a security deposit of n(n+1)/2 for n proposals to discourage spam
+        // where n = active_proposal_count - deposit_exempt_proposal_count
+        self.active_proposal_count
+            .saturating_sub(self.config.deposit_exempt_proposal_count as u64)
+            .saturating_mul(SECURITY_DEPOSIT_BASE_LAMPORTS)
+    }
 }
 
 /// Deserializes Governance account and checks owner program
@@ -392,9 +410,10 @@ pub fn get_governance_data(
         // For legacy accounts set the community Veto threshold to Disabled
         governance_data.config.community_veto_vote_threshold = VoteThreshold::Disabled;
 
-        // Reset voting_cool_off_time and reserved space previously used for voting_proposal_count
+        // Reset voting_cool_off_time and deposit_exempt_proposal_count  previously used for voting_proposal_count
         governance_data.config.voting_cool_off_time = 0;
-        governance_data.config.reserved = 0;
+        governance_data.config.deposit_exempt_proposal_count =
+            DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT;
 
         // Reset reserved space previously used for proposal_count
         governance_data.reserved1 = 0;
@@ -565,10 +584,6 @@ pub fn assert_is_valid_governance_config(
         return Err(GovernanceError::AtLeastOneVoteThresholdRequired.into());
     }
 
-    if governance_config.reserved != 0 {
-        return Err(GovernanceError::ReservedBufferMustBeEmpty.into());
-    }
-
     Ok(())
 }
 
@@ -608,7 +623,7 @@ mod test {
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(40),
             voting_cool_off_time: 2,
-            reserved: 0,
+            deposit_exempt_proposal_count: 0,
         }
     }
 
@@ -714,7 +729,10 @@ mod test {
             governance.config.community_vote_tipping
         );
 
-        assert_eq!(governance.config.reserved, 0);
+        assert_eq!(
+            governance.config.deposit_exempt_proposal_count,
+            DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT
+        );
         assert_eq!(governance.config.voting_cool_off_time, 0);
     }
 
@@ -796,7 +814,10 @@ mod test {
 
         assert_eq!(governance_program_v3.config.voting_cool_off_time, 0);
 
-        assert_eq!(governance_program_v3.config.reserved, 0);
+        assert_eq!(
+            governance_program_v3.config.deposit_exempt_proposal_count,
+            DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT
+        );
     }
 
     #[test]
@@ -858,5 +879,50 @@ mod test {
 
         // Assert
         assert_eq!(err, GovernanceError::InvalidVoteThresholdPercentage.into());
+    }
+
+    #[test]
+    fn test_get_proposal_deposit_amount_for_exempt_proposal() {
+        // Arrange
+        let mut governance_data = create_test_governance();
+
+        governance_data.active_proposal_count = 10;
+        governance_data.config.deposit_exempt_proposal_count = 10;
+
+        // Act
+        let deposit_amount = governance_data.get_proposal_deposit_amount();
+
+        // Assert
+        assert_eq!(deposit_amount, 0);
+    }
+
+    #[test]
+    fn test_get_proposal_deposit_amount_for_non_exempt_proposal() {
+        // Arrange
+        let mut governance_data = create_test_governance();
+
+        governance_data.active_proposal_count = 100;
+        governance_data.config.deposit_exempt_proposal_count = 10;
+
+        // Act
+        let deposit_amount = governance_data.get_proposal_deposit_amount();
+
+        // Assert
+        assert_eq!(deposit_amount, SECURITY_DEPOSIT_BASE_LAMPORTS * 90);
+    }
+
+    #[test]
+    fn test_get_proposal_deposit_amount_without_exempt_proposal() {
+        // Arrange
+        let mut governance_data = create_test_governance();
+
+        governance_data.active_proposal_count = 10;
+        governance_data.config.deposit_exempt_proposal_count = 0;
+
+        // Act
+        let deposit_amount = governance_data.get_proposal_deposit_amount();
+
+        // Assert
+        assert_eq!(deposit_amount, SECURITY_DEPOSIT_BASE_LAMPORTS * 10);
     }
 }

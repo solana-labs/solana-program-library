@@ -289,6 +289,22 @@ impl ProposalV2 {
         }
     }
 
+    /// Checks if proposal has concluded so that security deposit is no longer needed
+    pub fn assert_can_refund_proposal_deposit(&self) -> Result<(), ProgramError> {
+        match self.state {
+            ProposalState::Succeeded
+            | ProposalState::Executing
+            | ProposalState::Completed
+            | ProposalState::Cancelled
+            | ProposalState::Defeated
+            | ProposalState::ExecutingWithErrors
+            | ProposalState::Vetoed => Ok(()),
+            ProposalState::Draft | ProposalState::SigningOff | ProposalState::Voting => {
+                Err(GovernanceError::CannotRefundProposalDeposit.into())
+            }
+        }
+    }
+
     /// Expected base vote end time determined by the configured base_voting_time and actual voting start time
     pub fn voting_base_time_end(&self, config: &GovernanceConfig) -> UnixTimestamp {
         self.voting_at
@@ -1206,7 +1222,7 @@ mod test {
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(40),
             voting_cool_off_time: 0,
-            reserved: 0,
+            deposit_exempt_proposal_count: 0,
         }
     }
 

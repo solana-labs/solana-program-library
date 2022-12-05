@@ -42,6 +42,7 @@ pub fn process_create_native_treasury(
         &system_program::id(), // System program as the PDA owner
         system_info,
         &rent,
+        None,
     )?;
 
     Ok(())

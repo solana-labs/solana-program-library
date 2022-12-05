@@ -11,7 +11,9 @@ use spl_governance::{
     },
     state::{
         enums::{MintMaxVoterWeightSource, VoteThreshold},
-        governance::{get_governance_address, GovernanceConfig},
+        governance::{
+            get_governance_address, GovernanceConfig, DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
+        },
         proposal::{get_proposal_address, VoteType},
         realm::{get_realm_address, GoverningTokenConfigAccountArgs},
         realm_config::GoverningTokenType,
@@ -197,7 +199,7 @@ impl GovernanceChatProgramTest {
             council_vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(55),
             voting_cool_off_time: 1,
-            reserved: 0,
+            deposit_exempt_proposal_count: DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
         };
 
         let token_owner_record_address = get_token_owner_record_address(

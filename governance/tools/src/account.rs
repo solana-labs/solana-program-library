@@ -81,6 +81,7 @@ pub fn create_and_serialize_account<'a, T: BorshSerialize + AccountMaxSize>(
 /// Creates a new account and serializes data into it using the provided seeds to invoke signed CPI call
 /// The owner of the account is set to the PDA program
 /// Note: This functions also checks the provided account PDA matches the supplied seeds
+#[allow(clippy::too_many_arguments)]
 pub fn create_and_serialize_account_signed<'a, T: BorshSerialize + AccountMaxSize>(
     payer_info: &AccountInfo<'a>,
     account_info: &AccountInfo<'a>,
@@ -89,6 +90,7 @@ pub fn create_and_serialize_account_signed<'a, T: BorshSerialize + AccountMaxSiz
     program_id: &Pubkey,
     system_info: &AccountInfo<'a>,
     rent: &Rent,
+    extra_lamports: Option<u64>, // Extra lamports added on top of the rent exempt amount
 ) -> Result<(), ProgramError> {
     create_and_serialize_account_with_owner_signed(
         payer_info,
@@ -99,6 +101,7 @@ pub fn create_and_serialize_account_signed<'a, T: BorshSerialize + AccountMaxSiz
         program_id, // By default use PDA program_id as the owner of the account
         system_info,
         rent,
+        extra_lamports,
     )
 }
 
@@ -114,6 +117,7 @@ pub fn create_and_serialize_account_with_owner_signed<'a, T: BorshSerialize + Ac
     owner_program_id: &Pubkey,
     system_info: &AccountInfo<'a>,
     rent: &Rent,
+    extra_lamports: Option<u64>, // Extra lamports added on top of the rent exempt amount
 ) -> Result<(), ProgramError> {
     // Get PDA and assert it's the same as the requested account address
     let (account_address, bump_seed) =
@@ -140,12 +144,15 @@ pub fn create_and_serialize_account_with_owner_signed<'a, T: BorshSerialize + Ac
     let bump = &[bump_seed];
     signers_seeds.push(bump);
 
-    let rent_exempt_lamports = rent.minimum_balance(account_size).max(1);
+    let rent_exempt_lamports = rent.minimum_balance(account_size);
+    let total_lamports = rent_exempt_lamports
+        .checked_add(extra_lamports.unwrap_or(0))
+        .unwrap();
 
     // If the account has some lamports already it can't be created using create_account instruction
     // Anybody can send lamports to a PDA and by doing so create the account and perform DoS attack by blocking create_account
     if account_info.lamports() > 0 {
-        let top_up_lamports = rent_exempt_lamports.saturating_sub(account_info.lamports());
+        let top_up_lamports = total_lamports.saturating_sub(account_info.lamports());
 
         if top_up_lamports > 0 {
             invoke(
@@ -174,7 +181,7 @@ pub fn create_and_serialize_account_with_owner_signed<'a, T: BorshSerialize + Ac
         let create_account_instruction = create_account(
             payer_info.key,
             account_info.key,
-            rent_exempt_lamports,
+            total_lamports,
             account_size as u64,
             owner_program_id,
         );
@@ -303,7 +310,7 @@ pub fn extend_account_size<'a>(
         return Err(GovernanceToolsError::InvalidNewAccountSize.into());
     }
 
-    let rent_exempt_lamports = rent.minimum_balance(new_account_size).max(1);
+    let rent_exempt_lamports = rent.minimum_balance(new_account_size);
     let top_up_lamports = rent_exempt_lamports.saturating_sub(account_info.lamports());
 
     if top_up_lamports > 0 {

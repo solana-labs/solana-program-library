@@ -118,6 +118,7 @@ pub fn process_deposit_governing_tokens(
             program_id,
             system_info,
             &rent,
+            None,
         )?;
     } else {
         let mut token_owner_record_data = get_token_owner_record_data_for_seeds(

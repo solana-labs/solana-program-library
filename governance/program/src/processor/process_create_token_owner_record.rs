@@ -68,5 +68,6 @@ pub fn process_create_token_owner_record(
         program_id,
         system_info,
         &rent,
+        None,
     )
 }

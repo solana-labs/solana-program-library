@@ -109,6 +109,7 @@ pub fn process_insert_transaction(
         program_id,
         system_info,
         rent,
+        None,
     )?;
 
     Ok(())

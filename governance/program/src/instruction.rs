@@ -10,6 +10,7 @@ use crate::{
         native_treasury::get_native_treasury_address,
         program_metadata::get_program_metadata_address,
         proposal::{get_proposal_address, VoteType},
+        proposal_deposit::get_proposal_deposit_address,
         proposal_transaction::{get_proposal_transaction_address, InstructionData},
         realm::{
             get_governing_token_holding_address, get_realm_address,
@@ -174,6 +175,9 @@ pub enum GovernanceInstruction {
     ///   7. `[]` System program
     ///   8. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///   9. `[]` Optional Voter Weight Record
+    ///   10.`[writable]` Optional ProposalDeposit account. PDA seeds: ['proposal-deposit', proposal, deposit payer]
+    ///       Proposal deposit is required when there are more active proposals than the configured deposit exempt amount
+    ///       The deposit is paid by the Payer of the transaction and can be reclaimed using RefundProposalDeposit once the Proposal is no longer active
     CreateProposal {
         #[allow(dead_code)]
         /// UTF-8 encoded name of the proposal
@@ -509,6 +513,14 @@ pub enum GovernanceInstruction {
         #[allow(dead_code)]
         amount: u64,
     },
+
+    /// Refunds ProposalDeposit once the given proposal is no longer active (Draft, SigningOff, Voting)
+    /// Once the condition is met the instruction is permissionless and returns the deposit amount to the deposit payer
+    ///
+    ///   0. `[]` Proposal account
+    ///   1. `[writable]` ProposalDeposit account. PDA seeds: ['proposal-deposit', proposal, deposit payer]
+    ///   2. `[writable]` Proposal deposit payer (beneficiary) account
+    RefundProposalDeposit {},
 }
 
 /// Creates CreateRealm instruction
@@ -918,6 +930,12 @@ pub fn create_proposal(
     ];
 
     with_realm_config_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
+
+    // Deposit is only required when there are more active proposal then the configured exempt amount
+    // Note: We always pass the account because the actual value is not known here without passing Governance account data
+    let proposal_deposit_address =
+        get_proposal_deposit_address(program_id, &proposal_address, payer);
+    accounts.push(AccountMeta::new(proposal_deposit_address, false));
 
     let instruction = GovernanceInstruction::CreateProposal {
         name,
@@ -1611,5 +1629,32 @@ pub fn with_governing_token_config_args(
         use_voter_weight_addin,
         use_max_voter_weight_addin,
         token_type: governing_token_config_args.token_type,
+    }
+}
+
+/// Creates RefundProposalDeposit instruction
+#[allow(clippy::too_many_arguments)]
+pub fn refund_proposal_deposit(
+    program_id: &Pubkey,
+    // Accounts
+    proposal: &Pubkey,
+    proposal_deposit_payer: &Pubkey,
+    // Args
+) -> Instruction {
+    let proposal_deposit_address =
+        get_proposal_deposit_address(program_id, proposal, proposal_deposit_payer);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*proposal, false),
+        AccountMeta::new(proposal_deposit_address, false),
+        AccountMeta::new(*proposal_deposit_payer, false),
+    ];
+
+    let instruction = GovernanceInstruction::RefundProposalDeposit {};
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
     }
 }

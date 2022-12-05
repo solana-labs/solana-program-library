@@ -154,6 +154,9 @@ pub struct ProposalCookie {
 
     pub realm: Pubkey,
     pub proposal_owner: Pubkey,
+
+    pub proposal_deposit: Pubkey,
+    pub proposal_deposit_payer: Pubkey,
 }
 
 #[derive(Debug)]

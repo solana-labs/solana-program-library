@@ -16,6 +16,7 @@ mod process_execute_transaction;
 mod process_finalize_vote;
 mod process_flag_transaction_error;
 mod process_insert_transaction;
+mod process_refund_proposal_deposit;
 mod process_relinquish_vote;
 mod process_remove_signatory;
 mod process_remove_transaction;
@@ -46,6 +47,7 @@ use process_execute_transaction::*;
 use process_finalize_vote::*;
 use process_flag_transaction_error::*;
 use process_insert_transaction::*;
+use process_refund_proposal_deposit::*;
 use process_relinquish_vote::*;
 use process_remove_signatory::*;
 use process_remove_transaction::*;
@@ -220,6 +222,10 @@ pub fn process_instruction(
 
         GovernanceInstruction::RevokeGoverningTokens { amount } => {
             process_revoke_governing_tokens(program_id, accounts, amount)
+        }
+
+        GovernanceInstruction::RefundProposalDeposit {} => {
+            process_refund_proposal_deposit(program_id, accounts)
         }
     }
 }
