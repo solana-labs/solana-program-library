@@ -584,7 +584,7 @@ async fn fail_with_decreasing_stake() {
     simple_deposit_stake(
         &mut context.banks_client,
         &context.payer,
-        &context.last_blockhash,
+        &last_blockhash,
         &stake_pool_accounts,
         &destination_validator_stake,
         redelegate_lamports,
