@@ -148,14 +148,14 @@ impl<'data> BigVec<'data> {
     }
 
     /// Find matching data in the array
-    pub fn find<T: Pack>(&self, data: &[u8], predicate: fn(&[u8], &[u8]) -> bool) -> Option<&T> {
+    pub fn find<T: Pack, F: Fn(&[u8]) -> bool>(&self, predicate: F) -> Option<&T> {
         let len = self.len() as usize;
         let mut current = 0;
         let mut current_index = VEC_SIZE_BYTES;
         while current != len {
             let end_index = current_index + T::LEN;
             let current_slice = &self.data[current_index..end_index];
-            if predicate(current_slice, data) {
+            if predicate(current_slice) {
                 return Some(unsafe { &*(current_slice.as_ptr() as *const T) });
             }
             current_index = end_index;
@@ -165,18 +165,14 @@ impl<'data> BigVec<'data> {
     }
 
     /// Find matching data in the array
-    pub fn find_mut<T: Pack>(
-        &mut self,
-        data: &[u8],
-        predicate: fn(&[u8], &[u8]) -> bool,
-    ) -> Option<&mut T> {
+    pub fn find_mut<T: Pack, F: Fn(&[u8]) -> bool>(&mut self, predicate: F) -> Option<&mut T> {
         let len = self.len() as usize;
         let mut current = 0;
         let mut current_index = VEC_SIZE_BYTES;
         while current != len {
             let end_index = current_index + T::LEN;
             let current_slice = &self.data[current_index..end_index];
-            if predicate(current_slice, data) {
+            if predicate(current_slice) {
                 return Some(unsafe { &mut *(current_slice.as_ptr() as *mut T) });
             }
             current_index = end_index;
@@ -242,10 +238,7 @@ impl<'data, 'vec, T: Pack + 'data> Iterator for IterMut<'data, 'vec, T> {
 
 #[cfg(test)]
 mod tests {
-    use {
-        super::*,
-        solana_program::{program_memory::sol_memcmp, program_pack::Sealed},
-    };
+    use {super::*, solana_program::program_pack::Sealed};
 
     #[derive(Debug, PartialEq)]
     struct TestStruct {
@@ -317,11 +310,11 @@ mod tests {
         check_big_vec_eq(&v, &[2, 4]);
     }
 
-    fn find_predicate(a: &[u8], b: &[u8]) -> bool {
-        if a.len() != b.len() {
+    fn find_predicate(a: &[u8], b: u64) -> bool {
+        if a.len() != 8 {
             false
         } else {
-            sol_memcmp(a, b, a.len()) == 0
+            u64::try_from_slice(&a[0..8]).unwrap() == b
         }
     }
 
@@ -330,17 +323,14 @@ mod tests {
         let mut data = [0u8; 4 + 8 * 4];
         let v = from_slice(&mut data, &[1, 2, 3, 4]);
         assert_eq!(
-            v.find::<TestStruct>(&1u64.to_le_bytes(), find_predicate),
+            v.find::<TestStruct, _>(|x| find_predicate(x, 1)),
             Some(&TestStruct::new(1))
         );
         assert_eq!(
-            v.find::<TestStruct>(&4u64.to_le_bytes(), find_predicate),
+            v.find::<TestStruct, _>(|x| find_predicate(x, 4)),
             Some(&TestStruct::new(4))
         );
-        assert_eq!(
-            v.find::<TestStruct>(&5u64.to_le_bytes(), find_predicate),
-            None
-        );
+        assert_eq!(v.find::<TestStruct, _>(|x| find_predicate(x, 5)), None);
     }
 
     #[test]
@@ -348,14 +338,11 @@ mod tests {
         let mut data = [0u8; 4 + 8 * 4];
         let mut v = from_slice(&mut data, &[1, 2, 3, 4]);
         let mut test_struct = v
-            .find_mut::<TestStruct>(&1u64.to_le_bytes(), find_predicate)
+            .find_mut::<TestStruct, _>(|x| find_predicate(x, 1))
             .unwrap();
         test_struct.value = 0;
         check_big_vec_eq(&v, &[0, 2, 3, 4]);
-        assert_eq!(
-            v.find_mut::<TestStruct>(&5u64.to_le_bytes(), find_predicate),
-            None
-        );
+        assert_eq!(v.find_mut::<TestStruct, _>(|x| find_predicate(x, 5)), None);
     }
 
     #[test]

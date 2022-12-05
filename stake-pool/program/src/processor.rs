@@ -844,10 +844,9 @@ impl Processor {
         if header.max_validators == validator_list.len() {
             return Err(ProgramError::AccountDataTooSmall);
         }
-        let maybe_validator_stake_info = validator_list.find::<ValidatorStakeInfo>(
-            validator_vote_info.key.as_ref(),
-            ValidatorStakeInfo::memcmp_pubkey,
-        );
+        let maybe_validator_stake_info = validator_list.find::<ValidatorStakeInfo, _>(|x| {
+            ValidatorStakeInfo::memcmp_pubkey(x, validator_vote_info.key)
+        });
         if maybe_validator_stake_info.is_some() {
             return Err(StakePoolError::ValidatorAlreadyAdded.into());
         }
@@ -994,10 +993,9 @@ impl Processor {
 
         let (meta, stake) = get_stake_state(stake_account_info)?;
         let vote_account_address = stake.delegation.voter_pubkey;
-        let maybe_validator_stake_info = validator_list.find_mut::<ValidatorStakeInfo>(
-            vote_account_address.as_ref(),
-            ValidatorStakeInfo::memcmp_pubkey,
-        );
+        let maybe_validator_stake_info = validator_list.find_mut::<ValidatorStakeInfo, _>(|x| {
+            ValidatorStakeInfo::memcmp_pubkey(x, &vote_account_address)
+        });
         if maybe_validator_stake_info.is_none() {
             msg!(
                 "Vote account {} not found in stake pool",
@@ -1154,10 +1152,9 @@ impl Processor {
         let (meta, stake) = get_stake_state(validator_stake_account_info)?;
         let vote_account_address = stake.delegation.voter_pubkey;
 
-        let maybe_validator_stake_info = validator_list.find_mut::<ValidatorStakeInfo>(
-            vote_account_address.as_ref(),
-            ValidatorStakeInfo::memcmp_pubkey,
-        );
+        let maybe_validator_stake_info = validator_list.find_mut::<ValidatorStakeInfo, _>(|x| {
+            ValidatorStakeInfo::memcmp_pubkey(x, &vote_account_address)
+        });
         if maybe_validator_stake_info.is_none() {
             msg!(
                 "Vote account {} not found in stake pool",
@@ -1316,10 +1313,9 @@ impl Processor {
 
         let vote_account_address = validator_vote_account_info.key;
 
-        let maybe_validator_stake_info = validator_list.find_mut::<ValidatorStakeInfo>(
-            vote_account_address.as_ref(),
-            ValidatorStakeInfo::memcmp_pubkey,
-        );
+        let maybe_validator_stake_info = validator_list.find_mut::<ValidatorStakeInfo, _>(|x| {
+            ValidatorStakeInfo::memcmp_pubkey(x, vote_account_address)
+        });
         if maybe_validator_stake_info.is_none() {
             msg!(
                 "Vote account {} not found in stake pool",
@@ -1481,10 +1477,9 @@ impl Processor {
         }
 
         if let Some(vote_account_address) = vote_account_address {
-            let maybe_validator_stake_info = validator_list.find::<ValidatorStakeInfo>(
-                vote_account_address.as_ref(),
-                ValidatorStakeInfo::memcmp_pubkey,
-            );
+            let maybe_validator_stake_info = validator_list.find::<ValidatorStakeInfo, _>(|x| {
+                ValidatorStakeInfo::memcmp_pubkey(x, &vote_account_address)
+            });
             match maybe_validator_stake_info {
                 Some(vsi) => {
                     if vsi.status != StakeStatus::Active {
@@ -2031,10 +2026,9 @@ impl Processor {
         }
 
         let mut validator_stake_info = validator_list
-            .find_mut::<ValidatorStakeInfo>(
-                vote_account_address.as_ref(),
-                ValidatorStakeInfo::memcmp_pubkey,
-            )
+            .find_mut::<ValidatorStakeInfo, _>(|x| {
+                ValidatorStakeInfo::memcmp_pubkey(x, &vote_account_address)
+            })
             .ok_or(StakePoolError::ValidatorNotFound)?;
         check_validator_stake_address(
             program_id,
@@ -2428,7 +2422,7 @@ impl Processor {
             .checked_sub(pool_tokens_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
-        let withdraw_lamports = stake_pool
+        let mut withdraw_lamports = stake_pool
             .calc_lamports_withdraw_amount(pool_tokens_burnt)
             .ok_or(StakePoolError::CalculationFailure)?;
 
@@ -2442,17 +2436,27 @@ impl Processor {
         let meta = stake_state.meta().ok_or(StakePoolError::WrongStakeState)?;
         let required_lamports = minimum_stake_lamports(&meta, stake_minimum_delegation);
 
+        let lamports_per_pool_token = stake_pool
+            .get_lamports_per_pool_token()
+            .ok_or(StakePoolError::CalculationFailure)?;
+        let minimum_lamports_with_tolerance =
+            required_lamports.saturating_add(lamports_per_pool_token);
+
         let has_active_stake = validator_list
-            .find::<ValidatorStakeInfo>(
-                &required_lamports.to_le_bytes(),
-                ValidatorStakeInfo::active_lamports_not_equal,
-            )
+            .find::<ValidatorStakeInfo, _>(|x| {
+                ValidatorStakeInfo::active_lamports_greater_than(
+                    x,
+                    &minimum_lamports_with_tolerance,
+                )
+            })
             .is_some();
         let has_transient_stake = validator_list
-            .find::<ValidatorStakeInfo>(
-                &0u64.to_le_bytes(),
-                ValidatorStakeInfo::transient_lamports_not_equal,
-            )
+            .find::<ValidatorStakeInfo, _>(|x| {
+                ValidatorStakeInfo::transient_lamports_greater_than(
+                    x,
+                    &minimum_lamports_with_tolerance,
+                )
+            })
             .is_some();
 
         let validator_list_item_info = if *stake_split_from.key == stake_pool.reserve_stake {
@@ -2478,14 +2482,13 @@ impl Processor {
                 stake_pool.preferred_withdraw_validator_vote_address
             {
                 let preferred_validator_info = validator_list
-                    .find::<ValidatorStakeInfo>(
-                        preferred_withdraw_validator.as_ref(),
-                        ValidatorStakeInfo::memcmp_pubkey,
-                    )
+                    .find::<ValidatorStakeInfo, _>(|x| {
+                        ValidatorStakeInfo::memcmp_pubkey(x, &preferred_withdraw_validator)
+                    })
                     .ok_or(StakePoolError::ValidatorNotFound)?;
                 let available_lamports = preferred_validator_info
                     .active_stake_lamports
-                    .saturating_sub(required_lamports);
+                    .saturating_sub(minimum_lamports_with_tolerance);
                 if preferred_withdraw_validator != vote_account_address && available_lamports > 0 {
                     msg!("Validator vote address {} is preferred for withdrawals, it currently has {} lamports available. Please withdraw those before using other validator stake accounts.", preferred_withdraw_validator, preferred_validator_info.active_stake_lamports);
                     return Err(StakePoolError::IncorrectWithdrawVoteAddress.into());
@@ -2493,10 +2496,9 @@ impl Processor {
             }
 
             let validator_stake_info = validator_list
-                .find_mut::<ValidatorStakeInfo>(
-                    vote_account_address.as_ref(),
-                    ValidatorStakeInfo::memcmp_pubkey,
-                )
+                .find_mut::<ValidatorStakeInfo, _>(|x| {
+                    ValidatorStakeInfo::memcmp_pubkey(x, &vote_account_address)
+                })
                 .ok_or(StakePoolError::ValidatorNotFound)?;
 
             let withdraw_source = if has_active_stake {
@@ -2548,11 +2550,21 @@ impl Processor {
                     }
                 }
                 StakeWithdrawSource::ValidatorRemoval => {
-                    if withdraw_lamports != stake_split_from.lamports() {
-                        msg!("Cannot withdraw a whole account worth {} lamports, must withdraw exactly {} lamports worth of pool tokens",
-                            withdraw_lamports, stake_split_from.lamports());
+                    let split_from_lamports = stake_split_from.lamports();
+                    let upper_bound = split_from_lamports.saturating_add(lamports_per_pool_token);
+                    if withdraw_lamports < split_from_lamports || withdraw_lamports > upper_bound {
+                        msg!(
+                            "Cannot withdraw a whole account worth {} lamports, \
+                              must withdraw at least {} lamports worth of pool tokens \
+                              with a margin of {} lamports",
+                            withdraw_lamports,
+                            split_from_lamports,
+                            lamports_per_pool_token
+                        );
                         return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
                     }
+                    // truncate the lamports down to the amount in the account
+                    withdraw_lamports = split_from_lamports;
                 }
             }
             Some((validator_stake_info, withdraw_source))

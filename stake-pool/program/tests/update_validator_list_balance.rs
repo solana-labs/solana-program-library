@@ -96,6 +96,11 @@ async fn setup(
     // Warp forward so the stakes properly activate, and deposit
     slot += slots_per_epoch;
     context.warp_to_slot(slot).unwrap();
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
 
     stake_pool_accounts
         .update_all(
@@ -111,12 +116,6 @@ async fn setup(
         )
         .await;
 
-    let last_blockhash = context
-        .banks_client
-        .get_new_latest_blockhash(&context.last_blockhash)
-        .await
-        .unwrap();
-
     for deposit_account in &mut deposit_accounts {
         deposit_account
             .deposit_stake(
@@ -130,6 +129,11 @@ async fn setup(
 
     slot += slots_per_epoch;
     context.warp_to_slot(slot).unwrap();
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
 
     stake_pool_accounts
         .update_all(
@@ -418,6 +422,11 @@ async fn merge_into_validator_stake() {
 
     // Warp just a little bit to get a new blockhash and update again
     context.warp_to_slot(slot + 10).unwrap();
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&last_blockhash)
+        .await
+        .unwrap();
 
     // Update, should not change, no merges yet
     let error = stake_pool_accounts
