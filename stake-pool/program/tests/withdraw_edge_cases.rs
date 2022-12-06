@@ -751,21 +751,24 @@ async fn success_with_small_preferred_withdraw() {
         )
         .await;
 
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
+
     // add a tiny bit of stake, less than lamports per pool token to preferred validator
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_exempt = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
-    let stake_minimum_delegation = stake_get_minimum_delegation(
-        &mut context.banks_client,
-        &context.payer,
-        &context.last_blockhash,
-    )
-    .await;
+    let stake_minimum_delegation =
+        stake_get_minimum_delegation(&mut context.banks_client, &context.payer, &last_blockhash)
+            .await;
     let minimum_lamports = stake_minimum_delegation + rent_exempt;
 
     simple_deposit_stake(
         &mut context.banks_client,
         &context.payer,
-        &context.last_blockhash,
+        &last_blockhash,
         &stake_pool_accounts,
         &preferred_validator,
         stake_minimum_delegation + 1, // stake_rent gets deposited too
@@ -778,7 +781,7 @@ async fn success_with_small_preferred_withdraw() {
         .decrease_validator_stake(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &preferred_validator.stake_account,
             &preferred_validator.transient_stake_account,
             minimum_lamports,
@@ -799,7 +802,7 @@ async fn success_with_small_preferred_withdraw() {
         .update_all(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &[
                 validator_stake.vote.pubkey(),
                 preferred_validator.vote.pubkey(),
@@ -814,7 +817,7 @@ async fn success_with_small_preferred_withdraw() {
         .withdraw_stake(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &user_stake_recipient.pubkey(),
             &user_transfer_authority,
             &deposit_info.pool_account.pubkey(),
@@ -831,7 +834,7 @@ async fn success_with_small_preferred_withdraw() {
         .withdraw_stake(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &user_stake_recipient.pubkey(),
             &user_transfer_authority,
             &deposit_info.pool_account.pubkey(),
