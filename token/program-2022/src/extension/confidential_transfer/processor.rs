@@ -654,20 +654,13 @@ fn process_transfer(
             proof_data.ciphertext_hi.destination_handle,
         ));
 
-        let fee_ciphertext = None;
-        // let fee_ciphertext = if token_account_info.key == destination_token_account_info.key {
-        //     None
-        // } else {
-        //     Some(proof_data.fee_ciphertext)
-        // };
-
         process_destination_for_transfer(
             destination_token_account_info,
             mint_info,
             &proof_data.transfer_with_fee_pubkeys.destination_pubkey,
             &destination_ciphertext_lo,
             &destination_ciphertext_hi,
-            fee_ciphertext,
+            Some((&proof_data.fee_ciphertext_lo, &proof_data.fee_ciphertext_hi)),
         )?;
     }
 
@@ -744,7 +737,7 @@ fn process_destination_for_transfer(
     destination_encryption_pubkey: &EncryptionPubkey,
     destination_ciphertext_lo: &EncryptedBalance,
     destination_ciphertext_hi: &EncryptedBalance,
-    encrypted_fee: Option<EncryptedFee>,
+    encrypted_fee: Option<(&EncryptedFee, &EncryptedFee)>,
 ) -> ProgramResult {
     check_program_account(destination_token_account_info.owner)?;
     let destination_token_account_data = &mut destination_token_account_info.data.borrow_mut();
@@ -797,31 +790,56 @@ fn process_destination_for_transfer(
         new_destination_pending_balance_credit_counter.into();
 
     // update destination account withheld fees
-    if let Some(ciphertext_fee) = encrypted_fee {
-        let ciphertext_fee_destination: EncryptedWithheldAmount =
-            (ciphertext_fee.commitment, ciphertext_fee.destination_handle).into();
-        let ciphertext_fee_withheld_authority: EncryptedWithheldAmount = (
-            ciphertext_fee.commitment,
-            ciphertext_fee.withdraw_withheld_authority_handle,
+    if let Some((ciphertext_fee_lo, ciphertext_fee_hi)) = encrypted_fee {
+        // subtract fee from destination pending balance
+        let ciphertext_fee_lo_destination: EncryptedWithheldAmount = (
+            ciphertext_fee_lo.commitment,
+            ciphertext_fee_lo.destination_handle,
         )
             .into();
 
-        // subtract fee from destination pending balance
-        let new_destination_pending_balance = ops::subtract(
+        let ciphertext_fee_hi_destination: EncryptedWithheldAmount = (
+            ciphertext_fee_hi.commitment,
+            ciphertext_fee_hi.destination_handle,
+        )
+            .into();
+
+        let new_destination_pending_balance_lo = ops::subtract(
             &destination_confidential_transfer_account.pending_balance_lo,
-            &ciphertext_fee_destination,
+            &ciphertext_fee_lo_destination,
+        )
+        .ok_or(ProgramError::InvalidInstructionData)?;
+
+        let new_destination_pending_balance_hi = ops::subtract(
+            &destination_confidential_transfer_account.pending_balance_hi,
+            &ciphertext_fee_hi_destination,
         )
         .ok_or(ProgramError::InvalidInstructionData)?;
 
         // add encrypted fee to current withheld fee
-        let new_withheld_amount = ops::add(
+        let ciphertext_fee_lo_withheld_authority: EncryptedWithheldAmount = (
+            ciphertext_fee_lo.commitment,
+            ciphertext_fee_lo.withdraw_withheld_authority_handle,
+        )
+            .into();
+
+        let ciphertext_fee_hi_withheld_authority: EncryptedWithheldAmount = (
+            ciphertext_fee_hi.commitment,
+            ciphertext_fee_hi.withdraw_withheld_authority_handle,
+        )
+            .into();
+
+        let new_withheld_amount = ops::add_with_lo_hi(
             &destination_confidential_transfer_account.withheld_amount,
-            &ciphertext_fee_withheld_authority,
+            &ciphertext_fee_lo_withheld_authority,
+            &ciphertext_fee_hi_withheld_authority,
         )
         .ok_or(ProgramError::InvalidInstructionData)?;
 
         destination_confidential_transfer_account.pending_balance_lo =
-            new_destination_pending_balance;
+            new_destination_pending_balance_lo;
+        destination_confidential_transfer_account.pending_balance_hi =
+            new_destination_pending_balance_hi;
         destination_confidential_transfer_account.withheld_amount = new_withheld_amount;
     }
 
