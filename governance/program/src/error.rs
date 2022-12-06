@@ -462,6 +462,10 @@ pub enum GovernanceError {
     ///Invalid deposit Payer for ProposalDeposit
     #[error("Invalid deposit Payer for ProposalDeposit")]
     InvalidDepositPayerForProposalDeposit, // 611
+
+    /// Invalid State: Proposal hasn't been finalized
+    #[error("Invalid State: Proposal hasn't been finalized")]
+    InvalidStateNotFinalized, // 612
 }
 
 impl PrintProgramError for GovernanceError {
