@@ -1072,20 +1072,15 @@ async fn ct_transfer_with_fee() {
 
     // Self-transfer of 0 tokens
     token
-        .confidential_transfer_transfer_with_fee(
+        .confidential_transfer_transfer(
             &alice_meta.token_account,
             &alice_meta.token_account,
             &alice,
-            0,
+            0, // amount
             100,
             &extension.available_balance.try_into().unwrap(),
             &alice_meta.elgamal_keypair.public,
             &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
-            &ct_mint
-                .withdraw_withheld_authority_encryption_pubkey
-                .try_into()
-                .unwrap(),
-            &epoch_info,
         )
         .await
         .unwrap();
@@ -1102,22 +1097,25 @@ async fn ct_transfer_with_fee() {
         )
         .await;
 
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+
     // Self-transfers does not incur a fee
     token
-        .confidential_transfer_transfer_with_fee(
+        .confidential_transfer_transfer(
             &alice_meta.token_account,
             &alice_meta.token_account,
             &alice,
-            100,
+            100, // amount
             100,
             &extension.available_balance.try_into().unwrap(),
             &alice_meta.elgamal_keypair.public,
             &ct_mint.auditor_encryption_pubkey.try_into().unwrap(),
-            &ct_mint
-                .withdraw_withheld_authority_encryption_pubkey
-                .try_into()
-                .unwrap(),
-            &epoch_info,
         )
         .await
         .unwrap();
@@ -1150,6 +1148,14 @@ async fn ct_transfer_with_fee() {
             },
         )
         .await;
+
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
 
     token
         .confidential_transfer_transfer_with_fee(
