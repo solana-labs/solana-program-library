@@ -844,21 +844,6 @@ dependencies = [
 
 [[package]]
 name = "console"
-version = "0.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3993e6445baa160675931ec041a5e03ca84b9c6e32a056150d3aa2bdda0a1f45"
-dependencies = [
- "encode_unicode",
- "lazy_static",
- "libc",
- "regex",
- "terminal_size",
- "unicode-width",
- "winapi 0.3.9",
-]
-
-[[package]]
-name = "console"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a28b32d32ca44b70c3e4acd7db1babf555fa026e385fb95f18028f88848b3c31"
@@ -1204,7 +1189,7 @@ version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a92e7e37ecef6857fdc0c0c5d42fd5b0938e46590c2183cc92dd310a6d078eb1"
 dependencies = [
- "console 0.15.0",
+ "console",
  "tempfile",
  "zeroize",
 ]
@@ -2186,7 +2171,7 @@ version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2d207dc617c7a380ab07ff572a6e52fa202a2a8f355860ac9c38e23f8196be1b"
 dependencies = [
- "console 0.15.0",
+ "console",
  "lazy_static",
  "number_prefix",
  "regex",
@@ -4681,7 +4666,7 @@ dependencies = [
  "base64 0.13.0",
  "chrono",
  "clap 2.34.0",
- "console 0.15.0",
+ "console",
  "humantime",
  "indicatif",
  "pretty-hex",
@@ -5300,7 +5285,7 @@ version = "1.14.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b5ebbd2a1790e6cd1b594027bdb75da17b410958773fc0f521ff3ee20791dfa"
 dependencies = [
- "console 0.15.0",
+ "console",
  "dialoguer",
  "hidapi",
  "log",
@@ -6317,7 +6302,7 @@ version = "2.2.0"
 dependencies = [
  "assert_cmd",
  "clap 2.34.0",
- "console 0.14.1",
+ "console",
  "indicatif",
  "serde",
  "serde_derive",
