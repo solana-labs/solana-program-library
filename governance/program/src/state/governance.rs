@@ -145,7 +145,8 @@ pub fn is_governance_v2_account_type(account_type: &GovernanceAccountType) -> bo
         | GovernanceAccountType::ProposalTransactionV2
         | GovernanceAccountType::VoteRecordV1
         | GovernanceAccountType::VoteRecordV2
-        | GovernanceAccountType::ProgramMetadata => false,
+        | GovernanceAccountType::ProgramMetadata
+        | GovernanceAccountType::ProposalDeposit => false,
     }
 }
 
@@ -178,7 +179,8 @@ pub fn try_get_governance_v2_type_for_v1(
         | GovernanceAccountType::ProposalTransactionV2
         | GovernanceAccountType::VoteRecordV1
         | GovernanceAccountType::VoteRecordV2
-        | GovernanceAccountType::ProgramMetadata => None,
+        | GovernanceAccountType::ProgramMetadata
+        | GovernanceAccountType::ProposalDeposit => None,
     }
 }
 
@@ -222,6 +224,7 @@ impl GovernanceV2 {
             | GovernanceAccountType::ProposalTransactionV2
             | GovernanceAccountType::ProposalV2
             | GovernanceAccountType::ProgramMetadata
+            | GovernanceAccountType::ProposalDeposit
             | GovernanceAccountType::RealmV2
             | GovernanceAccountType::TokenOwnerRecordV2
             | GovernanceAccountType::SignatoryRecordV2 => {
@@ -348,12 +351,20 @@ impl GovernanceV2 {
         Ok(vote_tipping)
     }
 
-    /// Returns the required deposit amount for creating a Proposal based on the number of active proposals
-    /// and the configured number of proposals exempt from the deposits  
-    /// The deposit is not payed until there are more active Proposal than the exempt amount
+    /// Returns the required deposit amount for creating Nth Proposal based on the number of active proposals
+    /// where N equals to active_proposal_count - deposit_exempt_proposal_count  
+    /// The deposit is not payed unless there are more active Proposal than the exempt amount
+    ///
+    /// Note: The exact deposit payed for Nth Proposal is N*SECURITY_DEPOSIT_BASE_LAMPORTS + min_rent_for(ProposalDeposit)
+    ///
+    /// Note: Although the deposit amount payed for Nth proposal is linear the total deposit amount required to create N proposals is sum of arithmetic series
+    /// Dn = N*r + d*N*(N+1)/2
+    // where:
+    // Dn - The total deposit amount required to create N proposals
+    // N = active_proposal_count - deposit_exempt_proposal_count
+    // d = SECURITY_DEPOSIT_BASE_LAMPORTS
+    // r = min rent amount for ProposalDeposit
     pub fn get_proposal_deposit_amount(&self) -> u64 {
-        // Charge a security deposit of n(n+1)/2 for n proposals to discourage spam
-        // where n = active_proposal_count - deposit_exempt_proposal_count
         self.active_proposal_count
             .saturating_sub(self.config.deposit_exempt_proposal_count as u64)
             .saturating_mul(SECURITY_DEPOSIT_BASE_LAMPORTS)

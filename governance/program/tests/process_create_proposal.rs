@@ -11,6 +11,7 @@ use spl_governance::{
     error::GovernanceError,
     state::{enums::VoteThreshold, governance::SECURITY_DEPOSIT_BASE_LAMPORTS},
 };
+use spl_governance_tools::account::AccountMaxSize;
 
 #[tokio::test]
 async fn test_create_community_proposal() {
@@ -653,18 +654,26 @@ async fn test_create_proposal_with_security_deposit() {
 
     // Assert
 
-    let _proposal_deposit_account = governance_test
-        .get_proposal_deposit_account(&proposal_cookie.proposal_deposit)
+    let proposal_deposit_account = governance_test
+        .get_proposal_deposit_account(&proposal_cookie.proposal_deposit.address)
         .await;
+
+    assert_eq!(
+        proposal_cookie.proposal_deposit.account,
+        proposal_deposit_account
+    );
 
     let proposal_deposit_account_info = governance_test
         .bench
-        .get_account(&proposal_cookie.proposal_deposit)
+        .get_account(&proposal_cookie.proposal_deposit.address)
         .await
         .unwrap();
 
-    let expected_lamports =
-        governance_test.bench.rent.minimum_balance(0) + SECURITY_DEPOSIT_BASE_LAMPORTS;
+    let expected_lamports = governance_test
+        .bench
+        .rent
+        .minimum_balance(proposal_deposit_account.get_max_size().unwrap())
+        + SECURITY_DEPOSIT_BASE_LAMPORTS;
 
     assert_eq!(expected_lamports, proposal_deposit_account_info.lamports);
 }
@@ -715,32 +724,56 @@ async fn test_create_multiple_proposals_with_security_deposits() {
     // Assert
     let proposal_deposit_account_info1 = governance_test
         .bench
-        .get_account(&proposal_cookie1.proposal_deposit)
+        .get_account(&proposal_cookie1.proposal_deposit.address)
         .await;
 
     assert_eq!(None, proposal_deposit_account_info1);
 
     // Proposal 2
+    let proposal_deposit_account2 = governance_test
+        .get_proposal_deposit_account(&proposal_cookie2.proposal_deposit.address)
+        .await;
+
+    assert_eq!(
+        proposal_cookie2.proposal_deposit.account,
+        proposal_deposit_account2
+    );
+
     let proposal_deposit_account_info2 = governance_test
         .bench
-        .get_account(&proposal_cookie2.proposal_deposit)
+        .get_account(&proposal_cookie2.proposal_deposit.address)
         .await
         .unwrap();
 
-    let expected_lamports =
-        governance_test.bench.rent.minimum_balance(0) + SECURITY_DEPOSIT_BASE_LAMPORTS;
+    let expected_lamports = governance_test
+        .bench
+        .rent
+        .minimum_balance(proposal_deposit_account2.get_max_size().unwrap())
+        + SECURITY_DEPOSIT_BASE_LAMPORTS;
 
     assert_eq!(expected_lamports, proposal_deposit_account_info2.lamports);
 
     // Proposal 3
+    let proposal_deposit_account3 = governance_test
+        .get_proposal_deposit_account(&proposal_cookie3.proposal_deposit.address)
+        .await;
+
+    assert_eq!(
+        proposal_cookie3.proposal_deposit.account,
+        proposal_deposit_account3
+    );
+
     let proposal_deposit_account_info3 = governance_test
         .bench
-        .get_account(&proposal_cookie3.proposal_deposit)
+        .get_account(&proposal_cookie3.proposal_deposit.address)
         .await
         .unwrap();
 
-    let expected_lamports =
-        governance_test.bench.rent.minimum_balance(0) + 2 * SECURITY_DEPOSIT_BASE_LAMPORTS;
+    let expected_lamports = governance_test
+        .bench
+        .rent
+        .minimum_balance(proposal_deposit_account3.get_max_size().unwrap())
+        + 2 * SECURITY_DEPOSIT_BASE_LAMPORTS;
 
     assert_eq!(expected_lamports, proposal_deposit_account_info3.lamports);
 }

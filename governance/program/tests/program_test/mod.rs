@@ -94,6 +94,8 @@ use crate::{
     },
 };
 
+use self::cookies::ProposalDepositCookie;
+
 /// Yes/No Vote
 pub enum YesNoVote {
     /// Yes vote
@@ -2075,19 +2077,29 @@ impl GovernanceProgramTest {
             &proposal_seed,
         );
 
+        // Setup Proposal deposit
         let proposal_deposit_payer = self.bench.payer.pubkey();
+
+        let proposal_deposit_cookie = ProposalDepositCookie {
+            address: get_proposal_deposit_address(
+                &self.program_id,
+                &proposal_address,
+                &proposal_deposit_payer,
+            ),
+            account: ProposalDeposit {
+                account_type: GovernanceAccountType::ProposalDeposit,
+                proposal: proposal_address,
+                deposit_payer: proposal_deposit_payer,
+                reserved: [0; 64],
+            },
+        };
 
         Ok(ProposalCookie {
             address: proposal_address,
             account,
             proposal_owner: governance_authority.pubkey(),
             realm: governance_cookie.account.realm,
-            proposal_deposit: get_proposal_deposit_address(
-                &self.program_id,
-                &proposal_address,
-                &proposal_deposit_payer,
-            ),
-            proposal_deposit_payer,
+            proposal_deposit: proposal_deposit_cookie,
         })
     }
 
@@ -2270,7 +2282,7 @@ impl GovernanceProgramTest {
         let mut refund_proposal_deposit_ix = refund_proposal_deposit(
             &self.program_id,
             &proposal_cookie.address,
-            &proposal_cookie.proposal_deposit_payer,
+            &proposal_cookie.proposal_deposit.account.deposit_payer,
         );
 
         instruction_override(&mut refund_proposal_deposit_ix);

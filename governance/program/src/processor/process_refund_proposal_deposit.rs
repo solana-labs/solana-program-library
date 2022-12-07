@@ -8,7 +8,8 @@ use solana_program::{
 use spl_governance_tools::account::dispose_account;
 
 use crate::state::{
-    proposal::get_proposal_data, proposal_deposit::assert_is_valid_proposal_deposit_account,
+    proposal::get_proposal_data,
+    proposal_deposit::get_proposal_deposit_data_for_proposal_and_deposit_payer,
 };
 
 /// Processes RefundProposalDeposit instruction
@@ -28,7 +29,7 @@ pub fn process_refund_proposal_deposit(
     proposal_data.assert_can_refund_proposal_deposit()?;
 
     // Assert we are disposing a deposit which belongs to the Proposal and the deposit payer
-    assert_is_valid_proposal_deposit_account(
+    let _proposal_deposit_data = get_proposal_deposit_data_for_proposal_and_deposit_payer(
         program_id,
         proposal_deposit_info,
         proposal_info.key,

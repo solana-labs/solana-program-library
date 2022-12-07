@@ -2,9 +2,10 @@ use solana_program::{instruction::Instruction, pubkey::Pubkey};
 use solana_sdk::signature::Keypair;
 use spl_governance::state::{
     governance::GovernanceV2, native_treasury::NativeTreasury, program_metadata::ProgramMetadata,
-    proposal::ProposalV2, proposal_transaction::ProposalTransactionV2, realm::RealmV2,
-    realm_config::RealmConfigAccount, signatory_record::SignatoryRecordV2,
-    token_owner_record::TokenOwnerRecordV2, vote_record::VoteRecordV2,
+    proposal::ProposalV2, proposal_deposit::ProposalDeposit,
+    proposal_transaction::ProposalTransactionV2, realm::RealmV2, realm_config::RealmConfigAccount,
+    signatory_record::SignatoryRecordV2, token_owner_record::TokenOwnerRecordV2,
+    vote_record::VoteRecordV2,
 };
 
 use spl_governance_addin_api::{
@@ -155,8 +156,13 @@ pub struct ProposalCookie {
     pub realm: Pubkey,
     pub proposal_owner: Pubkey,
 
-    pub proposal_deposit: Pubkey,
-    pub proposal_deposit_payer: Pubkey,
+    pub proposal_deposit: ProposalDepositCookie,
+}
+
+#[derive(Debug)]
+pub struct ProposalDepositCookie {
+    pub address: Pubkey,
+    pub account: ProposalDeposit,
 }
 
 #[derive(Debug)]

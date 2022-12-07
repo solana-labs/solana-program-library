@@ -87,6 +87,9 @@ pub enum GovernanceAccountType {
     /// Proposal Signatory account
     /// V2 adds extra reserved space reserved_v2
     SignatoryRecordV2,
+
+    /// Proposal deposit account
+    ProposalDeposit,
 }
 
 impl Default for GovernanceAccountType {

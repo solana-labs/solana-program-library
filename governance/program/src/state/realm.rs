@@ -190,7 +190,8 @@ pub fn is_realm_account_type(account_type: &GovernanceAccountType) -> bool {
         | GovernanceAccountType::ProposalTransactionV2
         | GovernanceAccountType::VoteRecordV1
         | GovernanceAccountType::VoteRecordV2
-        | GovernanceAccountType::ProgramMetadata => false,
+        | GovernanceAccountType::ProgramMetadata
+        | GovernanceAccountType::ProposalDeposit => false,
     }
 }
 

@@ -151,7 +151,8 @@ pub fn is_governance_v1_account_type(account_type: &GovernanceAccountType) -> bo
         | GovernanceAccountType::ProposalTransactionV2
         | GovernanceAccountType::VoteRecordV1
         | GovernanceAccountType::VoteRecordV2
-        | GovernanceAccountType::ProgramMetadata => false,
+        | GovernanceAccountType::ProgramMetadata
+        | GovernanceAccountType::ProposalDeposit => false,
     }
 }
 

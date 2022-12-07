@@ -189,7 +189,12 @@ pub fn process_create_proposal(
     let proposal_deposit_amount = governance_data.get_proposal_deposit_amount();
     if proposal_deposit_amount > 0 {
         let proposal_deposit_info = next_account_info(account_info_iter)?; // *10
-        let proposal_deposit_data = ProposalDeposit {};
+        let proposal_deposit_data = ProposalDeposit {
+            account_type: GovernanceAccountType::ProposalDeposit,
+            proposal: *proposal_info.key,
+            deposit_payer: *payer_info.key,
+            reserved: [0; 64],
+        };
 
         create_and_serialize_account_signed::<ProposalDeposit>(
             payer_info,

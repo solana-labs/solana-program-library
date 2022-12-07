@@ -447,9 +447,9 @@ pub enum GovernanceError {
     #[error("Cannot refund ProposalDeposit")]
     CannotRefundProposalDeposit, // 607
 
-    /// Invalid ProposalDeposit account address
-    #[error("Invalid ProposalDeposit account address")]
-    InvalidProposalDepositAccountAddress, // 608
+    ///Invalid Proposal for ProposalDeposit
+    #[error("Invalid Proposal for ProposalDeposit")]
+    InvalidProposalForProposalDeposit, // 608
 
     /// Invalid deposit_exempt_proposal_count
     #[error("Invalid deposit_exempt_proposal_count")]
@@ -458,6 +458,10 @@ pub enum GovernanceError {
     /// GoverningTokenMint not allowed to vote
     #[error("GoverningTokenMint not allowed to vote")]
     GoverningTokenMintNotAllowedToVote, // 610
+
+    ///Invalid deposit Payer for ProposalDeposit
+    #[error("Invalid deposit Payer for ProposalDeposit")]
+    InvalidDepositPayerForProposalDeposit, // 611
 }
 
 impl PrintProgramError for GovernanceError {
