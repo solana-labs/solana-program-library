@@ -52,7 +52,7 @@ use spl_governance::{
         realm_config::{get_realm_config_address, GoverningTokenConfig, RealmConfigAccount},
         signatory_record::{get_signatory_record_address, SignatoryRecordV2},
         token_owner_record::{
-            get_token_owner_record_address, TokenOwnerRecordV2, TOKEN_OWNER_RECORD_VERSION,
+            get_token_owner_record_address, TokenOwnerRecordV2, TOKEN_OWNER_RECORD_LAYOUT_VERSION,
         },
         vote_record::{get_vote_record_address, Vote, VoteChoice, VoteRecordV2},
     },
@@ -564,7 +564,7 @@ impl GovernanceProgramTest {
             governance_delegate: None,
             unrelinquished_votes_count: 0,
             outstanding_proposal_count: 0,
-            version: TOKEN_OWNER_RECORD_VERSION,
+            version: TOKEN_OWNER_RECORD_LAYOUT_VERSION,
             reserved: [0; 6],
             reserved_v2: [0; 128],
         };
@@ -802,7 +802,7 @@ impl GovernanceProgramTest {
             governance_delegate: None,
             unrelinquished_votes_count: 0,
             outstanding_proposal_count: 0,
-            version: TOKEN_OWNER_RECORD_VERSION,
+            version: TOKEN_OWNER_RECORD_LAYOUT_VERSION,
             reserved: [0; 6],
             reserved_v2: [0; 128],
         };
@@ -869,7 +869,7 @@ impl GovernanceProgramTest {
             governance_delegate: None,
             unrelinquished_votes_count: 0,
             outstanding_proposal_count: 0,
-            version: TOKEN_OWNER_RECORD_VERSION,
+            version: TOKEN_OWNER_RECORD_LAYOUT_VERSION,
             reserved: [0; 6],
             reserved_v2: [0; 128],
         };

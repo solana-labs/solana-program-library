@@ -96,7 +96,7 @@ pub struct RealmConfigAccount {
 
 impl AccountMaxSize for RealmConfigAccount {
     fn get_max_size(&self) -> Option<usize> {
-        Some(1 + 32 + 33 * 4 + 128)
+        Some(1 + 32 + 75 * 2 + 110)
     }
 }
 

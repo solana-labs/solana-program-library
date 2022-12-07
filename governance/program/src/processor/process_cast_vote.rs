@@ -214,7 +214,7 @@ pub fn process_cast_vote(
         program_id,
         system_info,
         &rent,
-        None,
+        0,
     )?;
 
     Ok(())

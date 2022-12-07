@@ -109,7 +109,7 @@ pub fn process_set_realm_config(
             program_id,
             system_info,
             &rent,
-            None,
+            0,
         )?;
     } else {
         realm_config_data.serialize(&mut *realm_config_info.data.borrow_mut())?;

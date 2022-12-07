@@ -17,7 +17,7 @@ use crate::{
         realm_config::get_realm_config_data_for_realm,
         token_owner_record::{
             get_token_owner_record_address_seeds, get_token_owner_record_data_for_seeds,
-            TokenOwnerRecordV2, TOKEN_OWNER_RECORD_VERSION,
+            TokenOwnerRecordV2, TOKEN_OWNER_RECORD_LAYOUT_VERSION,
         },
     },
     tools::spl_token::{
@@ -105,7 +105,7 @@ pub fn process_deposit_governing_tokens(
             governance_delegate: None,
             unrelinquished_votes_count: 0,
             outstanding_proposal_count: 0,
-            version: TOKEN_OWNER_RECORD_VERSION,
+            version: TOKEN_OWNER_RECORD_LAYOUT_VERSION,
             reserved: [0; 6],
             reserved_v2: [0; 128],
         };
@@ -118,7 +118,7 @@ pub fn process_deposit_governing_tokens(
             program_id,
             system_info,
             &rent,
-            None,
+            0,
         )?;
     } else {
         let mut token_owner_record_data = get_token_owner_record_data_for_seeds(

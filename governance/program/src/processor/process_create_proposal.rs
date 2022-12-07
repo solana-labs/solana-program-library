@@ -85,12 +85,12 @@ pub fn process_create_proposal(
     proposal_owner_record_data
         .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    let realm_config_info = next_account_info(account_info_iter)?; // 10
+    let realm_config_info = next_account_info(account_info_iter)?; // 8
     let realm_config_data =
         get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
 
     let voter_weight = proposal_owner_record_data.resolve_voter_weight(
-        account_info_iter, // voter_weight_record  *11
+        account_info_iter, // voter_weight_record  *9
         &realm_data,
         &realm_config_data,
         VoterWeightAction::CreateProposal,
@@ -177,7 +177,7 @@ pub fn process_create_proposal(
         program_id,
         system_info,
         &rent,
-        None,
+        0,
     )?;
 
     governance_data.active_proposal_count = governance_data
@@ -188,7 +188,7 @@ pub fn process_create_proposal(
     // Take Proposal deposit if needed
     let proposal_deposit_amount = governance_data.get_proposal_deposit_amount();
     if proposal_deposit_amount > 0 {
-        let proposal_deposit_info = next_account_info(account_info_iter)?; // *8
+        let proposal_deposit_info = next_account_info(account_info_iter)?; // *10
         let proposal_deposit_data = ProposalDeposit {};
 
         create_and_serialize_account_signed::<ProposalDeposit>(
@@ -199,7 +199,7 @@ pub fn process_create_proposal(
             program_id,
             system_info,
             &rent,
-            Some(proposal_deposit_amount),
+            proposal_deposit_amount,
         )?;
     }
 

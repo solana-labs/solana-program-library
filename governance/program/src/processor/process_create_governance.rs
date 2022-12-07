@@ -72,7 +72,7 @@ pub fn process_create_governance(
         program_id,
         system_info,
         &rent,
-        None,
+        0,
     )?;
 
     Ok(())

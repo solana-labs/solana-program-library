@@ -15,7 +15,8 @@ use crate::{
         enums::GovernanceAccountType,
         realm::get_realm_data,
         token_owner_record::{
-            get_token_owner_record_address_seeds, TokenOwnerRecordV2, TOKEN_OWNER_RECORD_VERSION,
+            get_token_owner_record_address_seeds, TokenOwnerRecordV2,
+            TOKEN_OWNER_RECORD_LAYOUT_VERSION,
         },
     },
 };
@@ -51,7 +52,7 @@ pub fn process_create_token_owner_record(
         governance_delegate: None,
         unrelinquished_votes_count: 0,
         outstanding_proposal_count: 0,
-        version: TOKEN_OWNER_RECORD_VERSION,
+        version: TOKEN_OWNER_RECORD_LAYOUT_VERSION,
         reserved: [0; 6],
         reserved_v2: [0; 128],
     };
@@ -68,6 +69,6 @@ pub fn process_create_token_owner_record(
         program_id,
         system_info,
         &rent,
-        None,
+        0,
     )
 }

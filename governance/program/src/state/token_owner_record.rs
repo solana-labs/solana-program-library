@@ -64,12 +64,12 @@ pub struct TokenOwnerRecordV2 {
     /// The new account type and versioning scheme can be introduced once we migrate UI to use indexer to fetch all the accounts
     /// Once the new versioning scheme is introduced this field can be migrated and removed
     ///
-    /// The other issues which need to be adresses before we can cleanup the account versioning code:
+    /// The other issues which need to be addressed before we can cleanup the account versioning code:
     /// 1) Remove the specific governance accounts (ProgramGovernance, TokenGovernance, MintGovernance)
     ///    The only reason they exist is the UI which can't handle the generic use case for those assets
     /// 2) For account layout breaking changes all plugins would have to be upgraded
     /// 3) For account layout changes the Holaplex indexer would have to be upgraded
-    /// 4) We should migrate the UI to use the indexer for fetching data and stop using getProgramAccoutns
+    /// 4) We should migrate the UI to use the indexer for fetching data and stop using getProgramAccounts
     /// 5) The UI would have to be upgraded to support account migration to the latest version
     /// 6) The client sdk is already messy because of the different program/account versions and it should be cleaned up before we add even more versions.
     pub version: u8,
@@ -86,11 +86,12 @@ pub struct TokenOwnerRecordV2 {
     pub reserved_v2: [u8; 128],
 }
 
-/// The current version of TokenOwnerRecord
-/// Note: It's the version of the account layout and not the version of the program
-/// program V1,V2 -> account version 0
-/// program V3 -> account version 1
-pub const TOKEN_OWNER_RECORD_VERSION: u8 = 1;
+/// The current version of TokenOwnerRecord account layout
+/// Note: It's the version of the account layout and not the version of the program or the account type
+///
+/// program V1,V2 -> account layout version 0
+/// program V3 -> account layout version 1
+pub const TOKEN_OWNER_RECORD_LAYOUT_VERSION: u8 = 1;
 
 impl AccountMaxSize for TokenOwnerRecordV2 {
     fn get_max_size(&self) -> Option<usize> {
@@ -345,9 +346,9 @@ pub fn get_token_owner_record_data(
         get_account_data::<TokenOwnerRecordV2>(program_id, token_owner_record_info)?
     };
 
-    // If the deserialized account is of the old account version then migrate the data to the latest one
-    if token_owner_record_data.version < TOKEN_OWNER_RECORD_VERSION {
-        token_owner_record_data.version = TOKEN_OWNER_RECORD_VERSION;
+    // If the deserialized account uses the old account layout indicated by the version value then migrate the data to version 1
+    if token_owner_record_data.version < 1 {
+        token_owner_record_data.version = 1;
 
         // In previous versions unrelinquished_votes_count was u32 followed by total_votes_count:u32
         // In program V3 unrelinquished_votes_count was changed to u64 by extending it into the space previously used by total_votes_count:u32
@@ -555,7 +556,7 @@ mod test {
         assert_eq!(token_owner_record_program_v3.unrelinquished_votes_count, 10);
         assert_eq!(
             token_owner_record_program_v3.version,
-            TOKEN_OWNER_RECORD_VERSION
+            TOKEN_OWNER_RECORD_LAYOUT_VERSION
         );
     }
 }

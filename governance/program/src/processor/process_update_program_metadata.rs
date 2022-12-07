@@ -52,7 +52,7 @@ pub fn process_update_program_metadata(
             program_id,
             system_info,
             &rent,
-            None,
+            0,
         )?;
     } else {
         let mut program_metadata_data =

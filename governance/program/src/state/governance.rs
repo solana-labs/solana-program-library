@@ -110,7 +110,7 @@ pub struct GovernanceV2 {
     ///
     /// Note: The counter was introduced in program V3 and didn't exist in program V1 & V2
     /// If the program is upgraded from program V1 or V2 while there are any outstanding active proposals
-    /// the counter won't be accurate until all the preexisting proposal are transitioned to an inactive final state
+    /// the counter won't be accurate until all proposals are transitioned to an inactive final state and the counter reset
     pub active_proposal_count: u64,
 }
 
@@ -584,6 +584,11 @@ pub fn assert_is_valid_governance_config(
         return Err(GovernanceError::AtLeastOneVoteThresholdRequired.into());
     }
 
+    // Make u8::MAX invalid value in case we would like to use the magic number as Disabled value in the future
+    if governance_config.deposit_exempt_proposal_count == u8::MAX {
+        return Err(GovernanceError::InvalidDepositExemptProposalCount.into());
+    }
+
     Ok(())
 }
 
@@ -924,5 +929,23 @@ mod test {
 
         // Assert
         assert_eq!(deposit_amount, SECURITY_DEPOSIT_BASE_LAMPORTS * 10);
+    }
+
+    #[test]
+    fn test_assert_config_invalid_with_max_deposit_exempt_proposal_count() {
+        // Arrange
+        let mut governance_config = create_test_governance_config();
+        governance_config.deposit_exempt_proposal_count = u8::MAX;
+
+        // Act
+        let err = assert_is_valid_governance_config(&governance_config)
+            .err()
+            .unwrap();
+
+        // Assert
+        assert_eq!(
+            err,
+            GovernanceError::InvalidDepositExemptProposalCount.into()
+        );
     }
 }

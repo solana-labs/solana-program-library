@@ -118,7 +118,7 @@ pub fn process_create_realm(
         program_id,
         system_info,
         rent,
-        None,
+        0,
     )?;
 
     // Create and serialize Realm
@@ -151,7 +151,7 @@ pub fn process_create_realm(
         program_id,
         system_info,
         rent,
-        None,
+        0,
     )?;
 
     Ok(())
