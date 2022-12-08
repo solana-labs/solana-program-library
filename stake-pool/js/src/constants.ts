@@ -7,6 +7,9 @@ export const STAKE_POOL_PROGRAM_ID = new PublicKey('SPoo1Ku8WFXoNDMHPsrGSTSG1Y47
 // Maximum number of validators to update during UpdateValidatorListBalance.
 export const MAX_VALIDATORS_TO_UPDATE = 5;
 
+// Seed for ephemeral stake account
+export const EPHEMERAL_STAKE_SEED_PREFIX = Buffer.from('ephemeral');
+
 // Seed used to derive transient stake accounts.
 export const TRANSIENT_STAKE_SEED_PREFIX = Buffer.from('transient');
 

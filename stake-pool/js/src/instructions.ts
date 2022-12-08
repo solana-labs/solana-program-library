@@ -12,6 +12,7 @@ import * as BufferLayout from '@solana/buffer-layout';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { STAKE_POOL_PROGRAM_ID } from './constants';
 import { InstructionType, encodeData, decodeData } from './utils';
+import BN from 'bn.js';
 
 /**
  * An enumeration of valid StakePoolInstructionType's
@@ -25,7 +26,8 @@ export type StakePoolInstructionType =
   | 'DepositStake'
   | 'DepositSol'
   | 'WithdrawStake'
-  | 'WithdrawSol';
+  | 'WithdrawSol'
+  | 'Redelegate';
 
 const MOVE_STAKE_LAYOUT = BufferLayout.struct<any>([
   BufferLayout.u8('instruction'),
@@ -94,6 +96,40 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
       BufferLayout.ns64('poolTokens'),
+    ]),
+  },
+  /// (Staker only) Redelegate active stake on a validator, eventually moving it to another
+  ///
+  /// Internally, this instruction splits a validator stake account into its
+  /// corresponding transient stake account, redelegates it to an ephemeral stake
+  /// account, then merges that stake into the destination transient stake account.
+  ///
+  /// In order to rebalance the pool without taking custody, the staker needs
+  /// a way of reducing the stake on a stake account. This instruction splits
+  /// some amount of stake, up to the total activated stake, from the canonical
+  /// validator stake account, into its "transient" stake account.
+  ///
+  /// The instruction only succeeds if the source transient stake account and
+  /// ephemeral stake account do not exist.
+  ///
+  /// The amount of lamports to move must be at least twice rent-exemption
+  /// plus the minimum delegation amount. Rent-exemption is required for the
+  /// source transient stake account, and rent-exemption plus minimum delegation
+  /// is required for the destination ephemeral stake account.
+  Redelegate: {
+    index: 19,
+    layout: BufferLayout.struct<any>([
+      BufferLayout.u8('instruction'),
+      /// Amount of lamports to redelegate
+      BufferLayout.ns64('lamports'),
+      /// Seed used to create source transient stake account
+      BufferLayout.ns64('sourceTransientStakeSeed'),
+      /// Seed used to create destination ephemeral account.
+      BufferLayout.ns64('ephemeralStakeSeed'),
+      /// Seed used to create destination transient stake account. If there is
+      /// already transient stake, this must match the current seed, otherwise
+      /// it can be anything
+      BufferLayout.ns64('destinationTransientStakeSeed'),
     ]),
   },
 });
@@ -230,6 +266,29 @@ export type DepositSolParams = {
   referralPoolAccount: PublicKey;
   poolMint: PublicKey;
   lamports: number;
+};
+
+export type RedelegateParams = {
+  stakePool: PublicKey;
+  staker: PublicKey;
+  stakePoolWithdrawAuthority: PublicKey;
+  validatorList: PublicKey;
+  sourceValidatorStake: PublicKey;
+  sourceTransientStake: PublicKey;
+  ephemeralStake: PublicKey;
+  destinationTransientStake: PublicKey;
+  destinationValidatorStake: PublicKey;
+  validator: PublicKey;
+  // Amount of lamports to redelegate
+  lamports: number | BN;
+  // Seed used to create source transient stake account
+  sourceTransientStakeSeed: number | BN;
+  // Seed used to create destination ephemeral account.
+  ephemeralStakeSeed: number | BN;
+  // Seed used to create destination transient stake account. If there is
+  // already transient stake, this must match the current seed, otherwise
+  // it can be anything
+  destinationTransientStakeSeed: number | BN;
 };
 
 /**
@@ -668,5 +727,57 @@ export class StakePoolInstruction {
         `Invalid instruction; found ${keys.length} keys, expected at least ${expectedLength}`,
       );
     }
+  }
+
+  /**
+   * Creates `Redelegate` instruction (rebalance from one validator account to another)
+   * @param params
+   */
+  static redelegate(params: RedelegateParams): TransactionInstruction {
+    const {
+      stakePool,
+      staker,
+      stakePoolWithdrawAuthority,
+      validatorList,
+      sourceValidatorStake,
+      sourceTransientStake,
+      ephemeralStake,
+      destinationValidatorStake,
+      validator,
+      lamports,
+      sourceTransientStakeSeed,
+      ephemeralStakeSeed,
+      destinationTransientStakeSeed,
+    } = params;
+
+    const keys = [
+      { pubkey: stakePool, isSigner: false, isWritable: false },
+      { pubkey: staker, isSigner: true, isWritable: false },
+      { pubkey: stakePoolWithdrawAuthority, isSigner: false, isWritable: false },
+      { pubkey: validatorList, isSigner: false, isWritable: true },
+      { pubkey: sourceValidatorStake, isSigner: false, isWritable: true },
+      { pubkey: sourceTransientStake, isSigner: false, isWritable: true },
+      { pubkey: ephemeralStake, isSigner: false, isWritable: true },
+      { pubkey: destinationValidatorStake, isSigner: false, isWritable: true },
+      { pubkey: validator, isSigner: false, isWritable: false },
+      { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: STAKE_CONFIG_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
+    ];
+
+    const data = encodeData(STAKE_POOL_INSTRUCTION_LAYOUTS.Redelegate, {
+      lamports,
+      sourceTransientStakeSeed,
+      ephemeralStakeSeed,
+      destinationTransientStakeSeed,
+    });
+
+    return new TransactionInstruction({
+      programId: STAKE_POOL_PROGRAM_ID,
+      keys,
+      data,
+    });
   }
 }

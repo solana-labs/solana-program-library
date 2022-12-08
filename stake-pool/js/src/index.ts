@@ -24,6 +24,7 @@ import {
   prepareWithdrawAccounts,
   lamportsToSol,
   solToLamports,
+  findEphemeralStakeProgramAddress,
 } from './utils';
 import { StakePoolInstruction } from './instructions';
 import {
@@ -36,6 +37,7 @@ import {
 } from './layouts';
 import { MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE, STAKE_POOL_PROGRAM_ID } from './constants';
 import { create } from 'superstruct';
+import BN from 'bn.js';
 
 export type { StakePool, AccountType, ValidatorList, ValidatorStakeInfo } from './layouts';
 export { STAKE_POOL_PROGRAM_ID } from './constants';
@@ -64,6 +66,17 @@ export interface WithdrawAccount {
 export interface StakePoolAccounts {
   stakePool: StakePoolAccount | undefined;
   validatorList: ValidatorListAccount | undefined;
+}
+
+interface RedelegateProps {
+  connection: Connection;
+  stakePoolAddress: PublicKey;
+  sourceVoteAccount: PublicKey;
+  destinationVoteAccount: PublicKey;
+  sourceTransientStakeSeed: number | BN;
+  destinationTransientStakeSeed: number | BN;
+  ephemeralStakeSeed: number | BN;
+  lamports: number | BN;
 }
 
 /**
@@ -401,7 +414,7 @@ export async function withdrawStake(
       val.voteAccountAddress.equals(voteAccount),
     );
     if (voteAccountAddress && voteAccountAddress !== voteAccount) {
-      throw new Error(`Provided withdrawal vote account ${voteAccountAddress} does not match delegation on stake receiver account ${voteAccount}, 
+      throw new Error(`Provided withdrawal vote account ${voteAccountAddress} does not match delegation on stake receiver account ${voteAccount},
       remove this flag or provide a different stake account delegated to ${voteAccountAddress}`);
     }
     if (isValidVoter) {
@@ -991,5 +1004,84 @@ export async function stakePoolInfo(connection: Connection, stakePoolAddress: Pu
       maxNumberOfValidators,
       updateRequired,
     }, // CliStakePoolDetails
+  };
+}
+
+/**
+ * Creates instructions required to redelegate stake.
+ */
+export async function redelegate(props: RedelegateProps) {
+  const {
+    connection,
+    stakePoolAddress,
+    sourceVoteAccount,
+    sourceTransientStakeSeed,
+    destinationVoteAccount,
+    destinationTransientStakeSeed,
+    ephemeralStakeSeed,
+    lamports,
+  } = props;
+  const stakePool = await getStakePoolAccount(connection, stakePoolAddress);
+
+  const stakePoolWithdrawAuthority = await findWithdrawAuthorityProgramAddress(
+    STAKE_POOL_PROGRAM_ID,
+    stakePoolAddress,
+  );
+
+  const sourceValidatorStake = await findStakeProgramAddress(
+    STAKE_POOL_PROGRAM_ID,
+    sourceVoteAccount,
+    stakePoolAddress,
+  );
+
+  const sourceTransientStake = await findTransientStakeProgramAddress(
+    STAKE_POOL_PROGRAM_ID,
+    sourceVoteAccount,
+    stakePoolAddress,
+    new BN(sourceTransientStakeSeed),
+  );
+
+  const destinationValidatorStake = await findStakeProgramAddress(
+    STAKE_POOL_PROGRAM_ID,
+    destinationVoteAccount,
+    stakePoolAddress,
+  );
+
+  const destinationTransientStake = await findTransientStakeProgramAddress(
+    STAKE_POOL_PROGRAM_ID,
+    destinationVoteAccount,
+    stakePoolAddress,
+    new BN(destinationTransientStakeSeed),
+  );
+
+  const ephemeralStake = await findEphemeralStakeProgramAddress(
+    STAKE_POOL_PROGRAM_ID,
+    stakePoolAddress,
+    new BN(ephemeralStakeSeed),
+  );
+
+  const instructions: TransactionInstruction[] = [];
+
+  instructions.push(
+    StakePoolInstruction.redelegate({
+      stakePool: stakePool.pubkey,
+      staker: stakePool.account.data.staker,
+      validatorList: stakePool.account.data.validatorList,
+      stakePoolWithdrawAuthority,
+      ephemeralStake,
+      ephemeralStakeSeed,
+      sourceValidatorStake,
+      sourceTransientStake,
+      sourceTransientStakeSeed,
+      destinationValidatorStake,
+      destinationTransientStake,
+      destinationTransientStakeSeed,
+      validator: destinationVoteAccount,
+      lamports,
+    }),
+  );
+
+  return {
+    instructions,
   };
 }
