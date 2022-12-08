@@ -31,6 +31,7 @@ module.exports = {
         "stake-pool/cli",
       ],
     },
+    "single-validator-manager",
     "feature-proposal",
     {
       type: "category",

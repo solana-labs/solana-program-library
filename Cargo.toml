@@ -26,6 +26,7 @@ members = [
   "managed-token/program",
   "record/program",
   "shared-memory/program",
+  "single-validator-manager/program",
   "stake-pool/cli",
   "stake-pool/program",
   "stateless-asks/program",
