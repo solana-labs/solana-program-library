@@ -1289,7 +1289,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [InitializeTransferAuthority](enum.TokenInstruction.html) instruction
+    /// Processes an [InitializePermissionedTransfer](enum.TokenInstruction.html) instruction
     pub fn process_initialize_permissioned_transfer(
         accounts: &[AccountInfo],
         program_id: Pubkey,
