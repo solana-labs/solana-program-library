@@ -17,7 +17,7 @@ use spl_stake_pool::state::Fee;
 
 /// The SOL deposit fee required for all program-managed pools, 5 basis points
 pub const SOL_DEPOSIT_FEE: Fee = Fee {
-    numerator: 5,
+    numerator: 8,
     denominator: 10_000,
 };
 

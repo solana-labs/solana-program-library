@@ -5,7 +5,7 @@ title: Single Validator Stake Pool Manager Program
 A work-in-progress program for permissionless management of stake pools that are
 only delegated to one validator.
 
-## Operation
+## Overview
 
 The single-validator manager program defines a canonical stake pool for any
 validator on the network, which can be created by anyone.
@@ -13,6 +13,21 @@ validator on the network, which can be created by anyone.
 The program manages the "delegation strategy" of the pool, which is to maximize
 the amount of stake on one validator, while maintaining a small amount of SOL
 in the reserve for small stakers.
+
+## Fees
+
+Pools are configured with a SOL deposit fee of 8 basis points, which corresponds
+to the rewards received over two epochs. This way, no user can deposit SOL and
+immediately withdraw a stake account at the end of an epoch to steal rewards
+from the pool.
+
+All other fees are 0 so that pools mimic the reward structure of native staking.
+
+The program also exposes a permissionless `BurnFees` instruction to allow anyone
+to burn the pool tokens in the fee account, which increases the scarcity of all
+other pool tokens.
+
+## Operation
 
 ### Create Pool
 
@@ -22,14 +37,16 @@ the stake pool, validator list, reserve, mint, and fee account.
 
 After the pool is created, the reserve requires at least stake rent-exemption plus
 the minimum delegation amount to actually add the validator to the pool, which
-costs 1.0028288 SOL. The user receives pool tokens for this deposit.
+costs 1.0028288 SOL, assuming a minimum delegation of 1 SOL. The user receives
+pool tokens for this deposit.
 
 After the SOL deposit, the `AddValidatorToPool` instruction on the pool management
 program allows anyone to add the stake account for that validator.
 
-Once the added stake account is active, anyone may deposit stake accounts.
+Once the added stake account is active, anyone may deposit stake accounts using
+the `DepositStake` instruction on the stake pool, and not using the manager program.
 
-### Depositing and withdrawing stake
+### Depositing and withdrawing stake accounts
 
 If stakers deposit or withdraw stake accounts from the pool, everything works
 seamlessly. Stakers receive pool tokens for their deposited stake account, and
@@ -52,14 +69,26 @@ amount, they cannot withdraw stake accounts, so they need a way to withdraw SOL
 from the reserve.
 
 To give a way out for these users, the reserve aims to maintain the minimum delegation
-amount plus stake rent-exemption, or 1.0028288 SOL. If the reserve has less than
-this amount, any user can call `DecreaseValidatorStake` to decrease the minimum
-delegation amount plus rent-exemption.
+amount plus stake rent-exemption, or 1.0028288 SOL with a 1 SOL minimum delegation.
+If the reserve has less than this amount, any user can call `DecreaseValidatorStake`
+to decrease the minimum delegation amount plus rent-exemption.
+
+This instruction goes straight to `DecreaseValidatorStake` on the stake pool,
+which splits a stake account into a transient stake account and deactivates it.
+After deactivation, during the accounting phase of the stake pool,
+`UpdateValidatorListBalance` will merge the deactivated transient account into
+the reserve.
 
 On the other hand, if the reserve receives enough SOL deposits equalling at least
 two times this amount, then anyone can call `IncreaseValidatorStake` on the manager
 program to activate everything in the reserve, minus the minimum delegation plus
 rent-exemption.
+
+This instruction goes straight to `IncreaseValidatorStake` on the stake pool,
+which splits a stake account into a transient stake account and activates it.
+After activation, during the accounting phase of the stake pool,
+`UpdateValidatorListBalance` will merge the activated transient account into
+the "canonical" stake account for the validator.
 
 ### Griefing
 
@@ -67,7 +96,7 @@ The permissionless increase instruction allows an attack to make the pool less
 performant.
 
 For example, at the start of the epoch, a malicious user can deposit enough SOL to get
-just above the limit for increasing, and immediate run the increase. This prevents
+just above the limit for increasing, and immediately run the increase. This prevents
 the activation of subsequent SOL deposits until the next epoch.
 
 However, this attack only works for one epoch, since at the start of the next
@@ -77,26 +106,14 @@ pool tokens, covering for any economic attacks.
 
 With the permissionless decrease instruction, a similar attack is possible.
 
-For example, if the reserve is at its target amount of 1.0028288 SOL, an attacker
-can withdraw 1 lamport from the reserve, then decrease another 1.0028288 SOL.
+For example, with a minimum delegation of 1 SOL, if the reserve is at its target
+amount of 1.0028288 SOL, an attacker can withdraw 1 lamport from the reserve,
+then decrease another 1.0028288 SOL.
 
 Question: should the threshold for allowing decreases be 1 / 2 minimum delegation
 in the reserve? That way, the previous attack is more costly, but it means delegators
 with more than 1 / 2 minimum delegation need to wait longer to get out of the pool.
 That might be an acceptable tradeoff.
-
-## Fees
-
-Pools are configured with a SOL deposit fee of 8 basis points, which corresponds
-to the rewards received over two epochs. This way, no user can deposit SOL and
-immediately withdraw a stake account at the end of an epoch to steal rewards
-from the pool.
-
-All other fees are 0 so that pools mimic the reward structure of native staking.
-
-The program also exposes a permissionless `BurnFees` instruction to allow anyone
-to burn the pool tokens in the fee account, which increases the value of all
-other pool tokens.
 
 ## Token Metadata
 
