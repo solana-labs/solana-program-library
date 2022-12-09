@@ -1,5 +1,7 @@
 //! Program state processor
 
+use crate::extension::transfer_authority::transfer_authority_check;
+
 use {
     crate::{
         check_program_account, cmp_pubkeys,
@@ -15,6 +17,7 @@ use {
             non_transferable::NonTransferable,
             permanent_delegate::{get_permanent_delegate, PermanentDelegate},
             reallocate,
+            transfer_authority::{TransferAuthorityAccount, TransferAuthorityMint},
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             BaseStateWithExtensions, ExtensionType, StateWithExtensions, StateWithExtensionsMut,
         },
@@ -313,14 +316,19 @@ impl Processor {
                 0
             };
 
+            // check transfer authority
+            transfer_authority_check(&mint, account_info_iter)?;
+
             let maybe_permanent_delegate = get_permanent_delegate(&mint);
             (fee, maybe_permanent_delegate)
         } else {
-            // Transfer fee amount extension exists on the account, but no mint
-            // was provided to calculate the fee, abort
+            // Mint rquired if the below extensions exist on the account
             if source_account
                 .get_extension_mut::<TransferFeeAmount>()
                 .is_ok()
+                || source_account
+                    .get_extension_mut::<TransferAuthorityAccount>()
+                    .is_ok()
             {
                 return Err(TokenError::MintRequiredForTransfer.into());
             } else {
@@ -499,6 +507,9 @@ impl Processor {
             if expected_decimals != mint.base.decimals {
                 return Err(TokenError::MintDecimalsMismatch.into());
             }
+
+            // check transfer authority
+            transfer_authority_check(&mint, account_info_iter)?;
         }
 
         Self::validate_owner(
@@ -1274,6 +1285,27 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes an [InitializeTransferAuthority](enum.TokenInstruction.html) instruction
+    pub fn process_initialize_transfer_authority(
+        accounts: &[AccountInfo],
+        program_id: Pubkey,
+        additional_accounts: &[Pubkey],
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let mint_account_info = next_account_info(account_info_iter)?;
+
+        let mut mint_data = mint_account_info.data.borrow_mut();
+        let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
+        let extension = mint.init_extension::<TransferAuthorityMint>(true)?;
+        extension.program_id = Some(program_id).try_into()?;
+        extension.additional_accounts = [
+            additional_accounts.get(0).map(|p| *p).try_into()?,
+            additional_accounts.get(1).map(|p| *p).try_into()?,
+            additional_accounts.get(2).map(|p| *p).try_into()?,
+        ];
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -1441,6 +1473,14 @@ impl Processor {
                 msg!("Instruction: InitializePermanentDelegate");
                 Self::process_initialize_permanent_delegate(accounts, delegate)
             }
+            TokenInstruction::InitializeTransferAuthority {
+                program_id,
+                additional_accounts,
+            } => Self::process_initialize_transfer_authority(
+                accounts,
+                program_id,
+                &additional_accounts,
+            ),
         }
     }
 

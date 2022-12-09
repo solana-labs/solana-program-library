@@ -13,6 +13,7 @@ use {
             mint_close_authority::MintCloseAuthority,
             non_transferable::NonTransferable,
             permanent_delegate::PermanentDelegate,
+            transfer_authority::{TransferAuthorityAccount, TransferAuthorityMint},
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
         },
         pod::*,
@@ -53,6 +54,8 @@ pub mod non_transferable;
 pub mod permanent_delegate;
 /// Utility to reallocate token accounts
 pub mod reallocate;
+/// Transfer authority extension
+pub mod transfer_authority;
 /// Transfer Fee extension
 pub mod transfer_fee;
 
@@ -641,6 +644,10 @@ pub enum ExtensionType {
     CpiGuard,
     /// Includes an optional permanent delegate
     PermanentDelegate,
+    /// Config for transfer authority on mint
+    TransferAuthorityMint,
+    /// Config for transfer authority on account
+    TransferAuthorityAccount,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -683,6 +690,10 @@ impl ExtensionType {
             ExtensionType::InterestBearingConfig => pod_get_packed_len::<InterestBearingConfig>(),
             ExtensionType::CpiGuard => pod_get_packed_len::<CpiGuard>(),
             ExtensionType::PermanentDelegate => pod_get_packed_len::<PermanentDelegate>(),
+            ExtensionType::TransferAuthorityMint => pod_get_packed_len::<TransferAuthorityMint>(),
+            ExtensionType::TransferAuthorityAccount => {
+                pod_get_packed_len::<TransferAuthorityAccount>()
+            }
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -740,12 +751,14 @@ impl ExtensionType {
             | ExtensionType::DefaultAccountState
             | ExtensionType::NonTransferable
             | ExtensionType::InterestBearingConfig
-            | ExtensionType::PermanentDelegate => AccountType::Mint,
+            | ExtensionType::PermanentDelegate
+            | ExtensionType::TransferAuthorityMint => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
             | ExtensionType::MemoTransfer
-            | ExtensionType::CpiGuard => AccountType::Account,
+            | ExtensionType::CpiGuard
+            | ExtensionType::TransferAuthorityAccount => AccountType::Account,
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => AccountType::Account,
             #[cfg(test)]

@@ -630,6 +630,27 @@ pub enum TokenInstruction<'a> {
         /// Authority that may sign for `Transfer`s and `Burn`s on any account
         delegate: Pubkey,
     },
+    /// Initialize the transfer authority on a new mint.
+    ///
+    /// Fails if the mint has already been initialized, so must be called before
+    /// `InitializeMint`.
+    ///
+    /// The mint must have exactly enough space allocated for the base mint (82
+    /// bytes), plus 83 bytes of padding, 1 byte reserved for the account type,
+    /// then space required for this extension, plus any others.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` The mint to initialize.
+    ///
+    /// Data expected by this instruction:
+    ///   Pubkey for the permanent delegate
+    InitializeTransferAuthority {
+        /// Program ID to CPI to on transfer
+        program_id: Pubkey,
+        /// Additional accounts required for transfer
+        additional_accounts: Vec<Pubkey>,
+    },
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -764,6 +785,17 @@ impl<'a> TokenInstruction<'a> {
             35 => {
                 let (delegate, _rest) = Self::unpack_pubkey(rest)?;
                 Self::InitializePermanentDelegate { delegate }
+            }
+            36 => {
+                let (program_id, _rest) = Self::unpack_pubkey(rest)?;
+                let mut additional_accounts = vec![];
+                for chunk in rest.chunks(size_of::<Pubkey>()) {
+                    additional_accounts.push(Pubkey::new(chunk));
+                }
+                Self::InitializeTransferAuthority {
+                    program_id,
+                    additional_accounts,
+                }
             }
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
@@ -923,6 +955,12 @@ impl<'a> TokenInstruction<'a> {
             &Self::InitializePermanentDelegate { ref delegate } => {
                 buf.push(35);
                 buf.extend_from_slice(delegate.as_ref());
+            }
+            &Self::InitializeTransferAuthority {
+                ref program_id,
+                ref additional_accounts,
+            } => {
+                buf.push(36);
             }
         };
         buf
