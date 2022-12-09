@@ -31,6 +31,7 @@ members = [
   "stateless-asks/program",
   "token-lending/cli",
   "token-lending/program",
+  "token-manager-registry/program",
   "token-swap/program",
   "token-swap/program/fuzz",
   "token-upgrade/cli",

@@ -1,0 +1,23 @@
+[package]
+name = "spl-token-manager-registry"
+version = "0.1.0"
+description = "Solana Program Library Token Manager Registry"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+
+[features]
+no-entrypoint = []
+test-sbf = []
+
+[dependencies]
+solana-program = "1.4.10"
+spl-token-2022 = { version = "0.5", path = "../../token/program-2022", features = [ "no-entrypoint" ] }
+
+[dev-dependencies]
+solana-program-test = "1.4.10"
+solana-sdk = "1.4.10"
+
+[lib]
+crate-type = ["cdylib", "lib"]

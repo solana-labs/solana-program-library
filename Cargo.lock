@@ -6399,6 +6399,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-token-manager-registry"
+version = "0.1.0"
+dependencies = [
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-token-2022 0.5.0",
+]
+
+[[package]]
 name = "spl-token-swap"
 version = "3.0.0"
 dependencies = [
