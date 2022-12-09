@@ -52,10 +52,10 @@ pub mod mint_close_authority;
 pub mod non_transferable;
 /// Permanent Delegate extension
 pub mod permanent_delegate;
-/// Utility to reallocate token accounts
-pub mod reallocate;
 /// permissioned authority extension
 pub mod permissioned_transfer;
+/// Utility to reallocate token accounts
+pub mod reallocate;
 /// Transfer Fee extension
 pub mod transfer_fee;
 
@@ -537,6 +537,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             // ConfidentialTransfers are currently opt-in only, so this is a no-op for extra safety
             // on InitializeAccount
             ExtensionType::ConfidentialTransferAccount => Ok(()),
+            ExtensionType::PermissionedTransferAccount => Ok(()),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => {
                 self.init_extension::<AccountPaddingTest>(true).map(|_| ())
@@ -781,6 +782,10 @@ impl ExtensionType {
                 #[cfg(test)]
                 ExtensionType::MintPaddingTest => {
                     account_extension_types.push(ExtensionType::AccountPaddingTest);
+                }
+                #[cfg(test)]
+                ExtensionType::PermissionedTransferMint => {
+                    account_extension_types.push(ExtensionType::PermissionedTransferAccount);
                 }
                 _ => {}
             }

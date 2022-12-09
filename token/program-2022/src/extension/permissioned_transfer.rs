@@ -37,10 +37,7 @@ impl Extension for PermissionedTransferMint {
 /// Transfer authority extension data for mints.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-pub struct PermissionedTransferAccount {
-    /// Boolean for whether this account is for a mint that requires transfer authority cpi
-    pub permissioned_transfer_enabled: PodBool,
-}
+pub struct PermissionedTransferAccount {}
 impl Extension for PermissionedTransferAccount {
     const TYPE: ExtensionType = ExtensionType::PermissionedTransferAccount;
 }
