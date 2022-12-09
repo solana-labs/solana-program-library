@@ -630,7 +630,7 @@ pub enum TokenInstruction<'a> {
         /// Authority that may sign for `Transfer`s and `Burn`s on any account
         delegate: Pubkey,
     },
-    /// Initialize the transfer authority on a new mint.
+    /// Initialize the permissioned transfer on a new mint.
     ///
     /// Fails if the mint has already been initialized, so must be called before
     /// `InitializeMint`.
@@ -645,7 +645,7 @@ pub enum TokenInstruction<'a> {
     ///
     /// Data expected by this instruction:
     ///   Pubkey for the permanent delegate
-    InitializeTransferAuthority {
+    InitializePermissionedTransfer {
         /// Program ID to CPI to on transfer
         program_id: Pubkey,
         /// Additional accounts required for transfer
@@ -792,7 +792,7 @@ impl<'a> TokenInstruction<'a> {
                 for chunk in rest.chunks(size_of::<Pubkey>()) {
                     additional_accounts.push(Pubkey::new(chunk));
                 }
-                Self::InitializeTransferAuthority {
+                Self::InitializePermissionedTransfer {
                     program_id,
                     additional_accounts,
                 }
@@ -956,7 +956,7 @@ impl<'a> TokenInstruction<'a> {
                 buf.push(35);
                 buf.extend_from_slice(delegate.as_ref());
             }
-            &Self::InitializeTransferAuthority {
+            &Self::InitializePermissionedTransfer {
                 ref program_id,
                 ref additional_accounts,
             } => {

@@ -13,7 +13,7 @@ use {
             mint_close_authority::MintCloseAuthority,
             non_transferable::NonTransferable,
             permanent_delegate::PermanentDelegate,
-            transfer_authority::{TransferAuthorityAccount, TransferAuthorityMint},
+            permissioned_transfer::{PermissionedTransferAccount, PermissionedTransferMint},
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
         },
         pod::*,
@@ -54,8 +54,8 @@ pub mod non_transferable;
 pub mod permanent_delegate;
 /// Utility to reallocate token accounts
 pub mod reallocate;
-/// Transfer authority extension
-pub mod transfer_authority;
+/// permissioned authority extension
+pub mod permissioned_transfer;
 /// Transfer Fee extension
 pub mod transfer_fee;
 
@@ -644,10 +644,10 @@ pub enum ExtensionType {
     CpiGuard,
     /// Includes an optional permanent delegate
     PermanentDelegate,
-    /// Config for transfer authority on mint
-    TransferAuthorityMint,
-    /// Config for transfer authority on account
-    TransferAuthorityAccount,
+    /// Config for permissioned authority on mint
+    PermissionedTransferMint,
+    /// Config for permissioned authority on account
+    PermissionedTransferAccount,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -690,9 +690,11 @@ impl ExtensionType {
             ExtensionType::InterestBearingConfig => pod_get_packed_len::<InterestBearingConfig>(),
             ExtensionType::CpiGuard => pod_get_packed_len::<CpiGuard>(),
             ExtensionType::PermanentDelegate => pod_get_packed_len::<PermanentDelegate>(),
-            ExtensionType::TransferAuthorityMint => pod_get_packed_len::<TransferAuthorityMint>(),
-            ExtensionType::TransferAuthorityAccount => {
-                pod_get_packed_len::<TransferAuthorityAccount>()
+            ExtensionType::PermissionedTransferMint => {
+                pod_get_packed_len::<PermissionedTransferMint>()
+            }
+            ExtensionType::PermissionedTransferAccount => {
+                pod_get_packed_len::<PermissionedTransferAccount>()
             }
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
@@ -752,13 +754,13 @@ impl ExtensionType {
             | ExtensionType::NonTransferable
             | ExtensionType::InterestBearingConfig
             | ExtensionType::PermanentDelegate
-            | ExtensionType::TransferAuthorityMint => AccountType::Mint,
+            | ExtensionType::PermissionedTransferMint => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
             | ExtensionType::MemoTransfer
             | ExtensionType::CpiGuard
-            | ExtensionType::TransferAuthorityAccount => AccountType::Account,
+            | ExtensionType::PermissionedTransferAccount => AccountType::Account,
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => AccountType::Account,
             #[cfg(test)]

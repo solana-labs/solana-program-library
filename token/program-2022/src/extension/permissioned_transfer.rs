@@ -24,29 +24,29 @@ pub const MAX_ADDITIONAL_ACCOUNTS: usize = 3;
 /// Transfer authority extension data for mints.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-pub struct TransferAuthorityMint {
+pub struct PermissionedTransferMint {
     /// Program ID to CPI to on transfer
     pub program_id: OptionalNonZeroPubkey,
     /// Additional accounts required for transfer
     pub additional_accounts: [OptionalNonZeroPubkey; MAX_ADDITIONAL_ACCOUNTS],
 }
-impl Extension for TransferAuthorityMint {
-    const TYPE: ExtensionType = ExtensionType::TransferAuthorityMint;
+impl Extension for PermissionedTransferMint {
+    const TYPE: ExtensionType = ExtensionType::PermissionedTransferMint;
 }
 
 /// Transfer authority extension data for mints.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-pub struct TransferAuthorityAccount {
+pub struct PermissionedTransferAccount {
     /// Boolean for whether this account is for a mint that requires transfer authority cpi
-    pub require_transfer_authority: PodBool,
+    pub permissioned_transfer_enabled: PodBool,
 }
-impl Extension for TransferAuthorityAccount {
-    const TYPE: ExtensionType = ExtensionType::TransferAuthorityAccount;
+impl Extension for PermissionedTransferAccount {
+    const TYPE: ExtensionType = ExtensionType::PermissionedTransferAccount;
 }
 
 /// Call CPI to transfer authority to check if transfer is valid
-pub fn transfer_authority_check<'info, S: BaseState, BSE: BaseStateWithExtensions<S>>(
+pub fn permissioned_transfer_check<'info, S: BaseState, BSE: BaseStateWithExtensions<S>>(
     mint_state: &BSE,
     mint_info: &AccountInfo<'info>,
     source_account_info: &AccountInfo<'info>,
@@ -54,9 +54,10 @@ pub fn transfer_authority_check<'info, S: BaseState, BSE: BaseStateWithExtension
     _amount: u64,
     account_info_iter: &mut Iter<AccountInfo<'info>>,
 ) -> ProgramResult {
-    if let Some(transfer_authority_mint) = mint_state.get_extension::<TransferAuthorityMint>().ok()
+    if let Some(permissioned_transfer_mint) =
+        mint_state.get_extension::<PermissionedTransferMint>().ok()
     {
-        if let Some(program_id) = Option::<Pubkey>::from(transfer_authority_mint.program_id) {
+        if let Some(program_id) = Option::<Pubkey>::from(permissioned_transfer_mint.program_id) {
             let mut account_metas = Vec::new();
             account_metas.push(AccountMeta::new(*mint_info.key, false));
             account_metas.push(AccountMeta::new(*source_account_info.key, false));
@@ -67,7 +68,7 @@ pub fn transfer_authority_check<'info, S: BaseState, BSE: BaseStateWithExtension
             acount_infos.push(source_account_info.clone());
             acount_infos.push(destination_account_info.clone());
 
-            for additional_account in transfer_authority_mint.additional_accounts.iter() {
+            for additional_account in permissioned_transfer_mint.additional_accounts.iter() {
                 if let Some(pubkey) = Option::<Pubkey>::from(*additional_account) {
                     account_metas.push(AccountMeta::new(pubkey, false));
                     acount_infos.push(next_account_info(account_info_iter)?.clone());

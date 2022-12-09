@@ -1,7 +1,5 @@
 //! Program state processor
 
-use crate::extension::transfer_authority::transfer_authority_check;
-
 use {
     crate::{
         check_program_account, cmp_pubkeys,
@@ -16,8 +14,10 @@ use {
             mint_close_authority::MintCloseAuthority,
             non_transferable::NonTransferable,
             permanent_delegate::{get_permanent_delegate, PermanentDelegate},
+            permissioned_transfer::{
+                permissioned_transfer_check, PermissionedTransferAccount, PermissionedTransferMint,
+            },
             reallocate,
-            transfer_authority::{TransferAuthorityAccount, TransferAuthorityMint},
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             BaseStateWithExtensions, ExtensionType, StateWithExtensions, StateWithExtensionsMut,
         },
@@ -317,7 +317,7 @@ impl Processor {
             };
 
             // check transfer authority
-            transfer_authority_check(
+            permissioned_transfer_check(
                 &mint,
                 mint_info,
                 source_account_info,
@@ -334,7 +334,7 @@ impl Processor {
                 .get_extension_mut::<TransferFeeAmount>()
                 .is_ok()
                 || source_account
-                    .get_extension_mut::<TransferAuthorityAccount>()
+                    .get_extension_mut::<PermissionedTransferAccount>()
                     .is_ok()
             {
                 return Err(TokenError::MintRequiredForTransfer.into());
@@ -1290,7 +1290,7 @@ impl Processor {
     }
 
     /// Processes an [InitializeTransferAuthority](enum.TokenInstruction.html) instruction
-    pub fn process_initialize_transfer_authority(
+    pub fn process_initialize_permissioned_transfer(
         accounts: &[AccountInfo],
         program_id: Pubkey,
         additional_accounts: &[Pubkey],
@@ -1300,7 +1300,7 @@ impl Processor {
 
         let mut mint_data = mint_account_info.data.borrow_mut();
         let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
-        let extension = mint.init_extension::<TransferAuthorityMint>(true)?;
+        let extension = mint.init_extension::<PermissionedTransferMint>(true)?;
         extension.program_id = Some(program_id).try_into()?;
         extension.additional_accounts = [
             additional_accounts.get(0).map(|p| *p).try_into()?,
@@ -1477,10 +1477,10 @@ impl Processor {
                 msg!("Instruction: InitializePermanentDelegate");
                 Self::process_initialize_permanent_delegate(accounts, delegate)
             }
-            TokenInstruction::InitializeTransferAuthority {
+            TokenInstruction::InitializePermissionedTransfer {
                 program_id,
                 additional_accounts,
-            } => Self::process_initialize_transfer_authority(
+            } => Self::process_initialize_permissioned_transfer(
                 accounts,
                 program_id,
                 &additional_accounts,
