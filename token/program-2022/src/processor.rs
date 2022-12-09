@@ -317,7 +317,14 @@ impl Processor {
             };
 
             // check transfer authority
-            transfer_authority_check(&mint, account_info_iter)?;
+            transfer_authority_check(
+                &mint,
+                mint_info,
+                source_account_info,
+                destination_account_info,
+                amount,
+                account_info_iter,
+            )?;
 
             let maybe_permanent_delegate = get_permanent_delegate(&mint);
             (fee, maybe_permanent_delegate)
@@ -507,9 +514,6 @@ impl Processor {
             if expected_decimals != mint.base.decimals {
                 return Err(TokenError::MintDecimalsMismatch.into());
             }
-
-            // check transfer authority
-            transfer_authority_check(&mint, account_info_iter)?;
         }
 
         Self::validate_owner(

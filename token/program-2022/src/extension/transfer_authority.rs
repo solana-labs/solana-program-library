@@ -46,14 +46,27 @@ impl Extension for TransferAuthorityAccount {
 }
 
 /// Call CPI to transfer authority to check if transfer is valid
-pub fn transfer_authority_check<S: BaseState, BSE: BaseStateWithExtensions<S>>(
-    state: &BSE,
-    account_info_iter: &mut Iter<AccountInfo>,
+pub fn transfer_authority_check<'info, S: BaseState, BSE: BaseStateWithExtensions<S>>(
+    mint_state: &BSE,
+    mint_info: &AccountInfo<'info>,
+    source_account_info: &AccountInfo<'info>,
+    destination_account_info: &AccountInfo<'info>,
+    _amount: u64,
+    account_info_iter: &mut Iter<AccountInfo<'info>>,
 ) -> ProgramResult {
-    if let Some(transfer_authority_mint) = state.get_extension::<TransferAuthorityMint>().ok() {
+    if let Some(transfer_authority_mint) = mint_state.get_extension::<TransferAuthorityMint>().ok()
+    {
         if let Some(program_id) = Option::<Pubkey>::from(transfer_authority_mint.program_id) {
             let mut account_metas = Vec::new();
+            account_metas.push(AccountMeta::new(*mint_info.key, false));
+            account_metas.push(AccountMeta::new(*source_account_info.key, false));
+            account_metas.push(AccountMeta::new(*destination_account_info.key, false));
+
             let mut acount_infos = Vec::new();
+            acount_infos.push(mint_info.clone());
+            acount_infos.push(source_account_info.clone());
+            acount_infos.push(destination_account_info.clone());
+
             for additional_account in transfer_authority_mint.additional_accounts.iter() {
                 if let Some(pubkey) = Option::<Pubkey>::from(*additional_account) {
                     account_metas.push(AccountMeta::new(pubkey, false));
