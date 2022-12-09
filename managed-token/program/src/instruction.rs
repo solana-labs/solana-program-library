@@ -17,8 +17,9 @@ pub enum ManagedTokenInstruction {
     #[account(0, writable, signer, name = "mint")]
     #[account(1, writable, signer, name = "payer")]
     #[account(2, name = "upstream_authority")]
-    #[account(3, name = "system_program", desc = "System program")]
-    #[account(4, name = "token_program", desc = "Token program")]
+    #[account(3, writable, name = "unified_transfer")]
+    #[account(4, name = "system_program", desc = "System program")]
+    #[account(5, name = "token_program", desc = "Token program")]
     InitializeMint {
         decimals: u8,
     },
@@ -87,12 +88,26 @@ pub enum ManagedTokenInstruction {
     #[account(4, name = "freeze_authority")]
     #[account(5, name = "token_program", desc = "Token program")]
     Revoke,
+
+    #[account(0, name = "mint")]
+    #[account(1, name = "unified_transfer")]
+    GetTransferAccounts,
+
+    #[account(0, writable, name = "src_account")]
+    #[account(1, name = "mint")]
+    #[account(2, writable, name = "dst_account")]
+    #[account(3, signer, name = "owner")]
+    #[account(4, signer, name = "upstream_authority")]
+    #[account(5, name = "freeze_authority")]
+    #[account(6, name = "token_program", desc = "Token program")]
+    UnifiedTransfer { amount: u64 },
 }
 
 pub fn create_initialize_mint_instruction(
     mint: &Pubkey,
     payer: &Pubkey,
     upstream_authority: &Pubkey,
+    unified_transfer: &Pubkey,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
     Ok(Instruction {
@@ -101,6 +116,7 @@ pub fn create_initialize_mint_instruction(
             AccountMeta::new(*mint, true),
             AccountMeta::new(*payer, true),
             AccountMeta::new_readonly(*upstream_authority, false),
+            AccountMeta::new(*unified_transfer, false),
             AccountMeta::new_readonly(system_program::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],

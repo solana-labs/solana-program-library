@@ -9,6 +9,7 @@ pub struct InitializeMint<'a, 'info> {
     pub mint: &'a AccountInfo<'info>,
     pub payer: &'a AccountInfo<'info>,
     pub upstream_authority: &'a AccountInfo<'info>,
+    pub unified_transfer: &'a AccountInfo<'info>,
     pub system_program: &'a AccountInfo<'info>,
     pub token_program: &'a AccountInfo<'info>,
 }
@@ -20,6 +21,7 @@ impl<'a, 'info> InitializeMint<'a, 'info> {
             mint: next_account_info(account_iter)?,
             payer: next_account_info(account_iter)?,
             upstream_authority: next_account_info(account_iter)?,
+            unified_transfer: next_account_info(account_iter)?,
             system_program: next_account_info(account_iter)?,
             token_program: next_account_info(account_iter)?,
         };
@@ -142,7 +144,7 @@ impl<'a, 'info> InitializeAccount<'a, 'info> {
     }
 }
 
-pub struct Mint<'a, 'info> {
+pub struct MintTo<'a, 'info> {
     pub mint: &'a AccountInfo<'info>,
     pub token_account: &'a AccountInfo<'info>,
     pub upstream_authority: &'a AccountInfo<'info>,
@@ -150,7 +152,7 @@ pub struct Mint<'a, 'info> {
     pub token_program: &'a AccountInfo<'info>,
 }
 
-impl<'a, 'info> Mint<'a, 'info> {
+impl<'a, 'info> MintTo<'a, 'info> {
     pub fn load(accounts: &'a [AccountInfo<'info>]) -> Result<Self, ProgramError> {
         let account_iter = &mut accounts.iter();
         let ctx = Self {
@@ -491,6 +493,50 @@ impl<'a, 'info> Revoke<'a, 'info> {
             ProgramError::MissingRequiredSignature,
             "Owner must sign for modification",
         )?;
+        Ok(ctx)
+    }
+}
+
+pub struct GetTransferAccounts<'a, 'info> {
+    pub mint: &'a AccountInfo<'info>,
+    pub unified_transfer: &'a AccountInfo<'info>,
+}
+
+impl<'a, 'info> GetTransferAccounts<'a, 'info> {
+    pub fn load(accounts: &'a [AccountInfo<'info>]) -> Result<Self, ProgramError> {
+        let account_iter = &mut accounts.iter();
+        let ctx = Self {
+            mint: next_account_info(account_iter)?,
+            unified_transfer: next_account_info(account_iter)?,
+        };
+        // Do checks
+        Ok(ctx)
+    }
+}
+
+pub struct UnifiedTransfer<'a, 'info> {
+    pub source: &'a AccountInfo<'info>,
+    pub mint: &'a AccountInfo<'info>,
+    pub destination: &'a AccountInfo<'info>,
+    pub owner: &'a AccountInfo<'info>,
+    pub upstream_authority: &'a AccountInfo<'info>,
+    pub freeze_authority: &'a AccountInfo<'info>,
+    pub token_program: &'a AccountInfo<'info>,
+}
+
+impl<'a, 'info> UnifiedTransfer<'a, 'info> {
+    pub fn load(accounts: &'a [AccountInfo<'info>]) -> Result<Self, ProgramError> {
+        let account_iter = &mut accounts.iter();
+        let ctx = Self {
+            source: next_account_info(account_iter)?,
+            mint: next_account_info(account_iter)?,
+            destination: next_account_info(account_iter)?,
+            owner: next_account_info(account_iter)?,
+            upstream_authority: next_account_info(account_iter)?,
+            freeze_authority: next_account_info(account_iter)?,
+            token_program: next_account_info(account_iter)?,
+        };
+        // Do checks
         Ok(ctx)
     }
 }

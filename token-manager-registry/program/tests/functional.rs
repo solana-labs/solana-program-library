@@ -1,18 +1,15 @@
 #![cfg(feature = "test-sbf")]
 use {
-    solana_program::{
-        instruction::{AccountMeta, Instruction},
-        program_pack::Pack,
-        pubkey::Pubkey,
-    },
+    solana_program::{program_pack::Pack, pubkey::Pubkey},
     solana_program_test::{processor, tokio, ProgramTest},
     solana_sdk::{
         account::Account, program_option::COption, signature::Signer, signer::keypair::Keypair,
-        system_program, transaction::Transaction,
+        transaction::Transaction,
     },
     spl_token_2022::state::Mint,
     spl_token_manager_registry::{
-        find_manager_registration_address, processor::process_instruction,
+        create_register_instruction, find_manager_registration_address,
+        processor::process_instruction,
     },
 };
 
@@ -48,22 +45,19 @@ async fn write_program_id() {
     );
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
 
-    let mut transaction = Transaction::new_with_payer(
-        &[Instruction::new_with_bytes(
-            program_id,
-            &[],
-            vec![
-                AccountMeta::new(payer.pubkey(), true),
-                AccountMeta::new_readonly(mint_pubkey, false),
-                AccountMeta::new_readonly(mint_authority.pubkey(), true),
-                AccountMeta::new(manager_registration_pubkey, false),
-                AccountMeta::new_readonly(manager_program_pubkey, false),
-                AccountMeta::new_readonly(system_program::id(), false),
-            ],
+    let transaction = Transaction::new_signed_with_payer(
+        &[create_register_instruction(
+            &program_id,
+            &payer.pubkey(),
+            &mint_pubkey,
+            &mint_authority.pubkey(),
+            &manager_registration_pubkey,
+            &manager_program_pubkey,
         )],
         Some(&payer.pubkey()),
+        &[&payer, &mint_authority],
+        recent_blockhash,
     );
-    transaction.sign(&[&payer, &mint_authority], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 
     let registration_account = banks_client

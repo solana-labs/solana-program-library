@@ -99,15 +99,15 @@ pub(crate) fn transfer<'a, 'b>(
     )
 }
 
+// TODO JON HACK FOR THE TEST
 pub(crate) fn mint_to<'a, 'b>(
     mint: &'a AccountInfo<'b>,
     account: &'a AccountInfo<'b>,
     owner: &'a AccountInfo<'b>,
     token_program: &'a AccountInfo<'b>,
     amount: u64,
-    seeds: &[Vec<u8>],
 ) -> ProgramResult {
-    invoke_signed(
+    invoke(
         &spl_token::instruction::mint_to(
             token_program.key,
             mint.key,
@@ -122,7 +122,6 @@ pub(crate) fn mint_to<'a, 'b>(
             account.clone(),
             owner.clone(),
         ],
-        &[&seeds.iter().map(|s| s.as_slice()).collect::<Vec<&[u8]>>()],
     )
 }
 

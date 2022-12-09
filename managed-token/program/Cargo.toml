@@ -26,6 +26,7 @@ solana-program = "1.14.10"
 shank = "^0.0.5"
 spl-token = { version = "3.5.0", features = ["no-entrypoint"] }
 spl-associated-token-account = { version = "1.1.1", features = [ "no-entrypoint", ] }
+spl-token-manager-registry = { path = "../../token-manager-registry/program", version = "0.1", features = [ "no-entrypoint", ] }
 thiserror = "^1.0.24"
 borsh = "0.9.3"
 

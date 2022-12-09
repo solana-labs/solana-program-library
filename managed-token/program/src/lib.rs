@@ -2,11 +2,19 @@ solana_program::declare_id!("mTok58Lg4YfcmwqyrDHpf7ogp599WRhzb6PxjaBqAxS");
 
 use borsh::BorshDeserialize;
 use solana_program::{
-    account_info::AccountInfo, entrypoint::ProgramResult, msg, program::invoke,
-    program_error::ProgramError, program_pack::Pack, pubkey::Pubkey, rent::Rent,
-    system_instruction, sysvar::Sysvar,
+    account_info::AccountInfo,
+    entrypoint::ProgramResult,
+    msg,
+    program::{invoke, invoke_signed, set_return_data},
+    program_error::ProgramError,
+    program_pack::Pack,
+    pubkey::{Pubkey, PUBKEY_BYTES},
+    rent::Rent,
+    system_instruction,
+    sysvar::Sysvar,
 };
 use spl_associated_token_account::instruction::create_associated_token_account;
+use spl_token::state::Mint;
 
 #[track_caller]
 #[inline(always)]
@@ -23,7 +31,10 @@ pub fn assert_with_msg(v: bool, err: impl Into<ProgramError>, msg: &str) -> Prog
 pub mod accounts;
 pub mod instruction;
 pub mod token;
-use accounts::{Approve, Burn, Close, InitializeAccount, InitializeMint, Mint, Revoke, Transfer};
+use accounts::{
+    Approve, Burn, Close, GetTransferAccounts, InitializeAccount, InitializeMint, MintTo, Revoke,
+    Transfer, UnifiedTransfer,
+};
 use instruction::ManagedTokenInstruction;
 use token::{approve, burn, close, freeze, initialize_mint, mint_to, revoke, thaw, transfer};
 
@@ -55,8 +66,18 @@ fn get_authority(upstream_authority: &Pubkey) -> (Pubkey, Vec<Vec<u8>>) {
     (key, seeds)
 }
 
+#[inline]
+pub fn get_unified_transfer_address(program_id: &Pubkey, mint: &Pubkey) -> Pubkey {
+    get_unified_transfer_address_internal(program_id, mint).0
+}
+
+#[inline]
+fn get_unified_transfer_address_internal(program_id: &Pubkey, mint: &Pubkey) -> (Pubkey, u8) {
+    Pubkey::find_program_address(&[mint.as_ref()], program_id)
+}
+
 pub fn process_instruction(
-    _program_id: &Pubkey,
+    program_id: &Pubkey,
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
@@ -64,7 +85,7 @@ pub fn process_instruction(
     match instruction {
         ManagedTokenInstruction::InitializeMint { decimals } => {
             msg!("ManagedTokenInstruction::InitializeMint");
-            process_initialize_mint(accounts, decimals)
+            process_initialize_mint(program_id, accounts, decimals)
         }
         ManagedTokenInstruction::InitializeAccount => {
             msg!("ManagedTokenInstruction::InitializeAccount");
@@ -94,14 +115,27 @@ pub fn process_instruction(
             msg!("ManagedTokenInstruction::Revoke");
             process_revoke(accounts)
         }
+        ManagedTokenInstruction::GetTransferAccounts => {
+            msg!("ManagedTokenInstruction::GetTransferAccounts");
+            process_get_transfer_accounts(program_id, accounts)
+        }
+        ManagedTokenInstruction::UnifiedTransfer { amount } => {
+            msg!("ManagedTokenInstruction::UnifiedTransfer");
+            process_unified_transfer(accounts, amount)
+        }
     }
 }
 
-pub fn process_initialize_mint(accounts: &[AccountInfo], decimals: u8) -> ProgramResult {
+pub fn process_initialize_mint(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    decimals: u8,
+) -> ProgramResult {
     let InitializeMint {
         mint,
         payer,
         upstream_authority,
+        unified_transfer,
         system_program,
         token_program,
     } = InitializeMint::load(accounts)?;
@@ -117,7 +151,38 @@ pub fn process_initialize_mint(accounts: &[AccountInfo], decimals: u8) -> Progra
         &[payer.clone(), mint.clone(), system_program.clone()],
     )?;
     let (authority, _) = get_authority(upstream_authority.key);
-    initialize_mint(&authority, &authority, mint, token_program, decimals)
+    let (unified_transfer_address, bump) =
+        get_unified_transfer_address_internal(program_id, mint.key);
+    if &unified_transfer_address != unified_transfer.key {
+        return Err(ProgramError::InvalidSeeds);
+    }
+    let seeds = [mint.key.as_ref(), &[bump]];
+    let space = PUBKEY_BYTES;
+    invoke_signed(
+        &system_instruction::create_account(
+            payer.key,
+            unified_transfer.key,
+            Rent::get()?.minimum_balance(space),
+            space as u64,
+            program_id,
+        ),
+        &[
+            payer.clone(),
+            unified_transfer.clone(),
+            system_program.clone(),
+        ],
+        &[&seeds],
+    )?;
+    let mut data = unified_transfer.try_borrow_mut_data()?;
+    data.copy_from_slice(upstream_authority.key.as_ref());
+    // TODO JON HACK FOR TEST TO CREATE THE REGISTRATION
+    initialize_mint(
+        &authority,
+        upstream_authority.key,
+        mint,
+        token_program,
+        decimals,
+    )
 }
 
 pub fn process_initialize_account(accounts: &[AccountInfo]) -> ProgramResult {
@@ -166,14 +231,15 @@ pub fn process_transfer(accounts: &[AccountInfo], amount: u64) -> ProgramResult 
     freeze(freeze_authority, mint, src_account, token_program, &seeds)
 }
 
+// TODO JON HACK FOR THE TEST
 pub fn process_mint_to(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
-    let Mint {
+    let MintTo {
         mint,
         token_account,
         upstream_authority,
         freeze_and_mint_authority: authority,
         token_program,
-    } = Mint::load(accounts)?;
+    } = MintTo::load(accounts)?;
     let authority_seeds = get_authority_seeds_checked(upstream_authority.key, authority.key)?;
     thaw(
         authority,
@@ -185,10 +251,9 @@ pub fn process_mint_to(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
     mint_to(
         mint,
         token_account,
-        authority,
+        upstream_authority,
         token_program,
         amount,
-        &authority_seeds,
     )?;
     freeze(
         authority,
@@ -258,4 +323,57 @@ pub fn process_revoke(accounts: &[AccountInfo]) -> ProgramResult {
     thaw(freeze_authority, mint, token_account, token_program, &seeds)?;
     revoke(token_account, owner, token_program)?;
     freeze(freeze_authority, mint, token_account, token_program, &seeds)
+}
+
+pub fn process_get_transfer_accounts(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    let GetTransferAccounts {
+        mint,
+        unified_transfer,
+    } = GetTransferAccounts::load(accounts)?;
+
+    let (unified_transfer_address, _) = get_unified_transfer_address_internal(program_id, mint.key);
+    if &unified_transfer_address != unified_transfer.key {
+        return Err(ProgramError::InvalidSeeds);
+    }
+
+    let mint_data = Mint::unpack(*mint.try_borrow_data()?)?;
+    let upstream_authority = Pubkey::new(*unified_transfer.try_borrow_data()?);
+    let freeze_authority = mint_data.freeze_authority.unwrap();
+    let token_program = mint.owner;
+
+    // write the number of accounts in the first byte, and for each account, write the
+    // the pubkey bytes, followed by is_writable, followed by is_signer
+    let mut return_data = vec![3u8];
+    return_data.extend_from_slice(upstream_authority.as_ref());
+    return_data.push(0); // not writable
+    return_data.push(1); // signer
+    return_data.extend_from_slice(freeze_authority.as_ref());
+    return_data.push(0); // not writable
+    return_data.push(0); // not signer
+    return_data.extend_from_slice(token_program.as_ref());
+    return_data.push(0); // not writable
+    return_data.push(0); // not signer
+    set_return_data(&return_data);
+    Ok(())
+}
+
+pub fn process_unified_transfer(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
+    let UnifiedTransfer {
+        source,
+        mint,
+        destination,
+        owner,
+        upstream_authority,
+        freeze_authority,
+        token_program,
+    } = UnifiedTransfer::load(accounts)?;
+    let seeds = get_authority_seeds_checked(upstream_authority.key, freeze_authority.key)?;
+    thaw(freeze_authority, mint, source, token_program, &seeds)?;
+    thaw(freeze_authority, mint, destination, token_program, &seeds)?;
+    transfer(source, destination, owner, token_program, amount)?;
+    freeze(freeze_authority, mint, destination, token_program, &seeds)?;
+    freeze(freeze_authority, mint, source, token_program, &seeds)
 }
