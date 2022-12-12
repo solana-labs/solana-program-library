@@ -130,7 +130,7 @@ For information about the types and instructions, the Rust docs are available at
 The Token-2022 Program is currently under multiple audits to ensure safety of
 funds. All audits will be published here as they are completed.
 
-Here are the completed audits of 12 December 2022:
+Here are the completed audits as of 12 December 2022:
 
 * Halborn
     - Review commit hash [`c3137a`](https://github.com/solana-labs/solana-program-library/tree/c3137af9dfa2cc0873cc84c4418dea88ac542965/token/program-2022)
