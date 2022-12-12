@@ -141,8 +141,7 @@ Here are the completed audits of 12 December 2022:
 
 ## Status and Upgradability
 
-The Token-2022 program is still under audit, so it is considered beta software,
-and not meant for full production use. All clusters have the program for testing,
+The Token-2022 program is still under audit and not meant for full production use. All clusters have the latest program deployed for testing,
 but please do not mint production tokens with it yet.
 
 To facilitate deploying updates and security fixes, the program is still upgradable,
