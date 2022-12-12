@@ -129,3 +129,22 @@ For information about the types and instructions, the Rust docs are available at
 
 The Token-2022 Program is currently under multiple audits to ensure safety of
 funds. All audits will be published here as they are completed.
+
+Here are the completed audits of 12 December 2022:
+
+* Halborn
+    - Review commit hash [`c3137a`](https://github.com/solana-labs/solana-program-library/tree/c3137af9dfa2cc0873cc84c4418dea88ac542965/token/program-2022)
+    - Final report https://github.com/solana-labs/security-audits/blob/master/spl/HalbornToken2022Audit.pdf
+* Zellic
+    - Review commit hash [`54695b`](https://github.com/solana-labs/solana-program-library/tree/54695b233484722458b18c0e26ebb8334f98422c/token/program-2022)
+    - Final report https://github.com/solana-labs/security-audits/blob/master/spl/ZellicToken2022Audit.pdf
+
+## Status and Upgradability
+
+The Token-2022 program is still under audit, so it is considered beta software,
+and not meant for full production use. All clusters have the program for testing,
+but please do not mint production tokens with it yet.
+
+To facilitate deploying updates and security fixes, the program is still upgradable,
+but the program will be frozen and marked unupgradable once all audits are complete.
+This will likely happen sometime in Q1 2023.
