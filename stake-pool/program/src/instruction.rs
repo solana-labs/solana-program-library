@@ -501,7 +501,7 @@ pub enum StakePoolInstruction {
     ///  5. `[w]` Source transient stake account to receive split and be redelegated
     ///  6. `[w]` Uninitialized ephemeral stake account to receive redelegation
     ///  7. `[w]` Destination transient stake account to receive ephemeral stake by merge
-    ///  8. `[w]` Destination stake account to receive transient stake after activation
+    ///  8. `[]` Destination stake account to receive transient stake after activation
     ///  9. `[]` Destination validator vote account
     /// 10. `[]` Clock sysvar
     /// 11. `[]` Stake History sysvar
