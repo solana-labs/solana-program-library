@@ -1904,7 +1904,7 @@ impl Processor {
                 return Err(StakePoolError::TransientAccountInUse.into());
             }
             if validator_stake_info.status != StakeStatus::Active {
-                msg!("Validator is marked for removal and no longer allows increases");
+                msg!("Validator is marked for removal and no longer allows redelegation");
                 return Err(StakePoolError::ValidatorNotFound.into());
             }
             validator_stake_info.active_stake_lamports = validator_stake_info
