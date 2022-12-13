@@ -5924,7 +5924,6 @@ name = "spl-feature-proposal"
 version = "1.0.0"
 dependencies = [
  "borsh",
- "borsh-derive",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
