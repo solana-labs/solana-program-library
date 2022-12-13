@@ -1,7 +1,7 @@
 [package]
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 description = "SPL Token Lending CLI"
-edition = "2018"
+edition = "2021"
 homepage = "https://spl.solana.com/token-lending"
 license = "Apache-2.0"
 name = "spl-token-lending-cli"

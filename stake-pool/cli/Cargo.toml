@@ -1,7 +1,7 @@
 [package]
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 description = "SPL-Stake-Pool Command-line Utility"
-edition = "2018"
+edition = "2021"
 homepage = "https://spl.solana.com/stake-pool"
 license = "Apache-2.0"
 name = "spl-stake-pool-cli"
