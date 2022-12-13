@@ -1,7 +1,7 @@
 [package]
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 description = "SPL-Token Rust Client"
-edition = "2018"
+edition = "2021"
 license = "Apache-2.0"
 name = "spl-token-client"
 repository = "https://github.com/solana-labs/solana-program-library"

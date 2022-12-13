@@ -3,7 +3,7 @@ name = "test-client"
 version = "0.1.0"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 publish = false
-edition = "2018"
+edition = "2021"
 
 # Used to ensure that SPL programs are buildable by external clients
 
