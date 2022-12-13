@@ -652,7 +652,7 @@ async fn fail_with_not_enough_tokens() {
             &deposit_info.pool_account.pubkey(),
             &empty_stake_account.stake_account,
             &new_authority,
-            tokens_to_burn,
+            tokens_to_burn - 1,
         )
         .await
         .unwrap()
@@ -688,7 +688,7 @@ async fn fail_with_not_enough_tokens() {
             &deposit_info.pool_account.pubkey(),
             &validator_stake_account.stake_account,
             &new_authority,
-            tokens_to_burn,
+            tokens_to_burn - 2,
         )
         .await
         .unwrap()
