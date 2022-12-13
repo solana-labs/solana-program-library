@@ -329,7 +329,6 @@ async fn fail_with_wrong_max_validators() {
         ],
         recent_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
@@ -785,7 +784,6 @@ async fn fail_with_wrong_token_program_id() {
         ],
         recent_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
@@ -893,7 +891,6 @@ async fn fail_with_fee_owned_by_wrong_token_program_id() {
         ],
         recent_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
@@ -1249,7 +1246,6 @@ async fn fail_without_manager_signature() {
         ],
         recent_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await

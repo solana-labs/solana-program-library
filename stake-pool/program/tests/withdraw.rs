@@ -302,7 +302,6 @@ async fn fail_with_wrong_stake_program() {
         &[&context.payer, &user_transfer_authority],
         context.last_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = context
         .banks_client
         .process_transaction(transaction)
@@ -396,7 +395,6 @@ async fn fail_with_wrong_token_program_id() {
         &[&context.payer, &user_transfer_authority],
         context.last_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = context
         .banks_client
         .process_transaction(transaction)

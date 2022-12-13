@@ -1,4 +1,5 @@
 //! Big vector type, used with vectors that can't be serde'd
+#![allow(clippy::integer_arithmetic)] // checked math involves too many compute units
 
 use {
     arrayref::array_ref,

@@ -154,7 +154,6 @@ pub async fn create_mint(
         &[payer, pool_mint],
         *recent_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     banks_client
         .process_transaction(transaction)
         .await
@@ -300,7 +299,6 @@ pub async fn create_token_account(
         &signers,
         *recent_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     banks_client
         .process_transaction(transaction)
         .await
@@ -328,7 +326,6 @@ pub async fn close_token_account(
         Some(&payer.pubkey()),
     );
     transaction.sign(&[payer, manager], *recent_blockhash);
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     banks_client
         .process_transaction(transaction)
         .await
@@ -356,7 +353,6 @@ pub async fn freeze_token_account(
         Some(&payer.pubkey()),
     );
     transaction.sign(&[payer, manager], *recent_blockhash);
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     banks_client
         .process_transaction(transaction)
         .await
@@ -388,7 +384,6 @@ pub async fn mint_tokens(
         &[payer, mint_authority],
         *recent_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     banks_client
         .process_transaction(transaction)
         .await
@@ -420,7 +415,6 @@ pub async fn burn_tokens(
         &[payer, authority],
         *recent_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     banks_client
         .process_transaction(transaction)
         .await
@@ -580,7 +574,6 @@ pub async fn create_stake_pool(
         signers.push(stake_deposit_authority);
     }
     transaction.sign(&signers, *recent_blockhash);
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     banks_client
         .process_transaction(transaction)
         .await
@@ -1053,7 +1046,6 @@ impl StakePoolAccounts {
             &signers,
             *recent_blockhash,
         );
-        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
         banks_client
             .process_transaction(transaction)
             .await
@@ -1111,7 +1103,6 @@ impl StakePoolAccounts {
             &signers,
             *recent_blockhash,
         );
-        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
         banks_client
             .process_transaction(transaction)
             .await
@@ -1154,7 +1145,6 @@ impl StakePoolAccounts {
             &[payer, user_transfer_authority],
             *recent_blockhash,
         );
-        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
         banks_client
             .process_transaction(transaction)
             .await
@@ -1213,7 +1203,6 @@ impl StakePoolAccounts {
             &signers,
             *recent_blockhash,
         );
-        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
         banks_client
             .process_transaction(transaction)
             .await
@@ -1258,7 +1247,6 @@ impl StakePoolAccounts {
             &[payer],
             *recent_blockhash,
         );
-        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
         banks_client
             .process_transaction(transaction)
             .await
@@ -1289,7 +1277,6 @@ impl StakePoolAccounts {
             &[payer],
             *recent_blockhash,
         );
-        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
         banks_client
             .process_transaction(transaction)
             .await
@@ -1315,7 +1302,6 @@ impl StakePoolAccounts {
             &[payer],
             *recent_blockhash,
         );
-        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
         banks_client
             .process_transaction(transaction)
             .await
@@ -1367,7 +1353,6 @@ impl StakePoolAccounts {
             &[payer],
             *recent_blockhash,
         );
-        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
         banks_client
             .process_transaction(transaction)
             .await
@@ -1402,7 +1387,6 @@ impl StakePoolAccounts {
             &[payer, &self.staker],
             *recent_blockhash,
         );
-        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
         banks_client
             .process_transaction(transaction)
             .await
@@ -1435,7 +1419,6 @@ impl StakePoolAccounts {
             &[payer, &self.staker],
             *recent_blockhash,
         );
-        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
         banks_client
             .process_transaction(transaction)
             .await
@@ -1472,7 +1455,6 @@ impl StakePoolAccounts {
             &[payer, &self.staker],
             *recent_blockhash,
         );
-        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
         banks_client
             .process_transaction(transaction)
             .await
@@ -1512,7 +1494,6 @@ impl StakePoolAccounts {
             &[payer, &self.staker],
             *recent_blockhash,
         );
-        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
         banks_client
             .process_transaction(transaction)
             .await
@@ -1543,7 +1524,6 @@ impl StakePoolAccounts {
             &[payer, &self.staker],
             *recent_blockhash,
         );
-        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
         banks_client
             .process_transaction(transaction)
             .await

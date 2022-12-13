@@ -671,7 +671,7 @@ impl ValidatorStakeInfo {
     /// info matches the vote account address
     pub fn memcmp_pubkey(data: &[u8], vote_address: &Pubkey) -> bool {
         sol_memcmp(
-            &data[41..41 + PUBKEY_BYTES],
+            &data[41..41_usize.saturating_add(PUBKEY_BYTES)],
             vote_address.as_ref(),
             PUBKEY_BYTES,
         ) == 0
@@ -723,8 +723,10 @@ impl ValidatorList {
 
     /// Calculate the number of validator entries that fit in the provided length
     pub fn calculate_max_validators(buffer_length: usize) -> usize {
-        let header_size = ValidatorListHeader::LEN + 4;
-        buffer_length.saturating_sub(header_size) / ValidatorStakeInfo::LEN
+        let header_size = ValidatorListHeader::LEN.saturating_add(4);
+        buffer_length
+            .saturating_sub(header_size)
+            .saturating_div(ValidatorStakeInfo::LEN)
     }
 
     /// Check if contains validator with particular pubkey
@@ -847,8 +849,8 @@ impl Fee {
         {
             msg!(
                 "Fee increase exceeds maximum allowed, proposed increase factor ({} / {})",
-                self.numerator * old_denom,
-                old_num * self.denominator,
+                self.numerator.saturating_mul(old_denom),
+                old_num.saturating_mul(self.denominator),
             );
             return Err(StakePoolError::FeeIncreaseTooHigh);
         }
@@ -916,6 +918,7 @@ impl FeeType {
 
 #[cfg(test)]
 mod test {
+    #![allow(clippy::integer_arithmetic)]
     use {
         super::*,
         proptest::prelude::*,

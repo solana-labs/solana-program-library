@@ -1,4 +1,3 @@
-#![allow(clippy::integer_arithmetic)]
 #![deny(missing_docs)]
 
 //! A program for creating and managing pools of stake
