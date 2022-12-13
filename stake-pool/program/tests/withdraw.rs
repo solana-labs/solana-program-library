@@ -302,7 +302,6 @@ async fn fail_with_wrong_stake_program() {
         &[&context.payer, &user_transfer_authority],
         context.last_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = context
         .banks_client
         .process_transaction(transaction)
@@ -396,7 +395,6 @@ async fn fail_with_wrong_token_program_id() {
         &[&context.payer, &user_transfer_authority],
         context.last_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = context
         .banks_client
         .process_transaction(transaction)
@@ -643,12 +641,18 @@ async fn fail_with_not_enough_tokens() {
     )
     .await;
 
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
+
     let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
         .withdraw_stake(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &user_stake_recipient.pubkey(),
             &user_transfer_authority,
             &deposit_info.pool_account.pubkey(),
@@ -671,12 +675,18 @@ async fn fail_with_not_enough_tokens() {
     revoke_tokens(
         &mut context.banks_client,
         &context.payer,
-        &context.last_blockhash,
+        &last_blockhash,
         &stake_pool_accounts.token_program_id,
         &deposit_info.pool_account.pubkey(),
         &deposit_info.authority,
     )
     .await;
+
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&last_blockhash)
+        .await
+        .unwrap();
 
     // generate a new authority each time to make each transaction unique
     let new_authority = Pubkey::new_unique();
@@ -684,7 +694,7 @@ async fn fail_with_not_enough_tokens() {
         .withdraw_stake(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &user_stake_recipient.pubkey(),
             &user_transfer_authority,
             &deposit_info.pool_account.pubkey(),
@@ -708,7 +718,7 @@ async fn fail_with_not_enough_tokens() {
     delegate_tokens(
         &mut context.banks_client,
         &context.payer,
-        &context.last_blockhash,
+        &last_blockhash,
         &stake_pool_accounts.token_program_id,
         &deposit_info.pool_account.pubkey(),
         &deposit_info.authority,
@@ -717,13 +727,19 @@ async fn fail_with_not_enough_tokens() {
     )
     .await;
 
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&last_blockhash)
+        .await
+        .unwrap();
+
     // generate a new authority each time to make each transaction unique
     let new_authority = Pubkey::new_unique();
     let transaction_error = stake_pool_accounts
         .withdraw_stake(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &user_stake_recipient.pubkey(),
             &user_transfer_authority,
             &deposit_info.pool_account.pubkey(),

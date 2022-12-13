@@ -64,19 +64,14 @@ pub enum StakePoolInstruction {
     ///      `find_deposit_authority_program_address`, making deposits permissionless.
     Initialize {
         /// Fee assessed as percentage of perceived rewards
-        #[allow(dead_code)] // but it's not
         fee: Fee,
         /// Fee charged per withdrawal as percentage of withdrawal
-        #[allow(dead_code)] // but it's not
         withdrawal_fee: Fee,
         /// Fee charged per deposit as percentage of deposit
-        #[allow(dead_code)] // but it's not
         deposit_fee: Fee,
         /// Percentage [0-100] of deposit_fee that goes to referrer
-        #[allow(dead_code)] // but it's not
         referral_fee: u8,
         /// Maximum expected number of validators
-        #[allow(dead_code)] // but it's not
         max_validators: u32,
     },
 
@@ -147,10 +142,8 @@ pub enum StakePoolInstruction {
     ///  9. `[]` Stake program
     DecreaseValidatorStake {
         /// amount of lamports to split into the transient stake account
-        #[allow(dead_code)] // but it's not
         lamports: u64,
         /// seed used to create transient stake account
-        #[allow(dead_code)] // but it's not
         transient_stake_seed: u64,
     },
 
@@ -185,10 +178,8 @@ pub enum StakePoolInstruction {
     ///  after it is merged.
     IncreaseValidatorStake {
         /// amount of lamports to increase on the given validator
-        #[allow(dead_code)] // but it's not
         lamports: u64,
         /// seed used to create transient stake account
-        #[allow(dead_code)] // but it's not
         transient_stake_seed: u64,
     },
 
@@ -206,11 +197,9 @@ pub enum StakePoolInstruction {
     /// Fails if the validator is not part of the stake pool.
     SetPreferredValidator {
         /// Affected operation (deposit or withdraw)
-        #[allow(dead_code)] // but it's not
         validator_type: PreferredValidatorType,
         /// Validator vote account that deposits or withdraws must go through,
         /// unset with None
-        #[allow(dead_code)] // but it's not
         validator_vote_address: Option<Pubkey>,
     },
 
@@ -233,12 +222,10 @@ pub enum StakePoolInstruction {
     ///  7. ..7+N ` [] N pairs of validator and transient stake accounts
     UpdateValidatorListBalance {
         /// Index to start updating on the validator list
-        #[allow(dead_code)] // but it's not
         start_index: u32,
         /// If true, don't try merging transient stake accounts into the reserve or
         /// validator stake account.  Useful for testing or if a particular stake
         /// account is in a bad state, but we still want to update
-        #[allow(dead_code)] // but it's not
         no_merge: bool,
     },
 
@@ -328,7 +315,6 @@ pub enum StakePoolInstruction {
     ///  1. `[s]` Manager
     SetFee {
         /// Type of fee to update and value to update it to
-        #[allow(dead_code)] // but it's not
         fee: FeeType,
     },
 
@@ -392,14 +378,11 @@ pub enum StakePoolInstruction {
     /// 7. `[]` System program id
     /// 8. `[]` Rent sysvar
     CreateTokenMetadata {
-        #[allow(dead_code)]
         /// Token name
         name: String,
-        #[allow(dead_code)]
         /// Token symbol e.g. stkSOL
         symbol: String,
         /// URI of the uploaded metadata of the spl-token
-        #[allow(dead_code)]
         uri: String,
     },
     /// Update token metadata for the stake-pool token in the
@@ -411,14 +394,11 @@ pub enum StakePoolInstruction {
     /// 3. `[w]` Token metadata account
     /// 4. `[]` Metadata program id
     UpdateTokenMetadata {
-        #[allow(dead_code)]
         /// Token name
         name: String,
-        #[allow(dead_code)]
         /// Token symbol e.g. stkSOL
         symbol: String,
         /// URI of the uploaded metadata of the spl-token
-        #[allow(dead_code)]
         uri: String,
     },
 }
@@ -923,7 +903,7 @@ pub fn update_stake_pool(
             start_index,
             no_merge,
         ));
-        start_index += MAX_VALIDATORS_TO_UPDATE as u32;
+        start_index = start_index.saturating_add(MAX_VALIDATORS_TO_UPDATE as u32);
     }
 
     let final_instructions = vec![

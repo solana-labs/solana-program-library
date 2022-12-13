@@ -527,7 +527,7 @@ async fn success_and_fail_with_preferred_withdraw() {
             &deposit_info.pool_account.pubkey(),
             &validator_stake.stake_account,
             &new_authority,
-            tokens_to_burn / 2,
+            tokens_to_burn / 2 + 1,
         )
         .await
         .unwrap()

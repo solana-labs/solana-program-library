@@ -1399,7 +1399,7 @@ impl Processor {
         {
             let max_split_amount = reserve_stake_account_info
                 .lamports()
-                .saturating_sub(2 * stake_rent);
+                .saturating_sub(stake_rent.saturating_mul(2));
             msg!(
                 "Reserve stake does not have enough lamports for increase, must be less than {}, {} requested",
                 max_split_amount,
