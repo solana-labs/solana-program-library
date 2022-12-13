@@ -8,7 +8,7 @@ use solana_program::{
 };
 
 /// Lending market state
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct LendingMarket {
     /// Version of lending market
     pub version: u8,

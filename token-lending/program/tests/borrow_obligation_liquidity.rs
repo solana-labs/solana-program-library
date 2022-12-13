@@ -464,11 +464,31 @@ async fn test_borrow_limit() {
         },
     );
 
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+    let mut test_context = test.start_with_context().await;
+    test_context.warp_to_slot(240).unwrap(); // clock.slot = 240
+
+    let ProgramTestContext {
+        mut banks_client,
+        payer,
+        last_blockhash: recent_blockhash,
+        ..
+    } = test_context;
 
     // Try to borrow more than the borrow limit. This transaction should fail
     let mut transaction = Transaction::new_with_payer(
         &[
+            refresh_reserve(
+                solend_program::id(),
+                sol_test_reserve.pubkey,
+                sol_oracle.pyth_price_pubkey,
+                sol_oracle.switchboard_feed_pubkey,
+            ),
+            refresh_reserve(
+                solend_program::id(),
+                usdc_test_reserve.pubkey,
+                usdc_oracle.pyth_price_pubkey,
+                usdc_oracle.switchboard_feed_pubkey,
+            ),
             refresh_obligation(
                 solend_program::id(),
                 test_obligation.pubkey,
@@ -497,7 +517,7 @@ async fn test_borrow_limit() {
             .unwrap_err()
             .unwrap(),
         TransactionError::InstructionError(
-            1,
+            3,
             InstructionError::Custom(LendingError::InvalidAmount as u32)
         )
     );
@@ -508,6 +528,18 @@ async fn test_borrow_limit() {
     // Also try borrowing INT MAX, which should max out the reserve's borrows.
     let mut transaction = Transaction::new_with_payer(
         &[
+            refresh_reserve(
+                solend_program::id(),
+                sol_test_reserve.pubkey,
+                sol_oracle.pyth_price_pubkey,
+                sol_oracle.switchboard_feed_pubkey,
+            ),
+            refresh_reserve(
+                solend_program::id(),
+                usdc_test_reserve.pubkey,
+                usdc_oracle.pyth_price_pubkey,
+                usdc_oracle.switchboard_feed_pubkey,
+            ),
             refresh_obligation(
                 solend_program::id(),
                 test_obligation.pubkey,

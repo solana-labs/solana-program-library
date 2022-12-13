@@ -396,7 +396,7 @@ pub struct CalculateLiquidationResult {
 }
 
 /// Reserve liquidity
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ReserveLiquidity {
     /// Reserve liquidity mint address
     pub mint_pubkey: Pubkey,
@@ -563,7 +563,7 @@ pub struct NewReserveLiquidityParams {
 }
 
 /// Reserve collateral
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ReserveCollateral {
     /// Reserve collateral mint address
     pub mint_pubkey: Pubkey,
@@ -666,7 +666,7 @@ impl From<CollateralExchangeRate> for Rate {
 }
 
 /// Reserve configuration values
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ReserveConfig {
     /// Optimal utilization rate, as a percentage
     pub optimal_utilization_rate: u8,
@@ -702,7 +702,7 @@ pub struct ReserveConfig {
 /// These exist separately from interest accrual fees, and are specifically for the program owner
 /// and frontend host. The fees are paid out as a percentage of liquidity token amounts during
 /// repayments and liquidations.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ReserveFees {
     /// Fee assessed on `BorrowObligationLiquidity`, expressed as a Wad.
     /// Must be between 0 and 10^18, such that 10^18 = 1.  A few examples for

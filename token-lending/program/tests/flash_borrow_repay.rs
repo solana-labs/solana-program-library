@@ -3,11 +3,10 @@
 mod helpers;
 
 use helpers::*;
-use solana_program::instruction::{
-    AccountMeta, Instruction, InstructionError::PrivilegeEscalation,
-};
+use solana_program::instruction::{AccountMeta, Instruction};
 use solana_program::sysvar;
 use solana_program_test::*;
+use solana_sdk::transport::TransportError;
 use solana_sdk::{
     instruction::InstructionError,
     pubkey::Pubkey,
@@ -1296,15 +1295,19 @@ async fn test_fail_repay_from_diff_reserve() {
     );
 
     transaction.sign(&[&payer], recent_blockhash);
+    // panics due to signer privilege escalation
     let err = banks_client
         .process_transaction(transaction)
         .await
-        .unwrap_err()
-        .unwrap();
-    assert_eq!(
-        err,
-        TransactionError::InstructionError(1, PrivilegeEscalation)
-    );
+        .unwrap_err();
+    match err {
+        TransportError::IoError(..) => (),
+        TransportError::TransactionError(TransactionError::InstructionError(
+            1,
+            InstructionError::PrivilegeEscalation,
+        )) => (),
+        _ => panic!("Unexpected error: {:?}", err),
+    };
 }
 
 // don't explicitly check user_transfer_authority signer

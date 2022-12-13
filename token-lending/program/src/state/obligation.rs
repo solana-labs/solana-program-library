@@ -247,7 +247,7 @@ impl IsInitialized for Obligation {
 }
 
 /// Obligation collateral state
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ObligationCollateral {
     /// Reserve collateral is deposited to
     pub deposit_reserve: Pubkey,
@@ -287,7 +287,7 @@ impl ObligationCollateral {
 }
 
 /// Obligation liquidity state
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ObligationLiquidity {
     /// Reserve liquidity is borrowed from
     pub borrow_reserve: Pubkey,

@@ -5,7 +5,7 @@ use crate::{
     error::LendingError,
     instruction::LendingInstruction,
     math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub, WAD},
-    pyth,
+    oracles::get_pyth_price,
     state::{
         CalculateBorrowResult, CalculateLiquidationResult, CalculateRepayResult,
         InitLendingMarketParams, InitObligationParams, InitReserveParams, LendingMarket,
@@ -14,6 +14,7 @@ use crate::{
     },
 };
 use num_traits::FromPrimitive;
+use pyth_sdk_solana::{self, state::ProductAccount};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     decode_error::DecodeError,
@@ -32,7 +33,7 @@ use solana_program::{
     },
 };
 use spl_token::state::Mint;
-use std::{cmp::min, convert::TryInto, result::Result};
+use std::{cmp::min, result::Result};
 use switchboard_program::{
     get_aggregator, get_aggregator_result, AggregatorState, RoundResult, SwitchboardAccountType,
 };
@@ -2530,46 +2531,24 @@ fn unpack_mint(data: &[u8]) -> Result<Mint, LendingError> {
     Mint::unpack(data).map_err(|_| LendingError::InvalidTokenMint)
 }
 
-fn get_pyth_product_quote_currency(pyth_product: &pyth::Product) -> Result<[u8; 32], ProgramError> {
-    const LEN: usize = 14;
-    const KEY: &[u8; LEN] = b"quote_currency";
-
-    let mut start = 0;
-    while start < pyth::PROD_ATTR_SIZE {
-        let mut length = pyth_product.attr[start] as usize;
-        start += 1;
-
-        if length == LEN {
-            let mut end = start + length;
-            if end > pyth::PROD_ATTR_SIZE {
-                msg!("Pyth product attribute key length too long");
-                return Err(LendingError::InvalidOracleConfig.into());
-            }
-
-            let key = &pyth_product.attr[start..end];
-            if key == KEY {
-                start += length;
-                length = pyth_product.attr[start] as usize;
-                start += 1;
-
-                end = start + length;
-                if length > 32 || end > pyth::PROD_ATTR_SIZE {
-                    msg!("Pyth product quote currency value too long");
-                    return Err(LendingError::InvalidOracleConfig.into());
-                }
-
+fn get_pyth_product_quote_currency(
+    pyth_product: &ProductAccount,
+) -> Result<[u8; 32], ProgramError> {
+    pyth_product
+        .iter()
+        .find_map(|(key, val)| {
+            if key == "quote_currency" {
                 let mut value = [0u8; 32];
-                value[0..length].copy_from_slice(&pyth_product.attr[start..end]);
-                return Ok(value);
+                value[0..val.len()].copy_from_slice(val.as_bytes());
+                Some(value)
+            } else {
+                None
             }
-        }
-
-        start += length;
-        start += 1 + pyth_product.attr[start] as usize;
-    }
-
-    msg!("Pyth product quote currency not found");
-    Err(LendingError::InvalidOracleConfig.into())
+        })
+        .ok_or_else(|| {
+            msg!("Pyth product quote currency not found");
+            LendingError::InvalidOracleConfig.into()
+        })
 }
 
 fn get_price(
@@ -2588,84 +2567,6 @@ fn get_price(
     }
 
     Err(LendingError::InvalidOracleConfig.into())
-}
-
-fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decimal, ProgramError> {
-    const STALE_AFTER_SLOTS_ELAPSED: u64 = 240;
-
-    if *pyth_price_info.key == solend_program::NULL_PUBKEY {
-        return Err(LendingError::NullOracleConfig.into());
-    }
-
-    let pyth_price_data = pyth_price_info.try_borrow_data()?;
-    let pyth_price = pyth::load::<pyth::Price>(&pyth_price_data)
-        .map_err(|_| ProgramError::InvalidAccountData)?;
-
-    if pyth_price.ptype != pyth::PriceType::Price {
-        msg!("Oracle price type is invalid {}", pyth_price.ptype as u8);
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-
-    if pyth_price.agg.status != pyth::PriceStatus::Trading {
-        msg!(
-            "Oracle price status is invalid: {}",
-            pyth_price.agg.status as u8
-        );
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-
-    let slots_elapsed = clock
-        .slot
-        .checked_sub(pyth_price.valid_slot)
-        .ok_or(LendingError::MathOverflow)?;
-    if slots_elapsed >= STALE_AFTER_SLOTS_ELAPSED {
-        msg!("Pyth oracle price is stale");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-
-    let price: u64 = pyth_price.agg.price.try_into().map_err(|_| {
-        msg!("Oracle price cannot be negative");
-        LendingError::InvalidOracleConfig
-    })?;
-
-    let conf = pyth_price.agg.conf;
-
-    let confidence_ratio: u64 = 10;
-    // Perhaps confidence_ratio should exist as a per reserve config
-    // 100/confidence_ratio = maximum size of confidence range as a percent of price
-    // confidence_ratio of 10 filters out pyth prices with conf > 10% of price
-    if conf.checked_mul(confidence_ratio).unwrap() > price {
-        msg!(
-            "Oracle price confidence is too wide. price: {}, conf: {}",
-            price,
-            conf,
-        );
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-
-    let market_price = if pyth_price.expo >= 0 {
-        let exponent = pyth_price
-            .expo
-            .try_into()
-            .map_err(|_| LendingError::MathOverflow)?;
-        let zeros = 10u64
-            .checked_pow(exponent)
-            .ok_or(LendingError::MathOverflow)?;
-        Decimal::from(price).try_mul(zeros)?
-    } else {
-        let exponent = pyth_price
-            .expo
-            .checked_abs()
-            .ok_or(LendingError::MathOverflow)?
-            .try_into()
-            .map_err(|_| LendingError::MathOverflow)?;
-        let decimals = 10u64
-            .checked_pow(exponent)
-            .ok_or(LendingError::MathOverflow)?;
-        Decimal::from(price).try_div(decimals)?
-    };
-
-    Ok(market_price)
 }
 
 fn get_switchboard_price(
@@ -2943,27 +2844,9 @@ fn validate_pyth_keys(
     }
 
     let pyth_product_data = pyth_product_info.try_borrow_data()?;
-    let pyth_product = pyth::load::<pyth::Product>(&pyth_product_data)
-        .map_err(|_| ProgramError::InvalidAccountData)?;
-    if pyth_product.magic != pyth::MAGIC {
-        msg!("Pyth product account provided is not a valid Pyth account");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-    if pyth_product.ver != pyth::VERSION_2 {
-        msg!("Pyth product account provided has a different version than expected");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-    if pyth_product.atype != pyth::AccountType::Product as u32 {
-        msg!("Pyth product account provided is not a valid Pyth product account");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
+    let pyth_product = pyth_sdk_solana::state::load_product_account(&pyth_product_data)?;
 
-    let pyth_price_pubkey_bytes: &[u8; 32] = pyth_price_info
-        .key
-        .as_ref()
-        .try_into()
-        .map_err(|_| LendingError::InvalidAccountInput)?;
-    if &pyth_product.px_acc.val != pyth_price_pubkey_bytes {
+    if &pyth_product.px_acc != pyth_price_info.key {
         msg!("Pyth product price account does not match the Pyth price provided");
         return Err(LendingError::InvalidOracleConfig.into());
     }

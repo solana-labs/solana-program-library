@@ -32,7 +32,15 @@ async fn test_success() {
     let lending_market = add_lending_market(&mut test);
     let sol_oracle = add_sol_oracle(&mut test);
 
-    let (mut banks_client, payer, _recent_blockhash) = test.start().await;
+    let mut test_context = test.start_with_context().await;
+    test_context.warp_to_slot(240).unwrap(); // clock.slot = 240
+
+    let ProgramTestContext {
+        mut banks_client,
+        payer,
+        last_blockhash: _recent_blockhash,
+        ..
+    } = test_context;
 
     const RESERVE_AMOUNT: u64 = 42;
 
@@ -159,7 +167,15 @@ async fn test_null_switchboard() {
     let mut sol_oracle = add_sol_oracle(&mut test);
     sol_oracle.switchboard_feed_pubkey = solend_program::NULL_PUBKEY;
 
-    let (mut banks_client, payer, _recent_blockhash) = test.start().await;
+    let mut test_context = test.start_with_context().await;
+    test_context.warp_to_slot(240).unwrap(); // clock.slot = 240
+
+    let ProgramTestContext {
+        mut banks_client,
+        payer,
+        last_blockhash: _recent_blockhash,
+        ..
+    } = test_context;
 
     const RESERVE_AMOUNT: u64 = 42;
 

@@ -5,6 +5,8 @@ pub mod flash_loan_receiver;
 pub mod genesis;
 
 use assert_matches::*;
+use bytemuck::{cast_slice_mut, from_bytes_mut, try_cast_slice_mut, Pod, PodCastError};
+use pyth_sdk_solana::state::PriceAccount;
 use solana_program::{program_option::COption, program_pack::Pack, pubkey::Pubkey};
 use solana_program_test::*;
 use solana_sdk::{
@@ -22,7 +24,6 @@ use solend_program::{
     },
     math::{Decimal, Rate, TryAdd, TryMul},
     processor::switchboard_v2_mainnet,
-    pyth,
     state::{
         InitLendingMarketParams, InitObligationParams, InitReserveParams, LendingMarket,
         NewReserveCollateralParams, NewReserveLiquidityParams, Obligation, ObligationCollateral,
@@ -35,6 +36,10 @@ use spl_token::{
     state::{Account as Token, AccountState, Mint},
 };
 use std::{convert::TryInto, str::FromStr};
+use std::{
+    mem::size_of,
+    time::{SystemTime, UNIX_EPOCH},
+};
 use switchboard_v2::AggregatorAccountData;
 
 pub const QUOTE_CURRENCY: [u8; 32] =
@@ -1261,6 +1266,13 @@ pub fn add_usdc_oracle_switchboardv2(test: &mut ProgramTest) -> TestOracle {
     )
 }
 
+pub fn load_mut<T: Pod>(data: &mut [u8]) -> Result<&mut T, PodCastError> {
+    let size = size_of::<T>();
+    Ok(from_bytes_mut(cast_slice_mut::<u8, u8>(
+        try_cast_slice_mut(&mut data[0..size])?,
+    )))
+}
+
 pub fn add_oracle(
     test: &mut ProgramTest,
     pyth_product_pubkey: Pubkey,
@@ -1287,7 +1299,7 @@ pub fn add_oracle(
             panic!("Unable to locate {}", filename);
         }));
 
-        let mut pyth_price = pyth::load_mut::<pyth::Price>(pyth_price_data.as_mut_slice()).unwrap();
+        let mut pyth_price = load_mut::<PriceAccount>(pyth_price_data.as_mut_slice()).unwrap();
 
         let decimals = 10u64
             .checked_pow(pyth_price.expo.checked_abs().unwrap().try_into().unwrap())
@@ -1301,6 +1313,12 @@ pub fn add_oracle(
             .unwrap()
             .try_into()
             .unwrap();
+
+        pyth_price.agg.pub_slot = valid_slot;
+        pyth_price.timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
 
         test.add_account(
             pyth_price_pubkey,

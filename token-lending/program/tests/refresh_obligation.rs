@@ -59,7 +59,7 @@ async fn test_success() {
             liquidity_mint_decimals: 9,
             liquidity_mint_pubkey: spl_token::native_mint::id(),
             config: reserve_config,
-            slots_elapsed: 1, // elapsed from 1; clock.slot = 2
+            slots_elapsed: 238, // elapsed from 1; clock.slot = 239
             ..AddReserveArgs::default()
         },
     );
@@ -77,7 +77,7 @@ async fn test_success() {
             liquidity_mint_decimals: usdc_mint.decimals,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             config: reserve_config,
-            slots_elapsed: 1, // elapsed from 1; clock.slot = 2
+            slots_elapsed: 238, // elapsed from 1; clock.slot = 239
             ..AddReserveArgs::default()
         },
     );
@@ -89,13 +89,13 @@ async fn test_success() {
         AddObligationArgs {
             deposits: &[(&sol_test_reserve, SOL_DEPOSIT_AMOUNT_LAMPORTS)],
             borrows: &[(&usdc_test_reserve, USDC_BORROW_AMOUNT_FRACTIONAL)],
-            slots_elapsed: 1, // elapsed from 1; clock.slot = 2
+            slots_elapsed: 238, // elapsed from 1; clock.slot = 239
             ..AddObligationArgs::default()
         },
     );
 
     let mut test_context = test.start_with_context().await;
-    test_context.warp_to_slot(3).unwrap(); // clock.slot = 3
+    test_context.warp_to_slot(240).unwrap(); // clock.slot = 240
 
     let ProgramTestContext {
         mut banks_client,
