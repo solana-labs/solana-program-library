@@ -132,8 +132,8 @@ pub enum StakePoolInstruction {
     /// validator stake account, into its "transient" stake account.
     ///
     /// The instruction only succeeds if the transient stake account does not
-    /// exist. The amount of lamports to move must be at least rent-exemption
-    /// plus 1 lamport.
+    /// exist. The amount of lamports to move must be at least rent-exemption plus
+    /// `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
@@ -230,7 +230,7 @@ pub enum StakePoolInstruction {
     ///  4. `[]` Sysvar clock
     ///  5. `[]` Sysvar stake history
     ///  6. `[]` Stake program
-    ///  7. ..7+N ` [] N pairs of validator and transient stake accounts
+    ///  7. ..7+2N ` [] N pairs of validator and transient stake accounts
     UpdateValidatorListBalance {
         /// Index to start updating on the validator list
         #[allow(dead_code)] // but it's not
@@ -355,7 +355,7 @@ pub enum StakePoolInstruction {
     ///  10. `[s]` (Optional) Stake pool sol deposit authority.
     DepositSol(u64),
 
-    ///  (Manager only) Update SOL deposit authority
+    ///  (Manager only) Update SOL deposit, stake deposit, or SOL withdrawal authority.
     ///
     ///  0. `[w]` StakePool
     ///  1. `[s]` Manager

@@ -1020,9 +1020,10 @@ impl Processor {
         let stake_lamports = **stake_account_info.lamports.borrow();
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
         let required_lamports = minimum_stake_lamports(&meta, stake_minimum_delegation);
-        if stake_lamports != required_lamports {
+        if stake_lamports > required_lamports {
             msg!(
-                "Attempting to remove validator account with {} lamports, must have {} lamports",
+                "Attempting to remove validator account with {} lamports, must have no more than {} lamports; \
+                reduce using DecreaseValidatorStake first",
                 stake_lamports,
                 required_lamports
             );
@@ -1030,9 +1031,10 @@ impl Processor {
         }
 
         let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
-        if stake.delegation.stake != current_minimum_delegation {
+        if stake.delegation.stake > current_minimum_delegation {
             msg!(
-                "Error: attempting to remove stake with delegation of {} lamports, must have {} lamports",
+                "Error: attempting to remove stake with delegation of {} lamports, must have no more than {} lamports; \
+                reduce using DecreaseValidatorStake first",
                 stake.delegation.stake,
                 current_minimum_delegation
             );
@@ -1195,7 +1197,7 @@ impl Processor {
             stake_rent.saturating_add(minimum_delegation(stake_minimum_delegation));
         if lamports < current_minimum_lamports {
             msg!(
-                "Need at least {} lamports for transient stake meet minimum delegation and rent-exempt requirements, {} provided",
+                "Need at least {} lamports for transient stake to meet minimum delegation and rent-exempt requirements, {} provided",
                 current_minimum_lamports,
                 lamports
             );
