@@ -88,14 +88,12 @@ async fn fail_extension_no_space() {
         &[&ctx.payer, &mint_account],
         ctx.last_blockhash,
     );
-    #[allow(clippy::useless_conversion)]
-    let err: TransactionError = ctx
+    let err = ctx
         .banks_client
         .process_transaction(tx)
         .await
         .unwrap_err()
-        .unwrap()
-        .into();
+        .unwrap();
     assert_eq!(
         err,
         TransactionError::InstructionError(1, InstructionError::InvalidAccountData)
@@ -141,14 +139,12 @@ async fn fail_extension_after_mint_init() {
         &[&ctx.payer, &mint_account],
         ctx.last_blockhash,
     );
-    #[allow(clippy::useless_conversion)]
-    let err: TransactionError = ctx
+    let err = ctx
         .banks_client
         .process_transaction(tx)
         .await
         .unwrap_err()
-        .unwrap()
-        .into();
+        .unwrap();
     assert_eq!(
         err,
         TransactionError::InstructionError(1, InstructionError::InvalidAccountData)
@@ -221,14 +217,12 @@ async fn fail_init_overallocated_mint() {
         &[&ctx.payer, &mint_account],
         ctx.last_blockhash,
     );
-    #[allow(clippy::useless_conversion)]
-    let err: TransactionError = ctx
+    let err = ctx
         .banks_client
         .process_transaction(tx)
         .await
         .unwrap_err()
-        .unwrap()
-        .into();
+        .unwrap();
     assert_eq!(
         err,
         TransactionError::InstructionError(1, InstructionError::InvalidAccountData)
@@ -291,14 +285,12 @@ async fn fail_account_init_after_mint_extension() {
         &[&ctx.payer, &mint_account, &token_account],
         ctx.last_blockhash,
     );
-    #[allow(clippy::useless_conversion)]
-    let err: TransactionError = ctx
+    let err = ctx
         .banks_client
         .process_transaction(tx)
         .await
         .unwrap_err()
-        .unwrap()
-        .into();
+        .unwrap();
     assert_eq!(
         err,
         TransactionError::InstructionError(
@@ -348,14 +340,12 @@ async fn fail_account_init_after_mint_init() {
         &[&ctx.payer, &mint_account],
         ctx.last_blockhash,
     );
-    #[allow(clippy::useless_conversion)]
-    let err: TransactionError = ctx
+    let err = ctx
         .banks_client
         .process_transaction(tx)
         .await
         .unwrap_err()
-        .unwrap()
-        .into();
+        .unwrap();
     assert_eq!(
         err,
         TransactionError::InstructionError(2, InstructionError::InvalidAccountData)
@@ -408,14 +398,12 @@ async fn fail_account_init_after_mint_init_with_extension() {
         &[&ctx.payer, &mint_account],
         ctx.last_blockhash,
     );
-    #[allow(clippy::useless_conversion)]
-    let err: TransactionError = ctx
+    let err = ctx
         .banks_client
         .process_transaction(tx)
         .await
         .unwrap_err()
-        .unwrap()
-        .into();
+        .unwrap();
     assert_eq!(
         err,
         TransactionError::InstructionError(3, InstructionError::InvalidAccountData)
@@ -464,14 +452,12 @@ async fn fail_fee_init_after_mint_init() {
         &[&ctx.payer, &mint_account],
         ctx.last_blockhash,
     );
-    #[allow(clippy::useless_conversion)]
-    let err: TransactionError = ctx
+    let err = ctx
         .banks_client
         .process_transaction(tx)
         .await
         .unwrap_err()
-        .unwrap()
-        .into();
+        .unwrap();
     assert_eq!(
         err,
         TransactionError::InstructionError(1, InstructionError::InvalidAccountData)
