@@ -11,6 +11,7 @@ use {
             interest_bearing_mint::InterestBearingConfig,
             memo_transfer::MemoTransfer,
             mint_close_authority::MintCloseAuthority,
+            mint_metadata::MintMetadata,
             non_transferable::NonTransferable,
             permanent_delegate::PermanentDelegate,
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
@@ -47,6 +48,8 @@ pub mod interest_bearing_mint;
 pub mod memo_transfer;
 /// Mint Close Authority extension
 pub mod mint_close_authority;
+/// Mint metadata extension
+pub mod mint_metadata;
 /// Non Transferable extension
 pub mod non_transferable;
 /// Permanent Delegate extension
@@ -641,6 +644,8 @@ pub enum ExtensionType {
     CpiGuard,
     /// Includes an optional permanent delegate
     PermanentDelegate,
+    /// Add metadata address to the mint
+    MintMetadata,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -683,6 +688,7 @@ impl ExtensionType {
             ExtensionType::InterestBearingConfig => pod_get_packed_len::<InterestBearingConfig>(),
             ExtensionType::CpiGuard => pod_get_packed_len::<CpiGuard>(),
             ExtensionType::PermanentDelegate => pod_get_packed_len::<PermanentDelegate>(),
+            ExtensionType::MintMetadata => pod_get_packed_len::<MintMetadata>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -740,7 +746,8 @@ impl ExtensionType {
             | ExtensionType::DefaultAccountState
             | ExtensionType::NonTransferable
             | ExtensionType::InterestBearingConfig
-            | ExtensionType::PermanentDelegate => AccountType::Mint,
+            | ExtensionType::PermanentDelegate
+            | ExtensionType::MintMetadata => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount

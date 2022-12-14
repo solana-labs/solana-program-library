@@ -630,6 +630,27 @@ pub enum TokenInstruction<'a> {
         /// Authority that may sign for `Transfer`s and `Burn`s on any account
         delegate: Pubkey,
     },
+
+    /// Initialize the metadata on a new mint.
+    ///
+    /// Fails if the mint has already been initialized, so must be called before
+    /// `InitializeMint`.
+    ///
+    /// The mint must have exactly enough space allocated for the base mint (82
+    /// bytes), plus 83 bytes of padding, 1 byte reserved for the account type,
+    /// then space required for this extension, plus any others.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` The mint to initialize.
+    ///
+    /// Data expected by this instruction:
+    InitializeMintMetadata {
+        /// Schema of metadata
+        schema: u8,
+        /// Additional accounts required for transfer
+        address: Pubkey,
+    },
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -764,6 +785,11 @@ impl<'a> TokenInstruction<'a> {
             35 => {
                 let (delegate, _rest) = Self::unpack_pubkey(rest)?;
                 Self::InitializePermanentDelegate { delegate }
+            }
+            36 => {
+                let schema = *rest.get(0).ok_or(TokenError::InvalidInstruction)?;
+                let (address, _rest) = Self::unpack_pubkey(&rest[1..])?;
+                Self::InitializeMintMetadata { schema, address }
             }
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
@@ -923,6 +949,14 @@ impl<'a> TokenInstruction<'a> {
             &Self::InitializePermanentDelegate { ref delegate } => {
                 buf.push(35);
                 buf.extend_from_slice(delegate.as_ref());
+            }
+            &Self::InitializeMintMetadata {
+                ref schema,
+                ref address,
+            } => {
+                buf.push(36);
+                buf.extend_from_slice(&[*schema]);
+                buf.extend_from_slice(&address.to_bytes());
             }
         };
         buf

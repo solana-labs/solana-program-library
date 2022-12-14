@@ -1,5 +1,7 @@
 //! Program state processor
 
+use crate::extension::mint_metadata::MintMetadata;
+
 use {
     crate::{
         check_program_account, cmp_pubkeys,
@@ -1274,6 +1276,23 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes an [InitializeMintMetadata](enum.TokenInstruction.html) instruction
+    pub fn process_initialize_mint_metadata(
+        accounts: &[AccountInfo],
+        schema: u8,
+        address: Pubkey,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let mint_account_info = next_account_info(account_info_iter)?;
+
+        let mut mint_data = mint_account_info.data.borrow_mut();
+        let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
+        let extension = mint.init_extension::<MintMetadata>(true)?;
+        extension.address = address;
+        extension.schema = schema;
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -1440,6 +1459,10 @@ impl Processor {
             TokenInstruction::InitializePermanentDelegate { delegate } => {
                 msg!("Instruction: InitializePermanentDelegate");
                 Self::process_initialize_permanent_delegate(accounts, delegate)
+            }
+            TokenInstruction::InitializeMintMetadata { schema, address } => {
+                msg!("Instruction: InitializeMintMetadata");
+                Self::process_initialize_mint_metadata(accounts, schema, address)
             }
         }
     }
