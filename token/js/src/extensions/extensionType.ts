@@ -3,6 +3,7 @@ import type { Mint } from '../state/mint.js';
 import { MINT_SIZE } from '../state/mint.js';
 import { MULTISIG_SIZE } from '../state/multisig.js';
 import { ACCOUNT_TYPE_SIZE } from './accountType.js';
+import { CPI_GUARD_SIZE } from './cpiGuard/index.js';
 import { DEFAULT_ACCOUNT_STATE_SIZE } from './defaultAccountState/index.js';
 import { IMMUTABLE_OWNER_SIZE } from './immutableOwner.js';
 import { INTEREST_BEARING_MINT_CONFIG_STATE_SIZE } from './interestBearingMint/state.js';
@@ -24,6 +25,7 @@ export enum ExtensionType {
     MemoTransfer,
     NonTransferable,
     InterestBearingMint,
+    CpiGuard,
     PermanentDelegate,
 }
 
@@ -46,6 +48,8 @@ export function getTypeLen(e: ExtensionType): number {
             return 97;
         case ExtensionType.ConfidentialTransferAccount:
             return 286;
+        case ExtensionType.CpiGuard:
+            return CPI_GUARD_SIZE;
         case ExtensionType.DefaultAccountState:
             return DEFAULT_ACCOUNT_STATE_SIZE;
         case ExtensionType.ImmutableOwner:
@@ -71,6 +75,7 @@ export function getAccountTypeOfMintType(e: ExtensionType): ExtensionType {
             return ExtensionType.ConfidentialTransferAccount;
         case ExtensionType.TransferFeeAmount:
         case ExtensionType.ConfidentialTransferAccount:
+        case ExtensionType.CpiGuard:
         case ExtensionType.DefaultAccountState:
         case ExtensionType.ImmutableOwner:
         case ExtensionType.MemoTransfer:
