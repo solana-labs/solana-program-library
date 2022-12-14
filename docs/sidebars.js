@@ -28,6 +28,7 @@ module.exports = {
         "stake-pool",
         "stake-pool/quickstart",
         "stake-pool/overview",
+        "stake-pool/fees",
         "stake-pool/cli",
       ],
     },
