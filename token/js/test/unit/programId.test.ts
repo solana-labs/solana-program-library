@@ -15,7 +15,7 @@ import {
     TOKEN_2022_PROGRAM_ID,
     TokenUnsupportedInstructionError,
     createInitializePermanentDelegateInstruction,
-    // XXX TODO HANA
+    createEnableCpiGuardInstruction,
 } from '../../src';
 chai.use(chaiAsPromised);
 
@@ -80,5 +80,12 @@ describe('unsupported extensions in spl-token', () => {
             createInitializePermanentDelegateInstruction(mint, null, TOKEN_2022_PROGRAM_ID);
         }).to.not.throw(TokenUnsupportedInstructionError);
     });
-    // XXX TODO HANA
+    it('cpiGuard', () => {
+        expect(function () {
+            createEnableCpiGuardInstruction(account, authority, [], TOKEN_PROGRAM_ID);
+        }).to.throw(TokenUnsupportedInstructionError);
+        expect(function () {
+            createEnableCpiGuardInstruction(account, authority, [], TOKEN_2022_PROGRAM_ID);
+        }).to.not.throw(TokenUnsupportedInstructionError);
+    });
 });
