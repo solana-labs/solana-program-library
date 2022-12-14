@@ -25,7 +25,7 @@ use {
 // the test require so many helper accounts.
 // 20k is also a very safe number for the current upper bound of the network.
 const MAX_POOL_SIZE_WITH_REQUESTED_COMPUTE_UNITS: u32 = 20_000;
-const MAX_POOL_SIZE: u32 = 3_300;
+const MAX_POOL_SIZE: u32 = 3_000;
 const STAKE_AMOUNT: u64 = 200_000_000_000;
 
 async fn setup(
