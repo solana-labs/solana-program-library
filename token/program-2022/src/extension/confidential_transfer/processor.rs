@@ -33,6 +33,11 @@ use {
     solana_zk_token_sdk::zk_token_elgamal::ops,
 };
 
+/// Decodes the zero-knowledge proof instruction associated with the token instruction.
+///
+/// `ConfigureAccount`, `EmptyAccount`, `Withdraw`, `Transfer`, `WithdrawWithheldTokensFromMint`,
+/// and `WithdrawWithheldTokensFromAccounts` instructions require corresponding zero-knowledge
+/// proof instructions.
 fn decode_proof_instruction<T: Pod>(
     expected: ProofInstruction,
     instruction: &Instruction,
@@ -47,7 +52,7 @@ fn decode_proof_instruction<T: Pod>(
     ProofInstruction::decode_data(&instruction.data).ok_or(ProgramError::InvalidInstructionData)
 }
 
-/// Checks if a confidential extension is configured to send funds
+/// Checks if a confidential extension is configured to send funds.
 #[cfg(feature = "zk-ops")]
 fn check_source_confidential_account(
     source_confidential_transfer_account: &ConfidentialTransferAccount,
@@ -55,7 +60,12 @@ fn check_source_confidential_account(
     source_confidential_transfer_account.approved()
 }
 
-/// Checks if a confidential extension is configured to receive funds
+/// Checks if a confidential extension is configured to receive funds.
+///
+/// A destination account can receive funds if the following conditions are satisfied:
+///   1. The account is approved by the confidential transfer mint authority
+///   2. The account is not disabled by the account owner
+///   3. The number of credits into the account has reached the maximum credit counter
 #[cfg(feature = "zk-ops")]
 fn check_destination_confidential_account(
     destination_confidential_transfer_account: &ConfidentialTransferAccount,
@@ -161,13 +171,17 @@ fn process_configure_account(
     let mint = StateWithExtensions::<Mint>::unpack(mint_data)?;
     let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
 
-    let previous_instruction =
+    // zero-knowledge proof certifies that the supplied encryption (ElGamal) public key is valid
+    let zkp_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
     let proof_data = decode_proof_instruction::<PubkeyValidityData>(
         ProofInstruction::VerifyPubkeyValidity,
-        &previous_instruction,
+        &zkp_instruction,
     )?;
-
+    // Check that the encryption key in the zero-knowledge proof instruction matches the actual
+    // encryption key that will be used to initialize the confidential extension account
+    //
+    // i.e. zero-knowledge proof was generated with respect to the correct encryption key
     if proof_data.pubkey != *encryption_pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
@@ -278,33 +292,40 @@ fn process_empty_account(
     let mut confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
 
-    let previous_instruction =
+    // An account can be closed only if the remaining balance is zero. This means that for the
+    // confidential extension account, the ciphertexts associated with the following components
+    // must be an encryption of zero:
+    //   1. The pending balance
+    //   2. The available balance
+    //   3. The withheld balance
+    //
+    // For the pending and withheld balance ciphertexts, it suffices to check that they are
+    // all-zero ciphertexts (i.e. [0; 64]). If any of these ciphertexts are valid encryption of
+    // zero but not an all-zero ciphertext, then an `ApplyPendingBalance` or
+    // `HarvestWithheldTokensToMint` instructions can be used to flush-out these balances first.
+    //
+    // For the available balance, it is not possible to deduce whether the ciphertext encrypts zero
+    // or not by simply inspecting the ciphertext bytes (otherwise, this would violate
+    // confidentiality). The available balance is verified using a zero-knowledge proof.
+    let zkp_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
     let proof_data = decode_proof_instruction::<CloseAccountData>(
         ProofInstruction::VerifyCloseAccount,
-        &previous_instruction,
+        &zkp_instruction,
     )?;
-
-    if confidential_transfer_account.pending_balance_lo != EncryptedBalance::zeroed() {
-        msg!("Pending balance is not zero");
-        return Err(ProgramError::InvalidAccountData);
+    // Check that the encryption public key and ciphertext associated with the confidential
+    // extension account are consistent with those that were actually used to generate the zkp.
+    if confidential_transfer_account.encryption_pubkey != proof_data.pubkey {
+        msg!("Encryption public-key mismatch");
+        return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
-
-    if confidential_transfer_account.pending_balance_hi != EncryptedBalance::zeroed() {
-        msg!("Pending balance is not zero");
-        return Err(ProgramError::InvalidAccountData);
-    }
-
     if confidential_transfer_account.available_balance != proof_data.ciphertext {
         msg!("Available balance mismatch");
         return Err(ProgramError::InvalidInstructionData);
     }
-
-    if confidential_transfer_account.encryption_pubkey != proof_data.pubkey {
-        return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
-    }
-
     confidential_transfer_account.available_balance = EncryptedBalance::zeroed();
+
+    // check that all balances are all-zero ciphertexts
     confidential_transfer_account.closable()?;
 
     Ok(())
@@ -359,36 +380,31 @@ fn process_deposit(
     // Wrapped SOL deposits are not supported because lamports cannot be vanished.
     assert!(!token_account.base.is_native());
 
-    // A deposit amount must be a 48-bit number
-    if amount >> MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH > 0 {
-        return Err(TokenError::MaximumDepositAmountExceeded.into());
-    }
-
     token_account.base.amount = token_account
         .base
         .amount
         .checked_sub(amount)
         .ok_or(TokenError::Overflow)?;
-
     token_account.pack_base();
 
     let mut confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     check_destination_confidential_account(confidential_transfer_account)?;
 
-    // Divide the deposit amount into low 16 and high 48-bit numbers and then add to the
-    // appropriate pending ciphertexts
-    confidential_transfer_account.pending_balance_lo = ops::add_to(
-        &confidential_transfer_account.pending_balance_lo,
-        amount << PENDING_BALANCE_HI_BIT_LENGTH >> PENDING_BALANCE_HI_BIT_LENGTH,
-    )
-    .ok_or(ProgramError::InvalidInstructionData)?;
+    // A deposit amount must be a 48-bit number
+    let (amount_lo, amount_hi) = verify_and_split_deposit_amount(amount)?;
 
-    confidential_transfer_account.pending_balance_hi = ops::add_to(
-        &confidential_transfer_account.pending_balance_hi,
-        amount >> PENDING_BALANCE_LO_BIT_LENGTH,
-    )
-    .ok_or(ProgramError::InvalidInstructionData)?;
+    // Prevent unnecessary ciphertext arithmetic syscalls if `amount_lo` or `amount_hi` is zero
+    if amount_lo > 0 {
+        confidential_transfer_account.pending_balance_lo =
+            ops::add_to(&confidential_transfer_account.pending_balance_lo, amount_lo)
+                .ok_or(ProgramError::InvalidInstructionData)?;
+    }
+    if amount_hi > 0 {
+        confidential_transfer_account.pending_balance_hi =
+            ops::add_to(&confidential_transfer_account.pending_balance_hi, amount_hi)
+                .ok_or(ProgramError::InvalidInstructionData)?;
+    }
 
     confidential_transfer_account.pending_balance_credit_counter =
         (u64::from(confidential_transfer_account.pending_balance_credit_counter)
@@ -397,6 +413,20 @@ fn process_deposit(
         .into();
 
     Ok(())
+}
+
+/// Verifies that a deposit amount is a 48-bit number and returns the least significant 16 bits and
+/// most significant 32 bits of the amount.
+#[cfg(feature = "zk-ops")]
+fn verify_and_split_deposit_amount(amount: u64) -> Result<(u64, u64), TokenError> {
+    if amount >> MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH > 0 {
+        return Err(TokenError::MaximumDepositAmountExceeded);
+    }
+    let deposit_amount_lo =
+        amount << (64 - PENDING_BALANCE_LO_BIT_LENGTH) >> PENDING_BALANCE_HI_BIT_LENGTH;
+    let deposit_amount_hi = amount >> PENDING_BALANCE_LO_BIT_LENGTH;
+
+    Ok((deposit_amount_lo, deposit_amount_hi))
 }
 
 /// Processes a [Withdraw] instruction.
@@ -428,14 +458,6 @@ fn process_withdraw(
         return Err(TokenError::NonTransferable.into());
     }
 
-    let previous_instruction =
-        get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
-
-    let proof_data = decode_proof_instruction::<WithdrawData>(
-        ProofInstruction::VerifyWithdraw,
-        &previous_instruction,
-    )?;
-
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
     let mut token_account = StateWithExtensionsMut::<Account>::unpack(token_account_data)?;
@@ -463,26 +485,37 @@ fn process_withdraw(
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     check_source_confidential_account(confidential_transfer_account)?;
 
+    // Zero-knowledge proof certifies that a ciphertext encrypts a non-negative 64-bit number
+    let zkp_instruction =
+        get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
+    let proof_data = decode_proof_instruction::<WithdrawData>(
+        ProofInstruction::VerifyWithdraw,
+        &zkp_instruction,
+    )?;
+    // Check that the encryption public key associated with the confidential extension is
+    // consistent with the public key that was actually used to generate the zkp.
     if confidential_transfer_account.encryption_pubkey != proof_data.pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
-    confidential_transfer_account.available_balance =
-        ops::subtract_from(&confidential_transfer_account.available_balance, amount)
-            .ok_or(ProgramError::InvalidInstructionData)?;
-
+    // Prevent unnecessary ciphertext arithmetic syscalls if the withdraw amount is zero
+    if amount > 0 {
+        confidential_transfer_account.available_balance =
+            ops::subtract_from(&confidential_transfer_account.available_balance, amount)
+                .ok_or(ProgramError::InvalidInstructionData)?;
+    }
+    // Check that the final available balance ciphertext is consistent with the actual ciphertext
+    // for which the zero-knowledge proof was generated for.
     if confidential_transfer_account.available_balance != proof_data.final_ciphertext {
         return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
     }
 
     confidential_transfer_account.decryptable_available_balance = new_decryptable_available_balance;
-
     token_account.base.amount = token_account
         .base
         .amount
         .checked_add(amount)
         .ok_or(TokenError::Overflow)?;
-
     token_account.pack_base();
 
     Ok(())
