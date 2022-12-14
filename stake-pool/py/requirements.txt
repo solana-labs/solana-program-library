@@ -1,7 +1,7 @@
 anyio==3.6.1
 base58==2.1.1
 cachetools==4.2.4
-certifi==2022.6.15
+certifi==2022.12.7
 cffi==1.15.1
 charset-normalizer==2.1.0
 construct==2.10.68
