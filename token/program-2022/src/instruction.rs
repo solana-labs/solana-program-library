@@ -961,6 +961,10 @@ impl<'a> TokenInstruction<'a> {
                 ref additional_accounts,
             } => {
                 buf.push(36);
+                buf.extend_from_slice(program_id.as_ref());
+                for account in additional_accounts {
+                    buf.extend_from_slice(account.as_ref());
+                }
             }
         };
         buf
