@@ -21,8 +21,9 @@ use {
 /// Maximum number of additional accounts for a transfer authority
 pub const MAX_ADDITIONAL_ACCOUNTS: usize = 3;
 
-/// 8 byte instruction discriminator computed from hash("global:permissioned_transfer")
-pub const PERMISSIONED_TRANSFER_INSTRUCTION_DATA: [u8; 8] = [117, 253, 134, 34, 247, 198, 166, 231];
+/// 8 byte instruction discriminator computed from hash("global:permissioned_token_transfer")
+pub const PERMISSIONED_TOKEN_TRANSFER_INSTRUCTION_DATA: [u8; 8] =
+    [86, 153, 189, 33, 202, 29, 46, 92];
 
 /// Transfer authority extension data for mints.
 #[repr(C)]
@@ -77,7 +78,11 @@ pub fn permissioned_transfer_check<'info, S: BaseState, BSE: BaseStateWithExtens
             invoke(
                 &Instruction {
                     program_id,
-                    data: [PERMISSIONED_TRANSFER_INSTRUCTION_DATA, amount.to_le_bytes()].concat(),
+                    data: [
+                        PERMISSIONED_TOKEN_TRANSFER_INSTRUCTION_DATA,
+                        amount.to_le_bytes(),
+                    ]
+                    .concat(),
                     accounts: account_metas,
                 },
                 &acount_infos,
