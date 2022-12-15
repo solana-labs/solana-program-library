@@ -1,14 +1,15 @@
 #![cfg(feature = "test-sbf")]
 
+use solana_program::program_error::ProgramError;
+use solana_program_test::*;
+
 mod program_test;
 
-use solana_program_test::tokio;
-
 use program_test::*;
-use spl_governance::{error::GovernanceError, state::enums::ProposalState};
+use spl_governance::error::GovernanceError;
 
 #[tokio::test]
-async fn test_cancel_proposal() {
+async fn test_refund_proposal_deposit() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -20,209 +21,8 @@ async fn test_cancel_proposal() {
         .await
         .unwrap();
 
-    let mut governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
-        .await
-        .unwrap();
-
-    let proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
-        .await
-        .unwrap();
-
-    let clock = governance_test.bench.get_clock().await;
-
-    // Act
-    governance_test
-        .cancel_proposal(&proposal_cookie, &token_owner_record_cookie)
-        .await
-        .unwrap();
-
-    // Assert
-    let proposal_account = governance_test
-        .get_proposal_account(&proposal_cookie.address)
-        .await;
-
-    assert_eq!(ProposalState::Cancelled, proposal_account.state);
-    assert_eq!(Some(clock.unix_timestamp), proposal_account.closed_at);
-
-    let token_owner_record_account = governance_test
-        .get_token_owner_record_account(&token_owner_record_cookie.address)
-        .await;
-
-    assert_eq!(0, token_owner_record_account.outstanding_proposal_count);
-
-    let governance_account = governance_test
-        .get_governance_account(&governance_cookie.address)
-        .await;
-
-    assert_eq!(0, governance_account.active_proposal_count);
-}
-
-#[tokio::test]
-async fn test_cancel_proposal_with_already_completed_error() {
-    // Arrange
-    let mut governance_test = GovernanceProgramTest::start_new().await;
-
-    let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
-
-    let token_owner_record_cookie = governance_test
-        .with_community_token_deposit(&realm_cookie)
-        .await
-        .unwrap();
-
-    let mut governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
-        .await
-        .unwrap();
-
-    let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
-        .await
-        .unwrap();
-
-    governance_test
-        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
-        .await
-        .unwrap();
-
-    // Act
-    let err = governance_test
-        .cancel_proposal(&proposal_cookie, &token_owner_record_cookie)
-        .await
-        .err()
-        .unwrap();
-
-    // Assert
-
-    assert_eq!(
-        err,
-        GovernanceError::InvalidStateCannotCancelProposal.into()
-    );
-}
-
-#[tokio::test]
-async fn test_cancel_proposal_with_owner_or_delegate_must_sign_error() {
-    // Arrange
-    let mut governance_test = GovernanceProgramTest::start_new().await;
-
-    let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
-
-    let mut token_owner_record_cookie = governance_test
-        .with_community_token_deposit(&realm_cookie)
-        .await
-        .unwrap();
-
-    let mut governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
-        .await
-        .unwrap();
-
-    let proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
-        .await
-        .unwrap();
-
-    let token_owner_record_cookie2 = governance_test
-        .with_council_token_deposit(&realm_cookie)
-        .await
-        .unwrap();
-
-    token_owner_record_cookie.token_owner = token_owner_record_cookie2.token_owner;
-
-    // Act
-    let err = governance_test
-        .cancel_proposal(&proposal_cookie, &token_owner_record_cookie)
-        .await
-        .err()
-        .unwrap();
-
-    // Assert
-    assert_eq!(
-        err,
-        GovernanceError::GoverningTokenOwnerOrDelegateMustSign.into()
-    );
-}
-
-#[tokio::test]
-async fn test_cancel_proposal_with_vote_time_expired_error() {
-    // Arrange
-    let mut governance_test = GovernanceProgramTest::start_new().await;
-
-    let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
-
-    let token_owner_record_cookie = governance_test
-        .with_community_token_deposit(&realm_cookie)
-        .await
-        .unwrap();
-
-    let mut governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
-        .await
-        .unwrap();
-
-    let clock = governance_test.bench.get_clock().await;
-
-    let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
-        .await
-        .unwrap();
-
-    // Advance timestamp past max_voting_time
-    governance_test
-        .advance_clock_past_timestamp(
-            governance_cookie.account.config.voting_base_time as i64 + clock.unix_timestamp,
-        )
-        .await;
-
-    // Act
-
-    let err = governance_test
-        .cancel_proposal(&proposal_cookie, &token_owner_record_cookie)
-        .await
-        .err()
-        .unwrap();
-
-    // Assert
-
-    assert_eq!(err, GovernanceError::ProposalVotingTimeExpired.into());
-}
-
-#[tokio::test]
-async fn test_cancel_proposal_after_voting_cool_off_with_vote_time_expired_error() {
-    // Arrange
-    let mut governance_test = GovernanceProgramTest::start_new().await;
-
-    let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
-
-    let token_owner_record_cookie = governance_test
-        .with_community_token_deposit(&realm_cookie)
-        .await
-        .unwrap();
-
-    // Set none default voting cool off time
     let mut governance_config = governance_test.get_default_governance_config();
-    governance_config.voting_cool_off_time = 10;
+    governance_config.deposit_exempt_proposal_count = 0;
 
     let mut governance_cookie = governance_test
         .with_governance_using_config(
@@ -234,37 +34,34 @@ async fn test_cancel_proposal_after_voting_cool_off_with_vote_time_expired_error
         .await
         .unwrap();
 
-    let clock = governance_test.bench.get_clock().await;
-
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
-    // Advance timestamp past max_voting_time
     governance_test
-        .advance_clock_past_timestamp(
-            (governance_cookie.account.config.voting_base_time
-                + governance_cookie.account.config.voting_cool_off_time) as i64
-                + clock.unix_timestamp,
-        )
-        .await;
-
-    // Act
-
-    let err = governance_test
         .cancel_proposal(&proposal_cookie, &token_owner_record_cookie)
         .await
-        .err()
+        .unwrap();
+
+    // Act
+    governance_test
+        .refund_proposal_deposit(&proposal_cookie)
+        .await
         .unwrap();
 
     // Assert
 
-    assert_eq!(err, GovernanceError::ProposalVotingTimeExpired.into());
+    let proposal_deposit_account_info = governance_test
+        .bench
+        .get_account(&proposal_cookie.proposal_deposit.address)
+        .await;
+
+    assert_eq!(None, proposal_deposit_account_info);
 }
 
 #[tokio::test]
-async fn test_cancel_proposal_in_voting_state() {
+async fn test_refund_proposal_deposit_with_cannot_refund_draft_proposal_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -276,11 +73,58 @@ async fn test_cancel_proposal_in_voting_state() {
         .await
         .unwrap();
 
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.deposit_exempt_proposal_count = 0;
+
     let mut governance_cookie = governance_test
-        .with_governance(
+        .with_governance_using_config(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    let err = governance_test
+        .refund_proposal_deposit(&proposal_cookie)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(err, GovernanceError::CannotRefundProposalDeposit.into());
+}
+
+#[tokio::test]
+async fn test_refund_proposal_deposit_with_cannot_refund_voting_proposal_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.deposit_exempt_proposal_count = 0;
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+            &governance_config,
         )
         .await
         .unwrap();
@@ -290,26 +134,192 @@ async fn test_cancel_proposal_in_voting_state() {
         .await
         .unwrap();
 
-    governance_test.advance_clock().await;
-
     // Act
+    let err = governance_test
+        .refund_proposal_deposit(&proposal_cookie)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(err, GovernanceError::CannotRefundProposalDeposit.into());
+}
+
+#[tokio::test]
+async fn test_refund_proposal_deposit_with_invalid_proposal_deposit_payer_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.deposit_exempt_proposal_count = 0;
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
 
     governance_test
         .cancel_proposal(&proposal_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
+    // Try to refund the deposit to account which is different than Proposal deposit payer
+    let deposit_payer2 = governance_test.bench.with_wallet().await;
+
+    // Act
+    let err = governance_test
+        .refund_proposal_deposit_using_instruction(
+            &proposal_cookie,
+            |i| {
+                i.accounts[2].pubkey = deposit_payer2.address; // proposal_deposit_payer
+            },
+            None,
+        )
+        .await
+        .err()
+        .unwrap();
+
     // Assert
 
-    let proposal_account = governance_test
-        .get_proposal_account(&proposal_cookie.address)
-        .await;
+    assert_eq!(
+        err,
+        GovernanceError::InvalidDepositPayerForProposalDeposit.into()
+    );
+}
 
-    assert_eq!(ProposalState::Cancelled, proposal_account.state);
+#[tokio::test]
+async fn test_refund_proposal_deposit_with_invalid_proposal_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
 
-    let governance_account = governance_test
-        .get_governance_account(&governance_cookie.address)
-        .await;
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
 
-    assert_eq!(0, governance_account.active_proposal_count);
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.deposit_exempt_proposal_count = 0;
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    governance_test
+        .cancel_proposal(&proposal_cookie, &token_owner_record_cookie)
+        .await
+        .unwrap();
+
+    // Try to refund deposit from a different proposal
+    let proposal_cookie2 = governance_test
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    let err = governance_test
+        .refund_proposal_deposit_using_instruction(
+            &proposal_cookie,
+            |i| {
+                i.accounts[1].pubkey = proposal_cookie2.proposal_deposit.address;
+                // proposal_deposit
+            },
+            None,
+        )
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(
+        err,
+        GovernanceError::InvalidProposalForProposalDeposit.into()
+    );
+}
+
+#[tokio::test]
+async fn test_refund_proposal_deposit_with_invalid_proposal_deposit_account_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.deposit_exempt_proposal_count = 0;
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    governance_test
+        .cancel_proposal(&proposal_cookie, &token_owner_record_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    let err = governance_test
+        .refund_proposal_deposit_using_instruction(
+            &proposal_cookie,
+            |i| {
+                i.accounts[1].pubkey = proposal_cookie.address; // Try to drain the Proposal account
+            },
+            None,
+        )
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(err, ProgramError::UninitializedAccount);
 }

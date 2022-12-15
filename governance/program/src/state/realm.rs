@@ -6,14 +6,13 @@ use std::slice::Iter;
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
-    borsh::try_from_slice_unchecked,
     program_error::ProgramError,
     program_pack::IsInitialized,
     pubkey::Pubkey,
 };
 use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::{
-    assert_is_valid_account_of_types, get_account_data, AccountMaxSize,
+    assert_is_valid_account_of_types, get_account_data, get_account_type, AccountMaxSize,
 };
 
 use crate::{
@@ -138,8 +137,10 @@ pub struct RealmV2 {
     /// Reserved space for future versions
     pub reserved: [u8; 6],
 
-    /// The number of proposals in voting state in the Realm
-    pub voting_proposal_count: u16,
+    /// Legacy field not used since program V3 any longer
+    /// Note: If the field is going to be reused in future version it must be taken under consideration
+    /// that for some Realms it might be already set to none zero because it was used as voting_proposal_count before
+    pub legacy1: u16,
 
     /// Realm authority. The authority must sign transactions which update the realm config
     /// The authority should be transferred to Realm Governance to make the Realm self governed through proposals
@@ -149,7 +150,7 @@ pub struct RealmV2 {
     pub name: String,
 
     /// Reserved space for versions v2 and onwards
-    /// Note: This space won't be available to v1 accounts until runtime supports resizing
+    /// Note: V1 accounts must be resized before using this space
     pub reserved_v2: [u8; 128],
 }
 
@@ -189,7 +190,8 @@ pub fn is_realm_account_type(account_type: &GovernanceAccountType) -> bool {
         | GovernanceAccountType::ProposalTransactionV2
         | GovernanceAccountType::VoteRecordV1
         | GovernanceAccountType::VoteRecordV2
-        | GovernanceAccountType::ProgramMetadata => false,
+        | GovernanceAccountType::ProgramMetadata
+        | GovernanceAccountType::ProposalDeposit => false,
     }
 }
 
@@ -317,7 +319,7 @@ impl RealmV2 {
                 community_mint: self.community_mint,
                 config: self.config,
                 reserved: self.reserved,
-                voting_proposal_count: self.voting_proposal_count,
+                voting_proposal_count: 0,
                 authority: self.authority,
                 name: self.name,
             };
@@ -342,7 +344,7 @@ pub fn get_realm_data(
     program_id: &Pubkey,
     realm_info: &AccountInfo,
 ) -> Result<RealmV2, ProgramError> {
-    let account_type: GovernanceAccountType = try_from_slice_unchecked(&realm_info.data.borrow())?;
+    let account_type: GovernanceAccountType = get_account_type(program_id, realm_info)?;
 
     // If the account is V1 version then translate to V2
     if account_type == GovernanceAccountType::RealmV1 {
@@ -353,7 +355,7 @@ pub fn get_realm_data(
             community_mint: realm_data_v1.community_mint,
             config: realm_data_v1.config,
             reserved: realm_data_v1.reserved,
-            voting_proposal_count: realm_data_v1.voting_proposal_count,
+            legacy1: 0,
             authority: realm_data_v1.authority,
             name: realm_data_v1.name,
             // Add the extra reserved_v2 padding
@@ -477,7 +479,7 @@ mod test {
                 min_community_weight_to_create_governance: 10,
             },
 
-            voting_proposal_count: 0,
+            legacy1: 0,
             reserved_v2: [0; 128],
         };
 

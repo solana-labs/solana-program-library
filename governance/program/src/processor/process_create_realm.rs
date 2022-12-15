@@ -19,10 +19,9 @@ use crate::{
         },
         realm_config::{
             get_realm_config_address_seeds, resolve_governing_token_config, RealmConfigAccount,
-            Reserved110,
         },
     },
-    tools::spl_token::create_spl_token_account_signed,
+    tools::{spl_token::create_spl_token_account_signed, structs::Reserved110},
 };
 
 /// Processes CreateRealm instruction
@@ -119,6 +118,7 @@ pub fn process_create_realm(
         program_id,
         system_info,
         rent,
+        0,
     )?;
 
     // Create and serialize Realm
@@ -139,7 +139,7 @@ pub fn process_create_realm(
             legacy1: 0,
             legacy2: 0,
         },
-        voting_proposal_count: 0,
+        legacy1: 0,
         reserved_v2: [0; 128],
     };
 
@@ -151,6 +151,7 @@ pub fn process_create_realm(
         program_id,
         system_info,
         rent,
+        0,
     )?;
 
     Ok(())

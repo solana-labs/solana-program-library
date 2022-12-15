@@ -5,14 +5,13 @@ use solana_program::account_info::next_account_info;
 use std::cmp::Ordering;
 use std::slice::Iter;
 
-use solana_program::borsh::try_from_slice_unchecked;
 use solana_program::clock::{Slot, UnixTimestamp};
 
 use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
     pubkey::Pubkey,
 };
-use spl_governance_tools::account::{get_account_data, AccountMaxSize};
+use spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize};
 
 use crate::addins::max_voter_weight::{
     assert_is_valid_max_voter_weight,
@@ -287,6 +286,22 @@ impl ProposalV2 {
             }
             // Within voting cool off time only counter votes are allowed
             Vote::Deny | Vote::Veto => Ok(()),
+        }
+    }
+
+    /// Checks if proposal has concluded so that security deposit is no longer needed
+    pub fn assert_can_refund_proposal_deposit(&self) -> Result<(), ProgramError> {
+        match self.state {
+            ProposalState::Succeeded
+            | ProposalState::Executing
+            | ProposalState::Completed
+            | ProposalState::Cancelled
+            | ProposalState::Defeated
+            | ProposalState::ExecutingWithErrors
+            | ProposalState::Vetoed => Ok(()),
+            ProposalState::Draft | ProposalState::SigningOff | ProposalState::Voting => {
+                Err(GovernanceError::CannotRefundProposalDeposit.into())
+            }
         }
     }
 
@@ -927,8 +942,7 @@ pub fn get_proposal_data(
     program_id: &Pubkey,
     proposal_info: &AccountInfo,
 ) -> Result<ProposalV2, ProgramError> {
-    let account_type: GovernanceAccountType =
-        try_from_slice_unchecked(&proposal_info.data.borrow())?;
+    let account_type: GovernanceAccountType = get_account_type(program_id, proposal_info)?;
 
     // If the account is V1 version then translate to V2
     if account_type == GovernanceAccountType::ProposalV1 {
@@ -1023,13 +1037,13 @@ pub fn get_proposal_data_for_governance(
 pub fn get_proposal_address_seeds<'a>(
     governance: &'a Pubkey,
     governing_token_mint: &'a Pubkey,
-    proposal_index_le_bytes: &'a [u8],
+    proposal_seed: &'a Pubkey,
 ) -> [&'a [u8]; 4] {
     [
         PROGRAM_AUTHORITY_SEED,
         governance.as_ref(),
         governing_token_mint.as_ref(),
-        proposal_index_le_bytes,
+        proposal_seed.as_ref(),
     ]
 }
 
@@ -1038,10 +1052,10 @@ pub fn get_proposal_address<'a>(
     program_id: &Pubkey,
     governance: &'a Pubkey,
     governing_token_mint: &'a Pubkey,
-    proposal_index_le_bytes: &'a [u8],
+    proposal_seed: &'a Pubkey,
 ) -> Pubkey {
     Pubkey::find_program_address(
-        &get_proposal_address_seeds(governance, governing_token_mint, proposal_index_le_bytes),
+        &get_proposal_address_seeds(governance, governing_token_mint, proposal_seed),
         program_id,
     )
     .0
@@ -1190,7 +1204,7 @@ mod test {
                     MintMaxVoterWeightSource::FULL_SUPPLY_FRACTION,
                 min_community_weight_to_create_governance: 10,
             },
-            voting_proposal_count: 0,
+            legacy1: 0,
             reserved_v2: [0; 128],
         }
     }
@@ -1208,7 +1222,7 @@ mod test {
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(40),
             voting_cool_off_time: 0,
-            reserved: 0,
+            deposit_exempt_proposal_count: 0,
         }
     }
 

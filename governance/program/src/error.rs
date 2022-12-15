@@ -255,9 +255,9 @@ pub enum GovernanceError {
     #[error("Given VoteWeightSource is not supported")]
     VoteWeightSourceNotSupported, // 559
 
-    /// GoverningTokenMint not allowed to vote
-    #[error("GoverningTokenMint not allowed to vote")]
-    GoverningTokenMintNotAllowedToVote, // 560
+    /// Legacy1
+    #[error("Legacy1")]
+    Legacy1, // 560
 
     /// Governance PDA must sign
     #[error("Governance PDA must sign")]
@@ -442,6 +442,26 @@ pub enum GovernanceError {
     /// Vote not allowed in cool off time
     #[error("Vote not allowed in cool off time")]
     VoteNotAllowedInCoolOffTime, // 606
+
+    /// Cannot refund ProposalDeposit
+    #[error("Cannot refund ProposalDeposit")]
+    CannotRefundProposalDeposit, // 607
+
+    ///Invalid Proposal for ProposalDeposit
+    #[error("Invalid Proposal for ProposalDeposit")]
+    InvalidProposalForProposalDeposit, // 608
+
+    /// Invalid deposit_exempt_proposal_count
+    #[error("Invalid deposit_exempt_proposal_count")]
+    InvalidDepositExemptProposalCount, // 609
+
+    /// GoverningTokenMint not allowed to vote
+    #[error("GoverningTokenMint not allowed to vote")]
+    GoverningTokenMintNotAllowedToVote, // 610
+
+    ///Invalid deposit Payer for ProposalDeposit
+    #[error("Invalid deposit Payer for ProposalDeposit")]
+    InvalidDepositPayerForProposalDeposit, // 611
 }
 
 impl PrintProgramError for GovernanceError {

@@ -68,7 +68,6 @@ async fn test_relinquish_voted_proposal() {
         .await;
 
     assert_eq!(0, token_owner_record.unrelinquished_votes_count);
-    assert_eq!(1, token_owner_record.total_votes_count);
 
     let vote_record_account = governance_test
         .get_vote_record_account(&vote_record_cookie.address)
@@ -136,7 +135,6 @@ async fn test_relinquish_active_yes_vote() {
         .await;
 
     assert_eq!(0, token_owner_record.unrelinquished_votes_count);
-    assert_eq!(0, token_owner_record.total_votes_count);
 
     let vote_record_account = governance_test
         .bench
@@ -204,7 +202,6 @@ async fn test_relinquish_active_no_vote() {
         .await;
 
     assert_eq!(0, token_owner_record.unrelinquished_votes_count);
-    assert_eq!(0, token_owner_record.total_votes_count);
 
     let vote_record_account = governance_test
         .bench

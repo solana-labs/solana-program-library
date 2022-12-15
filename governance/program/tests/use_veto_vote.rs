@@ -95,13 +95,6 @@ async fn test_cast_council_veto_vote() {
         .await;
 
     assert_eq!(1, token_owner_record.unrelinquished_votes_count);
-    assert_eq!(1, token_owner_record.total_votes_count);
-
-    let realm_account = governance_test
-        .get_realm_account(&realm_cookie.address)
-        .await;
-
-    assert_eq!(0, realm_account.voting_proposal_count);
 }
 
 #[tokio::test]

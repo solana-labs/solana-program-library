@@ -1,6 +1,7 @@
 #![allow(clippy::integer_arithmetic)]
 use std::str::FromStr;
 
+use borsh::BorshSerialize;
 use solana_program::{
     bpf_loader_upgradeable::{self, UpgradeableLoaderState},
     clock::{Slot, UnixTimestamp},
@@ -21,9 +22,10 @@ use spl_governance::{
         create_native_treasury, create_program_governance, create_proposal, create_realm,
         create_token_governance, create_token_owner_record, deposit_governing_tokens,
         execute_transaction, finalize_vote, flag_transaction_error, insert_transaction,
-        relinquish_vote, remove_signatory, remove_transaction, revoke_governing_tokens,
-        set_governance_config, set_governance_delegate, set_realm_authority, set_realm_config,
-        sign_off_proposal, upgrade_program_metadata, withdraw_governing_tokens,
+        refund_proposal_deposit, relinquish_vote, remove_signatory, remove_transaction,
+        revoke_governing_tokens, set_governance_config, set_governance_delegate,
+        set_realm_authority, set_realm_config, sign_off_proposal, upgrade_program_metadata,
+        withdraw_governing_tokens,
     },
     processor::process_instruction,
     state::{
@@ -34,10 +36,12 @@ use spl_governance::{
         governance::{
             get_governance_address, get_mint_governance_address, get_program_governance_address,
             get_token_governance_address, GovernanceConfig, GovernanceV2,
+            DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
         },
         native_treasury::{get_native_treasury_address, NativeTreasury},
         program_metadata::{get_program_metadata_address, ProgramMetadata},
         proposal::{get_proposal_address, OptionVoteResult, ProposalOption, ProposalV2, VoteType},
+        proposal_deposit::{get_proposal_deposit_address, ProposalDeposit},
         proposal_transaction::{
             get_proposal_transaction_address, InstructionData, ProposalTransactionV2,
         },
@@ -45,14 +49,17 @@ use spl_governance::{
             get_governing_token_holding_address, get_realm_address,
             GoverningTokenConfigAccountArgs, RealmConfig, RealmV2, SetRealmAuthorityAction,
         },
-        realm_config::{
-            get_realm_config_address, GoverningTokenConfig, RealmConfigAccount, Reserved110,
-        },
+        realm_config::{get_realm_config_address, GoverningTokenConfig, RealmConfigAccount},
         signatory_record::{get_signatory_record_address, SignatoryRecordV2},
-        token_owner_record::{get_token_owner_record_address, TokenOwnerRecordV2},
+        token_owner_record::{
+            get_token_owner_record_address, TokenOwnerRecordV2, TOKEN_OWNER_RECORD_LAYOUT_VERSION,
+        },
         vote_record::{get_vote_record_address, Vote, VoteChoice, VoteRecordV2},
     },
-    tools::bpf_loader_upgradeable::get_program_data_address,
+    tools::{
+        bpf_loader_upgradeable::get_program_data_address,
+        structs::{Reserved110, Reserved120},
+    },
 };
 use spl_governance_addin_api::{
     max_voter_weight::MaxVoterWeightRecord,
@@ -64,6 +71,7 @@ use spl_governance_addin_mock::instruction::{
 
 pub mod args;
 pub mod cookies;
+pub mod legacy;
 
 use crate::program_test::cookies::{
     RealmConfigCookie, SignatoryRecordCookie, VoterWeightRecordCookie,
@@ -85,6 +93,8 @@ use crate::{
         TokenOwnerRecordCookie, VoteRecordCookie,
     },
 };
+
+use self::cookies::ProposalDepositCookie;
 
 /// Yes/No Vote
 pub enum YesNoVote {
@@ -348,7 +358,7 @@ impl GovernanceProgramTest {
                 legacy1: 0,
                 legacy2: 0,
             },
-            voting_proposal_count: 0,
+            legacy1: 0,
             reserved_v2: [0; 128],
         };
 
@@ -449,7 +459,7 @@ impl GovernanceProgramTest {
                 legacy1: 0,
                 legacy2: 0,
             },
-            voting_proposal_count: 0,
+            legacy1: 0,
             reserved_v2: [0; 128],
         };
 
@@ -555,9 +565,9 @@ impl GovernanceProgramTest {
             governing_token_deposit_amount: 0,
             governance_delegate: None,
             unrelinquished_votes_count: 0,
-            total_votes_count: 0,
             outstanding_proposal_count: 0,
-            reserved: [0; 7],
+            version: TOKEN_OWNER_RECORD_LAYOUT_VERSION,
+            reserved: [0; 6],
             reserved_v2: [0; 128],
         };
 
@@ -793,9 +803,9 @@ impl GovernanceProgramTest {
             governing_token_deposit_amount: amount,
             governance_delegate: None,
             unrelinquished_votes_count: 0,
-            total_votes_count: 0,
             outstanding_proposal_count: 0,
-            reserved: [0; 7],
+            version: TOKEN_OWNER_RECORD_LAYOUT_VERSION,
+            reserved: [0; 6],
             reserved_v2: [0; 128],
         };
 
@@ -860,9 +870,9 @@ impl GovernanceProgramTest {
             governing_token_deposit_amount: amount,
             governance_delegate: None,
             unrelinquished_votes_count: 0,
-            total_votes_count: 0,
             outstanding_proposal_count: 0,
-            reserved: [0; 7],
+            version: TOKEN_OWNER_RECORD_LAYOUT_VERSION,
+            reserved: [0; 6],
             reserved_v2: [0; 128],
         };
 
@@ -1416,7 +1426,7 @@ impl GovernanceProgramTest {
             council_vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(80),
             voting_cool_off_time: 0,
-            reserved: 0,
+            deposit_exempt_proposal_count: DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
         }
     }
 
@@ -1490,8 +1500,9 @@ impl GovernanceProgramTest {
             realm: realm_cookie.address,
             governed_account: governed_account_cookie.address,
             config: governance_config.clone(),
-            proposals_count: 0,
-            reserved_v2: [0; 128],
+            reserved1: 0,
+            reserved_v2: Reserved120::default(),
+            active_proposal_count: 0,
         };
 
         let default_signers = &[create_authority];
@@ -1659,8 +1670,9 @@ impl GovernanceProgramTest {
             realm: realm_cookie.address,
             governed_account: governed_program_cookie.address,
             config,
-            proposals_count: 0,
-            reserved_v2: [0; 128],
+            reserved1: 0,
+            reserved_v2: Reserved120::default(),
+            active_proposal_count: 0,
         };
 
         let program_governance_address = get_program_governance_address(
@@ -1779,8 +1791,9 @@ impl GovernanceProgramTest {
             realm: realm_cookie.address,
             governed_account: governed_mint_cookie.address,
             config: governance_config.clone(),
-            proposals_count: 0,
-            reserved_v2: [0; 128],
+            reserved1: 0,
+            reserved_v2: Reserved120::default(),
+            active_proposal_count: 0,
         };
 
         let mint_governance_address = get_mint_governance_address(
@@ -1859,8 +1872,9 @@ impl GovernanceProgramTest {
             realm: realm_cookie.address,
             governed_account: governed_token_cookie.address,
             config,
-            proposals_count: 0,
-            reserved_v2: [0; 128],
+            reserved1: 0,
+            reserved_v2: Reserved120::default(),
+            active_proposal_count: 0,
         };
 
         let token_governance_address = get_token_governance_address(
@@ -1974,6 +1988,8 @@ impl GovernanceProgramTest {
             .as_ref()
             .map(|voter_weight_record| voter_weight_record.address);
 
+        let proposal_seed = Pubkey::new_unique();
+
         let mut create_proposal_transaction = create_proposal(
             &self.program_id,
             &governance_cookie.address,
@@ -1988,7 +2004,7 @@ impl GovernanceProgramTest {
             vote_type.clone(),
             options.clone(),
             use_deny_option,
-            proposal_index,
+            &proposal_seed,
         );
 
         instruction_override(&mut create_proposal_transaction);
@@ -2058,14 +2074,32 @@ impl GovernanceProgramTest {
             &self.program_id,
             &governance_cookie.address,
             &token_owner_record_cookie.account.governing_token_mint,
-            &proposal_index.to_le_bytes(),
+            &proposal_seed,
         );
+
+        // Setup Proposal deposit
+        let proposal_deposit_payer = self.bench.payer.pubkey();
+
+        let proposal_deposit_cookie = ProposalDepositCookie {
+            address: get_proposal_deposit_address(
+                &self.program_id,
+                &proposal_address,
+                &proposal_deposit_payer,
+            ),
+            account: ProposalDeposit {
+                account_type: GovernanceAccountType::ProposalDeposit,
+                proposal: proposal_address,
+                deposit_payer: proposal_deposit_payer,
+                reserved: [0; 64],
+            },
+        };
 
         Ok(ProposalCookie {
             address: proposal_address,
             account,
             proposal_owner: governance_authority.pubkey(),
             realm: governance_cookie.account.realm,
+            proposal_deposit: proposal_deposit_cookie,
         })
     }
 
@@ -2224,6 +2258,37 @@ impl GovernanceProgramTest {
 
         self.bench
             .process_transaction(&[sign_off_proposal_ix], Some(signers))
+            .await?;
+
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub async fn refund_proposal_deposit(
+        &mut self,
+        proposal_cookie: &ProposalCookie,
+    ) -> Result<(), ProgramError> {
+        self.refund_proposal_deposit_using_instruction(proposal_cookie, NopOverride, None)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn refund_proposal_deposit_using_instruction<F: Fn(&mut Instruction)>(
+        &mut self,
+        proposal_cookie: &ProposalCookie,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<(), ProgramError> {
+        let mut refund_proposal_deposit_ix = refund_proposal_deposit(
+            &self.program_id,
+            &proposal_cookie.address,
+            &proposal_cookie.proposal_deposit.account.deposit_payer,
+        );
+
+        instruction_override(&mut refund_proposal_deposit_ix);
+
+        self.bench
+            .process_transaction(&[refund_proposal_deposit_ix], signers_override)
             .await?;
 
         Ok(())
@@ -2828,6 +2893,13 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    pub async fn get_proposal_deposit_account(&mut self, address: &Pubkey) -> ProposalDeposit {
+        self.bench
+            .get_borsh_account::<ProposalDeposit>(address)
+            .await
+    }
+
+    #[allow(dead_code)]
     pub async fn get_realm_account(&mut self, realm_address: &Pubkey) -> RealmV2 {
         self.bench.get_borsh_account::<RealmV2>(realm_address).await
     }
@@ -2891,6 +2963,12 @@ impl GovernanceProgramTest {
             .get_packed_account_data::<T>(*address)
             .await
             .unwrap()
+    }
+
+    #[allow(dead_code)]
+    pub fn set_account<T: BorshSerialize>(&mut self, address: &Pubkey, account: &T) {
+        self.bench
+            .set_borsh_account(&self.program_id, address, account);
     }
 
     #[allow(dead_code)]
