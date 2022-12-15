@@ -50,8 +50,7 @@ function generateConfig(configType, format) {
           plugins: [terser({ mangle: false, compress: false })],
         },
       ];
-    }
-    else {
+    } else {
       config.output = [
         {
           file: 'dist/index.browser.cjs.js',
@@ -79,8 +78,7 @@ function generateConfig(configType, format) {
     // TODO: Find a workaround to avoid resolving the following JSON file:
     // `node_modules/secp256k1/node_modules/elliptic/package.json`
     config.plugins.push(json());
-  }
-  else {
+  } else {
     config.output = [
       {
         file: 'dist/index.cjs.js',
