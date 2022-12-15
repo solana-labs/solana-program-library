@@ -104,6 +104,7 @@ impl CurveCalculator for OffsetCurve {
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
+        round_direction: RoundDirection,
     ) -> Option<u128> {
         let token_b_offset = self.token_b_offset as u128;
         withdraw_single_token_type_exact_out(
@@ -112,7 +113,7 @@ impl CurveCalculator for OffsetCurve {
             swap_token_b_amount.checked_add(token_b_offset)?,
             pool_supply,
             trade_direction,
-            RoundDirection::Ceiling,
+            round_direction,
         )
     }
 
@@ -394,7 +395,7 @@ mod tests {
     proptest! {
         #[test]
         fn withdraw_token_conversion(
-            (pool_token_supply, pool_token_amount) in total_and_intermediate(),
+            (pool_token_supply, pool_token_amount) in total_and_intermediate(u64::MAX),
             swap_token_a_amount in 1..u64::MAX,
             (swap_token_b_amount, token_b_offset) in values_sum_within_u64(),
         ) {
@@ -541,7 +542,7 @@ mod tests {
     proptest! {
         #[test]
         fn curve_value_does_not_decrease_from_withdraw(
-            (pool_token_supply, pool_token_amount) in total_and_intermediate(),
+            (pool_token_supply, pool_token_amount) in total_and_intermediate(u64::MAX),
             swap_token_a_amount in 1..u64::MAX,
             (swap_token_b_amount, token_b_offset) in values_sum_within_u64(),
         ) {

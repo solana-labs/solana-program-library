@@ -31,7 +31,67 @@ function generateConfig(configType, format) {
     },
   };
 
-  if (configType !== 'browser') {
+  if (browser) {
+    if (format === 'iife') {
+      config.external = ['http', 'https'];
+
+      config.output = [
+        {
+          file: 'dist/index.iife.js',
+          format: 'iife',
+          name: 'solanaStakePool',
+          sourcemap: true,
+        },
+        {
+          file: 'dist/index.iife.min.js',
+          format: 'iife',
+          name: 'solanaStakePool',
+          sourcemap: true,
+          plugins: [terser({ mangle: false, compress: false })],
+        },
+      ];
+    } else {
+      config.output = [
+        {
+          file: 'dist/index.browser.cjs.js',
+          format: 'cjs',
+          sourcemap: true,
+        },
+        {
+          file: 'dist/index.browser.esm.js',
+          format: 'es',
+          sourcemap: true,
+        },
+      ];
+
+      // Prevent dependencies from being bundled
+      config.external = [
+        '@project-serum/borsh',
+        '@solana/buffer-layout',
+        '@solana/spl-token',
+        '@solana/web3.js',
+        'bn.js',
+        'buffer',
+      ];
+    }
+
+    // TODO: Find a workaround to avoid resolving the following JSON file:
+    // `node_modules/secp256k1/node_modules/elliptic/package.json`
+    config.plugins.push(json());
+  } else {
+    config.output = [
+      {
+        file: 'dist/index.cjs.js',
+        format: 'cjs',
+        sourcemap: true,
+      },
+      {
+        file: 'dist/index.esm.js',
+        format: 'es',
+        sourcemap: true,
+      },
+    ];
+
     // Prevent dependencies from being bundled
     config.external = [
       '@project-serum/borsh',
@@ -43,83 +103,11 @@ function generateConfig(configType, format) {
     ];
   }
 
-  switch (configType) {
-    case 'browser':
-      switch (format) {
-        case 'esm': {
-          config.output = [
-            {
-              file: 'dist/index.browser.esm.js',
-              format: 'es',
-              sourcemap: true,
-            },
-          ];
-
-          // Prevent dependencies from being bundled
-          config.external = [
-            '@project-serum/borsh',
-            '@solana/buffer-layout',
-            '@solana/spl-token',
-            '@solana/web3.js',
-            'bn.js',
-            'buffer',
-          ];
-
-          break;
-        }
-        case 'iife': {
-          config.external = ['http', 'https'];
-
-          config.output = [
-            {
-              file: 'dist/index.iife.js',
-              format: 'iife',
-              name: 'solanaStakePool',
-              sourcemap: true,
-            },
-            {
-              file: 'dist/index.iife.min.js',
-              format: 'iife',
-              name: 'solanaStakePool',
-              sourcemap: true,
-              plugins: [terser({ mangle: false, compress: false })],
-            },
-          ];
-
-          break;
-        }
-        default:
-          throw new Error(`Unknown format: ${format}`);
-      }
-
-      // TODO: Find a workaround to avoid resolving the following JSON file:
-      // `node_modules/secp256k1/node_modules/elliptic/package.json`
-      config.plugins.push(json());
-
-      break;
-    case 'node':
-      config.output = [
-        {
-          file: 'dist/index.cjs.js',
-          format: 'cjs',
-          sourcemap: true,
-        },
-        {
-          file: 'dist/index.esm.js',
-          format: 'es',
-          sourcemap: true,
-        },
-      ];
-      break;
-    default:
-      throw new Error(`Unknown configType: ${configType}`);
-  }
-
   return config;
 }
 
 export default [
   generateConfig('node'),
-  generateConfig('browser', 'esm'),
+  generateConfig('browser'),
   generateConfig('browser', 'iife'),
 ];

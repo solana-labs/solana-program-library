@@ -5,7 +5,7 @@ description = "Solana Program Library Feature Proposal Program"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
-edition = "2018"
+edition = "2021"
 
 [features]
 no-entrypoint = []
@@ -13,13 +13,12 @@ test-sbf = []
 
 [dependencies]
 borsh = "0.9"
-borsh-derive = "0.9.0"
-solana-program = "1.14.6"
+solana-program = "1.14.10"
 spl-token = { version = "3.5", path = "../../token/program", features = ["no-entrypoint"] }
 
 [dev-dependencies]
-solana-program-test = "1.14.6"
-solana-sdk = "1.14.6"
+solana-program-test = "1.14.10"
+solana-sdk = "1.14.10"
 
 [lib]
 crate-type = ["cdylib", "lib"]

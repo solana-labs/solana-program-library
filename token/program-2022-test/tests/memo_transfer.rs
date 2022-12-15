@@ -100,14 +100,12 @@ async fn test_memo_transfers(
             &[&ctx.payer, &alice],
             ctx.last_blockhash,
         );
-        #[allow(clippy::useless_conversion)]
-        let err: TransactionError = ctx
+        let err = ctx
             .banks_client
             .process_transaction(tx)
             .await
             .unwrap_err()
-            .unwrap()
-            .into();
+            .unwrap();
         drop(ctx);
         assert_eq!(
             err,

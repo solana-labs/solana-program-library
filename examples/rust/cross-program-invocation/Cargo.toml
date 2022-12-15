@@ -5,7 +5,7 @@ description = "Solana Program Library Cross Program Invocation Example"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
-edition = "2018"
+edition = "2021"
 publish = false
 
 [features]
@@ -13,11 +13,11 @@ no-entrypoint = []
 test-sbf = []
 
 [dependencies]
-solana-program = "1.14.6"
+solana-program = "1.14.10"
 
 [dev-dependencies]
-solana-program-test = "1.14.6"
-solana-sdk = "1.14.6"
+solana-program-test = "1.14.10"
+solana-sdk = "1.14.10"
 
 [lib]
 crate-type = ["cdylib", "lib"]

@@ -144,7 +144,9 @@ pub fn withdraw_single_token_type_exact_out(
     let source_amount = PreciseNumber::new(source_amount)?;
     let ratio = source_amount.checked_div(&swap_source_amount)?;
     let one = PreciseNumber::new(1)?;
-    let base = one.checked_sub(&ratio)?;
+    let base = one
+        .checked_sub(&ratio)
+        .unwrap_or_else(|| PreciseNumber::new(0).unwrap());
     let root = one.checked_sub(&base.sqrt()?)?;
     let pool_supply = PreciseNumber::new(pool_supply)?;
     let pool_tokens = pool_supply.checked_mul(&root)?;
@@ -227,6 +229,7 @@ impl CurveCalculator for ConstantProductCurve {
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
+        round_direction: RoundDirection,
     ) -> Option<u128> {
         withdraw_single_token_type_exact_out(
             source_amount,
@@ -234,7 +237,7 @@ impl CurveCalculator for ConstantProductCurve {
             swap_token_b_amount,
             pool_supply,
             trade_direction,
-            RoundDirection::Ceiling,
+            round_direction,
         )
     }
 
@@ -450,7 +453,7 @@ mod tests {
     proptest! {
         #[test]
         fn withdraw_token_conversion(
-            (pool_token_supply, pool_token_amount) in total_and_intermediate(),
+            (pool_token_supply, pool_token_amount) in total_and_intermediate(u64::MAX),
             swap_token_a_amount in 1..u64::MAX,
             swap_token_b_amount in 1..u64::MAX,
         ) {
@@ -524,7 +527,7 @@ mod tests {
     proptest! {
         #[test]
         fn curve_value_does_not_decrease_from_withdraw(
-            (pool_token_supply, pool_token_amount) in total_and_intermediate(),
+            (pool_token_supply, pool_token_amount) in total_and_intermediate(u64::MAX),
             swap_token_a_amount in 1..u64::MAX,
             swap_token_b_amount in 1..u64::MAX,
         ) {

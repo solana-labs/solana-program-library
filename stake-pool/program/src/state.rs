@@ -255,6 +255,15 @@ impl StakePool {
         }
     }
 
+    /// Get the current value of pool tokens, rounded up
+    #[inline]
+    pub fn get_lamports_per_pool_token(&self) -> Option<u64> {
+        self.total_lamports
+            .checked_add(self.pool_token_supply)?
+            .checked_sub(1)?
+            .checked_div(self.pool_token_supply)
+    }
+
     /// Checks that the withdraw or deposit authority is valid
     fn check_program_derived_authority(
         authority_address: &Pubkey,
@@ -660,24 +669,24 @@ impl ValidatorStakeInfo {
 
     /// Performs a very cheap comparison, for checking if this validator stake
     /// info matches the vote account address
-    pub fn memcmp_pubkey(data: &[u8], vote_address_bytes: &[u8]) -> bool {
+    pub fn memcmp_pubkey(data: &[u8], vote_address: &Pubkey) -> bool {
         sol_memcmp(
-            &data[41..41 + PUBKEY_BYTES],
-            vote_address_bytes,
+            &data[41..41_usize.saturating_add(PUBKEY_BYTES)],
+            vote_address.as_ref(),
             PUBKEY_BYTES,
         ) == 0
     }
 
-    /// Performs a very cheap comparison, for checking if this validator stake
-    /// info does not have active lamports equal to the given bytes
-    pub fn active_lamports_not_equal(data: &[u8], lamports_le_bytes: &[u8]) -> bool {
-        sol_memcmp(&data[0..8], lamports_le_bytes, 8) != 0
+    /// Performs a comparison, used to check if this validator stake
+    /// info has more active lamports than some limit
+    pub fn active_lamports_greater_than(data: &[u8], lamports: &u64) -> bool {
+        u64::try_from_slice(&data[0..8]).unwrap() > *lamports
     }
 
-    /// Performs a very cheap comparison, for checking if this validator stake
-    /// info does not have lamports equal to the given bytes
-    pub fn transient_lamports_not_equal(data: &[u8], lamports_le_bytes: &[u8]) -> bool {
-        sol_memcmp(&data[8..16], lamports_le_bytes, 8) != 0
+    /// Performs a comparison, used to check if this validator stake
+    /// info has more transient lamports than some limit
+    pub fn transient_lamports_greater_than(data: &[u8], lamports: &u64) -> bool {
+        u64::try_from_slice(&data[8..16]).unwrap() > *lamports
     }
 
     /// Check that the validator stake info is valid
@@ -714,8 +723,10 @@ impl ValidatorList {
 
     /// Calculate the number of validator entries that fit in the provided length
     pub fn calculate_max_validators(buffer_length: usize) -> usize {
-        let header_size = ValidatorListHeader::LEN + 4;
-        buffer_length.saturating_sub(header_size) / ValidatorStakeInfo::LEN
+        let header_size = ValidatorListHeader::LEN.saturating_add(4);
+        buffer_length
+            .saturating_sub(header_size)
+            .saturating_div(ValidatorStakeInfo::LEN)
     }
 
     /// Check if contains validator with particular pubkey
@@ -838,8 +849,8 @@ impl Fee {
         {
             msg!(
                 "Fee increase exceeds maximum allowed, proposed increase factor ({} / {})",
-                self.numerator * old_denom,
-                old_num * self.denominator,
+                self.numerator.saturating_mul(old_denom),
+                old_num.saturating_mul(self.denominator),
             );
             return Err(StakePoolError::FeeIncreaseTooHigh);
         }
@@ -907,6 +918,7 @@ impl FeeType {
 
 #[cfg(test)]
 mod test {
+    #![allow(clippy::integer_arithmetic)]
     use {
         super::*,
         proptest::prelude::*,

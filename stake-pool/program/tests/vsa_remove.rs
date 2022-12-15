@@ -150,7 +150,6 @@ async fn fail_with_wrong_stake_program_id() {
         &[&context.payer, &stake_pool_accounts.staker],
         context.last_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = context
         .banks_client
         .process_transaction(transaction)
@@ -192,7 +191,6 @@ async fn fail_with_wrong_validator_list_account() {
         &[&context.payer, &stake_pool_accounts.staker],
         context.last_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = context
         .banks_client
         .process_transaction(transaction)
@@ -318,7 +316,6 @@ async fn fail_wrong_staker() {
         Some(&context.payer.pubkey()),
     );
     transaction.sign(&[&context.payer, &malicious], context.last_blockhash);
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = context
         .banks_client
         .process_transaction(transaction)
@@ -369,7 +366,6 @@ async fn fail_no_signature() {
         &[&context.payer],
         context.last_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = context
         .banks_client
         .process_transaction(transaction)

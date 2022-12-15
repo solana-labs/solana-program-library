@@ -199,7 +199,6 @@ pub async fn sign_send_instruction(
         payer_signers.push(s);
     }
     transaction.partial_sign(&payer_signers, ctx.last_blockhash);
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     ctx.banks_client
         .process_transaction(transaction)
         .await

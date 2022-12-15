@@ -515,8 +515,64 @@ fn process_transfer(
     let previous_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
 
-    if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
+    if mint.get_extension::<TransferFeeConfig>().is_err()
+        || token_account_info.key == destination_token_account_info.key
+    {
+        // mint is not extended for fees
+        let proof_data = decode_proof_instruction::<TransferData>(
+            ProofInstruction::VerifyTransfer,
+            &previous_instruction,
+        )?;
+
+        if proof_data.transfer_pubkeys.auditor_pubkey
+            != confidential_transfer_mint.auditor_encryption_pubkey
+        {
+            return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+        }
+
+        let source_ciphertext_lo = EncryptedBalance::from((
+            proof_data.ciphertext_lo.commitment,
+            proof_data.ciphertext_lo.source_handle,
+        ));
+        let source_ciphertext_hi = EncryptedBalance::from((
+            proof_data.ciphertext_hi.commitment,
+            proof_data.ciphertext_hi.source_handle,
+        ));
+
+        process_source_for_transfer(
+            program_id,
+            token_account_info,
+            mint_info,
+            authority_info,
+            account_info_iter.as_slice(),
+            &proof_data.transfer_pubkeys.source_pubkey,
+            &source_ciphertext_lo,
+            &source_ciphertext_hi,
+            &proof_data.new_source_ciphertext,
+            new_source_decryptable_available_balance,
+        )?;
+
+        let destination_ciphertext_lo = EncryptedBalance::from((
+            proof_data.ciphertext_lo.commitment,
+            proof_data.ciphertext_lo.destination_handle,
+        ));
+        let destination_ciphertext_hi = EncryptedBalance::from((
+            proof_data.ciphertext_hi.commitment,
+            proof_data.ciphertext_hi.destination_handle,
+        ));
+
+        process_destination_for_transfer(
+            destination_token_account_info,
+            mint_info,
+            &proof_data.transfer_pubkeys.destination_pubkey,
+            &destination_ciphertext_lo,
+            &destination_ciphertext_hi,
+            None,
+        )?;
+    } else {
         // mint is extended for fees
+        let transfer_fee_config = mint.get_extension::<TransferFeeConfig>()?;
+
         let proof_data = decode_proof_instruction::<TransferWithFeeData>(
             ProofInstruction::VerifyTransferWithFee,
             &previous_instruction,
@@ -585,6 +641,7 @@ fn process_transfer(
             &proof_data.transfer_with_fee_pubkeys.source_pubkey,
             &source_ciphertext_lo,
             &source_ciphertext_hi,
+            &proof_data.new_source_ciphertext,
             new_source_decryptable_available_balance,
         )?;
 
@@ -596,13 +653,6 @@ fn process_transfer(
             proof_data.ciphertext_hi.commitment,
             proof_data.ciphertext_hi.destination_handle,
         ));
-
-        let fee_ciphertext = None;
-        // let fee_ciphertext = if token_account_info.key == destination_token_account_info.key {
-        //     None
-        // } else {
-        //     Some(proof_data.fee_ciphertext)
-        // };
 
         process_destination_for_transfer(
             destination_token_account_info,
@@ -610,58 +660,7 @@ fn process_transfer(
             &proof_data.transfer_with_fee_pubkeys.destination_pubkey,
             &destination_ciphertext_lo,
             &destination_ciphertext_hi,
-            fee_ciphertext,
-        )?;
-    } else {
-        // mint is not extended for fees
-        let proof_data = decode_proof_instruction::<TransferData>(
-            ProofInstruction::VerifyTransfer,
-            &previous_instruction,
-        )?;
-
-        if proof_data.transfer_pubkeys.auditor_pubkey
-            != confidential_transfer_mint.auditor_encryption_pubkey
-        {
-            return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
-        }
-
-        let source_ciphertext_lo = EncryptedBalance::from((
-            proof_data.ciphertext_lo.commitment,
-            proof_data.ciphertext_lo.source_handle,
-        ));
-        let source_ciphertext_hi = EncryptedBalance::from((
-            proof_data.ciphertext_hi.commitment,
-            proof_data.ciphertext_hi.source_handle,
-        ));
-
-        process_source_for_transfer(
-            program_id,
-            token_account_info,
-            mint_info,
-            authority_info,
-            account_info_iter.as_slice(),
-            &proof_data.transfer_pubkeys.source_pubkey,
-            &source_ciphertext_lo,
-            &source_ciphertext_hi,
-            new_source_decryptable_available_balance,
-        )?;
-
-        let destination_ciphertext_lo = EncryptedBalance::from((
-            proof_data.ciphertext_lo.commitment,
-            proof_data.ciphertext_lo.destination_handle,
-        ));
-        let destination_ciphertext_hi = EncryptedBalance::from((
-            proof_data.ciphertext_hi.commitment,
-            proof_data.ciphertext_hi.destination_handle,
-        ));
-
-        process_destination_for_transfer(
-            destination_token_account_info,
-            mint_info,
-            &proof_data.transfer_pubkeys.destination_pubkey,
-            &destination_ciphertext_lo,
-            &destination_ciphertext_hi,
-            None,
+            Some((&proof_data.fee_ciphertext_lo, &proof_data.fee_ciphertext_hi)),
         )?;
     }
 
@@ -679,6 +678,7 @@ fn process_source_for_transfer(
     source_encryption_pubkey: &EncryptionPubkey,
     source_ciphertext_lo: &EncryptedBalance,
     source_ciphertext_hi: &EncryptedBalance,
+    expected_new_source_available_balance: &EncryptedBalance,
     new_source_decryptable_available_balance: DecryptableBalance,
 ) -> ProgramResult {
     check_program_account(token_account_info.owner)?;
@@ -719,6 +719,10 @@ fn process_source_for_transfer(
         .ok_or(ProgramError::InvalidInstructionData)?
     };
 
+    if new_source_available_balance != *expected_new_source_available_balance {
+        return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
+    }
+
     confidential_transfer_account.available_balance = new_source_available_balance;
     confidential_transfer_account.decryptable_available_balance =
         new_source_decryptable_available_balance;
@@ -733,7 +737,7 @@ fn process_destination_for_transfer(
     destination_encryption_pubkey: &EncryptionPubkey,
     destination_ciphertext_lo: &EncryptedBalance,
     destination_ciphertext_hi: &EncryptedBalance,
-    encrypted_fee: Option<EncryptedFee>,
+    encrypted_fee: Option<(&EncryptedFee, &EncryptedFee)>,
 ) -> ProgramResult {
     check_program_account(destination_token_account_info.owner)?;
     let destination_token_account_data = &mut destination_token_account_info.data.borrow_mut();
@@ -786,31 +790,56 @@ fn process_destination_for_transfer(
         new_destination_pending_balance_credit_counter.into();
 
     // update destination account withheld fees
-    if let Some(ciphertext_fee) = encrypted_fee {
-        let ciphertext_fee_destination: EncryptedWithheldAmount =
-            (ciphertext_fee.commitment, ciphertext_fee.destination_handle).into();
-        let ciphertext_fee_withheld_authority: EncryptedWithheldAmount = (
-            ciphertext_fee.commitment,
-            ciphertext_fee.withdraw_withheld_authority_handle,
+    if let Some((ciphertext_fee_lo, ciphertext_fee_hi)) = encrypted_fee {
+        // subtract fee from destination pending balance
+        let ciphertext_fee_lo_destination: EncryptedWithheldAmount = (
+            ciphertext_fee_lo.commitment,
+            ciphertext_fee_lo.destination_handle,
         )
             .into();
 
-        // subtract fee from destination pending balance
-        let new_destination_pending_balance = ops::subtract(
+        let ciphertext_fee_hi_destination: EncryptedWithheldAmount = (
+            ciphertext_fee_hi.commitment,
+            ciphertext_fee_hi.destination_handle,
+        )
+            .into();
+
+        let new_destination_pending_balance_lo = ops::subtract(
             &destination_confidential_transfer_account.pending_balance_lo,
-            &ciphertext_fee_destination,
+            &ciphertext_fee_lo_destination,
+        )
+        .ok_or(ProgramError::InvalidInstructionData)?;
+
+        let new_destination_pending_balance_hi = ops::subtract(
+            &destination_confidential_transfer_account.pending_balance_hi,
+            &ciphertext_fee_hi_destination,
         )
         .ok_or(ProgramError::InvalidInstructionData)?;
 
         // add encrypted fee to current withheld fee
-        let new_withheld_amount = ops::add(
+        let ciphertext_fee_lo_withheld_authority: EncryptedWithheldAmount = (
+            ciphertext_fee_lo.commitment,
+            ciphertext_fee_lo.withdraw_withheld_authority_handle,
+        )
+            .into();
+
+        let ciphertext_fee_hi_withheld_authority: EncryptedWithheldAmount = (
+            ciphertext_fee_hi.commitment,
+            ciphertext_fee_hi.withdraw_withheld_authority_handle,
+        )
+            .into();
+
+        let new_withheld_amount = ops::add_with_lo_hi(
             &destination_confidential_transfer_account.withheld_amount,
-            &ciphertext_fee_withheld_authority,
+            &ciphertext_fee_lo_withheld_authority,
+            &ciphertext_fee_hi_withheld_authority,
         )
         .ok_or(ProgramError::InvalidInstructionData)?;
 
         destination_confidential_transfer_account.pending_balance_lo =
-            new_destination_pending_balance;
+            new_destination_pending_balance_lo;
+        destination_confidential_transfer_account.pending_balance_hi =
+            new_destination_pending_balance_hi;
         destination_confidential_transfer_account.withheld_amount = new_withheld_amount;
     }
 
