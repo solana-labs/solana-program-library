@@ -52,45 +52,6 @@ fn decode_proof_instruction<T: Pod>(
     ProofInstruction::decode_data(&instruction.data).ok_or(ProgramError::InvalidInstructionData)
 }
 
-/// Checks if a confidential extension is configured to send funds.
-#[cfg(feature = "zk-ops")]
-fn check_source_confidential_account(
-    source_confidential_transfer_account: &ConfidentialTransferAccount,
-) -> ProgramResult {
-    source_confidential_transfer_account.approved()
-}
-
-/// Checks if a confidential extension is configured to receive funds.
-///
-/// A destination account can receive funds if the following conditions are satisfied:
-///   1. The account is approved by the confidential transfer mint authority
-///   2. The account is not disabled by the account owner
-///   3. The number of credits into the account has reached the maximum credit counter
-#[cfg(feature = "zk-ops")]
-fn check_destination_confidential_account(
-    destination_confidential_transfer_account: &ConfidentialTransferAccount,
-) -> ProgramResult {
-    destination_confidential_transfer_account.approved()?;
-
-    if !bool::from(&destination_confidential_transfer_account.allow_confidential_credits) {
-        return Err(TokenError::ConfidentialTransferDepositsAndTransfersDisabled.into());
-    }
-
-    let new_destination_pending_balance_credit_counter =
-        u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
-            .checked_add(1)
-            .ok_or(ProgramError::InvalidInstructionData)?;
-    if new_destination_pending_balance_credit_counter
-        > u64::from(
-            destination_confidential_transfer_account.maximum_pending_balance_credit_counter,
-        )
-    {
-        return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
-    }
-
-    Ok(())
-}
-
 /// Processes an [InitializeMint] instruction.
 fn process_initialize_mint(
     accounts: &[AccountInfo],
@@ -389,7 +350,7 @@ fn process_deposit(
 
     let mut confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    check_destination_confidential_account(confidential_transfer_account)?;
+    confidential_transfer_account.valid_as_destination()?;
 
     // A deposit amount must be a 48-bit number
     let (amount_lo, amount_hi) = verify_and_split_deposit_amount(amount)?;
@@ -483,7 +444,7 @@ fn process_withdraw(
 
     let mut confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    check_source_confidential_account(confidential_transfer_account)?;
+    confidential_transfer_account.valid_as_source()?;
 
     // Zero-knowledge proof certifies that a ciphertext encrypts a non-negative 64-bit number
     let zkp_instruction =
@@ -737,7 +698,7 @@ fn process_source_for_transfer(
 
     let mut confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    check_source_confidential_account(confidential_transfer_account)?;
+    confidential_transfer_account.valid_as_source()?;
 
     if *source_encryption_pubkey != confidential_transfer_account.encryption_pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
@@ -791,7 +752,7 @@ fn process_destination_for_transfer(
 
     let mut destination_confidential_transfer_account =
         destination_token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    check_destination_confidential_account(destination_confidential_transfer_account)?;
+    destination_confidential_transfer_account.valid_as_destination()?;
 
     if *destination_encryption_pubkey != destination_confidential_transfer_account.encryption_pubkey
     {
@@ -1039,7 +1000,7 @@ fn process_withdraw_withheld_tokens_from_mint(
     }
     let mut destination_confidential_transfer_account =
         destination_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    check_destination_confidential_account(destination_confidential_transfer_account)?;
+    destination_confidential_transfer_account.valid_as_destination()?;
 
     // verify consistency of proof data
     let previous_instruction =
@@ -1170,7 +1131,7 @@ fn process_withdraw_withheld_tokens_from_accounts(
 
     let mut destination_confidential_transfer_account =
         destination_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    check_destination_confidential_account(destination_confidential_transfer_account)?;
+    destination_confidential_transfer_account.valid_as_destination()?;
 
     // verify consistency of proof data
     let previous_instruction =
