@@ -51,7 +51,7 @@ pub fn permissioned_transfer_check<'info, S: BaseState, BSE: BaseStateWithExtens
     mint_info: &AccountInfo<'info>,
     source_account_info: &AccountInfo<'info>,
     destination_account_info: &AccountInfo<'info>,
-    _amount: u64,
+    amount: u64,
     account_info_iter: &mut Iter<AccountInfo<'info>>,
 ) -> ProgramResult {
     if let Some(permissioned_transfer_mint) =
@@ -77,7 +77,7 @@ pub fn permissioned_transfer_check<'info, S: BaseState, BSE: BaseStateWithExtens
             invoke(
                 &Instruction {
                     program_id,
-                    data: PERMISSIONED_TRANSFER_INSTRUCTION_DATA.to_vec(),
+                    data: [PERMISSIONED_TRANSFER_INSTRUCTION_DATA, amount.to_le_bytes()].concat(),
                     accounts: account_metas,
                 },
                 &acount_infos,
