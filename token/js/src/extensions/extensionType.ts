@@ -24,7 +24,7 @@ export enum ExtensionType {
     ImmutableOwner,
     MemoTransfer,
     NonTransferable,
-    InterestBearingMint,
+    InterestBearingConfig,
     CpiGuard,
     PermanentDelegate,
 }
@@ -58,7 +58,7 @@ export function getTypeLen(e: ExtensionType): number {
             return MEMO_TRANSFER_SIZE;
         case ExtensionType.NonTransferable:
             return NON_TRANSFERABLE_SIZE;
-        case ExtensionType.InterestBearingMint:
+        case ExtensionType.InterestBearingConfig:
             return INTEREST_BEARING_MINT_CONFIG_STATE_SIZE;
         case ExtensionType.PermanentDelegate:
             return PERMANENT_DELEGATE_SIZE;
@@ -82,7 +82,7 @@ export function getAccountTypeOfMintType(e: ExtensionType): ExtensionType {
         case ExtensionType.MintCloseAuthority:
         case ExtensionType.NonTransferable:
         case ExtensionType.Uninitialized:
-        case ExtensionType.InterestBearingMint:
+        case ExtensionType.InterestBearingConfig:
         case ExtensionType.PermanentDelegate:
             return ExtensionType.Uninitialized;
     }

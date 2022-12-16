@@ -37,7 +37,7 @@ export async function createInterestBearingMint(
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_2022_PROGRAM_ID
 ): Promise<PublicKey> {
-    const mintLen = getMintLen([ExtensionType.InterestBearingMint]);
+    const mintLen = getMintLen([ExtensionType.InterestBearingConfig]);
     const lamports = await connection.getMinimumBalanceForRentExemption(mintLen);
     const transaction = new Transaction().add(
         SystemProgram.createAccount({
