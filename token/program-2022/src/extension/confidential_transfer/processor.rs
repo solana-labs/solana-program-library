@@ -139,10 +139,8 @@ fn process_configure_account(
         ProofInstruction::VerifyPubkeyValidity,
         &zkp_instruction,
     )?;
-    // Check that the encryption key in the zero-knowledge proof instruction matches the actual
-    // encryption key that will be used to initialize the confidential extension account
-    //
-    // i.e. zero-knowledge proof was generated with respect to the correct encryption key
+    // Check that the encryption public key associated with the confidential extension account is
+    // consistent with what was actually used to generate the zkp.
     if proof_data.pubkey != *encryption_pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
@@ -156,35 +154,7 @@ fn process_configure_account(
     confidential_transfer_account.maximum_pending_balance_credit_counter =
         *maximum_pending_balance_credit_counter;
 
-    /*
-        An ElGamal ciphertext is of the form
-          ElGamalCiphertext {
-            msg_comm: r * H + x * G
-            decrypt_handle: r * P
-          }
-
-        where
-        - G, H: constants for the system (RistrettoPoint)
-        - P: ElGamal public key component (RistrettoPoint)
-        - r: encryption randomness (Scalar)
-        - x: message (Scalar)
-
-        Upon receiving a `ConfigureAccount` instruction, the ZK Token program should encrypt x=0
-        (i.e. Scalar::zero()) and store it as `pending_balance_lo`, `pending_balance_hi`, and
-        `available_balance`.
-
-        For regular encryption, it is important that r is generated from a proper randomness source. But
-        for the `ConfigureAccount` instruction, it is already known that x is always 0. So r can just be
-        set Scalar::zero().
-
-        This means that the ElGamalCiphertext should simply be
-          ElGamalCiphertext {
-            msg_comm: 0 * H + 0 * G = 0
-            decrypt_handle: 0 * P = 0
-          }
-
-        This should just be encoded as [0; 64]
-    */
+    // The all-zero ciphertext [0; 64] is a valid encryption of zero
     confidential_transfer_account.pending_balance_lo = EncryptedBalance::zeroed();
     confidential_transfer_account.pending_balance_hi = EncryptedBalance::zeroed();
     confidential_transfer_account.available_balance = EncryptedBalance::zeroed();
@@ -491,7 +461,7 @@ fn process_transfer(
     proof_instruction_offset: i64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let token_account_info = next_account_info(account_info_iter)?;
+    let source_account_info = next_account_info(account_info_iter)?;
     let destination_token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
     let instructions_sysvar_info = next_account_info(account_info_iter)?;
@@ -504,20 +474,31 @@ fn process_transfer(
     if mint.get_extension::<NonTransferable>().is_ok() {
         return Err(TokenError::NonTransferable.into());
     }
-
     let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
-    let previous_instruction =
-        get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
 
+    // A `Transfer` instruction must be accompanied by a zero-knowledge proof instruction that
+    // certify the validity of the transfer amounts. The kind of zero-knowledge proof instruction
+    // depends on whether a transfer incurs a fee or not.
+    //   - If the mint is not extended for fees or the instruction is for a self-transfer, then
+    //   transfer fee is not required.
+    //   - If the mint is extended for fees and the instruction is not a self-transfer, then
+    //   transfer fee is required.
     if mint.get_extension::<TransferFeeConfig>().is_err()
-        || token_account_info.key == destination_token_account_info.key
+        || source_account_info.key == destination_token_account_info.key
     {
-        // mint is not extended for fees
+        // Transfer fee is not required. Decode the zero-knowledge proof as `TransferData`.
+        //
+        // The zero-knowledge proof certifies that:
+        //   1. the transfer amount is encrypted in the correct form
+        //   2. the source account has enough balance to send the transfer amount
+        let zkp_instruction =
+            get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
         let proof_data = decode_proof_instruction::<TransferData>(
             ProofInstruction::VerifyTransfer,
-            &previous_instruction,
+            &zkp_instruction,
         )?;
-
+        // Check that the auditor encryption public key associated wth the confidential mint is
+        // consistent with what was actually used to generate the zkp.
         if proof_data.transfer_pubkeys.auditor_pubkey
             != confidential_transfer_mint.auditor_encryption_pubkey
         {
@@ -535,7 +516,7 @@ fn process_transfer(
 
         process_source_for_transfer(
             program_id,
-            token_account_info,
+            source_account_info,
             mint_info,
             authority_info,
             account_info_iter.as_slice(),
@@ -564,21 +545,25 @@ fn process_transfer(
             None,
         )?;
     } else {
-        // mint is extended for fees
-        let transfer_fee_config = mint.get_extension::<TransferFeeConfig>()?;
-
+        // Transfer fee is required. Decode the zero-knowledge proof as `TransferWithFeeData`.
+        //
+        // The zero-knowledge proof certifies that:
+        //   1. the transfer amount is encrypted in the correct form
+        //   2. the source account has enough balance to send the transfer amount
+        //   3. the transfer fee is computed correctly and encrypted in the correct form
+        let zkp_instruction =
+            get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
         let proof_data = decode_proof_instruction::<TransferWithFeeData>(
             ProofInstruction::VerifyTransferWithFee,
-            &previous_instruction,
+            &zkp_instruction,
         )?;
-
+        // Check that the encryption public keys associated with the confidential extension mint
+        // are consistent with the keys that were used to generate the zkp.
         if proof_data.transfer_with_fee_pubkeys.auditor_pubkey
             != confidential_transfer_mint.auditor_encryption_pubkey
         {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
-
-        // `withdraw_withheld_authority` ElGamal pubkey in proof data and mint must match
         if proof_data
             .transfer_with_fee_pubkeys
             .withdraw_withheld_authority_pubkey
@@ -586,64 +571,48 @@ fn process_transfer(
         {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
-
-        // fee parameters in proof data and mint must match
-        let epoch = Clock::get()?.epoch;
-        let (maximum_fee, transfer_fee_basis_points) =
-            if u64::from(transfer_fee_config.newer_transfer_fee.epoch) < epoch {
-                (
-                    u64::from(transfer_fee_config.older_transfer_fee.maximum_fee),
-                    u16::from(
-                        transfer_fee_config
-                            .older_transfer_fee
-                            .transfer_fee_basis_points,
-                    ),
-                )
-            } else {
-                (
-                    u64::from(transfer_fee_config.newer_transfer_fee.maximum_fee),
-                    u16::from(
-                        transfer_fee_config
-                            .newer_transfer_fee
-                            .transfer_fee_basis_points,
-                    ),
-                )
-            };
-
-        if u64::from(proof_data.fee_parameters.maximum_fee) != maximum_fee
-            || u16::from(proof_data.fee_parameters.fee_rate_basis_points)
-                != transfer_fee_basis_points
+        // Check that the fee parameters in the mint are consistent with what were used to generate
+        // the zkp.
+        let transfer_fee_config = mint.get_extension::<TransferFeeConfig>()?;
+        let fee_parameters = transfer_fee_config.get_epoch_fee(Clock::get()?.epoch);
+        if u64::from(fee_parameters.maximum_fee) != u64::from(proof_data.fee_parameters.maximum_fee)
+            || u16::from(fee_parameters.transfer_fee_basis_points)
+                != u16::from(proof_data.fee_parameters.fee_rate_basis_points)
         {
             return Err(TokenError::FeeParametersMismatch.into());
         }
 
-        let source_ciphertext_lo = EncryptedBalance::from((
+        // From the proof data, decode lo and hi transfer amounts encrypted under the source
+        // encryption public key
+        let source_transfer_amount_lo = EncryptedBalance::from((
             proof_data.ciphertext_lo.commitment,
             proof_data.ciphertext_lo.source_handle,
         ));
-        let source_ciphertext_hi = EncryptedBalance::from((
+        let source_transfer_amount_hi = EncryptedBalance::from((
             proof_data.ciphertext_hi.commitment,
             proof_data.ciphertext_hi.source_handle,
         ));
 
         process_source_for_transfer(
             program_id,
-            token_account_info,
+            source_account_info,
             mint_info,
             authority_info,
             account_info_iter.as_slice(),
             &proof_data.transfer_with_fee_pubkeys.source_pubkey,
-            &source_ciphertext_lo,
-            &source_ciphertext_hi,
+            &source_transfer_amount_lo,
+            &source_transfer_amount_hi,
             &proof_data.new_source_ciphertext,
             new_source_decryptable_available_balance,
         )?;
 
-        let destination_ciphertext_lo = EncryptedBalance::from((
+        // From the proof datay, decode lo and hi transfer amounts encrypted under the destination
+        // encryption public key
+        let destination_transfer_amount_lo = EncryptedBalance::from((
             proof_data.ciphertext_lo.commitment,
             proof_data.ciphertext_lo.destination_handle,
         ));
-        let destination_ciphertext_hi = EncryptedBalance::from((
+        let destination_transfer_amount_hi = EncryptedBalance::from((
             proof_data.ciphertext_hi.commitment,
             proof_data.ciphertext_hi.destination_handle,
         ));
@@ -652,8 +621,8 @@ fn process_transfer(
             destination_token_account_info,
             mint_info,
             &proof_data.transfer_with_fee_pubkeys.destination_pubkey,
-            &destination_ciphertext_lo,
-            &destination_ciphertext_hi,
+            &destination_transfer_amount_lo,
+            &destination_transfer_amount_hi,
             Some((&proof_data.fee_ciphertext_lo, &proof_data.fee_ciphertext_hi)),
         )?;
     }
@@ -665,19 +634,19 @@ fn process_transfer(
 #[cfg(feature = "zk-ops")]
 fn process_source_for_transfer(
     program_id: &Pubkey,
-    token_account_info: &AccountInfo,
+    source_account_info: &AccountInfo,
     mint_info: &AccountInfo,
     authority_info: &AccountInfo,
     signers: &[AccountInfo],
     source_encryption_pubkey: &EncryptionPubkey,
-    source_ciphertext_lo: &EncryptedBalance,
-    source_ciphertext_hi: &EncryptedBalance,
+    source_transfer_amount_lo: &EncryptedBalance,
+    source_transfer_amount_hi: &EncryptedBalance,
     expected_new_source_available_balance: &EncryptedBalance,
     new_source_decryptable_available_balance: DecryptableBalance,
 ) -> ProgramResult {
-    check_program_account(token_account_info.owner)?;
+    check_program_account(source_account_info.owner)?;
     let authority_info_data_len = authority_info.data_len();
-    let token_account_data = &mut token_account_info.data.borrow_mut();
+    let token_account_data = &mut source_account_info.data.borrow_mut();
     let mut token_account = StateWithExtensionsMut::<Account>::unpack(token_account_data)?;
 
     Processor::validate_owner(
@@ -700,19 +669,21 @@ fn process_source_for_transfer(
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     confidential_transfer_account.valid_as_source()?;
 
+    // Check that the source encryption public key is consistent with what was actually used to
+    // generate the zkp.
     if *source_encryption_pubkey != confidential_transfer_account.encryption_pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
-    let new_source_available_balance = {
-        ops::subtract_with_lo_hi(
-            &confidential_transfer_account.available_balance,
-            source_ciphertext_lo,
-            source_ciphertext_hi,
-        )
-        .ok_or(ProgramError::InvalidInstructionData)?
-    };
+    let new_source_available_balance = ops::subtract_with_lo_hi(
+        &confidential_transfer_account.available_balance,
+        source_transfer_amount_lo,
+        source_transfer_amount_hi,
+    )
+    .ok_or(ProgramError::InvalidInstructionData)?;
 
+    // Check that the computed available balance is consistent with what was actually used to
+    // generate the zkp on the client side.
     if new_source_available_balance != *expected_new_source_available_balance {
         return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
     }
@@ -729,8 +700,8 @@ fn process_destination_for_transfer(
     destination_token_account_info: &AccountInfo,
     mint_info: &AccountInfo,
     destination_encryption_pubkey: &EncryptionPubkey,
-    destination_ciphertext_lo: &EncryptedBalance,
-    destination_ciphertext_hi: &EncryptedBalance,
+    destination_transfer_amount_lo: &EncryptedBalance,
+    destination_transfer_amount_hi: &EncryptedBalance,
     encrypted_fee: Option<(&EncryptedFee, &EncryptedFee)>,
 ) -> ProgramResult {
     check_program_account(destination_token_account_info.owner)?;
@@ -759,22 +730,22 @@ fn process_destination_for_transfer(
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
+    let new_destination_pending_balance_credit_counter =
+        u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
+            .checked_add(1)
+            .ok_or(ProgramError::InvalidInstructionData)?;
+
     let new_destination_pending_balance_lo = ops::add(
         &destination_confidential_transfer_account.pending_balance_lo,
-        destination_ciphertext_lo,
+        destination_transfer_amount_lo,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 
     let new_destination_pending_balance_hi = ops::add(
         &destination_confidential_transfer_account.pending_balance_hi,
-        destination_ciphertext_hi,
+        destination_transfer_amount_hi,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
-
-    let new_destination_pending_balance_credit_counter =
-        u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
-            .checked_add(1)
-            .ok_or(ProgramError::InvalidInstructionData)?;
 
     destination_confidential_transfer_account.pending_balance_lo =
         new_destination_pending_balance_lo;
@@ -783,50 +754,50 @@ fn process_destination_for_transfer(
     destination_confidential_transfer_account.pending_balance_credit_counter =
         new_destination_pending_balance_credit_counter.into();
 
-    // update destination account withheld fees
+    // Process transfer fee
     if let Some((ciphertext_fee_lo, ciphertext_fee_hi)) = encrypted_fee {
-        // subtract fee from destination pending balance
-        let ciphertext_fee_lo_destination: EncryptedWithheldAmount = (
+        // Decode lo and hi fee amounts encrypted under the destination encryption public key
+        let destination_fee_lo: EncryptedWithheldAmount = (
             ciphertext_fee_lo.commitment,
             ciphertext_fee_lo.destination_handle,
         )
             .into();
-
-        let ciphertext_fee_hi_destination: EncryptedWithheldAmount = (
+        let destination_fee_hi: EncryptedWithheldAmount = (
             ciphertext_fee_hi.commitment,
             ciphertext_fee_hi.destination_handle,
         )
             .into();
 
+        // Subtract the fee amount from the destination pending balance
         let new_destination_pending_balance_lo = ops::subtract(
             &destination_confidential_transfer_account.pending_balance_lo,
-            &ciphertext_fee_lo_destination,
+            &destination_fee_lo,
         )
         .ok_or(ProgramError::InvalidInstructionData)?;
-
         let new_destination_pending_balance_hi = ops::subtract(
             &destination_confidential_transfer_account.pending_balance_hi,
-            &ciphertext_fee_hi_destination,
+            &destination_fee_hi,
         )
         .ok_or(ProgramError::InvalidInstructionData)?;
 
-        // add encrypted fee to current withheld fee
-        let ciphertext_fee_lo_withheld_authority: EncryptedWithheldAmount = (
+        // Decode lo and hi fee amounts encrypted under the withdraw authority encryption public
+        // key
+        let withdraw_withheld_authority_fee_lo: EncryptedWithheldAmount = (
             ciphertext_fee_lo.commitment,
             ciphertext_fee_lo.withdraw_withheld_authority_handle,
         )
             .into();
-
-        let ciphertext_fee_hi_withheld_authority: EncryptedWithheldAmount = (
+        let withdraw_withheld_authority_fee_hi: EncryptedWithheldAmount = (
             ciphertext_fee_hi.commitment,
             ciphertext_fee_hi.withdraw_withheld_authority_handle,
         )
             .into();
 
+        // Add the fee amount to the destination withheld fee
         let new_withheld_amount = ops::add_with_lo_hi(
             &destination_confidential_transfer_account.withheld_amount,
-            &ciphertext_fee_lo_withheld_authority,
-            &ciphertext_fee_hi_withheld_authority,
+            &withdraw_withheld_authority_fee_lo,
+            &withdraw_withheld_authority_fee_hi,
         )
         .ok_or(ProgramError::InvalidInstructionData)?;
 
