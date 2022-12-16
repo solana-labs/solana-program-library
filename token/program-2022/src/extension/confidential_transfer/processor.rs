@@ -337,11 +337,7 @@ fn process_deposit(
                 .ok_or(ProgramError::InvalidInstructionData)?;
     }
 
-    confidential_transfer_account.pending_balance_credit_counter =
-        (u64::from(confidential_transfer_account.pending_balance_credit_counter)
-            .checked_add(1)
-            .ok_or(ProgramError::InvalidInstructionData)?)
-        .into();
+    confidential_transfer_account.increment_pending_balance_credit_counter()?;
 
     Ok(())
 }
@@ -731,29 +727,19 @@ fn process_destination_for_transfer(
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
-    let new_destination_pending_balance_credit_counter =
-        u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
-            .checked_add(1)
-            .ok_or(ProgramError::InvalidInstructionData)?;
-
-    let new_destination_pending_balance_lo = ops::add(
+    destination_confidential_transfer_account.pending_balance_lo = ops::add(
         &destination_confidential_transfer_account.pending_balance_lo,
         destination_transfer_amount_lo,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 
-    let new_destination_pending_balance_hi = ops::add(
+    destination_confidential_transfer_account.pending_balance_hi = ops::add(
         &destination_confidential_transfer_account.pending_balance_hi,
         destination_transfer_amount_hi,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 
-    destination_confidential_transfer_account.pending_balance_lo =
-        new_destination_pending_balance_lo;
-    destination_confidential_transfer_account.pending_balance_hi =
-        new_destination_pending_balance_hi;
-    destination_confidential_transfer_account.pending_balance_credit_counter =
-        new_destination_pending_balance_credit_counter.into();
+    destination_confidential_transfer_account.increment_pending_balance_credit_counter()?;
 
     // Process transfer fee
     if let Some((ciphertext_fee_lo, ciphertext_fee_hi)) = encrypted_fee {
@@ -770,12 +756,12 @@ fn process_destination_for_transfer(
             .into();
 
         // Subtract the fee amount from the destination pending balance
-        let new_destination_pending_balance_lo = ops::subtract(
+        destination_confidential_transfer_account.pending_balance_lo = ops::subtract(
             &destination_confidential_transfer_account.pending_balance_lo,
             &destination_fee_lo,
         )
         .ok_or(ProgramError::InvalidInstructionData)?;
-        let new_destination_pending_balance_hi = ops::subtract(
+        destination_confidential_transfer_account.pending_balance_hi = ops::subtract(
             &destination_confidential_transfer_account.pending_balance_hi,
             &destination_fee_hi,
         )
@@ -795,18 +781,12 @@ fn process_destination_for_transfer(
             .into();
 
         // Add the fee amount to the destination withheld fee
-        let new_withheld_amount = ops::add_with_lo_hi(
+        destination_confidential_transfer_account.withheld_amount = ops::add_with_lo_hi(
             &destination_confidential_transfer_account.withheld_amount,
             &withdraw_withheld_authority_fee_lo,
             &withdraw_withheld_authority_fee_hi,
         )
         .ok_or(ProgramError::InvalidInstructionData)?;
-
-        destination_confidential_transfer_account.pending_balance_lo =
-            new_destination_pending_balance_lo;
-        destination_confidential_transfer_account.pending_balance_hi =
-            new_destination_pending_balance_hi;
-        destination_confidential_transfer_account.withheld_amount = new_withheld_amount;
     }
 
     Ok(())
@@ -1005,19 +985,13 @@ fn process_withdraw_withheld_tokens_from_mint(
 
     // The proof data contains the mint withheld amount encrypted under the destination ElGamal pubkey.
     // This amount is added to the destination pending balance.
-    let new_destination_pending_balance = ops::add(
+    destination_confidential_transfer_account.pending_balance_lo = ops::add(
         &destination_confidential_transfer_account.pending_balance_lo,
         &proof_data.destination_ciphertext,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 
-    destination_confidential_transfer_account.pending_balance_lo = new_destination_pending_balance;
-
-    destination_confidential_transfer_account.pending_balance_credit_counter =
-        (u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
-            .checked_add(1)
-            .ok_or(ProgramError::InvalidInstructionData)?)
-        .into();
+    destination_confidential_transfer_account.increment_pending_balance_credit_counter()?;
 
     // Fee is now withdrawn, so zero out the mint withheld amount.
     confidential_transfer_mint.withheld_amount = EncryptedWithheldAmount::zeroed();
@@ -1136,19 +1110,13 @@ fn process_withdraw_withheld_tokens_from_accounts(
 
     // The proof data contains the mint withheld amount encrypted under the destination ElGamal pubkey.
     // This amount is added to the destination pending balance.
-    let new_destination_pending_balance = ops::add(
+    destination_confidential_transfer_account.pending_balance_lo = ops::add(
         &destination_confidential_transfer_account.pending_balance_lo,
         &proof_data.destination_ciphertext,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 
-    destination_confidential_transfer_account.pending_balance_credit_counter =
-        (u64::from(destination_confidential_transfer_account.pending_balance_credit_counter)
-            .checked_add(1)
-            .ok_or(ProgramError::InvalidInstructionData)?)
-        .into();
-
-    destination_confidential_transfer_account.pending_balance_lo = new_destination_pending_balance;
+    destination_confidential_transfer_account.increment_pending_balance_credit_counter()?;
 
     Ok(())
 }

@@ -203,4 +203,13 @@ impl ConfidentialTransferAccount {
 
         Ok(())
     }
+
+    /// Increments a confidential extension pending balance credit counter.
+    pub fn increment_pending_balance_credit_counter(&mut self) -> ProgramResult {
+        self.pending_balance_credit_counter = (u64::from(self.pending_balance_credit_counter)
+            .checked_add(1)
+            .ok_or(TokenError::Overflow)?)
+        .into();
+        Ok(())
+    }
 }
