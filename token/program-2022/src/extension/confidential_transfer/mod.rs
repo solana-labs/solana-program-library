@@ -141,7 +141,7 @@ impl Extension for ConfidentialTransferAccount {
 }
 
 impl ConfidentialTransferAccount {
-    /// Check if a `ConfidentialTransferAccount` has been approved for use
+    /// Check if a `ConfidentialTransferAccount` has been approved for use.
     pub fn approved(&self) -> ProgramResult {
         if bool::from(&self.approved) {
             Ok(())
@@ -150,7 +150,7 @@ impl ConfidentialTransferAccount {
         }
     }
 
-    /// Check if a `ConfidentialTransferAccount` is in a closable state
+    /// Check if a `ConfidentialTransferAccount` is in a closable state.
     pub fn closable(&self) -> ProgramResult {
         if self.pending_balance_lo == EncryptedBalance::zeroed()
             && self.pending_balance_hi == EncryptedBalance::zeroed()
@@ -164,12 +164,52 @@ impl ConfidentialTransferAccount {
     }
 
     /// Check if a base account of a `ConfidentialTransferAccount` accepts non-confidential
-    /// transfers
+    /// transfers.
     pub fn non_confidential_transfer_allowed(&self) -> ProgramResult {
         if bool::from(&self.allow_non_confidential_credits) {
             Ok(())
         } else {
             Err(TokenError::NonConfidentialTransfersDisabled.into())
         }
+    }
+
+    /// Checks if a `ConfidentialTransferAccount` is configured to send funds.
+    pub fn valid_as_source(&self) -> ProgramResult {
+        self.approved()
+    }
+
+    /// Checks if a confidential extension is configured to receive funds.
+    ///
+    /// A destination account can receive funds if the following conditions are satisfied:
+    ///   1. The account is approved by the confidential transfer mint authority
+    ///   2. The account is not disabled by the account owner
+    ///   3. The number of credits into the account has reached the maximum credit counter
+    pub fn valid_as_destination(&self) -> ProgramResult {
+        self.approved()?;
+
+        if !bool::from(self.allow_confidential_credits) {
+            return Err(TokenError::ConfidentialTransferDepositsAndTransfersDisabled.into());
+        }
+
+        let new_destination_pending_balance_credit_counter =
+            u64::from(self.pending_balance_credit_counter)
+                .checked_add(1)
+                .ok_or(TokenError::Overflow)?;
+        if new_destination_pending_balance_credit_counter
+            > u64::from(self.maximum_pending_balance_credit_counter)
+        {
+            return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
+        }
+
+        Ok(())
+    }
+
+    /// Increments a confidential extension pending balance credit counter.
+    pub fn increment_pending_balance_credit_counter(&mut self) -> ProgramResult {
+        self.pending_balance_credit_counter = (u64::from(self.pending_balance_credit_counter)
+            .checked_add(1)
+            .ok_or(TokenError::Overflow)?)
+        .into();
+        Ok(())
     }
 }
