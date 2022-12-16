@@ -28,6 +28,9 @@ const AUTHORITY_WITHDRAW: &[u8] = b"withdraw";
 /// Seed for transient stake account
 const TRANSIENT_STAKE_SEED_PREFIX: &[u8] = b"transient";
 
+/// Seed for ephemeral stake account
+const EPHEMERAL_STAKE_SEED_PREFIX: &[u8] = b"ephemeral";
+
 /// Minimum amount of staked lamports required in a validator stake account to allow
 /// for merges without a mismatch on credits observed
 pub const MINIMUM_ACTIVE_STAKE: u64 = 1_000_000;
@@ -131,6 +134,22 @@ pub fn find_transient_stake_program_address(
         &[
             TRANSIENT_STAKE_SEED_PREFIX,
             vote_account_address.as_ref(),
+            stake_pool_address.as_ref(),
+            &seed.to_le_bytes(),
+        ],
+        program_id,
+    )
+}
+
+/// Generates the ephemeral program address for stake pool redelegation
+pub fn find_ephemeral_stake_program_address(
+    program_id: &Pubkey,
+    stake_pool_address: &Pubkey,
+    seed: u64,
+) -> (Pubkey, u8) {
+    Pubkey::find_program_address(
+        &[
+            EPHEMERAL_STAKE_SEED_PREFIX,
             stake_pool_address.as_ref(),
             &seed.to_le_bytes(),
         ],
