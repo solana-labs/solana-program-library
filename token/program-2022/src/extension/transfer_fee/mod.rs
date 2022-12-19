@@ -39,11 +39,11 @@ impl TransferFee {
     ///
     /// Ceiling-division `ceil[ numerator / denominator ]` can be represented as a floor-division
     /// `floor[ (numerator + denominator - 1) / denominator ]`
-    fn ceil_div(dividend: u128, divisor: u128) -> Option<u128> {
-        dividend
-            .checked_add(divisor)?
+    fn ceil_div(numerator: u128, denominator: u128) -> Option<u128> {
+        numerator
+            .checked_add(denominator)?
             .checked_sub(1)?
-            .checked_div(divisor)
+            .checked_div(denominator)
     }
 
     /// Calculate the transfer fee
