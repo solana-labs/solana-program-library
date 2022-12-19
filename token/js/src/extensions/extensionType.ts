@@ -117,7 +117,7 @@ export function getAccountLen(extensionTypes: ExtensionType[]): number {
 
 export function getExtensionData(extension: ExtensionType, tlvData: Buffer): Buffer | null {
     let extensionTypeIndex = 0;
-    while (extensionTypeIndex < tlvData.length) {
+    while (extensionTypeIndex + TYPE_SIZE + LENGTH_SIZE <= tlvData.length) {
         const entryType = tlvData.readUInt16LE(extensionTypeIndex);
         const entryLength = tlvData.readUInt16LE(extensionTypeIndex + TYPE_SIZE);
         const typeIndex = extensionTypeIndex + TYPE_SIZE + LENGTH_SIZE;

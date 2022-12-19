@@ -69,6 +69,9 @@ describe('cpiGuard', () => {
 
     it('enable/disable via instruction', async () => {
         let accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
+        let cpiGuard = getCpiGuard(accountInfo);
+
+        expect(cpiGuard).to.be.null;
 
         let transaction = new Transaction().add(
             createEnableCpiGuardInstruction(account, owner.publicKey, [], TEST_PROGRAM_ID)
@@ -76,7 +79,7 @@ describe('cpiGuard', () => {
         await sendAndConfirmTransaction(connection, transaction, [payer, owner], undefined);
 
         accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
-        let cpiGuard = getCpiGuard(accountInfo);
+        cpiGuard = getCpiGuard(accountInfo);
 
         expect(cpiGuard).to.not.be.null;
         if (cpiGuard !== null) {
@@ -99,11 +102,14 @@ describe('cpiGuard', () => {
 
     it('enable/disable via command', async () => {
         let accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
+        let cpiGuard = getCpiGuard(accountInfo);
+
+        expect(cpiGuard).to.be.null;
 
         await enableCpiGuard(connection, payer, account, owner, [], undefined, TEST_PROGRAM_ID);
 
         accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
-        let cpiGuard = getCpiGuard(accountInfo);
+        cpiGuard = getCpiGuard(accountInfo);
 
         expect(cpiGuard).to.not.be.null;
         if (cpiGuard !== null) {
