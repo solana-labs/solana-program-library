@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize, Serializer};
 use solana_account_decoder::{
     parse_token::{UiAccountState, UiMint, UiMultisig, UiTokenAccount, UiTokenAmount},
     parse_token_extension::{
-        UiDefaultAccountState, UiExtension, UiInterestBearingConfig, UiMemoTransfer,
-        UiMintCloseAuthority, UiTransferFeeAmount, UiTransferFeeConfig,
+        UiCpiGuard, UiDefaultAccountState, UiExtension, UiInterestBearingConfig, UiMemoTransfer,
+        UiMintCloseAuthority, UiPermanentDelegate, UiTransferFeeAmount, UiTransferFeeConfig,
     },
 };
 use solana_cli_output::{display::writeln_name_value, OutputFormat, QuietDisplay, VerboseDisplay};
@@ -607,11 +607,11 @@ fn display_ui_extension(
             writeln_name_value(f, "  Transfer fees withheld:", &withheld_amount.to_string())
         }
         UiExtension::MintCloseAuthority(UiMintCloseAuthority { close_authority }) => {
-            writeln_name_value(
-                f,
-                "  Close authority:",
-                close_authority.as_ref().unwrap_or(&String::new()),
-            )
+            if let Some(close_authority) = close_authority {
+                writeln_name_value(f, "  Close authority:", close_authority)
+            } else {
+                Ok(())
+            }
         }
         UiExtension::ConfidentialTransferMint(_) => unimplemented!(),
         UiExtension::ConfidentialTransferAccount(_) => unimplemented!(),
@@ -656,6 +656,18 @@ fn display_ui_extension(
                 rate_authority.as_ref().unwrap_or(&String::new()),
             )
         }
+        UiExtension::CpiGuard(UiCpiGuard { lock_cpi }) => writeln_name_value(
+            f,
+            "  CPI Guard:",
+            if *lock_cpi { "Enabled" } else { "Disabled" },
+        ),
+        UiExtension::PermanentDelegate(UiPermanentDelegate { delegate }) => {
+            if let Some(delegate) = delegate {
+                writeln_name_value(f, "  Permanent delegate:", delegate)
+            } else {
+                Ok(())
+            }
+        }
         // ExtensionType::Uninitialized is a hack to ensure a mint/account is never the same length as a multisig
         UiExtension::Uninitialized => Ok(()),
         UiExtension::UnparseableExtension => writeln_name_value(
@@ -663,9 +675,6 @@ fn display_ui_extension(
             "    Unparseable extension:",
             "Consider upgrading to a newer version of spl-token",
         ),
-        // XXX HANA this is needed temporarily to make monorepo ci happy while the new cases are added
-        #[allow(unreachable_patterns)]
-        _ => unimplemented!(),
     }
 }
 
