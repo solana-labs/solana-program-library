@@ -71,7 +71,8 @@ fn process_initialize_mint(
 /// Processes an [UpdateMint] instruction.
 fn process_update_mint(
     accounts: &[AccountInfo],
-    new_confidential_transfer_mint: &ConfidentialTransferMint,
+    auto_approve_new_account: PodBool,
+    auditor_encryption_pubkey: &EncryptionPubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
@@ -86,9 +87,10 @@ fn process_update_mint(
     if authority_info.is_signer
         && confidential_transfer_mint.authority == *authority_info.key
         && (new_authority_info.is_signer || *new_authority_info.key == Pubkey::default())
-        && new_confidential_transfer_mint.authority == *new_authority_info.key
     {
-        *confidential_transfer_mint = *new_confidential_transfer_mint;
+        confidential_transfer_mint.authority = *new_authority_info.key;
+        confidential_transfer_mint.auto_approve_new_accounts = auto_approve_new_account;
+        confidential_transfer_mint.auditor_encryption_pubkey = *auditor_encryption_pubkey;
         Ok(())
     } else {
         Err(ProgramError::MissingRequiredSignature)
@@ -1187,9 +1189,11 @@ pub(crate) fn process_instruction(
         }
         ConfidentialTransferInstruction::UpdateMint => {
             msg!("ConfidentialTransferInstruction::UpdateMint");
+            let data = decode_instruction_data::<UpdateMintData>(input)?;
             process_update_mint(
                 accounts,
-                decode_instruction_data::<ConfidentialTransferMint>(input)?,
+                data.auto_approve_new_accounts,
+                &data.auditor_encryption_pubkey,
             )
         }
         ConfidentialTransferInstruction::ConfigureAccount => {

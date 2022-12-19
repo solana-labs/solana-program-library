@@ -43,6 +43,9 @@ pub enum ConfidentialTransferInstruction {
 
     /// Updates the confidential transfer mint configuration for a mint.
     ///
+    /// The `withdraw_withheld_authority_encryption_pubkey` and `withheld_amount` ciphertext are
+    /// not updatable.
+    ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The SPL Token mint.
@@ -50,7 +53,7 @@ pub enum ConfidentialTransferInstruction {
     ///   2. `[signer]` New confidential transfer mint authority.
     ///
     /// Data expected by this instruction:
-    ///   `ConfidentialTransferMint`
+    ///   `UpdateMintData`
     ///
     UpdateMint,
 
@@ -419,6 +422,17 @@ pub enum ConfidentialTransferInstruction {
     HarvestWithheldTokensToMint,
 }
 
+/// Data expected by `ConfidentialTransferInstruction::UpdateMint`
+#[derive(Clone, Copy, Pod, Zeroable)]
+#[repr(C)]
+pub struct UpdateMintData {
+    /// Determines if newly configured accounts must be approved by the `authority` before they may
+    /// be used by the user.
+    pub auto_approve_new_accounts: PodBool,
+    /// New authority to decode any transfer amount in a confidential transfer.
+    pub auditor_encryption_pubkey: EncryptionPubkey,
+}
+
 /// Data expected by `ConfidentialTransferInstruction::ConfigureAccount`
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
@@ -530,24 +544,26 @@ pub fn initialize_mint(
 pub fn update_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
-    new_ct_mint: &ConfidentialTransferMint,
     authority: &Pubkey,
+    new_authority: &Pubkey,
+    auto_approve_new_accounts: PodBool,
+    auditor_encryption_pubkey: &EncryptionPubkey,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![
         AccountMeta::new(*mint, false),
         AccountMeta::new_readonly(*authority, true),
-        AccountMeta::new_readonly(
-            new_ct_mint.authority,
-            new_ct_mint.authority != Pubkey::default(),
-        ),
+        AccountMeta::new_readonly(*new_authority, *new_authority != Pubkey::default()),
     ];
     Ok(encode_instruction(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::UpdateMint,
-        new_ct_mint,
+        &UpdateMintData {
+            auto_approve_new_accounts,
+            auditor_encryption_pubkey: *auditor_encryption_pubkey,
+        },
     ))
 }
 
