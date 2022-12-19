@@ -16,7 +16,7 @@ use {
 };
 
 #[tokio::test]
-async fn transfer_checked() {
+async fn transfer() {
     let test_transfer_amount = 100;
     let mut context = TestContext::new().await;
     context
@@ -27,6 +27,7 @@ async fn transfer_checked() {
     let TokenContext {
         mint_authority,
         token,
+        token_unchecked,
         alice,
         bob,
         ..
@@ -124,6 +125,28 @@ async fn transfer_checked() {
             )
         )))
     );
+
+    // regular unchecked transfer fails
+    let error = token_unchecked
+        .transfer(
+            &bob_account,
+            &alice_account,
+            &bob.pubkey(),
+            test_transfer_amount,
+            &[&bob],
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::NonTransferable as u32)
+            )
+        )))
+    );
 }
 
 #[tokio::test]
@@ -158,6 +181,7 @@ async fn transfer_checked_with_fee() {
     let TokenContext {
         mint_authority,
         token,
+        token_unchecked,
         alice,
         bob,
         ..
@@ -218,6 +242,28 @@ async fn transfer_checked_with_fee() {
 
     // regular transfer fails
     let error = token
+        .transfer(
+            &alice_account,
+            &bob_account,
+            &alice.pubkey(),
+            test_transfer_amount,
+            &[&alice],
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::NonTransferable as u32)
+            )
+        )))
+    );
+
+    // unchecked transfer fails
+    let error = token_unchecked
         .transfer(
             &alice_account,
             &bob_account,
