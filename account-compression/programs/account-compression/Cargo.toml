@@ -18,7 +18,7 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.25.0"
+anchor-lang = "0.26.0"
 bytemuck = "1.8.0"
 spl-concurrent-merkle-tree = { version="0.1.2", path="../../../libraries/concurrent-merkle-tree", features = [ "sol-log" ]}
 spl-noop = { version = "0.1.3", path="../noop", features = [ "no-entrypoint" ]}
