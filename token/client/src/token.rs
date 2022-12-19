@@ -1558,7 +1558,6 @@ where
                 &self.program_id,
                 token_account,
                 &self.pubkey,
-                elgamal_keypair.public.into(),
                 decryptable_zero_balance,
                 maximum_pending_balance_credit_counter,
                 &authority.pubkey(),
