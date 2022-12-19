@@ -99,7 +99,6 @@ fn process_update_mint(
 fn process_configure_account(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    encryption_pubkey: &EncryptionPubkey,
     decryptable_zero_balance: &DecryptableBalance,
     maximum_pending_balance_credit_counter: &PodU64,
     proof_instruction_offset: i64,
@@ -139,18 +138,13 @@ fn process_configure_account(
         ProofInstruction::VerifyPubkeyValidity,
         &zkp_instruction,
     )?;
-    // Check that the encryption public key associated with the confidential extension account is
-    // consistent with what was actually used to generate the zkp.
-    if proof_data.pubkey != *encryption_pubkey {
-        return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
-    }
 
     // Note: The caller is expected to use the `Reallocate` instruction to ensure there is
     // sufficient room in their token account for the new `ConfidentialTransferAccount` extension
     let mut confidential_transfer_account =
         token_account.init_extension::<ConfidentialTransferAccount>(false)?;
     confidential_transfer_account.approved = confidential_transfer_mint.auto_approve_new_accounts;
-    confidential_transfer_account.encryption_pubkey = *encryption_pubkey;
+    confidential_transfer_account.encryption_pubkey = proof_data.pubkey;
     confidential_transfer_account.maximum_pending_balance_credit_counter =
         *maximum_pending_balance_credit_counter;
 
@@ -1204,7 +1198,6 @@ pub(crate) fn process_instruction(
             process_configure_account(
                 program_id,
                 accounts,
-                &data.encryption_pubkey,
                 &data.decryptable_zero_balance,
                 &data.maximum_pending_balance_credit_counter,
                 data.proof_instruction_offset as i64,

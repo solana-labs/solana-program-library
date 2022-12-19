@@ -423,8 +423,6 @@ pub enum ConfidentialTransferInstruction {
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
 pub struct ConfigureAccountInstructionData {
-    /// The public key associated with the account
-    pub encryption_pubkey: EncryptionPubkey,
     /// The decryptable balance (always 0) once the configure account succeeds
     pub decryptable_zero_balance: DecryptableBalance,
     /// The maximum number of despots and transfers that an account can receiver before the
@@ -562,7 +560,6 @@ pub fn inner_configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     mint: &Pubkey,
-    encryption_pubkey: EncryptionPubkey,
     decryptable_zero_balance: AeCiphertext,
     maximum_pending_balance_credit_counter: u64,
     authority: &Pubkey,
@@ -587,7 +584,6 @@ pub fn inner_configure_account(
         TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::ConfigureAccount,
         &ConfigureAccountInstructionData {
-            encryption_pubkey,
             decryptable_zero_balance: decryptable_zero_balance.into(),
             maximum_pending_balance_credit_counter: maximum_pending_balance_credit_counter.into(),
             proof_instruction_offset,
@@ -602,7 +598,6 @@ pub fn configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     mint: &Pubkey,
-    encryption_pubkey: EncryptionPubkey,
     decryptable_zero_balance: AeCiphertext,
     maximum_pending_balance_credit_counter: u64,
     authority: &Pubkey,
@@ -614,7 +609,6 @@ pub fn configure_account(
             token_program_id,
             token_account,
             mint,
-            encryption_pubkey,
             decryptable_zero_balance,
             maximum_pending_balance_credit_counter,
             authority,
