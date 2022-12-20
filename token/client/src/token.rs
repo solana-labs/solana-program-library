@@ -104,7 +104,10 @@ impl PartialEq for TokenError {
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExtensionInitializationParams {
     ConfidentialTransferMint {
-        ct_mint: confidential_transfer::ConfidentialTransferMint,
+        authority: Option<Pubkey>,
+        auto_approve_new_account: bool,
+        auditor_encryption_pubkey: ElGamalPubkey,
+        withdraw_withheld_authority_encryption_pubkey: ElGamalPubkey,
     },
     DefaultAccountState {
         state: AccountState,
@@ -147,13 +150,19 @@ impl ExtensionInitializationParams {
         mint: &Pubkey,
     ) -> Result<Instruction, ProgramError> {
         match self {
-            Self::ConfidentialTransferMint { ct_mint } => {
-                confidential_transfer::instruction::initialize_mint(
-                    token_program_id,
-                    mint,
-                    &ct_mint,
-                )
-            }
+            Self::ConfidentialTransferMint {
+                authority,
+                auto_approve_new_account,
+                auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey,
+            } => confidential_transfer::instruction::initialize_mint(
+                token_program_id,
+                mint,
+                authority.as_ref(),
+                auto_approve_new_account,
+                &auditor_encryption_pubkey,
+                &withdraw_withheld_authority_encryption_pubkey,
+            ),
             Self::DefaultAccountState { state } => {
                 default_account_state::instruction::initialize_default_account_state(
                     token_program_id,

@@ -32,12 +32,15 @@ pub enum ConfidentialTransferInstruction {
     /// The instruction fails if the `TokenInstruction::InitializeMint` instruction has already
     /// executed for the mint.
     ///
+    /// Note that the `withdraw_withheld_authority_encryption_pubkey` cannot be updated after it is
+    /// initialized.
+    ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The SPL Token mint.
     ///
     /// Data expected by this instruction:
-    ///   `ConfidentialTransferMint`
+    ///   `InitializeMintData`
     ///
     InitializeMint,
 
@@ -422,8 +425,24 @@ pub enum ConfidentialTransferInstruction {
     HarvestWithheldTokensToMint,
 }
 
+/// Data expected by `ConfidentialTransferInstruction::InitializeMint`
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+#[repr(C)]
+pub struct InitializeMintData {
+    /// Authority to modify the `ConfidentialTransferMint` configuration and to approve new
+    /// accounts.
+    pub authority: Pubkey,
+    /// Determines if newly configured accounts must be approved by the `authority` before they may
+    /// be used by the user.
+    pub auto_approve_new_accounts: PodBool,
+    /// New authority to decode any transfer amount in a confidential transfer.
+    pub auditor_encryption_pubkey: EncryptionPubkey,
+    /// Authority to withdraw withheld fees that are associated with accounts.
+    pub withdraw_withheld_authority_encryption_pubkey: EncryptionPubkey,
+}
+
 /// Data expected by `ConfidentialTransferInstruction::UpdateMint`
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct UpdateMintData {
     /// Determines if newly configured accounts must be approved by the `authority` before they may
@@ -434,7 +453,7 @@ pub struct UpdateMintData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::ConfigureAccount`
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct ConfigureAccountInstructionData {
     /// The decryptable balance (always 0) once the configure account succeeds
@@ -448,7 +467,7 @@ pub struct ConfigureAccountInstructionData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::EmptyAccount`
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct EmptyAccountInstructionData {
     /// Relative location of the `ProofInstruction::VerifyCloseAccount` instruction to the
@@ -457,7 +476,7 @@ pub struct EmptyAccountInstructionData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::Deposit`
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct DepositInstructionData {
     /// The amount of tokens to deposit
@@ -467,7 +486,7 @@ pub struct DepositInstructionData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::Withdraw`
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct WithdrawInstructionData {
     /// The amount of tokens to withdraw
@@ -482,7 +501,7 @@ pub struct WithdrawInstructionData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::Transfer`
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct TransferInstructionData {
     /// The new source decryptable balance if the transfer succeeds
@@ -493,7 +512,7 @@ pub struct TransferInstructionData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::ApplyPendingBalance`
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct ApplyPendingBalanceData {
     /// The expected number of pending balance credits since the last successful
@@ -504,7 +523,7 @@ pub struct ApplyPendingBalanceData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::WithdrawWithheldTokensFromMint`
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct WithdrawWithheldTokensFromMintData {
     /// Relative location of the `ProofInstruction::VerifyWithdrawWithheld` instruction to the
@@ -513,7 +532,7 @@ pub struct WithdrawWithheldTokensFromMintData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::WithdrawWithheldTokensFromAccounts`
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct WithdrawWithheldTokensFromAccountsData {
     /// Number of token accounts harvested
@@ -528,16 +547,33 @@ pub struct WithdrawWithheldTokensFromAccountsData {
 pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
-    ct_mint: &ConfidentialTransferMint,
+    authority: Option<&Pubkey>,
+    auto_approve_new_accounts: bool,
+    auditor_encryption_pubkey: &ElGamalPubkey,
+    withdraw_withheld_authority_encryption_pubkey: &ElGamalPubkey,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
+
+    // TODO: use `OptionalNonZeroPubkey`
+    let authority = if let Some(authority) = authority {
+        *authority
+    } else {
+        Pubkey::default()
+    };
+
     Ok(encode_instruction(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::InitializeMint,
-        ct_mint,
+        &InitializeMintData {
+            authority,
+            auto_approve_new_accounts: auto_approve_new_accounts.into(),
+            auditor_encryption_pubkey: (*auditor_encryption_pubkey).into(),
+            withdraw_withheld_authority_encryption_pubkey:
+                (*withdraw_withheld_authority_encryption_pubkey).into(),
+        },
     ))
 }
 
