@@ -1,5 +1,5 @@
 #[cfg(not(target_os = "solana"))]
-use solana_zk_token_sdk::encryption::auth_encryption::AeCiphertext;
+use solana_zk_token_sdk::encryption::{auth_encryption::AeCiphertext, elgamal::ElGamalPubkey};
 pub use solana_zk_token_sdk::zk_token_proof_instruction::*;
 use {
     crate::{
@@ -524,6 +524,7 @@ pub struct WithdrawWithheldTokensFromAccountsData {
 }
 
 /// Create a `InitializeMint` instruction
+#[cfg(not(target_os = "solana"))]
 pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
@@ -541,28 +542,35 @@ pub fn initialize_mint(
 }
 
 /// Create a `UpdateMint` instruction
+#[cfg(not(target_os = "solana"))]
 pub fn update_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
     authority: &Pubkey,
-    new_authority: &Pubkey,
-    auto_approve_new_accounts: PodBool,
-    auditor_encryption_pubkey: &EncryptionPubkey,
+    new_authority: Option<&Pubkey>,
+    auto_approve_new_accounts: bool,
+    auditor_encryption_pubkey: &ElGamalPubkey,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
-    let accounts = vec![
+
+    let mut accounts = vec![
         AccountMeta::new(*mint, false),
         AccountMeta::new_readonly(*authority, true),
-        AccountMeta::new_readonly(*new_authority, *new_authority != Pubkey::default()),
     ];
+    if let Some(new_authority) = new_authority {
+        accounts.push(AccountMeta::new_readonly(*new_authority, true));
+    } else {
+        accounts.push(AccountMeta::new_readonly(Pubkey::default(), false));
+    }
+
     Ok(encode_instruction(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::UpdateMint,
         &UpdateMintData {
-            auto_approve_new_accounts,
-            auditor_encryption_pubkey: *auditor_encryption_pubkey,
+            auto_approve_new_accounts: auto_approve_new_accounts.into(),
+            auditor_encryption_pubkey: (*auditor_encryption_pubkey).into(),
         },
     ))
 }

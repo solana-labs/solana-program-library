@@ -306,8 +306,12 @@ async fn ct_initialize_and_update_mint() {
     let err = token
         .confidential_transfer_update_mint(
             &wrong_keypair,
-            new_ct_mint,
             Some(&new_ct_mint_authority),
+            new_ct_mint.auto_approve_new_accounts.into(),
+            &new_ct_mint
+                .withdraw_withheld_authority_encryption_pubkey
+                .try_into()
+                .unwrap(),
         )
         .await
         .unwrap_err();
@@ -320,26 +324,64 @@ async fn ct_initialize_and_update_mint() {
     token
         .confidential_transfer_update_mint(
             &ct_mint_authority,
-            new_ct_mint,
             Some(&new_ct_mint_authority),
+            new_ct_mint.auto_approve_new_accounts.into(),
+            &new_ct_mint
+                .withdraw_withheld_authority_encryption_pubkey
+                .try_into()
+                .unwrap(),
         )
         .await
         .unwrap();
 
     let state = token.get_mint_info().await.unwrap();
     let extension = state.get_extension::<ConfidentialTransferMint>().unwrap();
-    assert_eq!(*extension, new_ct_mint);
+    assert_eq!(extension.authority, new_ct_mint.authority);
+    assert_eq!(
+        extension.auto_approve_new_accounts,
+        new_ct_mint.auto_approve_new_accounts
+    );
+    assert_eq!(
+        extension.auditor_encryption_pubkey,
+        new_ct_mint.auditor_encryption_pubkey
+    );
+    assert_eq!(
+        extension.withdraw_withheld_authority_encryption_pubkey,
+        ct_mint.withdraw_withheld_authority_encryption_pubkey,
+    );
+    assert_eq!(extension.withheld_amount, ct_mint.withheld_amount);
 
     // Clear the authority
     let new_ct_mint = ConfidentialTransferMint::default();
     token
-        .confidential_transfer_update_mint(&new_ct_mint_authority, new_ct_mint, None)
+        .confidential_transfer_update_mint(
+            &new_ct_mint_authority,
+            None,
+            new_ct_mint.auto_approve_new_accounts.into(),
+            &new_ct_mint
+                .withdraw_withheld_authority_encryption_pubkey
+                .try_into()
+                .unwrap(),
+        )
         .await
         .unwrap();
 
     let state = token.get_mint_info().await.unwrap();
     let extension = state.get_extension::<ConfidentialTransferMint>().unwrap();
-    assert_eq!(*extension, new_ct_mint);
+    assert_eq!(extension.authority, new_ct_mint.authority);
+    assert_eq!(
+        extension.auto_approve_new_accounts,
+        new_ct_mint.auto_approve_new_accounts
+    );
+    assert_eq!(
+        extension.auditor_encryption_pubkey,
+        new_ct_mint.auditor_encryption_pubkey
+    );
+    assert_eq!(
+        extension.withdraw_withheld_authority_encryption_pubkey,
+        ct_mint.withdraw_withheld_authority_encryption_pubkey,
+    );
+    assert_eq!(extension.withheld_amount, ct_mint.withheld_amount);
 }
 
 #[tokio::test]
