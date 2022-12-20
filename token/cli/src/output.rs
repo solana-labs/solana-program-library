@@ -191,6 +191,8 @@ pub(crate) struct CliTokenAccount {
     pub(crate) is_associated: bool,
     #[serde(flatten)]
     pub(crate) account: UiTokenAccount,
+    #[serde(skip_serializing)]
+    pub(crate) has_permanent_delegate: bool,
 }
 
 impl QuietDisplay for CliTokenAccount {}
@@ -255,6 +257,22 @@ impl fmt::Display for CliTokenAccount {
         if !self.is_associated {
             writeln!(f)?;
             writeln!(f, "* Please run `spl-token gc` to clean up Aux accounts")?;
+        }
+
+        if self.has_permanent_delegate {
+            writeln!(f)?;
+            writeln!(
+                f,
+                "* {} ",
+                style("This token has a permanent delegate!").bold()
+            )?;
+            writeln!(
+                f,
+                "  This means the mint may withdraw {} funds from this account at {} time.",
+                style("all").bold(),
+                style("any").bold(),
+            )?;
+            writeln!(f, "  If this was not adequately disclosed to you, you may be dealing with a malicious mint.")?;
         }
 
         Ok(())
