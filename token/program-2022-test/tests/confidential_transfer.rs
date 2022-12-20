@@ -285,7 +285,13 @@ async fn ct_initialize_and_update_mint() {
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(ct_mint.authority),
+                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
+                auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey: ct_mint
+                    .withdraw_withheld_authority_encryption_pubkey,
+            },
         ])
         .await
         .unwrap();
@@ -395,7 +401,13 @@ async fn ct_configure_token_account() {
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(ct_mint.authority),
+                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
+                auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey: ct_mint
+                    .withdraw_withheld_authority_encryption_pubkey,
+            },
         ])
         .await
         .unwrap();
@@ -466,7 +478,13 @@ async fn ct_enable_disable_confidential_credits() {
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(ct_mint.authority),
+                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
+                auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey: ct_mint
+                    .withdraw_withheld_authority_encryption_pubkey,
+            },
         ])
         .await
         .unwrap();
@@ -508,7 +526,13 @@ async fn ct_enable_disable_non_confidential_credits() {
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(ct_mint.authority),
+                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
+                auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey: ct_mint
+                    .withdraw_withheld_authority_encryption_pubkey,
+            },
         ])
         .await
         .unwrap();
@@ -599,7 +623,13 @@ async fn ct_new_account_is_empty() {
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(ct_mint.authority),
+                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
+                auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey: ct_mint
+                    .withdraw_withheld_authority_encryption_pubkey,
+            },
         ])
         .await
         .unwrap();
@@ -621,7 +651,13 @@ async fn ct_deposit() {
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(ct_mint.authority),
+                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
+                auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey: ct_mint
+                    .withdraw_withheld_authority_encryption_pubkey,
+            },
         ])
         .await
         .unwrap();
@@ -745,7 +781,13 @@ async fn ct_withdraw() {
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(ct_mint.authority),
+                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
+                auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey: ct_mint
+                    .withdraw_withheld_authority_encryption_pubkey,
+            },
         ])
         .await
         .unwrap();
@@ -848,7 +890,13 @@ async fn ct_transfer() {
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(ct_mint.authority),
+                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
+                auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey: ct_mint
+                    .withdraw_withheld_authority_encryption_pubkey,
+            },
         ])
         .await
         .unwrap();
@@ -1086,7 +1134,13 @@ async fn ct_transfer_with_fee() {
                 transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
                 maximum_fee: TEST_MAXIMUM_FEE,
             },
-            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(ct_mint.authority),
+                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
+                auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey: ct_mint
+                    .withdraw_withheld_authority_encryption_pubkey,
+            },
         ])
         .await
         .unwrap();
@@ -1304,7 +1358,13 @@ async fn ct_withdraw_withheld_tokens_from_mint() {
                 transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
                 maximum_fee: TEST_MAXIMUM_FEE,
             },
-            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(ct_mint.authority),
+                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
+                auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey: ct_mint
+                    .withdraw_withheld_authority_encryption_pubkey,
+            },
         ])
         .await
         .unwrap();
@@ -1460,7 +1520,13 @@ async fn ct_withdraw_withheld_tokens_from_accounts() {
                 transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
                 maximum_fee: TEST_MAXIMUM_FEE,
             },
-            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(ct_mint.authority),
+                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
+                auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey: ct_mint
+                    .withdraw_withheld_authority_encryption_pubkey,
+            },
         ])
         .await
         .unwrap();
@@ -1567,7 +1633,13 @@ async fn ct_transfer_memo() {
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(ct_mint.authority),
+                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
+                auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey: ct_mint
+                    .withdraw_withheld_authority_encryption_pubkey,
+            },
         ])
         .await
         .unwrap();
@@ -1675,7 +1747,13 @@ async fn ct_transfer_with_fee_memo() {
                 transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
                 maximum_fee: TEST_MAXIMUM_FEE,
             },
-            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(ct_mint.authority),
+                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
+                auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey: ct_mint
+                    .withdraw_withheld_authority_encryption_pubkey,
+            },
         ])
         .await
         .unwrap();

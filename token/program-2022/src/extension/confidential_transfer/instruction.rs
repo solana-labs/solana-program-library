@@ -1,5 +1,5 @@
 #[cfg(not(target_os = "solana"))]
-use solana_zk_token_sdk::encryption::{auth_encryption::AeCiphertext, elgamal::ElGamalPubkey};
+use solana_zk_token_sdk::encryption::auth_encryption::AeCiphertext;
 pub use solana_zk_token_sdk::zk_token_proof_instruction::*;
 use {
     crate::{
@@ -549,8 +549,8 @@ pub fn initialize_mint(
     mint: &Pubkey,
     authority: Option<&Pubkey>,
     auto_approve_new_accounts: bool,
-    auditor_encryption_pubkey: &ElGamalPubkey,
-    withdraw_withheld_authority_encryption_pubkey: &ElGamalPubkey,
+    auditor_encryption_pubkey: &EncryptionPubkey,
+    withdraw_withheld_authority_encryption_pubkey: &EncryptionPubkey,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
@@ -570,9 +570,9 @@ pub fn initialize_mint(
         &InitializeMintData {
             authority,
             auto_approve_new_accounts: auto_approve_new_accounts.into(),
-            auditor_encryption_pubkey: (*auditor_encryption_pubkey).into(),
+            auditor_encryption_pubkey: *auditor_encryption_pubkey,
             withdraw_withheld_authority_encryption_pubkey:
-                (*withdraw_withheld_authority_encryption_pubkey).into(),
+                *withdraw_withheld_authority_encryption_pubkey,
         },
     ))
 }
@@ -585,7 +585,7 @@ pub fn update_mint(
     authority: &Pubkey,
     new_authority: Option<&Pubkey>,
     auto_approve_new_accounts: bool,
-    auditor_encryption_pubkey: &ElGamalPubkey,
+    auditor_encryption_pubkey: &EncryptionPubkey,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
 
@@ -606,7 +606,7 @@ pub fn update_mint(
         ConfidentialTransferInstruction::UpdateMint,
         &UpdateMintData {
             auto_approve_new_accounts: auto_approve_new_accounts.into(),
-            auditor_encryption_pubkey: (*auditor_encryption_pubkey).into(),
+            auditor_encryption_pubkey: *auditor_encryption_pubkey,
         },
     ))
 }

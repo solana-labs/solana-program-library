@@ -20,9 +20,9 @@ use {
     },
     spl_token_2022::{
         extension::{
-            confidential_transfer, cpi_guard, default_account_state, interest_bearing_mint,
-            memo_transfer, transfer_fee, BaseStateWithExtensions, ExtensionType,
-            StateWithExtensionsOwned,
+            confidential_transfer, confidential_transfer::EncryptionPubkey, cpi_guard,
+            default_account_state, interest_bearing_mint, memo_transfer, transfer_fee,
+            BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
         },
         instruction,
         solana_zk_token_sdk::{
@@ -105,9 +105,9 @@ impl PartialEq for TokenError {
 pub enum ExtensionInitializationParams {
     ConfidentialTransferMint {
         authority: Option<Pubkey>,
-        auto_approve_new_account: bool,
-        auditor_encryption_pubkey: ElGamalPubkey,
-        withdraw_withheld_authority_encryption_pubkey: ElGamalPubkey,
+        auto_approve_new_accounts: bool,
+        auditor_encryption_pubkey: EncryptionPubkey,
+        withdraw_withheld_authority_encryption_pubkey: EncryptionPubkey,
     },
     DefaultAccountState {
         state: AccountState,
@@ -152,14 +152,14 @@ impl ExtensionInitializationParams {
         match self {
             Self::ConfidentialTransferMint {
                 authority,
-                auto_approve_new_account,
+                auto_approve_new_accounts,
                 auditor_encryption_pubkey,
                 withdraw_withheld_authority_encryption_pubkey,
             } => confidential_transfer::instruction::initialize_mint(
                 token_program_id,
                 mint,
                 authority.as_ref(),
-                auto_approve_new_account,
+                auto_approve_new_accounts,
                 &auditor_encryption_pubkey,
                 &withdraw_withheld_authority_encryption_pubkey,
             ),
@@ -1492,7 +1492,7 @@ where
         authority: &S,
         new_authority: Option<&S>,
         auto_approve_new_account: bool,
-        auditor_encryption_pubkey: &ElGamalPubkey,
+        auditor_encryption_pubkey: &EncryptionPubkey,
     ) -> TokenResult<T::Output> {
         let mut signers = vec![authority];
         let new_authority_pubkey = if let Some(new_authority) = new_authority {
