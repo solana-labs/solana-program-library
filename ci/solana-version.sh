@@ -10,6 +10,7 @@
 # Then to access the solana version:
 #   $ echo "$solana_version"
 #
+set -x
 
 if [[ -n $SOLANA_VERSION ]]; then
   solana_version="$SOLANA_VERSION"
@@ -23,7 +24,13 @@ export PATH="$HOME"/.local/share/solana/install/active_release/bin:"$PATH"
 if [[ -n $1 ]]; then
   case $1 in
   install)
-    sh -c "$(curl -sSfL https://release.solana.com/$solana_version/install)"
+    curl -vsSfL https://release.solana.com/$solana_version/install > lol.sh
+    printf "\nHANA SCRIPT BEGIN"
+    cat lol.sh
+    printf "HANA SCRIPT END\n"
+    sed -i 's/set -e/set -ex/' lol.sh
+    chmod 755 lol.sh
+    sh -c "$(./lol.sh)"
     solana --version
     ;;
   *)
