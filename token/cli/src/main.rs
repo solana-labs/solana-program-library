@@ -1763,11 +1763,23 @@ async fn command_address(
 async fn command_display(config: &Config<'_>, address: Pubkey) -> CommandResult {
     let account_data = config.get_account_checked(&address).await?;
 
-    let decimals = if let Some(mint_address) = get_token_account_mint(&account_data.data) {
-        Some(config.get_mint_info(&mint_address, None).await?.decimals)
-    } else {
-        None
-    };
+    let (decimals, has_permanent_delegate) =
+        if let Some(mint_address) = get_token_account_mint(&account_data.data) {
+            let mint_account = config.get_account_checked(&mint_address).await?;
+            let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)
+                .map_err(|_| format!("Could not deserialize token mint {}", mint_address))?;
+
+            let has_permanent_delegate =
+                if let Ok(permanent_delegate) = mint_state.get_extension::<PermanentDelegate>() {
+                    Option::<Pubkey>::from(permanent_delegate.delegate).is_some()
+                } else {
+                    false
+                };
+
+            (Some(mint_state.base.decimals), has_permanent_delegate)
+        } else {
+            (None, false)
+        };
 
     let token_data = parse_token(&account_data.data, decimals);
 
@@ -1786,6 +1798,7 @@ async fn command_display(config: &Config<'_>, address: Pubkey) -> CommandResult 
                 program_id: config.program_id.to_string(),
                 is_associated: associated_address == address,
                 account,
+                has_permanent_delegate,
             };
 
             Ok(config.output_format.formatted_string(&cli_output))
