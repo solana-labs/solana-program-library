@@ -25,10 +25,11 @@ if [[ -n $1 ]]; then
   case $1 in
   install)
     curl -vsSfL https://release.solana.com/$solana_version/install > lol.sh
-    printf "\nHANA SCRIPT BEGIN"
+    printf "\n\nHANA SCRIPT BEGIN\n"
     cat lol.sh
-    printf "HANA SCRIPT END\n"
+    printf "\nHANA SCRIPT END\n\n"
     sed -i 's/set -e/set -ex/' lol.sh
+    sed -i 's/\( *\)\(ignore "\$solana.*\)/\1cat "\$solana_install_init"\n\1\2/' lol.sh
     chmod 755 lol.sh
     sh -c "$(./lol.sh)"
     solana --version
