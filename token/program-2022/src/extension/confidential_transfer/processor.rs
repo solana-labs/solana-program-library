@@ -55,7 +55,10 @@ fn decode_proof_instruction<T: Pod>(
 /// Processes an [InitializeMint] instruction.
 fn process_initialize_mint(
     accounts: &[AccountInfo],
-    confidential_transfer_mint: &ConfidentialTransferMint,
+    authority: &Pubkey,
+    auto_approve_new_account: PodBool,
+    auditor_encryption_pubkey: &EncryptionPubkey,
+    withdraw_withheld_authority_encryption_pubkey: &EncryptionPubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
@@ -63,7 +66,14 @@ fn process_initialize_mint(
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
     let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(mint_data)?;
-    *mint.init_extension::<ConfidentialTransferMint>(true)? = *confidential_transfer_mint;
+    let confidential_transfer_mint = mint.init_extension::<ConfidentialTransferMint>(true)?;
+
+    confidential_transfer_mint.authority = *authority;
+    confidential_transfer_mint.auto_approve_new_accounts = auto_approve_new_account;
+    confidential_transfer_mint.auditor_encryption_pubkey = *auditor_encryption_pubkey;
+    confidential_transfer_mint.withdraw_withheld_authority_encryption_pubkey =
+        *withdraw_withheld_authority_encryption_pubkey;
+    confidential_transfer_mint.withheld_amount = EncryptedWithheldAmount::zeroed();
 
     Ok(())
 }
@@ -71,7 +81,8 @@ fn process_initialize_mint(
 /// Processes an [UpdateMint] instruction.
 fn process_update_mint(
     accounts: &[AccountInfo],
-    new_confidential_transfer_mint: &ConfidentialTransferMint,
+    auto_approve_new_account: PodBool,
+    auditor_encryption_pubkey: &EncryptionPubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
@@ -86,9 +97,10 @@ fn process_update_mint(
     if authority_info.is_signer
         && confidential_transfer_mint.authority == *authority_info.key
         && (new_authority_info.is_signer || *new_authority_info.key == Pubkey::default())
-        && new_confidential_transfer_mint.authority == *new_authority_info.key
     {
-        *confidential_transfer_mint = *new_confidential_transfer_mint;
+        confidential_transfer_mint.authority = *new_authority_info.key;
+        confidential_transfer_mint.auto_approve_new_accounts = auto_approve_new_account;
+        confidential_transfer_mint.auditor_encryption_pubkey = *auditor_encryption_pubkey;
         Ok(())
     } else {
         Err(ProgramError::MissingRequiredSignature)
@@ -1180,16 +1192,22 @@ pub(crate) fn process_instruction(
     match decode_instruction_type(input)? {
         ConfidentialTransferInstruction::InitializeMint => {
             msg!("ConfidentialTransferInstruction::InitializeMint");
+            let data = decode_instruction_data::<InitializeMintData>(input)?;
             process_initialize_mint(
                 accounts,
-                decode_instruction_data::<ConfidentialTransferMint>(input)?,
+                &data.authority,
+                data.auto_approve_new_accounts,
+                &data.auditor_encryption_pubkey,
+                &data.withdraw_withheld_authority_encryption_pubkey,
             )
         }
         ConfidentialTransferInstruction::UpdateMint => {
             msg!("ConfidentialTransferInstruction::UpdateMint");
+            let data = decode_instruction_data::<UpdateMintData>(input)?;
             process_update_mint(
                 accounts,
-                decode_instruction_data::<ConfidentialTransferMint>(input)?,
+                data.auto_approve_new_accounts,
+                &data.auditor_encryption_pubkey,
             )
         }
         ConfidentialTransferInstruction::ConfigureAccount => {

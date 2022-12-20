@@ -20,9 +20,9 @@ use {
     },
     spl_token_2022::{
         extension::{
-            confidential_transfer, cpi_guard, default_account_state, interest_bearing_mint,
-            memo_transfer, transfer_fee, BaseStateWithExtensions, ExtensionType,
-            StateWithExtensionsOwned,
+            confidential_transfer, confidential_transfer::EncryptionPubkey, cpi_guard,
+            default_account_state, interest_bearing_mint, memo_transfer, transfer_fee,
+            BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
         },
         instruction,
         solana_zk_token_sdk::{
@@ -104,7 +104,10 @@ impl PartialEq for TokenError {
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExtensionInitializationParams {
     ConfidentialTransferMint {
-        ct_mint: confidential_transfer::ConfidentialTransferMint,
+        authority: Option<Pubkey>,
+        auto_approve_new_accounts: bool,
+        auditor_encryption_pubkey: EncryptionPubkey,
+        withdraw_withheld_authority_encryption_pubkey: EncryptionPubkey,
     },
     DefaultAccountState {
         state: AccountState,
@@ -147,13 +150,19 @@ impl ExtensionInitializationParams {
         mint: &Pubkey,
     ) -> Result<Instruction, ProgramError> {
         match self {
-            Self::ConfidentialTransferMint { ct_mint } => {
-                confidential_transfer::instruction::initialize_mint(
-                    token_program_id,
-                    mint,
-                    &ct_mint,
-                )
-            }
+            Self::ConfidentialTransferMint {
+                authority,
+                auto_approve_new_accounts,
+                auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey,
+            } => confidential_transfer::instruction::initialize_mint(
+                token_program_id,
+                mint,
+                authority.as_ref(),
+                auto_approve_new_accounts,
+                &auditor_encryption_pubkey,
+                &withdraw_withheld_authority_encryption_pubkey,
+            ),
             Self::DefaultAccountState { state } => {
                 default_account_state::instruction::initialize_default_account_state(
                     token_program_id,
@@ -1481,19 +1490,26 @@ where
     pub async fn confidential_transfer_update_mint<S: Signer>(
         &self,
         authority: &S,
-        new_ct_mint: confidential_transfer::ConfidentialTransferMint,
         new_authority: Option<&S>,
+        auto_approve_new_account: bool,
+        auditor_encryption_pubkey: &EncryptionPubkey,
     ) -> TokenResult<T::Output> {
         let mut signers = vec![authority];
-        if let Some(new_authority) = new_authority {
+        let new_authority_pubkey = if let Some(new_authority) = new_authority {
             signers.push(new_authority);
-        }
+            Some(new_authority.pubkey())
+        } else {
+            None
+        };
+
         self.process_ixs(
             &[confidential_transfer::instruction::update_mint(
                 &self.program_id,
                 &self.pubkey,
-                &new_ct_mint,
                 &authority.pubkey(),
+                new_authority_pubkey.as_ref(),
+                auto_approve_new_account,
+                auditor_encryption_pubkey,
             )?],
             &signers,
         )
