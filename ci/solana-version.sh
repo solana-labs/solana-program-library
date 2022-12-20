@@ -29,7 +29,7 @@ if [[ -n $1 ]]; then
     cat lol.sh
     printf "\nHANA SCRIPT END\n\n"
     sed -i 's/set -e/set -ex/' lol.sh
-    #sed -i 's/\( *\)\(ignore "\$solana.*\)/\1cat "\$solana_install_init"\n\1\2/' lol.sh
+    sed -i 's/\( *\)\(ignore "\$solana.*\)/\1file "$solana_install_init"\n\1\2/' lol.sh
     chmod 755 lol.sh
     sh -c "$(./lol.sh)"
     solana --version
