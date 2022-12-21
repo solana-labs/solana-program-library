@@ -158,7 +158,7 @@ impl ExtensionInitializationParams {
             } => confidential_transfer::instruction::initialize_mint(
                 token_program_id,
                 mint,
-                authority.as_ref(),
+                authority,
                 auto_approve_new_accounts,
                 &auditor_encryption_pubkey,
                 &withdraw_withheld_authority_encryption_pubkey,

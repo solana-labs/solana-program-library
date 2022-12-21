@@ -431,7 +431,7 @@ pub enum ConfidentialTransferInstruction {
 pub struct InitializeMintData {
     /// Authority to modify the `ConfidentialTransferMint` configuration and to approve new
     /// accounts.
-    pub authority: Pubkey,
+    pub authority: OptionalNonZeroPubkey,
     /// Determines if newly configured accounts must be approved by the `authority` before they may
     /// be used by the user.
     pub auto_approve_new_accounts: PodBool,
@@ -547,7 +547,7 @@ pub struct WithdrawWithheldTokensFromAccountsData {
 pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
-    authority: Option<&Pubkey>,
+    authority: Option<Pubkey>,
     auto_approve_new_accounts: bool,
     auditor_encryption_pubkey: &EncryptionPubkey,
     withdraw_withheld_authority_encryption_pubkey: &EncryptionPubkey,
@@ -555,20 +555,13 @@ pub fn initialize_mint(
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
 
-    // TODO: use `OptionalNonZeroPubkey`
-    let authority = if let Some(authority) = authority {
-        *authority
-    } else {
-        Pubkey::default()
-    };
-
     Ok(encode_instruction(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::InitializeMint,
         &InitializeMintData {
-            authority,
+            authority: authority.try_into()?,
             auto_approve_new_accounts: auto_approve_new_accounts.into(),
             auditor_encryption_pubkey: *auditor_encryption_pubkey,
             withdraw_withheld_authority_encryption_pubkey:

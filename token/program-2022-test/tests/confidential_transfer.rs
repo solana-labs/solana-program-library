@@ -65,7 +65,7 @@ impl ConfidentialTransferMintWithKeypairs {
         let ct_mint_transfer_auditor_encryption_keypair = ElGamalKeypair::new_rand();
         let ct_mint_withdraw_withheld_authority_encryption_keypair = ElGamalKeypair::new_rand();
         let ct_mint = ConfidentialTransferMint {
-            authority: ct_mint_authority.pubkey(),
+            authority: Some(ct_mint_authority.pubkey()).try_into().unwrap(),
             auto_approve_new_accounts: true.into(),
             auditor_encryption_pubkey: ct_mint_transfer_auditor_encryption_keypair.public.into(),
             withdraw_withheld_authority_encryption_pubkey:
@@ -286,7 +286,7 @@ async fn ct_initialize_and_update_mint() {
     context
         .init_token_with_mint(vec![
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(ct_mint.authority),
+                authority: ct_mint.authority.into(),
                 auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
                 auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
                 withdraw_withheld_authority_encryption_pubkey: ct_mint
@@ -305,7 +305,7 @@ async fn ct_initialize_and_update_mint() {
     // Change the authority
     let new_ct_mint_authority = Keypair::new();
     let new_ct_mint = ConfidentialTransferMint {
-        authority: new_ct_mint_authority.pubkey(),
+        authority: Some(new_ct_mint_authority.pubkey()).try_into().unwrap(),
         ..ConfidentialTransferMint::default()
     };
 
@@ -402,7 +402,7 @@ async fn ct_configure_token_account() {
     context
         .init_token_with_mint(vec![
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(ct_mint.authority),
+                authority: ct_mint.authority.into(),
                 auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
                 auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
                 withdraw_withheld_authority_encryption_pubkey: ct_mint
@@ -479,7 +479,7 @@ async fn ct_enable_disable_confidential_credits() {
     context
         .init_token_with_mint(vec![
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(ct_mint.authority),
+                authority: ct_mint.authority.into(),
                 auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
                 auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
                 withdraw_withheld_authority_encryption_pubkey: ct_mint
@@ -527,7 +527,7 @@ async fn ct_enable_disable_non_confidential_credits() {
     context
         .init_token_with_mint(vec![
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(ct_mint.authority),
+                authority: ct_mint.authority.into(),
                 auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
                 auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
                 withdraw_withheld_authority_encryption_pubkey: ct_mint
@@ -624,7 +624,7 @@ async fn ct_new_account_is_empty() {
     context
         .init_token_with_mint(vec![
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(ct_mint.authority),
+                authority: ct_mint.authority.into(),
                 auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
                 auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
                 withdraw_withheld_authority_encryption_pubkey: ct_mint
@@ -652,7 +652,7 @@ async fn ct_deposit() {
     context
         .init_token_with_mint(vec![
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(ct_mint.authority),
+                authority: ct_mint.authority.into(),
                 auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
                 auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
                 withdraw_withheld_authority_encryption_pubkey: ct_mint
@@ -782,7 +782,7 @@ async fn ct_withdraw() {
     context
         .init_token_with_mint(vec![
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(ct_mint.authority),
+                authority: ct_mint.authority.into(),
                 auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
                 auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
                 withdraw_withheld_authority_encryption_pubkey: ct_mint
@@ -891,7 +891,7 @@ async fn ct_transfer() {
     context
         .init_token_with_mint(vec![
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(ct_mint.authority),
+                authority: ct_mint.authority.into(),
                 auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
                 auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
                 withdraw_withheld_authority_encryption_pubkey: ct_mint
@@ -1135,7 +1135,7 @@ async fn ct_transfer_with_fee() {
                 maximum_fee: TEST_MAXIMUM_FEE,
             },
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(ct_mint.authority),
+                authority: ct_mint.authority.into(),
                 auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
                 auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
                 withdraw_withheld_authority_encryption_pubkey: ct_mint
@@ -1359,7 +1359,7 @@ async fn ct_withdraw_withheld_tokens_from_mint() {
                 maximum_fee: TEST_MAXIMUM_FEE,
             },
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(ct_mint.authority),
+                authority: ct_mint.authority.into(),
                 auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
                 auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
                 withdraw_withheld_authority_encryption_pubkey: ct_mint
@@ -1521,7 +1521,7 @@ async fn ct_withdraw_withheld_tokens_from_accounts() {
                 maximum_fee: TEST_MAXIMUM_FEE,
             },
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(ct_mint.authority),
+                authority: ct_mint.authority.into(),
                 auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
                 auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
                 withdraw_withheld_authority_encryption_pubkey: ct_mint
@@ -1634,7 +1634,7 @@ async fn ct_transfer_memo() {
     context
         .init_token_with_mint(vec![
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(ct_mint.authority),
+                authority: ct_mint.authority.into(),
                 auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
                 auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
                 withdraw_withheld_authority_encryption_pubkey: ct_mint
@@ -1748,7 +1748,7 @@ async fn ct_transfer_with_fee_memo() {
                 maximum_fee: TEST_MAXIMUM_FEE,
             },
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(ct_mint.authority),
+                authority: ct_mint.authority.into(),
                 auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
                 auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey,
                 withdraw_withheld_authority_encryption_pubkey: ct_mint

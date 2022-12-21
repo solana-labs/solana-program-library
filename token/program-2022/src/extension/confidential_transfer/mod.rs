@@ -5,7 +5,7 @@ use {
         pod::*,
     },
     bytemuck::{Pod, Zeroable},
-    solana_program::{entrypoint::ProgramResult, pubkey::Pubkey},
+    solana_program::entrypoint::ProgramResult,
     solana_zk_token_sdk::zk_token_elgamal::pod,
 };
 
@@ -43,11 +43,8 @@ pub struct ConfidentialTransferMint {
     /// Authority to modify the `ConfidentialTransferMint` configuration and to approve new
     /// accounts (if `auto_approve_new_accounts` is true)
     ///
-    /// Note that setting an authority of `Pubkey::default()` is the idiomatic way to disable
-    /// future changes to the configuration.
-    ///
     /// The legacy Token Multisig account is not supported as the authority
-    pub authority: Pubkey,
+    pub authority: OptionalNonZeroPubkey,
 
     /// Indicate if newly configured accounts must be approved by the `authority` before they may be
     /// used by the user.
