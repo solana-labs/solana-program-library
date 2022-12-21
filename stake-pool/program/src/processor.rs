@@ -1356,7 +1356,7 @@ impl Processor {
         let mut validator_stake_info = maybe_validator_stake_info.unwrap();
         if validator_stake_info.transient_stake_lamports > 0 {
             if maybe_ephemeral_stake_seed.is_none() {
-                msg!("Attempting to increase stake on a validator with transient stake, use IncreaseAdditionalValidatorStake with the existing seed");
+                msg!("Attempting to increase stake on a validator with pending transient stake, use IncreaseAdditionalValidatorStake with the existing seed");
                 return Err(StakePoolError::TransientAccountInUse.into());
             }
             if transient_stake_seed != validator_stake_info.transient_seed_suffix {
@@ -1435,9 +1435,10 @@ impl Processor {
             return Err(ProgramError::InsufficientFunds);
         }
 
-        let maybe_split_from_account_info =
-            if let Some(ephemeral_stake_seed) = maybe_ephemeral_stake_seed {
-                let ephemeral_stake_account_info = maybe_ephemeral_stake_account_info.unwrap();
+        let source_stake_account_info =
+            if let Some((ephemeral_stake_seed, ephemeral_stake_account_info)) =
+                maybe_ephemeral_stake_seed.zip(maybe_ephemeral_stake_account_info)
+            {
                 let ephemeral_stake_bump_seed = check_ephemeral_stake_address(
                     program_id,
                     stake_pool_info.key,
@@ -1479,31 +1480,28 @@ impl Processor {
                     AUTHORITY_WITHDRAW,
                     stake_pool.stake_withdraw_bump_seed,
                 )?;
-                if validator_stake_info.transient_stake_lamports > 0 {
-                    // transient stake exists, try to merge
-                    Self::stake_merge(
-                        stake_pool_info.key,
-                        ephemeral_stake_account_info.clone(),
-                        withdraw_authority_info.clone(),
-                        AUTHORITY_WITHDRAW,
-                        stake_pool.stake_withdraw_bump_seed,
-                        transient_stake_account_info.clone(),
-                        clock_info.clone(),
-                        stake_history_info.clone(),
-                        stake_program_info.clone(),
-                    )?;
-                    None
-                } else {
-                    // otherwise, split everything from the ephemeral stake, into the transient
-                    Some(ephemeral_stake_account_info)
-                }
+                ephemeral_stake_account_info
             } else {
                 // if no ephemeral account is provided, split everything from the
                 // reserve account, into the transient stake account
-                Some(reserve_stake_account_info)
+                reserve_stake_account_info
             };
 
-        if let Some(split_from_account_info) = maybe_split_from_account_info {
+        if validator_stake_info.transient_stake_lamports > 0 {
+            // transient stake exists, try to merge from the source account
+            Self::stake_merge(
+                stake_pool_info.key,
+                source_stake_account_info.clone(),
+                withdraw_authority_info.clone(),
+                AUTHORITY_WITHDRAW,
+                stake_pool.stake_withdraw_bump_seed,
+                transient_stake_account_info.clone(),
+                clock_info.clone(),
+                stake_history_info.clone(),
+                stake_program_info.clone(),
+            )?;
+        } else {
+            // no transient stake, split
             let transient_stake_bump_seed = check_transient_stake_address(
                 program_id,
                 stake_pool_info.key,
@@ -1528,7 +1526,7 @@ impl Processor {
             // split into transient stake account
             Self::stake_split(
                 stake_pool_info.key,
-                split_from_account_info.clone(),
+                source_stake_account_info.clone(),
                 withdraw_authority_info.clone(),
                 AUTHORITY_WITHDRAW,
                 stake_pool.stake_withdraw_bump_seed,
