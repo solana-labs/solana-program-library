@@ -88,36 +88,12 @@ impl TryFrom<Option<EncryptionPubkey>> for OptionalNonZeroEncryptionPubkey {
         }
     }
 }
-impl TryFrom<COption<EncryptionPubkey>> for OptionalNonZeroEncryptionPubkey {
-    type Error = ProgramError;
-    fn try_from(p: COption<EncryptionPubkey>) -> Result<Self, Self::Error> {
-        match p {
-            COption::None => Ok(Self(EncryptionPubkey::default())),
-            COption::Some(encryption_pubkey) => {
-                if encryption_pubkey == EncryptionPubkey::default() {
-                    Err(ProgramError::InvalidArgument)
-                } else {
-                    Ok(Self(encryption_pubkey))
-                }
-            }
-        }
-    }
-}
 impl From<OptionalNonZeroEncryptionPubkey> for Option<EncryptionPubkey> {
     fn from(p: OptionalNonZeroEncryptionPubkey) -> Self {
         if p.0 == EncryptionPubkey::default() {
             None
         } else {
             Some(p.0)
-        }
-    }
-}
-impl From<OptionalNonZeroEncryptionPubkey> for COption<EncryptionPubkey> {
-    fn from(p: OptionalNonZeroEncryptionPubkey) -> Self {
-        if p.0 == EncryptionPubkey::default() {
-            COption::None
-        } else {
-            COption::Some(p.0)
         }
     }
 }
