@@ -25,8 +25,6 @@ pub mod instruction;
 /// Confidential Transfer Extension processor
 pub mod processor;
 
-/// ElGamal public key used for encryption
-pub type EncryptionPubkey = pod::ElGamalPubkey;
 /// ElGamal ciphertext containing an account balance
 pub type EncryptedBalance = pod::ElGamalCiphertext;
 /// Authenticated encryption containing an account balance
@@ -55,25 +53,21 @@ pub struct ConfidentialTransferMint {
     pub auto_approve_new_accounts: PodBool,
 
     /// Authority to decode any transfer amount in a confidential transafer.
-    ///
-    /// * If non-zero, transfers must include ElGamal cyphertext with this public key permitting the
-    /// auditor to decode the transfer amount.
-    /// * If all zero, auditing is currently disabled.
-    pub auditor_encryption_pubkey: EncryptionPubkey,
+    pub auditor_encryption_pubkey: OptionalNonZeroEncryptionPubkey,
 
-    /// Authority to withraw withheld fees that are associated with accounts. It must be set to an
-    /// all zero pubkey if the mint is not extended for fees.
+    /// Authority to withraw withheld fees that are associated with accounts. It must be set to
+    /// `None` if the mint is not extended for fees.
     ///
     /// Note that the withdraw withheld authority has the ability to decode any withheld fee
     /// amount that are associated with accounts. When combined with the fee parameters, the
     /// withheld fee amounts can reveal information about transfer amounts.
     ///
-    /// * If non-zero, transfers must include ElGamal cyphertext of the transfer fee with this
+    /// * If not `None`, transfers must include ElGamal cyphertext of the transfer fee with this
     /// public key. If this is the case, but the base mint is not extended for fees, then any
     /// transfer will fail.
-    /// * If all zero, transfer fee is disabled. If this is the case, but the base mint is extended
+    /// * If `None`, transfer fee is disabled. If this is the case, but the base mint is extended
     /// for fees, then any transfer will fail.
-    pub withdraw_withheld_authority_encryption_pubkey: EncryptionPubkey,
+    pub withdraw_withheld_authority_encryption_pubkey: OptionalNonZeroEncryptionPubkey,
 
     /// Withheld transfer fee confidential tokens that have been moved to the mint for withdrawal.
     /// This will always be zero if fees are never enabled.

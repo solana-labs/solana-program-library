@@ -57,8 +57,8 @@ fn process_initialize_mint(
     accounts: &[AccountInfo],
     authority: &OptionalNonZeroPubkey,
     auto_approve_new_account: PodBool,
-    auditor_encryption_pubkey: &EncryptionPubkey,
-    withdraw_withheld_authority_encryption_pubkey: &EncryptionPubkey,
+    auditor_encryption_pubkey: &OptionalNonZeroEncryptionPubkey,
+    withdraw_withheld_authority_encryption_pubkey: &OptionalNonZeroEncryptionPubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
@@ -82,7 +82,7 @@ fn process_initialize_mint(
 fn process_update_mint(
     accounts: &[AccountInfo],
     auto_approve_new_account: PodBool,
-    auditor_encryption_pubkey: &EncryptionPubkey,
+    auditor_encryption_pubkey: &OptionalNonZeroEncryptionPubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
@@ -514,8 +514,9 @@ fn process_transfer(
         )?;
         // Check that the auditor encryption public key associated wth the confidential mint is
         // consistent with what was actually used to generate the zkp.
-        if proof_data.transfer_pubkeys.auditor_pubkey
-            != confidential_transfer_mint.auditor_encryption_pubkey
+        if !confidential_transfer_mint
+            .auditor_encryption_pubkey
+            .equals(&proof_data.transfer_pubkeys.auditor_pubkey)
         {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
@@ -574,15 +575,19 @@ fn process_transfer(
         )?;
         // Check that the encryption public keys associated with the confidential extension mint
         // are consistent with the keys that were used to generate the zkp.
-        if proof_data.transfer_with_fee_pubkeys.auditor_pubkey
-            != confidential_transfer_mint.auditor_encryption_pubkey
+        if !confidential_transfer_mint
+            .auditor_encryption_pubkey
+            .equals(&proof_data.transfer_with_fee_pubkeys.auditor_pubkey)
         {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
-        if proof_data
-            .transfer_with_fee_pubkeys
-            .withdraw_withheld_authority_pubkey
-            != confidential_transfer_mint.withdraw_withheld_authority_encryption_pubkey
+        if !confidential_transfer_mint
+            .withdraw_withheld_authority_encryption_pubkey
+            .equals(
+                &proof_data
+                    .transfer_with_fee_pubkeys
+                    .withdraw_withheld_authority_pubkey,
+            )
         {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
@@ -982,8 +987,9 @@ fn process_withdraw_withheld_tokens_from_mint(
     )?;
     // Checks that the withdraw authority encryption public key associated with the mint is
     // consistent with what was actually used to generate the zkp.
-    if proof_data.withdraw_withheld_authority_pubkey
-        != confidential_transfer_mint.withdraw_withheld_authority_encryption_pubkey
+    if !confidential_transfer_mint
+        .withdraw_withheld_authority_encryption_pubkey
+        .equals(&proof_data.withdraw_withheld_authority_pubkey)
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
@@ -1109,8 +1115,9 @@ fn process_withdraw_withheld_tokens_from_accounts(
     // Checks that the withdraw authority encryption public key associated with the mint is
     // consistent with what was actually used to generate the zkp.
     let confidential_transfer_mint = mint.get_extension_mut::<ConfidentialTransferMint>()?;
-    if proof_data.withdraw_withheld_authority_pubkey
-        != confidential_transfer_mint.withdraw_withheld_authority_encryption_pubkey
+    if !confidential_transfer_mint
+        .withdraw_withheld_authority_encryption_pubkey
+        .equals(&proof_data.withdraw_withheld_authority_pubkey)
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }

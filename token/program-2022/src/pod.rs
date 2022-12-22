@@ -2,6 +2,7 @@
 use {
     bytemuck::{Pod, Zeroable},
     solana_program::{program_error::ProgramError, program_option::COption, pubkey::Pubkey},
+    solana_zk_token_sdk::zk_token_elgamal::pod,
     std::convert::TryFrom,
 };
 
@@ -52,6 +53,68 @@ impl From<OptionalNonZeroPubkey> for Option<Pubkey> {
 impl From<OptionalNonZeroPubkey> for COption<Pubkey> {
     fn from(p: OptionalNonZeroPubkey) -> Self {
         if p.0 == Pubkey::default() {
+            COption::None
+        } else {
+            COption::Some(p.0)
+        }
+    }
+}
+
+/// ElGamal public key used for encryption
+pub type EncryptionPubkey = pod::ElGamalPubkey;
+/// An EncryptionPubkey that encodes `None` as all `0`, meant to be usable as a Pod type.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+#[repr(transparent)]
+pub struct OptionalNonZeroEncryptionPubkey(EncryptionPubkey);
+impl OptionalNonZeroEncryptionPubkey {
+    /// Checks equality between an OptionalNonZeroEncryptionPubkey and an EncryptionPubkey when
+    /// itnerpretted as bytes.
+    pub fn equals(&self, other: &EncryptionPubkey) -> bool {
+        &self.0 == other
+    }
+}
+impl TryFrom<Option<EncryptionPubkey>> for OptionalNonZeroEncryptionPubkey {
+    type Error = ProgramError;
+    fn try_from(p: Option<EncryptionPubkey>) -> Result<Self, Self::Error> {
+        match p {
+            None => Ok(Self(EncryptionPubkey::default())),
+            Some(encryption_pubkey) => {
+                if encryption_pubkey == EncryptionPubkey::default() {
+                    Err(ProgramError::InvalidArgument)
+                } else {
+                    Ok(Self(encryption_pubkey))
+                }
+            }
+        }
+    }
+}
+impl TryFrom<COption<EncryptionPubkey>> for OptionalNonZeroEncryptionPubkey {
+    type Error = ProgramError;
+    fn try_from(p: COption<EncryptionPubkey>) -> Result<Self, Self::Error> {
+        match p {
+            COption::None => Ok(Self(EncryptionPubkey::default())),
+            COption::Some(encryption_pubkey) => {
+                if encryption_pubkey == EncryptionPubkey::default() {
+                    Err(ProgramError::InvalidArgument)
+                } else {
+                    Ok(Self(encryption_pubkey))
+                }
+            }
+        }
+    }
+}
+impl From<OptionalNonZeroEncryptionPubkey> for Option<EncryptionPubkey> {
+    fn from(p: OptionalNonZeroEncryptionPubkey) -> Self {
+        if p.0 == EncryptionPubkey::default() {
+            None
+        } else {
+            Some(p.0)
+        }
+    }
+}
+impl From<OptionalNonZeroEncryptionPubkey> for COption<EncryptionPubkey> {
+    fn from(p: OptionalNonZeroEncryptionPubkey) -> Self {
+        if p.0 == EncryptionPubkey::default() {
             COption::None
         } else {
             COption::Some(p.0)

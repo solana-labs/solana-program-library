@@ -20,11 +20,12 @@ use {
     },
     spl_token_2022::{
         extension::{
-            confidential_transfer, confidential_transfer::EncryptionPubkey, cpi_guard,
-            default_account_state, interest_bearing_mint, memo_transfer, transfer_fee,
-            BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
+            confidential_transfer, cpi_guard, default_account_state, interest_bearing_mint,
+            memo_transfer, transfer_fee, BaseStateWithExtensions, ExtensionType,
+            StateWithExtensionsOwned,
         },
         instruction,
+        pod::EncryptionPubkey,
         solana_zk_token_sdk::{
             encryption::{auth_encryption::*, elgamal::*},
             errors::ProofError,
@@ -106,8 +107,8 @@ pub enum ExtensionInitializationParams {
     ConfidentialTransferMint {
         authority: Option<Pubkey>,
         auto_approve_new_accounts: bool,
-        auditor_encryption_pubkey: EncryptionPubkey,
-        withdraw_withheld_authority_encryption_pubkey: EncryptionPubkey,
+        auditor_encryption_pubkey: Option<EncryptionPubkey>,
+        withdraw_withheld_authority_encryption_pubkey: Option<EncryptionPubkey>,
     },
     DefaultAccountState {
         state: AccountState,
@@ -160,8 +161,8 @@ impl ExtensionInitializationParams {
                 mint,
                 authority,
                 auto_approve_new_accounts,
-                &auditor_encryption_pubkey,
-                &withdraw_withheld_authority_encryption_pubkey,
+                auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey,
             ),
             Self::DefaultAccountState { state } => {
                 default_account_state::instruction::initialize_default_account_state(
@@ -1492,7 +1493,7 @@ where
         authority: &S,
         new_authority: Option<&S>,
         auto_approve_new_account: bool,
-        auditor_encryption_pubkey: &EncryptionPubkey,
+        auditor_encryption_pubkey: Option<EncryptionPubkey>,
     ) -> TokenResult<T::Output> {
         let mut signers = vec![authority];
         let new_authority_pubkey = if let Some(new_authority) = new_authority {
@@ -1789,16 +1790,20 @@ where
     /// Fetch the ElGamal pubkey key of the auditor associated with a confidential token mint
     pub async fn confidential_transfer_get_auditor_encryption_pubkey<S: Signer>(
         &self,
-    ) -> TokenResult<ElGamalPubkey> {
+    ) -> TokenResult<Option<ElGamalPubkey>> {
         let mint_state = self.get_mint_info().await.unwrap();
         let ct_mint =
             mint_state.get_extension::<confidential_transfer::ConfidentialTransferMint>()?;
-        let auditor_pubkey = ct_mint
-            .auditor_encryption_pubkey
-            .try_into()
-            .map_err(TokenError::Proof)?;
+        let auditor_encryption_pubkey: Option<EncryptionPubkey> =
+            ct_mint.auditor_encryption_pubkey.into();
 
-        Ok(auditor_pubkey)
+        if let Some(encryption_pubkey) = auditor_encryption_pubkey {
+            let encryption_pubkey: ElGamalPubkey =
+                encryption_pubkey.try_into().map_err(TokenError::Proof)?;
+            Ok(Some(encryption_pubkey))
+        } else {
+            Ok(None)
+        }
     }
 
     /// Fetch the ElGamal pubkey key of the withdraw withheld authority associated with a
@@ -1807,16 +1812,20 @@ where
         S: Signer,
     >(
         &self,
-    ) -> TokenResult<ElGamalPubkey> {
+    ) -> TokenResult<Option<ElGamalPubkey>> {
         let mint_state = self.get_mint_info().await.unwrap();
         let ct_mint =
             mint_state.get_extension::<confidential_transfer::ConfidentialTransferMint>()?;
-        let auditor_pubkey = ct_mint
-            .withdraw_withheld_authority_encryption_pubkey
-            .try_into()
-            .map_err(TokenError::Proof)?;
+        let withdraw_withheld_authority_encryption_pubkey: Option<EncryptionPubkey> =
+            ct_mint.withdraw_withheld_authority_encryption_pubkey.into();
 
-        Ok(auditor_pubkey)
+        if let Some(encryption_pubkey) = withdraw_withheld_authority_encryption_pubkey {
+            let encryption_pubkey: ElGamalPubkey =
+                encryption_pubkey.try_into().map_err(TokenError::Proof)?;
+            Ok(Some(encryption_pubkey))
+        } else {
+            Ok(None)
+        }
     }
 
     /// Deposit SPL Tokens into the pending balance of a confidential token account
