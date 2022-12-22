@@ -68,7 +68,7 @@ pub type EncryptionPubkey = pod::ElGamalPubkey;
 pub struct OptionalNonZeroEncryptionPubkey(EncryptionPubkey);
 impl OptionalNonZeroEncryptionPubkey {
     /// Checks equality between an OptionalNonZeroEncryptionPubkey and an EncryptionPubkey when
-    /// itnerpretted as bytes.
+    /// interpreted as bytes.
     pub fn equals(&self, other: &EncryptionPubkey) -> bool {
         &self.0 == other
     }
