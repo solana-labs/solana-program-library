@@ -1941,7 +1941,7 @@ where
         source_available_balance: u64,
         source_available_balance_ciphertext: &ElGamalCiphertext,
         destination_elgamal_pubkey: &ElGamalPubkey,
-        auditor_elgamal_pubkey: &ElGamalPubkey,
+        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
     ) -> TokenResult<T::Output> {
         let source_elgamal_keypair =
             ElGamalKeypair::new(source_token_authority, source_token_account)
@@ -1975,13 +1975,15 @@ where
         source_available_balance: u64,
         source_available_balance_ciphertext: &ElGamalCiphertext,
         destination_elgamal_pubkey: &ElGamalPubkey,
-        auditor_elgamal_pubkey: &ElGamalPubkey,
+        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
         source_elgamal_keypair: &ElGamalKeypair,
         source_authenticated_encryption_key: &AeKey,
     ) -> TokenResult<T::Output> {
         if amount >> confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH != 0 {
             return Err(TokenError::MaximumDepositTransferAmountExceeded);
         }
+
+        let auditor_elgamal_pubkey = auditor_elgamal_pubkey.unwrap_or_default();
 
         let proof_data = confidential_transfer::instruction::TransferData::new(
             amount,
@@ -1990,7 +1992,7 @@ where
                 source_available_balance_ciphertext,
             ),
             source_elgamal_keypair,
-            (destination_elgamal_pubkey, auditor_elgamal_pubkey),
+            (destination_elgamal_pubkey, &auditor_elgamal_pubkey),
         )
         .map_err(TokenError::Proof)?;
 
@@ -2028,7 +2030,7 @@ where
         source_available_balance: u64,
         source_available_balance_ciphertext: &ElGamalCiphertext,
         destination_elgamal_pubkey: &ElGamalPubkey,
-        auditor_elgamal_pubkey: &ElGamalPubkey,
+        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
         withdraw_withheld_authority_elgamal_pubkey: &ElGamalPubkey,
         epoch_info: &EpochInfo,
     ) -> TokenResult<T::Output> {
@@ -2066,7 +2068,7 @@ where
         source_available_balance: u64,
         source_available_balance_ciphertext: &ElGamalCiphertext,
         destination_elgamal_pubkey: &ElGamalPubkey,
-        auditor_elgamal_pubkey: &ElGamalPubkey,
+        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
         withdraw_withheld_authority_elgamal_pubkey: &ElGamalPubkey,
         source_elgamal_keypair: &ElGamalKeypair,
         source_authenticated_encryption_key: &AeKey,
@@ -2076,7 +2078,8 @@ where
             return Err(TokenError::MaximumDepositTransferAmountExceeded);
         }
 
-        // TODO: take transfer fee params as input
+        let auditor_elgamal_pubkey = auditor_elgamal_pubkey.unwrap_or_default();
+
         let mint_state = self.get_mint_info().await.unwrap();
         let transfer_fee_config = mint_state
             .get_extension::<transfer_fee::TransferFeeConfig>()
@@ -2090,7 +2093,7 @@ where
                 source_available_balance_ciphertext,
             ),
             source_elgamal_keypair,
-            (destination_elgamal_pubkey, auditor_elgamal_pubkey),
+            (destination_elgamal_pubkey, &auditor_elgamal_pubkey),
             FeeParameters {
                 fee_rate_basis_points: u16::from(fee_parameters.transfer_fee_basis_points),
                 maximum_fee: u64::from(fee_parameters.maximum_fee),
