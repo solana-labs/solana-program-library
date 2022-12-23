@@ -55,10 +55,10 @@ fn decode_proof_instruction<T: Pod>(
 /// Processes an [InitializeMint] instruction.
 fn process_initialize_mint(
     accounts: &[AccountInfo],
-    authority: &Pubkey,
+    authority: &OptionalNonZeroPubkey,
     auto_approve_new_account: PodBool,
-    auditor_encryption_pubkey: &EncryptionPubkey,
-    withdraw_withheld_authority_encryption_pubkey: &EncryptionPubkey,
+    auditor_encryption_pubkey: &OptionalNonZeroEncryptionPubkey,
+    withdraw_withheld_authority_encryption_pubkey: &OptionalNonZeroEncryptionPubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
@@ -82,7 +82,7 @@ fn process_initialize_mint(
 fn process_update_mint(
     accounts: &[AccountInfo],
     auto_approve_new_account: PodBool,
-    auditor_encryption_pubkey: &EncryptionPubkey,
+    auditor_encryption_pubkey: &OptionalNonZeroEncryptionPubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
@@ -93,18 +93,26 @@ fn process_update_mint(
     let mint_data = &mut mint_info.data.borrow_mut();
     let mut mint = StateWithExtensionsMut::<Mint>::unpack(mint_data)?;
     let confidential_transfer_mint = mint.get_extension_mut::<ConfidentialTransferMint>()?;
+    let maybe_confidential_transfer_mint_authority: Option<Pubkey> =
+        confidential_transfer_mint.authority.into();
+    let confidential_transfer_mint_authority =
+        maybe_confidential_transfer_mint_authority.ok_or(TokenError::NoAuthorityExists)?;
 
-    if authority_info.is_signer
-        && confidential_transfer_mint.authority == *authority_info.key
-        && (new_authority_info.is_signer || *new_authority_info.key == Pubkey::default())
+    if !authority_info.is_signer
+        || confidential_transfer_mint_authority != *authority_info.key
+        || (!new_authority_info.is_signer && *new_authority_info.key != Pubkey::default())
     {
-        confidential_transfer_mint.authority = *new_authority_info.key;
-        confidential_transfer_mint.auto_approve_new_accounts = auto_approve_new_account;
-        confidential_transfer_mint.auditor_encryption_pubkey = *auditor_encryption_pubkey;
-        Ok(())
-    } else {
-        Err(ProgramError::MissingRequiredSignature)
+        return Err(ProgramError::MissingRequiredSignature);
     }
+
+    if *new_authority_info.key == Pubkey::default() {
+        confidential_transfer_mint.authority = None.try_into()?;
+    } else {
+        confidential_transfer_mint.authority = Some(*new_authority_info.key).try_into()?;
+    }
+    confidential_transfer_mint.auto_approve_new_accounts = auto_approve_new_account;
+    confidential_transfer_mint.auditor_encryption_pubkey = *auditor_encryption_pubkey;
+    Ok(())
 }
 
 /// Processes a [ConfigureAccount] instruction.
@@ -191,8 +199,12 @@ fn process_approve_account(accounts: &[AccountInfo]) -> ProgramResult {
     let mint_data = &mint_info.data.borrow_mut();
     let mint = StateWithExtensions::<Mint>::unpack(mint_data)?;
     let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
+    let maybe_confidential_transfer_mint_authority: Option<Pubkey> =
+        confidential_transfer_mint.authority.into();
+    let confidential_transfer_mint_authority =
+        maybe_confidential_transfer_mint_authority.ok_or(TokenError::NoAuthorityExists)?;
 
-    if authority_info.is_signer && *authority_info.key == confidential_transfer_mint.authority {
+    if authority_info.is_signer && *authority_info.key == confidential_transfer_mint_authority {
         let mut confidential_transfer_state =
             token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
         confidential_transfer_state.approved = true.into();
@@ -502,8 +514,9 @@ fn process_transfer(
         )?;
         // Check that the auditor encryption public key associated wth the confidential mint is
         // consistent with what was actually used to generate the zkp.
-        if proof_data.transfer_pubkeys.auditor_pubkey
-            != confidential_transfer_mint.auditor_encryption_pubkey
+        if !confidential_transfer_mint
+            .auditor_encryption_pubkey
+            .equals(&proof_data.transfer_pubkeys.auditor_pubkey)
         {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
@@ -562,15 +575,19 @@ fn process_transfer(
         )?;
         // Check that the encryption public keys associated with the confidential extension mint
         // are consistent with the keys that were used to generate the zkp.
-        if proof_data.transfer_with_fee_pubkeys.auditor_pubkey
-            != confidential_transfer_mint.auditor_encryption_pubkey
+        if !confidential_transfer_mint
+            .auditor_encryption_pubkey
+            .equals(&proof_data.transfer_with_fee_pubkeys.auditor_pubkey)
         {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
-        if proof_data
-            .transfer_with_fee_pubkeys
-            .withdraw_withheld_authority_pubkey
-            != confidential_transfer_mint.withdraw_withheld_authority_encryption_pubkey
+        if !confidential_transfer_mint
+            .withdraw_withheld_authority_encryption_pubkey
+            .equals(
+                &proof_data
+                    .transfer_with_fee_pubkeys
+                    .withdraw_withheld_authority_pubkey,
+            )
         {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
@@ -970,8 +987,9 @@ fn process_withdraw_withheld_tokens_from_mint(
     )?;
     // Checks that the withdraw authority encryption public key associated with the mint is
     // consistent with what was actually used to generate the zkp.
-    if proof_data.withdraw_withheld_authority_pubkey
-        != confidential_transfer_mint.withdraw_withheld_authority_encryption_pubkey
+    if !confidential_transfer_mint
+        .withdraw_withheld_authority_encryption_pubkey
+        .equals(&proof_data.withdraw_withheld_authority_pubkey)
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
@@ -1097,8 +1115,9 @@ fn process_withdraw_withheld_tokens_from_accounts(
     // Checks that the withdraw authority encryption public key associated with the mint is
     // consistent with what was actually used to generate the zkp.
     let confidential_transfer_mint = mint.get_extension_mut::<ConfidentialTransferMint>()?;
-    if proof_data.withdraw_withheld_authority_pubkey
-        != confidential_transfer_mint.withdraw_withheld_authority_encryption_pubkey
+    if !confidential_transfer_mint
+        .withdraw_withheld_authority_encryption_pubkey
+        .equals(&proof_data.withdraw_withheld_authority_pubkey)
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
