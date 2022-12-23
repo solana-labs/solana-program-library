@@ -486,10 +486,16 @@ async fn success_and_fail_with_preferred_withdraw() {
         tokens_to_burn,
     ) = setup_for_withdraw(spl_token::id()).await;
 
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
+
     let preferred_validator = simple_add_validator_to_pool(
         &mut context.banks_client,
         &context.payer,
-        &context.last_blockhash,
+        &last_blockhash,
         &stake_pool_accounts,
         None,
     )
@@ -499,7 +505,7 @@ async fn success_and_fail_with_preferred_withdraw() {
         .set_preferred_validator(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             instruction::PreferredValidatorType::Withdraw,
             Some(preferred_validator.vote.pubkey()),
         )
@@ -508,7 +514,7 @@ async fn success_and_fail_with_preferred_withdraw() {
     let _preferred_deposit = simple_deposit_stake(
         &mut context.banks_client,
         &context.payer,
-        &context.last_blockhash,
+        &last_blockhash,
         &stake_pool_accounts,
         &preferred_validator,
         TEST_STAKE_AMOUNT,
@@ -521,7 +527,7 @@ async fn success_and_fail_with_preferred_withdraw() {
         .withdraw_stake(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &user_stake_recipient.pubkey(),
             &user_transfer_authority,
             &deposit_info.pool_account.pubkey(),
@@ -540,13 +546,19 @@ async fn success_and_fail_with_preferred_withdraw() {
         )
     );
 
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&last_blockhash)
+        .await
+        .unwrap();
+
     // success from preferred
     let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
         .withdraw_stake(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &user_stake_recipient.pubkey(),
             &user_transfer_authority,
             &deposit_info.pool_account.pubkey(),
