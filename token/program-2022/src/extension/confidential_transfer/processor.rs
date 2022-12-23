@@ -30,7 +30,7 @@ use {
         transfer_fee::TransferFeeConfig,
     },
     solana_program::{clock::Clock, sysvar::Sysvar},
-    solana_zk_token_sdk::zk_token_elgamal::ops,
+    solana_zk_token_sdk::zk_token_elgamal::ops as syscall,
 };
 
 /// Decodes the zero-knowledge proof instruction associated with the token instruction.
@@ -346,12 +346,12 @@ fn process_deposit(
     // Prevent unnecessary ciphertext arithmetic syscalls if `amount_lo` or `amount_hi` is zero
     if amount_lo > 0 {
         confidential_transfer_account.pending_balance_lo =
-            ops::add_to(&confidential_transfer_account.pending_balance_lo, amount_lo)
+            syscall::add_to(&confidential_transfer_account.pending_balance_lo, amount_lo)
                 .ok_or(ProgramError::InvalidInstructionData)?;
     }
     if amount_hi > 0 {
         confidential_transfer_account.pending_balance_hi =
-            ops::add_to(&confidential_transfer_account.pending_balance_hi, amount_hi)
+            syscall::add_to(&confidential_transfer_account.pending_balance_hi, amount_hi)
                 .ok_or(ProgramError::InvalidInstructionData)?;
     }
 
@@ -447,7 +447,7 @@ fn process_withdraw(
     // Prevent unnecessary ciphertext arithmetic syscalls if the withdraw amount is zero
     if amount > 0 {
         confidential_transfer_account.available_balance =
-            ops::subtract_from(&confidential_transfer_account.available_balance, amount)
+            syscall::subtract_from(&confidential_transfer_account.available_balance, amount)
                 .ok_or(ProgramError::InvalidInstructionData)?;
     }
     // Check that the final available balance ciphertext is consistent with the actual ciphertext
@@ -695,7 +695,7 @@ fn process_source_for_transfer(
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
-    let new_source_available_balance = ops::subtract_with_lo_hi(
+    let new_source_available_balance = syscall::subtract_with_lo_hi(
         &confidential_transfer_account.available_balance,
         source_transfer_amount_lo,
         source_transfer_amount_hi,
@@ -750,13 +750,13 @@ fn process_destination_for_transfer(
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
-    destination_confidential_transfer_account.pending_balance_lo = ops::add(
+    destination_confidential_transfer_account.pending_balance_lo = syscall::add(
         &destination_confidential_transfer_account.pending_balance_lo,
         destination_transfer_amount_lo,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 
-    destination_confidential_transfer_account.pending_balance_hi = ops::add(
+    destination_confidential_transfer_account.pending_balance_hi = syscall::add(
         &destination_confidential_transfer_account.pending_balance_hi,
         destination_transfer_amount_hi,
     )
@@ -779,12 +779,12 @@ fn process_destination_for_transfer(
             .into();
 
         // Subtract the fee amount from the destination pending balance
-        destination_confidential_transfer_account.pending_balance_lo = ops::subtract(
+        destination_confidential_transfer_account.pending_balance_lo = syscall::subtract(
             &destination_confidential_transfer_account.pending_balance_lo,
             &destination_fee_lo,
         )
         .ok_or(ProgramError::InvalidInstructionData)?;
-        destination_confidential_transfer_account.pending_balance_hi = ops::subtract(
+        destination_confidential_transfer_account.pending_balance_hi = syscall::subtract(
             &destination_confidential_transfer_account.pending_balance_hi,
             &destination_fee_hi,
         )
@@ -804,7 +804,7 @@ fn process_destination_for_transfer(
             .into();
 
         // Add the fee amount to the destination withheld fee
-        destination_confidential_transfer_account.withheld_amount = ops::add_with_lo_hi(
+        destination_confidential_transfer_account.withheld_amount = syscall::add_with_lo_hi(
             &destination_confidential_transfer_account.withheld_amount,
             &withdraw_withheld_authority_fee_lo,
             &withdraw_withheld_authority_fee_hi,
@@ -845,7 +845,7 @@ fn process_apply_pending_balance(
     let mut confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
 
-    confidential_transfer_account.available_balance = ops::add_with_lo_hi(
+    confidential_transfer_account.available_balance = syscall::add_with_lo_hi(
         &confidential_transfer_account.available_balance,
         &confidential_transfer_account.pending_balance_lo,
         &confidential_transfer_account.pending_balance_hi,
@@ -1009,7 +1009,7 @@ fn process_withdraw_withheld_tokens_from_mint(
 
     // The proof data contains the mint withheld amount encrypted under the destination ElGamal pubkey.
     // This amount is added to the destination pending balance.
-    destination_confidential_transfer_account.pending_balance_lo = ops::add(
+    destination_confidential_transfer_account.pending_balance_lo = syscall::add(
         &destination_confidential_transfer_account.pending_balance_lo,
         &proof_data.destination_ciphertext,
     )
@@ -1078,7 +1078,7 @@ fn process_withdraw_withheld_tokens_from_accounts(
                 .get_extension_mut::<ConfidentialTransferAccount>()
                 .map_err(|_| TokenError::InvalidState)?;
 
-            aggregate_withheld_amount = ops::add(
+            aggregate_withheld_amount = syscall::add(
                 &aggregate_withheld_amount,
                 &confidential_transfer_destination_account.withheld_amount,
             )
@@ -1090,7 +1090,7 @@ fn process_withdraw_withheld_tokens_from_accounts(
             match harvest_from_account(mint_account_info.key, account_info) {
                 Ok(encrypted_withheld_amount) => {
                     aggregate_withheld_amount =
-                        ops::add(&aggregate_withheld_amount, &encrypted_withheld_amount)
+                        syscall::add(&aggregate_withheld_amount, &encrypted_withheld_amount)
                             .ok_or(ProgramError::InvalidInstructionData)?;
                 }
                 Err(e) => {
@@ -1135,7 +1135,7 @@ fn process_withdraw_withheld_tokens_from_accounts(
 
     // The proof data contains the mint withheld amount encrypted under the destination ElGamal pubkey.
     // This amount is added to the destination pending balance.
-    destination_confidential_transfer_account.pending_balance_lo = ops::add(
+    destination_confidential_transfer_account.pending_balance_lo = syscall::add(
         &destination_confidential_transfer_account.pending_balance_lo,
         &proof_data.destination_ciphertext,
     )
@@ -1184,7 +1184,7 @@ fn process_harvest_withheld_tokens_to_mint(accounts: &[AccountInfo]) -> ProgramR
     for token_account_info in token_account_infos {
         match harvest_from_account(mint_account_info.key, token_account_info) {
             Ok(withheld_amount) => {
-                let new_mint_withheld_amount = ops::add(
+                let new_mint_withheld_amount = syscall::add(
                     &confidential_transfer_mint.withheld_amount,
                     &withheld_amount,
                 )
