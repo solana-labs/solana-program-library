@@ -1124,6 +1124,7 @@ impl Processor {
         accounts: &[AccountInfo],
         lamports: u64,
         transient_stake_seed: u64,
+        maybe_ephemeral_stake_seed: Option<u64>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -1131,11 +1132,23 @@ impl Processor {
         let withdraw_authority_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
         let validator_stake_account_info = next_account_info(account_info_iter)?;
+        let maybe_ephemeral_stake_account_info = maybe_ephemeral_stake_seed
+            .map(|_| next_account_info(account_info_iter))
+            .transpose()?;
         let transient_stake_account_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
-        let rent_info = next_account_info(account_info_iter)?;
-        let rent = &Rent::from_account_info(rent_info)?;
+        let rent = if maybe_ephemeral_stake_seed.is_some() {
+            // instruction with ephemeral account doesn't take the rent account
+            Rent::get()?
+        } else {
+            // legacy instruction takes the rent account
+            let rent_info = next_account_info(account_info_iter)?;
+            Rent::from_account_info(rent_info)?
+        };
+        let maybe_stake_history_info = maybe_ephemeral_stake_seed
+            .map(|_| next_account_info(account_info_iter))
+            .transpose()?;
         let system_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
 
@@ -1191,23 +1204,20 @@ impl Processor {
             NonZeroU32::new(validator_stake_info.validator_seed_suffix),
         )?;
         if validator_stake_info.transient_stake_lamports > 0 {
-            return Err(StakePoolError::TransientAccountInUse.into());
+            if maybe_ephemeral_stake_seed.is_none() {
+                msg!("Attempting to decrease stake on a validator with pending transient stake, use DecreaseAdditionalValidatorStake with the existing seed");
+                return Err(StakePoolError::TransientAccountInUse.into());
+            }
+            if transient_stake_seed != validator_stake_info.transient_seed_suffix {
+                msg!(
+                    "Transient stake already exists with seed {}, you must use that one",
+                    validator_stake_info.transient_seed_suffix
+                );
+                return Err(ProgramError::InvalidSeeds);
+            }
+            // Let the runtime check to see if the merge is valid, so there's no
+            // explicit check here that the transient stake is decreasing
         }
-
-        let transient_stake_bump_seed = check_transient_stake_address(
-            program_id,
-            stake_pool_info.key,
-            transient_stake_account_info.key,
-            &vote_account_address,
-            transient_stake_seed,
-        )?;
-        let transient_stake_account_signer_seeds: &[&[_]] = &[
-            TRANSIENT_STAKE_SEED_PREFIX,
-            &vote_account_address.to_bytes(),
-            &stake_pool_info.key.to_bytes(),
-            &transient_stake_seed.to_le_bytes(),
-            &[transient_stake_bump_seed],
-        ];
 
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
         let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
@@ -1236,38 +1246,126 @@ impl Processor {
             return Err(ProgramError::InsufficientFunds);
         }
 
-        create_stake_account(
-            transient_stake_account_info.clone(),
-            transient_stake_account_signer_seeds,
-            system_program_info.clone(),
+        let source_stake_account_info =
+            if let Some((ephemeral_stake_seed, ephemeral_stake_account_info)) =
+                maybe_ephemeral_stake_seed.zip(maybe_ephemeral_stake_account_info)
+            {
+                let ephemeral_stake_bump_seed = check_ephemeral_stake_address(
+                    program_id,
+                    stake_pool_info.key,
+                    ephemeral_stake_account_info.key,
+                    ephemeral_stake_seed,
+                )?;
+                let ephemeral_stake_account_signer_seeds: &[&[_]] = &[
+                    EPHEMERAL_STAKE_SEED_PREFIX,
+                    &stake_pool_info.key.to_bytes(),
+                    &ephemeral_stake_seed.to_le_bytes(),
+                    &[ephemeral_stake_bump_seed],
+                ];
+                create_stake_account(
+                    ephemeral_stake_account_info.clone(),
+                    ephemeral_stake_account_signer_seeds,
+                    system_program_info.clone(),
+                )?;
+
+                // split into ephemeral stake account
+                Self::stake_split(
+                    stake_pool_info.key,
+                    validator_stake_account_info.clone(),
+                    withdraw_authority_info.clone(),
+                    AUTHORITY_WITHDRAW,
+                    stake_pool.stake_withdraw_bump_seed,
+                    lamports,
+                    ephemeral_stake_account_info.clone(),
+                )?;
+
+                Self::stake_deactivate(
+                    ephemeral_stake_account_info.clone(),
+                    clock_info.clone(),
+                    withdraw_authority_info.clone(),
+                    stake_pool_info.key,
+                    AUTHORITY_WITHDRAW,
+                    stake_pool.stake_withdraw_bump_seed,
+                )?;
+
+                ephemeral_stake_account_info
+            } else {
+                // if no ephemeral account is provided, split everything from the
+                // validator stake account, into the transient stake account
+                validator_stake_account_info
+            };
+
+        let transient_stake_bump_seed = check_transient_stake_address(
+            program_id,
+            stake_pool_info.key,
+            transient_stake_account_info.key,
+            &vote_account_address,
+            transient_stake_seed,
         )?;
 
-        // split into transient stake account
-        Self::stake_split(
-            stake_pool_info.key,
-            validator_stake_account_info.clone(),
-            withdraw_authority_info.clone(),
-            AUTHORITY_WITHDRAW,
-            stake_pool.stake_withdraw_bump_seed,
-            lamports,
-            transient_stake_account_info.clone(),
-        )?;
+        if validator_stake_info.transient_stake_lamports > 0 {
+            let stake_history_info = maybe_stake_history_info.unwrap();
+            // transient stake exists, try to merge from the source account,
+            // which is always an ephemeral account
+            Self::stake_merge(
+                stake_pool_info.key,
+                source_stake_account_info.clone(),
+                withdraw_authority_info.clone(),
+                AUTHORITY_WITHDRAW,
+                stake_pool.stake_withdraw_bump_seed,
+                transient_stake_account_info.clone(),
+                clock_info.clone(),
+                stake_history_info.clone(),
+                stake_program_info.clone(),
+            )?;
+        } else {
+            let transient_stake_account_signer_seeds: &[&[_]] = &[
+                TRANSIENT_STAKE_SEED_PREFIX,
+                &vote_account_address.to_bytes(),
+                &stake_pool_info.key.to_bytes(),
+                &transient_stake_seed.to_le_bytes(),
+                &[transient_stake_bump_seed],
+            ];
 
-        // deactivate transient stake
-        Self::stake_deactivate(
-            transient_stake_account_info.clone(),
-            clock_info.clone(),
-            withdraw_authority_info.clone(),
-            stake_pool_info.key,
-            AUTHORITY_WITHDRAW,
-            stake_pool.stake_withdraw_bump_seed,
-        )?;
+            create_stake_account(
+                transient_stake_account_info.clone(),
+                transient_stake_account_signer_seeds,
+                system_program_info.clone(),
+            )?;
+
+            // split into transient stake account
+            Self::stake_split(
+                stake_pool_info.key,
+                source_stake_account_info.clone(),
+                withdraw_authority_info.clone(),
+                AUTHORITY_WITHDRAW,
+                stake_pool.stake_withdraw_bump_seed,
+                lamports,
+                transient_stake_account_info.clone(),
+            )?;
+
+            // Deactivate transient stake if necessary
+            let (_, stake) = get_stake_state(transient_stake_account_info)?;
+            if stake.delegation.deactivation_epoch == Epoch::MAX {
+                Self::stake_deactivate(
+                    transient_stake_account_info.clone(),
+                    clock_info.clone(),
+                    withdraw_authority_info.clone(),
+                    stake_pool_info.key,
+                    AUTHORITY_WITHDRAW,
+                    stake_pool.stake_withdraw_bump_seed,
+                )?;
+            }
+        }
 
         validator_stake_info.active_stake_lamports = validator_stake_info
             .active_stake_lamports
             .checked_sub(lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
-        validator_stake_info.transient_stake_lamports = lamports;
+        validator_stake_info.transient_stake_lamports = validator_stake_info
+            .transient_stake_lamports
+            .checked_add(lamports)
+            .ok_or(StakePoolError::CalculationFailure)?;
         validator_stake_info.transient_seed_suffix = transient_stake_seed;
 
         Ok(())
@@ -3248,6 +3346,21 @@ impl Processor {
                     accounts,
                     lamports,
                     transient_stake_seed,
+                    None,
+                )
+            }
+            StakePoolInstruction::DecreaseAdditionalValidatorStake {
+                lamports,
+                transient_stake_seed,
+                ephemeral_stake_seed,
+            } => {
+                msg!("Instruction: DecreaseAdditionalValidatorStake");
+                Self::process_decrease_validator_stake(
+                    program_id,
+                    accounts,
+                    lamports,
+                    transient_stake_seed,
+                    Some(ephemeral_stake_seed),
                 )
             }
             StakePoolInstruction::IncreaseValidatorStake {

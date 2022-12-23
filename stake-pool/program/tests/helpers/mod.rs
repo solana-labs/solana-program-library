@@ -1463,6 +1463,92 @@ impl StakePoolAccounts {
     }
 
     #[allow(clippy::too_many_arguments)]
+    pub async fn decrease_additional_validator_stake(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        validator_stake: &Pubkey,
+        ephemeral_stake: &Pubkey,
+        transient_stake: &Pubkey,
+        lamports: u64,
+        transient_stake_seed: u64,
+        ephemeral_stake_seed: u64,
+    ) -> Option<TransportError> {
+        let mut instructions = vec![instruction::decrease_additional_validator_stake(
+            &id(),
+            &self.stake_pool.pubkey(),
+            &self.staker.pubkey(),
+            &self.withdraw_authority,
+            &self.validator_list.pubkey(),
+            validator_stake,
+            ephemeral_stake,
+            transient_stake,
+            lamports,
+            transient_stake_seed,
+            ephemeral_stake_seed,
+        )];
+        self.maybe_add_compute_budget_instruction(&mut instructions);
+        let transaction = Transaction::new_signed_with_payer(
+            &instructions,
+            Some(&payer.pubkey()),
+            &[payer, &self.staker],
+            *recent_blockhash,
+        );
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .map_err(|e| e.into())
+            .err()
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn decrease_validator_stake_either(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        validator_stake: &Pubkey,
+        transient_stake: &Pubkey,
+        lamports: u64,
+        transient_stake_seed: u64,
+        use_additional_instruction: bool,
+    ) -> Option<TransportError> {
+        if use_additional_instruction {
+            let ephemeral_stake_seed = 0;
+            let ephemeral_stake = find_ephemeral_stake_program_address(
+                &id(),
+                &self.stake_pool.pubkey(),
+                ephemeral_stake_seed,
+            )
+            .0;
+            self.decrease_additional_validator_stake(
+                banks_client,
+                payer,
+                recent_blockhash,
+                validator_stake,
+                &ephemeral_stake,
+                transient_stake,
+                lamports,
+                transient_stake_seed,
+                ephemeral_stake_seed,
+            )
+            .await
+        } else {
+            self.decrease_validator_stake(
+                banks_client,
+                payer,
+                recent_blockhash,
+                validator_stake,
+                transient_stake,
+                lamports,
+                transient_stake_seed,
+            )
+            .await
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
     pub async fn increase_validator_stake(
         &self,
         banks_client: &mut BanksClient,
