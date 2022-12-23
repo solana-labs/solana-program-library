@@ -1487,8 +1487,17 @@ impl Processor {
                 reserve_stake_account_info
             };
 
+        let transient_stake_bump_seed = check_transient_stake_address(
+            program_id,
+            stake_pool_info.key,
+            transient_stake_account_info.key,
+            vote_account_address,
+            transient_stake_seed,
+        )?;
+
         if validator_stake_info.transient_stake_lamports > 0 {
-            // transient stake exists, try to merge from the source account
+            // transient stake exists, try to merge from the source account,
+            // which is always an ephemeral account
             Self::stake_merge(
                 stake_pool_info.key,
                 source_stake_account_info.clone(),
@@ -1502,13 +1511,6 @@ impl Processor {
             )?;
         } else {
             // no transient stake, split
-            let transient_stake_bump_seed = check_transient_stake_address(
-                program_id,
-                stake_pool_info.key,
-                transient_stake_account_info.key,
-                vote_account_address,
-                transient_stake_seed,
-            )?;
             let transient_stake_account_signer_seeds: &[&[_]] = &[
                 TRANSIENT_STAKE_SEED_PREFIX,
                 &vote_account_address.to_bytes(),
