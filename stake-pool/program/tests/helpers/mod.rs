@@ -76,8 +76,8 @@ pub async fn get_account(banks_client: &mut BanksClient, pubkey: &Pubkey) -> Sol
     banks_client
         .get_account(*pubkey)
         .await
+        .expect("client error")
         .expect("account not found")
-        .expect("account empty")
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -754,6 +754,7 @@ pub async fn create_unknown_validator_stake(
     payer: &Keypair,
     recent_blockhash: &Hash,
     stake_pool: &Pubkey,
+    lamports: u64,
 ) -> ValidatorStakeAccount {
     let mut unknown_stake = ValidatorStakeAccount::new(stake_pool, NonZeroU32::new(1), 222);
     create_vote(
@@ -779,7 +780,7 @@ pub async fn create_unknown_validator_stake(
             withdrawer: user.pubkey(),
         },
         &stake::state::Lockup::default(),
-        current_minimum_delegation,
+        current_minimum_delegation + lamports,
     )
     .await;
     delegate_stake_account(
@@ -1677,6 +1678,53 @@ impl StakePoolAccounts {
             )
             .await
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn redelegate(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        source_validator_stake: &Pubkey,
+        source_transient_stake: &Pubkey,
+        ephemeral_stake: &Pubkey,
+        destination_transient_stake: &Pubkey,
+        destination_validator_stake: &Pubkey,
+        validator: &Pubkey,
+        lamports: u64,
+        source_transient_stake_seed: u64,
+        ephemeral_stake_seed: u64,
+        destination_transient_stake_seed: u64,
+    ) -> Option<TransportError> {
+        let transaction = Transaction::new_signed_with_payer(
+            &[instruction::redelegate(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.staker.pubkey(),
+                &self.withdraw_authority,
+                &self.validator_list.pubkey(),
+                source_validator_stake,
+                source_transient_stake,
+                ephemeral_stake,
+                destination_transient_stake,
+                destination_validator_stake,
+                validator,
+                lamports,
+                source_transient_stake_seed,
+                ephemeral_stake_seed,
+                destination_transient_stake_seed,
+            )],
+            Some(&payer.pubkey()),
+            &[payer, &self.staker],
+            *recent_blockhash,
+        );
+        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .map_err(|e| e.into())
+            .err()
     }
 
     pub async fn set_preferred_validator(

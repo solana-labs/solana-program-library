@@ -473,6 +473,57 @@ pub enum StakePoolInstruction {
         /// seed used to create ephemeral account.
         ephemeral_stake_seed: u64,
     },
+
+    /// (Staker only) Redelegate active stake on a validator, eventually moving it to another
+    ///
+    /// Internally, this instruction splits a validator stake account into its
+    /// corresponding transient stake account, redelegates it to an ephemeral stake
+    /// account, then merges that stake into the destination transient stake account.
+    ///
+    /// In order to rebalance the pool without taking custody, the staker needs
+    /// a way of reducing the stake on a stake account. This instruction splits
+    /// some amount of stake, up to the total activated stake, from the canonical
+    /// validator stake account, into its "transient" stake account.
+    ///
+    /// The instruction only succeeds if the source transient stake account and
+    /// ephemeral stake account do not exist.
+    ///
+    /// The amount of lamports to move must be at least twice rent-exemption
+    /// plus the minimum delegation amount. Rent-exemption is required for the
+    /// source transient stake account, and rent-exemption plus minimum delegation
+    /// is required for the destination ephemeral stake account.
+    ///
+    ///  0. `[]` Stake pool
+    ///  1. `[s]` Stake pool staker
+    ///  2. `[]` Stake pool withdraw authority
+    ///  3. `[w]` Validator list
+    ///  4. `[w]` Source canonical stake account to split from
+    ///  5. `[w]` Source transient stake account to receive split and be redelegated
+    ///  6. `[w]` Uninitialized ephemeral stake account to receive redelegation
+    ///  7. `[w]` Destination transient stake account to receive ephemeral stake by merge
+    ///  8. `[]` Destination stake account to receive transient stake after activation
+    ///  9. `[]` Destination validator vote account
+    /// 10. `[]` Clock sysvar
+    /// 11. `[]` Stake History sysvar
+    /// 12. `[]` Stake Config sysvar
+    /// 13. `[]` System program
+    /// 14. `[]` Stake program
+    Redelegate {
+        /// Amount of lamports to redelegate
+        #[allow(dead_code)] // but it's not
+        lamports: u64,
+        /// Seed used to create source transient stake account
+        #[allow(dead_code)] // but it's not
+        source_transient_stake_seed: u64,
+        /// Seed used to create destination ephemeral account.
+        #[allow(dead_code)] // but it's not
+        ephemeral_stake_seed: u64,
+        /// Seed used to create destination transient stake account. If there is
+        /// already transient stake, this must match the current seed, otherwise
+        /// it can be anything
+        #[allow(dead_code)] // but it's not
+        destination_transient_stake_seed: u64,
+    },
 }
 
 /// Creates an 'initialize' instruction.
@@ -750,6 +801,55 @@ pub fn increase_additional_validator_stake(
             lamports,
             transient_stake_seed,
             ephemeral_stake_seed,
+        }
+        .try_to_vec()
+        .unwrap(),
+    }
+}
+
+/// Creates `Redelegate` instruction (rebalance from one validator account to another)
+pub fn redelegate(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    staker: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    validator_list: &Pubkey,
+    source_validator_stake: &Pubkey,
+    source_transient_stake: &Pubkey,
+    ephemeral_stake: &Pubkey,
+    destination_transient_stake: &Pubkey,
+    destination_validator_stake: &Pubkey,
+    validator: &Pubkey,
+    lamports: u64,
+    source_transient_stake_seed: u64,
+    ephemeral_stake_seed: u64,
+    destination_transient_stake_seed: u64,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new_readonly(*staker, true),
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        AccountMeta::new(*validator_list, false),
+        AccountMeta::new(*source_validator_stake, false),
+        AccountMeta::new(*source_transient_stake, false),
+        AccountMeta::new(*ephemeral_stake, false),
+        AccountMeta::new(*destination_transient_stake, false),
+        AccountMeta::new_readonly(*destination_validator_stake, false),
+        AccountMeta::new_readonly(*validator, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(stake::config::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
+    ];
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::Redelegate {
+            lamports,
+            source_transient_stake_seed,
+            ephemeral_stake_seed,
+            destination_transient_stake_seed,
         }
         .try_to_vec()
         .unwrap(),
