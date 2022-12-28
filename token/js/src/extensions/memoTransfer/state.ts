@@ -9,7 +9,7 @@ export interface MemoTransfer {
     requireIncomingTransferMemos: boolean;
 }
 
-/** Buffer layout for de/serializing a transfer fee config extension */
+/** Buffer layout for de/serializing a memo transfer extension */
 export const MemoTransferLayout = struct<MemoTransfer>([bool('requireIncomingTransferMemos')]);
 
 export const MEMO_TRANSFER_SIZE = MemoTransferLayout.span;

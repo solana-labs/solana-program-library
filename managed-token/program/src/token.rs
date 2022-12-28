@@ -151,6 +151,42 @@ pub(crate) fn burn<'a, 'b>(
     )
 }
 
+pub(crate) fn approve<'a, 'b>(
+    account: &'a AccountInfo<'b>,
+    owner: &'a AccountInfo<'b>,
+    delegate: &'a AccountInfo<'b>,
+    token_program: &'a AccountInfo<'b>,
+    amount: u64,
+) -> ProgramResult {
+    invoke(
+        &spl_token::instruction::approve(
+            token_program.key,
+            account.key,
+            delegate.key,
+            owner.key,
+            &[],
+            amount,
+        )?,
+        &[
+            token_program.clone(),
+            account.clone(),
+            delegate.clone(),
+            owner.clone(),
+        ],
+    )
+}
+
+pub(crate) fn revoke<'a, 'b>(
+    account: &'a AccountInfo<'b>,
+    owner: &'a AccountInfo<'b>,
+    token_program: &'a AccountInfo<'b>,
+) -> ProgramResult {
+    invoke(
+        &spl_token::instruction::revoke(token_program.key, account.key, owner.key, &[])?,
+        &[token_program.clone(), account.clone(), owner.clone()],
+    )
+}
+
 pub(crate) fn close<'a, 'b>(
     account: &'a AccountInfo<'b>,
     destination: &'a AccountInfo<'b>,

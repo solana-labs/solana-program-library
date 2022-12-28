@@ -68,7 +68,6 @@ async fn test_relinquish_voted_proposal() {
         .await;
 
     assert_eq!(0, token_owner_record.unrelinquished_votes_count);
-    assert_eq!(1, token_owner_record.total_votes_count);
 
     let vote_record_account = governance_test
         .get_vote_record_account(&vote_record_cookie.address)
@@ -136,7 +135,6 @@ async fn test_relinquish_active_yes_vote() {
         .await;
 
     assert_eq!(0, token_owner_record.unrelinquished_votes_count);
-    assert_eq!(0, token_owner_record.total_votes_count);
 
     let vote_record_account = governance_test
         .bench
@@ -204,7 +202,6 @@ async fn test_relinquish_active_no_vote() {
         .await;
 
     assert_eq!(0, token_owner_record.unrelinquished_votes_count);
-    assert_eq!(0, token_owner_record.total_votes_count);
 
     let vote_record_account = governance_test
         .bench
@@ -497,7 +494,7 @@ async fn test_relinquish_proposal_with_cannot_relinquish_in_finalizing_state_err
     // Advance timestamp past max_voting_time
     governance_test
         .advance_clock_past_timestamp(
-            governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
+            governance_cookie.account.config.voting_base_time as i64 + clock.unix_timestamp,
         )
         .await;
 
@@ -597,4 +594,77 @@ async fn test_relinquish_and_cast_vote_in_single_transaction() {
         .await;
 
     assert_eq!(vote_record_cookie.account, vote_record_account);
+}
+
+#[tokio::test]
+async fn test_change_yes_vote_to_no_within_cool_off_time() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Set none default voting cool off time
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.voting_cool_off_time = 50;
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    // Total 300 tokens
+    governance_test
+        .mint_community_tokens(&realm_cookie, 200)
+        .await;
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    governance_test
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .await
+        .unwrap();
+
+    // Advance timestamp into voting_cool_off_time
+    let clock = governance_test.bench.get_clock().await;
+
+    governance_test
+        .advance_clock_past_timestamp(
+            clock.unix_timestamp + governance_cookie.account.config.voting_base_time as i64,
+        )
+        .await;
+
+    // Act
+    governance_test
+        .relinquish_vote(&proposal_cookie, &token_owner_record_cookie)
+        .await
+        .unwrap();
+
+    governance_test
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::No)
+        .await
+        .unwrap();
+
+    // Assert
+
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    assert_eq!(0, proposal_account.options[0].vote_weight);
+    assert_eq!(100, proposal_account.deny_vote_weight.unwrap());
+    assert_eq!(ProposalState::Voting, proposal_account.state);
 }

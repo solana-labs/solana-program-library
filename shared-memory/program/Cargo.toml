@@ -5,18 +5,18 @@ description = "Solana Program Library Shared-memory"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
-edition = "2018"
+edition = "2021"
 
 [features]
 test-sbf = []
 
 [dependencies]
 arrayref = "0.3.6"
-solana-program = "=1.14.6"
+solana-program = "=1.14.10"
 
 [dev-dependencies]
-solana-program-test = "=1.14.6"
-solana-sdk = "=1.14.6"
+solana-program-test = "=1.14.10"
+solana-sdk = "=1.14.10"
 
 [lib]
 crate-type = ["cdylib", "lib"]

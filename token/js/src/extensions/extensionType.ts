@@ -3,12 +3,14 @@ import type { Mint } from '../state/mint.js';
 import { MINT_SIZE } from '../state/mint.js';
 import { MULTISIG_SIZE } from '../state/multisig.js';
 import { ACCOUNT_TYPE_SIZE } from './accountType.js';
+import { CPI_GUARD_SIZE } from './cpiGuard/index.js';
 import { DEFAULT_ACCOUNT_STATE_SIZE } from './defaultAccountState/index.js';
 import { IMMUTABLE_OWNER_SIZE } from './immutableOwner.js';
 import { INTEREST_BEARING_MINT_CONFIG_STATE_SIZE } from './interestBearingMint/state.js';
 import { MEMO_TRANSFER_SIZE } from './memoTransfer/index.js';
 import { MINT_CLOSE_AUTHORITY_SIZE } from './mintCloseAuthority.js';
 import { NON_TRANSFERABLE_SIZE } from './nonTransferable.js';
+import { PERMANENT_DELEGATE_SIZE } from './permanentDelegate.js';
 import { TRANSFER_FEE_AMOUNT_SIZE, TRANSFER_FEE_CONFIG_SIZE } from './transferFee/index.js';
 
 export enum ExtensionType {
@@ -22,7 +24,9 @@ export enum ExtensionType {
     ImmutableOwner,
     MemoTransfer,
     NonTransferable,
-    InterestBearingMint,
+    InterestBearingConfig,
+    CpiGuard,
+    PermanentDelegate,
 }
 
 export const TYPE_SIZE = 2;
@@ -44,6 +48,8 @@ export function getTypeLen(e: ExtensionType): number {
             return 97;
         case ExtensionType.ConfidentialTransferAccount:
             return 286;
+        case ExtensionType.CpiGuard:
+            return CPI_GUARD_SIZE;
         case ExtensionType.DefaultAccountState:
             return DEFAULT_ACCOUNT_STATE_SIZE;
         case ExtensionType.ImmutableOwner:
@@ -52,8 +58,10 @@ export function getTypeLen(e: ExtensionType): number {
             return MEMO_TRANSFER_SIZE;
         case ExtensionType.NonTransferable:
             return NON_TRANSFERABLE_SIZE;
-        case ExtensionType.InterestBearingMint:
+        case ExtensionType.InterestBearingConfig:
             return INTEREST_BEARING_MINT_CONFIG_STATE_SIZE;
+        case ExtensionType.PermanentDelegate:
+            return PERMANENT_DELEGATE_SIZE;
         default:
             throw Error(`Unknown extension type: ${e}`);
     }
@@ -67,13 +75,15 @@ export function getAccountTypeOfMintType(e: ExtensionType): ExtensionType {
             return ExtensionType.ConfidentialTransferAccount;
         case ExtensionType.TransferFeeAmount:
         case ExtensionType.ConfidentialTransferAccount:
+        case ExtensionType.CpiGuard:
         case ExtensionType.DefaultAccountState:
         case ExtensionType.ImmutableOwner:
         case ExtensionType.MemoTransfer:
         case ExtensionType.MintCloseAuthority:
         case ExtensionType.NonTransferable:
         case ExtensionType.Uninitialized:
-        case ExtensionType.InterestBearingMint:
+        case ExtensionType.InterestBearingConfig:
+        case ExtensionType.PermanentDelegate:
             return ExtensionType.Uninitialized;
     }
 }

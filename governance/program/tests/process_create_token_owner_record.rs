@@ -5,6 +5,7 @@ use solana_program_test::*;
 mod program_test;
 
 use program_test::*;
+use spl_governance::state::token_owner_record::TOKEN_OWNER_RECORD_LAYOUT_VERSION;
 
 #[tokio::test]
 async fn test_create_token_owner_record() {
@@ -23,6 +24,12 @@ async fn test_create_token_owner_record() {
         .await;
 
     assert_eq!(0, token_owner_record_account.governing_token_deposit_amount);
+
+    assert_eq!(
+        TOKEN_OWNER_RECORD_LAYOUT_VERSION,
+        token_owner_record_account.version
+    );
+    assert_eq!(0, token_owner_record_account.unrelinquished_votes_count);
 
     assert_eq!(
         token_owner_record_cookie.account,

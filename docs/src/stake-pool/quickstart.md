@@ -117,13 +117,13 @@ Carefully read through the [Fees](fees.md) for more information about fees and
 best practices.
 
 In our example, we will use fees of 0.3%, a referral fee of 50%, opt to *not*
-set a deposit authority, and have the maximum number of validators (2,950).  Next,
-run the script:
+set a deposit authority, and have the maximum number of validators (2,350).  Next,
+run the script with the amount of SOL to deposit. We'll use 15 SOL:
 
 ```bash
-$ ./setup-stake-pool.sh
+$ ./setup-stake-pool.sh 15
 Creating pool
-+ spl-stake-pool create-pool --epoch-fee-numerator 3 --epoch-fee-denominator 1000 --withdrawal-fee-numerator 3 --withdrawal-fee-denominator 1000 --deposit-fee-numerator 3 --deposit-fee-denominator 1000 --referral-fee 50 --max-validators 2950 --pool-keypair keys/stake-pool.json --validator-list-keypair keys/validator-list.json --mint-keypair keys/mint.json --reserve-keypair keys/reserve.json
++ spl-stake-pool create-pool --epoch-fee-numerator 3 --epoch-fee-denominator 1000 --withdrawal-fee-numerator 3 --withdrawal-fee-denominator 1000 --deposit-fee-numerator 3 --deposit-fee-denominator 1000 --referral-fee 50 --max-validators 2350 --pool-keypair keys/stake-pool.json --validator-list-keypair keys/validator-list.json --mint-keypair keys/mint.json --reserve-keypair keys/reserve.json
 Creating reserve stake 4tvTkLB4X7ahUYZ2NaTohkG3mud4UBBvu9ZEGD4Wk9mt
 Creating mint BoNneHKDrX9BHjjvSpPfnQyRjsnc9WFH71v8wrgCd7LB
 Creating associated token account DgyZrAq88bnG1TNRxpgDQzWXpzEurCvfY2ukKFWBvADQ to receive stake pool tokens of mint BoNneHKDrX9BHjjvSpPfnQyRjsnc9WFH71v8wrgCd7LB, owned by 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
@@ -131,14 +131,36 @@ Creating pool fee collection account DgyZrAq88bnG1TNRxpgDQzWXpzEurCvfY2ukKFWBvAD
 Signature: 51yf2J6dSGAx42KPs2oTMTV4ufEm1ncAHyLPQ6PNf4sbeMHGqno7BGn2tHkUnrd7PRXiWBbGzCWpJNevYjmoLgn2
 Creating stake pool Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR with validator list 86VZZCuqiz7sDJpFKjQy9c9dZQN9vwDKbYgY8pcwHuaF
 Signature: 47QHcWMEa5Syg13C3SQRA4n88Y8iLx1f39wJXQAStRUxpt2VD5t6pYgAdruNRHUQt1ZBY8QwbvEC1LX9j3nPrAzn
+Depositing SOL into stake pool
+Update not required
+Using existing associated token account DgyZrAq88bnG1TNRxpgDQzWXpzEurCvfY2ukKFWBvADQ to receive stake pool tokens of mint BoNneHKDrX9BHjjvSpPfnQyRjsnc9WFH71v8wrgCd7LB, owned by 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
+Signature: 4jnS368HcofZ1rUpsGZtmSK9kVxFzJRndSX5VS7eMV3kVgzyg9efA4mcgd2C6BoSNksTmTonRGXTVM1WMywFpiKq
 ```
 
 Your stake pool now exists! For the largest number of validators, the cost for
-this phase is ~2.02 SOL.
+this phase is ~2.02 SOL, plus 15 SOL deposited into the pool in exchange for
+pool tokens.
 
-## Step 2: Add validators to the pool
+## Step 2: Deposit SOL into the pool
 
-Now that the pool exists, we need to add validators to it.
+Now that the pool exists, let's deposit some SOL in exchange for some pool tokens.
+
+SOL will likely be the most attractive form of deposit, since it's the easiest
+for everyone to use. Normally, this will likely be done from a DeFi app or
+wallet, but in our example, we'll do it straight from the command line.
+
+We already deposited 15 SOL during creation of the pool, but let's deposit 
+another 10 SOL into the pool:
+
+```
+$ spl-stake-pool deposit-sol Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR 10
+Using existing associated token account DgyZrAq88bnG1TNRxpgDQzWXpzEurCvfY2ukKFWBvADQ to receive stake pool tokens of mint BoNneHKDrX9BHjjvSpPfnQyRjsnc9WFH71v8wrgCd7LB, owned by 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
+Signature: 4AJv6hSznYoMGnaQvjWXSBjKqtjYpjBx2MLezmRRjWRDa8vUaBLQfPNGd3kamZNs1JeWSvnzczwtzsMD5WkgKamA
+```
+
+## Step 3: Add validators to the pool
+
+Now that the pool has some SOL, we need to add validators to it.
 
 Using `add-validators.sh`, we'll add each of the validators created during step 0
 to the stake pool. If you are running on another network, you can create your own
@@ -153,34 +175,17 @@ Signature: 3XtmYu9msqnMeKJs9BopYjn5QTc5hENMXXiBwvEw6HYzU5w6z1HUkGwNW24io4Vu9WRKF
 ... (something similar repeated 9 more times)
 ```
 
-This operation costs 0.00328288 SOL per validator. This amount is totally recoverable
-by removing the validator from the stake pool.
+This operation moves 1.00228288 SOL from the reserve to a stake account on a given
+validator.  This means you'll need over 1 SOL for each validator that you want to add.
 
-## Step 3: Deposit into the pool
+## Step 4: Deposit stakes into the pool
 
-Now that your pool has validators, it needs some SOL or stake accounts for you
+Now that your pool has validators, it can accept stake accounts for you
 to manage. There are two possible sources of deposits: SOL or stake accounts.
+In step 2, we deposited SOL directly, so now we'll deposit stake accounts.
 
-### a) Depositing SOL
-
-This will likely be the most attractive form of deposit, since it's the easiest
-for everyone to use. Normally, this will likely be done from a DeFi app or
-wallet, but in our example, we'll do it straight from the command line.  Let's
-deposit 10 SOL into our pool:
-
-```
-$ spl-stake-pool deposit-sol Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR 100
-Using existing associated token account DgyZrAq88bnG1TNRxpgDQzWXpzEurCvfY2ukKFWBvADQ to receive stake pool tokens of mint BoNneHKDrX9BHjjvSpPfnQyRjsnc9WFH71v8wrgCd7LB, owned by 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
-Signature: 4AJv6hSznYoMGnaQvjWXSBjKqtjYpjBx2MLezmRRjWRDa8vUaBLQfPNGd3kamZNs1JeWSvnzczwtzsMD5WkgKamA
-```
-
-Now there will be some SOL for us to work with.
-
-### b) Depositing stake accounts
-
-Alternatively, users can deposit stake accounts into the pool. This option is
-particularly attractive for users that already have a stake account, and either
-want stake pool tokens in return, or to diversify their stake more.
+This option is particularly attractive for users that already have a stake
+account, and either want stake pool tokens in return, or to diversify their stake more.
 
 The `deposit.sh` script gives an idea of how this works with the CLI.
 
@@ -194,7 +199,7 @@ $ ./deposit.sh keys/stake-pool.json local_validators.txt 10
 Note: This is a bit more finnicky on a local network because of the short epochs, and
 may fail. No problem, you simply need to retry.
 
-## Step 4: Rebalance stake in the pool
+## Step 5: Rebalance stake in the pool
 
 Over time, as people deposit SOL into the reserve, or as validator performance
 varies, you will want to move stake around. The best way to do this will be
@@ -216,7 +221,7 @@ to make sure that this is valid.
 $ ./rebalance.sh keys/stake-pool.json local_validators.txt 1
 ```
 
-## Step 5: Withdraw from the stake pool
+## Step 6: Withdraw from the stake pool
 
 Finally, if a user wants to withdraw from the stake pool, they can choose to
 withdraw SOL from the reserve if it has enough SOL, or to withdraw from one of

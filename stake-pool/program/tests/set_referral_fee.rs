@@ -21,7 +21,7 @@ use {
 
 async fn setup(fee: Option<u8>) -> (ProgramTestContext, StakePoolAccounts, u8) {
     let mut context = program_test().start_with_context().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
+    let mut stake_pool_accounts = StakePoolAccounts::default();
     if let Some(fee) = fee {
         stake_pool_accounts.referral_fee = fee;
     }

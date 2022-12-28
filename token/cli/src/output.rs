@@ -663,6 +663,9 @@ fn display_ui_extension(
             "    Unparseable extension:",
             "Consider upgrading to a newer version of spl-token",
         ),
+        // XXX HANA this is needed temporarily to make monorepo ci happy while the new cases are added
+        #[allow(unreachable_patterns)]
+        _ => unimplemented!(),
     }
 }
 

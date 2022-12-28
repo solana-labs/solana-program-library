@@ -231,7 +231,7 @@ async fn test_set_realm_config_with_liquid_community_token_cannot_be_changed_to_
     // Assert
     assert_eq!(
         err,
-        GovernanceError::CannotChangeCommunityTokenTypeToMemebership.into()
+        GovernanceError::CannotChangeCommunityTokenTypeToMembership.into()
     );
 }
 

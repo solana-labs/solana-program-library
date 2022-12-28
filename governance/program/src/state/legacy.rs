@@ -74,20 +74,19 @@ pub struct TokenOwnerRecordV1 {
 
     /// The number of votes cast by TokenOwner but not relinquished yet
     /// Every time a vote is cast this number is increased and it's always decreased when relinquishing a vote regardless of the vote state
-    pub unrelinquished_votes_count: u32,
-
-    /// The total number of votes cast by the TokenOwner
-    /// If TokenOwner withdraws vote while voting is still in progress total_votes_count is decreased  and the vote doesn't count towards the total
-    pub total_votes_count: u32,
+    pub unrelinquished_votes_count: u64,
 
     /// The number of outstanding proposals the TokenOwner currently owns
     /// The count is increased when TokenOwner creates a proposal
     /// and decreased  once it's either voted on (Succeeded or Defeated) or Cancelled
-    /// By default it's restricted to 1 outstanding Proposal per token owner
+    /// By default it's restricted to 10 outstanding Proposal per token owner
     pub outstanding_proposal_count: u8,
 
+    /// Version introduced in program V3
+    pub version: u8,
+
     /// Reserved space for future versions
-    pub reserved: [u8; 7],
+    pub reserved: [u8; 6],
 
     /// A single account that is allowed to operate governance with the deposited governing tokens
     /// It can be delegated to by the governing_token_owner or current governance_delegate
@@ -152,7 +151,8 @@ pub fn is_governance_v1_account_type(account_type: &GovernanceAccountType) -> bo
         | GovernanceAccountType::ProposalTransactionV2
         | GovernanceAccountType::VoteRecordV1
         | GovernanceAccountType::VoteRecordV2
-        | GovernanceAccountType::ProgramMetadata => false,
+        | GovernanceAccountType::ProgramMetadata
+        | GovernanceAccountType::ProposalDeposit => false,
     }
 }
 

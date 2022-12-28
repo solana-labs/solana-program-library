@@ -1,3 +1,4 @@
+use solana_program::program_option::COption;
 use solana_program_test::*;
 use solana_sdk::{
     commitment_config::CommitmentLevel,
@@ -14,6 +15,7 @@ use spl_associated_token_account::{
     get_associated_token_address, instruction::create_associated_token_account,
 };
 use spl_managed_token::instruction::*;
+use spl_token::state::Account as TokenAccount;
 
 pub fn sol(amount: f64) -> u64 {
     (amount * LAMPORTS_PER_SOL as f64) as u64
@@ -33,7 +35,7 @@ async fn process_transaction(
     Ok(sig)
 }
 
-pub async fn transfer(
+async fn transfer(
     context: &mut BanksClient,
     payer: &Keypair,
     receiver: &Pubkey,
@@ -47,7 +49,7 @@ pub async fn transfer(
     process_transaction(context, ixs, vec![payer]).await
 }
 
-pub fn spl_managed_token_test() -> ProgramTest {
+fn spl_managed_token_test() -> ProgramTest {
     ProgramTest::new(
         "spl_managed_token",
         spl_managed_token::id(),
@@ -140,4 +142,172 @@ async fn test_spl_managed_token_basic() {
     )
     .await
     .unwrap();
+}
+
+#[tokio::test]
+async fn test_spl_managed_token_with_approve_and_revoke() {
+    let mut context = spl_managed_token_test().start_with_context().await;
+    let lwc = &mut context.banks_client;
+    let authority = Keypair::new();
+    transfer(lwc, &context.payer, &authority.pubkey(), sol(10.0))
+        .await
+        .unwrap();
+    let mint = Keypair::new();
+    let mint_key = mint.pubkey();
+    let create_ix =
+        create_initialize_mint_instruction(&mint_key, &authority.pubkey(), &authority.pubkey(), 0)
+            .unwrap();
+    process_transaction(lwc, vec![create_ix], vec![&authority, &mint])
+        .await
+        .unwrap();
+
+    let alice = Keypair::new();
+    let alice_key = alice.pubkey();
+    let bob = Keypair::new();
+    let bob_key = bob.pubkey();
+
+    transfer(lwc, &context.payer, &alice_key, sol(1.0))
+        .await
+        .unwrap();
+    transfer(lwc, &context.payer, &bob_key, sol(1.0))
+        .await
+        .unwrap();
+
+    let create_alice_ata_ix = create_initialize_account_instruction(
+        &mint_key,
+        &alice_key,
+        &authority.pubkey(),
+        &authority.pubkey(),
+    )
+    .unwrap();
+    let mint_to_ix =
+        create_mint_to_instruction(&mint_key, &alice_key, &authority.pubkey(), 1).unwrap();
+    let delegate_ix =
+        create_approve_instruction(&mint_key, &alice_key, &bob_key, &authority.pubkey(), 1)
+            .unwrap();
+    process_transaction(
+        lwc,
+        vec![create_alice_ata_ix, mint_to_ix, delegate_ix],
+        vec![&alice, &authority],
+    )
+    .await
+    .unwrap();
+
+    assert!(lwc
+        .get_packed_account_data::<TokenAccount>(get_associated_token_address(
+            &alice_key, &mint_key
+        ))
+        .await
+        .unwrap()
+        .delegate
+        .eq(&COption::Some(bob_key)));
+
+    let revoke_ix = create_revoke_instruction(&mint_key, &alice_key, &authority.pubkey()).unwrap();
+    process_transaction(lwc, vec![revoke_ix], vec![&alice, &authority])
+        .await
+        .unwrap();
+
+    assert!(lwc
+        .get_packed_account_data::<TokenAccount>(get_associated_token_address(
+            &alice_key, &mint_key
+        ))
+        .await
+        .unwrap()
+        .delegate
+        .is_none());
+}
+
+#[tokio::test]
+async fn test_spl_managed_token_with_delegate_transfer() {
+    let mut context = spl_managed_token_test().start_with_context().await;
+    let lwc = &mut context.banks_client;
+    let authority = Keypair::new();
+    transfer(lwc, &context.payer, &authority.pubkey(), sol(10.0))
+        .await
+        .unwrap();
+    let mint = Keypair::new();
+    let mint_key = mint.pubkey();
+    let create_ix =
+        create_initialize_mint_instruction(&mint_key, &authority.pubkey(), &authority.pubkey(), 0)
+            .unwrap();
+    process_transaction(lwc, vec![create_ix], vec![&authority, &mint])
+        .await
+        .unwrap();
+
+    let alice = Keypair::new();
+    let alice_key = alice.pubkey();
+    let bob = Keypair::new();
+    let bob_key = bob.pubkey();
+    let eve = Keypair::new();
+    let eve_key = eve.pubkey();
+
+    transfer(lwc, &context.payer, &alice_key, sol(1.0))
+        .await
+        .unwrap();
+    transfer(lwc, &context.payer, &bob_key, sol(1.0))
+        .await
+        .unwrap();
+
+    let create_alice_ata_ix = create_initialize_account_instruction(
+        &mint_key,
+        &alice_key,
+        &authority.pubkey(),
+        &authority.pubkey(),
+    )
+    .unwrap();
+    let mint_to_ix =
+        create_mint_to_instruction(&mint_key, &alice_key, &authority.pubkey(), 1).unwrap();
+    let delegate_ix =
+        create_approve_instruction(&mint_key, &alice_key, &bob_key, &authority.pubkey(), 1)
+            .unwrap();
+    process_transaction(
+        lwc,
+        vec![create_alice_ata_ix, mint_to_ix, delegate_ix],
+        vec![&alice, &authority],
+    )
+    .await
+    .unwrap();
+
+    assert!(lwc
+        .get_packed_account_data::<TokenAccount>(get_associated_token_address(
+            &alice_key, &mint_key
+        ))
+        .await
+        .unwrap()
+        .delegate
+        .eq(&COption::Some(bob_key)));
+
+    let create_eve_ata_ix = create_initialize_account_instruction(
+        &mint_key,
+        &eve_key,
+        &authority.pubkey(),
+        &authority.pubkey(),
+    )
+    .unwrap();
+    let successful_transfer_ix = create_transfer_with_delegate_instruction(
+        &alice_key,
+        &eve_key,
+        &bob_key,
+        &mint_key,
+        &authority.pubkey(),
+        1,
+    )
+    .unwrap();
+    process_transaction(
+        lwc,
+        vec![create_eve_ata_ix, successful_transfer_ix],
+        vec![&bob, &authority],
+    )
+    .await
+    .unwrap();
+
+    assert!(
+        lwc.get_packed_account_data::<TokenAccount>(get_associated_token_address(
+            &eve_key, &mint_key
+        ))
+        .await
+        .unwrap()
+        .amount
+            == 1
+    );
 }

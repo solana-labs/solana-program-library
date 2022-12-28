@@ -143,14 +143,12 @@ async fn fail_on_invalid_mint() {
         &[&ctx.payer, &account],
         ctx.last_blockhash,
     );
-    #[allow(clippy::useless_conversion)]
-    let err: TransactionError = ctx
+    let err = ctx
         .banks_client
         .process_transaction(tx)
         .await
         .unwrap_err()
-        .unwrap()
-        .into();
+        .unwrap();
     assert_eq!(
         err,
         TransactionError::InstructionError(
