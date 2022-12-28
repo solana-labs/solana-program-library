@@ -28,12 +28,12 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
 
     let clock = Clock::get()?;
 
-    let mut realm_data = get_realm_data_for_governing_token_mint(
+    let realm_data = get_realm_data_for_governing_token_mint(
         program_id,
         realm_info,
         governing_token_mint_info.key,
     )?;
-    let governance_data =
+    let mut governance_data =
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
     let mut proposal_data = get_proposal_data_for_governance_and_governing_mint(
@@ -80,9 +80,9 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
 
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
-    // Update Realm voting_proposal_count
-    realm_data.voting_proposal_count = realm_data.voting_proposal_count.saturating_sub(1);
-    realm_data.serialize(&mut *realm_info.data.borrow_mut())?;
+    // Update  Governance active_proposal_count
+    governance_data.active_proposal_count = governance_data.active_proposal_count.saturating_sub(1);
+    governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
 
     Ok(())
 }

@@ -4,11 +4,10 @@ use borsh::maybestd::io::Write;
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::account_info::AccountInfo;
-use solana_program::borsh::try_from_slice_unchecked;
 
 use solana_program::program_error::ProgramError;
 use solana_program::{program_pack::IsInitialized, pubkey::Pubkey};
-use spl_governance_tools::account::{get_account_data, AccountMaxSize};
+use spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize};
 
 use crate::error::GovernanceError;
 
@@ -105,7 +104,7 @@ pub struct VoteRecordV2 {
     pub vote: Vote,
 
     /// Reserved space for versions v2 and onwards
-    /// Note: This space won't be available to v1 accounts until runtime supports resizing
+    /// Note: V1 accounts must be resized before using this space
     pub reserved_v2: [u8; 8],
 }
 
@@ -166,8 +165,7 @@ pub fn get_vote_record_data(
     program_id: &Pubkey,
     vote_record_info: &AccountInfo,
 ) -> Result<VoteRecordV2, ProgramError> {
-    let account_type: GovernanceAccountType =
-        try_from_slice_unchecked(&vote_record_info.data.borrow())?;
+    let account_type: GovernanceAccountType = get_account_type(program_id, vote_record_info)?;
 
     // If the account is V1 version then translate to V2
     if account_type == GovernanceAccountType::VoteRecordV1 {

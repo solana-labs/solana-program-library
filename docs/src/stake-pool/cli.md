@@ -261,7 +261,11 @@ In order to accommodate large numbers of user deposits into the stake pool, the
 stake pool only manages one stake account per validator. To add a new validator
 to the stake pool, the staker must use the `add-validator` command.
 
-Let's add some random validators to the stake pool.
+The SOL used to add validators to the pool comes from the stake pool's reserve
+account. If there is insufficient SOL in the reserve, the command will fail.
+Be sure to use the `deposit-sol` command to move some SOL into the pool.
+
+With 10 SOL in the pool, let's add some random validators to the stake pool.
 
 ```console
 $ spl-stake-pool add-validator Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR 38DYMkwYCvsj8TC6cNaEvFHHVDYeWDp1qUgMgyjNqZXk
@@ -285,18 +289,18 @@ We can see the status of a stake account using the Solana command-line utility.
 
 ```console
 $ solana stake-account 5AaobwjccyHnXhFCd24uiX6VqPjXE3Ry4o92fJjqqjAr
-Balance: 0.00328288 SOL
+Balance: 1.00228288 SOL
 Rent Exempt Reserve: 0.00228288 SOL
-Delegated Stake: 0.001 SOL
+Delegated Stake: 1 SOL
 Active Stake: 0 SOL
-Activating Stake: 0.001 SOL
+Activating Stake: 1 SOL
 Stake activates starting from epoch: 5
 Delegated Vote Account Address: J3xu64PWShcMen99kU3igxtwbke2Nwfo8pkZNRgrq66H
 Stake Authority: DS3AyFN9dF1ruNBcSeo8XXQR8UyVMhcCPcnjU5GnY18S
 Withdraw Authority: DS3AyFN9dF1ruNBcSeo8XXQR8UyVMhcCPcnjU5GnY18S
 ```
 
-The stake pool creates these special staking accounts with 0.001 SOL as the required
+The stake pool creates these special staking accounts with 1 SOL as the required
 minimum delegation amount. The stake and withdraw authorities are the stake pool
 withdraw authority, program addresses derived from the stake pool's address.
 
@@ -312,21 +316,20 @@ Stake Deposit Fee: none
 SOL Deposit Fee: none
 SOL Deposit Referral Fee: none
 Stake Deposit Referral Fee: none
-Reserve Account: EN4px2h4gFkYtsQUi4yeCYBrdRM4DoRxCVJyavMXEAm5   Available Balance: ◎0.000000000
-Vote Account: EhRbKi4Vhm1oUCGWHiLEMYZqDrHwEd7Jgzgi26QJKvfQ      Balance: ◎0.000000000 Last Update Epoch: 4
-Vote Account: J3xu64PWShcMen99kU3igxtwbke2Nwfo8pkZNRgrq66H      Balance: ◎0.000000000  Last Update Epoch: 4
-Vote Account: 38DYMkwYCvsj8TC6cNaEvFHHVDYeWDp1qUgMgyjNqZXk      Balance: ◎0.000000000  Last Update Epoch: 4
-Total Pool Stake: ◎0.000000000
-Total Pool Tokens: 0.00000000
+Reserve Account: EN4px2h4gFkYtsQUi4yeCYBrdRM4DoRxCVJyavMXEAm5   Available Balance: ◎6.99315136
+Vote Account: EhRbKi4Vhm1oUCGWHiLEMYZqDrHwEd7Jgzgi26QJKvfQ      Balance: ◎1.002282880 Last Update Epoch: 4
+Vote Account: J3xu64PWShcMen99kU3igxtwbke2Nwfo8pkZNRgrq66H      Balance: ◎1.002282880 Last Update Epoch: 4
+Vote Account: 38DYMkwYCvsj8TC6cNaEvFHHVDYeWDp1qUgMgyjNqZXk      Balance: ◎1.002282880 Last Update Epoch: 4
+Total Pool Stake: ◎10.000000000
+Total Pool Tokens: 10.00000000
 Current Number of Validators: 3
 Max Number of Validators: 1000
 ```
 
 To make reading easier, the tool will not show balances that cannot be touched by
-the stake pool. The stake account `5AaobwjccyHnXhFCd24uiX6VqPjXE3Ry4o92fJjqqjAr`,
-delegated to `J3xu64PWShcMen99kU3igxtwbke2Nwfo8pkZNRgrq66H`, actually has a balance
-of 0.00328288 SOL, but since this is the minimum required amount, it is
-not shown by the CLI.
+the stake pool. The reserve stake account `EN4px2h4gFkYtsQUi4yeCYBrdRM4DoRxCVJyavMXEAm5`
+actually has an additional balance of 0.002282881 SOL, but since this is the minimum
+required amount, it is not shown by the CLI.
 
 ### Remove validator stake account
 
@@ -334,7 +337,7 @@ If the stake pool staker wants to stop delegating to a vote account, they can
 totally remove the validator stake account from the stake pool.
 
 As with adding a validator, the validator stake account must have exactly
-0.00328288 SOL (0.001 SOL delegated, 0.00228288 SOL for rent exemption) to be removed.
+1.00228288 SOL (1 SOL delegated, 0.00228288 SOL for rent exemption) to be removed.
 
 If that is not the case, the staker must first decrease the stake to that minimum amount.
 Let's assume that the validator stake account delegated to 
@@ -356,29 +359,18 @@ Creating account to receive stake nHEEyey8KkgHuVRAUDzkH5Q4PkA4veSHuTxgG6C8L2G
 Signature: 4XprnR768Ch6LUvqUVLTjMCiqdYvtjNfECh4izErqwbsASTGjUBz7NtLZHAiraTqhs7b9PoSAazetdsgXa6J4wVu
 ```
 
-Unlike a normal withdrawal, the validator stake account is totally moved from
-the stake pool and into a new account belonging to the administrator.
+Unlike a normal withdrawal, the validator stake account is deactivated, and then
+merged into the reserve during the next epoch.
 
-Note: since removal is only possible when the validator stake is at the minimum
-amount of 0.00328288, the administrator does not get any control of user funds,
-and only recovers the amount contributed during `add-validator`.
-
-The authority for the withdrawn stake account can also be specified using the
-`--new-authority` flag:
-
-```console
-$ spl-stake-pool remove-validator Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR J3xu64PWShcMen99kU3igxtwbke2Nwfo8pkZNRgrq66H --new-authority 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
-Signature: 5rrQ3xhDWyiPkUTAQkNAeq31n6sMf1xsg2x9hVY8Vj1NonwBnhxuTv87nADLkwC8Xzc4CGTNCTX2Vph9esWnXk2d
-```
-
-We can check the removed stake account:
+We can check the deactivating stake account:
 
 ```console
 $ solana stake-account nHEEyey8KkgHuVRAUDzkH5Q4PkA4veSHuTxgG6C8L2G
-Balance: 0.003282880 SOL
-Rent Exempt Reserve: 0.00328288 SOL
-Delegated Stake: 0.001000000 SOL
-Active Stake: 0.001000000 SOL
+Balance: 1.002282880 SOL
+Rent Exempt Reserve: 0.00228288 SOL
+Delegated Stake: 1.000000000 SOL
+Active Stake: 1.000000000 SOL
+Stake deactivates starting from epoch: 10
 Delegated Vote Account Address: J3xu64PWShcMen99kU3igxtwbke2Nwfo8pkZNRgrq66H
 Stake Authority: 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
 Withdraw Authority: 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
@@ -812,11 +804,28 @@ be able to withdraw their funds.
 
 To get around this case, it is also possible to withdraw from the stake pool's
 reserve, but only if all of the validator stake accounts are at the minimum amount of
-`0.001 SOL + stake account rent exemption`.
+`1 SOL + stake account rent exemption`.
 
 ```console
 $ spl-stake-pool withdraw-stake Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR 5 --use-reserve
 Withdrawing ◎5.000000000, or 5 pool tokens, from stake account J5XB7mWpeaUZxZ6ogXT57qSCobczx27vLZYSgfSbZoBB
+Creating account to receive stake 51XdXiBSsVzeuY79xJwWAGZgeKzzgFKWajkwvWyrRiNE
+Signature: yQH9n7Go6iCMEYXqWef38ZYBPwXDmbwKAJFJ4EHD6TusBpusKsfNuT3TV9TL8FmxR2N9ExZTZwbD9Njc3rMvUcf
+```
+
+#### Special case: removing validator from the pool
+
+Since the funds used to add validators to the pool come from outside deposits,
+it's possible for a delinquent or malicious staker to make it impossible for
+users to reclaim their SOL by keeping everything at the minimum amount.
+
+To get around this case, it is also possible to remove a validator from the stake pool
+but only if all of the validator stake accounts are at the minimum amount of
+`1 SOL + stake account rent exemption`.
+
+```console
+$ spl-stake-pool withdraw-stake Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR 1.00228288 SOL
+Withdrawing ◎1.00228288 or 1.00228288 pool tokens, from stake account J5XB7mWpeaUZxZ6ogXT57qSCobczx27vLZYSgfSbZoBB
 Creating account to receive stake 51XdXiBSsVzeuY79xJwWAGZgeKzzgFKWajkwvWyrRiNE
 Signature: yQH9n7Go6iCMEYXqWef38ZYBPwXDmbwKAJFJ4EHD6TusBpusKsfNuT3TV9TL8FmxR2N9ExZTZwbD9Njc3rMvUcf
 ```

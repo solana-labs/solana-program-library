@@ -108,6 +108,12 @@ impl ConcurrentMerkleTreeHeader {
         }
     }
 
+    pub fn get_creation_slot(&self) -> u64 {
+        match &self.header {
+            ConcurrentMerkleTreeHeaderData::V1(header) => header.creation_slot,
+        }
+    }
+
     pub fn set_new_authority(&mut self, new_authority: &Pubkey) {
         match self.header {
             ConcurrentMerkleTreeHeaderData::V1(ref mut header) => {

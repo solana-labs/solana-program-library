@@ -60,7 +60,7 @@ pub enum GovernanceAccountType {
     /// Top level aggregation for governances with Community Token (and optional Council Token)
     /// V2 adds the following fields:
     /// 1) use_community_voter_weight_addin and use_max_community_voter_weight_addin to RealmConfig
-    /// 2) voting_proposal_count
+    /// 2) voting_proposal_count / replaced with legacy1 in V3
     /// 3) extra reserved space reserved_v2
     RealmV2,
 
@@ -87,6 +87,9 @@ pub enum GovernanceAccountType {
     /// Proposal Signatory account
     /// V2 adds extra reserved space reserved_v2
     SignatoryRecordV2,
+
+    /// Proposal deposit account
+    ProposalDeposit,
 }
 
 impl Default for GovernanceAccountType {

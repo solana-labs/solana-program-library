@@ -17,6 +17,8 @@ create_keypair () {
 
 setup_test_validator() {
   solana-test-validator -c SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy -c EmiU8AQkB2sswTxVB6aCmsAJftoowZGGDXuytm6X65R3 --url devnet --slots-per-epoch 32 --quiet --reset &
+  # Uncomment to use a locally built stake program
+  #solana-test-validator --bpf-program SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy ../../../target/deploy/spl_stake_pool.so --slots-per-epoch 32 --quiet --reset &
   pid=$!
   solana config set --url http://127.0.0.1:8899
   solana config set --commitment confirmed

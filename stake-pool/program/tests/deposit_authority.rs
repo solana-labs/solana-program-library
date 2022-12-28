@@ -61,6 +61,7 @@ async fn success_deposit() {
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        stake_pool_accounts.stake_deposit_authority_keypair.as_ref(),
     )
     .await;
 
@@ -99,9 +100,11 @@ async fn success_deposit() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &user_pool_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
+        &user,
+        &[],
     )
     .await
     .unwrap();
@@ -141,6 +144,7 @@ async fn fail_deposit_without_authority_signature() {
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        stake_pool_accounts.stake_deposit_authority_keypair.as_ref(),
     )
     .await;
 
@@ -179,9 +183,11 @@ async fn fail_deposit_without_authority_signature() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &user_pool_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
+        &user,
+        &[],
     )
     .await
     .unwrap();

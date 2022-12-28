@@ -28,6 +28,8 @@ pub enum BinaryOptionError {
     PublicKeysShouldBeUnique,
     #[error("TradePricesIncorrect")]
     TradePricesIncorrect,
+    #[error("AmountOverflow")]
+    AmountOverflow,
 }
 
 impl From<BinaryOptionError> for ProgramError {

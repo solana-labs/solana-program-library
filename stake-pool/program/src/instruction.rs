@@ -4,8 +4,9 @@
 
 use {
     crate::{
-        find_deposit_authority_program_address, find_stake_program_address,
-        find_transient_stake_program_address, find_withdraw_authority_program_address,
+        find_deposit_authority_program_address, find_ephemeral_stake_program_address,
+        find_stake_program_address, find_transient_stake_program_address,
+        find_withdraw_authority_program_address,
         state::{Fee, FeeType, StakePool, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE,
     },
@@ -16,6 +17,7 @@ use {
         pubkey::Pubkey,
         stake, system_program, sysvar,
     },
+    std::num::NonZeroU32,
 };
 
 /// Defines which validator vote account is set during the
@@ -44,7 +46,7 @@ pub enum FundingType {
 
 /// Instructions supported by the StakePool program.
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
 pub enum StakePoolInstruction {
     ///   Initializes a new StakePool.
     ///
@@ -63,19 +65,14 @@ pub enum StakePoolInstruction {
     ///      `find_deposit_authority_program_address`, making deposits permissionless.
     Initialize {
         /// Fee assessed as percentage of perceived rewards
-        #[allow(dead_code)] // but it's not
         fee: Fee,
         /// Fee charged per withdrawal as percentage of withdrawal
-        #[allow(dead_code)] // but it's not
         withdrawal_fee: Fee,
         /// Fee charged per deposit as percentage of deposit
-        #[allow(dead_code)] // but it's not
         deposit_fee: Fee,
         /// Percentage [0-100] of deposit_fee that goes to referrer
-        #[allow(dead_code)] // but it's not
         referral_fee: u8,
         /// Maximum expected number of validators
-        #[allow(dead_code)] // but it's not
         max_validators: u32,
     },
 
@@ -84,10 +81,11 @@ pub enum StakePoolInstruction {
     ///
     ///   The stake account will have the rent-exempt amount plus
     ///   `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    ///   It is funded from the stake pool reserve.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[s]` Staker
-    ///   2. `[ws]` Funding account (must be a system account)
+    ///   2. `[w]` Reserve stake account
     ///   3. `[]` Stake pool withdraw authority
     ///   4. `[w]` Validator stake list storage account
     ///   5. `[w]` Stake account to add to the pool
@@ -98,9 +96,12 @@ pub enum StakePoolInstruction {
     ///  10. '[]' Stake config sysvar
     ///  11. `[]` System program
     ///  12. `[]` Stake program
-    AddValidatorToPool,
+    ///
+    ///  userdata: optional non-zero u32 seed used for generating the validator
+    ///  stake address
+    AddValidatorToPool(u32),
 
-    ///   (Staker only) Removes validator from the pool
+    ///   (Staker only) Removes validator from the pool, deactivating its stake
     ///
     ///   Only succeeds if the validator stake account has the minimum of
     ///   `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
@@ -109,13 +110,11 @@ pub enum StakePoolInstruction {
     ///   0. `[w]` Stake pool
     ///   1. `[s]` Staker
     ///   2. `[]` Stake pool withdraw authority
-    ///   3. `[]` New withdraw/staker authority to set in the stake account
-    ///   4. `[w]` Validator stake list storage account
-    ///   5. `[w]` Stake account to remove from the pool
-    ///   6. `[]` Transient stake account, to check that that we're not trying to activate
-    ///   7. `[w]` Destination stake account, to receive the minimum SOL from the validator stake account
-    ///   8. `[]` Sysvar clock
-    ///   9. `[]` Stake program id,
+    ///   3. `[w]` Validator stake list storage account
+    ///   4. `[w]` Stake account to remove from the pool
+    ///   5. `[]` Transient stake account, to check that that we're not trying to activate
+    ///   6. `[]` Sysvar clock
+    ///   7. `[]` Stake program id,
     RemoveValidatorFromPool,
 
     /// (Staker only) Decrease active stake on a validator, eventually moving it to the reserve
@@ -129,8 +128,8 @@ pub enum StakePoolInstruction {
     /// validator stake account, into its "transient" stake account.
     ///
     /// The instruction only succeeds if the transient stake account does not
-    /// exist. The amount of lamports to move must be at least rent-exemption
-    /// plus 1 lamport.
+    /// exist. The amount of lamports to move must be at least rent-exemption plus
+    /// `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
@@ -144,10 +143,8 @@ pub enum StakePoolInstruction {
     ///  9. `[]` Stake program
     DecreaseValidatorStake {
         /// amount of lamports to split into the transient stake account
-        #[allow(dead_code)] // but it's not
         lamports: u64,
         /// seed used to create transient stake account
-        #[allow(dead_code)] // but it's not
         transient_stake_seed: u64,
     },
 
@@ -182,10 +179,8 @@ pub enum StakePoolInstruction {
     ///  after it is merged.
     IncreaseValidatorStake {
         /// amount of lamports to increase on the given validator
-        #[allow(dead_code)] // but it's not
         lamports: u64,
         /// seed used to create transient stake account
-        #[allow(dead_code)] // but it's not
         transient_stake_seed: u64,
     },
 
@@ -203,11 +198,9 @@ pub enum StakePoolInstruction {
     /// Fails if the validator is not part of the stake pool.
     SetPreferredValidator {
         /// Affected operation (deposit or withdraw)
-        #[allow(dead_code)] // but it's not
         validator_type: PreferredValidatorType,
         /// Validator vote account that deposits or withdraws must go through,
         /// unset with None
-        #[allow(dead_code)] // but it's not
         validator_vote_address: Option<Pubkey>,
     },
 
@@ -227,15 +220,13 @@ pub enum StakePoolInstruction {
     ///  4. `[]` Sysvar clock
     ///  5. `[]` Sysvar stake history
     ///  6. `[]` Stake program
-    ///  7. ..7+N ` [] N pairs of validator and transient stake accounts
+    ///  7. ..7+2N ` [] N pairs of validator and transient stake accounts
     UpdateValidatorListBalance {
         /// Index to start updating on the validator list
-        #[allow(dead_code)] // but it's not
         start_index: u32,
         /// If true, don't try merging transient stake accounts into the reserve or
         /// validator stake account.  Useful for testing or if a particular stake
         /// account is in a bad state, but we still want to update
-        #[allow(dead_code)] // but it's not
         no_merge: bool,
     },
 
@@ -288,12 +279,12 @@ pub enum StakePoolInstruction {
     ///   * preferred withdraw validator stake account (if set)
     ///   * validator stake accounts
     ///   * transient stake accounts
-    ///   * reserve stake account
+    ///   * reserve stake account OR totally remove validator stake accounts
     ///
     ///   A user can freely withdraw from a validator stake account, and if they
     ///   are all at the minimum, then they can withdraw from transient stake
     ///   accounts, and if they are all at minimum, then they can withdraw from
-    ///   the reserve.
+    ///   the reserve or remove any validator from the pool.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[w]` Validator stake list storage account
@@ -325,7 +316,6 @@ pub enum StakePoolInstruction {
     ///  1. `[s]` Manager
     SetFee {
         /// Type of fee to update and value to update it to
-        #[allow(dead_code)] // but it's not
         fee: FeeType,
     },
 
@@ -352,7 +342,7 @@ pub enum StakePoolInstruction {
     ///  10. `[s]` (Optional) Stake pool sol deposit authority.
     DepositSol(u64),
 
-    ///  (Manager only) Update SOL deposit authority
+    ///  (Manager only) Update SOL deposit, stake deposit, or SOL withdrawal authority.
     ///
     ///  0. `[w]` StakePool
     ///  1. `[s]` Manager
@@ -389,14 +379,11 @@ pub enum StakePoolInstruction {
     /// 7. `[]` System program id
     /// 8. `[]` Rent sysvar
     CreateTokenMetadata {
-        #[allow(dead_code)]
         /// Token name
         name: String,
-        #[allow(dead_code)]
         /// Token symbol e.g. stkSOL
         symbol: String,
         /// URI of the uploaded metadata of the spl-token
-        #[allow(dead_code)]
         uri: String,
     },
     /// Update token metadata for the stake-pool token in the
@@ -408,15 +395,134 @@ pub enum StakePoolInstruction {
     /// 3. `[w]` Token metadata account
     /// 4. `[]` Metadata program id
     UpdateTokenMetadata {
-        #[allow(dead_code)]
         /// Token name
         name: String,
-        #[allow(dead_code)]
         /// Token symbol e.g. stkSOL
         symbol: String,
         /// URI of the uploaded metadata of the spl-token
-        #[allow(dead_code)]
         uri: String,
+    },
+
+    /// (Staker only) Increase stake on a validator again in an epoch.
+    ///
+    /// Works regardless if the transient stake account exists.
+    ///
+    /// Internally, this instruction splits reserve stake into an ephemeral stake
+    /// account, activates it, then merges or splits it into the transient stake
+    /// account delegated to the appropriate validator. `UpdateValidatorListBalance`
+    /// will do the work of merging once it's ready.
+    ///
+    /// The minimum amount to move is rent-exemption plus
+    /// `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    ///
+    ///  0. `[]` Stake pool
+    ///  1. `[s]` Stake pool staker
+    ///  2. `[]` Stake pool withdraw authority
+    ///  3. `[w]` Validator list
+    ///  4. `[w]` Stake pool reserve stake
+    ///  5. `[w]` Uninitialized ephemeral stake account to receive stake
+    ///  6. `[w]` Transient stake account
+    ///  7. `[]` Validator stake account
+    ///  8. `[]` Validator vote account to delegate to
+    ///  9. '[]' Clock sysvar
+    /// 10. `[]` Stake History sysvar
+    /// 11. `[]` Stake Config sysvar
+    /// 12. `[]` System program
+    /// 13. `[]` Stake program
+    ///  userdata: amount of lamports to increase on the given validator.
+    ///  The actual amount split into the transient stake account is:
+    ///  `lamports + stake_rent_exemption`
+    ///  The rent-exemption of the stake account is withdrawn back to the reserve
+    ///  after it is merged.
+    IncreaseAdditionalValidatorStake {
+        /// amount of lamports to increase on the given validator
+        lamports: u64,
+        /// seed used to create transient stake account
+        transient_stake_seed: u64,
+        /// seed used to create ephemeral account.
+        ephemeral_stake_seed: u64,
+    },
+
+    /// (Staker only) Decrease active stake again from a validator, eventually moving it to the reserve
+    ///
+    /// Works regardless if the transient stake account already exists.
+    ///
+    /// Internally, this instruction splits a validator stake account into an
+    /// ephemeral stake account, deactivates it, then merges or splits it into
+    /// the transient stake account delegated to the appropriate validator.
+    ///
+    ///  The amount of lamports to move must be at least rent-exemption plus
+    /// `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    ///
+    ///  0. `[]` Stake pool
+    ///  1. `[s]` Stake pool staker
+    ///  2. `[]` Stake pool withdraw authority
+    ///  3. `[w]` Validator list
+    ///  4. `[w]` Canonical stake account to split from
+    ///  5. `[w]` Uninitialized ephemeral stake account to receive stake
+    ///  6. `[w]` Transient stake account
+    ///  7. `[]` Clock sysvar
+    ///  8. '[]' Stake history sysvar
+    ///  9. `[]` System program
+    /// 10. `[]` Stake program
+    DecreaseAdditionalValidatorStake {
+        /// amount of lamports to split into the transient stake account
+        lamports: u64,
+        /// seed used to create transient stake account
+        transient_stake_seed: u64,
+        /// seed used to create ephemeral account.
+        ephemeral_stake_seed: u64,
+    },
+
+    /// (Staker only) Redelegate active stake on a validator, eventually moving it to another
+    ///
+    /// Internally, this instruction splits a validator stake account into its
+    /// corresponding transient stake account, redelegates it to an ephemeral stake
+    /// account, then merges that stake into the destination transient stake account.
+    ///
+    /// In order to rebalance the pool without taking custody, the staker needs
+    /// a way of reducing the stake on a stake account. This instruction splits
+    /// some amount of stake, up to the total activated stake, from the canonical
+    /// validator stake account, into its "transient" stake account.
+    ///
+    /// The instruction only succeeds if the source transient stake account and
+    /// ephemeral stake account do not exist.
+    ///
+    /// The amount of lamports to move must be at least twice rent-exemption
+    /// plus the minimum delegation amount. Rent-exemption is required for the
+    /// source transient stake account, and rent-exemption plus minimum delegation
+    /// is required for the destination ephemeral stake account.
+    ///
+    ///  0. `[]` Stake pool
+    ///  1. `[s]` Stake pool staker
+    ///  2. `[]` Stake pool withdraw authority
+    ///  3. `[w]` Validator list
+    ///  4. `[w]` Source canonical stake account to split from
+    ///  5. `[w]` Source transient stake account to receive split and be redelegated
+    ///  6. `[w]` Uninitialized ephemeral stake account to receive redelegation
+    ///  7. `[w]` Destination transient stake account to receive ephemeral stake by merge
+    ///  8. `[]` Destination stake account to receive transient stake after activation
+    ///  9. `[]` Destination validator vote account
+    /// 10. `[]` Clock sysvar
+    /// 11. `[]` Stake History sysvar
+    /// 12. `[]` Stake Config sysvar
+    /// 13. `[]` System program
+    /// 14. `[]` Stake program
+    Redelegate {
+        /// Amount of lamports to redelegate
+        #[allow(dead_code)] // but it's not
+        lamports: u64,
+        /// Seed used to create source transient stake account
+        #[allow(dead_code)] // but it's not
+        source_transient_stake_seed: u64,
+        /// Seed used to create destination ephemeral account.
+        #[allow(dead_code)] // but it's not
+        ephemeral_stake_seed: u64,
+        /// Seed used to create destination transient stake account. If there is
+        /// already transient stake, this must match the current seed, otherwise
+        /// it can be anything
+        #[allow(dead_code)] // but it's not
+        destination_transient_stake_seed: u64,
     },
 }
 
@@ -473,16 +579,17 @@ pub fn add_validator_to_pool(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     staker: &Pubkey,
-    funder: &Pubkey,
+    reserve: &Pubkey,
     stake_pool_withdraw: &Pubkey,
     validator_list: &Pubkey,
     stake: &Pubkey,
     validator: &Pubkey,
+    seed: Option<NonZeroU32>,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*staker, true),
-        AccountMeta::new(*funder, true),
+        AccountMeta::new(*reserve, false),
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new(*validator_list, false),
         AccountMeta::new(*stake, false),
@@ -494,12 +601,13 @@ pub fn add_validator_to_pool(
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(stake::program::id(), false),
     ];
+    let data = StakePoolInstruction::AddValidatorToPool(seed.map(|s| s.get()).unwrap_or(0))
+        .try_to_vec()
+        .unwrap();
     Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::AddValidatorToPool
-            .try_to_vec()
-            .unwrap(),
+        data,
     }
 }
 
@@ -509,21 +617,17 @@ pub fn remove_validator_from_pool(
     stake_pool: &Pubkey,
     staker: &Pubkey,
     stake_pool_withdraw: &Pubkey,
-    new_stake_authority: &Pubkey,
     validator_list: &Pubkey,
     stake_account: &Pubkey,
     transient_stake_account: &Pubkey,
-    destination_stake_account: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*staker, true),
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
-        AccountMeta::new_readonly(*new_stake_authority, false),
         AccountMeta::new(*validator_list, false),
         AccountMeta::new(*stake_account, false),
         AccountMeta::new_readonly(*transient_stake_account, false),
-        AccountMeta::new(*destination_stake_account, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(stake::program::id(), false),
     ];
@@ -573,6 +677,47 @@ pub fn decrease_validator_stake(
     }
 }
 
+/// Creates `DecreaseAdditionalValidatorStake` instruction (rebalance from
+/// validator account to transient account)
+pub fn decrease_additional_validator_stake(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    staker: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    validator_list: &Pubkey,
+    validator_stake: &Pubkey,
+    ephemeral_stake: &Pubkey,
+    transient_stake: &Pubkey,
+    lamports: u64,
+    transient_stake_seed: u64,
+    ephemeral_stake_seed: u64,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new_readonly(*staker, true),
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        AccountMeta::new(*validator_list, false),
+        AccountMeta::new(*validator_stake, false),
+        AccountMeta::new(*ephemeral_stake, false),
+        AccountMeta::new(*transient_stake, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
+    ];
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::DecreaseAdditionalValidatorStake {
+            lamports,
+            transient_stake_seed,
+            ephemeral_stake_seed,
+        }
+        .try_to_vec()
+        .unwrap(),
+    }
+}
+
 /// Creates `IncreaseValidatorStake` instruction (rebalance from reserve account to
 /// transient account)
 pub fn increase_validator_stake(
@@ -616,6 +761,101 @@ pub fn increase_validator_stake(
     }
 }
 
+/// Creates `IncreaseAdditionalValidatorStake` instruction (rebalance from reserve account to
+/// transient account)
+pub fn increase_additional_validator_stake(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    staker: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    validator_list: &Pubkey,
+    reserve_stake: &Pubkey,
+    ephemeral_stake: &Pubkey,
+    transient_stake: &Pubkey,
+    validator_stake: &Pubkey,
+    validator: &Pubkey,
+    lamports: u64,
+    transient_stake_seed: u64,
+    ephemeral_stake_seed: u64,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new_readonly(*staker, true),
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        AccountMeta::new(*validator_list, false),
+        AccountMeta::new(*reserve_stake, false),
+        AccountMeta::new(*ephemeral_stake, false),
+        AccountMeta::new(*transient_stake, false),
+        AccountMeta::new_readonly(*validator_stake, false),
+        AccountMeta::new_readonly(*validator, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(stake::config::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
+    ];
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::IncreaseAdditionalValidatorStake {
+            lamports,
+            transient_stake_seed,
+            ephemeral_stake_seed,
+        }
+        .try_to_vec()
+        .unwrap(),
+    }
+}
+
+/// Creates `Redelegate` instruction (rebalance from one validator account to another)
+pub fn redelegate(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    staker: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    validator_list: &Pubkey,
+    source_validator_stake: &Pubkey,
+    source_transient_stake: &Pubkey,
+    ephemeral_stake: &Pubkey,
+    destination_transient_stake: &Pubkey,
+    destination_validator_stake: &Pubkey,
+    validator: &Pubkey,
+    lamports: u64,
+    source_transient_stake_seed: u64,
+    ephemeral_stake_seed: u64,
+    destination_transient_stake_seed: u64,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new_readonly(*staker, true),
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        AccountMeta::new(*validator_list, false),
+        AccountMeta::new(*source_validator_stake, false),
+        AccountMeta::new(*source_transient_stake, false),
+        AccountMeta::new(*ephemeral_stake, false),
+        AccountMeta::new(*destination_transient_stake, false),
+        AccountMeta::new_readonly(*destination_validator_stake, false),
+        AccountMeta::new_readonly(*validator, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(stake::config::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
+    ];
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::Redelegate {
+            lamports,
+            source_transient_stake_seed,
+            ephemeral_stake_seed,
+            destination_transient_stake_seed,
+        }
+        .try_to_vec()
+        .unwrap(),
+    }
+}
+
 /// Creates `SetPreferredDepositValidator` instruction
 pub fn set_preferred_validator(
     program_id: &Pubkey,
@@ -647,22 +887,23 @@ pub fn add_validator_to_pool_with_vote(
     program_id: &Pubkey,
     stake_pool: &StakePool,
     stake_pool_address: &Pubkey,
-    funder: &Pubkey,
     vote_account_address: &Pubkey,
+    seed: Option<NonZeroU32>,
 ) -> Instruction {
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(program_id, stake_pool_address).0;
     let (stake_account_address, _) =
-        find_stake_program_address(program_id, vote_account_address, stake_pool_address);
+        find_stake_program_address(program_id, vote_account_address, stake_pool_address, seed);
     add_validator_to_pool(
         program_id,
         stake_pool_address,
         &stake_pool.staker,
-        funder,
+        &stake_pool.reserve_stake,
         &pool_withdraw_authority,
         &stake_pool.validator_list,
         &stake_account_address,
         vote_account_address,
+        seed,
     )
 }
 
@@ -673,14 +914,17 @@ pub fn remove_validator_from_pool_with_vote(
     stake_pool: &StakePool,
     stake_pool_address: &Pubkey,
     vote_account_address: &Pubkey,
-    new_stake_account_authority: &Pubkey,
+    validator_stake_seed: Option<NonZeroU32>,
     transient_stake_seed: u64,
-    destination_stake_address: &Pubkey,
 ) -> Instruction {
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(program_id, stake_pool_address).0;
-    let (stake_account_address, _) =
-        find_stake_program_address(program_id, vote_account_address, stake_pool_address);
+    let (stake_account_address, _) = find_stake_program_address(
+        program_id,
+        vote_account_address,
+        stake_pool_address,
+        validator_stake_seed,
+    );
     let (transient_stake_account, _) = find_transient_stake_program_address(
         program_id,
         vote_account_address,
@@ -692,11 +936,9 @@ pub fn remove_validator_from_pool_with_vote(
         stake_pool_address,
         &stake_pool.staker,
         &pool_withdraw_authority,
-        new_stake_account_authority,
         &stake_pool.validator_list,
         &stake_account_address,
         &transient_stake_account,
-        destination_stake_address,
     )
 }
 
@@ -708,6 +950,7 @@ pub fn increase_validator_stake_with_vote(
     stake_pool_address: &Pubkey,
     vote_account_address: &Pubkey,
     lamports: u64,
+    validator_stake_seed: Option<NonZeroU32>,
     transient_stake_seed: u64,
 ) -> Instruction {
     let pool_withdraw_authority =
@@ -718,8 +961,12 @@ pub fn increase_validator_stake_with_vote(
         stake_pool_address,
         transient_stake_seed,
     );
-    let (validator_stake_address, _) =
-        find_stake_program_address(program_id, vote_account_address, stake_pool_address);
+    let (validator_stake_address, _) = find_stake_program_address(
+        program_id,
+        vote_account_address,
+        stake_pool_address,
+        validator_stake_seed,
+    );
 
     increase_validator_stake(
         program_id,
@@ -736,6 +983,52 @@ pub fn increase_validator_stake_with_vote(
     )
 }
 
+/// Create an `IncreaseAdditionalValidatorStake` instruction given an existing
+/// stake pool and vote account
+pub fn increase_additional_validator_stake_with_vote(
+    program_id: &Pubkey,
+    stake_pool: &StakePool,
+    stake_pool_address: &Pubkey,
+    vote_account_address: &Pubkey,
+    lamports: u64,
+    validator_stake_seed: Option<NonZeroU32>,
+    transient_stake_seed: u64,
+    ephemeral_stake_seed: u64,
+) -> Instruction {
+    let pool_withdraw_authority =
+        find_withdraw_authority_program_address(program_id, stake_pool_address).0;
+    let (ephemeral_stake_address, _) =
+        find_ephemeral_stake_program_address(program_id, stake_pool_address, ephemeral_stake_seed);
+    let (transient_stake_address, _) = find_transient_stake_program_address(
+        program_id,
+        vote_account_address,
+        stake_pool_address,
+        transient_stake_seed,
+    );
+    let (validator_stake_address, _) = find_stake_program_address(
+        program_id,
+        vote_account_address,
+        stake_pool_address,
+        validator_stake_seed,
+    );
+
+    increase_additional_validator_stake(
+        program_id,
+        stake_pool_address,
+        &stake_pool.staker,
+        &pool_withdraw_authority,
+        &stake_pool.validator_list,
+        &stake_pool.reserve_stake,
+        &ephemeral_stake_address,
+        &transient_stake_address,
+        &validator_stake_address,
+        vote_account_address,
+        lamports,
+        transient_stake_seed,
+        ephemeral_stake_seed,
+    )
+}
+
 /// Create a `DecreaseValidatorStake` instruction given an existing stake pool and
 /// vote account
 pub fn decrease_validator_stake_with_vote(
@@ -744,12 +1037,17 @@ pub fn decrease_validator_stake_with_vote(
     stake_pool_address: &Pubkey,
     vote_account_address: &Pubkey,
     lamports: u64,
+    validator_stake_seed: Option<NonZeroU32>,
     transient_stake_seed: u64,
 ) -> Instruction {
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(program_id, stake_pool_address).0;
-    let (validator_stake_address, _) =
-        find_stake_program_address(program_id, vote_account_address, stake_pool_address);
+    let (validator_stake_address, _) = find_stake_program_address(
+        program_id,
+        vote_account_address,
+        stake_pool_address,
+        validator_stake_seed,
+    );
     let (transient_stake_address, _) = find_transient_stake_program_address(
         program_id,
         vote_account_address,
@@ -766,6 +1064,49 @@ pub fn decrease_validator_stake_with_vote(
         &transient_stake_address,
         lamports,
         transient_stake_seed,
+    )
+}
+
+/// Create a `DecreaseAdditionalValidatorStake` instruction given an existing
+/// stake pool and vote account
+pub fn decrease_additional_validator_stake_with_vote(
+    program_id: &Pubkey,
+    stake_pool: &StakePool,
+    stake_pool_address: &Pubkey,
+    vote_account_address: &Pubkey,
+    lamports: u64,
+    validator_stake_seed: Option<NonZeroU32>,
+    transient_stake_seed: u64,
+    ephemeral_stake_seed: u64,
+) -> Instruction {
+    let pool_withdraw_authority =
+        find_withdraw_authority_program_address(program_id, stake_pool_address).0;
+    let (validator_stake_address, _) = find_stake_program_address(
+        program_id,
+        vote_account_address,
+        stake_pool_address,
+        validator_stake_seed,
+    );
+    let (ephemeral_stake_address, _) =
+        find_ephemeral_stake_program_address(program_id, stake_pool_address, ephemeral_stake_seed);
+    let (transient_stake_address, _) = find_transient_stake_program_address(
+        program_id,
+        vote_account_address,
+        stake_pool_address,
+        transient_stake_seed,
+    );
+    decrease_additional_validator_stake(
+        program_id,
+        stake_pool_address,
+        &stake_pool.staker,
+        &pool_withdraw_authority,
+        &stake_pool.validator_list,
+        &validator_stake_address,
+        &ephemeral_stake_address,
+        &transient_stake_address,
+        lamports,
+        transient_stake_seed,
+        ephemeral_stake_seed,
     )
 }
 
@@ -796,13 +1137,17 @@ pub fn update_validator_list_balance(
             .flat_map(|vote_account_address| {
                 let validator_stake_info = validator_list.find(vote_account_address);
                 if let Some(validator_stake_info) = validator_stake_info {
-                    let (validator_stake_account, _) =
-                        find_stake_program_address(program_id, vote_account_address, stake_pool);
+                    let (validator_stake_account, _) = find_stake_program_address(
+                        program_id,
+                        vote_account_address,
+                        stake_pool,
+                        NonZeroU32::new(validator_stake_info.validator_seed_suffix),
+                    );
                     let (transient_stake_account, _) = find_transient_stake_program_address(
                         program_id,
                         vote_account_address,
                         stake_pool,
-                        validator_stake_info.transient_seed_suffix_start,
+                        validator_stake_info.transient_seed_suffix,
                     );
                     vec![
                         AccountMeta::new(validator_stake_account, false),
@@ -906,7 +1251,7 @@ pub fn update_stake_pool(
             start_index,
             no_merge,
         ));
-        start_index += MAX_VALIDATORS_TO_UPDATE as u32;
+        start_index = start_index.saturating_add(MAX_VALIDATORS_TO_UPDATE as u32);
     }
 
     let final_instructions = vec![
