@@ -37,13 +37,13 @@ pub struct TransferFee {
 impl TransferFee {
     /// Calculate ceiling-division
     ///
-    /// Ceiling-division `ceil[ dividend / divisor ]` can be represented as a floor-division
-    /// `floor[ dividend + (divisor - 1) / divisor ]`
-    fn ceil_div(dividend: u128, divisor: u128) -> Option<u128> {
-        dividend
-            .checked_add(divisor)?
+    /// Ceiling-division `ceil[ numerator / denominator ]` can be represented as a floor-division
+    /// `floor[ (numerator + denominator - 1) / denominator ]`
+    fn ceil_div(numerator: u128, denominator: u128) -> Option<u128> {
+        numerator
+            .checked_add(denominator)?
             .checked_sub(1)?
-            .checked_div(divisor)
+            .checked_div(denominator)
     }
 
     /// Calculate the transfer fee

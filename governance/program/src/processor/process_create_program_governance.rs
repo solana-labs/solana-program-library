@@ -10,8 +10,11 @@ use crate::{
         },
         realm::get_realm_data,
     },
-    tools::bpf_loader_upgradeable::{
-        assert_program_upgrade_authority_is_signer, set_program_upgrade_authority,
+    tools::{
+        bpf_loader_upgradeable::{
+            assert_program_upgrade_authority_is_signer, set_program_upgrade_authority,
+        },
+        structs::Reserved120,
     },
 };
 use solana_program::{
@@ -68,8 +71,9 @@ pub fn process_create_program_governance(
         realm: *realm_info.key,
         governed_account: *governed_program_info.key,
         config,
-        proposals_count: 0,
-        reserved_v2: [0; 128],
+        reserved1: 0,
+        reserved_v2: Reserved120::default(),
+        active_proposal_count: 0,
     };
 
     create_and_serialize_account_signed::<GovernanceV2>(
@@ -80,6 +84,7 @@ pub fn process_create_program_governance(
         program_id,
         system_info,
         &rent,
+        0,
     )?;
 
     if transfer_upgrade_authority {

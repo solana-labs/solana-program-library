@@ -38,7 +38,7 @@ export function createEnableRequiredMemoTransfersInstruction(
     multiSigners: Signer[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
-    return createMemoTransferInstruction(/* enable */ true, account, authority, multiSigners, programId);
+    return createMemoTransferInstruction(MemoTransferInstruction.Enable, account, authority, multiSigners, programId);
 }
 
 /**
@@ -57,11 +57,11 @@ export function createDisableRequiredMemoTransfersInstruction(
     multiSigners: Signer[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
-    return createMemoTransferInstruction(/* enable */ false, account, authority, multiSigners, programId);
+    return createMemoTransferInstruction(MemoTransferInstruction.Disable, account, authority, multiSigners, programId);
 }
 
 function createMemoTransferInstruction(
-    enable: boolean,
+    memoTransferInstruction: MemoTransferInstruction,
     account: PublicKey,
     authority: PublicKey,
     multiSigners: Signer[],
@@ -80,7 +80,7 @@ function createMemoTransferInstruction(
     memoTransferInstructionData.encode(
         {
             instruction: TokenInstruction.MemoTransferExtension,
-            memoTransferInstruction: enable ? MemoTransferInstruction.Enable : MemoTransferInstruction.Disable,
+            memoTransferInstruction,
         },
         data
     );

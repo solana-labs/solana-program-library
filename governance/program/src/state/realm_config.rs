@@ -11,6 +11,7 @@ use solana_program::{
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
+use crate::tools::structs::Reserved110;
 use crate::{error::GovernanceError, state::enums::GovernanceAccountType};
 
 use crate::state::realm::GoverningTokenConfigArgs;
@@ -30,7 +31,7 @@ pub enum GoverningTokenType {
 
     /// Membership token is a token controlled by Realm authority
     /// Deposit - Yes, membership tokens can be deposited to gain governance power
-    ///           The membership tokens are conventionally minted into the holding account to keep them out of members possesion  
+    ///           The membership tokens are conventionally minted into the holding account to keep them out of members possession  
     /// Withdraw - No, after membership tokens are deposited they are no longer transferable and can't be withdrawn
     /// Revoke - Yes, Realm authority can Revoke (burn) membership tokens
     Membership,
@@ -38,7 +39,7 @@ pub enum GoverningTokenType {
     /// Dormant token is a token which is only a placeholder and its deposits are not accepted and not used for governance power within the Realm
     ///
     /// The Dormant token type is used when only a single voting population is operational. For example a Multisig starter DAO uses Council only
-    /// and sets Community as Dormant to indicate its not utilised for any governance power.
+    /// and sets Community as Dormant to indicate its not utilized for any governance power.
     /// Once the starter DAO decides to decentralise then it can change the Community token to Liquid
     ///
     /// Note: When an external voter weight plugin which takes deposits of the token is used then the type should be set to Dormant
@@ -73,27 +74,6 @@ pub struct GoverningTokenConfig {
     pub reserved: [u8; 8],
 }
 
-/// Reserved 110 bytes
-#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct Reserved110 {
-    /// Reserved 64 bytes
-    pub reserved64: [u8; 64],
-    /// Reserved 32 bytes
-    pub reserved32: [u8; 32],
-    /// Reserved 4 bytes
-    pub reserved14: [u8; 14],
-}
-
-impl Default for Reserved110 {
-    fn default() -> Self {
-        Self {
-            reserved64: [0; 64],
-            reserved32: [0; 32],
-            reserved14: [0; 14],
-        }
-    }
-}
-
 /// RealmConfig account
 /// The account is an optional extension to RealmConfig stored on Realm account
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -116,7 +96,7 @@ pub struct RealmConfigAccount {
 
 impl AccountMaxSize for RealmConfigAccount {
     fn get_max_size(&self) -> Option<usize> {
-        Some(1 + 32 + 33 * 4 + 128)
+        Some(1 + 32 + 75 * 2 + 110)
     }
 }
 
@@ -162,7 +142,7 @@ impl RealmConfigAccount {
         }
     }
 
-    /// Assertes the given governing token can be deposited
+    /// Asserts the given governing token can be deposited
     pub fn assert_can_deposit_governing_token(
         &self,
         realm_data: &RealmV2,
@@ -175,12 +155,12 @@ impl RealmConfigAccount {
         match governing_token_type {
             GoverningTokenType::Membership | GoverningTokenType::Liquid => Ok(()),
             // Note: Preventing deposits of the Dormant type tokens is not a direct security concern
-            // It only makes the intention of not using deposited tokens as governnace power stronger
+            // It only makes the intention of not using deposited tokens as governance power stronger
             GoverningTokenType::Dormant => Err(GovernanceError::CannotDepositDormantTokens.into()),
         }
     }
 
-    /// Assertes the given governing token can be withdrawn
+    /// Asserts the given governing token can be withdrawn
     pub fn assert_can_withdraw_governing_token(
         &self,
         realm_data: &RealmV2,
@@ -198,20 +178,20 @@ impl RealmConfigAccount {
         }
     }
 
-    /// Asserts the given RealmConfigArgs represent a valid Realm configuraiton change
+    /// Asserts the given RealmConfigArgs represent a valid Realm configuration change
     pub fn assert_can_change_config(
         &self,
         realm_config_args: &RealmConfigArgs,
     ) -> Result<(), ProgramError> {
         // Existing community token type can't be changed to Membership because it would
         // give the Realm authority the right to burn members tokens which should not be the case because the tokens belong to the members
-        // On the other had for the Council token it's acceptable and in fact desired change becuase council tokens denote memebership
-        // which should be controled by the Realm
+        // On the other had for the Council token it's acceptable and in fact desired change because council tokens denote membership
+        // which should be controlled by the Realm
         if self.community_token_config.token_type != GoverningTokenType::Membership
             && realm_config_args.community_token_config_args.token_type
                 == GoverningTokenType::Membership
         {
-            return Err(GovernanceError::CannotChangeCommunityTokenTypeToMemebership.into());
+            return Err(GovernanceError::CannotChangeCommunityTokenTypeToMembership.into());
         }
 
         Ok(())
@@ -226,8 +206,8 @@ pub fn get_realm_config_data(
     get_account_data::<RealmConfigAccount>(program_id, realm_config_info)
 }
 
-/// If the account exists then desrialises it into RealmConfigAccount struct and checks the owner program and the Realm it belongs to
-/// If the accoutn doesn't exist then it checks its address is derived from the given owner program and Realm and returns default RealmConfigAccount
+/// If the account exists then deserializes it into RealmConfigAccount struct and checks the owner program and the Realm it belongs to
+/// If the account doesn't exist then it checks its address is derived from the given owner program and Realm and returns default RealmConfigAccount
 pub fn get_realm_config_data_for_realm(
     program_id: &Pubkey,
     realm_config_info: &AccountInfo,
@@ -236,7 +216,7 @@ pub fn get_realm_config_data_for_realm(
     let realm_config_data = if realm_config_info.data_is_empty() {
         // If RealmConfigAccount doesn't exist yet then validate its PDA
         // PDA validation is required because RealmConfigAccount might not exist for legacy Realms
-        // and then its absense is used as default RealmConfigAccount value with no plugins and Liquid governance tokens
+        // and then its absence is used as default RealmConfigAccount value with no plugins and Liquid governance tokens
         let realm_config_address = get_realm_config_address(program_id, realm);
 
         if realm_config_address != *realm_config_info.key {

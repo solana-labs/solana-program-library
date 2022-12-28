@@ -147,6 +147,7 @@ pub trait CurveCalculator: Debug + DynPack {
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
+        round_direction: RoundDirection,
     ) -> Option<u128>;
 
     /// Validate that the given curve has no invalid parameters
@@ -360,6 +361,7 @@ pub mod test {
                 swap_token_b_amount,
                 pool_token_supply,
                 opposite_direction,
+                RoundDirection::Ceiling,
             )
             .unwrap();
 
@@ -537,7 +539,7 @@ pub mod test {
     }
 
     prop_compose! {
-        pub fn total_and_intermediate()(total in 1..u64::MAX)
+        pub fn total_and_intermediate(max_value: u64)(total in 1..max_value)
                         (intermediate in 1..total, total in Just(total))
                         -> (u64, u64) {
            (total, intermediate)

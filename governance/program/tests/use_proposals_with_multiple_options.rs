@@ -298,7 +298,7 @@ async fn test_vote_on_none_executable_single_choice_proposal_with_multiple_optio
     // Advance timestamp past max_voting_time
     governance_test
         .advance_clock_past_timestamp(
-            governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
+            governance_cookie.account.config.voting_base_time as i64 + clock.unix_timestamp,
         )
         .await;
 
@@ -403,7 +403,7 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
     // Advance timestamp past max_voting_time
     governance_test
         .advance_clock_past_timestamp(
-            governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
+            governance_cookie.account.config.voting_base_time as i64 + clock.unix_timestamp,
         )
         .await;
 
@@ -563,7 +563,7 @@ async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_succ
     // Advance timestamp past max_voting_time
     governance_test
         .advance_clock_past_timestamp(
-            governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
+            governance_cookie.account.config.voting_base_time as i64 + clock.unix_timestamp,
         )
         .await;
 
@@ -755,7 +755,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
 
     // Advance timestamp past max_voting_time
     governance_test
-        .advance_clock_by_min_timespan(governance_cookie.account.config.max_voting_time as u64)
+        .advance_clock_by_min_timespan(governance_cookie.account.config.voting_base_time as u64)
         .await;
 
     governance_test
@@ -921,7 +921,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
 
     // Advance timestamp past max_voting_time
     governance_test
-        .advance_clock_by_min_timespan(governance_cookie.account.config.max_voting_time as u64)
+        .advance_clock_by_min_timespan(governance_cookie.account.config.voting_base_time as u64)
         .await;
 
     governance_test
@@ -1053,7 +1053,7 @@ async fn test_create_proposal_with_10_options_and_cast_vote() {
 
     governance_test
         .advance_clock_past_timestamp(
-            governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
+            governance_cookie.account.config.voting_base_time as i64 + clock.unix_timestamp,
         )
         .await;
 

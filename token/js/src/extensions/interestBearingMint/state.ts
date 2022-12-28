@@ -23,7 +23,7 @@ export const InterestBearingMintConfigStateLayout = struct<InterestBearingMintCo
 export const INTEREST_BEARING_MINT_CONFIG_STATE_SIZE = InterestBearingMintConfigStateLayout.span;
 
 export function getInterestBearingMintConfigState(mint: Mint): InterestBearingMintConfigState | null {
-    const extensionData = getExtensionData(ExtensionType.InterestBearingMint, mint.tlvData);
+    const extensionData = getExtensionData(ExtensionType.InterestBearingConfig, mint.tlvData);
     if (extensionData !== null) {
         return InterestBearingMintConfigStateLayout.decode(extensionData);
     }

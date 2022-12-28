@@ -92,7 +92,9 @@ async def create(client: AsyncClient, manager: Keypair,
         txn, manager, validator_list, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
 
 
-async def create_all(client: AsyncClient, manager: Keypair, fee: Fee, referral_fee: int) -> Tuple[PublicKey, PublicKey]:
+async def create_all(
+        client: AsyncClient, manager: Keypair, fee: Fee, referral_fee: int
+) -> Tuple[PublicKey, PublicKey, PublicKey]:
     stake_pool = Keypair()
     validator_list = Keypair()
     (pool_withdraw_authority, seed) = find_withdraw_authority_program_address(
@@ -116,11 +118,11 @@ async def create_all(client: AsyncClient, manager: Keypair, fee: Fee, referral_f
     await create(
         client, manager, stake_pool, validator_list, pool_mint.public_key,
         reserve_stake.public_key, manager_fee_account, fee, referral_fee)
-    return (stake_pool.public_key, validator_list.public_key)
+    return (stake_pool.public_key, validator_list.public_key, pool_mint.public_key)
 
 
 async def add_validator_to_pool(
-    client: AsyncClient, funder: Keypair,
+    client: AsyncClient, staker: Keypair,
     stake_pool_address: PublicKey, validator: PublicKey
 ):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
@@ -133,12 +135,13 @@ async def add_validator_to_pool(
             stake_pool_address,
             stake_pool.staker,
             stake_pool.validator_list,
-            funder.public_key,
+            stake_pool.reserve_stake,
             validator,
+            None,
         )
     )
     await client.send_transaction(
-        txn, funder, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+        txn, staker, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
 
 
 async def remove_validator_from_pool(
@@ -152,33 +155,20 @@ async def remove_validator_from_pool(
     data = resp['result']['value']['data']
     validator_list = ValidatorList.decode(data[0], data[1])
     validator_info = next(x for x in validator_list.validators if x.vote_account_address == validator)
-    destination_stake = Keypair()
     txn = Transaction()
-    txn.add(
-        sys.create_account(
-            sys.CreateAccountParams(
-                from_pubkey=staker.public_key,
-                new_account_pubkey=destination_stake.public_key,
-                lamports=0,  # will get filled by split
-                space=STAKE_LEN,
-                program_id=STAKE_PROGRAM_ID,
-            )
-        )
-    )
     txn.add(
         sp.remove_validator_from_pool_with_vote(
             STAKE_POOL_PROGRAM_ID,
             stake_pool_address,
             stake_pool.staker,
             stake_pool.validator_list,
-            staker.public_key,
             validator,
-            validator_info.transient_seed_suffix_start,
-            destination_stake.public_key
+            validator_info.validator_seed_suffix or None,
+            validator_info.transient_seed_suffix,
         )
     )
     await client.send_transaction(
-        txn, staker, destination_stake,
+        txn, staker,
         opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
 
 
@@ -264,11 +254,18 @@ async def deposit_stake(
     data = resp['result']['value']['data']
     stake_pool = StakePool.decode(data[0], data[1])
 
+    resp = await client.get_account_info(stake_pool.validator_list, commitment=Confirmed)
+    data = resp['result']['value']['data']
+    validator_list = ValidatorList.decode(data[0], data[1])
+
+    validator_info = next(x for x in validator_list.validators if x.vote_account_address == validator_vote)
+
     (withdraw_authority, _) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
     (validator_stake, _) = find_stake_program_address(
         STAKE_POOL_PROGRAM_ID,
         validator_vote,
         stake_pool_address,
+        validator_info.validator_seed_suffix or None,
     )
 
     txn = Transaction()
@@ -335,11 +332,18 @@ async def withdraw_stake(
     data = resp['result']['value']['data']
     stake_pool = StakePool.decode(data[0], data[1])
 
+    resp = await client.get_account_info(stake_pool.validator_list, commitment=Confirmed)
+    data = resp['result']['value']['data']
+    validator_list = ValidatorList.decode(data[0], data[1])
+
+    validator_info = next(x for x in validator_list.validators if x.vote_account_address == validator_vote)
+
     (withdraw_authority, _) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
     (validator_stake, _) = find_stake_program_address(
         STAKE_POOL_PROGRAM_ID,
         validator_vote,
         stake_pool_address,
+        validator_info.validator_seed_suffix or None,
     )
 
     resp = await client.get_minimum_balance_for_rent_exemption(STAKE_LEN)
@@ -406,13 +410,14 @@ async def update_stake_pool(client: AsyncClient, payer: Keypair, stake_pool_addr
                 STAKE_POOL_PROGRAM_ID,
                 validator.vote_account_address,
                 stake_pool_address,
+                validator.validator_seed_suffix or None,
             )
             validator_and_transient_stake_pairs.append(validator_stake_address)
             (transient_stake_address, _) = find_transient_stake_program_address(
                 STAKE_POOL_PROGRAM_ID,
                 validator.vote_account_address,
                 stake_pool_address,
-                validator.transient_seed_suffix_start,
+                validator.transient_seed_suffix,
             )
             validator_and_transient_stake_pairs.append(transient_stake_address)
         update_list_instructions.append(
@@ -486,7 +491,8 @@ async def increase_validator_stake(
     (withdraw_authority, seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
 
     validator_info = next(x for x in validator_list.validators if x.vote_account_address == validator_vote)
-    transient_stake_seed = validator_info.transient_seed_suffix_start + 1  # bump up by one to avoid reuse
+    transient_stake_seed = validator_info.transient_seed_suffix + 1  # bump up by one to avoid reuse
+    validator_stake_seed = validator_info.validator_seed_suffix or None
     (transient_stake, _) = find_transient_stake_program_address(
         STAKE_POOL_PROGRAM_ID,
         validator_info.vote_account_address,
@@ -497,6 +503,7 @@ async def increase_validator_stake(
         STAKE_POOL_PROGRAM_ID,
         validator_info.vote_account_address,
         stake_pool_address,
+        validator_stake_seed
     )
 
     txn = Transaction()
@@ -543,12 +550,14 @@ async def decrease_validator_stake(
     (withdraw_authority, seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
 
     validator_info = next(x for x in validator_list.validators if x.vote_account_address == validator_vote)
+    validator_stake_seed = validator_info.validator_seed_suffix or None
     (validator_stake, _) = find_stake_program_address(
         STAKE_POOL_PROGRAM_ID,
         validator_info.vote_account_address,
         stake_pool_address,
+        validator_stake_seed,
     )
-    transient_stake_seed = validator_info.transient_seed_suffix_start + 1  # bump up by one to avoid reuse
+    transient_stake_seed = validator_info.transient_seed_suffix + 1  # bump up by one to avoid reuse
     (transient_stake, _) = find_transient_stake_program_address(
         STAKE_POOL_PROGRAM_ID,
         validator_info.vote_account_address,

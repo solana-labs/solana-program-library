@@ -181,14 +181,12 @@ async fn fail_init_after_close_account() {
         &[&context.payer, &owner],
         context.last_blockhash,
     );
-    #[allow(clippy::useless_conversion)]
-    let error: TransactionError = context
+    let error = context
         .banks_client
         .process_transaction(tx)
         .await
         .unwrap_err()
-        .unwrap()
-        .into();
+        .unwrap();
     assert_eq!(
         error,
         TransactionError::InstructionError(2, InstructionError::InvalidAccountData)

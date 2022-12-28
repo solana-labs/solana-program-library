@@ -10,6 +10,7 @@ use crate::{
         native_treasury::get_native_treasury_address,
         program_metadata::get_program_metadata_address,
         proposal::{get_proposal_address, VoteType},
+        proposal_deposit::get_proposal_deposit_address,
         proposal_transaction::{get_proposal_transaction_address, InstructionData},
         realm::{
             get_governing_token_holding_address, get_realm_address,
@@ -165,7 +166,7 @@ pub enum GovernanceInstruction {
     /// Creates Proposal account for Transactions which will be executed at some point in the future
     ///
     ///   0. `[]` Realm account the created Proposal belongs to
-    ///   1. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_index]
+    ///   1. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_seed]
     ///   2. `[writable]` Governance account
     ///   3. `[writable]` TokenOwnerRecord account of the Proposal owner
     ///   4. `[]` Governing Token Mint the Proposal is created for
@@ -174,6 +175,9 @@ pub enum GovernanceInstruction {
     ///   7. `[]` System program
     ///   8. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///   9. `[]` Optional Voter Weight Record
+    ///   10.`[writable]` Optional ProposalDeposit account. PDA seeds: ['proposal-deposit', proposal, deposit payer]
+    ///       Proposal deposit is required when there are more active proposals than the configured deposit exempt amount
+    ///       The deposit is paid by the Payer of the transaction and can be reclaimed using RefundProposalDeposit once the Proposal is no longer active
     CreateProposal {
         #[allow(dead_code)]
         /// UTF-8 encoded name of the proposal
@@ -196,6 +200,10 @@ pub enum GovernanceInstruction {
         /// A proposal without the rejecting option is a non binding survey
         /// Only proposals with the rejecting option can have executable transactions
         use_deny_option: bool,
+
+        #[allow(dead_code)]
+        /// Unique seed for the Proposal PDA
+        proposal_seed: Pubkey,
     },
 
     /// Adds a signatory to the Proposal which means this Proposal can't leave Draft state until yet another Signatory signs
@@ -265,8 +273,8 @@ pub enum GovernanceInstruction {
 
     /// Cancels Proposal by changing its state to Canceled
     ///
-    ///   0. `[writable]` Realm account
-    ///   1. `[]` Governance account
+    ///   0. `[]` Realm account
+    ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]`  TokenOwnerRecord account of the  Proposal owner
     ///   4. `[signer]` Governance Authority (Token Owner or Governance Delegate)
@@ -278,7 +286,7 @@ pub enum GovernanceInstruction {
     /// it's entirely at the discretion of the Proposal owner
     /// If Proposal owner doesn't designate any signatories then can sign off the Proposal themself
     ///
-    ///   0. `[writable]` Realm account
+    ///   0. `[]` Realm account
     ///   1. `[]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[signer]` Signatory account signing off the Proposal
@@ -291,8 +299,8 @@ pub enum GovernanceInstruction {
     ///  By doing so you indicate you approve or disapprove of running the Proposal set of transactions
     ///  If you tip the consensus then the transactions can begin to be run after their hold up time
     ///
-    ///   0. `[writable]` Realm account
-    ///   1. `[]` Governance account
+    ///   0. `[]` Realm account
+    ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]` TokenOwnerRecord of the Proposal owner
     ///   4. `[writable]` TokenOwnerRecord of the voter. PDA seeds: ['governance',realm, vote_governing_token_mint, governing_token_owner]
@@ -316,8 +324,8 @@ pub enum GovernanceInstruction {
 
     /// Finalizes vote in case the Vote was not automatically tipped within max_voting_time period
     ///
-    ///   0. `[writable]` Realm account    
-    ///   1. `[]` Governance account
+    ///   0. `[]` Realm account    
+    ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]` TokenOwnerRecord of the Proposal owner        
     ///   4. `[]` Governing Token Mint
@@ -505,6 +513,14 @@ pub enum GovernanceInstruction {
         #[allow(dead_code)]
         amount: u64,
     },
+
+    /// Refunds ProposalDeposit once the given proposal is no longer active (Draft, SigningOff, Voting)
+    /// Once the condition is met the instruction is permissionless and returns the deposit amount to the deposit payer
+    ///
+    ///   0. `[]` Proposal account
+    ///   1. `[writable]` ProposalDeposit account. PDA seeds: ['proposal-deposit', proposal, deposit payer]
+    ///   2. `[writable]` Proposal deposit payer (beneficiary) account
+    RefundProposalDeposit {},
 }
 
 /// Creates CreateRealm instruction
@@ -897,14 +913,10 @@ pub fn create_proposal(
     vote_type: VoteType,
     options: Vec<String>,
     use_deny_option: bool,
-    proposal_index: u32,
+    proposal_seed: &Pubkey,
 ) -> Instruction {
-    let proposal_address = get_proposal_address(
-        program_id,
-        governance,
-        governing_token_mint,
-        &proposal_index.to_le_bytes(),
-    );
+    let proposal_address =
+        get_proposal_address(program_id, governance, governing_token_mint, proposal_seed);
 
     let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
@@ -919,12 +931,19 @@ pub fn create_proposal(
 
     with_realm_config_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
 
+    // Deposit is only required when there are more active proposal then the configured exempt amount
+    // Note: We always pass the account because the actual value is not known here without passing Governance account data
+    let proposal_deposit_address =
+        get_proposal_deposit_address(program_id, &proposal_address, payer);
+    accounts.push(AccountMeta::new(proposal_deposit_address, false));
+
     let instruction = GovernanceInstruction::CreateProposal {
         name,
         description_link,
         vote_type,
         options,
         use_deny_option,
+        proposal_seed: *proposal_seed,
     };
 
     Instruction {
@@ -1009,7 +1028,7 @@ pub fn sign_off_proposal(
     proposal_owner_record: Option<&Pubkey>,
 ) -> Instruction {
     let mut accounts = vec![
-        AccountMeta::new(*realm, false),
+        AccountMeta::new_readonly(*realm, false),
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new_readonly(*signatory, true),
@@ -1054,8 +1073,8 @@ pub fn cast_vote(
         get_vote_record_address(program_id, proposal, voter_token_owner_record);
 
     let mut accounts = vec![
-        AccountMeta::new(*realm, false),
-        AccountMeta::new_readonly(*governance, false),
+        AccountMeta::new_readonly(*realm, false),
+        AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new(*voter_token_owner_record, false),
@@ -1095,8 +1114,8 @@ pub fn finalize_vote(
     max_voter_weight_record: Option<Pubkey>,
 ) -> Instruction {
     let mut accounts = vec![
-        AccountMeta::new(*realm, false),
-        AccountMeta::new_readonly(*governance, false),
+        AccountMeta::new_readonly(*realm, false),
+        AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governing_token_mint, false),
@@ -1168,8 +1187,8 @@ pub fn cancel_proposal(
     governance_authority: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
-        AccountMeta::new(*realm, false),
-        AccountMeta::new_readonly(*governance, false),
+        AccountMeta::new_readonly(*realm, false),
+        AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
@@ -1610,5 +1629,32 @@ pub fn with_governing_token_config_args(
         use_voter_weight_addin,
         use_max_voter_weight_addin,
         token_type: governing_token_config_args.token_type,
+    }
+}
+
+/// Creates RefundProposalDeposit instruction
+#[allow(clippy::too_many_arguments)]
+pub fn refund_proposal_deposit(
+    program_id: &Pubkey,
+    // Accounts
+    proposal: &Pubkey,
+    proposal_deposit_payer: &Pubkey,
+    // Args
+) -> Instruction {
+    let proposal_deposit_address =
+        get_proposal_deposit_address(program_id, proposal, proposal_deposit_payer);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*proposal, false),
+        AccountMeta::new(proposal_deposit_address, false),
+        AccountMeta::new(*proposal_deposit_payer, false),
+    ];
+
+    let instruction = GovernanceInstruction::RefundProposalDeposit {};
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
     }
 }

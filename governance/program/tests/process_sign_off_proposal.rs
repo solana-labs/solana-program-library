@@ -2,10 +2,12 @@
 
 mod program_test;
 
+use solana_program::pubkey::Pubkey;
 use solana_program_test::tokio;
 
 use program_test::*;
 use spl_governance::{error::GovernanceError, state::enums::ProposalState};
+use spl_governance_tools::error::GovernanceToolsError;
 
 #[tokio::test]
 async fn test_sign_off_proposal() {
@@ -64,12 +66,6 @@ async fn test_sign_off_proposal() {
         .await;
 
     assert!(signatory_record_account.signed_off);
-
-    let realm_account = governance_test
-        .get_realm_account(&realm_cookie.address)
-        .await;
-
-    assert_eq!(1, realm_account.voting_proposal_count);
 }
 
 #[tokio::test]
@@ -302,4 +298,100 @@ async fn test_sign_off_proposal_by_owner_with_existing_signatories_error() {
     // Assert
 
     assert_eq!(err, GovernanceError::InvalidSignatoryAddress.into());
+}
+
+#[tokio::test]
+async fn test_sign_off_proposal_with_non_existing_governance_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_cookie = governance_test
+        .with_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let mut proposal_cookie = governance_test
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    let signatory_record_cookie = governance_test
+        .with_signatory(&proposal_cookie, &token_owner_record_cookie)
+        .await
+        .unwrap();
+
+    // Override Governance with non existing account
+    proposal_cookie.account.governance = Pubkey::new_unique();
+
+    // Act
+    let err = governance_test
+        .sign_off_proposal(&proposal_cookie, &signatory_record_cookie)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(err, GovernanceToolsError::AccountDoesNotExist.into());
+}
+
+#[tokio::test]
+async fn test_sign_off_proposal_with_non_existing_realm_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_cookie = governance_test
+        .with_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let mut proposal_cookie = governance_test
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    let signatory_record_cookie = governance_test
+        .with_signatory(&proposal_cookie, &token_owner_record_cookie)
+        .await
+        .unwrap();
+
+    // Override Realm with non existing account
+    proposal_cookie.realm = Pubkey::new_unique();
+
+    // Act
+    let err = governance_test
+        .sign_off_proposal(&proposal_cookie, &signatory_record_cookie)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(err, GovernanceToolsError::AccountDoesNotExist.into());
 }

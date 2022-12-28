@@ -32,16 +32,22 @@ pub enum ConfidentialTransferInstruction {
     /// The instruction fails if the `TokenInstruction::InitializeMint` instruction has already
     /// executed for the mint.
     ///
+    /// Note that the `withdraw_withheld_authority_encryption_pubkey` cannot be updated after it is
+    /// initialized.
+    ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The SPL Token mint.
     ///
     /// Data expected by this instruction:
-    ///   `ConfidentialTransferMint`
+    ///   `InitializeMintData`
     ///
     InitializeMint,
 
     /// Updates the confidential transfer mint configuration for a mint.
+    ///
+    /// The `withdraw_withheld_authority_encryption_pubkey` and `withheld_amount` ciphertext are
+    /// not updatable.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -50,7 +56,7 @@ pub enum ConfidentialTransferInstruction {
     ///   2. `[signer]` New confidential transfer mint authority.
     ///
     /// Data expected by this instruction:
-    ///   `ConfidentialTransferMint`
+    ///   `UpdateMintData`
     ///
     UpdateMint,
 
@@ -419,12 +425,37 @@ pub enum ConfidentialTransferInstruction {
     HarvestWithheldTokensToMint,
 }
 
+/// Data expected by `ConfidentialTransferInstruction::InitializeMint`
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+#[repr(C)]
+pub struct InitializeMintData {
+    /// Authority to modify the `ConfidentialTransferMint` configuration and to approve new
+    /// accounts.
+    pub authority: OptionalNonZeroPubkey,
+    /// Determines if newly configured accounts must be approved by the `authority` before they may
+    /// be used by the user.
+    pub auto_approve_new_accounts: PodBool,
+    /// New authority to decode any transfer amount in a confidential transfer.
+    pub auditor_encryption_pubkey: OptionalNonZeroEncryptionPubkey,
+    /// Authority to withdraw withheld fees that are associated with accounts.
+    pub withdraw_withheld_authority_encryption_pubkey: OptionalNonZeroEncryptionPubkey,
+}
+
+/// Data expected by `ConfidentialTransferInstruction::UpdateMint`
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+#[repr(C)]
+pub struct UpdateMintData {
+    /// Determines if newly configured accounts must be approved by the `authority` before they may
+    /// be used by the user.
+    pub auto_approve_new_accounts: PodBool,
+    /// New authority to decode any transfer amount in a confidential transfer.
+    pub auditor_encryption_pubkey: OptionalNonZeroEncryptionPubkey,
+}
+
 /// Data expected by `ConfidentialTransferInstruction::ConfigureAccount`
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct ConfigureAccountInstructionData {
-    /// The public key associated with the account
-    pub encryption_pubkey: EncryptionPubkey,
     /// The decryptable balance (always 0) once the configure account succeeds
     pub decryptable_zero_balance: DecryptableBalance,
     /// The maximum number of despots and transfers that an account can receiver before the
@@ -436,7 +467,7 @@ pub struct ConfigureAccountInstructionData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::EmptyAccount`
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct EmptyAccountInstructionData {
     /// Relative location of the `ProofInstruction::VerifyCloseAccount` instruction to the
@@ -445,7 +476,7 @@ pub struct EmptyAccountInstructionData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::Deposit`
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct DepositInstructionData {
     /// The amount of tokens to deposit
@@ -455,7 +486,7 @@ pub struct DepositInstructionData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::Withdraw`
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct WithdrawInstructionData {
     /// The amount of tokens to withdraw
@@ -470,7 +501,7 @@ pub struct WithdrawInstructionData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::Transfer`
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct TransferInstructionData {
     /// The new source decryptable balance if the transfer succeeds
@@ -481,7 +512,7 @@ pub struct TransferInstructionData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::ApplyPendingBalance`
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct ApplyPendingBalanceData {
     /// The expected number of pending balance credits since the last successful
@@ -492,7 +523,7 @@ pub struct ApplyPendingBalanceData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::WithdrawWithheldTokensFromMint`
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct WithdrawWithheldTokensFromMintData {
     /// Relative location of the `ProofInstruction::VerifyWithdrawWithheld` instruction to the
@@ -501,7 +532,7 @@ pub struct WithdrawWithheldTokensFromMintData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::WithdrawWithheldTokensFromAccounts`
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct WithdrawWithheldTokensFromAccountsData {
     /// Number of token accounts harvested
@@ -512,44 +543,64 @@ pub struct WithdrawWithheldTokensFromAccountsData {
 }
 
 /// Create a `InitializeMint` instruction
+#[cfg(not(target_os = "solana"))]
 pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
-    ct_mint: &ConfidentialTransferMint,
+    authority: Option<Pubkey>,
+    auto_approve_new_accounts: bool,
+    auditor_encryption_pubkey: Option<EncryptionPubkey>,
+    withdraw_withheld_authority_encryption_pubkey: Option<EncryptionPubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
+
     Ok(encode_instruction(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::InitializeMint,
-        ct_mint,
+        &InitializeMintData {
+            authority: authority.try_into()?,
+            auto_approve_new_accounts: auto_approve_new_accounts.into(),
+            auditor_encryption_pubkey: auditor_encryption_pubkey.try_into()?,
+            withdraw_withheld_authority_encryption_pubkey:
+                withdraw_withheld_authority_encryption_pubkey.try_into()?,
+        },
     ))
 }
 
 /// Create a `UpdateMint` instruction
+#[cfg(not(target_os = "solana"))]
 pub fn update_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
-    new_ct_mint: &ConfidentialTransferMint,
     authority: &Pubkey,
+    new_authority: Option<&Pubkey>,
+    auto_approve_new_accounts: bool,
+    auditor_encryption_pubkey: Option<EncryptionPubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
-    let accounts = vec![
+
+    let mut accounts = vec![
         AccountMeta::new(*mint, false),
         AccountMeta::new_readonly(*authority, true),
-        AccountMeta::new_readonly(
-            new_ct_mint.authority,
-            new_ct_mint.authority != Pubkey::default(),
-        ),
     ];
+    if let Some(new_authority) = new_authority {
+        accounts.push(AccountMeta::new_readonly(*new_authority, true));
+    } else {
+        accounts.push(AccountMeta::new_readonly(Pubkey::default(), false));
+    }
+
     Ok(encode_instruction(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::UpdateMint,
-        new_ct_mint,
+        &UpdateMintData {
+            auto_approve_new_accounts: auto_approve_new_accounts.into(),
+            auditor_encryption_pubkey: auditor_encryption_pubkey.try_into()?,
+        },
     ))
 }
 
@@ -562,7 +613,6 @@ pub fn inner_configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     mint: &Pubkey,
-    encryption_pubkey: EncryptionPubkey,
     decryptable_zero_balance: AeCiphertext,
     maximum_pending_balance_credit_counter: u64,
     authority: &Pubkey,
@@ -587,7 +637,6 @@ pub fn inner_configure_account(
         TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::ConfigureAccount,
         &ConfigureAccountInstructionData {
-            encryption_pubkey,
             decryptable_zero_balance: decryptable_zero_balance.into(),
             maximum_pending_balance_credit_counter: maximum_pending_balance_credit_counter.into(),
             proof_instruction_offset,
@@ -602,7 +651,6 @@ pub fn configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     mint: &Pubkey,
-    encryption_pubkey: EncryptionPubkey,
     decryptable_zero_balance: AeCiphertext,
     maximum_pending_balance_credit_counter: u64,
     authority: &Pubkey,
@@ -614,7 +662,6 @@ pub fn configure_account(
             token_program_id,
             token_account,
             mint,
-            encryption_pubkey,
             decryptable_zero_balance,
             maximum_pending_balance_credit_counter,
             authority,

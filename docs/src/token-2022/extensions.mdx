@@ -37,7 +37,10 @@ the `MintCloseAuthority` extension before initializing the mint.
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
-CLI support coming soon!
+```console
+$ spl-token --program-id TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb create-token --enable-close
+Creating token C47NXhUTVEisCfX7s16KrxYyimnui7HpUXZecE2TmLdB under program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb
+```
 
   </TabItem>
   <TabItem value="jsx" label="JS">
@@ -112,7 +115,10 @@ possible to close the mint account and reclaim the lamports on the mint account.
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
-CLI support coming soon!
+```console
+$ spl-token close-mint C47NXhUTVEisCfX7s16KrxYyimnui7HpUXZecE2TmLdB 
+Signature: 5nidwS9fJGJGdmaQjcwvNGVtk2ba5Zyu9ZLubjUKSsaAyzLUYvB6LK5RfUA767veBr45x7R1WW9N7WkYZ3Rqsb5B
+```
 
   </TabItem>
   <TabItem value="jsx" label="JS">
@@ -158,7 +164,15 @@ tokens.
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
-CLI support coming soon!
+```console
+$ spl-token --program-id TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb create-token --transfer-fee 50 5000
+Creating token Dg3i18BN7vzsbAZDnDv3H8nQQjSaPUTqhwX41J7NZb5H under program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb
+
+Address:  Dg3i18BN7vzsbAZDnDv3H8nQQjSaPUTqhwX41J7NZb5H
+Decimals:  9
+
+Signature: 39okFGqW23wQZ1HqH2tdJvtFP5aYgpfbmNktCZpV5XKTpKuA9xJmvBmrBwcLdfAT632VEC4y4dJJfDoeAvMWRPYP
+```
 
   </TabItem>
   <TabItem value="jsx" label="JS">
@@ -247,7 +261,29 @@ calculated, in order to avoid any surprises during the transfer.
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
-CLI support coming soon!
+```console
+$ spl-token create-account Dg3i18BN7vzsbAZDnDv3H8nQQjSaPUTqhwX41J7NZb5H
+Creating account 7UKuG4W68hW9eGrDms6BenRf8DCEHKGN49xewtWyB5cx
+
+Signature: 6h591BMuguh9TtSdQPRPcPy97mLqJiybeaxGVZzD8mvPEsYypjZ2jjKgHzji5FGh8CJE3NAzqrqGxfyMdnbWrs7
+$ solana-keygen new -o destination.json
+$ spl-token create-account Dg3i18BN7vzsbAZDnDv3H8nQQjSaPUTqhwX41J7NZb5H destination.json
+Creating account 5wY8fiMZG5wGbQmtzKgqqEEp4vsCMJZ53RXEagUUWhEr
+
+Signature: 2SyA17AJRWLH2j7svgxgW7nouUGioeWoRDWjz2Wq8j1eisThezSvqgN4NbHfj9uWmDh2XRp56ttZtHV1SxaUC7ys
+$ spl-token mint Dg3i18BN7vzsbAZDnDv3H8nQQjSaPUTqhwX41J7NZb5H 1000000000
+Minting 1000000000 tokens
+  Token: Dg3i18BN7vzsbAZDnDv3H8nQQjSaPUTqhwX41J7NZb5H
+  Recipient: 7UKuG4W68hW9eGrDms6BenRf8DCEHKGN49xewtWyB5cx
+
+Signature: 5MFJGpLaWe3yLLU8X4ax3KofeqPVzdxJsa3ScjChJJHJawKsRx4og9eaFkWn3CPF7JXaxdj5v4LdAW56LiNTuP6s
+$ spl-token transfer --expected-fee 0.000005 Dg3i18BN7vzsbAZDnDv3H8nQQjSaPUTqhwX41J7NZb5H 1000000 destination.json
+Transfer 1000000 tokens
+  Sender: 7UKuG4W68hW9eGrDms6BenRf8DCEHKGN49xewtWyB5cx
+  Recipient: 5wY8fiMZG5wGbQmtzKgqqEEp4vsCMJZ53RXEagUUWhEr
+
+Signature: 3hc3CCiETiuCArJ6yZ76ScyfMeK1rw8CTfZ3aDGnYoEMeoqXfSNAtnM3ATFjm7UihthzEkEWzeUfWL4qqqB4ofgv
+```
 
   </TabItem>
   <TabItem value="jsx" label="JS">
@@ -359,7 +395,10 @@ tokens.
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
-CLI support coming soon!
+```console
+$ spl-token withdraw-withheld-tokens 7UKuG4W68hW9eGrDms6BenRf8DCEHKGN49xewtWyB5cx 5wY8fiMZG5wGbQmtzKgqqEEp4vsCMJZ53RXEagUUWhEr
+Signature: 2NfjbEnRQC7kXkf86stb6u7eUtaQTGDebo8ktCdz4gP4wCD93xtx75rSJxJDQVePNAa8NqtVLjUm19ZBDRVaYurt
+```
 
   </TabItem>
   <TabItem value="jsx" label="JS">
@@ -397,7 +436,16 @@ To clear out their account of withheld tokens, they can use the permissionless
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
-CLI support coming soon!
+The harvest instruction isn't explicitly exposed since it typically isn't needed.
+It is required before closing an account, however, so we can show the harvest
+behavior by closing the account:
+
+```console
+$ spl-token close --address 5wY8fiMZG5wGbQmtzKgqqEEp4vsCMJZ53RXEagUUWhEr
+Signature: KAKXryAdGSVFqpQhrwrvP6NCAQwLQp2Sj1WiAqCHxxwJsvRLKx4JzWgN9zYUaJNmfrZnQQw9yYoDw5Xx1YrwY6i
+
+Signature: 2i5KGekFFtwzkX2W71cxPvQsGEH21qmZ3ieNQz7Mz2qGqp2pyzMNZhSVRfxJxQuAxnKQoZKjAb62FBx2gxaq25Le
+```
 
   </TabItem>
   <TabItem value="jsx" label="JS">
@@ -417,7 +465,11 @@ may choose to move those tokens from the mint to any other account.
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
-CLI support coming soon!
+```console
+$ spl-token withdraw-withheld-tokens --include-mint 7UKuG4W68hW9eGrDms6BenRf8DCEHKGN49xewtWyB5cx
+
+Signature: 5KzdgcKgi3rLaBRfDbG5pxZwyKppyVjAA8TUCjTMfb1vMYv7CLQWaxgFz81jz4reUaF7oP67Gdqoc91Ted6qr1Hb
+```
 
   </TabItem>
   <TabItem value="jsx" label="JS">
@@ -456,7 +508,34 @@ tokens.
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
-CLI support coming soon!
+```console
+$ spl-token --program-id TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb create-token --enable-freeze --default-account-state frozen
+Creating token 8Sqz2zV8TFTnkLtnCdqRkjJsre3GKRwHcZd3juE5jJHf under program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb
+
+Address:  8Sqz2zV8TFTnkLtnCdqRkjJsre3GKRwHcZd3juE5jJHf
+Decimals:  9
+
+Signature: 5wfYvovguPEbyv2uSWxGt9JcpTWgyuP4hY3wutjS32Ahnoni4qd7gf6sLre855WvT6xLHwrvV7J8bVmXymNU2qUz
+
+$ spl-token create-account 8Sqz2zV8TFTnkLtnCdqRkjJsre3GKRwHcZd3juE5jJHf
+Creating account 6XpKagP1N3K1XnzStufpV5YZ6DksEkQWgLNG9kPpLyvv
+
+Signature: 2awxWdQMgv89ew34sEyG361vshB2wPXHHfva5iJ43dWr18f2Pr6awoXfsqYPpyS2eSbH6jhfVY9EUck8iJ4wCSN6
+
+$ spl-token display 6XpKagP1N3K1XnzStufpV5YZ6DksEkQWgLNG9kPpLyvv
+SPL Token Account
+  Address: 6XpKagP1N3K1XnzStufpV5YZ6DksEkQWgLNG9kPpLyvv
+  Program: TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb
+  Balance: 0
+  Decimals: 9
+  Mint: 8Sqz2zV8TFTnkLtnCdqRkjJsre3GKRwHcZd3juE5jJHf
+  Owner: 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
+  State: Frozen
+  Delegation: (not set)
+  Close authority: (not set)
+Extensions:
+  Immutable owner
+```
 
   </TabItem>
   <TabItem value="jsx" label="JS">
@@ -534,7 +613,11 @@ accounts unfrozen by default.
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
-CLI support coming soon!
+```console
+$ spl-token update-default-account-state 8Sqz2zV8TFTnkLtnCdqRkjJsre3GKRwHcZd3juE5jJHf initialized
+
+Signature: 3Mm2JCPrf6SrAe9awV3QzYvHiYmatiGWTmrQ7YnmzJSqyNCf75rLNMyH7jU26uZwX7q3MmBEBj1A36o5sGk9Vakb
+```
 
   </TabItem>
   <TabItem value="jsx" label="JS">
@@ -575,7 +658,20 @@ Account program always uses this extension when creating accounts.
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
-CLI support coming soon!
+```console
+$ spl-token --program-id TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb create-token
+Creating token CZxztd7SEZWxg6B9PH5xa7QwKpMCpWBJiTLftw1o3qyV under program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb
+
+Address:  CZxztd7SEZWxg6B9PH5xa7QwKpMCpWBJiTLftw1o3qyV
+Decimals:  9
+
+Signature: 4fT19YaE3zAscj71n213K22M3wDSXgwSn39RBCVtiCTxMX7pZhAoHywP2QMKqWpZMB5vT7diQ8QaFp3abHztpyPC
+$ solana-keygen new -o account.json
+$ spl-token create-account CZxztd7SEZWxg6B9PH5xa7QwKpMCpWBJiTLftw1o3qyV account.json --immutable
+Creating account EV2xsZto1TRqehewwWHUUQm68X6C6MepBSkbfZcVdShy
+
+Signature: 5NqXiE3LPFnufnZhcwKPoZt7DaPR7qwfhmRr9W9ykhNM7rnu6MDdx7n5eTpEisiaSET2R4fZW7a91Ai6pCuskXF8
+```
 
   </TabItem>
   <TabItem value="jsx" label="JS">
@@ -652,7 +748,23 @@ it's extremely easy to use the extension.
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
-CLI support coming soon!
+```console
+$ spl-token create-account CZxztd7SEZWxg6B9PH5xa7QwKpMCpWBJiTLftw1o3qyV
+Creating account 4nvfLgYMERdNbbf1pADUSp44XukAyjeWWXCMkM1gMqC4
+
+Signature: w4TRYDdCpTfmQh96E4UNgFFeiAHphWNaeYrJTu6bGyuPMokJrKFR33Ntj3iNQ5QQuFqom2CaYkhXiX9sBpWEW23
+```
+
+The CLI will tell us that it's unnecessary to specify the `--immutable` argument
+if it's provided:
+
+```console
+$ spl-token create-account CZxztd7SEZWxg6B9PH5xa7QwKpMCpWBJiTLftw1o3qyV --immutable
+Creating account 4nvfLgYMERdNbbf1pADUSp44XukAyjeWWXCMkM1gMqC4
+Note: --immutable specified, but Token-2022 ATAs are always immutable, ignoring
+
+Signature: w4TRYDdCpTfmQh96E4UNgFFeiAHphWNaeYrJTu6bGyuPMokJrKFR33Ntj3iNQ5QQuFqom2CaYkhXiX9sBpWEW23
+```
 
   </TabItem>
   <TabItem value="jsx" label="JS">
@@ -687,7 +799,15 @@ but allows the owner to burn and close the account if they want.
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
-CLI support coming soon!
+```console
+$ spl-token --program-id TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb create-token --enable-non-transferable
+Creating token 7De7wwkvNLPXpShbPDeRCLukb3CRzCNcC3iUuHtD6k4f under program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb
+
+Address:  7De7wwkvNLPXpShbPDeRCLukb3CRzCNcC3iUuHtD6k4f
+Decimals:  9
+
+Signature: 2QtCBwCo2J9hf2Prd2t4CBBUxEXQCBSSD5gkNc59AwhxsKgRp92czNAvwWDxjeXGFCWSuNmzAcD19cEpqubovDDv
+```
 
   </TabItem>
   <TabItem value="jsx" label="JS">
@@ -760,7 +880,21 @@ the memo before invoking the transfer.
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
-CLI support coming soon!
+```console
+$ spl-token --program-id TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb create-token
+Creating token EbPBt3XkCb9trcV4c8fidhrvoeURbDbW87Acustzyi8N under program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb
+
+Address:  EbPBt3XkCb9trcV4c8fidhrvoeURbDbW87Acustzyi8N
+Decimals:  9
+
+Signature: 2mCoV3ujSUArgZMyayiYtLZp2QzpqKx3NXnv9W8DpinY39rBU2yGmYLfp2tZ9uZqVbfJ6Mf3SqDHexdCcFcDAEvc
+$ spl-token create-account EbPBt3XkCb9trcV4c8fidhrvoeURbDbW87Acustzyi8N
+Creating account 4Uzz67txwYbfYpF8r5UGEMYJwhPAYQ5eFUY89KTYc2bL
+
+Signature: 57wZHDaQtSzszDkusrnozZNj5PemQhpqHMEFLWFKpqASCErcDuBuYuEky5g3evHtkjMrKgh1s3aEap1L8y5UhW5W
+$ spl-token enable-required-transfer-memos 4Uzz67txwYbfYpF8r5UGEMYJwhPAYQ5eFUY89KTYc2bL
+Signature: 5MnWtrhMK32zkbacDMwBNft48VAUpr4EoRM87hkT9AFYvPgPEU7V7ERV6gdfb3kASri4wnUnr13hNKuYJ66pD8Fs
+```
 
   </TabItem>
   <TabItem value="jsx" label="JS">
@@ -839,7 +973,13 @@ An account owner may always choose to flip required memo transfers on or off.
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
-CLI support coming soon!
+```console
+$ spl-token disable-required-transfer-memos 4Uzz67txwYbfYpF8r5UGEMYJwhPAYQ5eFUY89KTYc2bL
+Signature: 5a9X8JrWzwZqb3iMonfUfSZbisQ57aEmW5cFntWGYRv2UZx8ACkMineBEQRHwLMzYHeyFDEHMXu8zqAMv5tm4u1g
+
+$ spl-token enable-required-transfer-memos 4Uzz67txwYbfYpF8r5UGEMYJwhPAYQ5eFUY89KTYc2bL
+Signature: 5MnWtrhMK32zkbacDMwBNft48VAUpr4EoRM87hkT9AFYvPgPEU7V7ERV6gdfb3kASri4wnUnr13hNKuYJ66pD8Fs
+```
 
   </TabItem>
   <TabItem value="jsx" label="JS">
@@ -872,7 +1012,18 @@ to fit room for more extensions.
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
-CLI support coming soon!
+The CLI reallocs automatically, so if you use `enable-required-transfer-memos`
+with an account that does not have enough space, it will add the `Reallocate`
+instruction.
+
+```console
+$ spl-token create-account EbPBt3XkCb9trcV4c8fidhrvoeURbDbW87Acustzyi8N
+Creating account 4Uzz67txwYbfYpF8r5UGEMYJwhPAYQ5eFUY89KTYc2bL
+
+Signature: 57wZHDaQtSzszDkusrnozZNj5PemQhpqHMEFLWFKpqASCErcDuBuYuEky5g3evHtkjMrKgh1s3aEap1L8y5UhW5W
+$ spl-token enable-required-transfer-memos 4Uzz67txwYbfYpF8r5UGEMYJwhPAYQ5eFUY89KTYc2bL
+Signature: 5MnWtrhMK32zkbacDMwBNft48VAUpr4EoRM87hkT9AFYvPgPEU7V7ERV6gdfb3kASri4wnUnr13hNKuYJ66pD8Fs
+```
 
   </TabItem>
   <TabItem value="jsx" label="JS">
@@ -970,7 +1121,15 @@ plus all interest the tokens have accumulated. The feature is entirely cosmetic.
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
-CLI support coming soon!
+```console
+$ spl-token --program-id TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb create-token --interest-rate 10
+Creating token 7N4HggYEJAtCLJdnHGCtFqfxcB5rhQCsQTze3ftYstVj under program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb
+
+Address:  7N4HggYEJAtCLJdnHGCtFqfxcB5rhQCsQTze3ftYstVj
+Decimals:  9
+
+Signature: 5dSW5QUacEsaKYb3MwYp4ycqq4jpNJ1rpLhS5rotoe3CWv9XhhjrncUFpk14R1fRamS1xprziC3NkpbYno4c8JxD
+```
 
   </TabItem>
   <TabItem value="jsx" label="JS">
@@ -1017,7 +1176,12 @@ The rate authority may update the interest rate on the mint at any time.
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
-CLI support coming soon!
+```console
+$ spl-token set-interest-rate 7N4HggYEJAtCLJdnHGCtFqfxcB5rhQCsQTze3ftYstVj 50
+Setting Interest Rate for 7N4HggYEJAtCLJdnHGCtFqfxcB5rhQCsQTze3ftYstVj to 50 bps
+
+Signature: 5DQs6hzkfGq3uotESuVwF7MGeMawwfQcm1e9RHaUeVySDV6xpUzYhzdb6ygqJfsEZqewgiDR5KuxaGzkdTMcDrTn
+```
 
   </TabItem>
   <TabItem value="jsx" label="JS">

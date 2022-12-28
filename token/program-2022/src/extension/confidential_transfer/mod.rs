@@ -5,7 +5,7 @@ use {
         pod::*,
     },
     bytemuck::{Pod, Zeroable},
-    solana_program::{entrypoint::ProgramResult, pubkey::Pubkey},
+    solana_program::entrypoint::ProgramResult,
     solana_zk_token_sdk::zk_token_elgamal::pod,
 };
 
@@ -25,8 +25,6 @@ pub mod instruction;
 /// Confidential Transfer Extension processor
 pub mod processor;
 
-/// ElGamal public key used for encryption
-pub type EncryptionPubkey = pod::ElGamalPubkey;
 /// ElGamal ciphertext containing an account balance
 pub type EncryptedBalance = pod::ElGamalCiphertext;
 /// Authenticated encryption containing an account balance
@@ -43,11 +41,8 @@ pub struct ConfidentialTransferMint {
     /// Authority to modify the `ConfidentialTransferMint` configuration and to approve new
     /// accounts (if `auto_approve_new_accounts` is true)
     ///
-    /// Note that setting an authority of `Pubkey::default()` is the idiomatic way to disable
-    /// future changes to the configuration.
-    ///
     /// The legacy Token Multisig account is not supported as the authority
-    pub authority: Pubkey,
+    pub authority: OptionalNonZeroPubkey,
 
     /// Indicate if newly configured accounts must be approved by the `authority` before they may be
     /// used by the user.
@@ -58,25 +53,21 @@ pub struct ConfidentialTransferMint {
     pub auto_approve_new_accounts: PodBool,
 
     /// Authority to decode any transfer amount in a confidential transafer.
-    ///
-    /// * If non-zero, transfers must include ElGamal cyphertext with this public key permitting the
-    /// auditor to decode the transfer amount.
-    /// * If all zero, auditing is currently disabled.
-    pub auditor_encryption_pubkey: EncryptionPubkey,
+    pub auditor_encryption_pubkey: OptionalNonZeroEncryptionPubkey,
 
-    /// Authority to withraw withheld fees that are associated with accounts. It must be set to an
-    /// all zero pubkey if the mint is not extended for fees.
+    /// Authority to withraw withheld fees that are associated with accounts. It must be set to
+    /// `None` if the mint is not extended for fees.
     ///
     /// Note that the withdraw withheld authority has the ability to decode any withheld fee
     /// amount that are associated with accounts. When combined with the fee parameters, the
     /// withheld fee amounts can reveal information about transfer amounts.
     ///
-    /// * If non-zero, transfers must include ElGamal cyphertext of the transfer fee with this
+    /// * If not `None`, transfers must include ElGamal cyphertext of the transfer fee with this
     /// public key. If this is the case, but the base mint is not extended for fees, then any
     /// transfer will fail.
-    /// * If all zero, transfer fee is disabled. If this is the case, but the base mint is extended
+    /// * If `None`, transfer fee is disabled. If this is the case, but the base mint is extended
     /// for fees, then any transfer will fail.
-    pub withdraw_withheld_authority_encryption_pubkey: EncryptionPubkey,
+    pub withdraw_withheld_authority_encryption_pubkey: OptionalNonZeroEncryptionPubkey,
 
     /// Withheld transfer fee confidential tokens that have been moved to the mint for withdrawal.
     /// This will always be zero if fees are never enabled.
@@ -141,7 +132,7 @@ impl Extension for ConfidentialTransferAccount {
 }
 
 impl ConfidentialTransferAccount {
-    /// Check if a `ConfidentialTransferAccount` has been approved for use
+    /// Check if a `ConfidentialTransferAccount` has been approved for use.
     pub fn approved(&self) -> ProgramResult {
         if bool::from(&self.approved) {
             Ok(())
@@ -150,7 +141,7 @@ impl ConfidentialTransferAccount {
         }
     }
 
-    /// Check if a `ConfidentialTransferAccount` is in a closable state
+    /// Check if a `ConfidentialTransferAccount` is in a closable state.
     pub fn closable(&self) -> ProgramResult {
         if self.pending_balance_lo == EncryptedBalance::zeroed()
             && self.pending_balance_hi == EncryptedBalance::zeroed()
@@ -164,12 +155,52 @@ impl ConfidentialTransferAccount {
     }
 
     /// Check if a base account of a `ConfidentialTransferAccount` accepts non-confidential
-    /// transfers
+    /// transfers.
     pub fn non_confidential_transfer_allowed(&self) -> ProgramResult {
         if bool::from(&self.allow_non_confidential_credits) {
             Ok(())
         } else {
             Err(TokenError::NonConfidentialTransfersDisabled.into())
         }
+    }
+
+    /// Checks if a `ConfidentialTransferAccount` is configured to send funds.
+    pub fn valid_as_source(&self) -> ProgramResult {
+        self.approved()
+    }
+
+    /// Checks if a confidential extension is configured to receive funds.
+    ///
+    /// A destination account can receive funds if the following conditions are satisfied:
+    ///   1. The account is approved by the confidential transfer mint authority
+    ///   2. The account is not disabled by the account owner
+    ///   3. The number of credits into the account has reached the maximum credit counter
+    pub fn valid_as_destination(&self) -> ProgramResult {
+        self.approved()?;
+
+        if !bool::from(self.allow_confidential_credits) {
+            return Err(TokenError::ConfidentialTransferDepositsAndTransfersDisabled.into());
+        }
+
+        let new_destination_pending_balance_credit_counter =
+            u64::from(self.pending_balance_credit_counter)
+                .checked_add(1)
+                .ok_or(TokenError::Overflow)?;
+        if new_destination_pending_balance_credit_counter
+            > u64::from(self.maximum_pending_balance_credit_counter)
+        {
+            return Err(TokenError::MaximumPendingBalanceCreditCounterExceeded.into());
+        }
+
+        Ok(())
+    }
+
+    /// Increments a confidential extension pending balance credit counter.
+    pub fn increment_pending_balance_credit_counter(&mut self) -> ProgramResult {
+        self.pending_balance_credit_counter = (u64::from(self.pending_balance_credit_counter)
+            .checked_add(1)
+            .ok_or(TokenError::Overflow)?)
+        .into();
+        Ok(())
     }
 }

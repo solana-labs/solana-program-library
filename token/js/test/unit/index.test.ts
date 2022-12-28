@@ -236,5 +236,6 @@ describe('extensionType', () => {
         expect(getAccountLen([ExtensionType.MintCloseAuthority, ExtensionType.TransferFeeConfig])).to.eql(314);
         expect(getAccountLen([])).to.eql(165);
         expect(getAccountLen([ExtensionType.ImmutableOwner])).to.eql(170);
+        expect(getAccountLen([ExtensionType.PermanentDelegate])).to.eql(202);
     });
 });

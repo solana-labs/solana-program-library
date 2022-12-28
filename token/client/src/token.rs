@@ -25,6 +25,7 @@ use {
             StateWithExtensionsOwned,
         },
         instruction,
+        pod::EncryptionPubkey,
         solana_zk_token_sdk::{
             encryption::{auth_encryption::*, elgamal::*},
             errors::ProofError,
@@ -104,7 +105,10 @@ impl PartialEq for TokenError {
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExtensionInitializationParams {
     ConfidentialTransferMint {
-        ct_mint: confidential_transfer::ConfidentialTransferMint,
+        authority: Option<Pubkey>,
+        auto_approve_new_accounts: bool,
+        auditor_encryption_pubkey: Option<EncryptionPubkey>,
+        withdraw_withheld_authority_encryption_pubkey: Option<EncryptionPubkey>,
     },
     DefaultAccountState {
         state: AccountState,
@@ -147,13 +151,19 @@ impl ExtensionInitializationParams {
         mint: &Pubkey,
     ) -> Result<Instruction, ProgramError> {
         match self {
-            Self::ConfidentialTransferMint { ct_mint } => {
-                confidential_transfer::instruction::initialize_mint(
-                    token_program_id,
-                    mint,
-                    &ct_mint,
-                )
-            }
+            Self::ConfidentialTransferMint {
+                authority,
+                auto_approve_new_accounts,
+                auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey,
+            } => confidential_transfer::instruction::initialize_mint(
+                token_program_id,
+                mint,
+                authority,
+                auto_approve_new_accounts,
+                auditor_encryption_pubkey,
+                withdraw_withheld_authority_encryption_pubkey,
+            ),
             Self::DefaultAccountState { state } => {
                 default_account_state::instruction::initialize_default_account_state(
                     token_program_id,
@@ -1481,19 +1491,26 @@ where
     pub async fn confidential_transfer_update_mint<S: Signer>(
         &self,
         authority: &S,
-        new_ct_mint: confidential_transfer::ConfidentialTransferMint,
         new_authority: Option<&S>,
+        auto_approve_new_account: bool,
+        auditor_encryption_pubkey: Option<EncryptionPubkey>,
     ) -> TokenResult<T::Output> {
         let mut signers = vec![authority];
-        if let Some(new_authority) = new_authority {
+        let new_authority_pubkey = if let Some(new_authority) = new_authority {
             signers.push(new_authority);
-        }
+            Some(new_authority.pubkey())
+        } else {
+            None
+        };
+
         self.process_ixs(
             &[confidential_transfer::instruction::update_mint(
                 &self.program_id,
                 &self.pubkey,
-                &new_ct_mint,
                 &authority.pubkey(),
+                new_authority_pubkey.as_ref(),
+                auto_approve_new_account,
+                auditor_encryption_pubkey,
             )?],
             &signers,
         )
@@ -1558,7 +1575,6 @@ where
                 &self.program_id,
                 token_account,
                 &self.pubkey,
-                elgamal_keypair.public.into(),
                 decryptable_zero_balance,
                 maximum_pending_balance_credit_counter,
                 &authority.pubkey(),
@@ -1774,16 +1790,20 @@ where
     /// Fetch the ElGamal pubkey key of the auditor associated with a confidential token mint
     pub async fn confidential_transfer_get_auditor_encryption_pubkey<S: Signer>(
         &self,
-    ) -> TokenResult<ElGamalPubkey> {
+    ) -> TokenResult<Option<ElGamalPubkey>> {
         let mint_state = self.get_mint_info().await.unwrap();
         let ct_mint =
             mint_state.get_extension::<confidential_transfer::ConfidentialTransferMint>()?;
-        let auditor_pubkey = ct_mint
-            .auditor_encryption_pubkey
-            .try_into()
-            .map_err(TokenError::Proof)?;
+        let auditor_encryption_pubkey: Option<EncryptionPubkey> =
+            ct_mint.auditor_encryption_pubkey.into();
 
-        Ok(auditor_pubkey)
+        if let Some(encryption_pubkey) = auditor_encryption_pubkey {
+            let encryption_pubkey: ElGamalPubkey =
+                encryption_pubkey.try_into().map_err(TokenError::Proof)?;
+            Ok(Some(encryption_pubkey))
+        } else {
+            Ok(None)
+        }
     }
 
     /// Fetch the ElGamal pubkey key of the withdraw withheld authority associated with a
@@ -1792,16 +1812,20 @@ where
         S: Signer,
     >(
         &self,
-    ) -> TokenResult<ElGamalPubkey> {
+    ) -> TokenResult<Option<ElGamalPubkey>> {
         let mint_state = self.get_mint_info().await.unwrap();
         let ct_mint =
             mint_state.get_extension::<confidential_transfer::ConfidentialTransferMint>()?;
-        let auditor_pubkey = ct_mint
-            .withdraw_withheld_authority_encryption_pubkey
-            .try_into()
-            .map_err(TokenError::Proof)?;
+        let withdraw_withheld_authority_encryption_pubkey: Option<EncryptionPubkey> =
+            ct_mint.withdraw_withheld_authority_encryption_pubkey.into();
 
-        Ok(auditor_pubkey)
+        if let Some(encryption_pubkey) = withdraw_withheld_authority_encryption_pubkey {
+            let encryption_pubkey: ElGamalPubkey =
+                encryption_pubkey.try_into().map_err(TokenError::Proof)?;
+            Ok(Some(encryption_pubkey))
+        } else {
+            Ok(None)
+        }
     }
 
     /// Deposit SPL Tokens into the pending balance of a confidential token account
@@ -1917,7 +1941,7 @@ where
         source_available_balance: u64,
         source_available_balance_ciphertext: &ElGamalCiphertext,
         destination_elgamal_pubkey: &ElGamalPubkey,
-        auditor_elgamal_pubkey: &ElGamalPubkey,
+        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
     ) -> TokenResult<T::Output> {
         let source_elgamal_keypair =
             ElGamalKeypair::new(source_token_authority, source_token_account)
@@ -1951,13 +1975,15 @@ where
         source_available_balance: u64,
         source_available_balance_ciphertext: &ElGamalCiphertext,
         destination_elgamal_pubkey: &ElGamalPubkey,
-        auditor_elgamal_pubkey: &ElGamalPubkey,
+        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
         source_elgamal_keypair: &ElGamalKeypair,
         source_authenticated_encryption_key: &AeKey,
     ) -> TokenResult<T::Output> {
         if amount >> confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH != 0 {
             return Err(TokenError::MaximumDepositTransferAmountExceeded);
         }
+
+        let auditor_elgamal_pubkey = auditor_elgamal_pubkey.unwrap_or_default();
 
         let proof_data = confidential_transfer::instruction::TransferData::new(
             amount,
@@ -1966,7 +1992,7 @@ where
                 source_available_balance_ciphertext,
             ),
             source_elgamal_keypair,
-            (destination_elgamal_pubkey, auditor_elgamal_pubkey),
+            (destination_elgamal_pubkey, &auditor_elgamal_pubkey),
         )
         .map_err(TokenError::Proof)?;
 
@@ -2004,7 +2030,7 @@ where
         source_available_balance: u64,
         source_available_balance_ciphertext: &ElGamalCiphertext,
         destination_elgamal_pubkey: &ElGamalPubkey,
-        auditor_elgamal_pubkey: &ElGamalPubkey,
+        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
         withdraw_withheld_authority_elgamal_pubkey: &ElGamalPubkey,
         epoch_info: &EpochInfo,
     ) -> TokenResult<T::Output> {
@@ -2042,7 +2068,7 @@ where
         source_available_balance: u64,
         source_available_balance_ciphertext: &ElGamalCiphertext,
         destination_elgamal_pubkey: &ElGamalPubkey,
-        auditor_elgamal_pubkey: &ElGamalPubkey,
+        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
         withdraw_withheld_authority_elgamal_pubkey: &ElGamalPubkey,
         source_elgamal_keypair: &ElGamalKeypair,
         source_authenticated_encryption_key: &AeKey,
@@ -2052,7 +2078,8 @@ where
             return Err(TokenError::MaximumDepositTransferAmountExceeded);
         }
 
-        // TODO: take transfer fee params as input
+        let auditor_elgamal_pubkey = auditor_elgamal_pubkey.unwrap_or_default();
+
         let mint_state = self.get_mint_info().await.unwrap();
         let transfer_fee_config = mint_state
             .get_extension::<transfer_fee::TransferFeeConfig>()
@@ -2066,7 +2093,7 @@ where
                 source_available_balance_ciphertext,
             ),
             source_elgamal_keypair,
-            (destination_elgamal_pubkey, auditor_elgamal_pubkey),
+            (destination_elgamal_pubkey, &auditor_elgamal_pubkey),
             FeeParameters {
                 fee_rate_basis_points: u16::from(fee_parameters.transfer_fee_basis_points),
                 maximum_fee: u64::from(fee_parameters.maximum_fee),

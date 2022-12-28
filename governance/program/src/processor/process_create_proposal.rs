@@ -20,6 +20,7 @@ use crate::{
             assert_valid_proposal_options, get_proposal_address_seeds, OptionVoteResult,
             ProposalOption, ProposalV2, VoteType,
         },
+        proposal_deposit::{get_proposal_deposit_address_seeds, ProposalDeposit},
         realm::get_realm_data_for_governing_token_mint,
         realm_config::get_realm_config_data_for_realm,
         token_owner_record::get_token_owner_record_data_for_realm,
@@ -28,6 +29,7 @@ use crate::{
 };
 
 /// Processes CreateProposal instruction
+#[allow(clippy::too_many_arguments)]
 pub fn process_create_proposal(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -36,6 +38,7 @@ pub fn process_create_proposal(
     vote_type: VoteType,
     options: Vec<String>,
     use_deny_option: bool,
+    proposal_seed: Pubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -82,12 +85,12 @@ pub fn process_create_proposal(
     proposal_owner_record_data
         .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    let realm_config_info = next_account_info(account_info_iter)?; // 10
+    let realm_config_info = next_account_info(account_info_iter)?; // 8
     let realm_config_data =
         get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
 
     let voter_weight = proposal_owner_record_data.resolve_voter_weight(
-        account_info_iter, // voter_weight_record  *11
+        account_info_iter, // voter_weight_record  *9
         &realm_data,
         &realm_config_data,
         VoterWeightAction::CreateProposal,
@@ -169,15 +172,44 @@ pub fn process_create_proposal(
         &get_proposal_address_seeds(
             governance_info.key,
             governing_token_mint_info.key,
-            &governance_data.proposals_count.to_le_bytes(),
+            &proposal_seed,
         ),
         program_id,
         system_info,
         &rent,
+        0,
     )?;
 
-    governance_data.proposals_count = governance_data.proposals_count.checked_add(1).unwrap();
-    governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
+    governance_data.active_proposal_count = governance_data
+        .active_proposal_count
+        .checked_add(1)
+        .unwrap();
+
+    // Take Proposal deposit if needed
+    let proposal_deposit_amount = governance_data.get_proposal_deposit_amount();
+    if proposal_deposit_amount > 0 {
+        let proposal_deposit_info = next_account_info(account_info_iter)?; // *10
+        let proposal_deposit_data = ProposalDeposit {
+            account_type: GovernanceAccountType::ProposalDeposit,
+            proposal: *proposal_info.key,
+            deposit_payer: *payer_info.key,
+            reserved: [0; 64],
+        };
+
+        create_and_serialize_account_signed::<ProposalDeposit>(
+            payer_info,
+            proposal_deposit_info,
+            &proposal_deposit_data,
+            &get_proposal_deposit_address_seeds(proposal_info.key, payer_info.key),
+            program_id,
+            system_info,
+            &rent,
+            proposal_deposit_amount,
+        )?;
+    }
+
+    // Serialize the governance account update to GovernanceV2 if needed
+    governance_data.serialize_as_governance_v2(governance_info, payer_info, system_info, &rent)?;
 
     Ok(())
 }

@@ -234,7 +234,10 @@ pub fn process_trade(
     ];
 
     // Validate data
-    if buy_price + sell_price != u64::pow(10, binary_option.decimals as u32) {
+    let total_price = buy_price
+        .checked_add(sell_price)
+        .ok_or(BinaryOptionError::TradePricesIncorrect)?;
+    if total_price != u64::pow(10, binary_option.decimals as u32) {
         return Err(BinaryOptionError::TradePricesIncorrect.into());
     }
     if binary_option.settled {
@@ -411,7 +414,7 @@ pub fn process_trade(
                 seeds,
             )?;
             if n > n_b + n_s {
-                binary_option.increment_supply(n - n_b - n_s);
+                binary_option.increment_supply(n - n_b - n_s)?;
             } else {
                 binary_option.decrement_supply(n - n_b - n_s)?;
             }
@@ -707,7 +710,10 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         seeds,
     )?;
     if reward > 0 {
-        let amount = (reward * escrow_account.amount) / binary_option.circulation;
+        let amount = reward
+            .checked_mul(escrow_account.amount)
+            .ok_or(BinaryOptionError::AmountOverflow)?;
+        let amount = amount / binary_option.circulation;
         spl_token_transfer_signed(
             token_program_info,
             escrow_account_info,

@@ -173,6 +173,7 @@ impl CurveCalculator for ConstantPriceCurve {
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
+        round_direction: RoundDirection,
     ) -> Option<u128> {
         trading_tokens_to_pool_tokens(
             self.token_b_price,
@@ -181,7 +182,7 @@ impl CurveCalculator for ConstantPriceCurve {
             swap_token_b_amount,
             pool_supply,
             trade_direction,
-            RoundDirection::Ceiling,
+            round_direction,
         )
     }
 
@@ -454,7 +455,7 @@ mod tests {
     proptest! {
         #[test]
         fn withdraw_token_conversion(
-            (pool_token_supply, pool_token_amount) in total_and_intermediate(),
+            (pool_token_supply, pool_token_amount) in total_and_intermediate(u64::MAX),
             swap_token_a_amount in 1..u64::MAX,
             swap_token_b_amount in 1..u32::MAX, // kept small to avoid proptest rejections
             token_b_price in 1..u32::MAX, // kept small to avoid proptest rejections
@@ -609,7 +610,7 @@ mod tests {
     proptest! {
         #[test]
         fn curve_value_does_not_decrease_from_withdraw(
-            (pool_token_supply, pool_token_amount) in total_and_intermediate(),
+            (pool_token_supply, pool_token_amount) in total_and_intermediate(u64::MAX),
             swap_token_a_amount in 1..u64::MAX,
             swap_token_b_amount in 1..u32::MAX, // kept small to avoid proptest rejections
             token_b_price in 1..u32::MAX, // kept small to avoid proptest rejections
