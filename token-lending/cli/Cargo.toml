@@ -10,15 +10,16 @@ version = "0.1.0"
 
 [dependencies]
 clap = "=2.34.0"
-solana-clap-utils = "=1.9.18"
-solana-cli-config = "=1.9.18"
-solana-client = "=1.9.18"
-solana-logger = "=1.9.18"
-solana-sdk = "=1.9.18"
-solana-program = "=1.9.18"
+solana-clap-utils = "1.14.10"
+solana-cli-config = "1.14.10"
+solana-client = "1.14.10"
+solana-logger = "1.14.10"
+solana-sdk = "1.14.10"
+solana-program = "1.14.10"
 solend-sdk = { path="../sdk" }
-spl-token = { version = "3.2.0", features=["no-entrypoint"] }
-spl-associated-token-account = "1.0.3"
+solend-program = { path="../program", features = [ "no-entrypoint" ] }
+spl-token = { version = "3.3.0", features=["no-entrypoint"] }
+spl-associated-token-account = "1.0"
 
 [[bin]]
 name = "solend-program"

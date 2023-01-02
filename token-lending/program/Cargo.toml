@@ -13,8 +13,8 @@ test-bpf = []
 
 [dependencies]
 pyth-sdk-solana = "0.7.0"
-solana-program = "=1.9.18"
-spl-token = { version = "3.2.0", features=["no-entrypoint"] }
+solana-program = "=1.14.10"
+spl-token = { version = "3.3.0", features=["no-entrypoint"] }
 solend-sdk = { path = "../sdk" }
 static_assertions = "1.1.0"
 switchboard-program = "0.2.0"
@@ -26,9 +26,9 @@ bytemuck = "1.5.1"
 base64 = "0.13"
 log = "0.4.14"
 proptest = "1.0"
-solana-program-test = "=1.9.18"
-solana-sdk = "=1.9.18"
-serde = "1.0"
+solana-program-test = "=1.14.10"
+solana-sdk = "=1.14.10"
+serde = "=1.0.140"
 serde_yaml = "0.8"
 thiserror = "1.0"
 

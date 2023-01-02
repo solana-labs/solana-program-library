@@ -6,7 +6,6 @@ use helpers::*;
 use solana_program::instruction::{AccountMeta, Instruction};
 use solana_program::sysvar;
 use solana_program_test::*;
-use solana_sdk::transport::TransportError;
 use solana_sdk::{
     instruction::InstructionError,
     pubkey::Pubkey,
@@ -1301,8 +1300,8 @@ async fn test_fail_repay_from_diff_reserve() {
         .await
         .unwrap_err();
     match err {
-        TransportError::IoError(..) => (),
-        TransportError::TransactionError(TransactionError::InstructionError(
+        BanksClientError::RpcError(..) => (),
+        BanksClientError::TransactionError(TransactionError::InstructionError(
             1,
             InstructionError::PrivilegeEscalation,
         )) => (),

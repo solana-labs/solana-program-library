@@ -48,7 +48,8 @@ use {
     system_instruction::create_account,
 };
 
-use spl_associated_token_account::{create_associated_token_account, get_associated_token_address};
+use spl_associated_token_account::get_associated_token_address;
+use spl_associated_token_account::instruction::create_associated_token_account;
 
 struct Config {
     rpc_client: RpcClient,
@@ -1170,7 +1171,7 @@ fn command_liquidate_obligation(
         &withdraw_reserve_state.liquidity.mint_pubkey,
     );
 
-    let mut instructions = vec![ComputeBudgetInstruction::request_units(300_000, 30101)];
+    let mut instructions = vec![ComputeBudgetInstruction::set_compute_unit_price(30101)];
 
     // refresh all reserves
     instructions.extend(reserves.iter().map(|(pubkey, reserve)| {
@@ -1730,6 +1731,7 @@ fn send_transaction(
                     skip_preflight: true,
                     encoding: None,
                     max_retries: None,
+                    min_context_slot: None,
                 },
             )?;
         println!("Signature: {}", signature);
@@ -1767,6 +1769,7 @@ fn get_or_create_associated_token_address(config: &Config, mint: &Pubkey) -> Pub
                     &config.fee_payer.pubkey(),
                     &config.fee_payer.pubkey(),
                     mint,
+                    &spl_associated_token_account::id(),
                 )],
                 Some(&config.fee_payer.pubkey()),
                 &recent_blockhash,

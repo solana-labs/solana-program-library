@@ -2611,8 +2611,9 @@ fn get_switchboard_price_v2(
     clock: &Clock,
 ) -> Result<Decimal, ProgramError> {
     const STALE_AFTER_SLOTS_ELAPSED: u64 = 240;
+    let data = &switchboard_feed_info.try_borrow_data()?;
+    let feed = AggregatorAccountData::new_from_bytes(data)?;
 
-    let feed = AggregatorAccountData::new(switchboard_feed_info)?;
     let slots_elapsed = clock
         .slot
         .checked_sub(feed.latest_confirmed_round.round_open_slot)

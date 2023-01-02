@@ -14,7 +14,7 @@ use solana_program::{
 use std::{convert::TryInto, mem::size_of};
 
 /// Instructions supported by the lending program.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LendingInstruction {
     // 0
     /// Initializes a new lending market.

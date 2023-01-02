@@ -50,11 +50,11 @@ jobs:
       - name: Set env vars
         run: |
           source ci/rust-version.sh
-          echo "RUST_NIGHTLY=$rust_nightly" >> $GITHUB_ENV
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ env.RUST_NIGHTLY }}
+          toolchain: ${{ env.RUST_STABLE }}
           override: true
           profile: minimal
           components: clippy
@@ -76,7 +76,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -Zunstable-options --workspace --all-targets -- --deny=warnings
+          args: --workspace --all-targets -- --deny=warnings
 
   cargo-build-test:
     runs-on: ubuntu-latest
