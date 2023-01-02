@@ -1,7 +1,9 @@
 //! Error types
 
 use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 use solana_program::{decode_error::DecodeError, program_error::ProgramError};
+use solana_program::{msg, program_error::PrintProgramError};
 use thiserror::Error;
 
 /// Errors that may be returned by the TokenLending program.
@@ -201,5 +203,14 @@ impl From<LendingError> for ProgramError {
 impl<T> DecodeError<T> for LendingError {
     fn type_of() -> &'static str {
         "Lending Error"
+    }
+}
+
+impl PrintProgramError for LendingError {
+    fn print<E>(&self)
+    where
+        E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
+    {
+        msg!(&self.to_string());
     }
 }

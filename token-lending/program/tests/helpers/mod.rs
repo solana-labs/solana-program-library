@@ -23,7 +23,6 @@ use solend_program::{
         withdraw_obligation_collateral_and_redeem_reserve_collateral,
     },
     math::{Decimal, Rate, TryAdd, TryMul},
-    processor::switchboard_v2_mainnet,
     state::{
         InitLendingMarketParams, InitObligationParams, InitReserveParams, LendingMarket,
         NewReserveCollateralParams, NewReserveLiquidityParams, Obligation, ObligationCollateral,
@@ -31,6 +30,7 @@ use solend_program::{
         ReserveLiquidity, INITIAL_COLLATERAL_RATIO, PROGRAM_VERSION,
     },
 };
+use solend_sdk::switchboard_v2_mainnet;
 use spl_token::{
     instruction::approve,
     state::{Account as Token, AccountState, Mint},

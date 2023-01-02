@@ -3411,13 +3411,10 @@ dependencies = [
 name = "solend-program"
 version = "0.1.0"
 dependencies = [
- "arrayref",
  "assert_matches",
  "base64 0.13.0",
  "bytemuck",
  "log",
- "num-derive",
- "num-traits",
  "proptest",
  "pyth-sdk-solana",
  "serde",
@@ -3425,12 +3422,12 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
+ "solend-sdk",
  "spl-token",
  "static_assertions",
  "switchboard-program",
  "switchboard-v2",
  "thiserror",
- "uint",
 ]
 
 [[package]]
@@ -3444,9 +3441,32 @@ dependencies = [
  "solana-logger",
  "solana-program",
  "solana-sdk",
- "solend-program",
+ "solend-sdk",
  "spl-associated-token-account",
  "spl-token",
+]
+
+[[package]]
+name = "solend-sdk"
+version = "0.1.0"
+dependencies = [
+ "arrayref",
+ "assert_matches",
+ "base64 0.13.0",
+ "bytemuck",
+ "log",
+ "num-derive",
+ "num-traits",
+ "proptest",
+ "pyth-sdk-solana",
+ "serde",
+ "serde_yaml",
+ "solana-program",
+ "solana-sdk",
+ "spl-token",
+ "static_assertions",
+ "thiserror",
+ "uint",
 ]
 
 [[package]]

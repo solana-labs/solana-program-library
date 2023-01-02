@@ -1,7 +1,7 @@
 use lending_state::SolendState;
 use solana_client::rpc_config::RpcSendTransactionConfig;
 use solana_sdk::{commitment_config::CommitmentLevel, compute_budget::ComputeBudgetInstruction};
-use solend_program::{
+use solend_sdk::{
     instruction::{
         liquidate_obligation_and_redeem_reserve_collateral, redeem_reserve_collateral,
         refresh_obligation, refresh_reserve,
@@ -32,7 +32,7 @@ use {
         system_instruction,
         transaction::Transaction,
     },
-    solend_program::{
+    solend_sdk::{
         self,
         instruction::{init_lending_market, init_reserve, update_reserve_config},
         math::WAD,
@@ -109,7 +109,7 @@ const SWITCHBOARD_PROGRAM_ID_DEV: &str = "7azgmy1pFXHikv36q1zZASvFq5vFa39TT9NweV
 fn main() {
     solana_logger::setup_with_default("solana=info");
 
-    let default_lending_program_id: &str = &solend_program::id().to_string();
+    let default_lending_program_id: &str = &solend_sdk::solend_mainnet::id().to_string();
 
     let matches = App::new(crate_name!())
         .about(crate_description!())
@@ -1642,7 +1642,7 @@ fn command_update_reserve(
         reserve.config.protocol_take_rate = reserve_config.protocol_take_rate.unwrap();
     }
 
-    let mut new_pyth_product_pubkey = solend_program::NULL_PUBKEY;
+    let mut new_pyth_product_pubkey = solend_sdk::NULL_PUBKEY;
     if pyth_price_pubkey.is_some() {
         no_change = false;
         println!(

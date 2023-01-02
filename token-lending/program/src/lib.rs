@@ -3,12 +3,8 @@
 //! A lending program for the Solana blockchain.
 
 pub mod entrypoint;
-pub mod error;
-pub mod instruction;
-pub mod math;
-pub mod oracles;
 pub mod processor;
-pub mod state;
+pub use solend_sdk::{error, instruction, math, oracles, state};
 
 // Export current sdk types for downstream users building with a different sdk version
 pub use solana_program;

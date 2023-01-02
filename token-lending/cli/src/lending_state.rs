@@ -1,8 +1,8 @@
 use solana_program::instruction::Instruction;
-use solend_program::instruction::{
+use solend_sdk::instruction::{
     refresh_obligation, refresh_reserve, withdraw_obligation_collateral,
 };
-use solend_program::state::{Obligation, Reserve};
+use solend_sdk::state::{Obligation, Reserve};
 
 use solana_client::rpc_client::RpcClient;
 use solana_program::program_pack::Pack;
