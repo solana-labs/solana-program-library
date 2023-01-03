@@ -10,6 +10,7 @@ use solana_sdk::{
     transaction::Transaction,
     transport::TransportError,
 };
+use spl_name_service::instruction::realloc;
 use spl_name_service::{
     instruction::{create, delete, transfer, update, NameRegistryInstruction},
     processor::Processor,
@@ -174,6 +175,47 @@ async fn test_name_service() {
     )
     .unwrap();
     println!("Name Record Header: {:?}", name_record_header);
+
+    let data = "hello".as_bytes().to_vec();
+    let update_instruction = update(
+        program_id,
+        space as u32,
+        data,
+        name_account_key,
+        sol_subdomains_class.pubkey(),
+        Some(name_record_header.parent_name),
+    )
+    .unwrap();
+
+    sign_send_instruction(
+        &mut ctx,
+        update_instruction.clone(),
+        vec![&sol_subdomains_class],
+    )
+    .await
+    .unwrap_err();
+
+    let new_space = space * 2;
+    let realloc_instruction = realloc(
+        ctx.payer.pubkey(),
+        program_id,
+        name_account_key,
+        ctx.payer.pubkey(),
+        new_space as u32,
+    )
+    .unwrap();
+    sign_send_instruction(&mut ctx, realloc_instruction, vec![])
+        .await
+        .unwrap();
+
+    // warping slot to resend update ix without dropping duplicate txn
+    let new_slot = ctx.banks_client.get_root_slot().await.unwrap() + 32;
+    ctx.warp_to_slot(new_slot).expect("warp failed");
+
+    // resend update ix. Should succeed this time.
+    sign_send_instruction(&mut ctx, update_instruction, vec![&sol_subdomains_class])
+        .await
+        .unwrap();
 
     let delete_instruction = delete(
         program_id,
