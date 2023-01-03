@@ -13,17 +13,14 @@ import {
     createMint,
     ExtensionType,
     getExtensionData,
+    isAccountExtension,
 } from '../../src';
 import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
 
 const TEST_TOKEN_DECIMALS = 9;
-const ACCOUNT_EXTENSIONS = [
-    ExtensionType.TransferFeeAmount,
-    ExtensionType.ConfidentialTransferAccount,
-    ExtensionType.ImmutableOwner,
-    ExtensionType.MemoTransfer,
-    ExtensionType.CpiGuard,
-];
+const ACCOUNT_EXTENSIONS = Object.values(ExtensionType)
+    .filter(Number.isInteger)
+    .filter((e: any): e is ExtensionType => isAccountExtension(e));
 
 describe('tlv test', () => {
     let connection: Connection;
@@ -72,7 +69,7 @@ describe('tlv test', () => {
             return account;
         };
 
-        const promises: Promise<[number, Account]>[] = [];
+        const promises: Promise<[number, Account] | undefined>[] = [];
         for (let i = 0; i < 16; i++) {
             // trying to alloc exactly one extra byte causes an unpack failure in the program when initializing
             if (i == 1) continue;
@@ -80,21 +77,20 @@ describe('tlv test', () => {
             promises.push(
                 initTestAccount(i)
                     .then((account: PublicKey) => getAccount(connection, account, undefined, TEST_PROGRAM_ID))
-                    .then((accountInfo: Account) => [i, accountInfo])
+                    .then((accountInfo: Account) => {
+                        for (const extension of ACCOUNT_EXTENSIONS) {
+                            // realistically this will never fail with a non-null value, it will just throw
+                            expect(
+                                getExtensionData(extension, accountInfo.tlvData),
+                                `account parse test failed: found ${ExtensionType[extension]}, but should not have. \
+                                test case: no extensions, ${i} extra bytes`
+                            ).to.be.null;
+                        }
+                        return Promise.resolve(undefined);
+                    })
             );
         }
 
-        for (const promise of promises) {
-            const [extraBytes, accountInfo] = await promise;
-
-            for (const extension of ACCOUNT_EXTENSIONS) {
-                // realistically this will never fail with a non-null value, it will just throw
-                expect(
-                    getExtensionData(extension, accountInfo.tlvData),
-                    `account parse test failed: found ${ExtensionType[extension]}, but should not have. \
-                    test case: no extensions, ${extraBytes} extra bytes`
-                ).to.be.null;
-            }
-        }
+        await Promise.all(promises);
     });
 });
