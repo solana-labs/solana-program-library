@@ -20,7 +20,7 @@ if [[ ! -d twoxtx-solana ]]; then
 fi
 
 if [[ ! -f twoxtx-solana/.twoxtx-patched ]]; then
-  git -C twoxtx-solana am "$PWD"/twoxtx.patch
+  git -C twoxtx-solana am -3 "$PWD"/twoxtx.patch
   touch twoxtx-solana/.twoxtx-patched
 fi
 
