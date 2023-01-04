@@ -681,6 +681,7 @@ export async function increaseValidatorStake(
   stakePoolAddress: PublicKey,
   validatorVote: PublicKey,
   lamports: number,
+  ephemeralStakeSeed?: number,
 ) {
   const stakePool = await getStakePoolAccount(connection, stakePoolAddress);
 
@@ -717,6 +718,15 @@ export async function increaseValidatorStake(
     stakePoolAddress,
   );
 
+  const ephemeralStake =
+    ephemeralStakeSeed != undefined
+      ? await findEphemeralStakeProgramAddress(
+          STAKE_POOL_PROGRAM_ID,
+          stakePoolAddress,
+          new BN(ephemeralStakeSeed),
+        )
+      : undefined;
+
   const instructions: TransactionInstruction[] = [];
   instructions.push(
     StakePoolInstruction.increaseValidatorStake({
@@ -730,6 +740,8 @@ export async function increaseValidatorStake(
       validatorStake,
       validatorVote,
       lamports,
+      ephemeralStake,
+      ephemeralStakeSeed,
     }),
   );
 
@@ -746,6 +758,7 @@ export async function decreaseValidatorStake(
   stakePoolAddress: PublicKey,
   validatorVote: PublicKey,
   lamports: number,
+  ephemeralStakeSeed?: number,
 ) {
   const stakePool = await getStakePoolAccount(connection, stakePoolAddress);
   const validatorList = await getValidatorListAccount(
@@ -781,6 +794,15 @@ export async function decreaseValidatorStake(
     transientStakeSeed,
   );
 
+  const ephemeralStake =
+    ephemeralStakeSeed != undefined
+      ? await findEphemeralStakeProgramAddress(
+          STAKE_POOL_PROGRAM_ID,
+          stakePoolAddress,
+          new BN(ephemeralStakeSeed),
+        )
+      : undefined;
+
   const instructions: TransactionInstruction[] = [];
   instructions.push(
     StakePoolInstruction.decreaseValidatorStake({
@@ -792,6 +814,8 @@ export async function decreaseValidatorStake(
       validatorStake,
       transientStake,
       lamports,
+      ephemeralStake,
+      ephemeralStakeSeed,
     }),
   );
 

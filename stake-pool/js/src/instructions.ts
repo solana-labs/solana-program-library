@@ -27,6 +27,8 @@ export type StakePoolInstructionType =
   | 'DepositSol'
   | 'WithdrawStake'
   | 'WithdrawSol'
+  | 'IncreaseAdditionalValidatorStake'
+  | 'DecreaseAdditionalValidatorStake'
   | 'Redelegate';
 
 const MOVE_STAKE_LAYOUT = BufferLayout.struct<any>([
@@ -98,6 +100,39 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
       BufferLayout.ns64('poolTokens'),
     ]),
   },
+  /// (Staker only) Increase stake on a validator again in an epoch.
+  ///
+  /// Works regardless if the transient stake account exists.
+  ///
+  /// Internally, this instruction splits reserve stake into an ephemeral stake
+  /// account, activates it, then merges or splits it into the transient stake
+  /// account delegated to the appropriate validator. `UpdateValidatorListBalance`
+  /// will do the work of merging once it's ready.
+  IncreaseAdditionalValidatorStake: {
+    index: 19,
+    layout: BufferLayout.struct<any>([
+      BufferLayout.u8('instruction'),
+      BufferLayout.ns64('lamports'),
+      BufferLayout.ns64('transientStakeSeed'),
+      BufferLayout.ns64('ephemeralStakeSeed'),
+    ]),
+  },
+  /// (Staker only) Decrease active stake again from a validator, eventually moving it to the reserve
+  ///
+  /// Works regardless if the transient stake account already exists.
+  ///
+  /// Internally, this instruction splits a validator stake account into an
+  /// ephemeral stake account, deactivates it, then merges or splits it into
+  /// the transient stake account delegated to the appropriate validator.
+  DecreaseAdditionalValidatorStake: {
+    index: 20,
+    layout: BufferLayout.struct<any>([
+      BufferLayout.u8('instruction'),
+      BufferLayout.ns64('lamports'),
+      BufferLayout.ns64('transientStakeSeed'),
+      BufferLayout.ns64('ephemeralStakeSeed'),
+    ]),
+  },
   /// (Staker only) Redelegate active stake on a validator, eventually moving it to another
   ///
   /// Internally, this instruction splits a validator stake account into its
@@ -117,7 +152,7 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
   /// source transient stake account, and rent-exemption plus minimum delegation
   /// is required for the destination ephemeral stake account.
   Redelegate: {
-    index: 19,
+    index: 21,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
       /// Amount of lamports to redelegate
@@ -177,10 +212,13 @@ export type DecreaseValidatorStakeParams = {
   validatorList: PublicKey;
   validatorStake: PublicKey;
   transientStake: PublicKey;
-  // Amount of lamports to split into the transient stake account.
+  // Amount of lamports to split into the transient stake account
   lamports: number;
-  // Seed to used to create the transient stake account.
+  // Seed to used to create the transient stake account
   transientStakeSeed: number;
+  ephemeralStake?: PublicKey | undefined;
+  // Seed to used to create the ephemeral account
+  ephemeralStakeSeed?: number | undefined;
 };
 
 /**
@@ -195,10 +233,13 @@ export type IncreaseValidatorStakeParams = {
   transientStake: PublicKey;
   validatorStake: PublicKey;
   validatorVote: PublicKey;
-  // Amount of lamports to split into the transient stake account.
+  // Amount of lamports to split into the transient stake account
   lamports: number;
-  // Seed to used to create the transient stake account.
+  // Seed to used to create the transient stake account
   transientStakeSeed: number;
+  ephemeralStake?: PublicKey | undefined;
+  // Seed to used to create the ephemeral account
+  ephemeralStakeSeed?: number | undefined;
 };
 
 /**
@@ -283,7 +324,7 @@ export type RedelegateParams = {
   lamports: number | BN;
   // Seed used to create source transient stake account
   sourceTransientStakeSeed: number | BN;
-  // Seed used to create destination ephemeral account.
+  // Seed used to create destination ephemeral account
   ephemeralStakeSeed: number | BN;
   // Seed used to create destination transient stake account. If there is
   // already transient stake, this must match the current seed, otherwise
@@ -407,10 +448,9 @@ export class StakePoolInstruction {
       validatorVote,
       lamports,
       transientStakeSeed,
+      ephemeralStake,
+      ephemeralStakeSeed,
     } = params;
-
-    const type = STAKE_POOL_INSTRUCTION_LAYOUTS.IncreaseValidatorStake;
-    const data = encodeData(type, { lamports, transientStakeSeed });
 
     const keys = [
       { pubkey: stakePool, isSigner: false, isWritable: false },
@@ -418,16 +458,31 @@ export class StakePoolInstruction {
       { pubkey: withdrawAuthority, isSigner: false, isWritable: false },
       { pubkey: validatorList, isSigner: false, isWritable: true },
       { pubkey: reserveStake, isSigner: false, isWritable: true },
-      { pubkey: transientStake, isSigner: false, isWritable: true },
-      { pubkey: validatorStake, isSigner: false, isWritable: false },
-      { pubkey: validatorVote, isSigner: false, isWritable: false },
-      { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
-      { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
-      { pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false },
-      { pubkey: STAKE_CONFIG_ID, isSigner: false, isWritable: false },
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-      { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
     ];
+
+    let data: Buffer;
+    if (ephemeralStake !== undefined && ephemeralStakeSeed !== undefined) {
+      const type = STAKE_POOL_INSTRUCTION_LAYOUTS.IncreaseAdditionalValidatorStake;
+      data = encodeData(type, { lamports, transientStakeSeed, ephemeralStakeSeed });
+      keys.push({ pubkey: ephemeralStake, isSigner: false, isWritable: true });
+    } else {
+      const type = STAKE_POOL_INSTRUCTION_LAYOUTS.IncreaseValidatorStake;
+      data = encodeData(type, { lamports, transientStakeSeed });
+    }
+
+    keys.push(
+      ...[
+        { pubkey: transientStake, isSigner: false, isWritable: true },
+        { pubkey: validatorStake, isSigner: false, isWritable: false },
+        { pubkey: validatorVote, isSigner: false, isWritable: false },
+        { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
+        { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+        { pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false },
+        { pubkey: STAKE_CONFIG_ID, isSigner: false, isWritable: false },
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
+      ],
+    );
 
     return new TransactionInstruction({
       programId: STAKE_POOL_PROGRAM_ID,
@@ -449,10 +504,9 @@ export class StakePoolInstruction {
       transientStake,
       lamports,
       transientStakeSeed,
+      ephemeralStakeSeed,
+      ephemeralStake,
     } = params;
-
-    const type = STAKE_POOL_INSTRUCTION_LAYOUTS.DecreaseValidatorStake;
-    const data = encodeData(type, { lamports, transientStakeSeed });
 
     const keys = [
       { pubkey: stakePool, isSigner: false, isWritable: false },
@@ -460,12 +514,33 @@ export class StakePoolInstruction {
       { pubkey: withdrawAuthority, isSigner: false, isWritable: false },
       { pubkey: validatorList, isSigner: false, isWritable: true },
       { pubkey: validatorStake, isSigner: false, isWritable: true },
-      { pubkey: transientStake, isSigner: false, isWritable: true },
-      { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
-      { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-      { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
     ];
+
+    const isAdditional = ephemeralStake !== undefined && ephemeralStakeSeed !== undefined;
+
+    let data: Buffer;
+    if (isAdditional) {
+      const type = STAKE_POOL_INSTRUCTION_LAYOUTS.DecreaseAdditionalValidatorStake;
+      data = encodeData(type, { lamports, transientStakeSeed, ephemeralStakeSeed });
+      keys.push({ pubkey: ephemeralStake, isSigner: false, isWritable: true });
+    } else {
+      const type = STAKE_POOL_INSTRUCTION_LAYOUTS.DecreaseValidatorStake;
+      data = encodeData(type, { lamports, transientStakeSeed });
+    }
+
+    keys.push(
+      ...[
+        { pubkey: transientStake, isSigner: false, isWritable: true },
+        { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
+        {
+          pubkey: isAdditional ? SYSVAR_STAKE_HISTORY_PUBKEY : SYSVAR_RENT_PUBKEY,
+          isSigner: false,
+          isWritable: false,
+        },
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
+      ],
+    );
 
     return new TransactionInstruction({
       programId: STAKE_POOL_PROGRAM_ID,
@@ -663,6 +738,60 @@ export class StakePoolInstruction {
   }
 
   /**
+   * Creates `Redelegate` instruction (rebalance from one validator account to another)
+   * @param params
+   */
+  static redelegate(params: RedelegateParams): TransactionInstruction {
+    const {
+      stakePool,
+      staker,
+      stakePoolWithdrawAuthority,
+      validatorList,
+      sourceValidatorStake,
+      sourceTransientStake,
+      ephemeralStake,
+      destinationTransientStake,
+      destinationValidatorStake,
+      validator,
+      lamports,
+      sourceTransientStakeSeed,
+      ephemeralStakeSeed,
+      destinationTransientStakeSeed,
+    } = params;
+
+    const keys = [
+      { pubkey: stakePool, isSigner: false, isWritable: false },
+      { pubkey: staker, isSigner: true, isWritable: false },
+      { pubkey: stakePoolWithdrawAuthority, isSigner: false, isWritable: false },
+      { pubkey: validatorList, isSigner: false, isWritable: true },
+      { pubkey: sourceValidatorStake, isSigner: false, isWritable: true },
+      { pubkey: sourceTransientStake, isSigner: false, isWritable: true },
+      { pubkey: ephemeralStake, isSigner: false, isWritable: true },
+      { pubkey: destinationTransientStake, isSigner: false, isWritable: true },
+      { pubkey: destinationValidatorStake, isSigner: false, isWritable: false },
+      { pubkey: validator, isSigner: false, isWritable: false },
+      { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: STAKE_CONFIG_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
+    ];
+
+    const data = encodeData(STAKE_POOL_INSTRUCTION_LAYOUTS.Redelegate, {
+      lamports,
+      sourceTransientStakeSeed,
+      ephemeralStakeSeed,
+      destinationTransientStakeSeed,
+    });
+
+    return new TransactionInstruction({
+      programId: STAKE_POOL_PROGRAM_ID,
+      keys,
+      data,
+    });
+  }
+
+  /**
    * Decode a deposit stake pool instruction and retrieve the instruction params.
    */
   static decodeDepositStake(instruction: TransactionInstruction): DepositStakeParams {
@@ -727,57 +856,5 @@ export class StakePoolInstruction {
         `Invalid instruction; found ${keys.length} keys, expected at least ${expectedLength}`,
       );
     }
-  }
-
-  /**
-   * Creates `Redelegate` instruction (rebalance from one validator account to another)
-   * @param params
-   */
-  static redelegate(params: RedelegateParams): TransactionInstruction {
-    const {
-      stakePool,
-      staker,
-      stakePoolWithdrawAuthority,
-      validatorList,
-      sourceValidatorStake,
-      sourceTransientStake,
-      ephemeralStake,
-      destinationValidatorStake,
-      validator,
-      lamports,
-      sourceTransientStakeSeed,
-      ephemeralStakeSeed,
-      destinationTransientStakeSeed,
-    } = params;
-
-    const keys = [
-      { pubkey: stakePool, isSigner: false, isWritable: false },
-      { pubkey: staker, isSigner: true, isWritable: false },
-      { pubkey: stakePoolWithdrawAuthority, isSigner: false, isWritable: false },
-      { pubkey: validatorList, isSigner: false, isWritable: true },
-      { pubkey: sourceValidatorStake, isSigner: false, isWritable: true },
-      { pubkey: sourceTransientStake, isSigner: false, isWritable: true },
-      { pubkey: ephemeralStake, isSigner: false, isWritable: true },
-      { pubkey: destinationValidatorStake, isSigner: false, isWritable: true },
-      { pubkey: validator, isSigner: false, isWritable: false },
-      { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
-      { pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false },
-      { pubkey: STAKE_CONFIG_ID, isSigner: false, isWritable: false },
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-      { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
-    ];
-
-    const data = encodeData(STAKE_POOL_INSTRUCTION_LAYOUTS.Redelegate, {
-      lamports,
-      sourceTransientStakeSeed,
-      ephemeralStakeSeed,
-      destinationTransientStakeSeed,
-    });
-
-    return new TransactionInstruction({
-      programId: STAKE_POOL_PROGRAM_ID,
-      keys,
-      data,
-    });
   }
 }
