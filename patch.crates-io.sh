@@ -25,7 +25,7 @@ cd "$(dirname "$0")"
 
 source "$solana_dir"/scripts/read-cargo-variable.sh
 # get version from Cargo.toml first. if it is empty, get it from other places.
-solana_ver="$(readCargoVariable version Cargo.toml)"
+solana_ver="$(readCargoVariable version "$solana_dir"/Cargo.toml)"
 solana_ver=${solana_ver:-$(readCargoVariable version sdk/Cargo.toml)}
 
 crates_map=()
