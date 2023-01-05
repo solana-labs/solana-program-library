@@ -24,7 +24,9 @@ solana_dir=$(cd "$solana_dir" && pwd)
 cd "$(dirname "$0")"
 
 source "$solana_dir"/scripts/read-cargo-variable.sh
-solana_ver=$(readCargoVariable version "$solana_dir"/sdk/Cargo.toml)
+# get version from Cargo.toml first. if it is empty, get it from other places.
+solana_ver="$(readCargoVariable version Cargo.toml)"
+solana_ver=${solana_ver:-$(readCargoVariable version sdk/Cargo.toml)}
 
 crates_map=()
 crates_map+=("solana-account-decoder account-decoder")
