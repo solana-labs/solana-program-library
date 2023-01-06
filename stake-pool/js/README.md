@@ -8,7 +8,7 @@ For use with both node.js and in-browser.
 npm install
 ```
 
-## Build and run
+## Build and run 
 
 In the `js` folder:
 
