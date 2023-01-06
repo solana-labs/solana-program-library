@@ -718,18 +718,15 @@ export async function increaseValidatorStake(
     stakePoolAddress,
   );
 
-  const ephemeralStake =
-    ephemeralStakeSeed != undefined
-      ? await findEphemeralStakeProgramAddress(
-          STAKE_POOL_PROGRAM_ID,
-          stakePoolAddress,
-          new BN(ephemeralStakeSeed),
-        )
-      : undefined;
-
   const instructions: TransactionInstruction[] = [];
-  instructions.push(
-    StakePoolInstruction.increaseValidatorStake({
+
+  if (ephemeralStakeSeed != undefined) {
+    const ephemeralStake = await findEphemeralStakeProgramAddress(
+      STAKE_POOL_PROGRAM_ID,
+      stakePoolAddress,
+      new BN(ephemeralStakeSeed),
+    );
+    StakePoolInstruction.increaseAdditionalValidatorStake({
       stakePool: stakePoolAddress,
       staker: stakePool.account.data.staker,
       validatorList: stakePool.account.data.validatorList,
@@ -742,8 +739,23 @@ export async function increaseValidatorStake(
       lamports,
       ephemeralStake,
       ephemeralStakeSeed,
-    }),
-  );
+    });
+  } else {
+    instructions.push(
+      StakePoolInstruction.increaseValidatorStake({
+        stakePool: stakePoolAddress,
+        staker: stakePool.account.data.staker,
+        validatorList: stakePool.account.data.validatorList,
+        reserveStake: stakePool.account.data.reserveStake,
+        transientStakeSeed: transientStakeSeed.toNumber(),
+        withdrawAuthority,
+        transientStake,
+        validatorStake,
+        validatorVote,
+        lamports,
+      }),
+    );
+  }
 
   return {
     instructions,
@@ -794,30 +806,42 @@ export async function decreaseValidatorStake(
     transientStakeSeed,
   );
 
-  const ephemeralStake =
-    ephemeralStakeSeed != undefined
-      ? await findEphemeralStakeProgramAddress(
-          STAKE_POOL_PROGRAM_ID,
-          stakePoolAddress,
-          new BN(ephemeralStakeSeed),
-        )
-      : undefined;
-
   const instructions: TransactionInstruction[] = [];
-  instructions.push(
-    StakePoolInstruction.decreaseValidatorStake({
-      stakePool: stakePoolAddress,
-      staker: stakePool.account.data.staker,
-      validatorList: stakePool.account.data.validatorList,
-      transientStakeSeed: transientStakeSeed.toNumber(),
-      withdrawAuthority,
-      validatorStake,
-      transientStake,
-      lamports,
-      ephemeralStake,
-      ephemeralStakeSeed,
-    }),
-  );
+
+  if (ephemeralStakeSeed != undefined) {
+    const ephemeralStake = await findEphemeralStakeProgramAddress(
+      STAKE_POOL_PROGRAM_ID,
+      stakePoolAddress,
+      new BN(ephemeralStakeSeed),
+    );
+    instructions.push(
+      StakePoolInstruction.decreaseAdditionalValidatorStake({
+        stakePool: stakePoolAddress,
+        staker: stakePool.account.data.staker,
+        validatorList: stakePool.account.data.validatorList,
+        transientStakeSeed: transientStakeSeed.toNumber(),
+        withdrawAuthority,
+        validatorStake,
+        transientStake,
+        lamports,
+        ephemeralStake,
+        ephemeralStakeSeed,
+      }),
+    );
+  } else {
+    instructions.push(
+      StakePoolInstruction.decreaseValidatorStake({
+        stakePool: stakePoolAddress,
+        staker: stakePool.account.data.staker,
+        validatorList: stakePool.account.data.validatorList,
+        transientStakeSeed: transientStakeSeed.toNumber(),
+        withdrawAuthority,
+        validatorStake,
+        transientStake,
+        lamports,
+      }),
+    );
+  }
 
   return {
     instructions,
