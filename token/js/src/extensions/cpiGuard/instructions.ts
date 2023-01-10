@@ -33,7 +33,7 @@ export const cpiGuardInstructionData = struct<CpiGuardInstructionData>([u8('inst
 export function createEnableCpiGuardInstruction(
     account: PublicKey,
     authority: PublicKey,
-    multiSigners: Signer[] | PublicKey[] = [],
+    multiSigners: (Signer | PublicKey)[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     return createCpiGuardInstruction(CpiGuardInstruction.Enable, account, authority, multiSigners, programId);
@@ -52,7 +52,7 @@ export function createEnableCpiGuardInstruction(
 export function createDisableCpiGuardInstruction(
     account: PublicKey,
     authority: PublicKey,
-    multiSigners: Signer[] | PublicKey[] = [],
+    multiSigners: (Signer | PublicKey)[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     return createCpiGuardInstruction(CpiGuardInstruction.Disable, account, authority, multiSigners, programId);
@@ -62,7 +62,7 @@ function createCpiGuardInstruction(
     cpiGuardInstruction: CpiGuardInstruction,
     account: PublicKey,
     authority: PublicKey,
-    multiSigners: Signer[] | PublicKey[],
+    multiSigners: (Signer | PublicKey)[],
     programId: PublicKey
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {

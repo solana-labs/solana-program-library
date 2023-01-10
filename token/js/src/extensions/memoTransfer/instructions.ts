@@ -36,7 +36,7 @@ export const memoTransferInstructionData = struct<MemoTransferInstructionData>([
 export function createEnableRequiredMemoTransfersInstruction(
     account: PublicKey,
     authority: PublicKey,
-    multiSigners: Signer[] | PublicKey[] = [],
+    multiSigners: (Signer | PublicKey)[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     return createMemoTransferInstruction(MemoTransferInstruction.Enable, account, authority, multiSigners, programId);
@@ -55,7 +55,7 @@ export function createEnableRequiredMemoTransfersInstruction(
 export function createDisableRequiredMemoTransfersInstruction(
     account: PublicKey,
     authority: PublicKey,
-    multiSigners: Signer[] | PublicKey[] = [],
+    multiSigners: (Signer | PublicKey)[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     return createMemoTransferInstruction(MemoTransferInstruction.Disable, account, authority, multiSigners, programId);
@@ -65,7 +65,7 @@ function createMemoTransferInstruction(
     memoTransferInstruction: MemoTransferInstruction,
     account: PublicKey,
     authority: PublicKey,
-    multiSigners: Signer[] | PublicKey[],
+    multiSigners: (Signer | PublicKey)[],
     programId: PublicKey
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {

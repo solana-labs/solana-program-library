@@ -35,7 +35,7 @@ export const initializeMultisigInstructionData = struct<InitializeMultisigInstru
  */
 export function createInitializeMultisigInstruction(
     account: PublicKey,
-    signers: Signer[] | PublicKey[],
+    signers: (Signer | PublicKey)[],
     m: number,
     programId = TOKEN_PROGRAM_ID
 ): TransactionInstruction {

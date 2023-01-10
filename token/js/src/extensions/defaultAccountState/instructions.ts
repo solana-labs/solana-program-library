@@ -72,7 +72,7 @@ export function createUpdateDefaultAccountStateInstruction(
     mint: PublicKey,
     accountState: AccountState,
     freezeAuthority: PublicKey,
-    multiSigners: Signer[] | PublicKey[] = [],
+    multiSigners: (Signer | PublicKey)[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {

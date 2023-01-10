@@ -238,7 +238,7 @@ export function createTransferCheckedWithFeeInstruction(
     amount: bigint,
     decimals: number,
     fee: bigint,
-    multiSigners: Signer[] | PublicKey[] = [],
+    multiSigners: (Signer | PublicKey)[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
@@ -405,7 +405,7 @@ export function createWithdrawWithheldTokensFromMintInstruction(
     mint: PublicKey,
     destination: PublicKey,
     authority: PublicKey,
-    signers: Signer[] | PublicKey[] = [],
+    signers: (Signer | PublicKey)[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
@@ -558,7 +558,7 @@ export function createWithdrawWithheldTokensFromAccountsInstruction(
     mint: PublicKey,
     destination: PublicKey,
     authority: PublicKey,
-    signers: Signer[] | PublicKey[],
+    signers: (Signer | PublicKey)[],
     sources: PublicKey[],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
