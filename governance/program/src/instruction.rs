@@ -527,8 +527,7 @@ pub enum GovernanceInstruction {
     /// Verify the state and move the Proposal to Completed.
     /// Permission-less operation whoever could call.
     ///
-    ///   0. `[]` Governance account
-    ///   1. `[writable]` Proposal account.
+    ///   0. `[writable]` Proposal account.
     CompleteProposal {},
 }
 
@@ -1673,13 +1672,9 @@ pub fn refund_proposal_deposit(
 pub fn complete_proposal(
     program_id: &Pubkey,
     // Accounts
-    governance: &Pubkey,
-    proposal_address: &Pubkey,
+    proposal: &Pubkey,
 ) -> Instruction {
-    let accounts = vec![
-        AccountMeta::new(*governance, false),
-        AccountMeta::new(*proposal_address, false),
-    ];
+    let accounts = vec![AccountMeta::new(*proposal, false)];
 
     let instruction = GovernanceInstruction::CompleteProposal {};
 

@@ -3147,39 +3147,27 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_complete_proposal(
+    pub async fn complete_proposal(
         &mut self,
-        governance_cookie: &mut GovernanceCookie,
         proposal_cookie: &mut ProposalCookie,
     ) -> Result<(), ProgramError> {
-        self.with_complete_proposal_using_instruction_impl(
-            governance_cookie,
-            proposal_cookie,
-            NopOverride,
-        )
-        .await
+        self.complete_proposal_using_instruction(proposal_cookie, NopOverride)
+            .await
     }
 
     #[allow(dead_code)]
-    pub async fn with_complete_proposal_using_instruction_impl<F: Fn(&mut Instruction)>(
+    pub async fn complete_proposal_using_instruction<F: Fn(&mut Instruction)>(
         &mut self,
-        governance_cookie: &mut GovernanceCookie,
         proposal_cookie: &mut ProposalCookie,
         instruction_override: F,
     ) -> Result<(), ProgramError> {
-        let mut complete_proposal_ix = complete_proposal(
-            &self.program_id,
-            &governance_cookie.address,
-            &proposal_cookie.address,
-        );
+        let mut complete_proposal_ix =
+            complete_proposal(&self.program_id, &proposal_cookie.address);
         instruction_override(&mut complete_proposal_ix);
 
         self.bench
             .process_transaction(&[complete_proposal_ix], None)
             .await?;
-
-        let proposal_data = self.get_proposal_account(&proposal_cookie.address).await;
-        proposal_cookie.account = proposal_data;
 
         Ok(())
     }
