@@ -5905,6 +5905,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-example-transfer-tokens"
+version = "1.0.0"
+dependencies = [
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-token 3.5.0",
+]
+
+[[package]]
 name = "spl-feature-proposal"
 version = "1.0.0"
 dependencies = [
