@@ -26,16 +26,11 @@ pub fn process_instruction(
     let account_info_iter = &mut accounts.iter();
 
     // As part of the program specification the instruction gives:
-    // 1. source token account
-    // 2. mint account
-    // 3. destination token account
-    // 4. program-derived address that owns 1.
-    // 5. token program
-    let source_info = next_account_info(account_info_iter)?;
-    let mint_info = next_account_info(account_info_iter)?;
-    let destination_info = next_account_info(account_info_iter)?;
-    let authority_info = next_account_info(account_info_iter)?;
-    let token_program_info = next_account_info(account_info_iter)?;
+    let source_info = next_account_info(account_info_iter)?; // 1.
+    let mint_info = next_account_info(account_info_iter)?; // 2.
+    let destination_info = next_account_info(account_info_iter)?; // 3.
+    let authority_info = next_account_info(account_info_iter)?; // 4.
+    let token_program_info = next_account_info(account_info_iter)?; // 5.
 
     // In order to transfer from the source account, owned by the program-derived
     // address, we must have the correct address and seeds.
