@@ -1,6 +1,6 @@
 import { struct, u8 } from '@solana/buffer-layout';
-import type { AccountMeta, PublicKey } from '@solana/web3.js';
-import { SYSVAR_RENT_PUBKEY, TransactionInstruction } from '@solana/web3.js';
+import type { AccountMeta, Signer } from '@solana/web3.js';
+import { PublicKey, SYSVAR_RENT_PUBKEY, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants.js';
 import {
     TokenInvalidInstructionDataError,
@@ -8,6 +8,7 @@ import {
     TokenInvalidInstructionProgramError,
     TokenInvalidInstructionTypeError,
 } from '../errors.js';
+import { addSigners } from './internal.js';
 import { TokenInstruction } from './types.js';
 
 /** TODO: docs */
@@ -34,7 +35,7 @@ export const initializeMultisigInstructionData = struct<InitializeMultisigInstru
  */
 export function createInitializeMultisigInstruction(
     account: PublicKey,
-    signers: PublicKey[],
+    signers: (Signer | PublicKey)[],
     m: number,
     programId = TOKEN_PROGRAM_ID
 ): TransactionInstruction {
@@ -43,7 +44,11 @@ export function createInitializeMultisigInstruction(
         { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
     ];
     for (const signer of signers) {
-        keys.push({ pubkey: signer, isSigner: false, isWritable: false });
+        keys.push({
+            pubkey: signer instanceof PublicKey ? signer : signer.publicKey,
+            isSigner: false,
+            isWritable: false,
+        });
     }
 
     const data = Buffer.alloc(initializeMultisigInstructionData.span);

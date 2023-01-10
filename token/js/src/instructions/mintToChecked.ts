@@ -45,7 +45,7 @@ export function createMintToCheckedInstruction(
     authority: PublicKey,
     amount: number | bigint,
     decimals: number,
-    multiSigners: Signer[] = [],
+    multiSigners: (Signer | PublicKey)[] = [],
     programId = TOKEN_PROGRAM_ID
 ): TransactionInstruction {
     const keys = addSigners(

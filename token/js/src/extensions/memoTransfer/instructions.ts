@@ -3,6 +3,7 @@ import type { PublicKey, Signer } from '@solana/web3.js';
 import { TransactionInstruction } from '@solana/web3.js';
 import { programSupportsExtensions, TOKEN_2022_PROGRAM_ID } from '../../constants.js';
 import { TokenUnsupportedInstructionError } from '../../errors.js';
+import { addSigners } from '../../instructions/internal.js';
 import { TokenInstruction } from '../../instructions/types.js';
 
 export enum MemoTransferInstruction {
@@ -35,7 +36,7 @@ export const memoTransferInstructionData = struct<MemoTransferInstructionData>([
 export function createEnableRequiredMemoTransfersInstruction(
     account: PublicKey,
     authority: PublicKey,
-    multiSigners: Signer[] = [],
+    multiSigners: (Signer | PublicKey)[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     return createMemoTransferInstruction(MemoTransferInstruction.Enable, account, authority, multiSigners, programId);
@@ -54,7 +55,7 @@ export function createEnableRequiredMemoTransfersInstruction(
 export function createDisableRequiredMemoTransfersInstruction(
     account: PublicKey,
     authority: PublicKey,
-    multiSigners: Signer[] = [],
+    multiSigners: (Signer | PublicKey)[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     return createMemoTransferInstruction(MemoTransferInstruction.Disable, account, authority, multiSigners, programId);
@@ -64,18 +65,14 @@ function createMemoTransferInstruction(
     memoTransferInstruction: MemoTransferInstruction,
     account: PublicKey,
     authority: PublicKey,
-    multiSigners: Signer[],
+    multiSigners: (Signer | PublicKey)[],
     programId: PublicKey
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
     }
-    const keys = [{ pubkey: account, isSigner: false, isWritable: true }];
-    keys.push({ pubkey: authority, isSigner: !multiSigners.length, isWritable: false });
-    for (const signer of multiSigners) {
-        keys.push({ pubkey: signer.publicKey, isSigner: true, isWritable: false });
-    }
 
+    const keys = addSigners([{ pubkey: account, isSigner: false, isWritable: true }], authority, multiSigners);
     const data = Buffer.alloc(memoTransferInstructionData.span);
     memoTransferInstructionData.encode(
         {
