@@ -30,8 +30,7 @@
       "import": "./dist/esm/index.js",
       "types": "./dist/types/index.d.ts"
     },
-    "./idl/spl_account_compression.json": "./idl/spl_account_compression.json",
-    "./src/merkle-tree": "./src/merkle-tree/index.ts"
+    "./idl/spl_account_compression.json": "./idl/spl_account_compression.json"
   },
   "scripts": {
     "build": "rm -rf dist/ && tsc && tsc -p tsconfig.cjs.json",
