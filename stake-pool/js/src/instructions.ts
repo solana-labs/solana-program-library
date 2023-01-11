@@ -485,7 +485,6 @@ export class StakePoolInstruction {
       { pubkey: validatorStake, isSigner: false, isWritable: false },
       { pubkey: validatorVote, isSigner: false, isWritable: false },
       { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
-      { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
       { pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false },
       { pubkey: STAKE_CONFIG_ID, isSigner: false, isWritable: false },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
