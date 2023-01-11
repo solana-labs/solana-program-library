@@ -1,6 +1,6 @@
 [package]
 name = "spl-account-compression"
-version = "0.1.6"
+version = "0.1.7"
 description = "Solana Program Library Account Compression Program"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
