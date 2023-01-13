@@ -12,8 +12,8 @@ from spl.token.constants import TOKEN_PROGRAM_ID
 
 from stake.constants import STAKE_PROGRAM_ID, SYSVAR_STAKE_CONFIG_ID
 from stake_pool.constants import find_stake_program_address, find_transient_stake_program_address
-from stake_pool.constants import find_withdraw_authority_program_address
-from stake_pool.constants import STAKE_POOL_PROGRAM_ID
+from stake_pool.constants import find_withdraw_authority_program_address, find_metadata_account
+from stake_pool.constants import STAKE_POOL_PROGRAM_ID, METADATA_PROGRAM_ID
 from stake_pool.state import Fee, FEE_LAYOUT
 
 
@@ -448,6 +448,31 @@ class WithdrawSolParams(NamedTuple):
     """`[s]` (Optional) Stake pool sol withdraw authority."""
 
 
+class CreateTokenMetadataParams(NamedTuple):
+    """Create token metadata for the stake-pool token in the metaplex-token program."""
+
+    # Accounts
+    program_id: PublicKey
+    """SPL Stake Pool program account."""
+    stake_pool: PublicKey
+    """`[]` Stake pool."""
+    manager: PublicKey
+    """`[s]` Manager."""
+    # withdraw_authority?
+    pool_mint: PublicKey
+    """`[]` Pool token mint account."""
+    payer: PublicKey
+    """`[s, w]` Payer for creation of token metadata account."""
+
+    # Params
+    name: str
+    """Token name."""
+    symbol: str
+    """Token symbol e.g. stkSOL."""
+    uri: str
+    """URI of the uploaded metadata of the spl-token."""
+
+
 class InstructionType(IntEnum):
     """Stake Pool Instruction Types."""
 
@@ -468,6 +493,7 @@ class InstructionType(IntEnum):
     DEPOSIT_SOL = 14
     SET_FUNDING_AUTHORITY = 15
     WITHDRAW_SOL = 16
+    CREATE_TOKEN_METADATA = 17
 
 
 INITIALIZE_LAYOUT = Struct(
@@ -913,6 +939,38 @@ def decrease_validator_stake(params: DecreaseValidatorStakeParams) -> Transactio
                 args={
                     'lamports': params.lamports,
                     'transient_stake_seed': params.transient_stake_seed
+                }
+            )
+        )
+    )
+
+
+def create_token_metadata(params: CreateTokenMetadataParams):
+    """Creates an instruction to create metadata using the mpl token metadata program for the pool token."""
+    (withdraw_authority, _seed) = find_withdraw_authority_program_address(params.program_id, params.stake_pool)
+    (token_metadata, _seed) = find_metadata_account(params.pool_mint)
+
+    keys = [
+        AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.manager, is_signer=True, is_writable=False),
+        AccountMeta(pubkey=withdraw_authority, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.pool_mint, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.payer, is_signer=True, is_writable=True),
+        AccountMeta(pubkey=token_metadata, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=METADATA_PROGRAM_ID, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=SYS_PROGRAM_ID, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=SYSVAR_RENT_PUBKEY, is_signer=False, is_writable=False),
+    ]
+    return TransactionInstruction(
+        keys=keys,
+        program_id=params.program_id,
+        data=INSTRUCTIONS_LAYOUT.build(
+            dict(
+                instruction_type=InstructionType.CREATE_TOKEN_METADATA,
+                args={
+                    'name': params.name,
+                    'symbol': params.symbol,
+                    'uri': params.uri
                 }
             )
         )
