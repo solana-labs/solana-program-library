@@ -458,12 +458,31 @@ class CreateTokenMetadataParams(NamedTuple):
     """`[]` Stake pool."""
     manager: PublicKey
     """`[s]` Manager."""
-    # withdraw_authority?
     pool_mint: PublicKey
     """`[]` Pool token mint account."""
     payer: PublicKey
     """`[s, w]` Payer for creation of token metadata account."""
 
+    # Params
+    name: str
+    """Token name."""
+    symbol: str
+    """Token symbol e.g. stkSOL."""
+    uri: str
+    """URI of the uploaded metadata of the spl-token."""
+
+
+class UpdateTokenMetadataParams(NamedTuple):
+    """Update token metadata for the stake-pool token in the metaplex-token program."""
+    # Accounts
+    program_id: PublicKey
+    """SPL Stake Pool program account."""
+    stake_pool: PublicKey
+    """`[]` Stake pool."""
+    manager: PublicKey
+    """`[s]` Manager."""
+    pool_mint: PublicKey
+    """`[]` Pool token mint account."""
     # Params
     name: str
     """Token name."""
@@ -494,6 +513,7 @@ class InstructionType(IntEnum):
     SET_FUNDING_AUTHORITY = 15
     WITHDRAW_SOL = 16
     CREATE_TOKEN_METADATA = 17
+    UPDATE_TOKEN_METADATA = 18
 
 
 INITIALIZE_LAYOUT = Struct(
@@ -552,6 +572,7 @@ INSTRUCTIONS_LAYOUT = Struct(
             InstructionType.SET_FUNDING_AUTHORITY: Pass,  # TODO
             InstructionType.WITHDRAW_SOL: AMOUNT_LAYOUT,
             InstructionType.CREATE_TOKEN_METADATA: TOKEN_METADATA_LAYOUT,
+            InstructionType.UPDATE_TOKEN_METADATA: TOKEN_METADATA_LAYOUT,
         },
     ),
 )
@@ -978,6 +999,34 @@ def create_token_metadata(params: CreateTokenMetadataParams) -> TransactionInstr
                     'name': params.name,
                     'symbol': params.symbol,
                     'uri': params.uri
+                }
+            )
+        )
+    )
+
+
+def update_token_metadata(params: UpdateTokenMetadataParams) -> TransactionInstruction:
+    """Creates an instruction to update metadata in the mpl token metadata program account for the pool token."""
+    (withdraw_authority, _seed) = find_withdraw_authority_program_address(params.program_id, params.stake_pool)
+    (token_metadata, _seed) = find_metadata_account(params.pool_mint)
+
+    keys = [
+        AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.manager, is_signer=True, is_writable=False),
+        AccountMeta(pubkey=withdraw_authority, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=token_metadata, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=METADATA_PROGRAM_ID, is_signer=False, is_writable=False)
+    ]
+    return TransactionInstruction(
+        keys=keys,
+        program_id=params.program_id,
+        data=INSTRUCTIONS_LAYOUT.build(
+            dict(
+                instruction_type=InstructionType.UPDATE_TOKEN_METADATA,
+                args={
+                    "name": params.name,
+                    "symbol": params.symbol,
+                    "uri": params.uri
                 }
             )
         )
