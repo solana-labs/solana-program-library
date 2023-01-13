@@ -2,7 +2,7 @@
 
 from enum import IntEnum
 from typing import List, NamedTuple, Optional
-from construct import Struct, Switch, Int8ul, Int32ul, Int64ul, Pass  # type: ignore
+from construct import Bytes, Struct, Switch, Int8ul, Int32ul, Int64ul, Pass  # type: ignore
 
 from solana.publickey import PublicKey
 from solana.transaction import AccountMeta, TransactionInstruction
@@ -522,6 +522,12 @@ SEED_LAYOUT = Struct(
     "seed" / Int32ul
 )
 
+TOKEN_METADATA_LAYOUT = Struct(
+    "name" / Bytes(32),
+    "symbol" / Bytes(32),
+    "uri" / Bytes(32)
+)
+
 INSTRUCTIONS_LAYOUT = Struct(
     "instruction_type" / Int8ul,
     "args"
@@ -545,6 +551,7 @@ INSTRUCTIONS_LAYOUT = Struct(
             InstructionType.DEPOSIT_SOL: AMOUNT_LAYOUT,
             InstructionType.SET_FUNDING_AUTHORITY: Pass,  # TODO
             InstructionType.WITHDRAW_SOL: AMOUNT_LAYOUT,
+            InstructionType.CREATE_TOKEN_METADATA: TOKEN_METADATA_LAYOUT,
         },
     ),
 )
@@ -945,7 +952,7 @@ def decrease_validator_stake(params: DecreaseValidatorStakeParams) -> Transactio
     )
 
 
-def create_token_metadata(params: CreateTokenMetadataParams):
+def create_token_metadata(params: CreateTokenMetadataParams) -> TransactionInstruction:
     """Creates an instruction to create metadata using the mpl token metadata program for the pool token."""
     (withdraw_authority, _seed) = find_withdraw_authority_program_address(params.program_id, params.stake_pool)
     (token_metadata, _seed) = find_metadata_account(params.pool_mint)
