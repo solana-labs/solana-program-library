@@ -135,6 +135,45 @@ async fn test_revoke_own_council_tokens() {
 }
 
 #[tokio::test]
+async fn test_revoke_own_council_tokens_with_owner_must_sign_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_config_args = RealmSetupArgs::default();
+    realm_config_args.council_token_config_args.token_type = GoverningTokenType::Membership;
+
+    let realm_cookie = governance_test
+        .with_realm_using_args(&realm_config_args)
+        .await;
+
+    let token_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    let err = governance_test
+        .revoke_governing_tokens_using_instruction(
+            &realm_cookie,
+            &token_owner_record_cookie,
+            &realm_cookie.account.config.council_mint.unwrap(),
+            &token_owner_record_cookie.token_owner,
+            token_owner_record_cookie
+                .account
+                .governing_token_deposit_amount,
+            |i| i.accounts[4].is_signer = false, // revoke_authority
+            Some(&[]),
+        )
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(err, GovernanceError::GoverningTokenOwnerMustSign.into());
+}
+
+#[tokio::test]
 async fn test_revoke_community_tokens_with_cannot_revoke_liquid_token_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
