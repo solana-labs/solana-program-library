@@ -267,7 +267,7 @@ async fn test_revoke_council_tokens_with_mint_authority_must_sign_error() {
 }
 
 #[tokio::test]
-async fn test_revoke_council_tokens_with_invalid_mint_authority_error() {
+async fn test_revoke_council_tokens_with_invalid_revoke_authority_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -283,19 +283,16 @@ async fn test_revoke_council_tokens_with_invalid_mint_authority_error() {
         .await
         .unwrap();
 
-    // Try to use fake authority
-    let mint_authority = Keypair::new();
-
     // Act
     let err = governance_test
         .revoke_governing_tokens_using_instruction(
             &realm_cookie,
             &token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
-            realm_cookie.council_mint_authority.as_ref().unwrap(),
+            &Keypair::new(), // Try to use fake authority
             1,
-            |i| i.accounts[4].pubkey = mint_authority.pubkey(), // mint_authority
-            Some(&[&mint_authority]),
+            NopOverride,
+            None,
         )
         .await
         .err()
