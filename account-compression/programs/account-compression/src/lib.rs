@@ -27,11 +27,12 @@ use anchor_lang::{
     solana_program::sysvar::{clock::Clock, rent::Rent},
 };
 use borsh::{BorshDeserialize, BorshSerialize};
-use std::mem::size_of;
 
 pub mod canopy;
 pub mod error;
 pub mod events;
+#[macro_use]
+pub mod macros;
 mod noop;
 pub mod state;
 pub mod zero_copy;
@@ -42,7 +43,9 @@ use crate::canopy::{fill_in_proof_from_canopy, update_canopy};
 use crate::error::AccountCompressionError;
 use crate::events::{AccountCompressionEvent, ChangeLogEvent};
 use crate::noop::wrap_event;
-use crate::state::{ConcurrentMerkleTreeHeader, CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1};
+use crate::state::{
+    merkle_tree_get_size, ConcurrentMerkleTreeHeader, CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1,
+};
 use crate::zero_copy::ZeroCopy;
 
 /// Exported for Anchor / Solita
@@ -120,111 +123,6 @@ pub struct CloseTree<'info> {
     pub recipient: AccountInfo<'info>,
 }
 
-/// This macro applies functions on a ConcurrentMerkleT:ee and emits leaf information
-/// needed to sync the merkle tree state with off-chain indexers.
-macro_rules! merkle_tree_depth_size_apply_fn {
-    ($max_depth:literal, $max_size:literal, $id:ident, $bytes:ident, $func:ident, $($arg:tt)*) => {
-        match ConcurrentMerkleTree::<$max_depth, $max_size>::load_mut_bytes($bytes) {
-            Ok(merkle_tree) => {
-                match merkle_tree.$func($($arg)*) {
-                    Ok(_) => {
-                        Ok(Box::<ChangeLogEvent>::from((merkle_tree.get_change_log(), $id, merkle_tree.sequence_number)))
-                    }
-                    Err(err) => {
-                        msg!("Error using concurrent merkle tree: {}", err);
-                        err!(AccountCompressionError::ConcurrentMerkleTreeError)
-                    }
-                }
-            }
-            Err(err) => {
-                msg!("Error zero copying concurrent merkle tree: {}", err);
-                err!(AccountCompressionError::ZeroCopyError)
-            }
-        }
-    }
-}
-
-fn merkle_tree_get_size(header: &ConcurrentMerkleTreeHeader) -> Result<usize> {
-    // Note: max_buffer_size MUST be a power of 2
-    match (header.get_max_depth(), header.get_max_buffer_size()) {
-        (3, 8) => Ok(size_of::<ConcurrentMerkleTree<3, 8>>()),
-        (5, 8) => Ok(size_of::<ConcurrentMerkleTree<5, 8>>()),
-        (14, 64) => Ok(size_of::<ConcurrentMerkleTree<14, 64>>()),
-        (14, 256) => Ok(size_of::<ConcurrentMerkleTree<14, 256>>()),
-        (14, 1024) => Ok(size_of::<ConcurrentMerkleTree<14, 1024>>()),
-        (14, 2048) => Ok(size_of::<ConcurrentMerkleTree<14, 2048>>()),
-        (15, 64) => Ok(size_of::<ConcurrentMerkleTree<15, 64>>()),
-        (16, 64) => Ok(size_of::<ConcurrentMerkleTree<16, 64>>()),
-        (17, 64) => Ok(size_of::<ConcurrentMerkleTree<17, 64>>()),
-        (18, 64) => Ok(size_of::<ConcurrentMerkleTree<18, 64>>()),
-        (19, 64) => Ok(size_of::<ConcurrentMerkleTree<19, 64>>()),
-        (20, 64) => Ok(size_of::<ConcurrentMerkleTree<20, 64>>()),
-        (20, 256) => Ok(size_of::<ConcurrentMerkleTree<20, 256>>()),
-        (20, 1024) => Ok(size_of::<ConcurrentMerkleTree<20, 1024>>()),
-        (20, 2048) => Ok(size_of::<ConcurrentMerkleTree<20, 2048>>()),
-        (24, 64) => Ok(size_of::<ConcurrentMerkleTree<24, 64>>()),
-        (24, 256) => Ok(size_of::<ConcurrentMerkleTree<24, 256>>()),
-        (24, 512) => Ok(size_of::<ConcurrentMerkleTree<24, 512>>()),
-        (24, 1024) => Ok(size_of::<ConcurrentMerkleTree<24, 1024>>()),
-        (24, 2048) => Ok(size_of::<ConcurrentMerkleTree<24, 2048>>()),
-        (26, 512) => Ok(size_of::<ConcurrentMerkleTree<26, 512>>()),
-        (26, 1024) => Ok(size_of::<ConcurrentMerkleTree<26, 1024>>()),
-        (26, 2048) => Ok(size_of::<ConcurrentMerkleTree<26, 2048>>()),
-        (30, 512) => Ok(size_of::<ConcurrentMerkleTree<30, 512>>()),
-        (30, 1024) => Ok(size_of::<ConcurrentMerkleTree<30, 1024>>()),
-        (30, 2048) => Ok(size_of::<ConcurrentMerkleTree<30, 2048>>()),
-        _ => {
-            msg!(
-                "Failed to get size of max depth {} and max buffer size {}",
-                header.get_max_depth(),
-                header.get_max_buffer_size()
-            );
-            err!(AccountCompressionError::ConcurrentMerkleTreeConstantsError)
-        }
-    }
-}
-
-/// This applies a given function on a ConcurrentMerkleTree by
-/// allowing the compiler to infer the size of the tree based
-/// upon the header information stored on-chain
-macro_rules! merkle_tree_apply_fn {
-    ($header:ident, $id:ident, $bytes:ident, $func:ident, $($arg:tt)*) => {
-        // Note: max_buffer_size MUST be a power of 2
-        match ($header.get_max_depth(), $header.get_max_buffer_size()) {
-            (3, 8) => merkle_tree_depth_size_apply_fn!(3, 8, $id, $bytes, $func, $($arg)*),
-            (5, 8) => merkle_tree_depth_size_apply_fn!(5, 8, $id, $bytes, $func, $($arg)*),
-            (14, 64) => merkle_tree_depth_size_apply_fn!(14, 64, $id, $bytes, $func, $($arg)*),
-            (14, 256) => merkle_tree_depth_size_apply_fn!(14, 256, $id, $bytes, $func, $($arg)*),
-            (14, 1024) => merkle_tree_depth_size_apply_fn!(14, 1024, $id, $bytes, $func, $($arg)*),
-            (14, 2048) => merkle_tree_depth_size_apply_fn!(14, 2048, $id, $bytes, $func, $($arg)*),
-            (15, 64) => merkle_tree_depth_size_apply_fn!(15, 64, $id, $bytes, $func, $($arg)*),
-            (16, 64) => merkle_tree_depth_size_apply_fn!(16, 64, $id, $bytes, $func, $($arg)*),
-            (17, 64) => merkle_tree_depth_size_apply_fn!(17, 64, $id, $bytes, $func, $($arg)*),
-            (18, 64) => merkle_tree_depth_size_apply_fn!(18, 64, $id, $bytes, $func, $($arg)*),
-            (19, 64) => merkle_tree_depth_size_apply_fn!(19, 64, $id, $bytes, $func, $($arg)*),
-            (20, 64) => merkle_tree_depth_size_apply_fn!(20, 64, $id, $bytes, $func, $($arg)*),
-            (20, 256) => merkle_tree_depth_size_apply_fn!(20, 256, $id, $bytes, $func, $($arg)*),
-            (20, 1024) => merkle_tree_depth_size_apply_fn!(20, 1024, $id, $bytes, $func, $($arg)*),
-            (20, 2048) => merkle_tree_depth_size_apply_fn!(20, 2048, $id, $bytes, $func, $($arg)*),
-            (24, 64) => merkle_tree_depth_size_apply_fn!(24, 64, $id, $bytes, $func, $($arg)*),
-            (24, 256) => merkle_tree_depth_size_apply_fn!(24, 256, $id, $bytes, $func, $($arg)*),
-            (24, 512) => merkle_tree_depth_size_apply_fn!(24, 512, $id, $bytes, $func, $($arg)*),
-            (24, 1024) => merkle_tree_depth_size_apply_fn!(24, 1024, $id, $bytes, $func, $($arg)*),
-            (24, 2048) => merkle_tree_depth_size_apply_fn!(24, 2048, $id, $bytes, $func, $($arg)*),
-            (26, 512) => merkle_tree_depth_size_apply_fn!(26, 512, $id, $bytes, $func, $($arg)*),
-            (26, 1024) => merkle_tree_depth_size_apply_fn!(26, 1024, $id, $bytes, $func, $($arg)*),
-            (26, 2048) => merkle_tree_depth_size_apply_fn!(26, 2048, $id, $bytes, $func, $($arg)*),
-            (30, 512) => merkle_tree_depth_size_apply_fn!(30, 512, $id, $bytes, $func, $($arg)*),
-            (30, 1024) => merkle_tree_depth_size_apply_fn!(30, 1024, $id, $bytes, $func, $($arg)*),
-            (30, 2048) => merkle_tree_depth_size_apply_fn!(30, 2048, $id, $bytes, $func, $($arg)*),
-            _ => {
-                msg!("Failed to apply {} on concurrent merkle tree with max depth {} and max buffer size {}", stringify!($func), $header.get_max_depth(), $header.get_max_buffer_size());
-                err!(AccountCompressionError::ConcurrentMerkleTreeConstantsError)
-            }
-        }
-    };
-}
-
 #[program]
 pub mod spl_account_compression {
     use super::*;
@@ -267,7 +165,7 @@ pub mod spl_account_compression {
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
         let id = ctx.accounts.merkle_tree.key();
-        let change_log_event = merkle_tree_apply_fn!(header, id, tree_bytes, initialize,)?;
+        let change_log_event = merkle_tree_apply_fn_mut!(header, id, tree_bytes, initialize,)?;
         wrap_event(
             &AccountCompressionEvent::ChangeLog(*change_log_event),
             &ctx.accounts.noop,
@@ -372,7 +270,7 @@ pub mod spl_account_compression {
         fill_in_proof_from_canopy(canopy_bytes, header.get_max_depth(), index, &mut proof)?;
         let id = ctx.accounts.merkle_tree.key();
         // A call is made to ConcurrentMerkleTree::set_leaf(root, previous_leaf, new_leaf, proof, index)
-        let change_log_event = merkle_tree_apply_fn!(
+        let change_log_event = merkle_tree_apply_fn_mut!(
             header,
             id,
             tree_bytes,
@@ -431,16 +329,16 @@ pub mod spl_account_compression {
             crate::id(),
             AccountCompressionError::IncorrectAccountOwner
         );
-        let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
+        let merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_data()?;
         let (header_bytes, rest) =
-            merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
+            merkle_tree_bytes.split_at(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
 
         let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
         header.assert_valid()?;
         header.assert_valid_leaf_index(index)?;
 
         let merkle_tree_size = merkle_tree_get_size(&header)?;
-        let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
+        let (tree_bytes, canopy_bytes) = rest.split_at(merkle_tree_size);
 
         let mut proof = vec![];
         for node in ctx.remaining_accounts.iter() {
@@ -475,7 +373,7 @@ pub mod spl_account_compression {
         let id = ctx.accounts.merkle_tree.key();
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
-        let change_log_event = merkle_tree_apply_fn!(header, id, tree_bytes, append, leaf)?;
+        let change_log_event = merkle_tree_apply_fn_mut!(header, id, tree_bytes, append, leaf)?;
         update_canopy(
             canopy_bytes,
             header.get_max_depth(),
@@ -520,7 +418,7 @@ pub mod spl_account_compression {
         fill_in_proof_from_canopy(canopy_bytes, header.get_max_depth(), index, &mut proof)?;
         // A call is made to ConcurrentMerkleTree::fill_empty_or_append
         let id = ctx.accounts.merkle_tree.key();
-        let change_log_event = merkle_tree_apply_fn!(
+        let change_log_event = merkle_tree_apply_fn_mut!(
             header,
             id,
             tree_bytes,
@@ -558,7 +456,7 @@ pub mod spl_account_compression {
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
 
         let id = ctx.accounts.merkle_tree.key();
-        merkle_tree_apply_fn!(header, id, tree_bytes, prove_tree_is_empty,)?;
+        merkle_tree_apply_fn_mut!(header, id, tree_bytes, prove_tree_is_empty,)?;
 
         // Close merkle tree account
         // 1. Move lamports
