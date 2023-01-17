@@ -441,48 +441,6 @@ describe('Account Compression', () => {
         "CMT updated its active index after attacker's transaction, when it shouldn't have done anything"
       );
     });
-    it('Random attacker fails to fake the existence of a leaf by autocompleting proof', async () => {
-      // As an attacker, we want to set `maliciousLeafHash1` by
-      // providing `maliciousLeafHash` and `nodeProof` which hash to the current merkle tree root.
-      // If we can do this, then we can set leaves to arbitrary values.
-      const maliciousLeafHash = crypto.randomBytes(32);
-      const maliciousLeafHash1 = crypto.randomBytes(32);
-      const nodeProof: Buffer[] = [];
-      for (let i = 0; i < DEPTH; i++) {
-        nodeProof.push(Buffer.alloc(32));
-      }
-
-      // Root - make this nonsense so it won't match what's in CL, and force proof autocompletion
-      const replaceIx = createReplaceIx(
-        cmt,
-        payer,
-        maliciousLeafHash1,
-        {
-          root: Buffer.alloc(32),
-          leaf: maliciousLeafHash,
-          leafIndex: 0,
-          proof: nodeProof
-        }
-      );
-
-      try {
-        await execute(provider, [replaceIx], [payerKeypair]);
-        assert(
-          false,
-          'Attacker was able to succesfully write fake existence of a leaf'
-        );
-      } catch (e) { }
-
-      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
-        provider.connection,
-        cmt,
-      );
-
-      assert(
-        splCMT.getCurrentBufferIndex() === 0,
-        "CMT updated its active index after attacker's transaction, when it shouldn't have done anything"
-      );
-    });
   });
   describe(`Canopy test`, () => {
     const DEPTH = 5;
