@@ -95,7 +95,7 @@ macro_rules! _merkle_tree_apply_fn {
 
 /// This applies a given function on a mutable ConcurrentMerkleTree
 #[macro_export]
-macro_rules! merkle_tree_apply_fn {
+macro_rules! merkle_tree_apply_fn_mut {
     ($header:ident, $id:ident, $bytes:ident, $func:ident, $($arg:tt)*) => {
         _merkle_tree_apply_fn!($header, $id, $bytes, $func, TreeLoad::Mutable, $($arg)*)
     };
@@ -103,7 +103,7 @@ macro_rules! merkle_tree_apply_fn {
 
 /// This applies a given function on a read-only ConcurrentMerkleTree
 #[macro_export]
-macro_rules! merkle_tree_apply_fn_immutable {
+macro_rules! merkle_tree_apply_fn {
     ($header:ident, $id:ident, $bytes:ident, $func:ident, $($arg:tt)*) => {
         _merkle_tree_apply_fn!($header, $id, $bytes, $func, TreeLoad::Immutable, $($arg)*)
     };

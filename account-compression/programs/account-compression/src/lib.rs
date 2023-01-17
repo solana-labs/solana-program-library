@@ -165,7 +165,7 @@ pub mod spl_account_compression {
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
         let id = ctx.accounts.merkle_tree.key();
-        let change_log_event = merkle_tree_apply_fn!(header, id, tree_bytes, initialize,)?;
+        let change_log_event = merkle_tree_apply_fn_mut!(header, id, tree_bytes, initialize,)?;
         wrap_event(
             &AccountCompressionEvent::ChangeLog(*change_log_event),
             &ctx.accounts.noop,
@@ -270,7 +270,7 @@ pub mod spl_account_compression {
         fill_in_proof_from_canopy(canopy_bytes, header.get_max_depth(), index, &mut proof)?;
         let id = ctx.accounts.merkle_tree.key();
         // A call is made to ConcurrentMerkleTree::set_leaf(root, previous_leaf, new_leaf, proof, index)
-        let change_log_event = merkle_tree_apply_fn!(
+        let change_log_event = merkle_tree_apply_fn_mut!(
             header,
             id,
             tree_bytes,
@@ -347,9 +347,7 @@ pub mod spl_account_compression {
         fill_in_proof_from_canopy(canopy_bytes, header.get_max_depth(), index, &mut proof)?;
         let id = ctx.accounts.merkle_tree.key();
 
-        merkle_tree_apply_fn_immutable!(
-            header, id, tree_bytes, prove_leaf, root, leaf, &proof, index
-        )?;
+        merkle_tree_apply_fn!(header, id, tree_bytes, prove_leaf, root, leaf, &proof, index)?;
         Ok(())
     }
 
@@ -375,7 +373,7 @@ pub mod spl_account_compression {
         let id = ctx.accounts.merkle_tree.key();
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
-        let change_log_event = merkle_tree_apply_fn!(header, id, tree_bytes, append, leaf)?;
+        let change_log_event = merkle_tree_apply_fn_mut!(header, id, tree_bytes, append, leaf)?;
         update_canopy(
             canopy_bytes,
             header.get_max_depth(),
@@ -420,7 +418,7 @@ pub mod spl_account_compression {
         fill_in_proof_from_canopy(canopy_bytes, header.get_max_depth(), index, &mut proof)?;
         // A call is made to ConcurrentMerkleTree::fill_empty_or_append
         let id = ctx.accounts.merkle_tree.key();
-        let change_log_event = merkle_tree_apply_fn!(
+        let change_log_event = merkle_tree_apply_fn_mut!(
             header,
             id,
             tree_bytes,
@@ -458,7 +456,7 @@ pub mod spl_account_compression {
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
 
         let id = ctx.accounts.merkle_tree.key();
-        merkle_tree_apply_fn!(header, id, tree_bytes, prove_tree_is_empty,)?;
+        merkle_tree_apply_fn_mut!(header, id, tree_bytes, prove_tree_is_empty,)?;
 
         // Close merkle tree account
         // 1. Move lamports
