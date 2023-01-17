@@ -1276,6 +1276,7 @@ impl GovernanceProgramTest {
             realm_cookie,
             token_owner_record_cookie,
             &realm_cookie.account.community_mint,
+            &realm_cookie.community_mint_authority,
             token_owner_record_cookie
                 .account
                 .governing_token_deposit_amount,
@@ -1295,6 +1296,7 @@ impl GovernanceProgramTest {
             realm_cookie,
             token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
+            realm_cookie.council_mint_authority.as_ref().unwrap(),
             token_owner_record_cookie
                 .account
                 .governing_token_deposit_amount,
@@ -1305,29 +1307,29 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    #[allow(clippy::too_many_arguments)]
     pub async fn revoke_governing_tokens_using_instruction<F: Fn(&mut Instruction)>(
         &mut self,
         realm_cookie: &RealmCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         governing_token_mint: &Pubkey,
+        revoke_authority: &Keypair,
         amount: u64,
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<(), ProgramError> {
-        let governing_token_mint_authority = realm_cookie.get_mint_authority(governing_token_mint);
-
         let mut revoke_governing_tokens_ix = revoke_governing_tokens(
             &self.program_id,
             &realm_cookie.address,
             &token_owner_record_cookie.account.governing_token_owner,
             governing_token_mint,
-            &governing_token_mint_authority.pubkey(),
+            &revoke_authority.pubkey(),
             amount,
         );
 
         instruction_override(&mut revoke_governing_tokens_ix);
 
-        let default_signers = &[governing_token_mint_authority];
+        let default_signers = &[revoke_authority];
         let signers = signers_override.unwrap_or(default_signers);
 
         self.bench
