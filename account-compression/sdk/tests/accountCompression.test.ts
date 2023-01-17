@@ -486,6 +486,40 @@ describe('Account Compression', () => {
   });
   describe(`Canopy test`, () => {
     const DEPTH = 5;
+    it(`Testing canopy for verify leaf instructions`, async () => {
+      [cmtKeypair, offChainTree] = await createTreeOnChain(
+        provider,
+        payerKeypair,
+        2 ** DEPTH,
+        { maxDepth: DEPTH, maxBufferSize: 8 },
+        DEPTH // Store full tree on chain
+      );
+      cmt = cmtKeypair.publicKey;
+
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
+        connection,
+        cmt,
+        "confirmed"
+      );
+      let i = 0;
+      const stepSize = 4;
+      while (i < 2 ** DEPTH) {
+        const ixs: TransactionInstruction[] = [];
+        for (let j = 0; j < stepSize; j += 1) {
+          const leafIndex = i + j;
+          const leaf = offChainTree.leaves[leafIndex].node;
+          const verifyIx = createVerifyLeafIx(cmt, {
+            root: splCMT.getCurrentRoot(),
+            leaf,
+            leafIndex,
+            proof: [],
+          });
+          ixs.push(verifyIx);
+        }
+        i += stepSize;
+        await execute(provider, ixs, [payerKeypair]);
+      }
+    });
     it('Testing canopy for appends and replaces on a full on chain tree', async () => {
       [cmtKeypair, offChainTree] = await createTreeOnChain(
         provider,
