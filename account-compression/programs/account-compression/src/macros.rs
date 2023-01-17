@@ -1,7 +1,13 @@
+#[allow(dead_code)]
+enum TreeLoad {
+    Immutable,
+    Mutable,
+}
+
 /// This macro applies functions on a ConcurrentMerkleT:ee and emits leaf information
 /// needed to sync the merkle tree state with off-chain indexers.
 macro_rules! _merkle_tree_depth_size_apply_fn {
-    ($max_depth:literal, $max_size:literal, $id:ident, $bytes:ident, $func:ident, true, $($arg:tt)*)
+    ($max_depth:literal, $max_size:literal, $id:ident, $bytes:ident, $func:ident, TreeLoad::Mutable, $($arg:tt)*)
      => {
         match ConcurrentMerkleTree::<$max_depth, $max_size>::load_mut_bytes($bytes) {
             Ok(merkle_tree) => {
@@ -21,7 +27,7 @@ macro_rules! _merkle_tree_depth_size_apply_fn {
             }
         }
     };
-    ($max_depth:literal, $max_size:literal, $id:ident, $bytes:ident, $func:ident, false, $($arg:tt)*) => {
+    ($max_depth:literal, $max_size:literal, $id:ident, $bytes:ident, $func:ident, TreeLoad::Immutable, $($arg:tt)*) => {
         match ConcurrentMerkleTree::<$max_depth, $max_size>::load_bytes($bytes) {
             Ok(merkle_tree) => {
                 match merkle_tree.$func($($arg)*) {
@@ -42,12 +48,9 @@ macro_rules! _merkle_tree_depth_size_apply_fn {
     };
 }
 
-// (3, 8) => merkle_tree_depth_size_apply_fn!(3, 8, $mutable, $id, $bytes, $func, $($arg)*),
-
 /// This applies a given function on a ConcurrentMerkleTree by
 /// allowing the compiler to infer the size of the tree based
 /// upon the header information stored on-chain
-#[macro_export]
 macro_rules! _merkle_tree_apply_fn {
     ($header:ident, $($arg:tt)*) => {
         // Note: max_buffer_size MUST be a power of 2
@@ -90,16 +93,18 @@ macro_rules! _merkle_tree_apply_fn {
     };
 }
 
+/// This applies a given function on a mutable ConcurrentMerkleTree
 #[macro_export]
 macro_rules! merkle_tree_apply_fn {
     ($header:ident, $id:ident, $bytes:ident, $func:ident, $($arg:tt)*) => {
-        _merkle_tree_apply_fn!($header, $id, $bytes, $func, true, $($arg)*)
+        _merkle_tree_apply_fn!($header, $id, $bytes, $func, TreeLoad::Mutable, $($arg)*)
     };
 }
 
+/// This applies a given function on a read-only ConcurrentMerkleTree
 #[macro_export]
 macro_rules! merkle_tree_apply_fn_immutable {
     ($header:ident, $id:ident, $bytes:ident, $func:ident, $($arg:tt)*) => {
-        _merkle_tree_apply_fn!($header, $id, $bytes, $func, false, $($arg)*)
+        _merkle_tree_apply_fn!($header, $id, $bytes, $func, TreeLoad::Immutable, $($arg)*)
     };
 }
