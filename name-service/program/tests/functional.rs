@@ -195,6 +195,7 @@ async fn test_name_service() {
     .await
     .unwrap_err();
 
+    #[allow(clippy::integer_arithmetic)]
     let new_space = space * 2;
     let payer_key = ctx.payer.pubkey();
     let realloc_instruction = |space| {
@@ -213,6 +214,7 @@ async fn test_name_service() {
         .unwrap();
 
     // warping slot to resend update ix without dropping duplicate txn
+    #[allow(clippy::integer_arithmetic)]
     let new_slot = ctx.banks_client.get_root_slot().await.unwrap() + 32;
     ctx.warp_to_slot(new_slot).expect("warp failed");
 
