@@ -760,3 +760,81 @@ async fn fail_with_not_enough_tokens() {
         )
     );
 }
+
+#[test_case(spl_token::id(); "token")]
+#[test_case(spl_token_2022::id(); "token-2022")]
+#[tokio::test]
+async fn success_with_slippage(token_program_id: Pubkey) {
+    let (
+        mut context,
+        stake_pool_accounts,
+        validator_stake_account,
+        deposit_info,
+        user_transfer_authority,
+        user_stake_recipient,
+        tokens_to_withdraw,
+    ) = setup_for_withdraw(token_program_id).await;
+
+    // Save user token balance
+    let user_token_balance_before = get_token_balance(
+        &mut context.banks_client,
+        &deposit_info.pool_account.pubkey(),
+    )
+    .await;
+
+    // first and only deposit, lamports:pool 1:1
+    let tokens_withdrawal_fee = stake_pool_accounts.calculate_withdrawal_fee(tokens_to_withdraw);
+    let received_lamports = tokens_to_withdraw - tokens_withdrawal_fee;
+
+    let new_authority = Pubkey::new_unique();
+    let error = stake_pool_accounts
+        .withdraw_stake_with_slippage(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
+            &deposit_info.pool_account.pubkey(),
+            &validator_stake_account.stake_account,
+            &new_authority,
+            tokens_to_withdraw,
+            received_lamports + 1,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::ExceededSlippage as u32)
+        )
+    );
+
+    let error = stake_pool_accounts
+        .withdraw_stake_with_slippage(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
+            &deposit_info.pool_account.pubkey(),
+            &validator_stake_account.stake_account,
+            &new_authority,
+            tokens_to_withdraw,
+            received_lamports,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // Check tokens used
+    let user_token_balance = get_token_balance(
+        &mut context.banks_client,
+        &deposit_info.pool_account.pubkey(),
+    )
+    .await;
+    assert_eq!(
+        user_token_balance,
+        user_token_balance_before - tokens_to_withdraw
+    );
+}

@@ -799,3 +799,105 @@ async fn fail_with_wrong_mint_for_receiver_acc() {
         }
     }
 }
+
+#[test_case(spl_token::id(); "token")]
+#[test_case(spl_token_2022::id(); "token-2022")]
+#[tokio::test]
+async fn success_with_slippage(token_program_id: Pubkey) {
+    let (
+        mut context,
+        stake_pool_accounts,
+        validator_stake_account,
+        user,
+        deposit_stake,
+        pool_token_account,
+        stake_lamports,
+    ) = setup(token_program_id).await;
+
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+
+    // Save stake pool state before depositing
+    let pre_stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let pre_stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(pre_stake_pool.data.as_slice()).unwrap();
+
+    let tokens_issued = stake_lamports; // For now tokens are 1:1 to stake
+    let tokens_issued_user = tokens_issued
+        - pre_stake_pool
+            .calc_pool_tokens_sol_deposit_fee(stake_rent)
+            .unwrap()
+        - pre_stake_pool
+            .calc_pool_tokens_stake_deposit_fee(stake_lamports - stake_rent)
+            .unwrap();
+
+    let error = stake_pool_accounts
+        .deposit_stake_with_slippage(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &deposit_stake,
+            &pool_token_account,
+            &validator_stake_account.stake_account,
+            &user,
+            tokens_issued_user + 1,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            2,
+            InstructionError::Custom(StakePoolError::ExceededSlippage as u32)
+        )
+    );
+
+    let error = stake_pool_accounts
+        .deposit_stake_with_slippage(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &deposit_stake,
+            &pool_token_account,
+            &validator_stake_account.stake_account,
+            &user,
+            tokens_issued_user,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // Original stake account should be drained
+    assert!(context
+        .banks_client
+        .get_account(deposit_stake)
+        .await
+        .expect("get_account")
+        .is_none());
+
+    // Stake pool should add its balance to the pool balance
+    let post_stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let post_stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(post_stake_pool.data.as_slice()).unwrap();
+    assert_eq!(
+        post_stake_pool.total_lamports,
+        pre_stake_pool.total_lamports + stake_lamports
+    );
+    assert_eq!(
+        post_stake_pool.pool_token_supply,
+        pre_stake_pool.pool_token_supply + tokens_issued
+    );
+
+    // Check minted tokens
+    let user_token_balance =
+        get_token_balance(&mut context.banks_client, &pool_token_account).await;
+    assert_eq!(user_token_balance, tokens_issued_user);
+}
