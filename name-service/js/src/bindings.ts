@@ -6,10 +6,11 @@ import {
 } from '@solana/web3.js';
 
 import {
-    createInstruction,
-    deleteInstruction, reallocInstruction,
-    transferInstruction,
-    updateInstruction,
+  createInstruction,
+  deleteInstruction,
+  reallocInstruction,
+  transferInstruction,
+  updateInstruction,
 } from './instructions';
 import { NameRegistryState } from './state';
 import { Numberu64 } from './utils';
@@ -230,18 +231,18 @@ export async function deleteNameRegistry(
  * @returns
  */
 export async function reallocNameAccount(
-    connection: Connection,
-    name: string,
-    space: number,
-    payerKey: PublicKey,
-    nameClass?: PublicKey,
-    nameParent?: PublicKey
+  connection: Connection,
+  name: string,
+  space: number,
+  payerKey: PublicKey,
+  nameClass?: PublicKey,
+  nameParent?: PublicKey
 ): Promise<TransactionInstruction> {
   const hashed_name = await getHashedName(name);
   const nameAccountKey = await getNameAccountKey(
-      hashed_name,
-      nameClass,
-      nameParent
+    hashed_name,
+    nameClass,
+    nameParent
   );
 
   let nameOwner: PublicKey;
@@ -249,16 +250,16 @@ export async function reallocNameAccount(
     nameOwner = nameClass;
   } else {
     nameOwner = (await NameRegistryState.retrieve(connection, nameAccountKey))
-        .owner;
+      .owner;
   }
 
   const reallocInstr = reallocInstruction(
-      NAME_PROGRAM_ID,
-      SystemProgram.programId,
-      payerKey,
-      nameAccountKey,
-      nameOwner,
-      new Numberu32(space),
+    NAME_PROGRAM_ID,
+    SystemProgram.programId,
+    payerKey,
+    nameAccountKey,
+    nameOwner,
+    new Numberu32(space)
   );
 
   return reallocInstr;

@@ -216,17 +216,14 @@ export function deleteInstruction(
 }
 
 export function reallocInstruction(
-    nameProgramId: PublicKey,
-    systemProgramId: PublicKey,
-    payerKey: PublicKey,
-    nameAccountKey: PublicKey,
-    nameOwnerKey: PublicKey,
-    space: Numberu32
+  nameProgramId: PublicKey,
+  systemProgramId: PublicKey,
+  payerKey: PublicKey,
+  nameAccountKey: PublicKey,
+  nameOwnerKey: PublicKey,
+  space: Numberu32
 ): TransactionInstruction {
-  const buffers = [
-    Buffer.from(Int8Array.from([4])),
-    space.toBuffer(),
-  ];
+  const buffers = [Buffer.from(Int8Array.from([4])), space.toBuffer()];
 
   const data = Buffer.concat(buffers);
   const keys = [
