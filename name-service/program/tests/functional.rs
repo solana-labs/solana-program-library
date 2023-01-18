@@ -196,15 +196,19 @@ async fn test_name_service() {
     .unwrap_err();
 
     let new_space = space * 2;
-    let realloc_instruction = realloc(
-        ctx.payer.pubkey(),
-        program_id,
-        name_account_key,
-        ctx.payer.pubkey(),
-        new_space as u32,
-    )
-    .unwrap();
-    sign_send_instruction(&mut ctx, realloc_instruction, vec![])
+    let payer_key = ctx.payer.pubkey();
+    let realloc_instruction = |space| {
+        realloc(
+            program_id,
+            payer_key,
+            name_account_key,
+            payer_key,
+            space as u32,
+        )
+        .unwrap()
+    };
+
+    sign_send_instruction(&mut ctx, realloc_instruction(new_space), vec![])
         .await
         .unwrap();
 
@@ -214,6 +218,11 @@ async fn test_name_service() {
 
     // resend update ix. Should succeed this time.
     sign_send_instruction(&mut ctx, update_instruction, vec![&sol_subdomains_class])
+        .await
+        .unwrap();
+
+    // realloc to smaller this time
+    sign_send_instruction(&mut ctx, realloc_instruction(space / 2), vec![])
         .await
         .unwrap();
 

@@ -257,10 +257,12 @@ impl Processor {
             return Err(ProgramError::InvalidArgument);
         }
 
-        let new_space = NameRecordHeader::LEN + space as usize;
+        let new_space = NameRecordHeader::LEN.saturating_add(space as usize);
         let required_lamports = Rent::get()?.minimum_balance(new_space);
         match name_account.lamports().cmp(&required_lamports) {
             Ordering::Less => {
+                // Overflow cannot happen here because we already checked the sizes.
+                #[allow(clippy::integer_arithmetic)]
                 let lamports_to_add = required_lamports - name_account.lamports();
                 invoke(
                     &system_instruction::transfer(
@@ -276,19 +278,13 @@ impl Processor {
                 )?;
             }
             Ordering::Greater => {
+                // Overflow cannot happen here because we already checked the sizes.
+                #[allow(clippy::integer_arithmetic)]
                 let lamports_to_remove = name_account.lamports() - required_lamports;
-                invoke(
-                    &system_instruction::transfer(
-                        name_account.key,
-                        payer_account.key,
-                        lamports_to_remove,
-                    ),
-                    &[
-                        name_account.clone(),
-                        payer_account.clone(),
-                        system_program.clone(),
-                    ],
-                )?;
+                let source_amount: &mut u64 = &mut name_account.lamports.borrow_mut();
+                let dest_amount: &mut u64 = &mut payer_account.lamports.borrow_mut();
+                *source_amount = source_amount.saturating_sub(lamports_to_remove);
+                *dest_amount = dest_amount.saturating_add(lamports_to_remove);
             }
             Ordering::Equal => {}
         }
@@ -329,7 +325,7 @@ impl Processor {
                 Processor::process_delete(accounts)?;
             }
             NameRegistryInstruction::Realloc { space } => {
-                msg!("Instruction: Delete Name");
+                msg!("Instruction: Realloc Name Record");
                 Processor::process_realloc(accounts, space)?;
             }
         }
