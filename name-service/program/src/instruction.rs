@@ -217,8 +217,8 @@ pub fn delete(
 }
 
 pub fn realloc(
-    payer_key: Pubkey,
     name_service_program_id: Pubkey,
+    payer_key: Pubkey,
     name_account_key: Pubkey,
     name_owner_key: Pubkey,
     space: u32,
