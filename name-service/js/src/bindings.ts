@@ -6,10 +6,10 @@ import {
 } from '@solana/web3.js';
 
 import {
-  createInstruction,
-  deleteInstruction,
-  transferInstruction,
-  updateInstruction,
+    createInstruction,
+    deleteInstruction, reallocInstruction,
+    transferInstruction,
+    updateInstruction,
 } from './instructions';
 import { NameRegistryState } from './state';
 import { Numberu64 } from './utils';
@@ -216,4 +216,50 @@ export async function deleteNameRegistry(
   );
 
   return changeAuthoritiesInstr;
+}
+
+/**
+ * Realloc the name account space.
+ *
+ * @param connection The solana connection object to the RPC node
+ * @param name The name of the name account
+ * @param space The new space to be allocated
+ * @param payerKey The allocation cost payer if new space is larger than current or the refund destination if smaller
+ * @param nameClass The class of this name, if it exsists
+ * @param nameParent The parent name of this name, if it exists
+ * @returns
+ */
+export async function reallocNameAccount(
+    connection: Connection,
+    name: string,
+    space: number,
+    payerKey: PublicKey,
+    nameClass?: PublicKey,
+    nameParent?: PublicKey
+): Promise<TransactionInstruction> {
+  const hashed_name = await getHashedName(name);
+  const nameAccountKey = await getNameAccountKey(
+      hashed_name,
+      nameClass,
+      nameParent
+  );
+
+  let nameOwner: PublicKey;
+  if (nameClass) {
+    nameOwner = nameClass;
+  } else {
+    nameOwner = (await NameRegistryState.retrieve(connection, nameAccountKey))
+        .owner;
+  }
+
+  const reallocInstr = reallocInstruction(
+      NAME_PROGRAM_ID,
+      SystemProgram.programId,
+      payerKey,
+      nameAccountKey,
+      nameOwner,
+      new Numberu32(space),
+  );
+
+  return reallocInstr;
 }
