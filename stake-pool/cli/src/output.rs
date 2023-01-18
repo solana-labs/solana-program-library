@@ -475,7 +475,8 @@ impl From<(Pubkey, StakePool, ValidatorList, Pubkey)> for CliStakePool {
             last_update_epoch: stake_pool.last_update_epoch,
             lockup: CliStakePoolLockup::from(stake_pool.lockup),
             epoch_fee: CliStakePoolFee::from(stake_pool.epoch_fee),
-            next_epoch_fee: stake_pool.next_epoch_fee.map(CliStakePoolFee::from),
+            next_epoch_fee: Option::<Fee>::from(stake_pool.next_epoch_fee)
+                .map(CliStakePoolFee::from),
             preferred_deposit_validator_vote_address: stake_pool
                 .preferred_deposit_validator_vote_address
                 .map(|x| x.to_string()),
@@ -484,8 +485,7 @@ impl From<(Pubkey, StakePool, ValidatorList, Pubkey)> for CliStakePool {
                 .map(|x| x.to_string()),
             stake_deposit_fee: CliStakePoolFee::from(stake_pool.stake_deposit_fee),
             stake_withdrawal_fee: CliStakePoolFee::from(stake_pool.stake_withdrawal_fee),
-            next_stake_withdrawal_fee: stake_pool
-                .next_stake_withdrawal_fee
+            next_stake_withdrawal_fee: Option::<Fee>::from(stake_pool.next_stake_withdrawal_fee)
                 .map(CliStakePoolFee::from),
             stake_referral_fee: stake_pool.stake_referral_fee,
             sol_deposit_authority: stake_pool.sol_deposit_authority.map(|x| x.to_string()),
@@ -493,8 +493,7 @@ impl From<(Pubkey, StakePool, ValidatorList, Pubkey)> for CliStakePool {
             sol_referral_fee: stake_pool.sol_referral_fee,
             sol_withdraw_authority: stake_pool.sol_withdraw_authority.map(|x| x.to_string()),
             sol_withdrawal_fee: CliStakePoolFee::from(stake_pool.sol_withdrawal_fee),
-            next_sol_withdrawal_fee: stake_pool
-                .next_sol_withdrawal_fee
+            next_sol_withdrawal_fee: Option::<Fee>::from(stake_pool.next_sol_withdrawal_fee)
                 .map(CliStakePoolFee::from),
             last_epoch_pool_token_supply: stake_pool.last_epoch_pool_token_supply,
             last_epoch_total_lamports: stake_pool.last_epoch_total_lamports,

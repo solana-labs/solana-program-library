@@ -7,8 +7,9 @@ use {
         instruction::{FundingType, PreferredValidatorType, StakePoolInstruction},
         minimum_delegation, minimum_reserve_lamports, minimum_stake_lamports,
         state::{
-            is_extension_supported_for_mint, AccountType, Fee, FeeType, StakePool, StakeStatus,
-            StakeWithdrawSource, ValidatorList, ValidatorListHeader, ValidatorStakeInfo,
+            is_extension_supported_for_mint, AccountType, Fee, FeeType, FutureEpoch, StakePool,
+            StakeStatus, StakeWithdrawSource, ValidatorList, ValidatorListHeader,
+            ValidatorStakeInfo,
         },
         AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, EPHEMERAL_STAKE_SEED_PREFIX,
         TRANSIENT_STAKE_SEED_PREFIX,
@@ -905,19 +906,19 @@ impl Processor {
         stake_pool.last_update_epoch = Clock::get()?.epoch;
         stake_pool.lockup = stake::state::Lockup::default();
         stake_pool.epoch_fee = epoch_fee;
-        stake_pool.next_epoch_fee = None;
+        stake_pool.next_epoch_fee = FutureEpoch::None;
         stake_pool.preferred_deposit_validator_vote_address = None;
         stake_pool.preferred_withdraw_validator_vote_address = None;
         stake_pool.stake_deposit_fee = deposit_fee;
         stake_pool.stake_withdrawal_fee = withdrawal_fee;
-        stake_pool.next_stake_withdrawal_fee = None;
+        stake_pool.next_stake_withdrawal_fee = FutureEpoch::None;
         stake_pool.stake_referral_fee = referral_fee;
         stake_pool.sol_deposit_authority = sol_deposit_authority;
         stake_pool.sol_deposit_fee = deposit_fee;
         stake_pool.sol_referral_fee = referral_fee;
         stake_pool.sol_withdraw_authority = None;
         stake_pool.sol_withdrawal_fee = withdrawal_fee;
-        stake_pool.next_sol_withdrawal_fee = None;
+        stake_pool.next_sol_withdrawal_fee = FutureEpoch::None;
         stake_pool.last_epoch_pool_token_supply = 0;
         stake_pool.last_epoch_total_lamports = 0;
 
@@ -2532,18 +2533,21 @@ impl Processor {
         }
 
         if stake_pool.last_update_epoch < clock.epoch {
-            if let Some(fee) = stake_pool.next_epoch_fee {
-                stake_pool.epoch_fee = fee;
-                stake_pool.next_epoch_fee = None;
+            if let Some(fee) = stake_pool.next_epoch_fee.get() {
+                stake_pool.epoch_fee = *fee;
             }
-            if let Some(fee) = stake_pool.next_stake_withdrawal_fee {
-                stake_pool.stake_withdrawal_fee = fee;
-                stake_pool.next_stake_withdrawal_fee = None;
+            stake_pool.next_epoch_fee.update_epoch();
+
+            if let Some(fee) = stake_pool.next_stake_withdrawal_fee.get() {
+                stake_pool.stake_withdrawal_fee = *fee;
             }
-            if let Some(fee) = stake_pool.next_sol_withdrawal_fee {
-                stake_pool.sol_withdrawal_fee = fee;
-                stake_pool.next_sol_withdrawal_fee = None;
+            stake_pool.next_stake_withdrawal_fee.update_epoch();
+
+            if let Some(fee) = stake_pool.next_sol_withdrawal_fee.get() {
+                stake_pool.sol_withdrawal_fee = *fee;
             }
+            stake_pool.next_sol_withdrawal_fee.update_epoch();
+
             stake_pool.last_update_epoch = clock.epoch;
             stake_pool.last_epoch_total_lamports = previous_lamports;
             stake_pool.last_epoch_pool_token_supply = previous_pool_token_supply;
