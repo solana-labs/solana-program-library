@@ -493,6 +493,14 @@ pub enum StakePoolInstruction {
     /// source transient stake account, and rent-exemption plus minimum delegation
     /// is required for the destination ephemeral stake account.
     ///
+    /// The amount that arrives at the destination validator in the end is
+    /// `redelegate_lamports - 2 * rent_exemption` if the destination transient
+    /// account does *not* exist, and `redelegate_lamports - rent_exemption` if
+    /// the destination transient account already exists. One `rent_exemption`
+    /// is deactivated with the source transient account during redelegation,
+    /// and another `rent_exemption` is deactivated when creating the destination
+    /// transient stake account.
+    ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
     ///  2. `[]` Stake pool withdraw authority
