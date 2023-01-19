@@ -1200,7 +1200,7 @@ dependencies = [
 
 [[package]]
 name = "spl-account-compression"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "anchor-lang",
  "bytemuck",
