@@ -471,6 +471,12 @@ class CreateTokenMetadataParams(NamedTuple):
     uri: str
     """URI of the uploaded metadata of the spl-token."""
 
+    # Optional
+    withdraw_authority: Optional[PublicKey] = None
+    """`[]` Stake pool withdraw authority."""
+    token_metadata: Optional[PublicKey] = None
+    """`[w]` Token metadata program account."""
+
 
 class UpdateTokenMetadataParams(NamedTuple):
     """Update token metadata for the stake-pool token in the metaplex-token program."""
@@ -490,6 +496,12 @@ class UpdateTokenMetadataParams(NamedTuple):
     """Token symbol e.g. stkSOL."""
     uri: str
     """URI of the uploaded metadata of the spl-token."""
+
+    # Optional
+    withdraw_authority: Optional[PublicKey] = None
+    """`[]` Stake pool withdraw authority."""
+    token_metadata: Optional[PublicKey] = None
+    """`[w]` Token metadata program account."""
 
 
 class InstructionType(IntEnum):
@@ -975,8 +987,15 @@ def decrease_validator_stake(params: DecreaseValidatorStakeParams) -> Transactio
 
 def create_token_metadata(params: CreateTokenMetadataParams) -> TransactionInstruction:
     """Creates an instruction to create metadata using the mpl token metadata program for the pool token."""
-    (withdraw_authority, _seed) = find_withdraw_authority_program_address(params.program_id, params.stake_pool)
-    (token_metadata, _seed) = find_metadata_account(params.pool_mint)
+    if params.withdraw_authority:
+        withdraw_authority = params.withdraw_authority
+    else:
+        (withdraw_authority, _seed) = find_withdraw_authority_program_address(params.program_id, params.stake_pool)
+
+    if params.token_metadata:
+        token_metadata = params.token_metadata
+    else:
+        (token_metadata, _seed) = find_metadata_account(params.pool_mint)
 
     keys = [
         AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
@@ -1007,8 +1026,15 @@ def create_token_metadata(params: CreateTokenMetadataParams) -> TransactionInstr
 
 def update_token_metadata(params: UpdateTokenMetadataParams) -> TransactionInstruction:
     """Creates an instruction to update metadata in the mpl token metadata program account for the pool token."""
-    (withdraw_authority, _seed) = find_withdraw_authority_program_address(params.program_id, params.stake_pool)
-    (token_metadata, _seed) = find_metadata_account(params.pool_mint)
+    if params.withdraw_authority:
+        withdraw_authority = params.withdraw_authority
+    else:
+        (withdraw_authority, _seed) = find_withdraw_authority_program_address(params.program_id, params.stake_pool)
+
+    if params.token_metadata:
+        token_metadata = params.token_metadata
+    else:
+        (token_metadata, _seed) = find_metadata_account(params.pool_mint)
 
     keys = [
         AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),

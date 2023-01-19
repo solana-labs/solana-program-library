@@ -18,7 +18,7 @@ MINIMUM_ACTIVE_STAKE: int = MINIMUM_DELEGATION
 """Minimum active delegated staked required in a stake account"""
 
 METADATA_PROGRAM_ID: PublicKey = PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
-"""Public key that identifies the SPL Token Metadata program."""
+"""Public key that identifies the Metaplex Token Metadata program."""
 
 
 def find_deposit_authority_program_address(
