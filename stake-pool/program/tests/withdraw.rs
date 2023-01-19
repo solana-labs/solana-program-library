@@ -632,21 +632,21 @@ async fn fail_with_not_enough_tokens() {
         tokens_to_burn,
     ) = setup_for_withdraw(spl_token::id()).await;
 
-    // Empty validator stake account
-    let empty_stake_account = simple_add_validator_to_pool(
-        &mut context.banks_client,
-        &context.payer,
-        &context.last_blockhash,
-        &stake_pool_accounts,
-        None,
-    )
-    .await;
-
     let last_blockhash = context
         .banks_client
         .get_new_latest_blockhash(&context.last_blockhash)
         .await
         .unwrap();
+
+    // Empty validator stake account
+    let empty_stake_account = simple_add_validator_to_pool(
+        &mut context.banks_client,
+        &context.payer,
+        &last_blockhash,
+        &stake_pool_accounts,
+        None,
+    )
+    .await;
 
     let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
