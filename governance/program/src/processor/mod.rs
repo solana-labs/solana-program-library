@@ -15,6 +15,7 @@ mod process_deposit_governing_tokens;
 mod process_execute_transaction;
 mod process_finalize_vote;
 mod process_flag_transaction_error;
+mod process_insert_proposal_options;
 mod process_insert_transaction;
 mod process_refund_proposal_deposit;
 mod process_relinquish_vote;
@@ -46,6 +47,7 @@ use process_deposit_governing_tokens::*;
 use process_execute_transaction::*;
 use process_finalize_vote::*;
 use process_flag_transaction_error::*;
+use process_insert_proposal_options::*;
 use process_insert_transaction::*;
 use process_refund_proposal_deposit::*;
 use process_relinquish_vote::*;
@@ -159,6 +161,9 @@ pub fn process_instruction(
             use_deny_option,
             proposal_seed,
         ),
+        GovernanceInstruction::InsertProposalOptions { options } => {
+            process_insert_proposal_options(program_id, accounts, options)
+        }
         GovernanceInstruction::AddSignatory { signatory } => {
             process_add_signatory(program_id, accounts, signatory)
         }

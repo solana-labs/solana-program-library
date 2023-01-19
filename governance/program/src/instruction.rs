@@ -523,6 +523,19 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` ProposalDeposit account. PDA seeds: ['proposal-deposit', proposal, deposit payer]
     ///   2. `[writable]` Proposal deposit payer (beneficiary) account
     RefundProposalDeposit {},
+
+    /// Insert Options to proposal
+    ///
+    ///   0. `[writable]` Proposal account.
+    ///   1. `[]` TokenOwnerRecord account of the Proposal owner
+    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///   3. `[writable, signer]` Payer
+    ///   4. `[]` System
+    InsertProposalOptions {
+        /// Options to be added into proposal account
+        #[allow(dead_code)]
+        options: Vec<String>,
+    },
 }
 
 /// Creates CreateRealm instruction
@@ -947,6 +960,36 @@ pub fn create_proposal(
         use_deny_option,
         proposal_seed: *proposal_seed,
     };
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Insert proposal options when proposal in draft
+#[allow(clippy::too_many_arguments)]
+pub fn insert_proposal_options(
+    program_id: &Pubkey,
+    // Accounts
+    proposal_address: &Pubkey,
+    proposal_owner_record: &Pubkey,
+    governance_authority: &Pubkey,
+    payer: &Pubkey,
+
+    // Data
+    options: Vec<String>,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*proposal_address, false),
+        AccountMeta::new_readonly(*proposal_owner_record, false),
+        AccountMeta::new_readonly(*governance_authority, true),
+        AccountMeta::new(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::InsertProposalOptions { options };
 
     Instruction {
         program_id: *program_id,

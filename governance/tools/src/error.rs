@@ -25,11 +25,11 @@ pub enum GovernanceToolsError {
 
     /// Invalid account type
     #[error("Invalid account type")]
-    InvalidAccountType,
+    InvalidAccountType, // 1103
 
     /// Invalid new account size
     #[error("Invalid new account size")]
-    InvalidNewAccountSize,
+    InvalidNewAccountSize, // 1104
 }
 
 impl PrintProgramError for GovernanceToolsError {

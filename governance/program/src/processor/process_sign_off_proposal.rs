@@ -9,8 +9,10 @@ use solana_program::{
 };
 
 use crate::state::{
-    enums::ProposalState, governance::get_governance_data_for_realm,
-    proposal::get_proposal_data_for_governance, realm::assert_is_valid_realm,
+    enums::ProposalState,
+    governance::get_governance_data_for_realm,
+    proposal::{assert_valid_proposal_options_on_signoff, get_proposal_data_for_governance},
+    realm::assert_is_valid_realm,
     signatory_record::get_signatory_record_data_for_seeds,
     token_owner_record::get_token_owner_record_data_for_proposal_owner,
 };
@@ -79,6 +81,8 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
             .checked_add(1)
             .unwrap();
     }
+
+    assert_valid_proposal_options_on_signoff(&proposal_data.options, &proposal_data.vote_type)?;
 
     // If all Signatories signed off we can start voting
     if proposal_data.signatories_signed_off_count == proposal_data.signatories_count {
