@@ -2,7 +2,7 @@
 
 from enum import IntEnum
 from typing import List, NamedTuple, Optional
-from construct import Bytes, Struct, Switch, Int8ul, Int32ul, Int64ul, Pass  # type: ignore
+from construct import Prefixed, GreedyString, Struct, Switch, Int8ul, Int32ul, Int64ul, Pass  # type: ignore
 
 from solana.publickey import PublicKey
 from solana.transaction import AccountMeta, TransactionInstruction
@@ -555,9 +555,9 @@ SEED_LAYOUT = Struct(
 )
 
 TOKEN_METADATA_LAYOUT = Struct(
-    "name" / Bytes(32),
-    "symbol" / Bytes(32),
-    "uri" / Bytes(32)
+    "name" / Prefixed(Int32ul, GreedyString("utf8")),
+    "symbol" / Prefixed(Int32ul, GreedyString("utf8")),
+    "uri" / Prefixed(Int32ul, GreedyString("utf8"))
 )
 
 INSTRUCTIONS_LAYOUT = Struct(
