@@ -24,11 +24,17 @@ async fn success_withdraw_all_fee_tokens() {
         tokens_to_withdraw,
     ) = setup_for_withdraw(spl_token::id()).await;
 
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
+
     // move tokens to fee account
     transfer_spl_tokens(
         &mut context.banks_client,
         &context.payer,
-        &context.last_blockhash,
+        &last_blockhash,
         &stake_pool_accounts.token_program_id,
         &deposit_info.pool_account.pubkey(),
         &stake_pool_accounts.pool_mint.pubkey(),
@@ -49,7 +55,7 @@ async fn success_withdraw_all_fee_tokens() {
     delegate_tokens(
         &mut context.banks_client,
         &context.payer,
-        &context.last_blockhash,
+        &last_blockhash,
         &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.manager,
@@ -63,7 +69,7 @@ async fn success_withdraw_all_fee_tokens() {
         .withdraw_stake(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &user_stake_recipient.pubkey(),
             &user_transfer_authority,
             &stake_pool_accounts.pool_fee_account.pubkey(),
@@ -95,11 +101,17 @@ async fn success_empty_out_stake_with_fee() {
         tokens_to_withdraw,
     ) = setup_for_withdraw(spl_token::id()).await;
 
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
+
     // add another validator and deposit into it
     let other_validator_stake_account = simple_add_validator_to_pool(
         &mut context.banks_client,
         &context.payer,
-        &context.last_blockhash,
+        &last_blockhash,
         &stake_pool_accounts,
         None,
     )
@@ -108,7 +120,7 @@ async fn success_empty_out_stake_with_fee() {
     let other_deposit_info = simple_deposit_stake(
         &mut context.banks_client,
         &context.payer,
-        &context.last_blockhash,
+        &last_blockhash,
         &stake_pool_accounts,
         &other_validator_stake_account,
         TEST_STAKE_AMOUNT,
@@ -120,7 +132,7 @@ async fn success_empty_out_stake_with_fee() {
     transfer_spl_tokens(
         &mut context.banks_client,
         &context.payer,
-        &context.last_blockhash,
+        &last_blockhash,
         &stake_pool_accounts.token_program_id,
         &deposit_info.pool_account.pubkey(),
         &stake_pool_accounts.pool_mint.pubkey(),
@@ -137,11 +149,17 @@ async fn success_empty_out_stake_with_fee() {
     )
     .await;
 
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&last_blockhash)
+        .await
+        .unwrap();
+
     let user_transfer_authority = Keypair::new();
     delegate_tokens(
         &mut context.banks_client,
         &context.payer,
-        &context.last_blockhash,
+        &last_blockhash,
         &stake_pool_accounts.token_program_id,
         &other_deposit_info.pool_account.pubkey(),
         &other_deposit_info.authority,
@@ -160,12 +178,9 @@ async fn success_empty_out_stake_with_fee() {
     let stake_state =
         deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
-    let stake_minimum_delegation = stake_get_minimum_delegation(
-        &mut context.banks_client,
-        &context.payer,
-        &context.last_blockhash,
-    )
-    .await;
+    let stake_minimum_delegation =
+        stake_get_minimum_delegation(&mut context.banks_client, &context.payer, &last_blockhash)
+            .await;
     let lamports_to_withdraw =
         validator_stake_account.lamports - minimum_stake_lamports(&meta, stake_minimum_delegation);
     let stake_pool_account = get_account(
@@ -183,12 +198,17 @@ async fn success_empty_out_stake_with_fee() {
     let pool_tokens_to_withdraw =
         lamports_to_withdraw * inverse_fee.denominator / inverse_fee.numerator;
 
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&last_blockhash)
+        .await
+        .unwrap();
     let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
         .withdraw_stake(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &user_stake_recipient.pubkey(),
             &user_transfer_authority,
             &other_deposit_info.pool_account.pubkey(),
