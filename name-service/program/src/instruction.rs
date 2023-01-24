@@ -92,7 +92,7 @@ pub enum NameRegistryInstruction {
 
     /// Realloc the data of a name record.
     ///
-    /// The space change cannot be more than `MAX_PERMITTED_DATA_LENGTH` different than
+    /// The space change cannot be more than `MAX_PERMITTED_DATA_LENGTH` greater than
     /// current `space`.
     ///
     /// Accounts expected by this instruction:
