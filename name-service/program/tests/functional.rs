@@ -10,9 +10,8 @@ use solana_sdk::{
     transaction::Transaction,
     transport::TransportError,
 };
-use spl_name_service::instruction::realloc;
 use spl_name_service::{
-    instruction::{create, delete, transfer, update, NameRegistryInstruction},
+    instruction::{create, delete, realloc, transfer, update, NameRegistryInstruction},
     processor::Processor,
     state::{get_seeds_and_key, NameRecordHeader, HASH_PREFIX},
 };

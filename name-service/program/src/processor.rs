@@ -1,6 +1,3 @@
-use solana_program::rent::Rent;
-use solana_program::sysvar::Sysvar;
-use std::cmp::Ordering;
 use {
     crate::{
         instruction::NameRegistryInstruction,
@@ -16,8 +13,11 @@ use {
         program_error::ProgramError,
         program_pack::Pack,
         pubkey::Pubkey,
+        rent::Rent,
         system_instruction,
+        sysvar::Sysvar,
     },
+    std::cmp::Ordering,
 };
 
 pub struct Processor {}
