@@ -96,11 +96,14 @@ pub enum NameRegistryInstruction {
     /// current `space`.
     ///
     /// Accounts expected by this instruction:
-    ///   0. `[writeable]` Name record to be reallocated
-    ///   1. `[signer]` Account owner
+    ///   0. `[]` System program
+    ///   1. `[writeable, signer]` Payer account (will be refunded if new `space` is less than current `space`)
+    ///   2. `[writeable]` Name record to be reallocated
+    ///   3. `[signer]` Account owner
     ///
     Realloc {
         /// New total number of bytes in addition to the `NameRecordHeader`.
+        /// There are no checks on the existing data; it will be truncated if the new space is less than the current space.
         space: u32,
     },
 }
