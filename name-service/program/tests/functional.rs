@@ -194,8 +194,7 @@ async fn test_name_service() {
     .await
     .unwrap_err();
 
-    #[allow(clippy::integer_arithmetic)]
-    let new_space = space * 2;
+    let new_space = space.checked_mul(2).unwrap();
     let payer_key = ctx.payer.pubkey();
     let realloc_instruction = |space| {
         realloc(
