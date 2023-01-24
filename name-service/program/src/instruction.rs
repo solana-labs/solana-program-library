@@ -100,7 +100,7 @@ pub enum NameRegistryInstruction {
     ///   1. `[signer]` Account owner
     ///
     Realloc {
-        /// Number of bytes of memory to allocate in addition to the `NameRecordHeader`.
+        /// New total number of bytes in addition to the `NameRecordHeader`.
         space: u32,
     },
 }
