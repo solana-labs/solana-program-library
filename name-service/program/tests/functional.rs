@@ -2,7 +2,9 @@
 use std::str::FromStr;
 
 use solana_program::{instruction::Instruction, program_pack::Pack, pubkey::Pubkey};
-use solana_program_test::{processor, tokio, ProgramTest, ProgramTestContext};
+use solana_program_test::{
+    processor, tokio, ProgramTest, ProgramTestBanksClientExt, ProgramTestContext,
+};
 
 use solana_program::hash::hashv;
 use solana_sdk::{
@@ -211,10 +213,12 @@ async fn test_name_service() {
         .await
         .unwrap();
 
-    // warping slot to resend update ix without dropping duplicate txn
-    #[allow(clippy::integer_arithmetic)]
-    let new_slot = ctx.banks_client.get_root_slot().await.unwrap() + 32;
-    ctx.warp_to_slot(new_slot).expect("warp failed");
+    // update blockhash to prevent losing txn to dedup
+    ctx.last_blockhash = ctx
+        .banks_client
+        .get_new_latest_blockhash(&ctx.last_blockhash)
+        .await
+        .unwrap();
 
     // resend update ix. Should succeed this time.
     sign_send_instruction(&mut ctx, update_instruction, vec![&sol_subdomains_class])
