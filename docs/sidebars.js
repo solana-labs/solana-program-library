@@ -16,6 +16,16 @@ module.exports = {
     "token-swap",
     "token-lending",
     "associated-token-account",
+    {
+      type: "category",
+      label: "Account Compression",
+      collapsed: true,
+      items: [
+        "account-compression-overview",
+        "account-compression/concurrent-merkle-trees",
+        "account-compression/program-sdks-overview",
+      ],
+    },
     "token-upgrade",
     "memo",
     "name-service",
