@@ -311,12 +311,10 @@ fn create_stake_account<'a>(
     stake_account_info: AccountInfo<'a>,
     stake_account_signer_seeds: &[&[u8]],
     system_program_info: AccountInfo<'a>,
+    stake_space: usize,
 ) -> Result<(), ProgramError> {
     invoke_signed(
-        &system_instruction::allocate(
-            stake_account_info.key,
-            std::mem::size_of::<stake::state::StakeState>() as u64,
-        ),
+        &system_instruction::allocate(stake_account_info.key, stake_space as u64),
         &[stake_account_info.clone(), system_program_info.clone()],
         &[stake_account_signer_seeds],
     )?;
@@ -1013,10 +1011,10 @@ impl Processor {
         ];
 
         // Fund the stake account with the minimum + rent-exempt balance
-        let space = std::mem::size_of::<stake::state::StakeState>();
+        let stake_space = std::mem::size_of::<stake::state::StakeState>();
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
         let required_lamports = minimum_delegation(stake_minimum_delegation)
-            .saturating_add(rent.minimum_balance(space));
+            .saturating_add(rent.minimum_balance(stake_space));
 
         // Check that we're not draining the reserve totally
         let reserve_stake = try_from_slice_unchecked::<stake::state::StakeState>(
@@ -1041,6 +1039,7 @@ impl Processor {
             stake_info.clone(),
             stake_account_signer_seeds,
             system_program_info.clone(),
+            stake_space,
         )?;
         // split into validator stake account
         Self::stake_split(
@@ -1340,8 +1339,9 @@ impl Processor {
             // explicit check here that the transient stake is decreasing
         }
 
+        let stake_space = std::mem::size_of::<stake::state::StakeState>();
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
-        let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+        let stake_rent = rent.minimum_balance(stake_space);
         let current_minimum_lamports =
             stake_rent.saturating_add(minimum_delegation(stake_minimum_delegation));
         if lamports < current_minimum_lamports {
@@ -1387,6 +1387,7 @@ impl Processor {
                     ephemeral_stake_account_info.clone(),
                     ephemeral_stake_account_signer_seeds,
                     system_program_info.clone(),
+                    stake_space,
                 )?;
 
                 // split into ephemeral stake account
@@ -1452,6 +1453,7 @@ impl Processor {
                 transient_stake_account_info.clone(),
                 transient_stake_account_signer_seeds,
                 system_program_info.clone(),
+                stake_space,
             )?;
 
             // split into transient stake account
@@ -1604,7 +1606,8 @@ impl Processor {
             return Err(StakePoolError::ValidatorNotFound.into());
         }
 
-        let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+        let stake_space = std::mem::size_of::<stake::state::StakeState>();
+        let stake_rent = rent.minimum_balance(stake_space);
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
         let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
         if lamports < current_minimum_delegation {
@@ -1659,6 +1662,7 @@ impl Processor {
                     ephemeral_stake_account_info.clone(),
                     ephemeral_stake_account_signer_seeds,
                     system_program_info.clone(),
+                    stake_space,
                 )?;
 
                 // split into ephemeral stake account
@@ -1727,6 +1731,7 @@ impl Processor {
                 transient_stake_account_info.clone(),
                 transient_stake_account_signer_seeds,
                 system_program_info.clone(),
+                stake_space,
             )?;
 
             // split into transient stake account
@@ -1834,7 +1839,8 @@ impl Processor {
         }
 
         let rent = Rent::get()?;
-        let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+        let stake_space = std::mem::size_of::<stake::state::StakeState>();
+        let stake_rent = rent.minimum_balance(stake_space);
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
         let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
 
@@ -1937,6 +1943,7 @@ impl Processor {
                 source_transient_stake_account_info.clone(),
                 source_transient_stake_account_signer_seeds,
                 system_program_info.clone(),
+                stake_space,
             )?;
 
             Self::stake_split(
@@ -1968,6 +1975,7 @@ impl Processor {
                 ephemeral_stake_account_info.clone(),
                 ephemeral_stake_account_signer_seeds,
                 system_program_info.clone(),
+                stake_space,
             )?;
             Self::stake_redelegate(
                 stake_pool_info.key,
@@ -2067,6 +2075,7 @@ impl Processor {
                     destination_transient_stake_account_info.clone(),
                     destination_transient_stake_account_signer_seeds,
                     system_program_info.clone(),
+                    stake_space,
                 )?;
                 Self::stake_split(
                     stake_pool_info.key,
