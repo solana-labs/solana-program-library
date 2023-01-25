@@ -27,9 +27,11 @@ The Account Compression program's code is available on [github](https://github.c
 
 The Account Compression Program is written in rust and available on [crates.io](https://crates.io/crates/spl-account-compression) and [doc.rs](https://docs.rs/spl-account-compression/latest/spl_account_compression/).
 
-Account compression has the following functions are written in rust:
+Account compression has the following functions written in rust:
 
 - [append](https://docs.rs/spl-account-compression/latest/spl_account_compression/spl_account_compression/fn.append.html)
+
+This instruction allows the tree’s authority to append a new leaf to the tree without having to supply proof.
 
 ```
 pub fn append(
@@ -37,20 +39,25 @@ pub fn append(
     leaf: [u8; 32]
 ) -> Result<()> 
 ```
-This instruction allows the tree’s authority to append a new leaf to the tree without having to supply a proof.
+
 
 - [close empty tree](https://docs.rs/spl-account-compression/latest/spl_account_compression/spl_account_compression/fn.close_empty_tree.html)
 
+ This instruction allows to close Merkle tree account.
 ```
 pub fn close_empty_tree(
     ctx: Context<'_, '_, '_, '_, CloseTree<'_>>
 ) -> Result<()>
 
 ```
-
-This instruction allows to close Merkle tree account.
-
 - [init empty merkle tree](https://docs.rs/spl-account-compression/latest/spl_account_compression/spl_account_compression/fn.init_empty_merkle_tree.html)
+
+This instruction or function it creates a new merkle tree with maximum leaf capacity of power(2,max_depth) and minimum concurrency limit of max_buffer_size.
+
+Concurrency limit represents the # of replace instructions that can be successfully executed with proofs dated for the same root. For example, a maximum buffer size of 1024 means that a minimum of 1024 replaces can be executed before a new proof must be generated for the next replace instruction.
+
+Concurrency limit should be determined by empirically testing the demand for state built on top of SPL Compression.
+
 
 ```
 pub fn init_empty_merkle_tree(
@@ -60,13 +67,11 @@ pub fn init_empty_merkle_tree(
 ) -> Result<()>
 
 ```
-Creates a new merkle tree with maximum leaf capacity of power(2, max_depth) and a minimum concurrency limit of max_buffer_size.
 
-Concurrency limit represents the # of replace instructions that can be successfully executed with proofs dated for the same root. For example, a maximum buffer size of 1024 means that a minimum of 1024 replaces can be executed before a new proof must be generated for the next replace instruction.
-
-Concurrency limit should be determined by empirically testing the demand for state built on top of SPL Compression.
 
 - [insert or append](https://docs.rs/spl-account-compression/latest/spl_account_compression/spl_account_compression/fn.insert_or_append.html)
+
+This instruction takes a proof, and will attempt to write the given leaf to the specified index in the tree. If the insert operation fails, the leaf will be append-ed to the tree. It is up to the indexer to parse the final location of the leaf from the emitted changelog.
 
 ```
 pub fn insert_or_append(
@@ -76,9 +81,11 @@ pub fn insert_or_append(
     index: u32
 ) -> Result<()>
 ```
-This instruction takes a proof, and will attempt to write the given leaf to the specified index in the tree. If the insert operation fails, the leaf will be append-ed to the tree. It is up to the indexer to parse the final location of the leaf from the emitted changelog.
 
 - [replace leaf](https://docs.rs/spl-account-compression/latest/spl_account_compression/spl_account_compression/fn.replace_leaf.html)
+
+This instruction has been deemed unusable for publicly indexed compressed NFTs. Indexing batched data in this way requires indexers to read in the uris onto physical storage and then into their database. This opens up a DOS attack vector, whereby this instruction is repeatedly invoked, causing indexers to fail.
+
 
 ```
 pub fn replace_leaf(
@@ -90,10 +97,9 @@ pub fn replace_leaf(
 ) -> Result<()>
 
 ```
-This instruction has been deemed unusable for publicly indexed compressed NFTs. Indexing batched data in this way requires indexers to read in the uris onto physical storage and then into their database. This opens up a DOS attack vector, whereby this instruction is repeatedly invoked, causing indexers to fail.
-
 - [transfer authority](https://docs.rs/spl-account-compression/latest/spl_account_compression/spl_account_compression/fn.transfer_authority.html)
 
+This instruction requires the authority to sign,it transfers the authority.
 ```
 pub fn transfer_authority(
     ctx: Context<'_, '_, '_, '_, TransferAuthority<'_>>,
@@ -101,9 +107,10 @@ pub fn transfer_authority(
 ) -> Result<()>
 
 ```
-This instruction require authority to sign.
 
 - [verify leaf](https://docs.rs/spl-account-compression/latest/spl_account_compression/spl_account_compression/fn.verify_leaf.html)
+
+This instruction does Verify a provided proof and leaf. If invalid throws an error.
 
 ```
 pub fn verify_leaf(
@@ -114,7 +121,6 @@ pub fn verify_leaf(
 ) -> Result<()>
 
 ```
-This instruction does Verify a provided proof and leaf. If invalid throws an error.
 
 # Packages
 
@@ -134,19 +140,3 @@ with a built SDK , the test suite can be run with
 - `yarn link @solana/spl-account-compression`
 - `yarn`
 - `yarn test`
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
