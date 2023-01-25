@@ -212,17 +212,112 @@ async fn fail_with_wrong_validator_list_account() {
 }
 
 #[tokio::test]
-async fn fail_not_at_minimum() {
+async fn success_at_minimum() {
     let (mut context, stake_pool_accounts, validator_stake) = setup().await;
 
-    transfer(
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let current_minimum_delegation = stake_pool_get_minimum_delegation(
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
-        &validator_stake.stake_account,
-        1_000_001,
     )
     .await;
+
+    // This is goofy, but it enforces that we can reduce down to the exact number
+    // we want to test, and also shows why the relaxed threshold is so useful!
+    let threshold_amount = (current_minimum_delegation + stake_rent) * 2;
+    let _ = simple_deposit_stake(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &stake_pool_accounts,
+        &validator_stake,
+        threshold_amount,
+    )
+    .await
+    .unwrap();
+
+    let validator_stake_lamports =
+        get_account(&mut context.banks_client, &validator_stake.stake_account)
+            .await
+            .lamports;
+
+    // decrease to exactly the minimum
+    let decrease_amount = validator_stake_lamports - threshold_amount;
+
+    let error = stake_pool_accounts
+        .decrease_validator_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+            decrease_amount,
+            validator_stake.transient_stake_seed,
+        )
+        .await;
+    assert!(error.is_none());
+
+    let error = stake_pool_accounts
+        .remove_validator_from_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+        )
+        .await;
+    assert!(error.is_none());
+}
+
+#[tokio::test]
+async fn fail_not_at_minimum() {
+    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
+
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let current_minimum_delegation = stake_pool_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
+
+    // This is goofy, but it enforces that we can reduce down to the exact number
+    // we want to test, and also shows why the relaxed threshold is so useful!
+    let threshold_amount = (current_minimum_delegation + stake_rent) * 2;
+    let _ = simple_deposit_stake(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &stake_pool_accounts,
+        &validator_stake,
+        threshold_amount,
+    )
+    .await
+    .unwrap();
+
+    let validator_stake_lamports =
+        get_account(&mut context.banks_client, &validator_stake.stake_account)
+            .await
+            .lamports;
+
+    // decrease one less than the minimum
+    let decrease_amount = validator_stake_lamports - threshold_amount - 1;
+
+    let error = stake_pool_accounts
+        .decrease_validator_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+            decrease_amount,
+            validator_stake.transient_stake_seed,
+        )
+        .await;
+    assert!(error.is_none());
 
     let error = stake_pool_accounts
         .remove_validator_from_pool(

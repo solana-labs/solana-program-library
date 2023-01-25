@@ -1193,9 +1193,22 @@ impl Processor {
             return Err(StakePoolError::ValidatorNotFound.into());
         }
 
+        // `DecreaseValidatorStake` requires a minimum of the same minimum delegation
+        // amount. With a strict minimum, a validator at 1.9x min delegation
+        // requires the following sequence to deactivate:
+        //
+        // * IncreaseValidatorStake - bring amount to 2.9x min delegation
+        // * DecreaseValidatorStake - reduce amount to 1.0x min delegation
+        // * RemoveValidatorFromPool
+        //
+        // This additional lamport buffer makes validator removal easier.
+        const LAMPORT_BUFFER_FACTOR: u64 = 2;
+
         let stake_lamports = **stake_account_info.lamports.borrow();
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
-        let required_lamports = minimum_stake_lamports(&meta, stake_minimum_delegation);
+        let required_lamports = minimum_stake_lamports(&meta, stake_minimum_delegation)
+            .saturating_mul(LAMPORT_BUFFER_FACTOR);
+
         if stake_lamports > required_lamports {
             msg!(
                 "Attempting to remove validator account with {} lamports, must have no more than {} lamports; \
@@ -1206,13 +1219,18 @@ impl Processor {
             return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
         }
 
-        let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
-        if stake.delegation.stake > current_minimum_delegation {
+        // add the rent exempt reserve to the required delegation amount, since
+        // a decreasing stake must have at least rent-exemption plus minimum-delegation,
+        // and the source stake must still have minimum-delegation
+        let required_delegation = minimum_delegation(stake_minimum_delegation)
+            .saturating_mul(LAMPORT_BUFFER_FACTOR)
+            .saturating_add(meta.rent_exempt_reserve);
+        if stake.delegation.stake > required_delegation {
             msg!(
                 "Error: attempting to remove stake with delegation of {} lamports, must have no more than {} lamports; \
                 reduce using DecreaseValidatorStake first",
                 stake.delegation.stake,
-                current_minimum_delegation
+                required_delegation
             );
             return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
         }
