@@ -1,293 +1,248 @@
 #![cfg(feature = "test-bpf")]
 
+use crate::solend_program_test::BalanceChecker;
+use crate::solend_program_test::MintAccount;
+use crate::solend_program_test::MintSupplyChange;
+use crate::solend_program_test::Oracle;
+use crate::solend_program_test::TokenAccount;
+use crate::solend_program_test::TokenBalanceChange;
+use std::collections::HashSet;
+use std::str::FromStr;
 mod helpers;
 
+use crate::solend_program_test::setup_world;
+use crate::solend_program_test::Info;
+use crate::solend_program_test::SolendProgramTest;
+use crate::solend_program_test::User;
 use helpers::*;
+use solana_program::example_mocks::solana_sdk::Pubkey;
+use solana_program::program_pack::Pack;
 use solana_program_test::*;
 use solana_sdk::{
     instruction::InstructionError,
     signature::{Keypair, Signer},
-    transaction::{Transaction, TransactionError},
+    transaction::TransactionError,
 };
+use solend_program::state::LastUpdate;
+use solend_program::state::Reserve;
+use solend_program::state::ReserveCollateral;
+use solend_program::state::ReserveLiquidity;
+use solend_program::state::PROGRAM_VERSION;
+use solend_program::NULL_PUBKEY;
 use solend_program::{
     error::LendingError,
-    instruction::{init_reserve, update_reserve_config},
+    instruction::init_reserve,
     math::Decimal,
-    processor::process_instruction,
-    state::{ReserveConfig, ReserveFees, INITIAL_COLLATERAL_RATIO},
+    state::{ReserveConfig, ReserveFees},
 };
+use solend_sdk::state::LendingMarket;
+use spl_token::state::{Account as Token, Mint};
+
+async fn setup() -> (SolendProgramTest, Info<LendingMarket>, User) {
+    let (test, lending_market, _, _, lending_market_owner, _) =
+        setup_world(&test_reserve_config(), &test_reserve_config()).await;
+
+    (test, lending_market, lending_market_owner)
+}
 
 #[tokio::test]
 async fn test_success() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
+    let (mut test, lending_market, lending_market_owner) = setup().await;
 
-    // limit to track compute unit increase
-    test.set_compute_max_units(70_000);
+    // create required pubkeys
+    let reserve_keypair = Keypair::new();
+    let destination_collateral_pubkey = test
+        .create_account(Token::LEN, &spl_token::id(), None)
+        .await;
+    let reserve_liquidity_supply_pubkey = test
+        .create_account(Token::LEN, &spl_token::id(), None)
+        .await;
+    let reserve_pubkey = test
+        .create_account(Reserve::LEN, &solend_program::id(), Some(&reserve_keypair))
+        .await;
+    let reserve_liquidity_fee_receiver = test
+        .create_account(Token::LEN, &spl_token::id(), None)
+        .await;
+    let reserve_collateral_mint_pubkey =
+        test.create_account(Mint::LEN, &spl_token::id(), None).await;
+    let reserve_collateral_supply_pubkey = test
+        .create_account(Token::LEN, &spl_token::id(), None)
+        .await;
 
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-    let sol_oracle = add_sol_oracle(&mut test);
+    test.advance_clock_by_slots(1).await;
 
-    let mut test_context = test.start_with_context().await;
-    test_context.warp_to_slot(240).unwrap(); // clock.slot = 240
+    let oracle = test.mints.get(&wsol_mint::id()).unwrap().unwrap();
+    let reserve_config = ReserveConfig {
+        fee_receiver: reserve_liquidity_fee_receiver,
+        ..test_reserve_config()
+    };
 
-    let ProgramTestContext {
-        mut banks_client,
-        payer,
-        last_blockhash: _recent_blockhash,
-        ..
-    } = test_context;
-
-    const RESERVE_AMOUNT: u64 = 42;
-
-    let sol_user_liquidity_account = create_and_mint_to_token_account(
-        &mut banks_client,
-        spl_token::native_mint::id(),
-        None,
-        &payer,
-        user_accounts_owner.pubkey(),
-        RESERVE_AMOUNT,
+    let balance_checker = BalanceChecker::start(
+        &mut test,
+        &[
+            &lending_market_owner,
+            &TokenAccount(destination_collateral_pubkey),
+            &TokenAccount(reserve_liquidity_supply_pubkey),
+            &TokenAccount(reserve_liquidity_fee_receiver),
+            &TokenAccount(reserve_collateral_supply_pubkey),
+            &MintAccount(reserve_collateral_mint_pubkey),
+        ],
     )
     .await;
 
-    let mut config = test_reserve_config();
-    let fee_receiver_keypair = Keypair::new();
-    config.fee_receiver = fee_receiver_keypair.pubkey();
-
-    let sol_reserve = TestReserve::init(
-        "sol".to_owned(),
-        &mut banks_client,
-        &lending_market,
-        &sol_oracle,
-        RESERVE_AMOUNT,
-        config,
-        spl_token::native_mint::id(),
-        sol_user_liquidity_account,
-        &fee_receiver_keypair,
-        &payer,
-        &user_accounts_owner,
+    test.process_transaction(
+        &[init_reserve(
+            solend_program::id(),
+            1000,
+            reserve_config,
+            lending_market_owner.get_account(&wsol_mint::id()).unwrap(),
+            destination_collateral_pubkey,
+            reserve_pubkey,
+            wsol_mint::id(),
+            reserve_liquidity_supply_pubkey,
+            reserve_collateral_mint_pubkey,
+            reserve_collateral_supply_pubkey,
+            oracle.pyth_product_pubkey,
+            oracle.pyth_price_pubkey,
+            Pubkey::from_str("nu11111111111111111111111111111111111111111").unwrap(),
+            lending_market.pubkey,
+            lending_market_owner.keypair.pubkey(),
+            lending_market_owner.keypair.pubkey(),
+        )],
+        Some(&[&lending_market_owner.keypair]),
     )
     .await
     .unwrap();
 
-    sol_reserve.validate_state(&mut banks_client).await;
+    // check token balances
+    let (balance_changes, mint_supply_changes) =
+        balance_checker.find_balance_changes(&mut test).await;
+    let expected_balance_changes = HashSet::from([
+        TokenBalanceChange {
+            token_account: lending_market_owner.get_account(&wsol_mint::id()).unwrap(),
+            mint: wsol_mint::id(),
+            diff: -1000,
+        },
+        TokenBalanceChange {
+            token_account: destination_collateral_pubkey,
+            mint: reserve_collateral_mint_pubkey,
+            diff: 1000,
+        },
+        TokenBalanceChange {
+            token_account: reserve_liquidity_supply_pubkey,
+            mint: wsol_mint::id(),
+            diff: 1000,
+        },
+    ]);
+    assert_eq!(balance_changes, expected_balance_changes);
 
-    let sol_liquidity_supply =
-        get_token_balance(&mut banks_client, sol_reserve.liquidity_supply_pubkey).await;
-    assert_eq!(sol_liquidity_supply, RESERVE_AMOUNT);
-    let user_sol_balance =
-        get_token_balance(&mut banks_client, sol_reserve.user_liquidity_pubkey).await;
-    assert_eq!(user_sol_balance, 0);
-    let user_sol_collateral_balance =
-        get_token_balance(&mut banks_client, sol_reserve.user_collateral_pubkey).await;
     assert_eq!(
-        user_sol_collateral_balance,
-        RESERVE_AMOUNT * INITIAL_COLLATERAL_RATIO
+        mint_supply_changes,
+        HashSet::from([MintSupplyChange {
+            mint: reserve_collateral_mint_pubkey,
+            diff: 1000,
+        }])
+    );
+
+    // check program state
+    let wsol_reserve = test.load_account::<Reserve>(reserve_pubkey).await;
+    assert_eq!(
+        wsol_reserve.account,
+        Reserve {
+            version: PROGRAM_VERSION,
+            last_update: LastUpdate {
+                slot: 1001,
+                stale: true
+            },
+            lending_market: lending_market.pubkey,
+            liquidity: ReserveLiquidity {
+                mint_pubkey: wsol_mint::id(),
+                mint_decimals: 9,
+                supply_pubkey: reserve_liquidity_supply_pubkey,
+                pyth_oracle_pubkey: oracle.pyth_price_pubkey,
+                switchboard_oracle_pubkey: NULL_PUBKEY,
+                available_amount: 1000,
+                borrowed_amount_wads: Decimal::zero(),
+                cumulative_borrow_rate_wads: Decimal::one(),
+                accumulated_protocol_fees_wads: Decimal::zero(),
+                market_price: Decimal::from(10u64),
+            },
+            collateral: ReserveCollateral {
+                mint_pubkey: reserve_collateral_mint_pubkey,
+                mint_total_supply: 1000,
+                supply_pubkey: reserve_collateral_supply_pubkey,
+            },
+            config: reserve_config
+        }
     );
 }
 
 #[tokio::test]
 async fn test_init_reserve_null_oracles() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
+    let (mut test, lending_market, lending_market_owner) = setup().await;
 
-    // limit to track compute unit increase
-    test.set_compute_max_units(70_000);
-
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-    let all_null_oracles = TestOracle {
-        pyth_product_pubkey: solend_program::NULL_PUBKEY,
-        pyth_price_pubkey: solend_program::NULL_PUBKEY,
-        switchboard_feed_pubkey: solend_program::NULL_PUBKEY,
-        price: Decimal::from(1u64),
-    };
-
-    let (mut banks_client, payer, _recent_blockhash) = test.start().await;
-
-    const RESERVE_AMOUNT: u64 = 42;
-
-    let sol_user_liquidity_account = create_and_mint_to_token_account(
-        &mut banks_client,
-        spl_token::native_mint::id(),
-        None,
-        &payer,
-        user_accounts_owner.pubkey(),
-        RESERVE_AMOUNT,
-    )
-    .await;
-
-    let mut config = test_reserve_config();
-    let fee_receiver_keypair = Keypair::new();
-    config.fee_receiver = fee_receiver_keypair.pubkey();
-
-    assert_eq!(
-        TestReserve::init(
-            "sol".to_owned(),
-            &mut banks_client,
+    let res = test
+        .init_reserve(
             &lending_market,
-            &all_null_oracles,
-            RESERVE_AMOUNT,
-            config,
-            spl_token::native_mint::id(),
-            sol_user_liquidity_account,
-            &fee_receiver_keypair,
-            &payer,
-            &user_accounts_owner,
+            &lending_market_owner,
+            &wsol_mint::id(),
+            &test_reserve_config(),
+            &Keypair::new(),
+            1000,
+            Some(Oracle {
+                pyth_product_pubkey: NULL_PUBKEY,
+                pyth_price_pubkey: NULL_PUBKEY,
+                switchboard_feed_pubkey: Some(NULL_PUBKEY),
+            }),
         )
         .await
-        .unwrap_err(),
+        .unwrap_err()
+        .unwrap();
+
+    assert_eq!(
+        res,
         TransactionError::InstructionError(
-            8,
+            1,
             InstructionError::Custom(LendingError::InvalidOracleConfig as u32)
         )
     );
 }
 
 #[tokio::test]
-async fn test_null_switchboard() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
+async fn test_already_initialized() {
+    let (mut test, lending_market, lending_market_owner) = setup().await;
 
-    // limit to track compute unit increase
-    test.set_compute_max_units(75_000);
-
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-    let mut sol_oracle = add_sol_oracle(&mut test);
-    sol_oracle.switchboard_feed_pubkey = solend_program::NULL_PUBKEY;
-
-    let mut test_context = test.start_with_context().await;
-    test_context.warp_to_slot(240).unwrap(); // clock.slot = 240
-
-    let ProgramTestContext {
-        mut banks_client,
-        payer,
-        last_blockhash: _recent_blockhash,
-        ..
-    } = test_context;
-
-    const RESERVE_AMOUNT: u64 = 42;
-
-    let sol_user_liquidity_account = create_and_mint_to_token_account(
-        &mut banks_client,
-        spl_token::native_mint::id(),
-        None,
-        &payer,
-        user_accounts_owner.pubkey(),
-        RESERVE_AMOUNT,
-    )
-    .await;
-
-    let mut config = test_reserve_config();
-    let fee_receiver_keypair = Keypair::new();
-    config.fee_receiver = fee_receiver_keypair.pubkey();
-
-    let sol_reserve = TestReserve::init(
-        "sol".to_owned(),
-        &mut banks_client,
+    let keypair = Keypair::new();
+    test.init_reserve(
         &lending_market,
-        &sol_oracle,
-        RESERVE_AMOUNT,
-        config,
-        spl_token::native_mint::id(),
-        sol_user_liquidity_account,
-        &fee_receiver_keypair,
-        &payer,
-        &user_accounts_owner,
+        &lending_market_owner,
+        &wsol_mint::id(),
+        &test_reserve_config(),
+        &keypair,
+        1000,
+        None,
     )
     .await
     .unwrap();
 
-    sol_reserve.validate_state(&mut banks_client).await;
+    let res = test
+        .init_reserve(
+            &lending_market,
+            &lending_market_owner,
+            &wsol_mint::id(),
+            &test_reserve_config(),
+            &keypair,
+            1000,
+            None,
+        )
+        .await
+        .unwrap_err()
+        .unwrap();
 
-    let sol_liquidity_supply =
-        get_token_balance(&mut banks_client, sol_reserve.liquidity_supply_pubkey).await;
-    assert_eq!(sol_liquidity_supply, RESERVE_AMOUNT);
-    let user_sol_balance =
-        get_token_balance(&mut banks_client, sol_reserve.user_liquidity_pubkey).await;
-    assert_eq!(user_sol_balance, 0);
-    let user_sol_collateral_balance =
-        get_token_balance(&mut banks_client, sol_reserve.user_collateral_pubkey).await;
     assert_eq!(
-        user_sol_collateral_balance,
-        RESERVE_AMOUNT * INITIAL_COLLATERAL_RATIO
-    );
-}
-
-#[tokio::test]
-async fn test_already_initialized() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
-
-    let user_accounts_owner = Keypair::new();
-    let user_transfer_authority = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-
-    let usdc_mint = add_usdc_mint(&mut test);
-    let usdc_oracle = add_usdc_oracle(&mut test);
-    let usdc_test_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &usdc_oracle,
-        &user_accounts_owner,
-        AddReserveArgs {
-            liquidity_amount: 42,
-            liquidity_mint_decimals: usdc_mint.decimals,
-            liquidity_mint_pubkey: usdc_mint.pubkey,
-            config: test_reserve_config(),
-            ..AddReserveArgs::default()
-        },
-    );
-
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
-
-    let mut transaction = Transaction::new_with_payer(
-        &[init_reserve(
-            solend_program::id(),
-            42,
-            usdc_test_reserve.config,
-            usdc_test_reserve.user_liquidity_pubkey,
-            usdc_test_reserve.user_collateral_pubkey,
-            usdc_test_reserve.pubkey,
-            usdc_test_reserve.liquidity_mint_pubkey,
-            usdc_test_reserve.liquidity_supply_pubkey,
-            usdc_test_reserve.collateral_mint_pubkey,
-            usdc_test_reserve.collateral_supply_pubkey,
-            usdc_oracle.pyth_product_pubkey,
-            usdc_oracle.pyth_price_pubkey,
-            usdc_oracle.switchboard_feed_pubkey,
-            lending_market.pubkey,
-            lending_market.owner.pubkey(),
-            user_transfer_authority.pubkey(),
-        )],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(
-        &[&payer, &lending_market.owner, &user_transfer_authority],
-        recent_blockhash,
-    );
-    assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
+        res,
         TransactionError::InstructionError(
-            0,
+            1,
             InstructionError::Custom(LendingError::AlreadyInitialized as u32)
         )
     );
@@ -295,94 +250,45 @@ async fn test_already_initialized() {
 
 #[tokio::test]
 async fn test_invalid_fees() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
+    let (mut test, lending_market, lending_market_owner) = setup().await;
 
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-    let sol_oracle = add_sol_oracle(&mut test);
-
-    let (mut banks_client, payer, _recent_blockhash) = test.start().await;
-
-    const RESERVE_AMOUNT: u64 = 42;
-
-    let sol_user_liquidity_account = create_and_mint_to_token_account(
-        &mut banks_client,
-        spl_token::native_mint::id(),
-        None,
-        &payer,
-        user_accounts_owner.pubkey(),
-        RESERVE_AMOUNT,
-    )
-    .await;
-
-    // fee above 100%
-    {
-        let mut config = test_reserve_config();
-        config.fees = ReserveFees {
+    let invalid_fees = [
+        // borrow fee over 100%
+        ReserveFees {
             borrow_fee_wad: 1_000_000_000_000_000_001,
             flash_loan_fee_wad: 1_000_000_000_000_000_001,
             host_fee_percentage: 0,
-        };
-
-        let fee_receiver_keypair = Keypair::new();
-        config.fee_receiver = fee_receiver_keypair.pubkey();
-
-        assert_eq!(
-            TestReserve::init(
-                "sol".to_owned(),
-                &mut banks_client,
-                &lending_market,
-                &sol_oracle,
-                RESERVE_AMOUNT,
-                config,
-                spl_token::native_mint::id(),
-                sol_user_liquidity_account,
-                &fee_receiver_keypair,
-                &payer,
-                &user_accounts_owner,
-            )
-            .await
-            .unwrap_err(),
-            TransactionError::InstructionError(
-                8,
-                InstructionError::Custom(LendingError::InvalidConfig as u32)
-            )
-        );
-    }
-
-    // host fee above 100%
-    {
-        let mut config = test_reserve_config();
-        config.fees = ReserveFees {
+        },
+        // host fee pct over 100%
+        ReserveFees {
             borrow_fee_wad: 10_000_000_000_000_000,
             flash_loan_fee_wad: 10_000_000_000_000_000,
             host_fee_percentage: 101,
-        };
-        let fee_receiver_keypair = Keypair::new();
-        config.fee_receiver = fee_receiver_keypair.pubkey();
+        },
+    ];
 
-        assert_eq!(
-            TestReserve::init(
-                "sol".to_owned(),
-                &mut banks_client,
+    for fees in invalid_fees {
+        let res = test
+            .init_reserve(
                 &lending_market,
-                &sol_oracle,
-                RESERVE_AMOUNT,
-                config,
-                spl_token::native_mint::id(),
-                sol_user_liquidity_account,
-                &fee_receiver_keypair,
-                &payer,
-                &user_accounts_owner,
+                &lending_market_owner,
+                &usdc_mint::id(),
+                &ReserveConfig {
+                    fees,
+                    ..test_reserve_config()
+                },
+                &Keypair::new(),
+                1000,
+                None,
             )
             .await
-            .unwrap_err(),
+            .unwrap_err()
+            .unwrap();
+
+        assert_eq!(
+            res,
             TransactionError::InstructionError(
-                8,
+                1,
                 InstructionError::Custom(LendingError::InvalidConfig as u32)
             )
         );
@@ -391,180 +297,82 @@ async fn test_invalid_fees() {
 
 #[tokio::test]
 async fn test_update_reserve_config() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
+    let (mut test, lending_market, lending_market_owner) = setup().await;
+
+    let wsol_reserve = test
+        .init_reserve(
+            &lending_market,
+            &lending_market_owner,
+            &wsol_mint::id(),
+            &test_reserve_config(),
+            &Keypair::new(),
+            1000,
+            None,
+        )
+        .await
+        .unwrap();
+
+    let new_reserve_config = test_reserve_config();
+    lending_market
+        .update_reserve_config(
+            &mut test,
+            &lending_market_owner,
+            &wsol_reserve,
+            new_reserve_config,
+            None,
+        )
+        .await
+        .unwrap();
+
+    let wsol_reserve_post = test.load_account::<Reserve>(wsol_reserve.pubkey).await;
+    assert_eq!(
+        wsol_reserve_post.account,
+        Reserve {
+            config: new_reserve_config,
+            ..wsol_reserve.account
+        }
     );
-
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-
-    let mint = add_usdc_mint(&mut test);
-    let oracle = add_usdc_oracle(&mut test);
-    let test_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &oracle,
-        &user_accounts_owner,
-        AddReserveArgs {
-            liquidity_amount: 42,
-            liquidity_mint_decimals: mint.decimals,
-            liquidity_mint_pubkey: mint.pubkey,
-            config: test_reserve_config(),
-            ..AddReserveArgs::default()
-        },
-    );
-
-    // Update the reserve config
-    let new_config: ReserveConfig = ReserveConfig {
-        optimal_utilization_rate: 75,
-        loan_to_value_ratio: 45,
-        liquidation_bonus: 10,
-        liquidation_threshold: 65,
-        min_borrow_rate: 1,
-        optimal_borrow_rate: 5,
-        max_borrow_rate: 45,
-        fees: ReserveFees {
-            borrow_fee_wad: 200_000_000_000,
-            flash_loan_fee_wad: 5_000_000_000_000_000,
-            host_fee_percentage: 15,
-        },
-        deposit_limit: 1_000_000,
-        borrow_limit: 300_000,
-        fee_receiver: Keypair::new().pubkey(),
-        protocol_liquidation_fee: 30,
-        protocol_take_rate: 10,
-    };
-
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
-    let mut transaction = Transaction::new_with_payer(
-        &[update_reserve_config(
-            solend_program::id(),
-            new_config,
-            test_reserve.pubkey,
-            lending_market.pubkey,
-            lending_market.owner.pubkey(),
-            oracle.pyth_product_pubkey,
-            oracle.pyth_price_pubkey,
-            oracle.switchboard_feed_pubkey,
-        )],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(&[&payer, &lending_market.owner], recent_blockhash);
-    assert!(banks_client.process_transaction(transaction).await.is_ok());
-
-    let updated_reserve = test_reserve.get_state(&mut banks_client).await;
-    assert_eq!(updated_reserve.config, new_config);
 }
 
 #[tokio::test]
 async fn test_update_invalid_oracle_config() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
+    let (mut test, lending_market, lending_market_owner) = setup().await;
+    let wsol_reserve = test
+        .init_reserve(
+            &lending_market,
+            &lending_market_owner,
+            &wsol_mint::id(),
+            &test_reserve_config(),
+            &Keypair::new(),
+            1000,
+            None,
+        )
+        .await
+        .unwrap();
 
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-    let config = test_reserve_config();
-    let mint = add_usdc_mint(&mut test);
-    let oracle = add_usdc_oracle(&mut test);
-    let test_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &oracle,
-        &user_accounts_owner,
-        AddReserveArgs {
-            liquidity_amount: 42,
-            liquidity_mint_decimals: mint.decimals,
-            liquidity_mint_pubkey: mint.pubkey,
-            config,
-            ..AddReserveArgs::default()
-        },
-    );
+    let oracle = test.mints.get(&wsol_mint::id()).unwrap().unwrap();
 
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+    let new_reserve_config = test_reserve_config();
 
     // Try setting both of the oracles to null: Should fail
-    let mut transaction = Transaction::new_with_payer(
-        &[update_reserve_config(
-            solend_program::id(),
-            config,
-            test_reserve.pubkey,
-            lending_market.pubkey,
-            lending_market.owner.pubkey(),
-            solend_program::NULL_PUBKEY,
-            solend_program::NULL_PUBKEY,
-            solend_program::NULL_PUBKEY,
-        )],
-        Some(&payer.pubkey()),
-    );
-
-    transaction.sign(&[&payer, &lending_market.owner], recent_blockhash);
-    assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
-        TransactionError::InstructionError(
-            0,
-            InstructionError::Custom(LendingError::InvalidOracleConfig as u32)
+    let res = lending_market
+        .update_reserve_config(
+            &mut test,
+            &lending_market_owner,
+            &wsol_reserve,
+            new_reserve_config,
+            Some(&Oracle {
+                pyth_product_pubkey: oracle.pyth_product_pubkey,
+                pyth_price_pubkey: NULL_PUBKEY,
+                switchboard_feed_pubkey: Some(NULL_PUBKEY),
+            }),
         )
-    );
+        .await
+        .unwrap_err()
+        .unwrap();
 
-    // Set one of the oracles to null
-    let mut transaction = Transaction::new_with_payer(
-        &[update_reserve_config(
-            solend_program::id(),
-            config,
-            test_reserve.pubkey,
-            lending_market.pubkey,
-            lending_market.owner.pubkey(),
-            oracle.pyth_product_pubkey,
-            oracle.pyth_price_pubkey,
-            solend_program::NULL_PUBKEY,
-        )],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(&[&payer, &lending_market.owner], recent_blockhash);
-    assert!(banks_client.process_transaction(transaction).await.is_ok());
-    let updated_reserve = test_reserve.get_state(&mut banks_client).await;
-    assert_eq!(updated_reserve.config, config);
     assert_eq!(
-        updated_reserve.liquidity.pyth_oracle_pubkey,
-        oracle.pyth_price_pubkey
-    );
-    assert_eq!(
-        updated_reserve.liquidity.switchboard_oracle_pubkey,
-        solend_program::NULL_PUBKEY
-    );
-
-    // Setting both oracles to null still fails, even if one is
-    // already null
-    let mut transaction = Transaction::new_with_payer(
-        &[update_reserve_config(
-            solend_program::id(),
-            config,
-            test_reserve.pubkey,
-            lending_market.pubkey,
-            lending_market.owner.pubkey(),
-            solend_program::NULL_PUBKEY,
-            solend_program::NULL_PUBKEY,
-            solend_program::NULL_PUBKEY,
-        )],
-        Some(&payer.pubkey()),
-    );
-
-    transaction.sign(&[&payer, &lending_market.owner], recent_blockhash);
-    assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
+        res,
         TransactionError::InstructionError(
             0,
             InstructionError::Custom(LendingError::InvalidOracleConfig as u32)

@@ -13,3 +13,4 @@ cargo install honggfuzz --version=0.5.52 --force || true
 cargo +"$rust_stable" install grcov --force
 
 cargo +"$rust_stable" build-bpf --version
+rustup component add llvm-tools-preview

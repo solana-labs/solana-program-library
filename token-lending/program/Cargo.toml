@@ -31,6 +31,8 @@ solana-sdk = "=1.14.10"
 serde = "=1.0.140"
 serde_yaml = "0.8"
 thiserror = "1.0"
+bincode = "1.3.3"
+borsh = "0.9.3"
 
 [lib]
 crate-type = ["cdylib", "lib"]

@@ -32,11 +32,11 @@ run_dir=$(pwd)
 if [[ -d $run_dir/program ]]; then
   # Build/test just one BPF program
   cd $run_dir/program
-  cargo +"$rust_stable" test-bpf -- --nocapture
+  RUST_LOG="error" cargo +"$rust_stable" test-bpf -j 1 -- --nocapture
 else
   # Build/test all BPF programs
   for directory in $(ls -d $run_dir/*/); do
     cd $directory
-    cargo +"$rust_stable" test-bpf -- --nocapture
+    RUST_LOG="error" cargo +"$rust_stable" test-bpf -j 1 -- --nocapture
   done
 fi

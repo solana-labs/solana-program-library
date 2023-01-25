@@ -2,105 +2,112 @@
 
 mod helpers;
 
+use crate::solend_program_test::MintSupplyChange;
+use solend_sdk::state::ObligationCollateral;
+use solend_sdk::state::ReserveCollateral;
+use std::collections::HashSet;
+
+use crate::solend_program_test::scenario_1;
+use crate::solend_program_test::BalanceChecker;
+use crate::solend_program_test::TokenBalanceChange;
 use helpers::*;
+
 use solana_program_test::*;
-use solana_sdk::signature::Keypair;
-use solend_program::processor::process_instruction;
+
+use solend_sdk::state::LastUpdate;
+use solend_sdk::state::Obligation;
+
+use solend_sdk::state::Reserve;
+use solend_sdk::state::ReserveLiquidity;
 
 #[tokio::test]
 async fn test_success() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
+    let (mut test, lending_market, usdc_reserve, wsol_reserve, user, obligation) =
+        scenario_1(&test_reserve_config(), &test_reserve_config()).await;
 
-    // limit to track compute unit increase
-    test.set_compute_max_units(70_000);
+    let balance_checker =
+        BalanceChecker::start(&mut test, &[&usdc_reserve, &user, &wsol_reserve]).await;
 
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
+    lending_market
+        .withdraw_obligation_collateral_and_redeem_reserve_collateral(
+            &mut test,
+            &usdc_reserve,
+            &obligation,
+            &user,
+            u64::MAX,
+        )
+        .await
+        .unwrap();
 
-    let usdc_mint = add_usdc_mint(&mut test);
-    let usdc_oracle = add_usdc_oracle(&mut test);
-    let usdc_test_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &usdc_oracle,
-        &user_accounts_owner,
-        AddReserveArgs {
-            user_liquidity_amount: 100 * FRACTIONAL_TO_USDC,
-            liquidity_amount: 10_000 * FRACTIONAL_TO_USDC,
-            liquidity_mint_decimals: usdc_mint.decimals,
-            liquidity_mint_pubkey: usdc_mint.pubkey,
-            config: test_reserve_config(),
-            mark_fresh: true,
-            ..AddReserveArgs::default()
+    // check token balances
+    let (balance_changes, mint_supply_changes) =
+        balance_checker.find_balance_changes(&mut test).await;
+    let withdraw_amount = (100_000 * FRACTIONAL_TO_USDC - 200 * FRACTIONAL_TO_USDC) as i128;
+
+    let expected_balance_changes = HashSet::from([
+        TokenBalanceChange {
+            token_account: user.get_account(&usdc_mint::id()).unwrap(),
+            mint: usdc_mint::id(),
+            diff: withdraw_amount,
         },
+        TokenBalanceChange {
+            token_account: usdc_reserve.account.liquidity.supply_pubkey,
+            mint: usdc_mint::id(),
+            diff: -withdraw_amount,
+        },
+        TokenBalanceChange {
+            token_account: usdc_reserve.account.collateral.supply_pubkey,
+            mint: usdc_reserve.account.collateral.mint_pubkey,
+            diff: -withdraw_amount,
+        },
+    ]);
+    assert_eq!(balance_changes, expected_balance_changes);
+    assert_eq!(
+        mint_supply_changes,
+        HashSet::from([MintSupplyChange {
+            mint: usdc_reserve.account.collateral.mint_pubkey,
+            diff: -withdraw_amount
+        }])
     );
 
-    let test_obligation = add_obligation(
-        &mut test,
-        &lending_market,
-        &user_accounts_owner,
-        AddObligationArgs::default(),
+    // check program state
+    let usdc_reserve_post = test.load_account::<Reserve>(usdc_reserve.pubkey).await;
+    assert_eq!(
+        usdc_reserve_post.account,
+        Reserve {
+            last_update: LastUpdate {
+                slot: 1000,
+                stale: true
+            },
+            liquidity: ReserveLiquidity {
+                available_amount: usdc_reserve.account.liquidity.available_amount
+                    - withdraw_amount as u64,
+                ..usdc_reserve.account.liquidity
+            },
+            collateral: ReserveCollateral {
+                mint_total_supply: usdc_reserve.account.collateral.mint_total_supply
+                    - withdraw_amount as u64,
+                ..usdc_reserve.account.collateral
+            },
+            ..usdc_reserve.account
+        }
     );
 
-    let mut test_context = test.start_with_context().await;
-    test_context.warp_to_slot(240).unwrap(); // clock.slot = 240
-
-    let ProgramTestContext {
-        mut banks_client,
-        payer,
-        last_blockhash: _recent_blockhash,
-        ..
-    } = test_context;
-
-    test_obligation.validate_state(&mut banks_client).await;
-
-    lending_market
-        .deposit_obligation_and_collateral(
-            &mut banks_client,
-            &user_accounts_owner,
-            &payer,
-            &usdc_test_reserve,
-            &test_obligation,
-            100 * FRACTIONAL_TO_USDC,
-        )
-        .await;
-
-    let usdc_reserve = usdc_test_reserve.get_state(&mut banks_client).await;
-    assert!(usdc_reserve.last_update.stale);
-
-    let user_liquidity_balance =
-        get_token_balance(&mut banks_client, usdc_test_reserve.user_liquidity_pubkey).await;
-    assert_eq!(user_liquidity_balance, 0);
-    let liquidity_supply =
-        get_token_balance(&mut banks_client, usdc_test_reserve.liquidity_supply_pubkey).await;
-    assert_eq!(liquidity_supply, 10_100 * FRACTIONAL_TO_USDC);
-
-    lending_market
-        .refresh_reserve(&mut banks_client, &payer, &usdc_test_reserve)
-        .await;
-
-    lending_market
-        .withdraw_and_redeem_collateral(
-            &mut banks_client,
-            &user_accounts_owner,
-            &payer,
-            &usdc_test_reserve,
-            &test_obligation,
-            50 * FRACTIONAL_TO_USDC,
-        )
-        .await;
-
-    let usdc_reserve = usdc_test_reserve.get_state(&mut banks_client).await;
-    assert!(usdc_reserve.last_update.stale);
-
-    let user_liquidity_balance =
-        get_token_balance(&mut banks_client, usdc_test_reserve.user_liquidity_pubkey).await;
-    assert_eq!(user_liquidity_balance, 50 * FRACTIONAL_TO_USDC);
-    let liquidity_supply =
-        get_token_balance(&mut banks_client, usdc_test_reserve.liquidity_supply_pubkey).await;
-    assert_eq!(liquidity_supply, 10_050 * FRACTIONAL_TO_USDC);
+    let obligation_post = test.load_account::<Obligation>(obligation.pubkey).await;
+    assert_eq!(
+        obligation_post.account,
+        Obligation {
+            last_update: LastUpdate {
+                slot: 1000,
+                stale: true
+            },
+            deposits: [ObligationCollateral {
+                deposit_reserve: usdc_reserve.pubkey,
+                deposited_amount: 200 * FRACTIONAL_TO_USDC,
+                ..obligation.account.deposits[0]
+            }]
+            .to_vec(),
+            ..obligation.account
+        }
+    );
 }

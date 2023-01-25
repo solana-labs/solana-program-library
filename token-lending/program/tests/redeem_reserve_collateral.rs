@@ -2,103 +2,130 @@
 
 mod helpers;
 
+use crate::solend_program_test::MintSupplyChange;
+use std::collections::HashSet;
+
+use helpers::solend_program_test::{
+    setup_world, BalanceChecker, Info, SolendProgramTest, TokenBalanceChange, User,
+};
 use helpers::*;
+use solana_program::instruction::InstructionError;
 use solana_program_test::*;
-use solana_sdk::{
-    signature::{Keypair, Signer},
-    transaction::Transaction,
+use solana_sdk::transaction::TransactionError;
+use solend_program::state::{
+    LastUpdate, LendingMarket, Reserve, ReserveCollateral, ReserveLiquidity,
 };
-use solend_program::{
-    instruction::redeem_reserve_collateral, processor::process_instruction,
-    state::INITIAL_COLLATERAL_RATIO,
-};
-use spl_token::instruction::approve;
+
+pub async fn setup() -> (SolendProgramTest, Info<LendingMarket>, Info<Reserve>, User) {
+    let (mut test, lending_market, usdc_reserve, _, _, user) =
+        setup_world(&test_reserve_config(), &test_reserve_config()).await;
+
+    lending_market
+        .deposit(&mut test, &usdc_reserve, &user, 1_000_000)
+        .await
+        .expect("this should succeed");
+
+    let lending_market = test
+        .load_account::<LendingMarket>(lending_market.pubkey)
+        .await;
+
+    let usdc_reserve = test.load_account::<Reserve>(usdc_reserve.pubkey).await;
+
+    (test, lending_market, usdc_reserve, user)
+}
 
 #[tokio::test]
 async fn test_success() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
+    let (mut test, lending_market, usdc_reserve, user) = setup().await;
+
+    let balance_checker = BalanceChecker::start(&mut test, &[&usdc_reserve, &user]).await;
+
+    lending_market
+        .redeem(&mut test, &usdc_reserve, &user, 1_000_000)
+        .await
+        .expect("This should succeed");
+
+    // check token balances
+    let (balance_changes, mint_supply_changes) =
+        balance_checker.find_balance_changes(&mut test).await;
+
+    assert_eq!(
+        balance_changes,
+        HashSet::from([
+            TokenBalanceChange {
+                token_account: user.get_account(&usdc_mint::id()).unwrap(),
+                mint: usdc_mint::id(),
+                diff: 1_000_000,
+            },
+            TokenBalanceChange {
+                token_account: user
+                    .get_account(&usdc_reserve.account.collateral.mint_pubkey)
+                    .unwrap(),
+                mint: usdc_reserve.account.collateral.mint_pubkey,
+                diff: -1_000_000,
+            },
+            TokenBalanceChange {
+                token_account: usdc_reserve.account.liquidity.supply_pubkey,
+                mint: usdc_reserve.account.liquidity.mint_pubkey,
+                diff: -1_000_000,
+            },
+        ]),
+        "{:#?}",
+        balance_changes
+    );
+    assert_eq!(
+        mint_supply_changes,
+        HashSet::from([MintSupplyChange {
+            mint: usdc_reserve.account.collateral.mint_pubkey,
+            diff: -1_000_000,
+        },]),
+        "{:#?}",
+        mint_supply_changes
     );
 
-    // limit to track compute unit increase
-    test.set_compute_max_units(48_000);
+    // check program state changes
+    let lending_market_post = test
+        .load_account::<LendingMarket>(lending_market.pubkey)
+        .await;
+    assert_eq!(lending_market.account, lending_market_post.account);
 
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-
-    const USDC_RESERVE_LIQUIDITY_FRACTIONAL: u64 = 10 * FRACTIONAL_TO_USDC;
-    const COLLATERAL_AMOUNT: u64 = USDC_RESERVE_LIQUIDITY_FRACTIONAL * INITIAL_COLLATERAL_RATIO;
-    const BORROWED_AMOUNT: u64 = FRACTIONAL_TO_USDC;
-
-    let usdc_mint = add_usdc_mint(&mut test);
-    let usdc_oracle = add_usdc_oracle(&mut test);
-    let usdc_test_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &usdc_oracle,
-        &user_accounts_owner,
-        AddReserveArgs {
-            collateral_amount: COLLATERAL_AMOUNT,
-            liquidity_amount: 2 * USDC_RESERVE_LIQUIDITY_FRACTIONAL,
-            liquidity_mint_decimals: usdc_mint.decimals,
-            liquidity_mint_pubkey: usdc_mint.pubkey,
-            borrow_amount: BORROWED_AMOUNT,
-            config: test_reserve_config(),
-            mark_fresh: true,
-            ..AddReserveArgs::default()
-        },
+    let usdc_reserve_post = test.load_account::<Reserve>(usdc_reserve.pubkey).await;
+    assert_eq!(
+        usdc_reserve_post.account,
+        Reserve {
+            last_update: LastUpdate {
+                slot: 1000,
+                stale: true
+            },
+            liquidity: ReserveLiquidity {
+                available_amount: usdc_reserve.account.liquidity.available_amount - 1_000_000,
+                ..usdc_reserve.account.liquidity
+            },
+            collateral: ReserveCollateral {
+                mint_total_supply: usdc_reserve.account.collateral.mint_total_supply - 1_000_000,
+                ..usdc_reserve.account.collateral
+            },
+            ..usdc_reserve.account
+        }
     );
+}
 
-    let mut test_context = test.start_with_context().await;
-    test_context.warp_to_slot(300).unwrap(); // clock.slot = 300
+#[tokio::test]
+async fn test_fail_redeem_too_much() {
+    let (mut test, lending_market, usdc_reserve, user) = setup().await;
 
-    let ProgramTestContext {
-        mut banks_client,
-        payer,
-        last_blockhash: recent_blockhash,
-        ..
-    } = test_context;
+    let res = lending_market
+        .redeem(&mut test, &usdc_reserve, &user, 1_000_001)
+        .await
+        .err()
+        .unwrap()
+        .unwrap();
 
-    let pre_usdc_reserve = usdc_test_reserve.get_state(&mut banks_client).await;
-    let old_borrow_rate = pre_usdc_reserve.liquidity.cumulative_borrow_rate_wads;
-
-    let user_transfer_authority = Keypair::new();
-    let mut transaction = Transaction::new_with_payer(
-        &[
-            approve(
-                &spl_token::id(),
-                &usdc_test_reserve.user_collateral_pubkey,
-                &user_transfer_authority.pubkey(),
-                &user_accounts_owner.pubkey(),
-                &[],
-                COLLATERAL_AMOUNT,
-            )
-            .unwrap(),
-            redeem_reserve_collateral(
-                solend_program::id(),
-                COLLATERAL_AMOUNT,
-                usdc_test_reserve.user_collateral_pubkey,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.pubkey,
-                usdc_test_reserve.collateral_mint_pubkey,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                lending_market.pubkey,
-                user_transfer_authority.pubkey(),
-            ),
-        ],
-        Some(&payer.pubkey()),
-    );
-
-    transaction.sign(
-        &[&payer, &user_accounts_owner, &user_transfer_authority],
-        recent_blockhash,
-    );
-    assert!(banks_client.process_transaction(transaction).await.is_ok());
-
-    let usdc_reserve = usdc_test_reserve.get_state(&mut banks_client).await;
-    assert!(usdc_reserve.last_update.stale);
-
-    assert!(usdc_reserve.liquidity.cumulative_borrow_rate_wads > old_borrow_rate);
+    match res {
+        // TokenError::Insufficient Funds
+        TransactionError::InstructionError(0, InstructionError::Custom(1)) => (),
+        // LendingError::TokenBurnFailed
+        TransactionError::InstructionError(0, InstructionError::Custom(19)) => (),
+        _ => panic!("Unexpected error: {:#?}", res),
+    };
 }

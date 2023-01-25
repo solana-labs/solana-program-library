@@ -2,64 +2,71 @@
 
 mod helpers;
 
+use helpers::solend_program_test::{SolendProgramTest, User};
 use helpers::*;
+use mock_pyth::mock_pyth_program;
+use solana_program::instruction::InstructionError;
 use solana_program_test::*;
-use solana_sdk::{
-    instruction::InstructionError,
-    signature::Signer,
-    transaction::{Transaction, TransactionError},
-};
-use solend_program::{
-    error::LendingError, instruction::init_lending_market, processor::process_instruction,
-};
+use solana_sdk::signature::Keypair;
+use solana_sdk::signer::Signer;
+use solana_sdk::transaction::TransactionError;
+use solend_program::error::LendingError;
+use solend_program::instruction::init_lending_market;
+use solend_program::state::{LendingMarket, PROGRAM_VERSION};
 
 #[tokio::test]
 async fn test_success() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
+    let mut test = SolendProgramTest::start_new().await;
+    let lending_market_owner = User::new_with_balances(&mut test, &[]).await;
+
+    let lending_market = test
+        .init_lending_market(&lending_market_owner, &Keypair::new())
+        .await
+        .unwrap();
+    assert_eq!(
+        lending_market.account,
+        LendingMarket {
+            version: PROGRAM_VERSION,
+            bump_seed: lending_market.account.bump_seed, // TODO test this field
+            owner: lending_market_owner.keypair.pubkey(),
+            quote_currency: QUOTE_CURRENCY,
+            token_program_id: spl_token::id(),
+            oracle_program_id: mock_pyth_program::id(),
+            switchboard_oracle_program_id: mock_pyth_program::id(),
+        }
     );
-
-    // limit to track compute unit increase
-    test.set_compute_max_units(17_000);
-
-    let (mut banks_client, payer, _recent_blockhash) = test.start().await;
-
-    let test_lending_market = TestLendingMarket::init(&mut banks_client, &payer).await;
-
-    test_lending_market.validate_state(&mut banks_client).await;
 }
 
 #[tokio::test]
 async fn test_already_initialized() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
+    let mut test = SolendProgramTest::start_new().await;
+    let lending_market_owner = User::new_with_balances(&mut test, &[]).await;
 
-    let existing_market = add_lending_market(&mut test);
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+    let keypair = Keypair::new();
+    test.init_lending_market(&lending_market_owner, &keypair)
+        .await
+        .unwrap();
 
-    let mut transaction = Transaction::new_with_payer(
-        &[init_lending_market(
-            solend_program::id(),
-            existing_market.owner.pubkey(),
-            existing_market.quote_currency,
-            existing_market.pubkey,
-            existing_market.oracle_program_id,
-            existing_market.switchboard_oracle_program_id,
-        )],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(&[&payer], recent_blockhash);
+    test.advance_clock_by_slots(1).await;
+
+    let res = test
+        .process_transaction(
+            &[init_lending_market(
+                solend_program::id(),
+                lending_market_owner.keypair.pubkey(),
+                QUOTE_CURRENCY,
+                keypair.pubkey(),
+                mock_pyth_program::id(),
+                mock_pyth_program::id(),
+            )],
+            None,
+        )
+        .await
+        .unwrap_err()
+        .unwrap();
+
     assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
+        res,
         TransactionError::InstructionError(
             0,
             InstructionError::Custom(LendingError::AlreadyInitialized as u32)

@@ -18,6 +18,11 @@ use solend_program::{
     instruction::flash_borrow_reserve_liquidity, instruction::flash_repay_reserve_liquidity,
 };
 
+pub mod proxy_program {
+    use solana_sdk::declare_id;
+    declare_id!("proGcH2t31EsUC2bCZUqZDJ74V6LAB1DCjeYDLfrGYa");
+}
+
 pub enum FlashLoanProxyInstruction {
     ProxyBorrow {
         liquidity_amount: u64,

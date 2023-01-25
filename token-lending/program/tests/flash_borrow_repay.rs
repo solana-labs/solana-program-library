@@ -2,7 +2,14 @@
 
 mod helpers;
 
+use std::collections::HashSet;
+
 use helpers::*;
+
+use flash_loan_proxy::proxy_program;
+use helpers::solend_program_test::{
+    setup_world, BalanceChecker, Info, SolendProgramTest, TokenBalanceChange, User,
+};
 use solana_program::instruction::{AccountMeta, Instruction};
 use solana_program::sysvar;
 use solana_program_test::*;
@@ -10,181 +17,188 @@ use solana_sdk::{
     instruction::InstructionError,
     pubkey::Pubkey,
     signature::{Keypair, Signer},
-    transaction::{Transaction, TransactionError},
+    transaction::TransactionError,
 };
+use solend_program::instruction::LendingInstruction;
+use solend_program::state::LastUpdate;
 use solend_program::{
     error::LendingError,
-    instruction::{
-        flash_borrow_reserve_liquidity, flash_repay_reserve_liquidity, LendingInstruction,
-    },
-    processor::process_instruction,
+    instruction::{flash_borrow_reserve_liquidity, flash_repay_reserve_liquidity},
+    state::{LendingMarket, Reserve, ReserveConfig, ReserveFees},
 };
 use spl_token::error::TokenError;
 use spl_token::instruction::approve;
 
+async fn setup(
+    usdc_reserve_config: &ReserveConfig,
+) -> (
+    SolendProgramTest,
+    Info<LendingMarket>,
+    Info<Reserve>,
+    User,
+    User,
+    User,
+) {
+    let (mut test, lending_market, usdc_reserve, _, lending_market_owner, user) =
+        setup_world(usdc_reserve_config, &test_reserve_config()).await;
+
+    // deposit 100k USDC
+    lending_market
+        .deposit(&mut test, &usdc_reserve, &user, 100_000_000_000)
+        .await
+        .expect("This should succeed");
+
+    let usdc_reserve = test.load_account(usdc_reserve.pubkey).await;
+
+    let host_fee_receiver = User::new_with_balances(&mut test, &[(&usdc_mint::id(), 0)]).await;
+
+    (
+        test,
+        lending_market,
+        usdc_reserve,
+        user,
+        host_fee_receiver,
+        lending_market_owner,
+    )
+}
+
 #[tokio::test]
 async fn test_success() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
+    let (mut test, lending_market, usdc_reserve, user, host_fee_receiver, _) =
+        setup(&ReserveConfig {
+            deposit_limit: u64::MAX,
+            fees: ReserveFees {
+                borrow_fee_wad: 100_000_000_000,
+                host_fee_percentage: 20,
+                flash_loan_fee_wad: 3_000_000_000_000_000,
+            },
+            ..test_reserve_config()
+        })
+        .await;
 
-    // limit to track compute unit increase
-    test.set_compute_max_units(60_000);
+    let balance_checker =
+        BalanceChecker::start(&mut test, &[&usdc_reserve, &user, &host_fee_receiver]).await;
 
     const FLASH_LOAN_AMOUNT: u64 = 1_000 * FRACTIONAL_TO_USDC;
     const FEE_AMOUNT: u64 = 3_000_000;
     const HOST_FEE_AMOUNT: u64 = 600_000;
-
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-
-    let mut reserve_config = test_reserve_config();
-    reserve_config.fees.host_fee_percentage = 20;
-    reserve_config.fees.flash_loan_fee_wad = 3_000_000_000_000_000;
-
-    let usdc_mint = add_usdc_mint(&mut test);
-    let usdc_oracle = add_usdc_oracle(&mut test);
-    let usdc_test_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &usdc_oracle,
-        &user_accounts_owner,
-        AddReserveArgs {
-            user_liquidity_amount: FEE_AMOUNT,
-            liquidity_amount: FLASH_LOAN_AMOUNT,
-            liquidity_mint_pubkey: usdc_mint.pubkey,
-            liquidity_mint_decimals: usdc_mint.decimals,
-            config: reserve_config,
-            ..AddReserveArgs::default()
-        },
-    );
-
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
-    let mut transaction = Transaction::new_with_payer(
+    test.process_transaction(
         &[
             flash_borrow_reserve_liquidity(
                 solend_program::id(),
                 FLASH_LOAN_AMOUNT,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.pubkey,
+                usdc_reserve.account.liquidity.supply_pubkey,
+                user.get_account(&usdc_mint::id()).unwrap(),
+                usdc_reserve.pubkey,
                 lending_market.pubkey,
             ),
             flash_repay_reserve_liquidity(
                 solend_program::id(),
                 FLASH_LOAN_AMOUNT,
                 0,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.config.fee_receiver,
-                usdc_test_reserve.liquidity_host_pubkey,
-                usdc_test_reserve.pubkey,
+                user.get_account(&usdc_mint::id()).unwrap(),
+                usdc_reserve.account.liquidity.supply_pubkey,
+                usdc_reserve.account.config.fee_receiver,
+                host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                usdc_reserve.pubkey,
                 lending_market.pubkey,
-                user_accounts_owner.pubkey(),
+                user.keypair.pubkey(),
             ),
         ],
-        Some(&payer.pubkey()),
+        Some(&[&user.keypair]),
+    )
+    .await
+    .unwrap();
+
+    // check balance changes
+    let (balance_changes, mint_supply_changes) =
+        balance_checker.find_balance_changes(&mut test).await;
+    let expected_balance_changes = HashSet::from([
+        TokenBalanceChange {
+            token_account: user.get_account(&usdc_mint::id()).unwrap(),
+            mint: usdc_mint::id(),
+            diff: -(FEE_AMOUNT as i128),
+        },
+        TokenBalanceChange {
+            token_account: usdc_reserve.account.config.fee_receiver,
+            mint: usdc_mint::id(),
+            diff: (FEE_AMOUNT - HOST_FEE_AMOUNT) as i128,
+        },
+        TokenBalanceChange {
+            token_account: host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+            mint: usdc_mint::id(),
+            diff: HOST_FEE_AMOUNT as i128,
+        },
+    ]);
+    assert_eq!(balance_changes, expected_balance_changes);
+    assert_eq!(mint_supply_changes, HashSet::new());
+
+    // check program state changes
+    let lending_market_post = test
+        .load_account::<LendingMarket>(lending_market.pubkey)
+        .await;
+    assert_eq!(lending_market, lending_market_post);
+
+    let usdc_reserve_post = test.load_account::<Reserve>(usdc_reserve.pubkey).await;
+    assert_eq!(
+        usdc_reserve_post.account,
+        Reserve {
+            last_update: LastUpdate {
+                slot: 1000,
+                stale: true
+            },
+            ..usdc_reserve.account
+        }
     );
-
-    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
-    assert!(banks_client.process_transaction(transaction).await.is_ok());
-
-    let usdc_reserve = usdc_test_reserve.get_state(&mut banks_client).await;
-    assert_eq!(usdc_reserve.liquidity.available_amount, FLASH_LOAN_AMOUNT);
-    assert!(usdc_reserve.last_update.stale);
-
-    let liquidity_supply =
-        get_token_balance(&mut banks_client, usdc_test_reserve.liquidity_supply_pubkey).await;
-    assert_eq!(liquidity_supply, FLASH_LOAN_AMOUNT);
-
-    let token_balance =
-        get_token_balance(&mut banks_client, usdc_test_reserve.user_liquidity_pubkey).await;
-    assert_eq!(token_balance, 0);
-
-    let fee_balance =
-        get_token_balance(&mut banks_client, usdc_test_reserve.config.fee_receiver).await;
-    assert_eq!(fee_balance, FEE_AMOUNT - HOST_FEE_AMOUNT);
-
-    let host_fee_balance =
-        get_token_balance(&mut banks_client, usdc_test_reserve.liquidity_host_pubkey).await;
-    assert_eq!(host_fee_balance, HOST_FEE_AMOUNT);
 }
 
 #[tokio::test]
 async fn test_fail_disable_flash_loans() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
-
-    // limit to track compute unit increase
-    test.set_compute_max_units(60_000);
+    let (mut test, lending_market, usdc_reserve, user, host_fee_receiver, _) =
+        setup(&ReserveConfig {
+            deposit_limit: u64::MAX,
+            fees: ReserveFees {
+                borrow_fee_wad: 1,
+                host_fee_percentage: 20,
+                flash_loan_fee_wad: u64::MAX,
+            },
+            ..test_reserve_config()
+        })
+        .await;
 
     const FLASH_LOAN_AMOUNT: u64 = 3_000_000;
-    const LIQUIDITY_AMOUNT: u64 = 1_000 * FRACTIONAL_TO_USDC;
-    const FEE_AMOUNT: u64 = 3_000_000;
-
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-
-    let mut reserve_config = test_reserve_config();
-    reserve_config.fees.flash_loan_fee_wad = u64::MAX; // disabled
-
-    let usdc_mint = add_usdc_mint(&mut test);
-    let usdc_oracle = add_usdc_oracle(&mut test);
-    let usdc_test_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &usdc_oracle,
-        &user_accounts_owner,
-        AddReserveArgs {
-            user_liquidity_amount: FEE_AMOUNT,
-            liquidity_amount: LIQUIDITY_AMOUNT,
-            liquidity_mint_pubkey: usdc_mint.pubkey,
-            liquidity_mint_decimals: usdc_mint.decimals,
-            config: reserve_config,
-            ..AddReserveArgs::default()
-        },
-    );
-
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
-    let mut transaction = Transaction::new_with_payer(
-        &[
-            flash_borrow_reserve_liquidity(
-                solend_program::id(),
-                FLASH_LOAN_AMOUNT,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-            ),
-            flash_repay_reserve_liquidity(
-                solend_program::id(),
-                FLASH_LOAN_AMOUNT,
-                0,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.config.fee_receiver,
-                usdc_test_reserve.liquidity_host_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-                user_accounts_owner.pubkey(),
-            ),
-        ],
-        Some(&payer.pubkey()),
-    );
-
-    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+    let res = test
+        .process_transaction(
+            &[
+                flash_borrow_reserve_liquidity(
+                    solend_program::id(),
+                    FLASH_LOAN_AMOUNT,
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                ),
+                flash_repay_reserve_liquidity(
+                    solend_program::id(),
+                    FLASH_LOAN_AMOUNT,
+                    0,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    usdc_reserve.account.config.fee_receiver,
+                    host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                    user.keypair.pubkey(),
+                ),
+            ],
+            Some(&[&user.keypair]),
+        )
+        .await
+        .unwrap_err()
+        .unwrap();
 
     assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
+        res,
         TransactionError::InstructionError(
             0,
             InstructionError::Custom(LendingError::FlashLoansDisabled as u32)
@@ -194,77 +208,52 @@ async fn test_fail_disable_flash_loans() {
 
 #[tokio::test]
 async fn test_fail_borrow_over_borrow_limit() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
-
-    // limit to track compute unit increase
-    test.set_compute_max_units(60_000);
+    let (mut test, lending_market, usdc_reserve, user, host_fee_receiver, _) =
+        setup(&ReserveConfig {
+            deposit_limit: u64::MAX,
+            borrow_limit: 2_000_000,
+            fees: ReserveFees {
+                borrow_fee_wad: 1,
+                host_fee_percentage: 20,
+                flash_loan_fee_wad: 1,
+            },
+            ..test_reserve_config()
+        })
+        .await;
 
     const FLASH_LOAN_AMOUNT: u64 = 3_000_000;
-    const LIQUIDITY_AMOUNT: u64 = 1_000 * FRACTIONAL_TO_USDC;
-    const FEE_AMOUNT: u64 = 3_000_000;
-
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-
-    let mut reserve_config = test_reserve_config();
-    reserve_config.borrow_limit = 2_000_000;
-
-    let usdc_mint = add_usdc_mint(&mut test);
-    let usdc_oracle = add_usdc_oracle(&mut test);
-    let usdc_test_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &usdc_oracle,
-        &user_accounts_owner,
-        AddReserveArgs {
-            user_liquidity_amount: FEE_AMOUNT,
-            liquidity_amount: LIQUIDITY_AMOUNT,
-            liquidity_mint_pubkey: usdc_mint.pubkey,
-            liquidity_mint_decimals: usdc_mint.decimals,
-            config: reserve_config,
-            ..AddReserveArgs::default()
-        },
-    );
-
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
-    let mut transaction = Transaction::new_with_payer(
-        &[
-            flash_borrow_reserve_liquidity(
-                solend_program::id(),
-                FLASH_LOAN_AMOUNT,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-            ),
-            flash_repay_reserve_liquidity(
-                solend_program::id(),
-                FLASH_LOAN_AMOUNT,
-                0,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.config.fee_receiver,
-                usdc_test_reserve.liquidity_host_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-                user_accounts_owner.pubkey(),
-            ),
-        ],
-        Some(&payer.pubkey()),
-    );
-
-    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+    let res = test
+        .process_transaction(
+            &[
+                flash_borrow_reserve_liquidity(
+                    solend_program::id(),
+                    FLASH_LOAN_AMOUNT,
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                ),
+                flash_repay_reserve_liquidity(
+                    solend_program::id(),
+                    FLASH_LOAN_AMOUNT,
+                    0,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    usdc_reserve.account.config.fee_receiver,
+                    host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                    user.keypair.pubkey(),
+                ),
+            ],
+            Some(&[&user.keypair]),
+        )
+        .await
+        .unwrap_err()
+        .unwrap();
 
     assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
+        res,
         TransactionError::InstructionError(
             0,
             InstructionError::Custom(LendingError::InvalidAmount as u32)
@@ -274,85 +263,60 @@ async fn test_fail_borrow_over_borrow_limit() {
 
 #[tokio::test]
 async fn test_fail_double_borrow() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
-
-    // limit to track compute unit increase
-    test.set_compute_max_units(60_000);
+    let (mut test, lending_market, usdc_reserve, user, host_fee_receiver, _) =
+        setup(&ReserveConfig {
+            deposit_limit: u64::MAX,
+            borrow_limit: u64::MAX,
+            fees: ReserveFees {
+                borrow_fee_wad: 1,
+                host_fee_percentage: 20,
+                flash_loan_fee_wad: 1,
+            },
+            ..test_reserve_config()
+        })
+        .await;
 
     const FLASH_LOAN_AMOUNT: u64 = 3_000_000;
-    const LIQUIDITY_AMOUNT: u64 = 1_000 * FRACTIONAL_TO_USDC;
-    const FEE_AMOUNT: u64 = 3_000_000;
-
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-
-    let mut reserve_config = test_reserve_config();
-    reserve_config.fees.host_fee_percentage = 20;
-    reserve_config.fees.flash_loan_fee_wad = 3_000_000_000_000_000;
-
-    let usdc_mint = add_usdc_mint(&mut test);
-    let usdc_oracle = add_usdc_oracle(&mut test);
-    let usdc_test_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &usdc_oracle,
-        &user_accounts_owner,
-        AddReserveArgs {
-            user_liquidity_amount: FEE_AMOUNT,
-            liquidity_amount: LIQUIDITY_AMOUNT,
-            liquidity_mint_pubkey: usdc_mint.pubkey,
-            liquidity_mint_decimals: usdc_mint.decimals,
-            config: reserve_config,
-            ..AddReserveArgs::default()
-        },
-    );
-
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
-    let mut transaction = Transaction::new_with_payer(
-        &[
-            flash_borrow_reserve_liquidity(
-                solend_program::id(),
-                FLASH_LOAN_AMOUNT,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-            ),
-            flash_borrow_reserve_liquidity(
-                solend_program::id(),
-                FLASH_LOAN_AMOUNT,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-            ),
-            flash_repay_reserve_liquidity(
-                solend_program::id(),
-                FLASH_LOAN_AMOUNT,
-                0,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.config.fee_receiver,
-                usdc_test_reserve.liquidity_host_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-                user_accounts_owner.pubkey(),
-            ),
-        ],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+    let res = test
+        .process_transaction(
+            &[
+                flash_borrow_reserve_liquidity(
+                    solend_program::id(),
+                    FLASH_LOAN_AMOUNT,
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                ),
+                flash_borrow_reserve_liquidity(
+                    solend_program::id(),
+                    FLASH_LOAN_AMOUNT,
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                ),
+                flash_repay_reserve_liquidity(
+                    solend_program::id(),
+                    FLASH_LOAN_AMOUNT,
+                    0,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    usdc_reserve.account.config.fee_receiver,
+                    host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                    user.keypair.pubkey(),
+                ),
+            ],
+            Some(&[&user.keypair]),
+        )
+        .await
+        .unwrap_err()
+        .unwrap();
 
     assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
+        res,
         TransactionError::InstructionError(
             0,
             InstructionError::Custom(LendingError::MultipleFlashBorrows as u32)
@@ -360,92 +324,66 @@ async fn test_fail_double_borrow() {
     );
 }
 
-/// idk why anyone would do this but w/e
 #[tokio::test]
 async fn test_fail_double_repay() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
-
-    // limit to track compute unit increase
-    test.set_compute_max_units(60_000);
+    let (mut test, lending_market, usdc_reserve, user, host_fee_receiver, _) =
+        setup(&ReserveConfig {
+            deposit_limit: u64::MAX,
+            borrow_limit: u64::MAX,
+            fees: ReserveFees {
+                borrow_fee_wad: 1,
+                host_fee_percentage: 20,
+                flash_loan_fee_wad: 1,
+            },
+            ..test_reserve_config()
+        })
+        .await;
 
     const FLASH_LOAN_AMOUNT: u64 = 3_000_000;
-    const LIQUIDITY_AMOUNT: u64 = 1_000 * FRACTIONAL_TO_USDC;
-    const FEE_AMOUNT: u64 = 3_000_000;
-
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-
-    let mut reserve_config = test_reserve_config();
-    reserve_config.fees.host_fee_percentage = 20;
-    reserve_config.fees.flash_loan_fee_wad = 3_000_000_000_000_000;
-
-    let usdc_mint = add_usdc_mint(&mut test);
-    let usdc_oracle = add_usdc_oracle(&mut test);
-    let usdc_test_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &usdc_oracle,
-        &user_accounts_owner,
-        AddReserveArgs {
-            user_liquidity_amount: FEE_AMOUNT,
-            liquidity_amount: LIQUIDITY_AMOUNT,
-            liquidity_mint_pubkey: usdc_mint.pubkey,
-            liquidity_mint_decimals: usdc_mint.decimals,
-            config: reserve_config,
-            ..AddReserveArgs::default()
-        },
-    );
-
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
-    let mut transaction = Transaction::new_with_payer(
-        &[
-            flash_borrow_reserve_liquidity(
-                solend_program::id(),
-                FLASH_LOAN_AMOUNT,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-            ),
-            flash_repay_reserve_liquidity(
-                solend_program::id(),
-                FLASH_LOAN_AMOUNT,
-                0,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.config.fee_receiver,
-                usdc_test_reserve.liquidity_host_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-                user_accounts_owner.pubkey(),
-            ),
-            flash_repay_reserve_liquidity(
-                solend_program::id(),
-                0,
-                0,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.config.fee_receiver,
-                usdc_test_reserve.liquidity_host_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-                user_accounts_owner.pubkey(),
-            ),
-        ],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+    let res = test
+        .process_transaction(
+            &[
+                flash_borrow_reserve_liquidity(
+                    solend_program::id(),
+                    FLASH_LOAN_AMOUNT,
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                ),
+                flash_repay_reserve_liquidity(
+                    solend_program::id(),
+                    FLASH_LOAN_AMOUNT,
+                    0,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    usdc_reserve.account.config.fee_receiver,
+                    host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                    user.keypair.pubkey(),
+                ),
+                flash_repay_reserve_liquidity(
+                    solend_program::id(),
+                    FLASH_LOAN_AMOUNT,
+                    0,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    usdc_reserve.account.config.fee_receiver,
+                    host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                    user.keypair.pubkey(),
+                ),
+            ],
+            Some(&[&user.keypair]),
+        )
+        .await
+        .unwrap_err()
+        .unwrap();
 
     assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
+        res,
         TransactionError::InstructionError(
             0,
             InstructionError::Custom(LendingError::MultipleFlashBorrows as u32)
@@ -455,98 +393,72 @@ async fn test_fail_double_repay() {
 
 #[tokio::test]
 async fn test_fail_only_one_flash_ix_pair_per_tx() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
-
-    // limit to track compute unit increase
-    test.set_compute_max_units(60_000);
+    let (mut test, lending_market, usdc_reserve, user, host_fee_receiver, _) =
+        setup(&ReserveConfig {
+            deposit_limit: u64::MAX,
+            borrow_limit: u64::MAX,
+            fees: ReserveFees {
+                borrow_fee_wad: 1,
+                host_fee_percentage: 20,
+                flash_loan_fee_wad: 3_000_000_000_000_000,
+            },
+            ..test_reserve_config()
+        })
+        .await;
 
     const FLASH_LOAN_AMOUNT: u64 = 3_000_000;
-    const LIQUIDITY_AMOUNT: u64 = 1_000 * FRACTIONAL_TO_USDC;
-    const FEE_AMOUNT: u64 = 3_000_000;
-
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-
-    let mut reserve_config = test_reserve_config();
-    reserve_config.fees.host_fee_percentage = 20;
-    reserve_config.fees.flash_loan_fee_wad = 3_000_000_000_000_000;
-
-    let usdc_mint = add_usdc_mint(&mut test);
-    let usdc_oracle = add_usdc_oracle(&mut test);
-    let usdc_test_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &usdc_oracle,
-        &user_accounts_owner,
-        AddReserveArgs {
-            user_liquidity_amount: FEE_AMOUNT,
-            liquidity_amount: LIQUIDITY_AMOUNT,
-            liquidity_mint_pubkey: usdc_mint.pubkey,
-            liquidity_mint_decimals: usdc_mint.decimals,
-            config: reserve_config,
-            ..AddReserveArgs::default()
-        },
-    );
-
-    // eventually this will be valid. but for v1 implementation, we only let 1 flash ix pair per tx
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
-    let mut transaction = Transaction::new_with_payer(
-        &[
-            flash_borrow_reserve_liquidity(
-                solend_program::id(),
-                FLASH_LOAN_AMOUNT,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-            ),
-            flash_repay_reserve_liquidity(
-                solend_program::id(),
-                FLASH_LOAN_AMOUNT,
-                0,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.config.fee_receiver,
-                usdc_test_reserve.liquidity_host_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-                user_accounts_owner.pubkey(),
-            ),
-            flash_borrow_reserve_liquidity(
-                solend_program::id(),
-                FLASH_LOAN_AMOUNT,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-            ),
-            flash_repay_reserve_liquidity(
-                solend_program::id(),
-                FLASH_LOAN_AMOUNT,
-                2,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.config.fee_receiver,
-                usdc_test_reserve.liquidity_host_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-                user_accounts_owner.pubkey(),
-            ),
-        ],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+    let res = test
+        .process_transaction(
+            &[
+                flash_borrow_reserve_liquidity(
+                    solend_program::id(),
+                    FLASH_LOAN_AMOUNT,
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                ),
+                flash_repay_reserve_liquidity(
+                    solend_program::id(),
+                    FLASH_LOAN_AMOUNT,
+                    0,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    usdc_reserve.account.config.fee_receiver,
+                    host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                    user.keypair.pubkey(),
+                ),
+                flash_borrow_reserve_liquidity(
+                    solend_program::id(),
+                    FLASH_LOAN_AMOUNT,
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                ),
+                flash_repay_reserve_liquidity(
+                    solend_program::id(),
+                    FLASH_LOAN_AMOUNT,
+                    2,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    usdc_reserve.account.config.fee_receiver,
+                    host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                    user.keypair.pubkey(),
+                ),
+            ],
+            Some(&[&user.keypair]),
+        )
+        .await
+        .unwrap_err()
+        .unwrap();
 
     assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
+        res,
         TransactionError::InstructionError(
             0,
             InstructionError::Custom(LendingError::MultipleFlashBorrows as u32)
@@ -556,85 +468,54 @@ async fn test_fail_only_one_flash_ix_pair_per_tx() {
 
 #[tokio::test]
 async fn test_fail_invalid_repay_ix() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
-
-    let proxy_program_id = Pubkey::new_unique();
-    test.prefer_bpf(false);
-    test.add_program(
-        "flash_loan_proxy",
-        proxy_program_id,
-        processor!(helpers::flash_loan_proxy::process_instruction),
-    );
+    let (mut test, lending_market, usdc_reserve, user, host_fee_receiver, _) =
+        setup(&ReserveConfig {
+            deposit_limit: u64::MAX,
+            borrow_limit: u64::MAX,
+            fees: ReserveFees {
+                borrow_fee_wad: 1,
+                host_fee_percentage: 20,
+                flash_loan_fee_wad: 1,
+            },
+            ..test_reserve_config()
+        })
+        .await;
 
     const FLASH_LOAN_AMOUNT: u64 = 3_000_000;
-    const LIQUIDITY_AMOUNT: u64 = 1_000_000 * FRACTIONAL_TO_USDC;
-    const FEE_AMOUNT: u64 = 3_000_000;
-
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-
-    let mut reserve_config = test_reserve_config();
-    reserve_config.fees.host_fee_percentage = 20;
-    reserve_config.fees.flash_loan_fee_wad = 3_000_000_000_000_000;
-
-    let usdc_mint = add_usdc_mint(&mut test);
-    let usdc_oracle = add_usdc_oracle(&mut test);
-    let usdc_test_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &usdc_oracle,
-        &user_accounts_owner,
-        AddReserveArgs {
-            user_liquidity_amount: FEE_AMOUNT,
-            liquidity_amount: LIQUIDITY_AMOUNT,
-            liquidity_mint_pubkey: usdc_mint.pubkey,
-            liquidity_mint_decimals: usdc_mint.decimals,
-            config: reserve_config,
-            ..AddReserveArgs::default()
-        },
-    );
-
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
-
     // case 1: invalid reserve in repay
     {
-        let mut transaction = Transaction::new_with_payer(
-            &[
-                flash_borrow_reserve_liquidity(
-                    solend_program::id(),
-                    FLASH_LOAN_AMOUNT,
-                    usdc_test_reserve.liquidity_supply_pubkey,
-                    usdc_test_reserve.user_liquidity_pubkey,
-                    usdc_test_reserve.pubkey,
-                    lending_market.pubkey,
-                ),
-                flash_repay_reserve_liquidity(
-                    solend_program::id(),
-                    FLASH_LOAN_AMOUNT,
-                    0,
-                    usdc_test_reserve.user_liquidity_pubkey,
-                    usdc_test_reserve.liquidity_supply_pubkey,
-                    usdc_test_reserve.config.fee_receiver,
-                    usdc_test_reserve.liquidity_host_pubkey,
-                    Pubkey::new_unique(),
-                    lending_market.pubkey,
-                    user_accounts_owner.pubkey(),
-                ),
-            ],
-            Some(&payer.pubkey()),
-        );
-        transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+        let res = test
+            .process_transaction(
+                &[
+                    flash_borrow_reserve_liquidity(
+                        solend_program::id(),
+                        FLASH_LOAN_AMOUNT,
+                        usdc_reserve.account.liquidity.supply_pubkey,
+                        user.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.pubkey,
+                        lending_market.pubkey,
+                    ),
+                    flash_repay_reserve_liquidity(
+                        solend_program::id(),
+                        FLASH_LOAN_AMOUNT,
+                        0,
+                        user.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.account.liquidity.supply_pubkey,
+                        usdc_reserve.account.config.fee_receiver,
+                        host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                        Pubkey::new_unique(),
+                        lending_market.pubkey,
+                        user.keypair.pubkey(),
+                    ),
+                ],
+                Some(&[&user.keypair]),
+            )
+            .await
+            .unwrap_err()
+            .unwrap();
 
         assert_eq!(
-            banks_client
-                .process_transaction(transaction)
-                .await
-                .unwrap_err()
-                .unwrap(),
+            res,
             TransactionError::InstructionError(
                 0,
                 InstructionError::Custom(LendingError::InvalidFlashRepay as u32)
@@ -644,39 +525,38 @@ async fn test_fail_invalid_repay_ix() {
 
     // case 2: invalid liquidity amount
     {
-        let mut transaction = Transaction::new_with_payer(
-            &[
-                flash_borrow_reserve_liquidity(
-                    solend_program::id(),
-                    FLASH_LOAN_AMOUNT,
-                    usdc_test_reserve.liquidity_supply_pubkey,
-                    usdc_test_reserve.user_liquidity_pubkey,
-                    usdc_test_reserve.pubkey,
-                    lending_market.pubkey,
-                ),
-                flash_repay_reserve_liquidity(
-                    solend_program::id(),
-                    FLASH_LOAN_AMOUNT - 1,
-                    0,
-                    usdc_test_reserve.user_liquidity_pubkey,
-                    usdc_test_reserve.liquidity_supply_pubkey,
-                    usdc_test_reserve.config.fee_receiver,
-                    usdc_test_reserve.liquidity_host_pubkey,
-                    usdc_test_reserve.pubkey,
-                    lending_market.pubkey,
-                    user_accounts_owner.pubkey(),
-                ),
-            ],
-            Some(&payer.pubkey()),
-        );
-        transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+        let res = test
+            .process_transaction(
+                &[
+                    flash_borrow_reserve_liquidity(
+                        solend_program::id(),
+                        FLASH_LOAN_AMOUNT,
+                        usdc_reserve.account.liquidity.supply_pubkey,
+                        user.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.pubkey,
+                        lending_market.pubkey,
+                    ),
+                    flash_repay_reserve_liquidity(
+                        solend_program::id(),
+                        FLASH_LOAN_AMOUNT - 1,
+                        0,
+                        user.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.account.liquidity.supply_pubkey,
+                        usdc_reserve.account.config.fee_receiver,
+                        host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.pubkey,
+                        lending_market.pubkey,
+                        user.keypair.pubkey(),
+                    ),
+                ],
+                Some(&[&user.keypair]),
+            )
+            .await
+            .unwrap_err()
+            .unwrap();
 
         assert_eq!(
-            banks_client
-                .process_transaction(transaction)
-                .await
-                .unwrap_err()
-                .unwrap(),
+            res,
             TransactionError::InstructionError(
                 0,
                 InstructionError::Custom(LendingError::InvalidFlashRepay as u32)
@@ -686,26 +566,24 @@ async fn test_fail_invalid_repay_ix() {
 
     // case 3: no repay
     {
-        let mut transaction = Transaction::new_with_payer(
-            &[flash_borrow_reserve_liquidity(
-                solend_program::id(),
-                FLASH_LOAN_AMOUNT,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-            )],
-            Some(&payer.pubkey()),
-        );
-
-        transaction.sign(&[&payer], recent_blockhash);
+        let res = test
+            .process_transaction(
+                &[flash_borrow_reserve_liquidity(
+                    solend_program::id(),
+                    FLASH_LOAN_AMOUNT,
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                )],
+                None,
+            )
+            .await
+            .unwrap_err()
+            .unwrap();
 
         assert_eq!(
-            banks_client
-                .process_transaction(transaction)
-                .await
-                .unwrap_err()
-                .unwrap(),
+            res,
             TransactionError::InstructionError(
                 0,
                 InstructionError::Custom(LendingError::NoFlashRepayFound as u32)
@@ -715,40 +593,39 @@ async fn test_fail_invalid_repay_ix() {
 
     // case 4: cpi repay
     {
-        let mut transaction = Transaction::new_with_payer(
-            &[
-                flash_borrow_reserve_liquidity(
-                    solend_program::id(),
-                    FLASH_LOAN_AMOUNT,
-                    usdc_test_reserve.liquidity_supply_pubkey,
-                    usdc_test_reserve.user_liquidity_pubkey,
-                    usdc_test_reserve.pubkey,
-                    lending_market.pubkey,
-                ),
-                helpers::flash_loan_proxy::repay_proxy(
-                    proxy_program_id,
-                    FLASH_LOAN_AMOUNT,
-                    0,
-                    usdc_test_reserve.user_liquidity_pubkey,
-                    usdc_test_reserve.liquidity_supply_pubkey,
-                    usdc_test_reserve.config.fee_receiver,
-                    usdc_test_reserve.liquidity_host_pubkey,
-                    usdc_test_reserve.pubkey,
-                    solend_program::id(),
-                    lending_market.pubkey,
-                    user_accounts_owner.pubkey(),
-                ),
-            ],
-            Some(&payer.pubkey()),
-        );
-        transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+        let res = test
+            .process_transaction(
+                &[
+                    flash_borrow_reserve_liquidity(
+                        solend_program::id(),
+                        FLASH_LOAN_AMOUNT,
+                        usdc_reserve.account.liquidity.supply_pubkey,
+                        user.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.pubkey,
+                        lending_market.pubkey,
+                    ),
+                    helpers::flash_loan_proxy::repay_proxy(
+                        proxy_program::id(),
+                        FLASH_LOAN_AMOUNT,
+                        0,
+                        user.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.account.liquidity.supply_pubkey,
+                        usdc_reserve.account.config.fee_receiver,
+                        host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.pubkey,
+                        solend_program::id(),
+                        lending_market.pubkey,
+                        user.keypair.pubkey(),
+                    ),
+                ],
+                Some(&[&user.keypair]),
+            )
+            .await
+            .unwrap_err()
+            .unwrap();
 
         assert_eq!(
-            banks_client
-                .process_transaction(transaction)
-                .await
-                .unwrap_err()
-                .unwrap(),
+            res,
             TransactionError::InstructionError(
                 0,
                 InstructionError::Custom(LendingError::NoFlashRepayFound as u32)
@@ -756,38 +633,35 @@ async fn test_fail_invalid_repay_ix() {
         );
     }
 
-    // case 5: insufficient funds to pay fees on repay. FEE_AMOUNT was calculated using
-    // FLASH_LOAN_AMOUNT, not LIQUIDITY_AMOUNT.
+    // case 5: insufficient funds to pay fees on repay.
     {
-        let mut transaction = Transaction::new_with_payer(
-            &[
-                flash_borrow_reserve_liquidity(
-                    solend_program::id(),
-                    LIQUIDITY_AMOUNT,
-                    usdc_test_reserve.liquidity_supply_pubkey,
-                    usdc_test_reserve.user_liquidity_pubkey,
-                    usdc_test_reserve.pubkey,
-                    lending_market.pubkey,
-                ),
-                flash_repay_reserve_liquidity(
-                    solend_program::id(),
-                    LIQUIDITY_AMOUNT,
-                    0,
-                    usdc_test_reserve.user_liquidity_pubkey,
-                    usdc_test_reserve.liquidity_supply_pubkey,
-                    usdc_test_reserve.config.fee_receiver,
-                    usdc_test_reserve.liquidity_host_pubkey,
-                    usdc_test_reserve.pubkey,
-                    lending_market.pubkey,
-                    user_accounts_owner.pubkey(),
-                ),
-            ],
-            Some(&payer.pubkey()),
-        );
-        transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
-
-        let res = banks_client
-            .process_transaction(transaction)
+        let new_user = User::new_with_balances(&mut test, &[(&usdc_mint::id(), 0)]).await;
+        let res = test
+            .process_transaction(
+                &[
+                    flash_borrow_reserve_liquidity(
+                        solend_program::id(),
+                        100_000_000_000,
+                        usdc_reserve.account.liquidity.supply_pubkey,
+                        new_user.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.pubkey,
+                        lending_market.pubkey,
+                    ),
+                    flash_repay_reserve_liquidity(
+                        solend_program::id(),
+                        100_000_000_000,
+                        0,
+                        new_user.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.account.liquidity.supply_pubkey,
+                        usdc_reserve.account.config.fee_receiver,
+                        host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.pubkey,
+                        lending_market.pubkey,
+                        new_user.keypair.pubkey(),
+                    ),
+                ],
+                Some(&[&new_user.keypair]),
+            )
             .await
             .unwrap_err()
             .unwrap();
@@ -807,29 +681,28 @@ async fn test_fail_invalid_repay_ix() {
 
     // case 6: Sole repay instruction
     {
-        let mut transaction = Transaction::new_with_payer(
-            &[flash_repay_reserve_liquidity(
-                solend_program::id(),
-                LIQUIDITY_AMOUNT,
-                0,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.config.fee_receiver,
-                usdc_test_reserve.liquidity_host_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-                user_accounts_owner.pubkey(),
-            )],
-            Some(&payer.pubkey()),
-        );
-        transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+        let res = test
+            .process_transaction(
+                &[flash_repay_reserve_liquidity(
+                    solend_program::id(),
+                    FLASH_LOAN_AMOUNT,
+                    0,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    usdc_reserve.account.config.fee_receiver,
+                    host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                    user.keypair.pubkey(),
+                )],
+                Some(&[&user.keypair]),
+            )
+            .await
+            .unwrap_err()
+            .unwrap();
 
         assert_eq!(
-            banks_client
-                .process_transaction(transaction)
-                .await
-                .unwrap_err()
-                .unwrap(),
+            res,
             TransactionError::InstructionError(
                 0,
                 InstructionError::Custom(LendingError::InvalidFlashRepay as u32)
@@ -839,39 +712,38 @@ async fn test_fail_invalid_repay_ix() {
 
     // case 7: Incorrect borrow instruction index -- points to itself
     {
-        let mut transaction = Transaction::new_with_payer(
-            &[
-                flash_borrow_reserve_liquidity(
-                    solend_program::id(),
-                    LIQUIDITY_AMOUNT,
-                    usdc_test_reserve.liquidity_supply_pubkey,
-                    usdc_test_reserve.user_liquidity_pubkey,
-                    usdc_test_reserve.pubkey,
-                    lending_market.pubkey,
-                ),
-                flash_repay_reserve_liquidity(
-                    solend_program::id(),
-                    LIQUIDITY_AMOUNT,
-                    1, // should be zero
-                    usdc_test_reserve.user_liquidity_pubkey,
-                    usdc_test_reserve.liquidity_supply_pubkey,
-                    usdc_test_reserve.config.fee_receiver,
-                    usdc_test_reserve.liquidity_host_pubkey,
-                    usdc_test_reserve.pubkey,
-                    lending_market.pubkey,
-                    user_accounts_owner.pubkey(),
-                ),
-            ],
-            Some(&payer.pubkey()),
-        );
-        transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+        let res = test
+            .process_transaction(
+                &[
+                    flash_borrow_reserve_liquidity(
+                        solend_program::id(),
+                        FLASH_LOAN_AMOUNT,
+                        usdc_reserve.account.liquidity.supply_pubkey,
+                        user.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.pubkey,
+                        lending_market.pubkey,
+                    ),
+                    flash_repay_reserve_liquidity(
+                        solend_program::id(),
+                        FLASH_LOAN_AMOUNT,
+                        1, // should be 0
+                        user.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.account.liquidity.supply_pubkey,
+                        usdc_reserve.account.config.fee_receiver,
+                        host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.pubkey,
+                        lending_market.pubkey,
+                        user.keypair.pubkey(),
+                    ),
+                ],
+                Some(&[&user.keypair]),
+            )
+            .await
+            .unwrap_err()
+            .unwrap();
 
         assert_eq!(
-            banks_client
-                .process_transaction(transaction)
-                .await
-                .unwrap_err()
-                .unwrap(),
+            res,
             TransactionError::InstructionError(
                 0,
                 InstructionError::Custom(LendingError::InvalidFlashRepay as u32)
@@ -882,40 +754,47 @@ async fn test_fail_invalid_repay_ix() {
     // case 8: Incorrect borrow instruction index -- points to some other program
     {
         let user_transfer_authority = Keypair::new();
-        let mut transaction = Transaction::new_with_payer(
-            &[
-                approve(
-                    &spl_token::id(),
-                    &usdc_test_reserve.user_liquidity_pubkey,
-                    &user_transfer_authority.pubkey(),
-                    &user_accounts_owner.pubkey(),
-                    &[],
-                    1,
-                )
-                .unwrap(),
-                flash_repay_reserve_liquidity(
-                    solend_program::id(),
-                    LIQUIDITY_AMOUNT,
-                    0, // should be zero
-                    usdc_test_reserve.user_liquidity_pubkey,
-                    usdc_test_reserve.liquidity_supply_pubkey,
-                    usdc_test_reserve.config.fee_receiver,
-                    usdc_test_reserve.liquidity_host_pubkey,
-                    usdc_test_reserve.pubkey,
-                    lending_market.pubkey,
-                    user_accounts_owner.pubkey(),
-                ),
-            ],
-            Some(&payer.pubkey()),
-        );
-        transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+        let res = test
+            .process_transaction(
+                &[
+                    approve(
+                        &spl_token::id(),
+                        &user.get_account(&usdc_mint::id()).unwrap(),
+                        &user_transfer_authority.pubkey(),
+                        &user.keypair.pubkey(),
+                        &[],
+                        1,
+                    )
+                    .unwrap(),
+                    flash_borrow_reserve_liquidity(
+                        solend_program::id(),
+                        FLASH_LOAN_AMOUNT,
+                        usdc_reserve.account.liquidity.supply_pubkey,
+                        user.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.pubkey,
+                        lending_market.pubkey,
+                    ),
+                    flash_repay_reserve_liquidity(
+                        solend_program::id(),
+                        FLASH_LOAN_AMOUNT,
+                        0,
+                        user.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.account.liquidity.supply_pubkey,
+                        usdc_reserve.account.config.fee_receiver,
+                        host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.pubkey,
+                        lending_market.pubkey,
+                        user.keypair.pubkey(),
+                    ),
+                ],
+                Some(&[&user.keypair]),
+            )
+            .await
+            .unwrap_err()
+            .unwrap();
 
         assert_eq!(
-            banks_client
-                .process_transaction(transaction)
-                .await
-                .unwrap_err()
-                .unwrap(),
+            res,
             TransactionError::InstructionError(
                 1,
                 InstructionError::Custom(LendingError::InvalidFlashRepay as u32)
@@ -924,51 +803,50 @@ async fn test_fail_invalid_repay_ix() {
     }
     // case 9: Incorrect borrow instruction index -- points to a later borrow
     {
-        let mut transaction = Transaction::new_with_payer(
-            &[
-                flash_repay_reserve_liquidity(
-                    solend_program::id(),
-                    FRACTIONAL_TO_USDC,
-                    1,
-                    usdc_test_reserve.user_liquidity_pubkey,
-                    usdc_test_reserve.liquidity_supply_pubkey,
-                    usdc_test_reserve.config.fee_receiver,
-                    usdc_test_reserve.liquidity_host_pubkey,
-                    usdc_test_reserve.pubkey,
-                    lending_market.pubkey,
-                    user_accounts_owner.pubkey(),
-                ),
-                flash_borrow_reserve_liquidity(
-                    solend_program::id(),
-                    FEE_AMOUNT,
-                    usdc_test_reserve.liquidity_supply_pubkey,
-                    usdc_test_reserve.user_liquidity_pubkey,
-                    usdc_test_reserve.pubkey,
-                    lending_market.pubkey,
-                ),
-                flash_repay_reserve_liquidity(
-                    solend_program::id(),
-                    FEE_AMOUNT,
-                    1,
-                    usdc_test_reserve.user_liquidity_pubkey,
-                    usdc_test_reserve.liquidity_supply_pubkey,
-                    usdc_test_reserve.config.fee_receiver,
-                    usdc_test_reserve.liquidity_host_pubkey,
-                    usdc_test_reserve.pubkey,
-                    lending_market.pubkey,
-                    user_accounts_owner.pubkey(),
-                ),
-            ],
-            Some(&payer.pubkey()),
-        );
-        transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+        let res = test
+            .process_transaction(
+                &[
+                    flash_repay_reserve_liquidity(
+                        solend_program::id(),
+                        FLASH_LOAN_AMOUNT,
+                        1,
+                        user.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.account.liquidity.supply_pubkey,
+                        usdc_reserve.account.config.fee_receiver,
+                        host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.pubkey,
+                        lending_market.pubkey,
+                        user.keypair.pubkey(),
+                    ),
+                    flash_borrow_reserve_liquidity(
+                        solend_program::id(),
+                        FLASH_LOAN_AMOUNT,
+                        usdc_reserve.account.liquidity.supply_pubkey,
+                        user.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.pubkey,
+                        lending_market.pubkey,
+                    ),
+                    flash_repay_reserve_liquidity(
+                        solend_program::id(),
+                        FLASH_LOAN_AMOUNT,
+                        1,
+                        user.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.account.liquidity.supply_pubkey,
+                        usdc_reserve.account.config.fee_receiver,
+                        host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                        usdc_reserve.pubkey,
+                        lending_market.pubkey,
+                        user.keypair.pubkey(),
+                    ),
+                ],
+                Some(&[&user.keypair]),
+            )
+            .await
+            .unwrap_err()
+            .unwrap();
 
         assert_eq!(
-            banks_client
-                .process_transaction(transaction)
-                .await
-                .unwrap_err()
-                .unwrap(),
+            res,
             TransactionError::InstructionError(
                 0,
                 InstructionError::Custom(LendingError::InvalidFlashRepay as u32)
@@ -979,76 +857,50 @@ async fn test_fail_invalid_repay_ix() {
 
 #[tokio::test]
 async fn test_fail_insufficient_liquidity_for_borrow() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
+    let (mut test, lending_market, usdc_reserve, user, host_fee_receiver, _) =
+        setup(&ReserveConfig {
+            deposit_limit: u64::MAX,
+            fees: ReserveFees {
+                borrow_fee_wad: 100_000_000_000,
+                host_fee_percentage: 20,
+                flash_loan_fee_wad: 3_000_000_000_000_000,
+            },
+            ..test_reserve_config()
+        })
+        .await;
 
-    // limit to track compute unit increase
-    test.set_compute_max_units(60_000);
-
-    const LIQUIDITY_AMOUNT: u64 = 1_000 * FRACTIONAL_TO_USDC;
-    const FEE_AMOUNT: u64 = 3_000_000;
-
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-
-    let mut reserve_config = test_reserve_config();
-    reserve_config.fees.host_fee_percentage = 20;
-    reserve_config.fees.flash_loan_fee_wad = 3_000_000_000_000_000;
-
-    let usdc_mint = add_usdc_mint(&mut test);
-    let usdc_oracle = add_usdc_oracle(&mut test);
-    let usdc_test_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &usdc_oracle,
-        &user_accounts_owner,
-        AddReserveArgs {
-            user_liquidity_amount: FEE_AMOUNT,
-            liquidity_amount: LIQUIDITY_AMOUNT,
-            liquidity_mint_pubkey: usdc_mint.pubkey,
-            liquidity_mint_decimals: usdc_mint.decimals,
-            config: reserve_config,
-            ..AddReserveArgs::default()
-        },
-    );
-
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
-    let mut transaction = Transaction::new_with_payer(
-        &[
-            flash_borrow_reserve_liquidity(
-                solend_program::id(),
-                LIQUIDITY_AMOUNT + 1,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-            ),
-            flash_repay_reserve_liquidity(
-                solend_program::id(),
-                LIQUIDITY_AMOUNT + 1,
-                0,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.config.fee_receiver,
-                usdc_test_reserve.liquidity_host_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-                user_accounts_owner.pubkey(),
-            ),
-        ],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+    let res = test
+        .process_transaction(
+            &[
+                flash_borrow_reserve_liquidity(
+                    solend_program::id(),
+                    1_000_000_000_000,
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                ),
+                flash_repay_reserve_liquidity(
+                    solend_program::id(),
+                    1_000_000_000_000,
+                    0,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    usdc_reserve.account.config.fee_receiver,
+                    host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                    user.keypair.pubkey(),
+                ),
+            ],
+            Some(&[&user.keypair]),
+        )
+        .await
+        .unwrap_err()
+        .unwrap();
 
     assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
+        res,
         TransactionError::InstructionError(
             0,
             InstructionError::Custom(LendingError::InsufficientLiquidity as u32)
@@ -1058,73 +910,43 @@ async fn test_fail_insufficient_liquidity_for_borrow() {
 
 #[tokio::test]
 async fn test_fail_cpi_borrow() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
-
-    let proxy_program_id = Pubkey::new_unique();
-    test.prefer_bpf(false);
-    test.add_program(
-        "flash_loan_proxy",
-        proxy_program_id,
-        processor!(helpers::flash_loan_proxy::process_instruction),
-    );
-
-    // limit to track compute unit increase
-    test.set_compute_max_units(60_000);
+    let (mut test, lending_market, usdc_reserve, user, _, _) = setup(&ReserveConfig {
+        deposit_limit: u64::MAX,
+        borrow_limit: u64::MAX,
+        fees: ReserveFees {
+            borrow_fee_wad: 1,
+            host_fee_percentage: 20,
+            flash_loan_fee_wad: 1,
+        },
+        ..test_reserve_config()
+    })
+    .await;
 
     const FLASH_LOAN_AMOUNT: u64 = 3_000_000;
-    const LIQUIDITY_AMOUNT: u64 = 1_000 * FRACTIONAL_TO_USDC;
-    const FEE_AMOUNT: u64 = 3_000_000;
-
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-
-    let mut reserve_config = test_reserve_config();
-    reserve_config.fees.host_fee_percentage = 20;
-    reserve_config.fees.flash_loan_fee_wad = 3_000_000_000_000_000;
-
-    let usdc_mint = add_usdc_mint(&mut test);
-    let usdc_oracle = add_usdc_oracle(&mut test);
-    let usdc_test_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &usdc_oracle,
-        &user_accounts_owner,
-        AddReserveArgs {
-            user_liquidity_amount: FEE_AMOUNT,
-            liquidity_amount: LIQUIDITY_AMOUNT,
-            liquidity_mint_pubkey: usdc_mint.pubkey,
-            liquidity_mint_decimals: usdc_mint.decimals,
-            config: reserve_config,
-            ..AddReserveArgs::default()
-        },
-    );
-
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
-    let mut transaction = Transaction::new_with_payer(
-        &[helpers::flash_loan_proxy::borrow_proxy(
-            proxy_program_id,
-            FLASH_LOAN_AMOUNT,
-            usdc_test_reserve.liquidity_supply_pubkey,
-            usdc_test_reserve.user_liquidity_pubkey,
-            usdc_test_reserve.pubkey,
-            solend_program::id(),
-            lending_market.pubkey,
-            lending_market.authority,
-        )],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(&[&payer], recent_blockhash);
+    let res = test
+        .process_transaction(
+            &[helpers::flash_loan_proxy::borrow_proxy(
+                proxy_program::id(),
+                FLASH_LOAN_AMOUNT,
+                usdc_reserve.account.liquidity.supply_pubkey,
+                user.get_account(&usdc_mint::id()).unwrap(),
+                usdc_reserve.pubkey,
+                solend_program::id(),
+                lending_market.pubkey,
+                Pubkey::find_program_address(
+                    &[lending_market.pubkey.as_ref()],
+                    &solend_program::id(),
+                )
+                .0,
+            )],
+            None,
+        )
+        .await
+        .unwrap_err()
+        .unwrap();
 
     assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
+        res,
         TransactionError::InstructionError(
             0,
             InstructionError::Custom(LendingError::FlashBorrowCpi as u32)
@@ -1134,76 +956,43 @@ async fn test_fail_cpi_borrow() {
 
 #[tokio::test]
 async fn test_fail_cpi_repay() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
-
-    let proxy_program_id = Pubkey::new_unique();
-    test.prefer_bpf(false);
-    test.add_program(
-        "flash_loan_proxy",
-        proxy_program_id,
-        processor!(helpers::flash_loan_proxy::process_instruction),
-    );
-
-    // limit to track compute unit increase
-    test.set_compute_max_units(60_000);
+    let (mut test, lending_market, usdc_reserve, user, host_fee_receiver, _) =
+        setup(&ReserveConfig {
+            deposit_limit: u64::MAX,
+            borrow_limit: u64::MAX,
+            fees: ReserveFees {
+                borrow_fee_wad: 1,
+                host_fee_percentage: 20,
+                flash_loan_fee_wad: 1,
+            },
+            ..test_reserve_config()
+        })
+        .await;
 
     const FLASH_LOAN_AMOUNT: u64 = 3_000_000;
-    const LIQUIDITY_AMOUNT: u64 = 1_000 * FRACTIONAL_TO_USDC;
-    const FEE_AMOUNT: u64 = 3_000_000;
-
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-
-    let mut reserve_config = test_reserve_config();
-    reserve_config.fees.host_fee_percentage = 20;
-    reserve_config.fees.flash_loan_fee_wad = 3_000_000_000_000_000;
-
-    let usdc_mint = add_usdc_mint(&mut test);
-    let usdc_oracle = add_usdc_oracle(&mut test);
-    let usdc_test_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &usdc_oracle,
-        &user_accounts_owner,
-        AddReserveArgs {
-            user_liquidity_amount: FEE_AMOUNT,
-            liquidity_amount: LIQUIDITY_AMOUNT,
-            liquidity_mint_pubkey: usdc_mint.pubkey,
-            liquidity_mint_decimals: usdc_mint.decimals,
-            config: reserve_config,
-            ..AddReserveArgs::default()
-        },
-    );
-
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
-    let mut transaction = Transaction::new_with_payer(
-        &[helpers::flash_loan_proxy::repay_proxy(
-            proxy_program_id,
-            FLASH_LOAN_AMOUNT,
-            0,
-            usdc_test_reserve.user_liquidity_pubkey,
-            usdc_test_reserve.liquidity_supply_pubkey,
-            usdc_test_reserve.config.fee_receiver,
-            usdc_test_reserve.liquidity_host_pubkey,
-            usdc_test_reserve.pubkey,
-            solend_program::id(),
-            lending_market.pubkey,
-            user_accounts_owner.pubkey(),
-        )],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+    let res = test
+        .process_transaction(
+            &[helpers::flash_loan_proxy::repay_proxy(
+                proxy_program::id(),
+                FLASH_LOAN_AMOUNT,
+                0,
+                user.get_account(&usdc_mint::id()).unwrap(),
+                usdc_reserve.account.liquidity.supply_pubkey,
+                usdc_reserve.account.config.fee_receiver,
+                host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                usdc_reserve.pubkey,
+                solend_program::id(),
+                lending_market.pubkey,
+                user.keypair.pubkey(),
+            )],
+            Some(&[&user.keypair]),
+        )
+        .await
+        .unwrap_err()
+        .unwrap();
 
     assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
+        res,
         TransactionError::InstructionError(
             0,
             InstructionError::Custom(LendingError::FlashRepayCpi as u32)
@@ -1213,99 +1002,73 @@ async fn test_fail_cpi_repay() {
 
 #[tokio::test]
 async fn test_fail_repay_from_diff_reserve() {
-    let mut test = ProgramTest::new(
-        "solend_program",
-        solend_program::id(),
-        processor!(process_instruction),
-    );
+    let (mut test, lending_market, usdc_reserve, user, host_fee_receiver, lending_market_owner) =
+        setup(&ReserveConfig {
+            deposit_limit: u64::MAX,
+            fees: ReserveFees {
+                borrow_fee_wad: 1,
+                host_fee_percentage: 20,
+                flash_loan_fee_wad: 1,
+            },
+            ..test_reserve_config()
+        })
+        .await;
 
-    // limit to track compute unit increase
-    test.set_compute_max_units(61_000);
-
-    const FLASH_LOAN_AMOUNT: u64 = 1_000 * FRACTIONAL_TO_USDC;
-    const FEE_AMOUNT: u64 = 3_000_000;
-
-    let user_accounts_owner = Keypair::new();
-    let lending_market = add_lending_market(&mut test);
-
-    let mut reserve_config = test_reserve_config();
-    reserve_config.fees.host_fee_percentage = 20;
-    reserve_config.fees.flash_loan_fee_wad = 3_000_000_000_000_000;
-
-    let usdc_mint = add_usdc_mint(&mut test);
-    let usdc_oracle = add_usdc_oracle(&mut test);
-    let usdc_test_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &usdc_oracle,
-        &user_accounts_owner,
-        AddReserveArgs {
-            user_liquidity_amount: FEE_AMOUNT,
-            liquidity_amount: FLASH_LOAN_AMOUNT,
-            liquidity_mint_pubkey: usdc_mint.pubkey,
-            liquidity_mint_decimals: usdc_mint.decimals,
-            config: reserve_config,
-            ..AddReserveArgs::default()
-        },
-    );
-    let another_usdc_test_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &usdc_oracle,
-        &user_accounts_owner,
-        AddReserveArgs {
-            user_liquidity_amount: FEE_AMOUNT,
-            liquidity_amount: FLASH_LOAN_AMOUNT,
-            liquidity_mint_pubkey: usdc_mint.pubkey,
-            liquidity_mint_decimals: usdc_mint.decimals,
-            config: reserve_config,
-            ..AddReserveArgs::default()
-        },
-    );
-
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+    let another_usdc_reserve = test
+        .init_reserve(
+            &lending_market,
+            &lending_market_owner,
+            &usdc_mint::id(),
+            &test_reserve_config(),
+            &Keypair::new(),
+            10,
+            None,
+        )
+        .await
+        .unwrap();
 
     // this transaction fails because the repay token transfers aren't signed by the
     // lending_market_authority PDA.
-    let mut transaction = Transaction::new_with_payer(
-        &[
-            flash_borrow_reserve_liquidity(
-                solend_program::id(),
-                FLASH_LOAN_AMOUNT,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.user_liquidity_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-            ),
-            malicious_flash_repay_reserve_liquidity(
-                solend_program::id(),
-                FLASH_LOAN_AMOUNT,
-                0,
-                another_usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.liquidity_supply_pubkey,
-                usdc_test_reserve.config.fee_receiver,
-                usdc_test_reserve.liquidity_host_pubkey,
-                usdc_test_reserve.pubkey,
-                lending_market.pubkey,
-                lending_market.authority,
-            ),
-        ],
-        Some(&payer.pubkey()),
-    );
-
-    transaction.sign(&[&payer], recent_blockhash);
-    // panics due to signer privilege escalation
-    let err = banks_client
-        .process_transaction(transaction)
+    let res = test
+        .process_transaction(
+            &[
+                flash_borrow_reserve_liquidity(
+                    solend_program::id(),
+                    1000,
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    user.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                ),
+                malicious_flash_repay_reserve_liquidity(
+                    solend_program::id(),
+                    1000,
+                    0,
+                    another_usdc_reserve.account.liquidity.supply_pubkey,
+                    usdc_reserve.account.liquidity.supply_pubkey,
+                    usdc_reserve.account.config.fee_receiver,
+                    host_fee_receiver.get_account(&usdc_mint::id()).unwrap(),
+                    usdc_reserve.pubkey,
+                    lending_market.pubkey,
+                    Pubkey::find_program_address(
+                        &[lending_market.pubkey.as_ref()],
+                        &solend_program::id(),
+                    )
+                    .0,
+                ),
+            ],
+            None, // Some(&[&user.keypair]),
+        )
         .await
         .unwrap_err();
-    match err {
+
+    match res {
         BanksClientError::RpcError(..) => (),
         BanksClientError::TransactionError(TransactionError::InstructionError(
             1,
             InstructionError::PrivilegeEscalation,
         )) => (),
-        _ => panic!("Unexpected error: {:?}", err),
+        _ => panic!("Unexpected error: {:?}", res),
     };
 }
 
