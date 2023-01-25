@@ -16,7 +16,15 @@ module.exports = {
     "token-swap",
     "token-lending",
     "associated-token-account",
-    "account-compression",
+    {
+      type: "category",
+      label: "Account Compression",
+      collapsed: true,
+      items: [
+        "account-compression",
+        "account-compression/concepts",
+      ]
+    },
     "token-upgrade",
     "memo",
     "name-service",
