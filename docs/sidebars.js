@@ -23,6 +23,7 @@ module.exports = {
       items: [
         "account-compression",
         "account-compression/concepts",
+        "account-compression/usage",
       ]
     },
     "token-upgrade",

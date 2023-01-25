@@ -35,10 +35,68 @@ If you change X5 to X5' then you will have to recompute the root hash in the fol
 ### Concurrent leaf replacement
 We know that there can be multiple concurrent requests to write to the same state, however when the root changes while the first write is happenning the second write will generate an invalid root, in other words everytime a root is modified all modifications in progress will be invalid.
 ```txt
-          X1              C1'
-        /    \          /    \
-      X2      X3      C2'      C3'
-     / \     / \      / \     / \
-   X4  X5   X6  X7   C4'  C5'  C6' C7'
+          X1'              X1''
+        /    \           /    \
+      X2'      X3       X2      X3''
+     / \     / \       / \     / \
+   X4  X5'   X6  X7   X4  X5  X6'' X7
 ```
-In the above example
+In the above example let's say we try to modify `X5 -> X5'` and make another request to modify X6 -> X6''. For the first change we get root `X1'` computed using `X1' = H(H(X4,X5'),X3)`. For the second change we get root X1'' computed using `X1'' = H(H(X6'',X7),X2`). However `X1''` is not valid as `X1' != H(H(X6, X7), X2)` because the new root is actually `X1'`.
+
+The reason this happens is because the change in the first trees path actualy changes the proofs required by the second trees change. To circumvent this problem we maintain a changelog of updates that have been made to the tree, so when `X5 -> X5'` the second mutation can actually use X2' instead of X2 which would compute to the correct root.
+
+To swap the nodes when adding a new leaf in the second tree we do the following:
+- Take XOR of the leaf indices of the change log path and the new leaf in base 2
+- The depth at which you have to make the swap is the number of leading zeroes in the result(we also add one to it because the swap node is one below the intersection node)
+- At that depth change the node in the proof to the node in the changelog
+
+Example with the previous trees:
+```txt
+            3   2   1
+Changelog: [X5',X2',X1']
+New Leaf: X6'' at leaf index 2
+                         
+                         3  2  1
+Old proof for new leaf: [X7,X2,X1] 
+
+1 XOR 2 = 001 XOR 010 = 011 (no leading zeroes)
+depth to swap at = 0 + 1 = 1
+                         
+                         3   2   1
+New proof for new leaf: [X7,X2',X1']
+```
+**Note:** We use XOR here because changelogs can get large as there can be many concurrent writes so using XOR is more efficient than a simple array search algorithm.
+
+**Note**: Solana imposes a transactions size restriction of 1232 bytes hence the program also provides the ability to cache the upper most part of the concurrent merkle tree called a "canopy" which is stored at the end of the account.
+
+### Usage while compressing digital assets
+Digital assets have the following operations when interacting with them:
+- Create(Mint)
+- Transfer
+- Delegate
+- Freeze
+- Destroy(Burn)
+
+We can map the Create operation to appending new empty leaves to the tree and everything else can be done by replacing a non-empty leaf with a new leaf.
+
+| Action | Tree | Operation | Authority |
+| --- | --- | --- | --- |
+| Mint| Append| Mint| Authority
+|Transfer| Replace Leaf| Owner + Delegate
+Delegate| Replace Leaf| Owner
+Burn| Replace Leaf |Owner + Delegate
+
+Each leaf node in the tree will contain a hash of the following metadata of the asset:
+
+| Seed | Type | Size (B) | Description |
+| --- | --- | --- | --- |
+|Owner |PublicKey |32 |Public key of the asset owner|
+|Delegate| PublicKey| 32 |Public key of the asset delegate|
+|Name |String |8 |Name of the asset|
+|URI |String |256 |Link to the asset metadata|
+|Asset| ID| UUID| 16| Unique asset identifier|
+|Creator |PublicKey |32| Creator of the asset (entitled to royalties)|
+|Royalty |Percent |Integer| 4 |Percentage of sale transferred to the creator|
+
+
+
