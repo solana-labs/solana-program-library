@@ -79,8 +79,8 @@ Digital assets have the following operations when interacting with them:
 
 We can map the Create operation to appending new empty leaves to the tree and everything else can be done by replacing a non-empty leaf with a new leaf.
 
-| Action | Tree | Operation | Authority |
-| --- | --- | --- | --- |
+| Action | Tree Operation | Authority |
+| --- | --- | --- |
 | Mint| Append| Mint| Authority
 |Transfer| Replace Leaf| Owner + Delegate
 Delegate| Replace Leaf| Owner
