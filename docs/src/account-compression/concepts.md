@@ -52,18 +52,18 @@ To swap the nodes when adding a new leaf in the second tree we do the following:
 
 Example with the previous trees:
 ```txt
-            3   2   1
-Changelog: [X5',X2',X1']
+             2   1
+Changelog: [X5',X2']
 New Leaf: X6'' at leaf index 2
                          
-                         3  2  1
-Old proof for new leaf: [X7,X2,X1] 
+                         2   1
+Old proof for new leaf: [X7,X2] 
 
 1 XOR 2 = 001 XOR 010 = 011 (no leading zeroes)
 depth to swap at = 0 + 1 = 1
                          
-                         3   2   1
-New proof for new leaf: [X7,X2',X1']
+                          2   1
+New proof for new leaf: [X7,X2']
 ```
 **Note:** We use XOR here because changelogs can get large as there can be many concurrent writes so using XOR is more efficient than a simple array search algorithm.
 
