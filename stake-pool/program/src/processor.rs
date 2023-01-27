@@ -2554,7 +2554,7 @@ impl Processor {
                 return Err(StakePoolError::StakeListOutOfDate.into());
             }
             total_lamports = total_lamports
-                .checked_add(validator_stake_record.stake_lamports())
+                .checked_add(validator_stake_record.stake_lamports()?)
                 .ok_or(StakePoolError::CalculationFailure)?;
         }
 
