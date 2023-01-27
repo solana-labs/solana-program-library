@@ -1167,7 +1167,7 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let (meta, stake) = get_stake_state(stake_account_info)?;
+        let (_, stake) = get_stake_state(stake_account_info)?;
         let vote_account_address = stake.delegation.voter_pubkey;
         let maybe_validator_stake_info = validator_list.find_mut::<ValidatorStakeInfo, _>(|x| {
             ValidatorStakeInfo::memcmp_pubkey(x, &vote_account_address)
@@ -1191,30 +1191,6 @@ impl Processor {
         if validator_stake_info.status != StakeStatus::Active {
             msg!("Validator is already marked for removal");
             return Err(StakePoolError::ValidatorNotFound.into());
-        }
-
-        let stake_lamports = **stake_account_info.lamports.borrow();
-        let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
-        let required_lamports = minimum_stake_lamports(&meta, stake_minimum_delegation);
-        if stake_lamports > required_lamports {
-            msg!(
-                "Attempting to remove validator account with {} lamports, must have no more than {} lamports; \
-                reduce using DecreaseValidatorStake first",
-                stake_lamports,
-                required_lamports
-            );
-            return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
-        }
-
-        let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
-        if stake.delegation.stake > current_minimum_delegation {
-            msg!(
-                "Error: attempting to remove stake with delegation of {} lamports, must have no more than {} lamports; \
-                reduce using DecreaseValidatorStake first",
-                stake.delegation.stake,
-                current_minimum_delegation
-            );
-            return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
         }
 
         let new_status = if validator_stake_info.transient_stake_lamports > 0 {
