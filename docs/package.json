@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "docusaurus start --host 0.0.0.0 --port 3000 --config ./docusaurus.config.js",
+    "start": "docusaurus start",
     "build": "docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
@@ -13,9 +13,9 @@
     "lint:fix": "npm run lint -- --fix"
   },
   "dependencies": {
-    "@docusaurus/core": "^2.2.0",
-    "@docusaurus/preset-classic": "^2.2.0",
-    "@docusaurus/theme-search-algolia": "^2.2.0",
+    "@docusaurus/core": "^2.0.0-alpha.73",
+    "@docusaurus/preset-classic": "^2.0.0-alpha.73",
+    "@docusaurus/theme-search-algolia": "^2.0.0-alpha.73",
     "autocomplete.js": "^0.38.1",
     "babel-eslint": "^10.1.0",
     "clsx": "^1.1.1",
