@@ -222,17 +222,19 @@ fn stake_is_inactive_without_history(stake: &stake::state::Stake, epoch: Epoch) 
             && stake.delegation.deactivation_epoch == epoch)
 }
 
-/// Roughly checks if a stake account is deactivating or inactive
-fn check_if_stake_is_deactivating_or_inactive(
+/// Roughly checks if a stake account is deactivating
+fn check_if_stake_deactivating(
     account_info: &AccountInfo,
     vote_account_address: &Pubkey,
+    epoch: Epoch,
 ) -> Result<(), ProgramError> {
     let (_, stake) = get_stake_state(account_info)?;
-    if stake.delegation.deactivation_epoch == Epoch::MAX {
+    if stake.delegation.deactivation_epoch != epoch {
         msg!(
-            "Existing stake {} delegated to {} is activating or active",
+            "Existing stake {} delegated to {} not deactivated in epoch {}",
             account_info.key,
-            vote_account_address
+            vote_account_address,
+            epoch,
         );
         Err(StakePoolError::WrongStakeState.into())
     } else {
@@ -240,17 +242,21 @@ fn check_if_stake_is_deactivating_or_inactive(
     }
 }
 
-/// Roughly checks if a stake account is activating or active
-fn check_if_stake_is_activating_or_active(
+/// Roughly checks if a stake account is activating
+fn check_if_stake_activating(
     account_info: &AccountInfo,
     vote_account_address: &Pubkey,
+    epoch: Epoch,
 ) -> Result<(), ProgramError> {
     let (_, stake) = get_stake_state(account_info)?;
-    if stake.delegation.deactivation_epoch != Epoch::MAX {
+    if stake.delegation.deactivation_epoch != Epoch::MAX
+        || stake.delegation.activation_epoch != epoch
+    {
         msg!(
-            "Existing stake {} delegated to {} is deactivating or inactive",
+            "Existing stake {} delegated to {} not activated in epoch {}",
             account_info.key,
-            vote_account_address
+            vote_account_address,
+            epoch,
         );
         Err(StakePoolError::WrongStakeState.into())
     } else {
@@ -1349,9 +1355,10 @@ impl Processor {
                 );
                 return Err(ProgramError::InvalidSeeds);
             }
-            check_if_stake_is_deactivating_or_inactive(
+            check_if_stake_deactivating(
                 transient_stake_account_info,
                 &vote_account_address,
+                clock.epoch,
             )?;
         }
 
@@ -1600,9 +1607,10 @@ impl Processor {
                 );
                 return Err(ProgramError::InvalidSeeds);
             }
-            check_if_stake_is_activating_or_active(
+            check_if_stake_activating(
                 transient_stake_account_info,
                 vote_account_address,
+                clock.epoch,
             )?;
         }
 
@@ -2053,9 +2061,10 @@ impl Processor {
                     destination_transient_stake_seed,
                     &stake_pool.lockup,
                 )?;
-                check_if_stake_is_activating_or_active(
+                check_if_stake_activating(
                     destination_transient_stake_account_info,
                     vote_account_address,
+                    clock.epoch,
                 )?;
                 Self::stake_merge(
                     stake_pool_info.key,
