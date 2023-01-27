@@ -89,6 +89,23 @@ pub enum NameRegistryInstruction {
     ///   2. `[writeable]` Refund account
     ///
     Delete,
+
+    /// Realloc the data of a name record.
+    ///
+    /// The space change cannot be more than `MAX_PERMITTED_DATA_LENGTH` greater than
+    /// current `space`.
+    ///
+    /// Accounts expected by this instruction:
+    ///   0. `[]` System program
+    ///   1. `[writeable, signer]` Payer account (will be refunded if new `space` is less than current `space`)
+    ///   2. `[writeable]` Name record to be reallocated
+    ///   3. `[signer]` Account owner
+    ///
+    Realloc {
+        /// New total number of bytes in addition to the `NameRecordHeader`.
+        /// There are no checks on the existing data; it will be truncated if the new space is less than the current space.
+        space: u32,
+    },
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -193,6 +210,29 @@ pub fn delete(
         AccountMeta::new(name_account_key, false),
         AccountMeta::new_readonly(name_owner_key, true),
         AccountMeta::new(refund_target, false),
+    ];
+
+    Ok(Instruction {
+        program_id: name_service_program_id,
+        accounts,
+        data,
+    })
+}
+
+pub fn realloc(
+    name_service_program_id: Pubkey,
+    payer_key: Pubkey,
+    name_account_key: Pubkey,
+    name_owner_key: Pubkey,
+    space: u32,
+) -> Result<Instruction, ProgramError> {
+    let instruction_data = NameRegistryInstruction::Realloc { space };
+    let data = instruction_data.try_to_vec().unwrap();
+    let accounts = vec![
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new(payer_key, true),
+        AccountMeta::new(name_account_key, false),
+        AccountMeta::new_readonly(name_owner_key, true),
     ];
 
     Ok(Instruction {
