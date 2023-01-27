@@ -240,7 +240,7 @@ export async function reallocNameAccount(
 ): Promise<TransactionInstruction> {
   const hashedName = await getHashedName(name);
   const nameAccountKey = await getNameAccountKey(
-    hashed_name,
+    hashedName,
     nameClass,
     nameParent
   );
