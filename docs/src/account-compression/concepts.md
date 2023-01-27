@@ -69,34 +69,5 @@ New proof for new leaf: [X7,X2']
 
 **Note**: Solana imposes a transactions size restriction of 1232 bytes hence the program also provides the ability to cache the upper most part of the concurrent merkle tree called a "canopy" which is stored at the end of the account.
 
-### Usage while compressing digital assets
-Digital assets have the following operations when interacting with them:
-- Create(Mint)
-- Transfer
-- Delegate
-- Freeze
-- Destroy(Burn)
-
-We can map the Create operation to appending new empty leaves to the tree and everything else can be done by replacing a non-empty leaf with a new leaf.
-
-| Action | Tree Operation | Authority |
-| --- | --- | --- |
-| Mint| Append| Mint| Authority
-|Transfer| Replace Leaf| Owner + Delegate
-Delegate| Replace Leaf| Owner
-Burn| Replace Leaf |Owner + Delegate
-
-Each leaf node in the tree will contain a hash of the following metadata of the asset:
-
-| Seed | Type | Size (B) | Description |
-| --- | --- | --- | --- |
-|Owner |PublicKey |32 |Public key of the asset owner|
-|Delegate| PublicKey| 32 |Public key of the asset delegate|
-|Name |String |8 |Name of the asset|
-|URI |String |256 |Link to the asset metadata|
-|Asset| ID| UUID| 16| Unique asset identifier|
-|Creator |PublicKey |32| Creator of the asset (entitled to royalties)|
-|Royalty |Percent |Integer| 4 |Percentage of sale transferred to the creator|
-
 
 
