@@ -16,16 +16,6 @@ module.exports = {
     "token-swap",
     "token-lending",
     "associated-token-account",
-    {
-      type: "category",
-      label: "Account Compression",
-      collapsed: true,
-      items: [
-        "account-compression",
-        "account-compression/concepts",
-        "account-compression/usage",
-      ]
-    },
     "token-upgrade",
     "memo",
     "name-service",
@@ -61,6 +51,16 @@ module.exports = {
           ],
         },
       ],
+    },
+    {
+      type: "category",
+      label: "Account Compression",
+      collapsed: true,
+      items: [
+        "account-compression",
+        "account-compression/concepts",
+        "account-compression/usage",
+      ]
     },
   ],
 };
