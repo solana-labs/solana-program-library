@@ -222,6 +222,42 @@ fn stake_is_inactive_without_history(stake: &stake::state::Stake, epoch: Epoch) 
             && stake.delegation.deactivation_epoch == epoch)
 }
 
+/// Roughly checks if a stake account is deactivating or inactive
+fn check_if_stake_is_deactivating_or_inactive(
+    account_info: &AccountInfo,
+    vote_account_address: &Pubkey,
+) -> Result<(), ProgramError> {
+    let (_, stake) = get_stake_state(account_info)?;
+    if stake.delegation.deactivation_epoch == Epoch::MAX {
+        msg!(
+            "Existing stake {} delegated to {} is activating or active",
+            account_info.key,
+            vote_account_address
+        );
+        Err(StakePoolError::WrongStakeState.into())
+    } else {
+        Ok(())
+    }
+}
+
+/// Roughly checks if a stake account is activating or active
+fn check_if_stake_is_activating_or_active(
+    account_info: &AccountInfo,
+    vote_account_address: &Pubkey,
+) -> Result<(), ProgramError> {
+    let (_, stake) = get_stake_state(account_info)?;
+    if stake.delegation.deactivation_epoch != Epoch::MAX {
+        msg!(
+            "Existing stake {} delegated to {} is deactivating or inactive",
+            account_info.key,
+            vote_account_address
+        );
+        Err(StakePoolError::WrongStakeState.into())
+    } else {
+        Ok(())
+    }
+}
+
 /// Check that the stake state is correct: usable by the pool and delegated to
 /// the expected validator
 fn check_stake_state(
@@ -1337,8 +1373,10 @@ impl Processor {
                 );
                 return Err(ProgramError::InvalidSeeds);
             }
-            // Let the runtime check to see if the merge is valid, so there's no
-            // explicit check here that the transient stake is decreasing
+            check_if_stake_is_deactivating_or_inactive(
+                transient_stake_account_info,
+                &vote_account_address,
+            )?;
         }
 
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
@@ -1586,8 +1624,10 @@ impl Processor {
                 );
                 return Err(ProgramError::InvalidSeeds);
             }
-            // Let the runtime check to see if the merge is valid, so there's no
-            // explicit check here that the transient stake is increasing
+            check_if_stake_is_activating_or_active(
+                transient_stake_account_info,
+                vote_account_address,
+            )?;
         }
 
         check_validator_stake_account(
@@ -2036,6 +2076,10 @@ impl Processor {
                     vote_account_address,
                     destination_transient_stake_seed,
                     &stake_pool.lockup,
+                )?;
+                check_if_stake_is_activating_or_active(
+                    destination_transient_stake_account_info,
+                    vote_account_address,
                 )?;
                 Self::stake_merge(
                     stake_pool_info.key,
