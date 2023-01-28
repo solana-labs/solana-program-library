@@ -219,12 +219,12 @@ async fn _success(token_program_id: Pubkey, test_type: SuccessTestType) {
         .find(&validator_stake_account.vote.pubkey())
         .unwrap();
     assert_eq!(
-        validator_stake_item.stake_lamports(),
-        validator_stake_item_before.stake_lamports() - tokens_burnt
+        validator_stake_item.stake_lamports().unwrap(),
+        validator_stake_item_before.stake_lamports().unwrap() - tokens_burnt
     );
     assert_eq!(
         validator_stake_item.active_stake_lamports,
-        validator_stake_item.stake_lamports(),
+        validator_stake_item.stake_lamports().unwrap(),
     );
 
     // Check tokens used

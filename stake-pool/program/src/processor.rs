@@ -446,7 +446,9 @@ impl Processor {
             stake::instruction::split(stake_account.key, authority.key, amount, split_stake.key);
 
         invoke_signed(
-            split_instruction.last().unwrap(),
+            split_instruction
+                .last()
+                .ok_or(ProgramError::InvalidInstructionData)?,
             &[stake_account, split_stake, authority],
             signers,
         )
@@ -2237,8 +2239,12 @@ impl Processor {
             .zip(validator_stake_accounts.chunks_exact(2));
         for (validator_stake_record, validator_stakes) in validator_iter {
             // chunks_exact means that we always get 2 elements, making this safe
-            let validator_stake_info = validator_stakes.first().unwrap();
-            let transient_stake_info = validator_stakes.last().unwrap();
+            let validator_stake_info = validator_stakes
+                .first()
+                .ok_or(ProgramError::InvalidInstructionData)?;
+            let transient_stake_info = validator_stakes
+                .last()
+                .ok_or(ProgramError::InvalidInstructionData)?;
             if check_validator_stake_address(
                 program_id,
                 stake_pool_info.key,
@@ -2533,7 +2539,7 @@ impl Processor {
                 return Err(StakePoolError::StakeListOutOfDate.into());
             }
             total_lamports = total_lamports
-                .checked_add(validator_stake_record.stake_lamports())
+                .checked_add(validator_stake_record.stake_lamports()?)
                 .ok_or(StakePoolError::CalculationFailure)?;
         }
 

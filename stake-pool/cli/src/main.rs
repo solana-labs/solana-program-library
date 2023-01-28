@@ -1103,7 +1103,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
                 stake_account_address: stake_account_address.to_string(),
                 validator_active_stake_lamports: validator.active_stake_lamports,
                 validator_last_update_epoch: validator.last_update_epoch,
-                validator_lamports: validator.stake_lamports(),
+                validator_lamports: validator.stake_lamports().unwrap(),
                 validator_transient_stake_account_address: transient_stake_account_address
                     .to_string(),
                 validator_transient_stake_lamports: validator.transient_stake_lamports,

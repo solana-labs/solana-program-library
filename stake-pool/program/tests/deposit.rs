@@ -235,8 +235,8 @@ async fn success(token_program_id: Pubkey) {
         .find(&validator_stake_account.vote.pubkey())
         .unwrap();
     assert_eq!(
-        post_validator_stake_item.stake_lamports(),
-        pre_validator_stake_item.stake_lamports() + stake_lamports - stake_rent,
+        post_validator_stake_item.stake_lamports().unwrap(),
+        pre_validator_stake_item.stake_lamports().unwrap() + stake_lamports - stake_rent,
     );
 
     // Check validator stake account actual SOL balance
@@ -247,7 +247,7 @@ async fn success(token_program_id: Pubkey) {
     .await;
     assert_eq!(
         validator_stake_account.lamports,
-        post_validator_stake_item.stake_lamports()
+        post_validator_stake_item.stake_lamports().unwrap()
     );
     assert_eq!(post_validator_stake_item.transient_stake_lamports, 0);
 
@@ -429,8 +429,8 @@ async fn success_with_extra_stake_lamports() {
         .find(&validator_stake_account.vote.pubkey())
         .unwrap();
     assert_eq!(
-        post_validator_stake_item.stake_lamports(),
-        pre_validator_stake_item.stake_lamports() + stake_lamports - stake_rent,
+        post_validator_stake_item.stake_lamports().unwrap(),
+        pre_validator_stake_item.stake_lamports().unwrap() + stake_lamports - stake_rent,
     );
 
     // Check validator stake account actual SOL balance
@@ -441,7 +441,7 @@ async fn success_with_extra_stake_lamports() {
     .await;
     assert_eq!(
         validator_stake_account.lamports,
-        post_validator_stake_item.stake_lamports()
+        post_validator_stake_item.stake_lamports().unwrap()
     );
     assert_eq!(post_validator_stake_item.transient_stake_lamports, 0);
 
