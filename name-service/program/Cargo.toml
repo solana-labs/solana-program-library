@@ -5,7 +5,7 @@ version = "0.2.0"
 repository = "https://github.com/solana-labs/solana-program-library"
 authors = [
   "lcchy <lucas@bonfida.com>",
-  "Solana Maintainers <maintainers@solana.foundation>"
+  "Solana Labs Maintainers <maintainers@solanalabs.com>"
 ]
 license = "Apache-2.0"
 edition = "2021"

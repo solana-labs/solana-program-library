@@ -2,7 +2,7 @@
 name = "spl-stake-pool"
 version = "0.7.0"
 description = "Solana Program Library Stake Pool"
-authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
 edition = "2021"

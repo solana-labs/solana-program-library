@@ -1,5 +1,5 @@
 [package]
-authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 description = "SPL Associated Token Account Program Tests"
 edition = "2021"
 license = "Apache-2.0"

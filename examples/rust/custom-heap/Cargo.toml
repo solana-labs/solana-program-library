@@ -2,7 +2,7 @@
 name = "spl-example-custom-heap"
 version = "1.0.0"
 description = "Solana Program Library Custom Heap Example"
-authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
 edition = "2021"

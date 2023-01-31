@@ -2,7 +2,7 @@
 name = "spl-token-upgrade-cli"
 version = "0.1.0"
 description = "SPL Token Upgrade Command-line Utility"
-authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
 edition = "2021"
