@@ -615,11 +615,10 @@ async def create_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_
         )
     )
 
-    await client.send_transaction(txn, [payer, stake_pool.manager],
-                                  opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+    await client.send_transaction(txn, payer, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
 
 
-async def update_token_metadata(client: AsyncClient, stake_pool_address: PublicKey,
+async def update_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_address: PublicKey,
                                 name: str, symbol: str, uri: str):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
     data = resp['result']['value']['data']
@@ -642,5 +641,4 @@ async def update_token_metadata(client: AsyncClient, stake_pool_address: PublicK
         )
     )
 
-    await client.send_transaction(txn, stake_pool.manager,
-                                  opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+    await client.send_transaction(txn, payer, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
