@@ -3,7 +3,7 @@
     "version": "0.3.4",
     "description": "SPL Token Lending JavaScript API",
     "license": "MIT",
-    "author": "Solana Maintainers <maintainers@solana.foundation>",
+    "author": "Solana Labs Maintainers <maintainers@solanalabs.com>",
     "repository": {
         "type": "git",
         "url": "https://github.com/solana-labs/solana-program-library"

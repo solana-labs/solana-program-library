@@ -1,5 +1,5 @@
 [package]
-authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 description = "SPL-Stake-Pool Command-line Utility"
 edition = "2021"
 homepage = "https://spl.solana.com/stake-pool"

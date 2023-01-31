@@ -2,7 +2,7 @@
   "name": "@solana/spl-account-compression",
   "description": "SPL Account Compression Program JS API",
   "version": "0.1.5",
-  "author": "Solana Maintainers <maintainers@solana.foundation>",
+  "author": "Solana Labs Maintainers <maintainers@solanalabs.com>",
   "repository": {
     "url": "https://github.com/solana-labs/solana-program-library",
     "type": "git"
