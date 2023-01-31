@@ -641,3 +641,6 @@ async def update_token_metadata(client: AsyncClient, stake_pool_address: PublicK
             token_metadata=TOKEN_PROGRAM_ID,
         )
     )
+
+    await client.send_transaction(txn, stake_pool.manager,
+                                  opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
