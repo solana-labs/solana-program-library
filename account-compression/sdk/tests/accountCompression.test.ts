@@ -441,51 +441,43 @@ describe('Account Compression', () => {
         "CMT updated its active index after attacker's transaction, when it shouldn't have done anything"
       );
     });
-    it('Random attacker fails to fake the existence of a leaf by autocompleting proof', async () => {
-      // As an attacker, we want to set `maliciousLeafHash1` by
-      // providing `maliciousLeafHash` and `nodeProof` which hash to the current merkle tree root.
-      // If we can do this, then we can set leaves to arbitrary values.
-      const maliciousLeafHash = crypto.randomBytes(32);
-      const maliciousLeafHash1 = crypto.randomBytes(32);
-      const nodeProof: Buffer[] = [];
-      for (let i = 0; i < DEPTH; i++) {
-        nodeProof.push(Buffer.alloc(32));
-      }
-
-      // Root - make this nonsense so it won't match what's in CL, and force proof autocompletion
-      const replaceIx = createReplaceIx(
-        cmt,
-        payer,
-        maliciousLeafHash1,
-        {
-          root: Buffer.alloc(32),
-          leaf: maliciousLeafHash,
-          leafIndex: 0,
-          proof: nodeProof
-        }
-      );
-
-      try {
-        await execute(provider, [replaceIx], [payerKeypair]);
-        assert(
-          false,
-          'Attacker was able to succesfully write fake existence of a leaf'
-        );
-      } catch (e) { }
-
-      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
-        provider.connection,
-        cmt,
-      );
-
-      assert(
-        splCMT.getCurrentBufferIndex() === 0,
-        "CMT updated its active index after attacker's transaction, when it shouldn't have done anything"
-      );
-    });
   });
   describe(`Canopy test`, () => {
     const DEPTH = 5;
+    it(`Testing canopy for verify leaf instructions`, async () => {
+      [cmtKeypair, offChainTree] = await createTreeOnChain(
+        provider,
+        payerKeypair,
+        2 ** DEPTH,
+        { maxDepth: DEPTH, maxBufferSize: 8 },
+        DEPTH // Store full tree on chain
+      );
+      cmt = cmtKeypair.publicKey;
+
+      const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(
+        connection,
+        cmt,
+        "confirmed"
+      );
+      let i = 0;
+      const stepSize = 4;
+      while (i < 2 ** DEPTH) {
+        const ixs: TransactionInstruction[] = [];
+        for (let j = 0; j < stepSize; j += 1) {
+          const leafIndex = i + j;
+          const leaf = offChainTree.leaves[leafIndex].node;
+          const verifyIx = createVerifyLeafIx(cmt, {
+            root: splCMT.getCurrentRoot(),
+            leaf,
+            leafIndex,
+            proof: [],
+          });
+          ixs.push(verifyIx);
+        }
+        i += stepSize;
+        await execute(provider, ixs, [payerKeypair]);
+      }
+    });
     it('Testing canopy for appends and replaces on a full on chain tree', async () => {
       [cmtKeypair, offChainTree] = await createTreeOnChain(
         provider,

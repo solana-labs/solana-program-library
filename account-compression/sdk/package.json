@@ -1,8 +1,8 @@
 {
   "name": "@solana/spl-account-compression",
   "description": "SPL Account Compression Program JS API",
-  "version": "0.1.4",
-  "author": "Solana Maintainers <maintainers@solana.foundation>",
+  "version": "0.1.5",
+  "author": "Solana Labs Maintainers <maintainers@solanalabs.com>",
   "repository": {
     "url": "https://github.com/solana-labs/solana-program-library",
     "type": "git"
@@ -30,8 +30,7 @@
       "import": "./dist/esm/index.js",
       "types": "./dist/types/index.d.ts"
     },
-    "./idl/spl_account_compression.json": "./idl/spl_account_compression.json",
-    "./src/merkle-tree": "./src/merkle-tree/index.ts"
+    "./idl/spl_account_compression.json": "./idl/spl_account_compression.json"
   },
   "scripts": {
     "build": "rm -rf dist/ && tsc && tsc -p tsconfig.cjs.json",

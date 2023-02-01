@@ -219,12 +219,12 @@ async fn _success(token_program_id: Pubkey, test_type: SuccessTestType) {
         .find(&validator_stake_account.vote.pubkey())
         .unwrap();
     assert_eq!(
-        validator_stake_item.stake_lamports(),
-        validator_stake_item_before.stake_lamports() - tokens_burnt
+        validator_stake_item.stake_lamports().unwrap(),
+        validator_stake_item_before.stake_lamports().unwrap() - tokens_burnt
     );
     assert_eq!(
         validator_stake_item.active_stake_lamports,
-        validator_stake_item.stake_lamports(),
+        validator_stake_item.stake_lamports().unwrap(),
     );
 
     // Check tokens used
@@ -632,21 +632,21 @@ async fn fail_with_not_enough_tokens() {
         tokens_to_burn,
     ) = setup_for_withdraw(spl_token::id()).await;
 
-    // Empty validator stake account
-    let empty_stake_account = simple_add_validator_to_pool(
-        &mut context.banks_client,
-        &context.payer,
-        &context.last_blockhash,
-        &stake_pool_accounts,
-        None,
-    )
-    .await;
-
     let last_blockhash = context
         .banks_client
         .get_new_latest_blockhash(&context.last_blockhash)
         .await
         .unwrap();
+
+    // Empty validator stake account
+    let empty_stake_account = simple_add_validator_to_pool(
+        &mut context.banks_client,
+        &context.payer,
+        &last_blockhash,
+        &stake_pool_accounts,
+        None,
+    )
+    .await;
 
     let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
@@ -758,5 +758,83 @@ async fn fail_with_not_enough_tokens() {
             0,
             InstructionError::Custom(TokenError::InsufficientFunds as u32),
         )
+    );
+}
+
+#[test_case(spl_token::id(); "token")]
+#[test_case(spl_token_2022::id(); "token-2022")]
+#[tokio::test]
+async fn success_with_slippage(token_program_id: Pubkey) {
+    let (
+        mut context,
+        stake_pool_accounts,
+        validator_stake_account,
+        deposit_info,
+        user_transfer_authority,
+        user_stake_recipient,
+        tokens_to_withdraw,
+    ) = setup_for_withdraw(token_program_id).await;
+
+    // Save user token balance
+    let user_token_balance_before = get_token_balance(
+        &mut context.banks_client,
+        &deposit_info.pool_account.pubkey(),
+    )
+    .await;
+
+    // first and only deposit, lamports:pool 1:1
+    let tokens_withdrawal_fee = stake_pool_accounts.calculate_withdrawal_fee(tokens_to_withdraw);
+    let received_lamports = tokens_to_withdraw - tokens_withdrawal_fee;
+
+    let new_authority = Pubkey::new_unique();
+    let error = stake_pool_accounts
+        .withdraw_stake_with_slippage(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
+            &deposit_info.pool_account.pubkey(),
+            &validator_stake_account.stake_account,
+            &new_authority,
+            tokens_to_withdraw,
+            received_lamports + 1,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::ExceededSlippage as u32)
+        )
+    );
+
+    let error = stake_pool_accounts
+        .withdraw_stake_with_slippage(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
+            &deposit_info.pool_account.pubkey(),
+            &validator_stake_account.stake_account,
+            &new_authority,
+            tokens_to_withdraw,
+            received_lamports,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // Check tokens used
+    let user_token_balance = get_token_balance(
+        &mut context.banks_client,
+        &deposit_info.pool_account.pubkey(),
+    )
+    .await;
+    assert_eq!(
+        user_token_balance,
+        user_token_balance_before - tokens_to_withdraw
     );
 }

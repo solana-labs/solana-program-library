@@ -212,17 +212,27 @@ async fn fail_with_wrong_validator_list_account() {
 }
 
 #[tokio::test]
-async fn fail_not_at_minimum() {
+async fn success_at_large_value() {
     let (mut context, stake_pool_accounts, validator_stake) = setup().await;
 
-    transfer(
+    let current_minimum_delegation = stake_pool_get_minimum_delegation(
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
-        &validator_stake.stake_account,
-        1_000_001,
     )
     .await;
+
+    let threshold_amount = current_minimum_delegation * 1_000;
+    let _ = simple_deposit_stake(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &stake_pool_accounts,
+        &validator_stake,
+        threshold_amount,
+    )
+    .await
+    .unwrap();
 
     let error = stake_pool_accounts
         .remove_validator_from_pool(
@@ -232,16 +242,8 @@ async fn fail_not_at_minimum() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
         )
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(
-        error,
-        TransactionError::InstructionError(
-            0,
-            InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)
-        ),
-    );
+        .await;
+    assert!(error.is_none());
 }
 
 #[tokio::test]

@@ -10,6 +10,7 @@ import {
     TokenInvalidInstructionTypeError,
     TokenUnsupportedInstructionError,
 } from '../../errors.js';
+import { addSigners } from '../../instructions/internal.js';
 import { TokenInstruction } from '../../instructions/types.js';
 
 export enum TransferFeeInstruction {
@@ -237,7 +238,7 @@ export function createTransferCheckedWithFeeInstruction(
     amount: bigint,
     decimals: number,
     fee: bigint,
-    multiSigners: Signer[] = [],
+    multiSigners: (Signer | PublicKey)[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
@@ -254,14 +255,15 @@ export function createTransferCheckedWithFeeInstruction(
         },
         data
     );
-    const keys: AccountMeta[] = [];
-    keys.push({ pubkey: source, isSigner: false, isWritable: true });
-    keys.push({ pubkey: mint, isSigner: false, isWritable: false });
-    keys.push({ pubkey: destination, isSigner: false, isWritable: true });
-    keys.push({ pubkey: authority, isSigner: !multiSigners.length, isWritable: false });
-    for (const signer of multiSigners) {
-        keys.push({ pubkey: signer.publicKey, isSigner: true, isWritable: false });
-    }
+    const keys = addSigners(
+        [
+            { pubkey: source, isSigner: false, isWritable: true },
+            { pubkey: mint, isSigner: false, isWritable: false },
+            { pubkey: destination, isSigner: false, isWritable: true },
+        ],
+        authority,
+        multiSigners
+    );
     return new TransactionInstruction({ keys, programId, data });
 }
 
@@ -403,7 +405,7 @@ export function createWithdrawWithheldTokensFromMintInstruction(
     mint: PublicKey,
     destination: PublicKey,
     authority: PublicKey,
-    signers: Signer[] = [],
+    signers: (Signer | PublicKey)[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
@@ -417,15 +419,14 @@ export function createWithdrawWithheldTokensFromMintInstruction(
         },
         data
     );
-    const keys: AccountMeta[] = [];
-    keys.push(
-        { pubkey: mint, isSigner: false, isWritable: true },
-        { pubkey: destination, isSigner: false, isWritable: true },
-        { pubkey: authority, isSigner: !signers.length, isWritable: false }
+    const keys = addSigners(
+        [
+            { pubkey: mint, isSigner: false, isWritable: true },
+            { pubkey: destination, isSigner: false, isWritable: true },
+        ],
+        authority,
+        signers
     );
-    for (const signer of signers) {
-        keys.push({ pubkey: signer.publicKey, isSigner: true, isWritable: false });
-    }
     return new TransactionInstruction({ keys, programId, data });
 }
 
@@ -557,7 +558,7 @@ export function createWithdrawWithheldTokensFromAccountsInstruction(
     mint: PublicKey,
     destination: PublicKey,
     authority: PublicKey,
-    signers: Signer[],
+    signers: (Signer | PublicKey)[],
     sources: PublicKey[],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
@@ -573,15 +574,14 @@ export function createWithdrawWithheldTokensFromAccountsInstruction(
         },
         data
     );
-    const keys: AccountMeta[] = [];
-    keys.push(
-        { pubkey: mint, isSigner: false, isWritable: true },
-        { pubkey: destination, isSigner: false, isWritable: true },
-        { pubkey: authority, isSigner: !signers.length, isWritable: false }
+    const keys = addSigners(
+        [
+            { pubkey: mint, isSigner: false, isWritable: true },
+            { pubkey: destination, isSigner: false, isWritable: true },
+        ],
+        authority,
+        signers
     );
-    for (const signer of signers) {
-        keys.push({ pubkey: signer.publicKey, isSigner: true, isWritable: false });
-    }
     for (const source of sources) {
         keys.push({ pubkey: source, isSigner: false, isWritable: true });
     }

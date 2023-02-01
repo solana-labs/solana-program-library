@@ -323,3 +323,72 @@ async fn fail_without_sol_withdraw_authority_signature() {
         )
     );
 }
+
+#[test_case(spl_token::id(); "token")]
+#[test_case(spl_token_2022::id(); "token-2022")]
+#[tokio::test]
+async fn success_with_slippage(token_program_id: Pubkey) {
+    let (mut context, stake_pool_accounts, user, pool_token_account, pool_tokens) =
+        setup(token_program_id).await;
+
+    let amount_received = pool_tokens - stake_pool_accounts.calculate_withdrawal_fee(pool_tokens);
+
+    // Save reserve state before withdrawing
+    let pre_reserve_lamports = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+    )
+    .await
+    .lamports;
+
+    let error = stake_pool_accounts
+        .withdraw_sol_with_slippage(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user,
+            &pool_token_account,
+            pool_tokens,
+            amount_received + 1,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::ExceededSlippage as u32)
+        )
+    );
+
+    let error = stake_pool_accounts
+        .withdraw_sol_with_slippage(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user,
+            &pool_token_account,
+            pool_tokens,
+            amount_received,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // Check burned tokens
+    let user_token_balance =
+        get_token_balance(&mut context.banks_client, &pool_token_account).await;
+    assert_eq!(user_token_balance, 0);
+
+    // Check reserve
+    let post_reserve_lamports = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+    )
+    .await
+    .lamports;
+    assert_eq!(
+        post_reserve_lamports,
+        pre_reserve_lamports - amount_received
+    );
+}

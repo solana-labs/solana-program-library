@@ -30,7 +30,7 @@ use {
         find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address, id, instruction, minimum_delegation,
         processor::Processor,
-        state::{self, FeeType, StakePool, ValidatorList},
+        state::{self, FeeType, FutureEpoch, StakePool, ValidatorList},
         MINIMUM_RESERVE_LAMPORTS,
     },
     spl_token_2022::{
@@ -968,6 +968,48 @@ impl StakePoolAccounts {
     }
 
     #[allow(clippy::too_many_arguments)]
+    pub async fn deposit_stake_with_slippage(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        stake: &Pubkey,
+        pool_account: &Pubkey,
+        validator_stake_account: &Pubkey,
+        current_staker: &Keypair,
+        minimum_pool_tokens_out: u64,
+    ) -> Option<TransportError> {
+        let mut instructions = instruction::deposit_stake_with_slippage(
+            &id(),
+            &self.stake_pool.pubkey(),
+            &self.validator_list.pubkey(),
+            &self.withdraw_authority,
+            stake,
+            &current_staker.pubkey(),
+            validator_stake_account,
+            &self.reserve_stake.pubkey(),
+            pool_account,
+            &self.pool_fee_account.pubkey(),
+            &self.pool_fee_account.pubkey(),
+            &self.pool_mint.pubkey(),
+            &self.token_program_id,
+            minimum_pool_tokens_out,
+        );
+        self.maybe_add_compute_budget_instruction(&mut instructions);
+        let transaction = Transaction::new_signed_with_payer(
+            &instructions,
+            Some(&payer.pubkey()),
+            &[payer, current_staker],
+            *recent_blockhash,
+        );
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .map_err(|e| e.into())
+            .err()
+    }
+
+    #[allow(clippy::too_many_arguments)]
     pub async fn deposit_stake(
         &self,
         banks_client: &mut BanksClient,
@@ -1112,6 +1154,88 @@ impl StakePoolAccounts {
     }
 
     #[allow(clippy::too_many_arguments)]
+    pub async fn deposit_sol_with_slippage(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        pool_account: &Pubkey,
+        lamports_in: u64,
+        minimum_pool_tokens_out: u64,
+    ) -> Option<TransportError> {
+        let mut instructions = vec![instruction::deposit_sol_with_slippage(
+            &id(),
+            &self.stake_pool.pubkey(),
+            &self.withdraw_authority,
+            &self.reserve_stake.pubkey(),
+            &payer.pubkey(),
+            pool_account,
+            &self.pool_fee_account.pubkey(),
+            &self.pool_fee_account.pubkey(),
+            &self.pool_mint.pubkey(),
+            &self.token_program_id,
+            lamports_in,
+            minimum_pool_tokens_out,
+        )];
+        self.maybe_add_compute_budget_instruction(&mut instructions);
+        let transaction = Transaction::new_signed_with_payer(
+            &instructions,
+            Some(&payer.pubkey()),
+            &[payer],
+            *recent_blockhash,
+        );
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .map_err(|e| e.into())
+            .err()
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn withdraw_stake_with_slippage(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        stake_recipient: &Pubkey,
+        user_transfer_authority: &Keypair,
+        pool_account: &Pubkey,
+        validator_stake_account: &Pubkey,
+        recipient_new_authority: &Pubkey,
+        pool_tokens_in: u64,
+        minimum_lamports_out: u64,
+    ) -> Option<TransportError> {
+        let mut instructions = vec![instruction::withdraw_stake_with_slippage(
+            &id(),
+            &self.stake_pool.pubkey(),
+            &self.validator_list.pubkey(),
+            &self.withdraw_authority,
+            validator_stake_account,
+            stake_recipient,
+            recipient_new_authority,
+            &user_transfer_authority.pubkey(),
+            pool_account,
+            &self.pool_fee_account.pubkey(),
+            &self.pool_mint.pubkey(),
+            &self.token_program_id,
+            pool_tokens_in,
+            minimum_lamports_out,
+        )];
+        self.maybe_add_compute_budget_instruction(&mut instructions);
+        let transaction = Transaction::new_signed_with_payer(
+            &instructions,
+            Some(&payer.pubkey()),
+            &[payer, user_transfer_authority],
+            *recent_blockhash,
+        );
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .map_err(|e| e.into())
+            .err()
+    }
+
+    #[allow(clippy::too_many_arguments)]
     pub async fn withdraw_stake(
         &self,
         banks_client: &mut BanksClient,
@@ -1144,6 +1268,45 @@ impl StakePoolAccounts {
             &instructions,
             Some(&payer.pubkey()),
             &[payer, user_transfer_authority],
+            *recent_blockhash,
+        );
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .map_err(|e| e.into())
+            .err()
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn withdraw_sol_with_slippage(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        user: &Keypair,
+        pool_account: &Pubkey,
+        amount_in: u64,
+        minimum_lamports_out: u64,
+    ) -> Option<TransportError> {
+        let mut instructions = vec![instruction::withdraw_sol_with_slippage(
+            &id(),
+            &self.stake_pool.pubkey(),
+            &self.withdraw_authority,
+            &user.pubkey(),
+            pool_account,
+            &self.reserve_stake.pubkey(),
+            &user.pubkey(),
+            &self.pool_fee_account.pubkey(),
+            &self.pool_mint.pubkey(),
+            &self.token_program_id,
+            amount_in,
+            minimum_lamports_out,
+        )];
+        self.maybe_add_compute_budget_instruction(&mut instructions);
+        let transaction = Transaction::new_signed_with_payer(
+            &instructions,
+            Some(&payer.pubkey()),
+            &[payer, user],
             *recent_blockhash,
         );
         banks_client
@@ -1776,19 +1939,19 @@ impl StakePoolAccounts {
             last_update_epoch: 0,
             lockup: stake::state::Lockup::default(),
             epoch_fee: self.epoch_fee,
-            next_epoch_fee: None,
+            next_epoch_fee: FutureEpoch::None,
             preferred_deposit_validator_vote_address: None,
             preferred_withdraw_validator_vote_address: None,
             stake_deposit_fee: state::Fee::default(),
             sol_deposit_fee: state::Fee::default(),
             stake_withdrawal_fee: state::Fee::default(),
-            next_stake_withdrawal_fee: None,
+            next_stake_withdrawal_fee: FutureEpoch::None,
             stake_referral_fee: 0,
             sol_referral_fee: 0,
             sol_deposit_authority: None,
             sol_withdraw_authority: None,
             sol_withdrawal_fee: state::Fee::default(),
-            next_sol_withdrawal_fee: None,
+            next_sol_withdrawal_fee: FutureEpoch::None,
             last_epoch_pool_token_supply: 0,
             last_epoch_total_lamports: 0,
         };
@@ -2127,7 +2290,7 @@ pub async fn get_validator_list_sum(
     let validator_sum: u64 = validator_list
         .validators
         .iter()
-        .map(|info| info.stake_lamports())
+        .map(|info| info.stake_lamports().unwrap())
         .sum();
     let rent = banks_client.get_rent().await.unwrap();
     let rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());

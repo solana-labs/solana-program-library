@@ -1,5 +1,5 @@
 anchor_version = "0.24.2"
-solana_version = "1.14.10"
+solana_version = "1.14.12"
 
 [workspace]
 members = [

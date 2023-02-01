@@ -2,7 +2,7 @@
 name = "spl-shared-memory"
 version = "2.0.6"
 description = "Solana Program Library Shared-memory"
-authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
 edition = "2021"
@@ -12,11 +12,11 @@ test-sbf = []
 
 [dependencies]
 arrayref = "0.3.6"
-solana-program = "=1.14.10"
+solana-program = "=1.14.12"
 
 [dev-dependencies]
-solana-program-test = "=1.14.10"
-solana-sdk = "=1.14.10"
+solana-program-test = "=1.14.12"
+solana-sdk = "=1.14.12"
 
 [lib]
 crate-type = ["cdylib", "lib"]
