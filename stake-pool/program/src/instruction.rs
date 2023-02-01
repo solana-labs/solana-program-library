@@ -532,6 +532,105 @@ pub enum StakePoolInstruction {
         #[allow(dead_code)] // but it's not
         destination_transient_stake_seed: u64,
     },
+
+    ///   Deposit some stake into the pool, with a specified slippage constraint.
+    ///   The output is a "pool" token representing ownership into the pool.
+    ///   Inputs are converted at the current ratio.
+    ///
+    ///   0. `[w]` Stake pool
+    ///   1. `[w]` Validator stake list storage account
+    ///   2. `[s]/[]` Stake pool deposit authority
+    ///   3. `[]` Stake pool withdraw authority
+    ///   4. `[w]` Stake account to join the pool (withdraw authority for the stake account should be first set to the stake pool deposit authority)
+    ///   5. `[w]` Validator stake account for the stake account to be merged with
+    ///   6. `[w]` Reserve stake account, to withdraw rent exempt reserve
+    ///   7. `[w]` User account to receive pool tokens
+    ///   8. `[w]` Account to receive pool fee tokens
+    ///   9. `[w]` Account to receive a portion of pool fee tokens as referral fees
+    ///   10. `[w]` Pool token mint account
+    ///   11. '[]' Sysvar clock account
+    ///   12. '[]' Sysvar stake history account
+    ///   13. `[]` Pool token program id,
+    ///   14. `[]` Stake program id,
+    DepositStakeWithSlippage {
+        /// Minimum amount of pool tokens that must be received
+        minimum_pool_tokens_out: u64,
+    },
+
+    ///   Withdraw the token from the pool at the current ratio, specifying a
+    ///   minimum expected output lamport amount.
+    ///
+    ///   Succeeds if the stake account has enough SOL to cover the desired amount
+    ///   of pool tokens, and if the withdrawal keeps the total staked amount
+    ///   above the minimum of rent-exempt amount +
+    ///   `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    ///
+    ///   0. `[w]` Stake pool
+    ///   1. `[w]` Validator stake list storage account
+    ///   2. `[]` Stake pool withdraw authority
+    ///   3. `[w]` Validator or reserve stake account to split
+    ///   4. `[w]` Unitialized stake account to receive withdrawal
+    ///   5. `[]` User account to set as a new withdraw authority
+    ///   6. `[s]` User transfer authority, for pool token account
+    ///   7. `[w]` User account with pool tokens to burn from
+    ///   8. `[w]` Account to receive pool fee tokens
+    ///   9. `[w]` Pool token mint account
+    ///  10. `[]` Sysvar clock account (required)
+    ///  11. `[]` Pool token program id
+    ///  12. `[]` Stake program id,
+    ///  userdata: amount of pool tokens to withdraw
+    WithdrawStakeWithSlippage {
+        /// Pool tokens to burn in exchange for lamports
+        pool_tokens_in: u64,
+        /// Minimum amount of lamports that must be received
+        minimum_lamports_out: u64,
+    },
+
+    ///   Deposit SOL directly into the pool's reserve account, with a specified
+    ///   slippage constraint. The output is a "pool" token representing ownership
+    ///   into the pool. Inputs are converted at the current ratio.
+    ///
+    ///   0. `[w]` Stake pool
+    ///   1. `[]` Stake pool withdraw authority
+    ///   2. `[w]` Reserve stake account, to deposit SOL
+    ///   3. `[s]` Account providing the lamports to be deposited into the pool
+    ///   4. `[w]` User account to receive pool tokens
+    ///   5. `[w]` Account to receive fee tokens
+    ///   6. `[w]` Account to receive a portion of fee as referral fees
+    ///   7. `[w]` Pool token mint account
+    ///   8. `[]` System program account
+    ///   9. `[]` Token program id
+    ///  10. `[s]` (Optional) Stake pool sol deposit authority.
+    DepositSolWithSlippage {
+        /// Amount of lamports to deposit into the reserve
+        lamports_in: u64,
+        /// Minimum amount of pool tokens that must be received
+        minimum_pool_tokens_out: u64,
+    },
+
+    ///   Withdraw SOL directly from the pool's reserve account. Fails if the
+    ///   reserve does not have enough SOL or if the slippage constraint is not
+    ///   met.
+    ///
+    ///   0. `[w]` Stake pool
+    ///   1. `[]` Stake pool withdraw authority
+    ///   2. `[s]` User transfer authority, for pool token account
+    ///   3. `[w]` User account to burn pool tokens
+    ///   4. `[w]` Reserve stake account, to withdraw SOL
+    ///   5. `[w]` Account receiving the lamports from the reserve, must be a system account
+    ///   6. `[w]` Account to receive pool fee tokens
+    ///   7. `[w]` Pool token mint account
+    ///   8. '[]' Clock sysvar
+    ///   9. '[]' Stake history sysvar
+    ///  10. `[]` Stake program account
+    ///  11. `[]` Token program id
+    ///  12. `[s]` (Optional) Stake pool sol withdraw authority
+    WithdrawSolWithSlippage {
+        /// Pool tokens to burn in exchange for lamports
+        pool_tokens_in: u64,
+        /// Minimum amount of lamports that must be received
+        minimum_lamports_out: u64,
+    },
 }
 
 /// Creates an 'initialize' instruction.
@@ -1282,6 +1381,110 @@ pub fn update_stake_pool(
     (update_list_instructions, final_instructions)
 }
 
+fn deposit_stake_internal(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    validator_list_storage: &Pubkey,
+    stake_pool_deposit_authority: Option<&Pubkey>,
+    stake_pool_withdraw_authority: &Pubkey,
+    deposit_stake_address: &Pubkey,
+    deposit_stake_withdraw_authority: &Pubkey,
+    validator_stake_account: &Pubkey,
+    reserve_stake_account: &Pubkey,
+    pool_tokens_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    minimum_pool_tokens_out: Option<u64>,
+) -> Vec<Instruction> {
+    let mut instructions = vec![];
+    let mut accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new(*validator_list_storage, false),
+    ];
+    if let Some(stake_pool_deposit_authority) = stake_pool_deposit_authority {
+        accounts.push(AccountMeta::new_readonly(
+            *stake_pool_deposit_authority,
+            true,
+        ));
+        instructions.extend_from_slice(&[
+            stake::instruction::authorize(
+                deposit_stake_address,
+                deposit_stake_withdraw_authority,
+                stake_pool_deposit_authority,
+                stake::state::StakeAuthorize::Staker,
+                None,
+            ),
+            stake::instruction::authorize(
+                deposit_stake_address,
+                deposit_stake_withdraw_authority,
+                stake_pool_deposit_authority,
+                stake::state::StakeAuthorize::Withdrawer,
+                None,
+            ),
+        ]);
+    } else {
+        let stake_pool_deposit_authority =
+            find_deposit_authority_program_address(program_id, stake_pool).0;
+        accounts.push(AccountMeta::new_readonly(
+            stake_pool_deposit_authority,
+            false,
+        ));
+        instructions.extend_from_slice(&[
+            stake::instruction::authorize(
+                deposit_stake_address,
+                deposit_stake_withdraw_authority,
+                &stake_pool_deposit_authority,
+                stake::state::StakeAuthorize::Staker,
+                None,
+            ),
+            stake::instruction::authorize(
+                deposit_stake_address,
+                deposit_stake_withdraw_authority,
+                &stake_pool_deposit_authority,
+                stake::state::StakeAuthorize::Withdrawer,
+                None,
+            ),
+        ]);
+    };
+
+    accounts.extend_from_slice(&[
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        AccountMeta::new(*deposit_stake_address, false),
+        AccountMeta::new(*validator_stake_account, false),
+        AccountMeta::new(*reserve_stake_account, false),
+        AccountMeta::new(*pool_tokens_to, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*referrer_pool_tokens_account, false),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(stake::program::id(), false),
+    ]);
+    instructions.push(
+        if let Some(minimum_pool_tokens_out) = minimum_pool_tokens_out {
+            Instruction {
+                program_id: *program_id,
+                accounts,
+                data: StakePoolInstruction::DepositStakeWithSlippage {
+                    minimum_pool_tokens_out,
+                }
+                .try_to_vec()
+                .unwrap(),
+            }
+        } else {
+            Instruction {
+                program_id: *program_id,
+                accounts,
+                data: StakePoolInstruction::DepositStake.try_to_vec().unwrap(),
+            }
+        },
+    );
+    instructions
+}
+
 /// Creates instructions required to deposit into a stake pool, given a stake
 /// account owned by the user.
 pub fn deposit_stake(
@@ -1299,46 +1502,59 @@ pub fn deposit_stake(
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
 ) -> Vec<Instruction> {
-    let stake_pool_deposit_authority =
-        find_deposit_authority_program_address(program_id, stake_pool).0;
-    let accounts = vec![
-        AccountMeta::new(*stake_pool, false),
-        AccountMeta::new(*validator_list_storage, false),
-        AccountMeta::new_readonly(stake_pool_deposit_authority, false),
-        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
-        AccountMeta::new(*deposit_stake_address, false),
-        AccountMeta::new(*validator_stake_account, false),
-        AccountMeta::new(*reserve_stake_account, false),
-        AccountMeta::new(*pool_tokens_to, false),
-        AccountMeta::new(*manager_fee_account, false),
-        AccountMeta::new(*referrer_pool_tokens_account, false),
-        AccountMeta::new(*pool_mint, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(stake::program::id(), false),
-    ];
-    vec![
-        stake::instruction::authorize(
-            deposit_stake_address,
-            deposit_stake_withdraw_authority,
-            &stake_pool_deposit_authority,
-            stake::state::StakeAuthorize::Staker,
-            None,
-        ),
-        stake::instruction::authorize(
-            deposit_stake_address,
-            deposit_stake_withdraw_authority,
-            &stake_pool_deposit_authority,
-            stake::state::StakeAuthorize::Withdrawer,
-            None,
-        ),
-        Instruction {
-            program_id: *program_id,
-            accounts,
-            data: StakePoolInstruction::DepositStake.try_to_vec().unwrap(),
-        },
-    ]
+    deposit_stake_internal(
+        program_id,
+        stake_pool,
+        validator_list_storage,
+        None,
+        stake_pool_withdraw_authority,
+        deposit_stake_address,
+        deposit_stake_withdraw_authority,
+        validator_stake_account,
+        reserve_stake_account,
+        pool_tokens_to,
+        manager_fee_account,
+        referrer_pool_tokens_account,
+        pool_mint,
+        token_program_id,
+        None,
+    )
+}
+
+/// Creates instructions to deposit into a stake pool with slippage
+pub fn deposit_stake_with_slippage(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    validator_list_storage: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    deposit_stake_address: &Pubkey,
+    deposit_stake_withdraw_authority: &Pubkey,
+    validator_stake_account: &Pubkey,
+    reserve_stake_account: &Pubkey,
+    pool_tokens_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    minimum_pool_tokens_out: u64,
+) -> Vec<Instruction> {
+    deposit_stake_internal(
+        program_id,
+        stake_pool,
+        validator_list_storage,
+        None,
+        stake_pool_withdraw_authority,
+        deposit_stake_address,
+        deposit_stake_withdraw_authority,
+        validator_stake_account,
+        reserve_stake_account,
+        pool_tokens_to,
+        manager_fee_account,
+        referrer_pool_tokens_account,
+        pool_mint,
+        token_program_id,
+        Some(minimum_pool_tokens_out),
+    )
 }
 
 /// Creates instructions required to deposit into a stake pool, given a stake
@@ -1360,48 +1576,66 @@ pub fn deposit_stake_with_authority(
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
 ) -> Vec<Instruction> {
-    let accounts = vec![
-        AccountMeta::new(*stake_pool, false),
-        AccountMeta::new(*validator_list_storage, false),
-        AccountMeta::new_readonly(*stake_pool_deposit_authority, true),
-        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
-        AccountMeta::new(*deposit_stake_address, false),
-        AccountMeta::new(*validator_stake_account, false),
-        AccountMeta::new(*reserve_stake_account, false),
-        AccountMeta::new(*pool_tokens_to, false),
-        AccountMeta::new(*manager_fee_account, false),
-        AccountMeta::new(*referrer_pool_tokens_account, false),
-        AccountMeta::new(*pool_mint, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(stake::program::id(), false),
-    ];
-    vec![
-        stake::instruction::authorize(
-            deposit_stake_address,
-            deposit_stake_withdraw_authority,
-            stake_pool_deposit_authority,
-            stake::state::StakeAuthorize::Staker,
-            None,
-        ),
-        stake::instruction::authorize(
-            deposit_stake_address,
-            deposit_stake_withdraw_authority,
-            stake_pool_deposit_authority,
-            stake::state::StakeAuthorize::Withdrawer,
-            None,
-        ),
-        Instruction {
-            program_id: *program_id,
-            accounts,
-            data: StakePoolInstruction::DepositStake.try_to_vec().unwrap(),
-        },
-    ]
+    deposit_stake_internal(
+        program_id,
+        stake_pool,
+        validator_list_storage,
+        Some(stake_pool_deposit_authority),
+        stake_pool_withdraw_authority,
+        deposit_stake_address,
+        deposit_stake_withdraw_authority,
+        validator_stake_account,
+        reserve_stake_account,
+        pool_tokens_to,
+        manager_fee_account,
+        referrer_pool_tokens_account,
+        pool_mint,
+        token_program_id,
+        None,
+    )
+}
+
+/// Creates instructions required to deposit into a stake pool with slippage, given
+/// a stake account owned by the user. The difference with `deposit()` is that a deposit
+/// authority must sign this instruction, which is required for private pools.
+pub fn deposit_stake_with_authority_and_slippage(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    validator_list_storage: &Pubkey,
+    stake_pool_deposit_authority: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    deposit_stake_address: &Pubkey,
+    deposit_stake_withdraw_authority: &Pubkey,
+    validator_stake_account: &Pubkey,
+    reserve_stake_account: &Pubkey,
+    pool_tokens_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    minimum_pool_tokens_out: u64,
+) -> Vec<Instruction> {
+    deposit_stake_internal(
+        program_id,
+        stake_pool,
+        validator_list_storage,
+        Some(stake_pool_deposit_authority),
+        stake_pool_withdraw_authority,
+        deposit_stake_address,
+        deposit_stake_withdraw_authority,
+        validator_stake_account,
+        reserve_stake_account,
+        pool_tokens_to,
+        manager_fee_account,
+        referrer_pool_tokens_account,
+        pool_mint,
+        token_program_id,
+        Some(minimum_pool_tokens_out),
+    )
 }
 
 /// Creates instructions required to deposit SOL directly into a stake pool.
-pub fn deposit_sol(
+fn deposit_sol_internal(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     stake_pool_withdraw_authority: &Pubkey,
@@ -1412,9 +1646,11 @@ pub fn deposit_sol(
     referrer_pool_tokens_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
-    amount: u64,
+    sol_deposit_authority: Option<&Pubkey>,
+    lamports_in: u64,
+    minimum_pool_tokens_out: Option<u64>,
 ) -> Instruction {
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
         AccountMeta::new(*reserve_stake_account, false),
@@ -1426,13 +1662,92 @@ pub fn deposit_sol(
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: StakePoolInstruction::DepositSol(amount)
+    if let Some(sol_deposit_authority) = sol_deposit_authority {
+        accounts.push(AccountMeta::new_readonly(*sol_deposit_authority, true));
+    }
+    if let Some(minimum_pool_tokens_out) = minimum_pool_tokens_out {
+        Instruction {
+            program_id: *program_id,
+            accounts,
+            data: StakePoolInstruction::DepositSolWithSlippage {
+                lamports_in,
+                minimum_pool_tokens_out,
+            }
             .try_to_vec()
             .unwrap(),
+        }
+    } else {
+        Instruction {
+            program_id: *program_id,
+            accounts,
+            data: StakePoolInstruction::DepositSol(lamports_in)
+                .try_to_vec()
+                .unwrap(),
+        }
     }
+}
+
+/// Creates instruction to deposit SOL directly into a stake pool.
+pub fn deposit_sol(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    reserve_stake_account: &Pubkey,
+    lamports_from: &Pubkey,
+    pool_tokens_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    lamports_in: u64,
+) -> Instruction {
+    deposit_sol_internal(
+        program_id,
+        stake_pool,
+        stake_pool_withdraw_authority,
+        reserve_stake_account,
+        lamports_from,
+        pool_tokens_to,
+        manager_fee_account,
+        referrer_pool_tokens_account,
+        pool_mint,
+        token_program_id,
+        None,
+        lamports_in,
+        None,
+    )
+}
+
+/// Creates instruction to deposit SOL directly into a stake pool with slippage constraint.
+pub fn deposit_sol_with_slippage(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    reserve_stake_account: &Pubkey,
+    lamports_from: &Pubkey,
+    pool_tokens_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    lamports_in: u64,
+    minimum_pool_tokens_out: u64,
+) -> Instruction {
+    deposit_sol_internal(
+        program_id,
+        stake_pool,
+        stake_pool_withdraw_authority,
+        reserve_stake_account,
+        lamports_from,
+        pool_tokens_to,
+        manager_fee_account,
+        referrer_pool_tokens_account,
+        pool_mint,
+        token_program_id,
+        None,
+        lamports_in,
+        Some(minimum_pool_tokens_out),
+    )
 }
 
 /// Creates instruction required to deposit SOL directly into a stake pool.
@@ -1450,27 +1765,108 @@ pub fn deposit_sol_with_authority(
     referrer_pool_tokens_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
-    amount: u64,
+    lamports_in: u64,
+) -> Instruction {
+    deposit_sol_internal(
+        program_id,
+        stake_pool,
+        stake_pool_withdraw_authority,
+        reserve_stake_account,
+        lamports_from,
+        pool_tokens_to,
+        manager_fee_account,
+        referrer_pool_tokens_account,
+        pool_mint,
+        token_program_id,
+        Some(sol_deposit_authority),
+        lamports_in,
+        None,
+    )
+}
+
+/// Creates instruction to deposit SOL directly into a stake pool with slippage constraint.
+pub fn deposit_sol_with_authority_and_slippage(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    sol_deposit_authority: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    reserve_stake_account: &Pubkey,
+    lamports_from: &Pubkey,
+    pool_tokens_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    lamports_in: u64,
+    minimum_pool_tokens_out: u64,
+) -> Instruction {
+    deposit_sol_internal(
+        program_id,
+        stake_pool,
+        stake_pool_withdraw_authority,
+        reserve_stake_account,
+        lamports_from,
+        pool_tokens_to,
+        manager_fee_account,
+        referrer_pool_tokens_account,
+        pool_mint,
+        token_program_id,
+        Some(sol_deposit_authority),
+        lamports_in,
+        Some(minimum_pool_tokens_out),
+    )
+}
+
+fn withdraw_stake_internal(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    validator_list_storage: &Pubkey,
+    stake_pool_withdraw: &Pubkey,
+    stake_to_split: &Pubkey,
+    stake_to_receive: &Pubkey,
+    user_stake_authority: &Pubkey,
+    user_transfer_authority: &Pubkey,
+    user_pool_token_account: &Pubkey,
+    manager_fee_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    pool_tokens_in: u64,
+    minimum_lamports_out: Option<u64>,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
-        AccountMeta::new(*reserve_stake_account, false),
-        AccountMeta::new(*lamports_from, true),
-        AccountMeta::new(*pool_tokens_to, false),
+        AccountMeta::new(*validator_list_storage, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw, false),
+        AccountMeta::new(*stake_to_split, false),
+        AccountMeta::new(*stake_to_receive, false),
+        AccountMeta::new_readonly(*user_stake_authority, false),
+        AccountMeta::new_readonly(*user_transfer_authority, true),
+        AccountMeta::new(*user_pool_token_account, false),
         AccountMeta::new(*manager_fee_account, false),
-        AccountMeta::new(*referrer_pool_tokens_account, false),
         AccountMeta::new(*pool_mint, false),
-        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(*sol_deposit_authority, true),
+        AccountMeta::new_readonly(stake::program::id(), false),
     ];
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: StakePoolInstruction::DepositSol(amount)
+    if let Some(minimum_lamports_out) = minimum_lamports_out {
+        Instruction {
+            program_id: *program_id,
+            accounts,
+            data: StakePoolInstruction::WithdrawStakeWithSlippage {
+                pool_tokens_in,
+                minimum_lamports_out,
+            }
             .try_to_vec()
             .unwrap(),
+        }
+    } else {
+        Instruction {
+            program_id: *program_id,
+            accounts,
+            data: StakePoolInstruction::WithdrawStake(pool_tokens_in)
+                .try_to_vec()
+                .unwrap(),
+        }
     }
 }
 
@@ -1488,29 +1884,112 @@ pub fn withdraw_stake(
     manager_fee_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
-    amount: u64,
+    pool_tokens_in: u64,
 ) -> Instruction {
-    let accounts = vec![
+    withdraw_stake_internal(
+        program_id,
+        stake_pool,
+        validator_list_storage,
+        stake_pool_withdraw,
+        stake_to_split,
+        stake_to_receive,
+        user_stake_authority,
+        user_transfer_authority,
+        user_pool_token_account,
+        manager_fee_account,
+        pool_mint,
+        token_program_id,
+        pool_tokens_in,
+        None,
+    )
+}
+
+/// Creates a 'WithdrawStakeWithSlippage' instruction.
+pub fn withdraw_stake_with_slippage(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    validator_list_storage: &Pubkey,
+    stake_pool_withdraw: &Pubkey,
+    stake_to_split: &Pubkey,
+    stake_to_receive: &Pubkey,
+    user_stake_authority: &Pubkey,
+    user_transfer_authority: &Pubkey,
+    user_pool_token_account: &Pubkey,
+    manager_fee_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    pool_tokens_in: u64,
+    minimum_lamports_out: u64,
+) -> Instruction {
+    withdraw_stake_internal(
+        program_id,
+        stake_pool,
+        validator_list_storage,
+        stake_pool_withdraw,
+        stake_to_split,
+        stake_to_receive,
+        user_stake_authority,
+        user_transfer_authority,
+        user_pool_token_account,
+        manager_fee_account,
+        pool_mint,
+        token_program_id,
+        pool_tokens_in,
+        Some(minimum_lamports_out),
+    )
+}
+
+fn withdraw_sol_internal(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    user_transfer_authority: &Pubkey,
+    pool_tokens_from: &Pubkey,
+    reserve_stake_account: &Pubkey,
+    lamports_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    sol_withdraw_authority: Option<&Pubkey>,
+    pool_tokens_in: u64,
+    minimum_lamports_out: Option<u64>,
+) -> Instruction {
+    let mut accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new(*validator_list_storage, false),
-        AccountMeta::new_readonly(*stake_pool_withdraw, false),
-        AccountMeta::new(*stake_to_split, false),
-        AccountMeta::new(*stake_to_receive, false),
-        AccountMeta::new_readonly(*user_stake_authority, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
         AccountMeta::new_readonly(*user_transfer_authority, true),
-        AccountMeta::new(*user_pool_token_account, false),
+        AccountMeta::new(*pool_tokens_from, false),
+        AccountMeta::new(*reserve_stake_account, false),
+        AccountMeta::new(*lamports_to, false),
         AccountMeta::new(*manager_fee_account, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
     ];
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: StakePoolInstruction::WithdrawStake(amount)
+    if let Some(sol_withdraw_authority) = sol_withdraw_authority {
+        accounts.push(AccountMeta::new_readonly(*sol_withdraw_authority, true));
+    }
+    if let Some(minimum_lamports_out) = minimum_lamports_out {
+        Instruction {
+            program_id: *program_id,
+            accounts,
+            data: StakePoolInstruction::WithdrawSolWithSlippage {
+                pool_tokens_in,
+                minimum_lamports_out,
+            }
             .try_to_vec()
             .unwrap(),
+        }
+    } else {
+        Instruction {
+            program_id: *program_id,
+            accounts,
+            data: StakePoolInstruction::WithdrawSol(pool_tokens_in)
+                .try_to_vec()
+                .unwrap(),
+        }
     }
 }
 
@@ -1526,29 +2005,56 @@ pub fn withdraw_sol(
     manager_fee_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
-    pool_tokens: u64,
+    pool_tokens_in: u64,
 ) -> Instruction {
-    let accounts = vec![
-        AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
-        AccountMeta::new_readonly(*user_transfer_authority, true),
-        AccountMeta::new(*pool_tokens_from, false),
-        AccountMeta::new(*reserve_stake_account, false),
-        AccountMeta::new(*lamports_to, false),
-        AccountMeta::new(*manager_fee_account, false),
-        AccountMeta::new(*pool_mint, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(stake::program::id(), false),
-        AccountMeta::new_readonly(*token_program_id, false),
-    ];
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: StakePoolInstruction::WithdrawSol(pool_tokens)
-            .try_to_vec()
-            .unwrap(),
-    }
+    withdraw_sol_internal(
+        program_id,
+        stake_pool,
+        stake_pool_withdraw_authority,
+        user_transfer_authority,
+        pool_tokens_from,
+        reserve_stake_account,
+        lamports_to,
+        manager_fee_account,
+        pool_mint,
+        token_program_id,
+        None,
+        pool_tokens_in,
+        None,
+    )
+}
+
+/// Creates instruction required to withdraw SOL directly from a stake pool with
+/// slippage constraints.
+pub fn withdraw_sol_with_slippage(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    user_transfer_authority: &Pubkey,
+    pool_tokens_from: &Pubkey,
+    reserve_stake_account: &Pubkey,
+    lamports_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    pool_tokens_in: u64,
+    minimum_lamports_out: u64,
+) -> Instruction {
+    withdraw_sol_internal(
+        program_id,
+        stake_pool,
+        stake_pool_withdraw_authority,
+        user_transfer_authority,
+        pool_tokens_from,
+        reserve_stake_account,
+        lamports_to,
+        manager_fee_account,
+        pool_mint,
+        token_program_id,
+        None,
+        pool_tokens_in,
+        Some(minimum_lamports_out),
+    )
 }
 
 /// Creates instruction required to withdraw SOL directly from a stake pool.
@@ -1566,30 +2072,59 @@ pub fn withdraw_sol_with_authority(
     manager_fee_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
-    pool_tokens: u64,
+    pool_tokens_in: u64,
 ) -> Instruction {
-    let accounts = vec![
-        AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
-        AccountMeta::new_readonly(*user_transfer_authority, true),
-        AccountMeta::new(*pool_tokens_from, false),
-        AccountMeta::new(*reserve_stake_account, false),
-        AccountMeta::new(*lamports_to, false),
-        AccountMeta::new(*manager_fee_account, false),
-        AccountMeta::new(*pool_mint, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(stake::program::id(), false),
-        AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(*sol_withdraw_authority, true),
-    ];
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: StakePoolInstruction::WithdrawSol(pool_tokens)
-            .try_to_vec()
-            .unwrap(),
-    }
+    withdraw_sol_internal(
+        program_id,
+        stake_pool,
+        stake_pool_withdraw_authority,
+        user_transfer_authority,
+        pool_tokens_from,
+        reserve_stake_account,
+        lamports_to,
+        manager_fee_account,
+        pool_mint,
+        token_program_id,
+        Some(sol_withdraw_authority),
+        pool_tokens_in,
+        None,
+    )
+}
+
+/// Creates instruction required to withdraw SOL directly from a stake pool with
+/// a slippage constraint.
+/// The difference with `withdraw_sol()` is that the sol withdraw authority
+/// must sign this instruction.
+pub fn withdraw_sol_with_authority_and_slippage(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    sol_withdraw_authority: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    user_transfer_authority: &Pubkey,
+    pool_tokens_from: &Pubkey,
+    reserve_stake_account: &Pubkey,
+    lamports_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    pool_tokens_in: u64,
+    minimum_lamports_out: u64,
+) -> Instruction {
+    withdraw_sol_internal(
+        program_id,
+        stake_pool,
+        stake_pool_withdraw_authority,
+        user_transfer_authority,
+        pool_tokens_from,
+        reserve_stake_account,
+        lamports_to,
+        manager_fee_account,
+        pool_mint,
+        token_program_id,
+        Some(sol_withdraw_authority),
+        pool_tokens_in,
+        Some(minimum_lamports_out),
+    )
 }
 
 /// Creates a 'set manager' instruction.

@@ -504,3 +504,104 @@ async fn fail_with_invalid_referrer() {
         ),
     }
 }
+
+#[test_case(spl_token::id(); "token")]
+#[test_case(spl_token_2022::id(); "token-2022")]
+#[tokio::test]
+async fn success_with_slippage(token_program_id: Pubkey) {
+    let (mut context, stake_pool_accounts, _user, pool_token_account) =
+        setup(token_program_id).await;
+
+    // Save stake pool state before depositing
+    let pre_stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let pre_stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(pre_stake_pool.data.as_slice()).unwrap();
+
+    // Save reserve state before depositing
+    let pre_reserve_lamports = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+    )
+    .await
+    .lamports;
+
+    let new_pool_tokens = pre_stake_pool
+        .calc_pool_tokens_for_deposit(TEST_STAKE_AMOUNT)
+        .unwrap();
+    let pool_tokens_sol_deposit_fee = pre_stake_pool
+        .calc_pool_tokens_sol_deposit_fee(new_pool_tokens)
+        .unwrap();
+    let tokens_issued = new_pool_tokens - pool_tokens_sol_deposit_fee;
+
+    // Fail with 1 more token in slippage
+    let error = stake_pool_accounts
+        .deposit_sol_with_slippage(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &pool_token_account,
+            TEST_STAKE_AMOUNT,
+            tokens_issued + 1,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(error::StakePoolError::ExceededSlippage as u32)
+        )
+    );
+
+    // Succeed with exact return amount
+    let error = stake_pool_accounts
+        .deposit_sol_with_slippage(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &pool_token_account,
+            TEST_STAKE_AMOUNT,
+            tokens_issued,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // Stake pool should add its balance to the pool balance
+    let post_stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let post_stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(post_stake_pool.data.as_slice()).unwrap();
+    assert_eq!(
+        post_stake_pool.total_lamports,
+        pre_stake_pool.total_lamports + TEST_STAKE_AMOUNT
+    );
+    assert_eq!(
+        post_stake_pool.pool_token_supply,
+        pre_stake_pool.pool_token_supply + new_pool_tokens
+    );
+
+    // Check minted tokens
+    let user_token_balance =
+        get_token_balance(&mut context.banks_client, &pool_token_account).await;
+    assert_eq!(user_token_balance, tokens_issued);
+
+    // Check reserve
+    let post_reserve_lamports = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+    )
+    .await
+    .lamports;
+    assert_eq!(
+        post_reserve_lamports,
+        pre_reserve_lamports + TEST_STAKE_AMOUNT
+    );
+}

@@ -2630,7 +2630,11 @@ impl Processor {
 
     /// Processes [DepositStake](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
-    fn process_deposit_stake(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    fn process_deposit_stake(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        minimum_pool_tokens_out: Option<u64>,
+    ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
@@ -2819,6 +2823,12 @@ impl Processor {
             return Err(StakePoolError::DepositTooSmall.into());
         }
 
+        if let Some(minimum_pool_tokens_out) = minimum_pool_tokens_out {
+            if pool_tokens_user < minimum_pool_tokens_out {
+                return Err(StakePoolError::ExceededSlippage.into());
+            }
+        }
+
         Self::token_mint_to(
             stake_pool_info.key,
             token_program_info.clone(),
@@ -2893,6 +2903,7 @@ impl Processor {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         deposit_lamports: u64,
+        minimum_pool_tokens_out: Option<u64>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -2972,6 +2983,12 @@ impl Processor {
             return Err(StakePoolError::DepositTooSmall.into());
         }
 
+        if let Some(minimum_pool_tokens_out) = minimum_pool_tokens_out {
+            if pool_tokens_user < minimum_pool_tokens_out {
+                return Err(StakePoolError::ExceededSlippage.into());
+            }
+        }
+
         Self::sol_transfer(
             from_user_lamports_info.clone(),
             reserve_stake_account_info.clone(),
@@ -3035,6 +3052,7 @@ impl Processor {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         pool_tokens: u64,
+        minimum_lamports_out: Option<u64>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -3107,6 +3125,12 @@ impl Processor {
 
         if withdraw_lamports == 0 {
             return Err(StakePoolError::WithdrawalTooSmall.into());
+        }
+
+        if let Some(minimum_lamports_out) = minimum_lamports_out {
+            if withdraw_lamports < minimum_lamports_out {
+                return Err(StakePoolError::ExceededSlippage.into());
+            }
         }
 
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
@@ -3340,6 +3364,7 @@ impl Processor {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         pool_tokens: u64,
+        minimum_lamports_out: Option<u64>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -3407,6 +3432,12 @@ impl Processor {
 
         if withdraw_lamports == 0 {
             return Err(StakePoolError::WithdrawalTooSmall.into());
+        }
+
+        if let Some(minimum_lamports_out) = minimum_lamports_out {
+            if withdraw_lamports < minimum_lamports_out {
+                return Err(StakePoolError::ExceededSlippage.into());
+            }
         }
 
         let new_reserve_lamports = reserve_stake_info
@@ -3879,11 +3910,11 @@ impl Processor {
             }
             StakePoolInstruction::DepositStake => {
                 msg!("Instruction: DepositStake");
-                Self::process_deposit_stake(program_id, accounts)
+                Self::process_deposit_stake(program_id, accounts, None)
             }
             StakePoolInstruction::WithdrawStake(amount) => {
                 msg!("Instruction: WithdrawStake");
-                Self::process_withdraw_stake(program_id, accounts, amount)
+                Self::process_withdraw_stake(program_id, accounts, amount, None)
             }
             StakePoolInstruction::SetFee { fee } => {
                 msg!("Instruction: SetFee");
@@ -3903,11 +3934,11 @@ impl Processor {
             }
             StakePoolInstruction::DepositSol(lamports) => {
                 msg!("Instruction: DepositSol");
-                Self::process_deposit_sol(program_id, accounts, lamports)
+                Self::process_deposit_sol(program_id, accounts, lamports, None)
             }
             StakePoolInstruction::WithdrawSol(pool_tokens) => {
                 msg!("Instruction: WithdrawSol");
-                Self::process_withdraw_sol(program_id, accounts, pool_tokens)
+                Self::process_withdraw_sol(program_id, accounts, pool_tokens, None)
             }
             StakePoolInstruction::CreateTokenMetadata { name, symbol, uri } => {
                 msg!("Instruction: CreateTokenMetadata");
@@ -3931,6 +3962,48 @@ impl Processor {
                     source_transient_stake_seed,
                     ephemeral_stake_seed,
                     destination_transient_stake_seed,
+                )
+            }
+            StakePoolInstruction::DepositStakeWithSlippage {
+                minimum_pool_tokens_out,
+            } => {
+                msg!("Instruction: DepositStakeWithSlippage");
+                Self::process_deposit_stake(program_id, accounts, Some(minimum_pool_tokens_out))
+            }
+            StakePoolInstruction::WithdrawStakeWithSlippage {
+                pool_tokens_in,
+                minimum_lamports_out,
+            } => {
+                msg!("Instruction: WithdrawStakeWithSlippage");
+                Self::process_withdraw_stake(
+                    program_id,
+                    accounts,
+                    pool_tokens_in,
+                    Some(minimum_lamports_out),
+                )
+            }
+            StakePoolInstruction::DepositSolWithSlippage {
+                lamports_in,
+                minimum_pool_tokens_out,
+            } => {
+                msg!("Instruction: DepositSolWithSlippage");
+                Self::process_deposit_sol(
+                    program_id,
+                    accounts,
+                    lamports_in,
+                    Some(minimum_pool_tokens_out),
+                )
+            }
+            StakePoolInstruction::WithdrawSolWithSlippage {
+                pool_tokens_in,
+                minimum_lamports_out,
+            } => {
+                msg!("Instruction: WithdrawSolWithSlippage");
+                Self::process_withdraw_sol(
+                    program_id,
+                    accounts,
+                    pool_tokens_in,
+                    Some(minimum_lamports_out),
                 )
             }
         }
@@ -3984,6 +4057,7 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::InvalidMetadataAccount => msg!("Error: Metadata account derived from pool mint account does not match the one passed to program"),
             StakePoolError::UnsupportedMintExtension => msg!("Error: mint has an unsupported extension"),
             StakePoolError::UnsupportedFeeAccountExtension => msg!("Error: fee account has an unsupported extension"),
+            StakePoolError::ExceededSlippage => msg!("Error: instruction exceeds desired slippage limit"),
         }
     }
 }
