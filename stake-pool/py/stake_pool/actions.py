@@ -18,7 +18,6 @@ from stake_pool.constants import \
     MAX_VALIDATORS_TO_UPDATE, \
     MINIMUM_RESERVE_LAMPORTS, \
     STAKE_POOL_PROGRAM_ID, \
-    METADATA_PROGRAM_ID, \
     find_stake_program_address, \
     find_transient_stake_program_address, \
     find_withdraw_authority_program_address
@@ -612,7 +611,7 @@ async def create_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_
             symbol=symbol,
             uri=uri,
             withdraw_authority=withdraw_authority,
-            token_metadata=METADATA_PROGRAM_ID,
+            token_metadata=TOKEN_PROGRAM_ID,
         )
     )
 
@@ -638,7 +637,7 @@ async def update_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_
             symbol=symbol,
             uri=uri,
             withdraw_authority=withdraw_authority,
-            token_metadata=METADATA_PROGRAM_ID,
+            token_metadata=TOKEN_PROGRAM_ID,
         )
     )
 
