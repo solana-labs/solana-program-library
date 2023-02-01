@@ -13,8 +13,11 @@ use {
         program_error::ProgramError,
         program_pack::Pack,
         pubkey::Pubkey,
+        rent::Rent,
         system_instruction,
+        sysvar::Sysvar,
     },
+    std::cmp::Ordering,
 };
 
 pub struct Processor {}
@@ -239,6 +242,57 @@ impl Processor {
         Ok(())
     }
 
+    fn process_realloc(accounts: &[AccountInfo], space: u32) -> ProgramResult {
+        let accounts_iter = &mut accounts.iter();
+        let system_program = next_account_info(accounts_iter)?;
+        let payer_account = next_account_info(accounts_iter)?;
+        let name_account = next_account_info(accounts_iter)?;
+        let name_owner = next_account_info(accounts_iter)?;
+
+        let name_record_header = NameRecordHeader::unpack_from_slice(&name_account.data.borrow())?;
+
+        // Verifications
+        if !name_owner.is_signer || name_record_header.owner != *name_owner.key {
+            msg!("The given name owner is incorrect or not a signer.");
+            return Err(ProgramError::InvalidArgument);
+        }
+
+        let new_space = NameRecordHeader::LEN.saturating_add(space as usize);
+        let required_lamports = Rent::get()?.minimum_balance(new_space);
+        match name_account.lamports().cmp(&required_lamports) {
+            Ordering::Less => {
+                // Overflow cannot happen here because we already checked the sizes.
+                #[allow(clippy::integer_arithmetic)]
+                let lamports_to_add = required_lamports - name_account.lamports();
+                invoke(
+                    &system_instruction::transfer(
+                        payer_account.key,
+                        name_account.key,
+                        lamports_to_add,
+                    ),
+                    &[
+                        payer_account.clone(),
+                        name_account.clone(),
+                        system_program.clone(),
+                    ],
+                )?;
+            }
+            Ordering::Greater => {
+                // Overflow cannot happen here because we already checked the sizes.
+                #[allow(clippy::integer_arithmetic)]
+                let lamports_to_remove = name_account.lamports() - required_lamports;
+                let source_amount: &mut u64 = &mut name_account.lamports.borrow_mut();
+                let dest_amount: &mut u64 = &mut payer_account.lamports.borrow_mut();
+                *source_amount = source_amount.saturating_sub(lamports_to_remove);
+                *dest_amount = dest_amount.saturating_add(lamports_to_remove);
+            }
+            Ordering::Equal => {}
+        }
+        // Max data increase is checked in realloc. No need to check here.
+        name_account.realloc(new_space, false)?;
+        Ok(())
+    }
+
     pub fn process_instruction(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -269,6 +323,10 @@ impl Processor {
             NameRegistryInstruction::Delete => {
                 msg!("Instruction: Delete Name");
                 Processor::process_delete(accounts)?;
+            }
+            NameRegistryInstruction::Realloc { space } => {
+                msg!("Instruction: Realloc Name Record");
+                Processor::process_realloc(accounts, space)?;
             }
         }
         Ok(())

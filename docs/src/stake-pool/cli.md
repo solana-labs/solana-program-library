@@ -169,18 +169,19 @@ Signature: 5yPXfVj5cbKBfZiEVi2UR5bXzVDuc2c3ruBwSjkAqpvxPHigwGHiS1mXQVE4qwok5moMW
 ```
 
 In order to protect stake pool depositors from malicious managers, the program
-applies the new fee for the following epoch.
+applies the new fee after crossing two epoch boundaries, giving a minimum wait
+time of one full epoch.
 
 For example, if the fee is 1% at epoch 100, and the manager sets it to 10%, the
-manager will still gain 1% for the rewards earned during epoch 100. Starting
-with epoch 101, the manager will earn 10%.
+manager will still gain 1% for the rewards earned during epochs 100 and 101. Starting
+with epoch 102, the manager will earn 10%.
 
 Additionally, to prevent a malicious manager from immediately setting the withdrawal
 fee to a very high amount, making it practically impossible for users to withdraw,
 the stake pool program currently enforces a limit of 1.5x increase per epoch.
 
-For example, if the current withdrawal fee is 2.5%, the maximum that can be set
-for the next epoch is 3.75%.
+For example, if the current withdrawal fee is 2.5%, the maximum settable fee is
+3.75%, and will take effect after two epoch boundaries.
 
 The possible options for the fee type are `epoch`, `sol-withdrawal`,
 `stake-withdrawal`, `sol-deposit`, and `stake-deposit`.

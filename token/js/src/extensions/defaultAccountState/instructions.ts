@@ -3,6 +3,7 @@ import type { PublicKey, Signer } from '@solana/web3.js';
 import { TransactionInstruction } from '@solana/web3.js';
 import { programSupportsExtensions, TOKEN_2022_PROGRAM_ID } from '../../constants.js';
 import { TokenUnsupportedInstructionError } from '../../errors.js';
+import { addSigners } from '../../instructions/internal.js';
 import { TokenInstruction } from '../../instructions/types.js';
 import type { AccountState } from '../../state/account.js';
 
@@ -71,18 +72,14 @@ export function createUpdateDefaultAccountStateInstruction(
     mint: PublicKey,
     accountState: AccountState,
     freezeAuthority: PublicKey,
-    multiSigners: Signer[] = [],
+    multiSigners: (Signer | PublicKey)[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
     }
-    const keys = [{ pubkey: mint, isSigner: false, isWritable: true }];
-    keys.push({ pubkey: freezeAuthority, isSigner: !multiSigners.length, isWritable: false });
-    for (const signer of multiSigners) {
-        keys.push({ pubkey: signer.publicKey, isSigner: true, isWritable: false });
-    }
 
+    const keys = addSigners([{ pubkey: mint, isSigner: false, isWritable: true }], freezeAuthority, multiSigners);
     const data = Buffer.alloc(defaultAccountStateInstructionData.span);
     defaultAccountStateInstructionData.encode(
         {

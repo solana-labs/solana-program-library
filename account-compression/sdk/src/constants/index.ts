@@ -1,6 +1,6 @@
-import { PublicKey } from '@solana/web3.js';
+import { PublicKey } from "@solana/web3.js";
 
-export const SPL_NOOP_ADDRESS = 'noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV';
+export const SPL_NOOP_ADDRESS = "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV";
 export const SPL_NOOP_PROGRAM_ID = new PublicKey(SPL_NOOP_ADDRESS);
 
 /**
@@ -20,6 +20,11 @@ const allPairs: number[][] = [
   [14, 256],
   [14, 1024],
   [14, 2048],
+  [15, 64],
+  [16, 64],
+  [17, 64],
+  [18, 64],
+  [19, 64],
   [20, 64],
   [20, 256],
   [20, 1024],
@@ -56,6 +61,11 @@ export type ValidDepthSizePair =
   | { maxDepth: 14; maxBufferSize: 256 }
   | { maxDepth: 14; maxBufferSize: 1024 }
   | { maxDepth: 14; maxBufferSize: 2048 }
+  | { maxDepth: 15; maxBufferSize: 64 }
+  | { maxDepth: 16; maxBufferSize: 64 }
+  | { maxDepth: 17; maxBufferSize: 64 }
+  | { maxDepth: 18; maxBufferSize: 64 }
+  | { maxDepth: 19; maxBufferSize: 64 }
   | { maxDepth: 20; maxBufferSize: 64 }
   | { maxDepth: 20; maxBufferSize: 256 }
   | { maxDepth: 20; maxBufferSize: 1024 }

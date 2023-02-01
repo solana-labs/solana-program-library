@@ -2,7 +2,7 @@
 name = "spl-instruction-padding"
 version = "0.1.0"
 description = "Solana Program Library Instruction Padding Program"
-authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
 homepage = "https://solana.com/"

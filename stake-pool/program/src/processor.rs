@@ -7,8 +7,9 @@ use {
         instruction::{FundingType, PreferredValidatorType, StakePoolInstruction},
         minimum_delegation, minimum_reserve_lamports, minimum_stake_lamports,
         state::{
-            is_extension_supported_for_mint, AccountType, Fee, FeeType, StakePool, StakeStatus,
-            StakeWithdrawSource, ValidatorList, ValidatorListHeader, ValidatorStakeInfo,
+            is_extension_supported_for_mint, AccountType, Fee, FeeType, FutureEpoch, StakePool,
+            StakeStatus, StakeWithdrawSource, ValidatorList, ValidatorListHeader,
+            ValidatorStakeInfo,
         },
         AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, EPHEMERAL_STAKE_SEED_PREFIX,
         TRANSIENT_STAKE_SEED_PREFIX,
@@ -172,20 +173,6 @@ fn check_mpl_metadata_program(program_id: &Pubkey) -> Result<(), ProgramError> {
     }
 }
 
-/// Check rent sysvar correctness
-fn check_rent_sysvar(sysvar_key: &Pubkey) -> Result<(), ProgramError> {
-    if *sysvar_key != solana_program::sysvar::rent::id() {
-        msg!(
-            "Expected rent sysvar {}, received {}",
-            solana_program::sysvar::rent::id(),
-            sysvar_key
-        );
-        Err(ProgramError::InvalidArgument)
-    } else {
-        Ok(())
-    }
-}
-
 /// Check account owner is the given program
 fn check_account_owner(
     account_info: &AccountInfo,
@@ -219,6 +206,48 @@ fn stake_is_inactive_without_history(stake: &stake::state::Stake, epoch: Epoch) 
     stake.delegation.deactivation_epoch < epoch
         || (stake.delegation.activation_epoch == epoch
             && stake.delegation.deactivation_epoch == epoch)
+}
+
+/// Roughly checks if a stake account is deactivating
+fn check_if_stake_deactivating(
+    account_info: &AccountInfo,
+    vote_account_address: &Pubkey,
+    epoch: Epoch,
+) -> Result<(), ProgramError> {
+    let (_, stake) = get_stake_state(account_info)?;
+    if stake.delegation.deactivation_epoch != epoch {
+        msg!(
+            "Existing stake {} delegated to {} not deactivated in epoch {}",
+            account_info.key,
+            vote_account_address,
+            epoch,
+        );
+        Err(StakePoolError::WrongStakeState.into())
+    } else {
+        Ok(())
+    }
+}
+
+/// Roughly checks if a stake account is activating
+fn check_if_stake_activating(
+    account_info: &AccountInfo,
+    vote_account_address: &Pubkey,
+    epoch: Epoch,
+) -> Result<(), ProgramError> {
+    let (_, stake) = get_stake_state(account_info)?;
+    if stake.delegation.deactivation_epoch != Epoch::MAX
+        || stake.delegation.activation_epoch != epoch
+    {
+        msg!(
+            "Existing stake {} delegated to {} not activated in epoch {}",
+            account_info.key,
+            vote_account_address,
+            epoch,
+        );
+        Err(StakePoolError::WrongStakeState.into())
+    } else {
+        Ok(())
+    }
 }
 
 /// Check that the stake state is correct: usable by the pool and delegated to
@@ -403,7 +432,9 @@ impl Processor {
             stake::instruction::split(stake_account.key, authority.key, amount, split_stake.key);
 
         invoke_signed(
-            split_instruction.last().unwrap(),
+            split_instruction
+                .last()
+                .ok_or(ProgramError::InvalidInstructionData)?,
             &[stake_account, split_stake, authority],
             signers,
         )
@@ -905,19 +936,19 @@ impl Processor {
         stake_pool.last_update_epoch = Clock::get()?.epoch;
         stake_pool.lockup = stake::state::Lockup::default();
         stake_pool.epoch_fee = epoch_fee;
-        stake_pool.next_epoch_fee = None;
+        stake_pool.next_epoch_fee = FutureEpoch::None;
         stake_pool.preferred_deposit_validator_vote_address = None;
         stake_pool.preferred_withdraw_validator_vote_address = None;
         stake_pool.stake_deposit_fee = deposit_fee;
         stake_pool.stake_withdrawal_fee = withdrawal_fee;
-        stake_pool.next_stake_withdrawal_fee = None;
+        stake_pool.next_stake_withdrawal_fee = FutureEpoch::None;
         stake_pool.stake_referral_fee = referral_fee;
         stake_pool.sol_deposit_authority = sol_deposit_authority;
         stake_pool.sol_deposit_fee = deposit_fee;
         stake_pool.sol_referral_fee = referral_fee;
         stake_pool.sol_withdraw_authority = None;
         stake_pool.sol_withdrawal_fee = withdrawal_fee;
-        stake_pool.next_sol_withdrawal_fee = None;
+        stake_pool.next_sol_withdrawal_fee = FutureEpoch::None;
         stake_pool.last_epoch_pool_token_supply = 0;
         stake_pool.last_epoch_total_lamports = 0;
 
@@ -1130,7 +1161,7 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let (meta, stake) = get_stake_state(stake_account_info)?;
+        let (_, stake) = get_stake_state(stake_account_info)?;
         let vote_account_address = stake.delegation.voter_pubkey;
         let maybe_validator_stake_info = validator_list.find_mut::<ValidatorStakeInfo, _>(|x| {
             ValidatorStakeInfo::memcmp_pubkey(x, &vote_account_address)
@@ -1154,30 +1185,6 @@ impl Processor {
         if validator_stake_info.status != StakeStatus::Active {
             msg!("Validator is already marked for removal");
             return Err(StakePoolError::ValidatorNotFound.into());
-        }
-
-        let stake_lamports = **stake_account_info.lamports.borrow();
-        let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
-        let required_lamports = minimum_stake_lamports(&meta, stake_minimum_delegation);
-        if stake_lamports > required_lamports {
-            msg!(
-                "Attempting to remove validator account with {} lamports, must have no more than {} lamports; \
-                reduce using DecreaseValidatorStake first",
-                stake_lamports,
-                required_lamports
-            );
-            return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
-        }
-
-        let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
-        if stake.delegation.stake > current_minimum_delegation {
-            msg!(
-                "Error: attempting to remove stake with delegation of {} lamports, must have no more than {} lamports; \
-                reduce using DecreaseValidatorStake first",
-                stake.delegation.stake,
-                current_minimum_delegation
-            );
-            return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
         }
 
         let new_status = if validator_stake_info.transient_stake_lamports > 0 {
@@ -1336,8 +1343,11 @@ impl Processor {
                 );
                 return Err(ProgramError::InvalidSeeds);
             }
-            // Let the runtime check to see if the merge is valid, so there's no
-            // explicit check here that the transient stake is decreasing
+            check_if_stake_deactivating(
+                transient_stake_account_info,
+                &vote_account_address,
+                clock.epoch,
+            )?;
         }
 
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
@@ -1585,8 +1595,11 @@ impl Processor {
                 );
                 return Err(ProgramError::InvalidSeeds);
             }
-            // Let the runtime check to see if the merge is valid, so there's no
-            // explicit check here that the transient stake is increasing
+            check_if_stake_activating(
+                transient_stake_account_info,
+                vote_account_address,
+                clock.epoch,
+            )?;
         }
 
         check_validator_stake_account(
@@ -2036,6 +2049,11 @@ impl Processor {
                     destination_transient_stake_seed,
                     &stake_pool.lockup,
                 )?;
+                check_if_stake_activating(
+                    destination_transient_stake_account_info,
+                    vote_account_address,
+                    clock.epoch,
+                )?;
                 Self::stake_merge(
                     stake_pool_info.key,
                     ephemeral_stake_account_info.clone(),
@@ -2207,8 +2225,12 @@ impl Processor {
             .zip(validator_stake_accounts.chunks_exact(2));
         for (validator_stake_record, validator_stakes) in validator_iter {
             // chunks_exact means that we always get 2 elements, making this safe
-            let validator_stake_info = validator_stakes.first().unwrap();
-            let transient_stake_info = validator_stakes.last().unwrap();
+            let validator_stake_info = validator_stakes
+                .first()
+                .ok_or(ProgramError::InvalidInstructionData)?;
+            let transient_stake_info = validator_stakes
+                .last()
+                .ok_or(ProgramError::InvalidInstructionData)?;
             if check_validator_stake_address(
                 program_id,
                 stake_pool_info.key,
@@ -2503,7 +2525,7 @@ impl Processor {
                 return Err(StakePoolError::StakeListOutOfDate.into());
             }
             total_lamports = total_lamports
-                .checked_add(validator_stake_record.stake_lamports())
+                .checked_add(validator_stake_record.stake_lamports()?)
                 .ok_or(StakePoolError::CalculationFailure)?;
         }
 
@@ -2532,18 +2554,21 @@ impl Processor {
         }
 
         if stake_pool.last_update_epoch < clock.epoch {
-            if let Some(fee) = stake_pool.next_epoch_fee {
-                stake_pool.epoch_fee = fee;
-                stake_pool.next_epoch_fee = None;
+            if let Some(fee) = stake_pool.next_epoch_fee.get() {
+                stake_pool.epoch_fee = *fee;
             }
-            if let Some(fee) = stake_pool.next_stake_withdrawal_fee {
-                stake_pool.stake_withdrawal_fee = fee;
-                stake_pool.next_stake_withdrawal_fee = None;
+            stake_pool.next_epoch_fee.update_epoch();
+
+            if let Some(fee) = stake_pool.next_stake_withdrawal_fee.get() {
+                stake_pool.stake_withdrawal_fee = *fee;
             }
-            if let Some(fee) = stake_pool.next_sol_withdrawal_fee {
-                stake_pool.sol_withdrawal_fee = fee;
-                stake_pool.next_sol_withdrawal_fee = None;
+            stake_pool.next_stake_withdrawal_fee.update_epoch();
+
+            if let Some(fee) = stake_pool.next_sol_withdrawal_fee.get() {
+                stake_pool.sol_withdrawal_fee = *fee;
             }
+            stake_pool.next_sol_withdrawal_fee.update_epoch();
+
             stake_pool.last_update_epoch = clock.epoch;
             stake_pool.last_epoch_total_lamports = previous_lamports;
             stake_pool.last_epoch_pool_token_supply = previous_pool_token_supply;
@@ -2591,7 +2616,11 @@ impl Processor {
 
     /// Processes [DepositStake](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
-    fn process_deposit_stake(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    fn process_deposit_stake(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        minimum_pool_tokens_out: Option<u64>,
+    ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
@@ -2780,6 +2809,12 @@ impl Processor {
             return Err(StakePoolError::DepositTooSmall.into());
         }
 
+        if let Some(minimum_pool_tokens_out) = minimum_pool_tokens_out {
+            if pool_tokens_user < minimum_pool_tokens_out {
+                return Err(StakePoolError::ExceededSlippage.into());
+            }
+        }
+
         Self::token_mint_to(
             stake_pool_info.key,
             token_program_info.clone(),
@@ -2854,6 +2889,7 @@ impl Processor {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         deposit_lamports: u64,
+        minimum_pool_tokens_out: Option<u64>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -2933,6 +2969,12 @@ impl Processor {
             return Err(StakePoolError::DepositTooSmall.into());
         }
 
+        if let Some(minimum_pool_tokens_out) = minimum_pool_tokens_out {
+            if pool_tokens_user < minimum_pool_tokens_out {
+                return Err(StakePoolError::ExceededSlippage.into());
+            }
+        }
+
         Self::sol_transfer(
             from_user_lamports_info.clone(),
             reserve_stake_account_info.clone(),
@@ -2996,6 +3038,7 @@ impl Processor {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         pool_tokens: u64,
+        minimum_lamports_out: Option<u64>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -3068,6 +3111,12 @@ impl Processor {
 
         if withdraw_lamports == 0 {
             return Err(StakePoolError::WithdrawalTooSmall.into());
+        }
+
+        if let Some(minimum_lamports_out) = minimum_lamports_out {
+            if withdraw_lamports < minimum_lamports_out {
+                return Err(StakePoolError::ExceededSlippage.into());
+            }
         }
 
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
@@ -3301,6 +3350,7 @@ impl Processor {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         pool_tokens: u64,
+        minimum_lamports_out: Option<u64>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -3368,6 +3418,12 @@ impl Processor {
 
         if withdraw_lamports == 0 {
             return Err(StakePoolError::WithdrawalTooSmall.into());
+        }
+
+        if let Some(minimum_lamports_out) = minimum_lamports_out {
+            if withdraw_lamports < minimum_lamports_out {
+                return Err(StakePoolError::ExceededSlippage.into());
+            }
         }
 
         let new_reserve_lamports = reserve_stake_info
@@ -3453,7 +3509,6 @@ impl Processor {
         let metadata_info = next_account_info(account_info_iter)?;
         let mpl_token_metadata_program_info = next_account_info(account_info_iter)?;
         let system_program_info = next_account_info(account_info_iter)?;
-        let rent_sysvar_info = next_account_info(account_info_iter)?;
 
         if !payer_info.is_signer {
             msg!("Payer did not sign metadata creation");
@@ -3461,7 +3516,6 @@ impl Processor {
         }
 
         check_system_program(system_program_info.key)?;
-        check_rent_sysvar(rent_sysvar_info.key)?;
         check_account_owner(payer_info, &system_program::id())?;
         check_account_owner(stake_pool_info, program_id)?;
         check_mpl_metadata_program(mpl_token_metadata_program_info.key)?;
@@ -3520,7 +3574,6 @@ impl Processor {
                 payer_info.clone(),
                 withdraw_authority_info.clone(),
                 system_program_info.clone(),
-                rent_sysvar_info.clone(),
                 mpl_token_metadata_program_info.clone(),
             ],
             &[token_mint_authority_signer_seeds],
@@ -3840,11 +3893,11 @@ impl Processor {
             }
             StakePoolInstruction::DepositStake => {
                 msg!("Instruction: DepositStake");
-                Self::process_deposit_stake(program_id, accounts)
+                Self::process_deposit_stake(program_id, accounts, None)
             }
             StakePoolInstruction::WithdrawStake(amount) => {
                 msg!("Instruction: WithdrawStake");
-                Self::process_withdraw_stake(program_id, accounts, amount)
+                Self::process_withdraw_stake(program_id, accounts, amount, None)
             }
             StakePoolInstruction::SetFee { fee } => {
                 msg!("Instruction: SetFee");
@@ -3864,11 +3917,11 @@ impl Processor {
             }
             StakePoolInstruction::DepositSol(lamports) => {
                 msg!("Instruction: DepositSol");
-                Self::process_deposit_sol(program_id, accounts, lamports)
+                Self::process_deposit_sol(program_id, accounts, lamports, None)
             }
             StakePoolInstruction::WithdrawSol(pool_tokens) => {
                 msg!("Instruction: WithdrawSol");
-                Self::process_withdraw_sol(program_id, accounts, pool_tokens)
+                Self::process_withdraw_sol(program_id, accounts, pool_tokens, None)
             }
             StakePoolInstruction::CreateTokenMetadata { name, symbol, uri } => {
                 msg!("Instruction: CreateTokenMetadata");
@@ -3892,6 +3945,48 @@ impl Processor {
                     source_transient_stake_seed,
                     ephemeral_stake_seed,
                     destination_transient_stake_seed,
+                )
+            }
+            StakePoolInstruction::DepositStakeWithSlippage {
+                minimum_pool_tokens_out,
+            } => {
+                msg!("Instruction: DepositStakeWithSlippage");
+                Self::process_deposit_stake(program_id, accounts, Some(minimum_pool_tokens_out))
+            }
+            StakePoolInstruction::WithdrawStakeWithSlippage {
+                pool_tokens_in,
+                minimum_lamports_out,
+            } => {
+                msg!("Instruction: WithdrawStakeWithSlippage");
+                Self::process_withdraw_stake(
+                    program_id,
+                    accounts,
+                    pool_tokens_in,
+                    Some(minimum_lamports_out),
+                )
+            }
+            StakePoolInstruction::DepositSolWithSlippage {
+                lamports_in,
+                minimum_pool_tokens_out,
+            } => {
+                msg!("Instruction: DepositSolWithSlippage");
+                Self::process_deposit_sol(
+                    program_id,
+                    accounts,
+                    lamports_in,
+                    Some(minimum_pool_tokens_out),
+                )
+            }
+            StakePoolInstruction::WithdrawSolWithSlippage {
+                pool_tokens_in,
+                minimum_lamports_out,
+            } => {
+                msg!("Instruction: WithdrawSolWithSlippage");
+                Self::process_withdraw_sol(
+                    program_id,
+                    accounts,
+                    pool_tokens_in,
+                    Some(minimum_lamports_out),
                 )
             }
         }
@@ -3945,6 +4040,7 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::InvalidMetadataAccount => msg!("Error: Metadata account derived from pool mint account does not match the one passed to program"),
             StakePoolError::UnsupportedMintExtension => msg!("Error: mint has an unsupported extension"),
             StakePoolError::UnsupportedFeeAccountExtension => msg!("Error: fee account has an unsupported extension"),
+            StakePoolError::ExceededSlippage => msg!("Error: instruction exceeds desired slippage limit"),
         }
     }
 }

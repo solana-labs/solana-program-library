@@ -14,6 +14,15 @@ pub trait ZeroCopy: Pod {
             .map_err(error_msg::<Self>(data_len))
             .unwrap())
     }
+
+    fn load_bytes<'a>(data: &'a [u8]) -> Result<&'a Self> {
+        let size = size_of::<Self>();
+        let data_len = data.len();
+
+        Ok(bytemuck::try_from_bytes(&data[..size])
+            .map_err(error_msg::<Self>(data_len))
+            .unwrap())
+    }
 }
 
 impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> ZeroCopy

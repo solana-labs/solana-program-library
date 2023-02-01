@@ -586,7 +586,7 @@ async fn fail_additional_with_increasing() {
         error,
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(stake::instruction::StakeError::MergeTransientStake as u32)
+            InstructionError::Custom(StakePoolError::WrongStakeState as u32)
         )
     );
 }
