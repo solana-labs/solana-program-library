@@ -5,8 +5,8 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet';
-import * as web3 from '@solana/web3.js';
+import * as beet from "@metaplex-foundation/beet";
+import * as web3 from "@solana/web3.js";
 
 /**
  * @category Instructions
@@ -27,10 +27,10 @@ export const appendStruct = new beet.BeetArgsStruct<
   }
 >(
   [
-    ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['leaf', beet.uniformFixedSizeArray(beet.u8, 32)],
+    ["instructionDiscriminator", beet.uniformFixedSizeArray(beet.u8, 8)],
+    ["leaf", beet.uniformFixedSizeArray(beet.u8, 32)],
   ],
-  'AppendInstructionArgs'
+  "AppendInstructionArgs"
 );
 /**
  * Accounts required by the _append_ instruction
@@ -66,7 +66,7 @@ export const appendInstructionDiscriminator = [
 export function createAppendInstruction(
   accounts: AppendInstructionAccounts,
   args: AppendInstructionArgs,
-  programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
+  programId = new web3.PublicKey("cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK")
 ) {
   const [data] = appendStruct.serialize({
     instructionDiscriminator: appendInstructionDiscriminator,

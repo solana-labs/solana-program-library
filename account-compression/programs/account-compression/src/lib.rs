@@ -67,7 +67,7 @@ pub struct Initialize<'info> {
     pub authority: Signer<'info>,
 
     /// Program used to emit changelogs as cpi instruction data.
-    pub noop: Program<'info, Noop>,
+    pub noop: Option<Program<'info, Noop>>,
 }
 
 /// Context for inserting, appending, or replacing a leaf in the tree
@@ -85,7 +85,7 @@ pub struct Modify<'info> {
     pub authority: Signer<'info>,
 
     /// Program used to emit changelogs as cpi instruction data.
-    pub noop: Program<'info, Noop>,
+    pub noop: Option<Program<'info, Noop>>,
 }
 
 /// Context for validating a provided proof against the SPL ConcurrentMerkleTree.
@@ -122,6 +122,9 @@ pub struct CloseTree<'info> {
     #[account(mut)]
     pub recipient: AccountInfo<'info>,
 }
+
+#[derive(Accounts)]
+pub struct NoopLog {}
 
 #[program]
 pub mod spl_account_compression {
@@ -471,6 +474,10 @@ pub mod spl_account_compression {
         tree_bytes.fill(0);
         canopy_bytes.fill(0);
 
+        Ok(())
+    }
+
+    pub fn noop(_ctx: Context<NoopLog>, _data: Vec<u8>) -> Result<()> {
         Ok(())
     }
 }

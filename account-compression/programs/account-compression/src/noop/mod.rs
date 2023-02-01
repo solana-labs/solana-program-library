@@ -8,7 +8,11 @@
 //! deserializing the CPI instruction data.
 
 use crate::events::{AccountCompressionEvent, ApplicationDataEvent, ApplicationDataEventV1};
-use anchor_lang::{prelude::*, solana_program::program::invoke};
+use anchor_lang::{
+    prelude::*,
+    solana_program::{instruction::Instruction, program::invoke},
+    Discriminator,
+};
 
 #[derive(Clone)]
 pub struct Noop;
@@ -21,12 +25,25 @@ impl anchor_lang::Id for Noop {
 
 pub fn wrap_event<'info>(
     event: &AccountCompressionEvent,
-    noop_program: &Program<'info, Noop>,
+    noop_program: &Option<Program<'info, Noop>>,
 ) -> Result<()> {
-    invoke(
-        &spl_noop::instruction(event.try_to_vec()?),
-        &[noop_program.to_account_info()],
-    )?;
+    if let Some(noop_program) = noop_program {
+        invoke(
+            &spl_noop::instruction(event.try_to_vec()?),
+            &[noop_program.to_account_info()],
+        )?;
+    } else {
+        let mut ix_data: Vec<u8> = crate::instruction::Noop::DISCRIMINATOR.to_vec();
+        ix_data.extend(event.try_to_vec()?);
+        invoke(
+            &Instruction {
+                program_id: crate::id(),
+                accounts: vec![],
+                data: ix_data,
+            },
+            &[],
+        )?;
+    }
     Ok(())
 }
 
@@ -40,6 +57,6 @@ pub fn wrap_application_data_v1<'info>(
     };
     wrap_event(
         &AccountCompressionEvent::ApplicationData(ApplicationDataEvent::V1(versioned_data)),
-        noop_program,
+        &Some(noop_program.clone()),
     )
 }

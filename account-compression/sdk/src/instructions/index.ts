@@ -1,12 +1,13 @@
 import {
+  AccountMeta,
   Connection,
   PublicKey,
   SystemProgram,
   TransactionInstruction,
-} from '@solana/web3.js';
+} from "@solana/web3.js";
 
-import { SPL_NOOP_PROGRAM_ID, ValidDepthSizePair } from '../constants';
-import { getConcurrentMerkleTreeAccountSize } from '../accounts';
+import { SPL_NOOP_PROGRAM_ID, ValidDepthSizePair } from "../constants";
+import { getConcurrentMerkleTreeAccountSize } from "../accounts";
 import {
   createReplaceLeafInstruction,
   createAppendInstruction,
@@ -15,8 +16,12 @@ import {
   PROGRAM_ID,
   createInitEmptyMerkleTreeInstruction,
   createCloseEmptyTreeInstruction,
-} from '../generated';
-import { MerkleTreeProof } from '../merkle-tree';
+} from "../generated";
+import { MerkleTreeProof } from "../merkle-tree";
+
+function stripNoopProgramId(keys: AccountMeta[]): AccountMeta[] {
+  return keys.filter((meta) => meta.pubkey !== SPL_NOOP_PROGRAM_ID);
+}
 
 /**
  * Helper function that adds proof nodes to a TransactionInstruction
@@ -49,9 +54,10 @@ export function addProof(
 export function createInitEmptyMerkleTreeIx(
   merkleTree: PublicKey,
   authority: PublicKey,
-  depthSizePair: ValidDepthSizePair
+  depthSizePair: ValidDepthSizePair,
+  forceNoopProgramCpi: boolean = false
 ): TransactionInstruction {
-  return createInitEmptyMerkleTreeInstruction(
+  let ix = createInitEmptyMerkleTreeInstruction(
     {
       merkleTree,
       authority: authority,
@@ -59,6 +65,11 @@ export function createInitEmptyMerkleTreeIx(
     },
     depthSizePair
   );
+
+  if (!forceNoopProgramCpi) {
+    ix.keys = stripNoopProgramId(ix.keys);
+  }
+  return ix;
 }
 
 /**
@@ -73,9 +84,10 @@ export function createReplaceIx(
   merkleTree: PublicKey,
   authority: PublicKey,
   newLeaf: Buffer,
-  proof: MerkleTreeProof
+  proof: MerkleTreeProof,
+  forceNoopProgramCpi: boolean = false
 ): TransactionInstruction {
-  return addProof(
+  let ix = addProof(
     createReplaceLeafInstruction(
       {
         merkleTree,
@@ -91,6 +103,11 @@ export function createReplaceIx(
     ),
     proof.proof
   );
+
+  if (!forceNoopProgramCpi) {
+    ix.keys = stripNoopProgramId(ix.keys);
+  }
+  return ix;
 }
 
 /**
@@ -103,9 +120,10 @@ export function createReplaceIx(
 export function createAppendIx(
   merkleTree: PublicKey,
   authority: PublicKey,
-  newLeaf: Buffer | ArrayLike<number>
+  newLeaf: Buffer | ArrayLike<number>,
+  forceNoopProgramCpi: boolean = false
 ): TransactionInstruction {
-  return createAppendInstruction(
+  let ix = createAppendInstruction(
     {
       merkleTree,
       authority: authority,
@@ -115,6 +133,11 @@ export function createAppendIx(
       leaf: Array.from(newLeaf),
     }
   );
+
+  if (!forceNoopProgramCpi) {
+    ix.keys = stripNoopProgramId(ix.keys);
+  }
+  return ix;
 }
 
 /**
