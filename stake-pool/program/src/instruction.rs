@@ -377,7 +377,6 @@ pub enum StakePoolInstruction {
     /// 5. `[w]` Token metadata account
     /// 6. `[]` Metadata program id
     /// 7. `[]` System program id
-    /// 8. `[]` Rent sysvar
     CreateTokenMetadata {
         /// Token name
         name: String,
@@ -2266,7 +2265,6 @@ pub fn create_token_metadata(
         AccountMeta::new(token_metadata, false),
         AccountMeta::new_readonly(mpl_token_metadata::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
     Instruction {
