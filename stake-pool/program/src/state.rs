@@ -62,7 +62,7 @@ pub struct StakePool {
     /// signed by this authority. If no deposit authority is specified,
     /// then the stake pool will default to the result of:
     /// `Pubkey::find_program_address(
-    ///     &[&stake_pool_address.to_bytes()[..32], b"deposit"],
+    ///     &[&stake_pool_address.as_ref(), b"deposit"],
     ///     program_id,
     /// )`
     pub stake_deposit_authority: Pubkey,
@@ -273,11 +273,7 @@ impl StakePool {
         bump_seed: u8,
     ) -> Result<(), ProgramError> {
         let expected_address = Pubkey::create_program_address(
-            &[
-                &stake_pool_address.to_bytes()[..32],
-                authority_seed,
-                &[bump_seed],
-            ],
+            &[stake_pool_address.as_ref(), authority_seed, &[bump_seed]],
             program_id,
         )?;
 
