@@ -601,17 +601,19 @@ async def create_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_
 
     txn = Transaction()
     txn.add(
-        sp.CreateTokenMetadataParams(
-            program_id=STAKE_POOL_PROGRAM_ID,
-            stake_pool=stake_pool_address,
-            manager=stake_pool.manager,
-            pool_mint=stake_pool.pool_mint,
-            payer=payer.public_key,
-            name=name,
-            symbol=symbol,
-            uri=uri,
-            withdraw_authority=withdraw_authority,
-            token_metadata=TOKEN_PROGRAM_ID,
+        sp.create_token_metadata(
+            sp.CreateTokenMetadataParams(
+                program_id=STAKE_POOL_PROGRAM_ID,
+                stake_pool=stake_pool_address,
+                manager=stake_pool.manager,
+                pool_mint=stake_pool.pool_mint,
+                payer=payer.public_key,
+                name=name,
+                symbol=symbol,
+                uri=uri,
+                withdraw_authority=withdraw_authority,
+                token_metadata=TOKEN_PROGRAM_ID,
+            )
         )
     )
 
@@ -628,16 +630,18 @@ async def update_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_
 
     txn = Transaction()
     txn.add(
-        sp.UpdateTokenMetadataParams(
-            program_id=STAKE_POOL_PROGRAM_ID,
-            stake_pool=stake_pool_address,
-            manager=stake_pool.manager,
-            pool_mint=stake_pool.pool_mint,
-            name=name,
-            symbol=symbol,
-            uri=uri,
-            withdraw_authority=withdraw_authority,
-            token_metadata=TOKEN_PROGRAM_ID,
+        sp.update_token_metadata(
+            sp.UpdateTokenMetadataParams(
+                program_id=STAKE_POOL_PROGRAM_ID,
+                stake_pool=stake_pool_address,
+                manager=stake_pool.manager,
+                pool_mint=stake_pool.pool_mint,
+                name=name,
+                symbol=symbol,
+                uri=uri,
+                withdraw_authority=withdraw_authority,
+                token_metadata=TOKEN_PROGRAM_ID,
+            )
         )
     )
 
