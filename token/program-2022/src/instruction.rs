@@ -630,11 +630,11 @@ pub enum TokenInstruction<'a> {
         /// Authority that may sign for `Transfer`s and `Burn`s on any account
         delegate: Pubkey,
     },
-    /// Migrate Multisig Native instruction.
+    /// Recover lamports instruction.
     ///
-    /// This instruction transfers all the lamports from a Multisig account (apart from rent exemption)
-    /// to a WrappedSol associated token account owned by the Multisig account and was previously initialized
-    MigrateMultisigLamports,
+    /// This instruction transfers all the lamports from a token program owned account (apart from rent exemption)
+    /// to a WrappedSol associated token account owned by the signer of the transaction.
+    RecoverLamports,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -770,7 +770,7 @@ impl<'a> TokenInstruction<'a> {
                 let (delegate, _rest) = Self::unpack_pubkey(rest)?;
                 Self::InitializePermanentDelegate { delegate }
             }
-            36 => Self::MigrateMultisigLamports,
+            36 => Self::RecoverLamports,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -930,7 +930,7 @@ impl<'a> TokenInstruction<'a> {
                 buf.push(35);
                 buf.extend_from_slice(delegate.as_ref());
             }
-            &Self::MigrateMultisigLamports => {
+            &Self::RecoverLamports => {
                 buf.push(36);
             }
         };
@@ -1863,17 +1863,19 @@ pub(crate) fn encode_instruction<T: Into<u8>, D: Pod>(
 }
 
 /// Creates a `MigrateMultisigLamports` Instruction
-pub fn migrate_multisig_lamports(
+pub fn recover_lamports(
     token_program_id: &Pubkey,
-    multisig_pubkey: &Pubkey,
+    source_account: &Pubkey,
     dest_token_account_pubkey: &Pubkey,
+    authority: &Pubkey,
     signers: Vec<&Pubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
 
     let mut accounts = vec![
         AccountMeta::new(*dest_token_account_pubkey, false),
-        AccountMeta::new(*multisig_pubkey, false),
+        AccountMeta::new(*source_account, false),
+        AccountMeta::new(*authority, false),
     ];
 
     for signer in signers {
@@ -1883,7 +1885,7 @@ pub fn migrate_multisig_lamports(
     Ok(Instruction {
         program_id: *token_program_id,
         accounts,
-        data: TokenInstruction::MigrateMultisigLamports.pack(),
+        data: TokenInstruction::RecoverLamports.pack(),
     })
 }
 
