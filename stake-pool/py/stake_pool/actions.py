@@ -591,19 +591,18 @@ async def decrease_validator_stake(
         txn, *signers, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
 
 
-async def create_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_address: PublicKey,
-                                name: str, symbol: str, uri: str):
+async def create_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_program_id: PublicKey,
+                                stake_pool_address: PublicKey, token_program_id: PublicKey,
+                                withdraw_authority: PublicKey, name: str, symbol: str, uri: str):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
     data = resp['result']['value']['data']
     stake_pool = StakePool.decode(data[0], data[1])
-
-    (withdraw_authority, _seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
 
     txn = Transaction()
     txn.add(
         sp.create_token_metadata(
             sp.CreateTokenMetadataParams(
-                program_id=STAKE_POOL_PROGRAM_ID,
+                program_id=stake_pool_program_id,
                 stake_pool=stake_pool_address,
                 manager=stake_pool.manager,
                 pool_mint=stake_pool.pool_mint,
@@ -612,7 +611,7 @@ async def create_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_
                 symbol=symbol,
                 uri=uri,
                 withdraw_authority=withdraw_authority,
-                token_metadata=TOKEN_PROGRAM_ID,
+                token_metadata=token_program_id,
             )
         )
     )
@@ -620,19 +619,18 @@ async def create_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_
     await client.send_transaction(txn, payer, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
 
 
-async def update_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_address: PublicKey,
-                                name: str, symbol: str, uri: str):
+async def update_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_program_id: PublicKey,
+                                stake_pool_address: PublicKey, token_program_id: PublicKey,
+                                withdraw_authority: PublicKey, name: str, symbol: str, uri: str):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
     data = resp['result']['value']['data']
     stake_pool = StakePool.decode(data[0], data[1])
-
-    (withdraw_authority, _seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
 
     txn = Transaction()
     txn.add(
         sp.update_token_metadata(
             sp.UpdateTokenMetadataParams(
-                program_id=STAKE_POOL_PROGRAM_ID,
+                program_id=stake_pool_program_id,
                 stake_pool=stake_pool_address,
                 manager=stake_pool.manager,
                 pool_mint=stake_pool.pool_mint,
@@ -640,7 +638,7 @@ async def update_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_
                 symbol=symbol,
                 uri=uri,
                 withdraw_authority=withdraw_authority,
-                token_metadata=TOKEN_PROGRAM_ID,
+                token_metadata=token_program_id,
             )
         )
     )
