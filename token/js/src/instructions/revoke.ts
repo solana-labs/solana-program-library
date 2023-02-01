@@ -32,7 +32,7 @@ export const revokeInstructionData = struct<RevokeInstructionData>([u8('instruct
 export function createRevokeInstruction(
     account: PublicKey,
     owner: PublicKey,
-    multiSigners: Signer[] = [],
+    multiSigners: (Signer | PublicKey)[] = [],
     programId = TOKEN_PROGRAM_ID
 ): TransactionInstruction {
     const keys = addSigners([{ pubkey: account, isSigner: false, isWritable: true }], owner, multiSigners);

@@ -76,6 +76,7 @@ pub(crate) fn sort_and_parse_token_accounts(
                         program_id: program_id.to_string(),
                         account: ui_token_account,
                         is_associated,
+                        has_permanent_delegate: false,
                     };
 
                     let entry = cli_accounts.entry(btree_key);

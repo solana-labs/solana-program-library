@@ -67,6 +67,50 @@ export function getTypeLen(e: ExtensionType): number {
     }
 }
 
+export function isMintExtension(e: ExtensionType): boolean {
+    switch (e) {
+        case ExtensionType.TransferFeeConfig:
+        case ExtensionType.MintCloseAuthority:
+        case ExtensionType.ConfidentialTransferMint:
+        case ExtensionType.DefaultAccountState:
+        case ExtensionType.NonTransferable:
+        case ExtensionType.InterestBearingConfig:
+        case ExtensionType.PermanentDelegate:
+            return true;
+        case ExtensionType.Uninitialized:
+        case ExtensionType.TransferFeeAmount:
+        case ExtensionType.ConfidentialTransferAccount:
+        case ExtensionType.ImmutableOwner:
+        case ExtensionType.MemoTransfer:
+        case ExtensionType.CpiGuard:
+            return false;
+        default:
+            throw Error(`Unknown extension type: ${e}`);
+    }
+}
+
+export function isAccountExtension(e: ExtensionType): boolean {
+    switch (e) {
+        case ExtensionType.TransferFeeAmount:
+        case ExtensionType.ConfidentialTransferAccount:
+        case ExtensionType.ImmutableOwner:
+        case ExtensionType.MemoTransfer:
+        case ExtensionType.CpiGuard:
+            return true;
+        case ExtensionType.Uninitialized:
+        case ExtensionType.TransferFeeConfig:
+        case ExtensionType.MintCloseAuthority:
+        case ExtensionType.ConfidentialTransferMint:
+        case ExtensionType.DefaultAccountState:
+        case ExtensionType.NonTransferable:
+        case ExtensionType.InterestBearingConfig:
+        case ExtensionType.PermanentDelegate:
+            return false;
+        default:
+            throw Error(`Unknown extension type: ${e}`);
+    }
+}
+
 export function getAccountTypeOfMintType(e: ExtensionType): ExtensionType {
     switch (e) {
         case ExtensionType.TransferFeeConfig:
@@ -117,7 +161,7 @@ export function getAccountLen(extensionTypes: ExtensionType[]): number {
 
 export function getExtensionData(extension: ExtensionType, tlvData: Buffer): Buffer | null {
     let extensionTypeIndex = 0;
-    while (extensionTypeIndex < tlvData.length) {
+    while (extensionTypeIndex + TYPE_SIZE + LENGTH_SIZE <= tlvData.length) {
         const entryType = tlvData.readUInt16LE(extensionTypeIndex);
         const entryLength = tlvData.readUInt16LE(extensionTypeIndex + TYPE_SIZE);
         const typeIndex = extensionTypeIndex + TYPE_SIZE + LENGTH_SIZE;

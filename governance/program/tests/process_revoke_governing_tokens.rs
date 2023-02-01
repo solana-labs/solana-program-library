@@ -93,6 +93,87 @@ async fn test_revoke_council_tokens() {
 }
 
 #[tokio::test]
+async fn test_revoke_own_council_tokens() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_config_args = RealmSetupArgs::default();
+    realm_config_args.council_token_config_args.token_type = GoverningTokenType::Membership;
+
+    let realm_cookie = governance_test
+        .with_realm_using_args(&realm_config_args)
+        .await;
+
+    let token_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    governance_test
+        .revoke_governing_tokens_using_instruction(
+            &realm_cookie,
+            &token_owner_record_cookie,
+            &realm_cookie.account.config.council_mint.unwrap(),
+            &token_owner_record_cookie.token_owner,
+            token_owner_record_cookie
+                .account
+                .governing_token_deposit_amount,
+            NopOverride,
+            None,
+        )
+        .await
+        .unwrap();
+
+    // Assert
+
+    let token_owner_record = governance_test
+        .get_token_owner_record_account(&token_owner_record_cookie.address)
+        .await;
+
+    assert_eq!(token_owner_record.governing_token_deposit_amount, 0);
+}
+
+#[tokio::test]
+async fn test_revoke_own_council_tokens_with_owner_must_sign_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_config_args = RealmSetupArgs::default();
+    realm_config_args.council_token_config_args.token_type = GoverningTokenType::Membership;
+
+    let realm_cookie = governance_test
+        .with_realm_using_args(&realm_config_args)
+        .await;
+
+    let token_owner_record_cookie = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    let err = governance_test
+        .revoke_governing_tokens_using_instruction(
+            &realm_cookie,
+            &token_owner_record_cookie,
+            &realm_cookie.account.config.council_mint.unwrap(),
+            &token_owner_record_cookie.token_owner,
+            token_owner_record_cookie
+                .account
+                .governing_token_deposit_amount,
+            |i| i.accounts[4].is_signer = false, // revoke_authority
+            Some(&[]),
+        )
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(err, GovernanceError::GoverningTokenOwnerMustSign.into());
+}
+
+#[tokio::test]
 async fn test_revoke_community_tokens_with_cannot_revoke_liquid_token_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
@@ -171,6 +252,7 @@ async fn test_revoke_council_tokens_with_mint_authority_must_sign_error() {
             &realm_cookie,
             &token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
+            realm_cookie.council_mint_authority.as_ref().unwrap(),
             1,
             |i| i.accounts[4].is_signer = false, // mint_authority
             Some(&[]),
@@ -185,7 +267,7 @@ async fn test_revoke_council_tokens_with_mint_authority_must_sign_error() {
 }
 
 #[tokio::test]
-async fn test_revoke_council_tokens_with_invalid_mint_authority_error() {
+async fn test_revoke_council_tokens_with_invalid_revoke_authority_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -201,18 +283,16 @@ async fn test_revoke_council_tokens_with_invalid_mint_authority_error() {
         .await
         .unwrap();
 
-    // Try to use fake authority
-    let mint_authority = Keypair::new();
-
     // Act
     let err = governance_test
         .revoke_governing_tokens_using_instruction(
             &realm_cookie,
             &token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
+            &Keypair::new(), // Try to use fake authority
             1,
-            |i| i.accounts[4].pubkey = mint_authority.pubkey(), // mint_authority
-            Some(&[&mint_authority]),
+            NopOverride,
+            None,
         )
         .await
         .err()
@@ -253,6 +333,7 @@ async fn test_revoke_council_tokens_with_invalid_token_holding_error() {
             &realm_cookie,
             &token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
+            realm_cookie.council_mint_authority.as_ref().unwrap(),
             1,
             |i| i.accounts[1].pubkey = governing_token_holding_address, // governing_token_holding_address
             None,
@@ -295,6 +376,7 @@ async fn test_revoke_council_tokens_with_other_realm_config_account_error() {
             &realm_cookie,
             &token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
+            realm_cookie.council_mint_authority.as_ref().unwrap(),
             1,
             |i| i.accounts[5].pubkey = realm_cookie2.realm_config.address, //realm_config_address
             None,
@@ -334,6 +416,7 @@ async fn test_revoke_council_tokens_with_invalid_realm_config_account_address_er
             &realm_cookie,
             &token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
+            realm_cookie.council_mint_authority.as_ref().unwrap(),
             1,
             |i| i.accounts[5].pubkey = realm_config_address, // realm_config_address
             None,
@@ -376,6 +459,7 @@ async fn test_revoke_council_tokens_with_token_owner_record_for_different_mint_e
             &realm_cookie,
             &token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
+            realm_cookie.council_mint_authority.as_ref().unwrap(),
             1,
             |i| i.accounts[2].pubkey = token_owner_record_cookie2.address, // token_owner_record_address
             None,
@@ -415,6 +499,7 @@ async fn test_revoke_council_tokens_with_too_large_amount_error() {
             &realm_cookie,
             &token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
+            realm_cookie.council_mint_authority.as_ref().unwrap(),
             200,
             NopOverride,
             None,
@@ -451,6 +536,7 @@ async fn test_revoke_council_tokens_with_partial_revoke_amount() {
             &realm_cookie,
             &token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
+            realm_cookie.council_mint_authority.as_ref().unwrap(),
             5,
             NopOverride,
             None,
@@ -499,6 +585,7 @@ async fn test_revoke_council_tokens_with_community_mint_error() {
             &realm_cookie,
             &token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
+            realm_cookie.council_mint_authority.as_ref().unwrap(),
             1,
             |i| {
                 i.accounts[1].pubkey = governing_token_holding_address;
@@ -543,6 +630,7 @@ async fn test_revoke_council_tokens_with_not_matching_mint_and_authority_error()
             &realm_cookie,
             &token_owner_record_cookie,
             &realm_cookie.account.config.council_mint.unwrap(),
+            realm_cookie.council_mint_authority.as_ref().unwrap(),
             1,
             |i| {
                 i.accounts[3].pubkey = governing_token_mint;

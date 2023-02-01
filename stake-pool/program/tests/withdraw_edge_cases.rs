@@ -725,11 +725,17 @@ async fn success_with_small_preferred_withdraw() {
         tokens_to_burn,
     ) = setup_for_withdraw(spl_token::id()).await;
 
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
+
     // make pool tokens very valuable, so it isn't possible to exactly get down to the minimum
     transfer(
         &mut context.banks_client,
         &context.payer,
-        &context.last_blockhash,
+        &last_blockhash,
         &stake_pool_accounts.reserve_stake.pubkey(),
         deposit_info.stake_lamports * 5, // each pool token is worth more than one lamport
     )
@@ -738,7 +744,7 @@ async fn success_with_small_preferred_withdraw() {
         .update_all(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &[validator_stake.vote.pubkey()],
             false,
         )
@@ -747,7 +753,7 @@ async fn success_with_small_preferred_withdraw() {
     let preferred_validator = simple_add_validator_to_pool(
         &mut context.banks_client,
         &context.payer,
-        &context.last_blockhash,
+        &last_blockhash,
         &stake_pool_accounts,
         None,
     )
@@ -757,7 +763,7 @@ async fn success_with_small_preferred_withdraw() {
         .set_preferred_validator(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             instruction::PreferredValidatorType::Withdraw,
             Some(preferred_validator.vote.pubkey()),
         )
@@ -765,7 +771,7 @@ async fn success_with_small_preferred_withdraw() {
 
     let last_blockhash = context
         .banks_client
-        .get_new_latest_blockhash(&context.last_blockhash)
+        .get_new_latest_blockhash(&last_blockhash)
         .await
         .unwrap();
 

@@ -83,7 +83,7 @@ export function createUpdateRateInterestBearingMintInstruction(
     mint: PublicKey,
     rateAuthority: PublicKey,
     rate: number,
-    multiSigners: Signer[] = [],
+    multiSigners: (Signer | PublicKey)[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ) {
     const keys = addSigners(

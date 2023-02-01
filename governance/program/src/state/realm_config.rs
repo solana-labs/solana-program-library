@@ -124,7 +124,7 @@ impl RealmConfigAccount {
         Ok(token_config)
     }
 
-    /// Assertes the given governing token can be revoked
+    /// Asserts the given governing token can be revoked
     pub fn assert_can_revoke_governing_token(
         &self,
         realm_data: &RealmV2,

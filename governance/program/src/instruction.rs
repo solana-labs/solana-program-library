@@ -505,7 +505,9 @@ pub enum GovernanceInstruction {
     ///  1. `[writable]` Governing Token Holding account. PDA seeds: ['governance',realm, governing_token_mint]
     ///  2. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
     ///  3. `[writable]` GoverningTokenMint
-    ///  4. `[signer]` GoverningTokenMint mint_authority
+    ///  4. `[signer]` Revoke authority which can be either of:
+    ///                1) GoverningTokenMint mint_authority to forcefully revoke the membership tokens
+    ///                2) GoverningTokenOwner who voluntarily revokes their own membership
     ///  5. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///  6. `[]` SPL Token program
     RevokeGoverningTokens {
@@ -1566,7 +1568,7 @@ pub fn revoke_governing_tokens(
     realm: &Pubkey,
     governing_token_owner: &Pubkey,
     governing_token_mint: &Pubkey,
-    governing_token_mint_authority: &Pubkey,
+    revoke_authority: &Pubkey,
     // Args
     amount: u64,
 ) -> Instruction {
@@ -1587,7 +1589,7 @@ pub fn revoke_governing_tokens(
         AccountMeta::new(governing_token_holding_address, false),
         AccountMeta::new(token_owner_record_address, false),
         AccountMeta::new(*governing_token_mint, false),
-        AccountMeta::new_readonly(*governing_token_mint_authority, true),
+        AccountMeta::new_readonly(*revoke_authority, true),
         AccountMeta::new_readonly(realm_config_address, false),
         AccountMeta::new_readonly(spl_token::id(), false),
     ];

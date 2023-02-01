@@ -9,6 +9,7 @@ members = [
   "examples/rust/logging",
   "examples/rust/sysvar",
   "examples/rust/transfer-lamports",
+  "examples/rust/transfer-tokens",
   "feature-proposal/program",
   "feature-proposal/cli",
   "governance/addin-mock/program",

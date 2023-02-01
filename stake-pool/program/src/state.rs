@@ -104,7 +104,7 @@ pub struct StakePool {
     pub epoch_fee: Fee,
 
     /// Fee for next epoch
-    pub next_epoch_fee: Option<Fee>,
+    pub next_epoch_fee: FutureEpoch<Fee>,
 
     /// Preferred deposit validator vote account pubkey
     pub preferred_deposit_validator_vote_address: Option<Pubkey>,
@@ -119,7 +119,7 @@ pub struct StakePool {
     pub stake_withdrawal_fee: Fee,
 
     /// Future stake withdrawal fee, to be set for the following epoch
-    pub next_stake_withdrawal_fee: Option<Fee>,
+    pub next_stake_withdrawal_fee: FutureEpoch<Fee>,
 
     /// Fees paid out to referrers on referred stake deposits.
     /// Expressed as a percentage (0 - 100) of deposit fees.
@@ -148,7 +148,7 @@ pub struct StakePool {
     pub sol_withdrawal_fee: Fee,
 
     /// Future SOL withdrawal fee, to be set for the following epoch
-    pub next_sol_withdrawal_fee: Option<Fee>,
+    pub next_sol_withdrawal_fee: FutureEpoch<Fee>,
 
     /// Last epoch's total pool tokens, used only for APR estimation
     pub last_epoch_pool_token_supply: u64,
@@ -483,14 +483,14 @@ impl StakePool {
         match fee {
             FeeType::SolReferral(new_fee) => self.sol_referral_fee = *new_fee,
             FeeType::StakeReferral(new_fee) => self.stake_referral_fee = *new_fee,
-            FeeType::Epoch(new_fee) => self.next_epoch_fee = Some(*new_fee),
+            FeeType::Epoch(new_fee) => self.next_epoch_fee = FutureEpoch::new(*new_fee),
             FeeType::StakeWithdrawal(new_fee) => {
                 new_fee.check_withdrawal(&self.stake_withdrawal_fee)?;
-                self.next_stake_withdrawal_fee = Some(*new_fee)
+                self.next_stake_withdrawal_fee = FutureEpoch::new(*new_fee)
             }
             FeeType::SolWithdrawal(new_fee) => {
                 new_fee.check_withdrawal(&self.sol_withdrawal_fee)?;
-                self.next_sol_withdrawal_fee = Some(*new_fee)
+                self.next_sol_withdrawal_fee = FutureEpoch::new(*new_fee)
             }
             FeeType::SolDeposit(new_fee) => self.sol_deposit_fee = *new_fee,
             FeeType::StakeDeposit(new_fee) => self.stake_deposit_fee = *new_fee,
@@ -661,10 +661,10 @@ pub struct ValidatorStakeInfo {
 
 impl ValidatorStakeInfo {
     /// Get the total lamports on this validator (active and transient)
-    pub fn stake_lamports(&self) -> u64 {
+    pub fn stake_lamports(&self) -> Result<u64, StakePoolError> {
         self.active_stake_lamports
             .checked_add(self.transient_stake_lamports)
-            .unwrap()
+            .ok_or(StakePoolError::CalculationFailure)
     }
 
     /// Performs a very cheap comparison, for checking if this validator stake
@@ -680,12 +680,14 @@ impl ValidatorStakeInfo {
     /// Performs a comparison, used to check if this validator stake
     /// info has more active lamports than some limit
     pub fn active_lamports_greater_than(data: &[u8], lamports: &u64) -> bool {
+        // without this unwrap, compute usage goes up significantly
         u64::try_from_slice(&data[0..8]).unwrap() > *lamports
     }
 
     /// Performs a comparison, used to check if this validator stake
     /// info has more transient lamports than some limit
     pub fn transient_lamports_greater_than(data: &[u8], lamports: &u64) -> bool {
+        // without this unwrap, compute usage goes up significantly
         u64::try_from_slice(&data[8..16]).unwrap() > *lamports
     }
 
@@ -701,6 +703,8 @@ impl Pack for ValidatorStakeInfo {
     const LEN: usize = 73;
     fn pack_into_slice(&self, data: &mut [u8]) {
         let mut data = data;
+        // Removing this unwrap would require changing from `Pack` to some other
+        // trait or `bytemuck`, so it stays in for now
         self.serialize(&mut data).unwrap();
     }
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
@@ -790,6 +794,62 @@ impl ValidatorListHeader {
             data: &mut data[length..],
         };
         Ok((header, big_vec))
+    }
+}
+
+/// Wrapper type that "counts down" epochs, which is Borsh-compatible with the
+/// native `Option`
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
+pub enum FutureEpoch<T> {
+    /// Nothing is set
+    None,
+    /// Value is ready after the next epoch boundary
+    One(T),
+    /// Value is ready after two epoch boundaries
+    Two(T),
+}
+impl<T> Default for FutureEpoch<T> {
+    fn default() -> Self {
+        Self::None
+    }
+}
+impl<T> FutureEpoch<T> {
+    /// Create a new value to be unlocked in a two epochs
+    pub fn new(value: T) -> Self {
+        Self::Two(value)
+    }
+}
+impl<T: Clone> FutureEpoch<T> {
+    /// Update the epoch, to be done after `get`ting the underlying value
+    pub fn update_epoch(&mut self) {
+        match self {
+            Self::None => {}
+            Self::One(_) => {
+                // The value has waited its last epoch
+                *self = Self::None;
+            }
+            // The value still has to wait one more epoch after this
+            Self::Two(v) => {
+                *self = Self::One(v.clone());
+            }
+        }
+    }
+
+    /// Get the value if it's ready, which is only at `One` epoch remaining
+    pub fn get(&self) -> Option<&T> {
+        match self {
+            Self::None | Self::Two(_) => None,
+            Self::One(v) => Some(v),
+        }
+    }
+}
+impl<T> From<FutureEpoch<T>> for Option<T> {
+    fn from(v: FutureEpoch<T>) -> Option<T> {
+        match v {
+            FutureEpoch::None => None,
+            FutureEpoch::One(inner) | FutureEpoch::Two(inner) => Some(inner),
+        }
     }
 }
 

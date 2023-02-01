@@ -1,7 +1,7 @@
 import { AccountInfo, LAMPORTS_PER_SOL, PublicKey, StakeProgram } from '@solana/web3.js';
 import BN from 'bn.js';
 import { ValidatorStakeInfo } from '../src';
-import { ValidatorStakeInfoStatus, AccountLayout, ValidatorListLayout } from '../src/layouts';
+import { AccountLayout, ValidatorListLayout, ValidatorStakeInfoStatus } from '../src/layouts';
 
 export const CONSTANTS = {
   poolTokenAccount: new PublicKey(
@@ -149,13 +149,12 @@ export const mockRpc = (data: any): any => {
     executable: false,
     rentEpoch: 0,
   };
-  const result = {
+  return {
     context: {
       slot: 11,
     },
     value: value,
   };
-  return result;
 };
 
 export const stakeAccountData = {

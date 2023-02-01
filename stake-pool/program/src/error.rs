@@ -141,6 +141,9 @@ pub enum StakePoolError {
     /// The fee account has an unsupported extension
     #[error("UnsupportedFeeAccountExtension")]
     UnsupportedFeeAccountExtension,
+    /// Instruction exceeds desired slippage limit
+    #[error("Instruction exceeds desired slippage limit")]
+    ExceededSlippage,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {
