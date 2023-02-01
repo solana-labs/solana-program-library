@@ -2429,8 +2429,8 @@ pub fn add_stake_pool_account(
 ) {
     let mut stake_pool_bytes = stake_pool.try_to_vec().unwrap();
     // more room for optionals
-    stake_pool_bytes.extend_from_slice(&Pubkey::default().to_bytes());
-    stake_pool_bytes.extend_from_slice(&Pubkey::default().to_bytes());
+    stake_pool_bytes.extend_from_slice(Pubkey::default().as_ref());
+    stake_pool_bytes.extend_from_slice(Pubkey::default().as_ref());
     let stake_pool_account = SolanaAccount::create(
         ACCOUNT_RENT_EXEMPTION,
         stake_pool_bytes,

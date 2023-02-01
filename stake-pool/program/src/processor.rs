@@ -372,8 +372,7 @@ impl Processor {
         authority_type: &[u8],
         bump_seed: u8,
     ) -> Result<(), ProgramError> {
-        let authority_signature_seeds =
-            [&stake_pool.to_bytes()[..32], authority_type, &[bump_seed]];
+        let authority_signature_seeds = [stake_pool.as_ref(), authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
         let ix = stake::instruction::delegate_stake(
@@ -405,8 +404,7 @@ impl Processor {
         authority_type: &[u8],
         bump_seed: u8,
     ) -> Result<(), ProgramError> {
-        let authority_signature_seeds =
-            [&stake_pool.to_bytes()[..32], authority_type, &[bump_seed]];
+        let authority_signature_seeds = [stake_pool.as_ref(), authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
         let ix = stake::instruction::deactivate_stake(stake_info.key, authority_info.key);
@@ -424,8 +422,7 @@ impl Processor {
         amount: u64,
         split_stake: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
-        let me_bytes = stake_pool.to_bytes();
-        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
+        let authority_signature_seeds = [stake_pool.as_ref(), authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
         let split_instruction =
@@ -453,8 +450,7 @@ impl Processor {
         stake_history: AccountInfo<'a>,
         stake_program_info: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
-        let me_bytes = stake_pool.to_bytes();
-        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
+        let authority_signature_seeds = [stake_pool.as_ref(), authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
         let merge_instruction =
@@ -526,8 +522,7 @@ impl Processor {
         clock: AccountInfo<'a>,
         stake_program_info: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
-        let me_bytes = stake_pool.to_bytes();
-        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
+        let authority_signature_seeds = [stake_pool.as_ref(), authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
         let authorize_instruction = stake::instruction::authorize(
@@ -577,8 +572,7 @@ impl Processor {
         stake_program_info: AccountInfo<'a>,
         lamports: u64,
     ) -> Result<(), ProgramError> {
-        let me_bytes = stake_pool.to_bytes();
-        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
+        let authority_signature_seeds = [stake_pool.as_ref(), authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
         let custodian_pubkey = None;
 
@@ -616,8 +610,7 @@ impl Processor {
         vote_account: AccountInfo<'a>,
         stake_config: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
-        let me_bytes = stake_pool.to_bytes();
-        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
+        let authority_signature_seeds = [stake_pool.as_ref(), authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
         let redelegate_instruction = &stake::instruction::redelegate(
@@ -673,8 +666,7 @@ impl Processor {
         bump_seed: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let me_bytes = stake_pool.to_bytes();
-        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
+        let authority_signature_seeds = [stake_pool.as_ref(), authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
         let ix = spl_token_2022::instruction::mint_to(
@@ -1389,7 +1381,7 @@ impl Processor {
                 )?;
                 let ephemeral_stake_account_signer_seeds: &[&[_]] = &[
                     EPHEMERAL_STAKE_SEED_PREFIX,
-                    &stake_pool_info.key.to_bytes(),
+                    stake_pool_info.key.as_ref(),
                     &ephemeral_stake_seed.to_le_bytes(),
                     &[ephemeral_stake_bump_seed],
                 ];
@@ -1452,8 +1444,8 @@ impl Processor {
         } else {
             let transient_stake_account_signer_seeds: &[&[_]] = &[
                 TRANSIENT_STAKE_SEED_PREFIX,
-                &vote_account_address.to_bytes(),
-                &stake_pool_info.key.to_bytes(),
+                vote_account_address.as_ref(),
+                stake_pool_info.key.as_ref(),
                 &transient_stake_seed.to_le_bytes(),
                 &[transient_stake_bump_seed],
             ];
@@ -1664,7 +1656,7 @@ impl Processor {
                 )?;
                 let ephemeral_stake_account_signer_seeds: &[&[_]] = &[
                     EPHEMERAL_STAKE_SEED_PREFIX,
-                    &stake_pool_info.key.to_bytes(),
+                    stake_pool_info.key.as_ref(),
                     &ephemeral_stake_seed.to_le_bytes(),
                     &[ephemeral_stake_bump_seed],
                 ];
@@ -1730,8 +1722,8 @@ impl Processor {
             // no transient stake, split
             let transient_stake_account_signer_seeds: &[&[_]] = &[
                 TRANSIENT_STAKE_SEED_PREFIX,
-                &vote_account_address.to_bytes(),
-                &stake_pool_info.key.to_bytes(),
+                vote_account_address.as_ref(),
+                stake_pool_info.key.as_ref(),
                 &transient_stake_seed.to_le_bytes(),
                 &[transient_stake_bump_seed],
             ];
@@ -1940,8 +1932,8 @@ impl Processor {
             )?;
             let source_transient_stake_account_signer_seeds: &[&[_]] = &[
                 TRANSIENT_STAKE_SEED_PREFIX,
-                &vote_account_address.to_bytes(),
-                &stake_pool_info.key.to_bytes(),
+                vote_account_address.as_ref(),
+                stake_pool_info.key.as_ref(),
                 &source_transient_stake_seed.to_le_bytes(),
                 &[source_transient_stake_bump_seed],
             ];
@@ -1973,7 +1965,7 @@ impl Processor {
             )?;
             let ephemeral_stake_account_signer_seeds: &[&[_]] = &[
                 EPHEMERAL_STAKE_SEED_PREFIX,
-                &stake_pool_info.key.to_bytes(),
+                stake_pool_info.key.as_ref(),
                 &ephemeral_stake_seed.to_le_bytes(),
                 &[ephemeral_stake_bump_seed],
             ];
@@ -2076,8 +2068,8 @@ impl Processor {
                 )?;
                 let destination_transient_stake_account_signer_seeds: &[&[_]] = &[
                     TRANSIENT_STAKE_SEED_PREFIX,
-                    &vote_account_address.to_bytes(),
-                    &stake_pool_info.key.to_bytes(),
+                    vote_account_address.as_ref(),
+                    stake_pool_info.key.as_ref(),
                     &destination_transient_stake_seed.to_le_bytes(),
                     &[destination_transient_stake_bump_seed],
                 ];
@@ -3560,7 +3552,7 @@ impl Processor {
             crate::find_withdraw_authority_program_address(program_id, stake_pool_info.key);
 
         let token_mint_authority_signer_seeds: &[&[_]] = &[
-            &stake_pool_info.key.to_bytes()[..32],
+            stake_pool_info.key.as_ref(),
             AUTHORITY_WITHDRAW,
             &[stake_withdraw_bump_seed],
         ];
@@ -3640,7 +3632,7 @@ impl Processor {
             crate::find_withdraw_authority_program_address(program_id, stake_pool_info.key);
 
         let token_mint_authority_signer_seeds: &[&[_]] = &[
-            &stake_pool_info.key.to_bytes()[..32],
+            stake_pool_info.key.as_ref(),
             AUTHORITY_WITHDRAW,
             &[stake_withdraw_bump_seed],
         ];
