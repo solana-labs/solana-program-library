@@ -388,13 +388,12 @@ where
     fn get_multisig_signers<'a, 'b>(
         &self,
         authority: &'b Pubkey,
-        signing_pubkeys: &'a Vec<Pubkey>,
+        signing_pubkeys: &'a [Pubkey],
     ) -> Vec<&'a Pubkey> {
-        if signing_pubkeys.as_ref() == [*authority] {
-            vec![]
-        } else {
-            signing_pubkeys.iter().collect::<Vec<_>>()
-        }
+        signing_pubkeys
+            .iter()
+            .filter(|p| *p != authority)
+            .collect::<Vec<_>>()
     }
 
     async fn construct_tx<S: Signers>(
