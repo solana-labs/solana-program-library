@@ -25,7 +25,7 @@ async def test_create_metadata_success(async_client: AsyncClient, payer: Keypair
 
     (metadata_program_address, _seed) = find_metadata_account(stake_pool.pool_mint)
     resp = await async_client.get_account_info(metadata_program_address, commitment=Confirmed)
-    raw_data = resp['result']['value']['data']
+    raw_data = resp['result']
     assert name == str(raw_data[69:101], "utf-8")
     assert symbol == str(raw_data[105:115], "utf-8")
     assert uri == str(raw_data[119:319], "utf-8")
