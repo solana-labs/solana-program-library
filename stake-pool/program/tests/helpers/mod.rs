@@ -246,7 +246,8 @@ pub async fn create_token_account(
             ),
             ExtensionType::TransferFeeAmount
             | ExtensionType::MemoTransfer
-            | ExtensionType::CpiGuard => (),
+            | ExtensionType::CpiGuard
+            | ExtensionType::NonTransferableAccount => (),
             _ => unimplemented!(),
         };
     }
@@ -288,7 +289,9 @@ pub async fn create_token_account(
                     .unwrap(),
                 )
             }
-            ExtensionType::ImmutableOwner | ExtensionType::TransferFeeAmount => (),
+            ExtensionType::ImmutableOwner
+            | ExtensionType::TransferFeeAmount
+            | ExtensionType::NonTransferableAccount => (),
             _ => unimplemented!(),
         }
     }
