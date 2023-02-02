@@ -1862,7 +1862,7 @@ pub(crate) fn encode_instruction<T: Into<u8>, D: Pod>(
     }
 }
 
-/// Creates a `MigrateMultisigLamports` Instruction
+/// Creates a `RecoverLamports` Instruction
 pub fn recover_lamports(
     token_program_id: &Pubkey,
     source_account: &Pubkey,

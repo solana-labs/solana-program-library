@@ -1274,8 +1274,9 @@ impl Processor {
         Ok(())
     }
 
-    /// Migrate Multisig Native is used to transfer Lamports transfered to Multisig account
-    /// by system program's transfer instruction to WrappedSol ATA owned by Multisig.
+    /// Recover Lamports is used to recover Lamports transfered to any TokenProgram owned account
+    /// by system program's transfer instruction by moving them to WrappedSol ATA owned by the authority
+    /// of the source account.
     pub fn process_recover_lamports(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -1318,6 +1319,16 @@ impl Processor {
         if let Ok(source_account) = Account::unpack(&dest_token_account_info.data.borrow()) {
             if source_account.is_native() {
                 return Err(TokenError::NativeNotSupported.into());
+            }
+        }
+        if let Ok(_) = Multisig::unpack(&dest_token_account_info.data.borrow()) {
+            if source_account_info.key != authority_info.key {
+                return Err(TokenError::AuthorityTypeNotSupported.into());
+            }
+        }
+        if let Ok(mint_account) = Mint::unpack(&dest_token_account_info.data.borrow()) {
+            if &mint_account.mint_authority.ok_or(TokenError::InvalidMint)? != authority_info.key {
+                return Err(TokenError::AuthorityTypeNotSupported.into());
             }
         }
 

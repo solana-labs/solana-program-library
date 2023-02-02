@@ -835,17 +835,20 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [MigrateMultisigLamports](enum.TokenInstruction.html) instruction
-    pub fn process_migrate_multisig_lamports(
+    /// Recover Lamports is used to recover Lamports transfered to any TokenProgram owned account
+    /// by system program's transfer instruction by moving them to WrappedSol ATA owned by the authority
+    /// of the source account.
+    pub fn process_recover_lamports(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
         let dest_token_account_info = next_account_info(account_info_iter)?;
-        let multisig_account_info = next_account_info(account_info_iter)?;
+        let source_account_info = next_account_info(account_info_iter)?;
+        let authority_info = next_account_info(account_info_iter)?;
 
-        if multisig_account_info.owner != program_id {
+        if source_account_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
         }
 
@@ -856,36 +859,49 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        Multisig::unpack(&multisig_account_info.data.borrow())
-            .map_err(|_| ProgramError::InvalidAccountData)?;
-
         Self::validate_owner(
             program_id,
-            multisig_account_info.key,
-            multisig_account_info,
+            authority_info.key,
+            authority_info,
             account_info_iter.as_slice(),
         )?;
 
-        let token_account = Account::unpack(&dest_token_account_info.data.borrow())?;
+        let dest_token_account = Account::unpack(&dest_token_account_info.data.borrow())?;
 
-        if &token_account.owner != multisig_account_info.key {
+        if &dest_token_account.owner != authority_info.key {
             return Err(TokenError::OwnerMismatch.into());
         }
 
-        if !token_account.is_native() {
+        if !dest_token_account.is_native() {
             return Err(TokenError::NonNativeNotSupported.into());
         }
 
-        let multisig_rent_exempt_reserve =
-            Rent::get()?.minimum_balance(multisig_account_info.data_len());
+        if let Ok(source_account) = Account::unpack(&dest_token_account_info.data.borrow()) {
+            if source_account.is_native() {
+                return Err(TokenError::NativeNotSupported.into());
+            }
+        }
+        if let Ok(_) = Multisig::unpack(&dest_token_account_info.data.borrow()) {
+            if source_account_info.key != authority_info.key {
+                return Err(TokenError::AuthorityTypeNotSupported.into());
+            }
+        }
+        if let Ok(mint_account) = Mint::unpack(&dest_token_account_info.data.borrow()) {
+            if &mint_account.mint_authority.expect("No mint authority") != authority_info.key {
+                return Err(TokenError::AuthorityTypeNotSupported.into());
+            }
+        }
 
-        let transfer_amount = multisig_account_info
+        let source_rent_exempt_reserve =
+            Rent::get()?.minimum_balance(source_account_info.data_len());
+
+        let transfer_amount = source_account_info
             .lamports()
-            .checked_sub(multisig_rent_exempt_reserve)
+            .checked_sub(source_rent_exempt_reserve)
             .ok_or(TokenError::NotRentExempt)?;
 
-        let multisig_starting_lamports = multisig_account_info.lamports();
-        **multisig_account_info.lamports.borrow_mut() = multisig_starting_lamports
+        let source_starting_lamports = source_account_info.lamports();
+        **source_account_info.lamports.borrow_mut() = source_starting_lamports
             .checked_sub(transfer_amount)
             .ok_or(TokenError::Overflow)?;
 
@@ -895,7 +911,6 @@ impl Processor {
             .ok_or(TokenError::Overflow)?;
 
         Self::process_sync_native(program_id, accounts)?;
-
         Ok(())
     }
 
@@ -1015,9 +1030,9 @@ impl Processor {
                 msg!("Instruction: UiAmountToAmount");
                 Self::process_ui_amount_to_amount(program_id, accounts, ui_amount)
             }
-            TokenInstruction::MigrateMultisigLamports => {
-                msg!("Instruction: MigrateMultisigLamports");
-                Self::process_migrate_multisig_lamports(program_id, accounts)
+            TokenInstruction::RecoverLamports => {
+                msg!("Instruction: RecoverLamports");
+                Self::process_recover_lamports(program_id, accounts)
             }
         }
     }

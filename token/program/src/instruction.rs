@@ -471,7 +471,7 @@ pub enum TokenInstruction<'a> {
     /// 0. `[writable]` Destination WrappedSol token account owned by multisig
     /// 1. `[writable]` Multisig
     /// 2. ..2+M `[signer]` M signer accounts.
-    MigrateMultisigLamports,
+    RecoverLamports,
     // Any new variants also need to be added to program-2022 `TokenInstruction`, so that the
     // latter remains a superset of this instruction set. New variants also need to be added to
     // token/js/src/instructions/types.ts to maintain @solana/spl-token compatibility
@@ -577,7 +577,7 @@ impl<'a> TokenInstruction<'a> {
                 let ui_amount = std::str::from_utf8(rest).map_err(|_| InvalidInstruction)?;
                 Self::UiAmountToAmount { ui_amount }
             }
-            25 => Self::MigrateMultisigLamports,
+            36 => Self::RecoverLamports,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -688,8 +688,8 @@ impl<'a> TokenInstruction<'a> {
                 buf.push(24);
                 buf.extend_from_slice(ui_amount.as_bytes());
             }
-            &Self::MigrateMultisigLamports => {
-                buf.push(25);
+            &Self::RecoverLamports => {
+                buf.push(36);
             }
         };
         buf
@@ -964,31 +964,6 @@ pub fn initialize_multisig2(
         program_id: *token_program_id,
         accounts,
         data,
-    })
-}
-
-/// Creates a `MigrateMultisigLamports` Instruction
-pub fn migrate_multisig_lamports(
-    token_program_id: &Pubkey,
-    multisig_pubkey: &Pubkey,
-    dest_token_account_pubkey: &Pubkey,
-    signers: Vec<&Pubkey>,
-) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
-
-    let mut accounts = vec![
-        AccountMeta::new(*dest_token_account_pubkey, false),
-        AccountMeta::new(*multisig_pubkey, false),
-    ];
-
-    for signer in signers {
-        accounts.push(AccountMeta::new_readonly(*signer, true))
-    }
-
-    Ok(Instruction {
-        program_id: *token_program_id,
-        accounts,
-        data: TokenInstruction::MigrateMultisigLamports.pack(),
     })
 }
 
@@ -1458,6 +1433,33 @@ pub fn ui_amount_to_amount(
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new_readonly(*mint_pubkey, false)],
         data: TokenInstruction::UiAmountToAmount { ui_amount }.pack(),
+    })
+}
+
+/// Creates a `RecoverLamports` Instruction
+pub fn recover_lamports(
+    token_program_id: &Pubkey,
+    source_account: &Pubkey,
+    dest_token_account_pubkey: &Pubkey,
+    authority: &Pubkey,
+    signers: Vec<&Pubkey>,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+
+    let mut accounts = vec![
+        AccountMeta::new(*dest_token_account_pubkey, false),
+        AccountMeta::new(*source_account, false),
+        AccountMeta::new(*authority, false),
+    ];
+
+    for signer in signers {
+        accounts.push(AccountMeta::new_readonly(*signer, true))
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data: TokenInstruction::RecoverLamports.pack(),
     })
 }
 

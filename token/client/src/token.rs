@@ -2396,20 +2396,27 @@ where
         .await
     }
 
-    pub async fn migrate_multisig_lamports<S: Signers>(
+    // TODO @Dzonixy:
+    pub async fn recover_lamports<S: Signers>(
         &self,
-        multisig_pubkey: &Pubkey,
+        source: &Pubkey,
+        destination: &Pubkey,
+        authority: &Pubkey,
         wrapped_sol_ata: &Pubkey,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
-        let multisig_signers = self.get_multisig_signers(multisig_pubkey, &signing_pubkeys);
 
+        // TODO @Dzonixy:
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        //TODO @Dzonixy: Check which program owns the account
         self.process_ixs(
-            &[spl_token::instruction::migrate_multisig_lamports(
+            &[spl_token::instruction::recover_lamports(
                 &spl_token::id(),
-                multisig_pubkey,
+                source,
                 wrapped_sol_ata,
+                authority,
                 multisig_signers,
             )?],
             signing_keypairs,
