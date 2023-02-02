@@ -268,6 +268,12 @@ fn print_error_and_exit<T, E: Display>(e: E) -> T {
 type BulkSigners = Vec<Arc<dyn Signer>>;
 pub(crate) type CommandResult = Result<String, Error>;
 
+fn push_signer_with_dedup(signer: Arc<dyn Signer>, bulk_signers: &mut BulkSigners) {
+    if !bulk_signers.contains(&signer) {
+        bulk_signers.push(signer);
+    }
+}
+
 fn new_throwaway_signer() -> (Arc<dyn Signer>, Pubkey) {
     let keypair = Keypair::new();
     let pubkey = keypair.pubkey();
@@ -3599,10 +3605,7 @@ async fn process_command<'a>(
             let (token_signer, token) =
                 get_signer(arg_matches, "token_keypair", &mut wallet_manager)
                     .unwrap_or_else(new_throwaway_signer);
-            if !bulk_signers.contains(&token_signer) {
-                bulk_signers.push(token_signer);
-            }
-
+            push_signer_with_dedup(token_signer, &mut bulk_signers);
             let default_account_state =
                 arg_matches
                     .value_of("default_account_state")
@@ -3655,9 +3658,7 @@ async fn process_command<'a>(
             // No need to add a signer when creating an associated token account
             let account = get_signer(arg_matches, "account_keypair", &mut wallet_manager).map(
                 |(signer, account)| {
-                    if !bulk_signers.contains(&signer) {
-                        bulk_signers.push(signer);
-                    }
+                    push_signer_with_dedup(signer, &mut bulk_signers);
                     account
                 },
             );
@@ -3713,7 +3714,7 @@ async fn process_command<'a>(
             let (authority_signer, authority) =
                 config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
             if config.multisigner_pubkeys.is_empty() {
-                bulk_signers.push(authority_signer);
+                push_signer_with_dedup(authority_signer, &mut bulk_signers);
             }
 
             let new_authority =
@@ -3746,7 +3747,7 @@ async fn process_command<'a>(
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             if config.multisigner_pubkeys.is_empty() {
-                bulk_signers.push(owner_signer);
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
@@ -3787,7 +3788,7 @@ async fn process_command<'a>(
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             if config.multisigner_pubkeys.is_empty() {
-                bulk_signers.push(owner_signer);
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
@@ -3813,7 +3814,7 @@ async fn process_command<'a>(
             let (mint_authority_signer, mint_authority) =
                 config.signer_or_default(arg_matches, "mint_authority", &mut wallet_manager);
             if config.multisigner_pubkeys.is_empty() {
-                bulk_signers.push(mint_authority_signer);
+                push_signer_with_dedup(mint_authority_signer, &mut bulk_signers);
             }
 
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
@@ -3858,7 +3859,7 @@ async fn process_command<'a>(
             let (freeze_authority_signer, freeze_authority) =
                 config.signer_or_default(arg_matches, "freeze_authority", &mut wallet_manager);
             if config.multisigner_pubkeys.is_empty() {
-                bulk_signers.push(freeze_authority_signer);
+                push_signer_with_dedup(freeze_authority_signer, &mut bulk_signers);
             }
 
             let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
@@ -3879,7 +3880,7 @@ async fn process_command<'a>(
             let (freeze_authority_signer, freeze_authority) =
                 config.signer_or_default(arg_matches, "freeze_authority", &mut wallet_manager);
             if config.multisigner_pubkeys.is_empty() {
-                bulk_signers.push(freeze_authority_signer);
+                push_signer_with_dedup(freeze_authority_signer, &mut bulk_signers);
             }
 
             let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
@@ -3909,9 +3910,7 @@ async fn process_command<'a>(
 
             let (wallet_signer, wallet_address) =
                 config.signer_or_default(arg_matches, "wallet_keypair", &mut wallet_manager);
-            if !bulk_signers.contains(&wallet_signer) {
-                bulk_signers.push(wallet_signer);
-            }
+            push_signer_with_dedup(wallet_signer, &mut bulk_signers);
 
             command_wrap(
                 config,
@@ -3926,9 +3925,7 @@ async fn process_command<'a>(
         (CommandName::Unwrap, arg_matches) => {
             let (wallet_signer, wallet_address) =
                 config.signer_or_default(arg_matches, "wallet_keypair", &mut wallet_manager);
-            if !bulk_signers.contains(&wallet_signer) {
-                bulk_signers.push(wallet_signer);
-            }
+            push_signer_with_dedup(wallet_signer, &mut bulk_signers);
 
             let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager).unwrap();
             command_unwrap(config, wallet_address, account, bulk_signers).await
@@ -3937,7 +3934,7 @@ async fn process_command<'a>(
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             if config.multisigner_pubkeys.is_empty() {
-                bulk_signers.push(owner_signer);
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
             let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
@@ -3968,7 +3965,7 @@ async fn process_command<'a>(
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             if config.multisigner_pubkeys.is_empty() {
-                bulk_signers.push(owner_signer);
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
             let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
@@ -3990,7 +3987,7 @@ async fn process_command<'a>(
             let (close_authority_signer, close_authority) =
                 config.signer_or_default(arg_matches, "close_authority", &mut wallet_manager);
             if config.multisigner_pubkeys.is_empty() {
-                bulk_signers.push(close_authority_signer);
+                push_signer_with_dedup(close_authority_signer, &mut bulk_signers);
             }
 
             let address = config
@@ -4007,7 +4004,7 @@ async fn process_command<'a>(
             let (close_authority_signer, close_authority) =
                 config.signer_or_default(arg_matches, "close_authority", &mut wallet_manager);
             if config.multisigner_pubkeys.is_empty() {
-                bulk_signers.push(close_authority_signer);
+                push_signer_with_dedup(close_authority_signer, &mut bulk_signers);
             }
             let recipient =
                 config.pubkey_or_default(arg_matches, "recipient", &mut wallet_manager)?;
@@ -4086,7 +4083,7 @@ async fn process_command<'a>(
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             if config.multisigner_pubkeys.is_empty() {
-                bulk_signers.push(owner_signer);
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
             command_gc(
@@ -4113,7 +4110,7 @@ async fn process_command<'a>(
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             if config.multisigner_pubkeys.is_empty() {
-                bulk_signers.push(owner_signer);
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
             // Since account is required argument it will always be present
             let token_account =
@@ -4124,7 +4121,7 @@ async fn process_command<'a>(
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             if config.multisigner_pubkeys.is_empty() {
-                bulk_signers.push(owner_signer);
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
             // Since account is required argument it will always be present
             let token_account =
@@ -4135,7 +4132,7 @@ async fn process_command<'a>(
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             if config.multisigner_pubkeys.is_empty() {
-                bulk_signers.push(owner_signer);
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
             // Since account is required argument it will always be present
             let token_account =
@@ -4146,7 +4143,7 @@ async fn process_command<'a>(
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             if config.multisigner_pubkeys.is_empty() {
-                bulk_signers.push(owner_signer);
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
             // Since account is required argument it will always be present
             let token_account =
@@ -4161,7 +4158,7 @@ async fn process_command<'a>(
             let (freeze_authority_signer, freeze_authority) =
                 config.signer_or_default(arg_matches, "freeze_authority", &mut wallet_manager);
             if config.multisigner_pubkeys.is_empty() {
-                bulk_signers.push(freeze_authority_signer);
+                push_signer_with_dedup(freeze_authority_signer, &mut bulk_signers);
             }
             let new_default_state = arg_matches.value_of("state").unwrap();
             let new_default_state = match new_default_state {
@@ -4185,7 +4182,7 @@ async fn process_command<'a>(
                 &mut wallet_manager,
             );
             if config.multisigner_pubkeys.is_empty() {
-                bulk_signers.push(authority_signer);
+                push_signer_with_dedup(authority_signer, &mut bulk_signers);
             }
             // Since destination is required it will always be present
             let destination_token_account =
@@ -6644,7 +6641,7 @@ mod tests {
         // need to add "payer" to make the config provide the right signer
         let (multisig_members, multisig_paths): (Vec<_>, Vec<_>) =
             std::iter::once(clone_keypair(&payer))
-                .chain(std::iter::repeat_with(Keypair::new).take((n - 1) as usize))
+                .chain(std::iter::repeat_with(Keypair::new).take((n - 2) as usize))
                 .map(|s| {
                     let keypair_file = NamedTempFile::new().unwrap();
                     write_keypair_file(&s, &keypair_file).unwrap();
@@ -6656,7 +6653,18 @@ mod tests {
             let token = create_token(&config, &payer).await;
             let multisig = Arc::new(Keypair::new());
             let multisig_pubkey = multisig.pubkey();
-            command_create_multisig(&config, multisig, m, multisig_members.clone())
+
+            // add the multisig as a member to itself, make it self-owned
+            let multisig_members = std::iter::once(multisig_pubkey)
+                .chain(multisig_members.iter().cloned())
+                .collect::<Vec<_>>();
+            let multisig_path = NamedTempFile::new().unwrap();
+            write_keypair_file(&multisig, &multisig_path).unwrap();
+            let multisig_paths = std::iter::once(&multisig_path)
+                .chain(multisig_paths.iter())
+                .collect::<Vec<_>>();
+
+            command_create_multisig(&config, multisig, m, multisig_members)
                 .await
                 .unwrap();
 
@@ -6693,7 +6701,7 @@ mod tests {
                     "--owner",
                     &multisig_pubkey.to_string(),
                     "--fee-payer",
-                    multisig_paths[0].path().to_str().unwrap(),
+                    multisig_paths[1].path().to_str().unwrap(),
                 ],
             )
             .await

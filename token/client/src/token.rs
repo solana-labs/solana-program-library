@@ -390,10 +390,11 @@ where
         authority: &'b Pubkey,
         signing_pubkeys: &'a [Pubkey],
     ) -> Vec<&'a Pubkey> {
-        signing_pubkeys
-            .iter()
-            .filter(|p| *p != authority)
-            .collect::<Vec<_>>()
+        if signing_pubkeys == [*authority] {
+            vec![]
+        } else {
+            signing_pubkeys.iter().collect::<Vec<_>>()
+        }
     }
 
     async fn construct_tx<S: Signers>(
