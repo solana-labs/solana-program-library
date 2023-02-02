@@ -650,7 +650,7 @@ pub fn configure_account(
     maximum_pending_balance_credit_counter: u64,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data: &PubkeyValidityData,
+    #[cfg(feature = "proof-program")] proof_data: &PubkeyValidityData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
         inner_configure_account(
@@ -663,6 +663,7 @@ pub fn configure_account(
             multisig_signers,
             1,
         )?,
+        #[cfg(feature = "proof-program")]
         verify_pubkey_validity(proof_data),
     ])
 }
@@ -727,7 +728,7 @@ pub fn empty_account(
     token_account: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data: &CloseAccountData,
+    #[cfg(feature = "proof-program")] proof_data: &CloseAccountData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
         inner_empty_account(
@@ -737,6 +738,7 @@ pub fn empty_account(
             multisig_signers,
             1,
         )?, // calls check_program_account
+        #[cfg(feature = "proof-program")]
         verify_close_account(proof_data),
     ])
 }
@@ -828,7 +830,7 @@ pub fn withdraw(
     new_decryptable_available_balance: AeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data: &WithdrawData,
+    #[cfg(feature = "proof-program")] proof_data: &WithdrawData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
         inner_withdraw(
@@ -842,6 +844,7 @@ pub fn withdraw(
             multisig_signers,
             1,
         )?, // calls check_program_account
+        #[cfg(feature = "proof-program")]
         verify_withdraw(proof_data),
     ])
 }
@@ -896,7 +899,7 @@ pub fn transfer(
     new_source_decryptable_available_balance: AeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data: &TransferData,
+    #[cfg(feature = "proof-program")] proof_data: &TransferData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
         inner_transfer(
@@ -909,6 +912,7 @@ pub fn transfer(
             multisig_signers,
             1,
         )?, // calls check_program_account
+        #[cfg(feature = "proof-program")]
         verify_transfer(proof_data),
     ])
 }
@@ -1125,7 +1129,7 @@ pub fn withdraw_withheld_tokens_from_mint(
     destination: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data: &WithdrawWithheldTokensData,
+    #[cfg(feature = "proof-program")] proof_data: &WithdrawWithheldTokensData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
         inner_withdraw_withheld_tokens_from_mint(
@@ -1136,6 +1140,7 @@ pub fn withdraw_withheld_tokens_from_mint(
             multisig_signers,
             1,
         )?,
+        #[cfg(feature = "proof-program")]
         verify_withdraw_withheld_tokens(proof_data),
     ])
 }
@@ -1190,7 +1195,7 @@ pub fn withdraw_withheld_tokens_from_accounts(
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     sources: &[&Pubkey],
-    proof_data: &WithdrawWithheldTokensData,
+    #[cfg(feature = "proof-program")] proof_data: &WithdrawWithheldTokensData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
         inner_withdraw_withheld_tokens_from_accounts(
@@ -1202,6 +1207,7 @@ pub fn withdraw_withheld_tokens_from_accounts(
             sources,
             1,
         )?,
+        #[cfg(feature = "proof-program")]
         verify_withdraw_withheld_tokens(proof_data),
     ])
 }

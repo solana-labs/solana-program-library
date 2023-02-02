@@ -15,6 +15,7 @@ serde-traits = ["serde", "serde_with"]
 # Remove these features once the underlying syscalls are released on all networks
 default = ["zk-ops"]
 zk-ops = []
+proof-program = []
 
 [dependencies]
 arrayref = "0.3.6"
