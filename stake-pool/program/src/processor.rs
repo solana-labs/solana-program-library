@@ -340,12 +340,10 @@ fn create_stake_account<'a>(
     stake_account_info: AccountInfo<'a>,
     stake_account_signer_seeds: &[&[u8]],
     system_program_info: AccountInfo<'a>,
+    stake_space: usize,
 ) -> Result<(), ProgramError> {
     invoke_signed(
-        &system_instruction::allocate(
-            stake_account_info.key,
-            std::mem::size_of::<stake::state::StakeState>() as u64,
-        ),
+        &system_instruction::allocate(stake_account_info.key, stake_space as u64),
         &[stake_account_info.clone(), system_program_info.clone()],
         &[stake_account_signer_seeds],
     )?;
@@ -372,8 +370,7 @@ impl Processor {
         authority_type: &[u8],
         bump_seed: u8,
     ) -> Result<(), ProgramError> {
-        let authority_signature_seeds =
-            [&stake_pool.to_bytes()[..32], authority_type, &[bump_seed]];
+        let authority_signature_seeds = [stake_pool.as_ref(), authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
         let ix = stake::instruction::delegate_stake(
@@ -405,8 +402,7 @@ impl Processor {
         authority_type: &[u8],
         bump_seed: u8,
     ) -> Result<(), ProgramError> {
-        let authority_signature_seeds =
-            [&stake_pool.to_bytes()[..32], authority_type, &[bump_seed]];
+        let authority_signature_seeds = [stake_pool.as_ref(), authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
         let ix = stake::instruction::deactivate_stake(stake_info.key, authority_info.key);
@@ -424,8 +420,7 @@ impl Processor {
         amount: u64,
         split_stake: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
-        let me_bytes = stake_pool.to_bytes();
-        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
+        let authority_signature_seeds = [stake_pool.as_ref(), authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
         let split_instruction =
@@ -453,8 +448,7 @@ impl Processor {
         stake_history: AccountInfo<'a>,
         stake_program_info: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
-        let me_bytes = stake_pool.to_bytes();
-        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
+        let authority_signature_seeds = [stake_pool.as_ref(), authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
         let merge_instruction =
@@ -526,8 +520,7 @@ impl Processor {
         clock: AccountInfo<'a>,
         stake_program_info: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
-        let me_bytes = stake_pool.to_bytes();
-        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
+        let authority_signature_seeds = [stake_pool.as_ref(), authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
         let authorize_instruction = stake::instruction::authorize(
@@ -577,8 +570,7 @@ impl Processor {
         stake_program_info: AccountInfo<'a>,
         lamports: u64,
     ) -> Result<(), ProgramError> {
-        let me_bytes = stake_pool.to_bytes();
-        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
+        let authority_signature_seeds = [stake_pool.as_ref(), authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
         let custodian_pubkey = None;
 
@@ -616,8 +608,7 @@ impl Processor {
         vote_account: AccountInfo<'a>,
         stake_config: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
-        let me_bytes = stake_pool.to_bytes();
-        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
+        let authority_signature_seeds = [stake_pool.as_ref(), authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
         let redelegate_instruction = &stake::instruction::redelegate(
@@ -673,8 +664,7 @@ impl Processor {
         bump_seed: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let me_bytes = stake_pool.to_bytes();
-        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
+        let authority_signature_seeds = [stake_pool.as_ref(), authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
         let ix = spl_token_2022::instruction::mint_to(
@@ -1044,10 +1034,10 @@ impl Processor {
         ];
 
         // Fund the stake account with the minimum + rent-exempt balance
-        let space = std::mem::size_of::<stake::state::StakeState>();
+        let stake_space = std::mem::size_of::<stake::state::StakeState>();
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
         let required_lamports = minimum_delegation(stake_minimum_delegation)
-            .saturating_add(rent.minimum_balance(space));
+            .saturating_add(rent.minimum_balance(stake_space));
 
         // Check that we're not draining the reserve totally
         let reserve_stake = try_from_slice_unchecked::<stake::state::StakeState>(
@@ -1072,6 +1062,7 @@ impl Processor {
             stake_info.clone(),
             stake_account_signer_seeds,
             system_program_info.clone(),
+            stake_space,
         )?;
         // split into validator stake account
         Self::stake_split(
@@ -1350,8 +1341,9 @@ impl Processor {
             )?;
         }
 
+        let stake_space = std::mem::size_of::<stake::state::StakeState>();
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
-        let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+        let stake_rent = rent.minimum_balance(stake_space);
         let current_minimum_lamports =
             stake_rent.saturating_add(minimum_delegation(stake_minimum_delegation));
         if lamports < current_minimum_lamports {
@@ -1389,7 +1381,7 @@ impl Processor {
                 )?;
                 let ephemeral_stake_account_signer_seeds: &[&[_]] = &[
                     EPHEMERAL_STAKE_SEED_PREFIX,
-                    &stake_pool_info.key.to_bytes(),
+                    stake_pool_info.key.as_ref(),
                     &ephemeral_stake_seed.to_le_bytes(),
                     &[ephemeral_stake_bump_seed],
                 ];
@@ -1397,6 +1389,7 @@ impl Processor {
                     ephemeral_stake_account_info.clone(),
                     ephemeral_stake_account_signer_seeds,
                     system_program_info.clone(),
+                    stake_space,
                 )?;
 
                 // split into ephemeral stake account
@@ -1452,8 +1445,8 @@ impl Processor {
         } else {
             let transient_stake_account_signer_seeds: &[&[_]] = &[
                 TRANSIENT_STAKE_SEED_PREFIX,
-                &vote_account_address.to_bytes(),
-                &stake_pool_info.key.to_bytes(),
+                vote_account_address.as_ref(),
+                stake_pool_info.key.as_ref(),
                 &transient_stake_seed.to_le_bytes(),
                 &[transient_stake_bump_seed],
             ];
@@ -1462,6 +1455,7 @@ impl Processor {
                 transient_stake_account_info.clone(),
                 transient_stake_account_signer_seeds,
                 system_program_info.clone(),
+                stake_space,
             )?;
 
             // split into transient stake account
@@ -1617,7 +1611,8 @@ impl Processor {
             return Err(StakePoolError::ValidatorNotFound.into());
         }
 
-        let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+        let stake_space = std::mem::size_of::<stake::state::StakeState>();
+        let stake_rent = rent.minimum_balance(stake_space);
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
         let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
         if lamports < current_minimum_delegation {
@@ -1664,7 +1659,7 @@ impl Processor {
                 )?;
                 let ephemeral_stake_account_signer_seeds: &[&[_]] = &[
                     EPHEMERAL_STAKE_SEED_PREFIX,
-                    &stake_pool_info.key.to_bytes(),
+                    stake_pool_info.key.as_ref(),
                     &ephemeral_stake_seed.to_le_bytes(),
                     &[ephemeral_stake_bump_seed],
                 ];
@@ -1672,6 +1667,7 @@ impl Processor {
                     ephemeral_stake_account_info.clone(),
                     ephemeral_stake_account_signer_seeds,
                     system_program_info.clone(),
+                    stake_space,
                 )?;
 
                 // split into ephemeral stake account
@@ -1730,8 +1726,8 @@ impl Processor {
             // no transient stake, split
             let transient_stake_account_signer_seeds: &[&[_]] = &[
                 TRANSIENT_STAKE_SEED_PREFIX,
-                &vote_account_address.to_bytes(),
-                &stake_pool_info.key.to_bytes(),
+                vote_account_address.as_ref(),
+                stake_pool_info.key.as_ref(),
                 &transient_stake_seed.to_le_bytes(),
                 &[transient_stake_bump_seed],
             ];
@@ -1740,6 +1736,7 @@ impl Processor {
                 transient_stake_account_info.clone(),
                 transient_stake_account_signer_seeds,
                 system_program_info.clone(),
+                stake_space,
             )?;
 
             // split into transient stake account
@@ -1847,7 +1844,8 @@ impl Processor {
         }
 
         let rent = Rent::get()?;
-        let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+        let stake_space = std::mem::size_of::<stake::state::StakeState>();
+        let stake_rent = rent.minimum_balance(stake_space);
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
         let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
 
@@ -1940,8 +1938,8 @@ impl Processor {
             )?;
             let source_transient_stake_account_signer_seeds: &[&[_]] = &[
                 TRANSIENT_STAKE_SEED_PREFIX,
-                &vote_account_address.to_bytes(),
-                &stake_pool_info.key.to_bytes(),
+                vote_account_address.as_ref(),
+                stake_pool_info.key.as_ref(),
                 &source_transient_stake_seed.to_le_bytes(),
                 &[source_transient_stake_bump_seed],
             ];
@@ -1950,6 +1948,7 @@ impl Processor {
                 source_transient_stake_account_info.clone(),
                 source_transient_stake_account_signer_seeds,
                 system_program_info.clone(),
+                stake_space,
             )?;
 
             Self::stake_split(
@@ -1973,7 +1972,7 @@ impl Processor {
             )?;
             let ephemeral_stake_account_signer_seeds: &[&[_]] = &[
                 EPHEMERAL_STAKE_SEED_PREFIX,
-                &stake_pool_info.key.to_bytes(),
+                stake_pool_info.key.as_ref(),
                 &ephemeral_stake_seed.to_le_bytes(),
                 &[ephemeral_stake_bump_seed],
             ];
@@ -1981,6 +1980,7 @@ impl Processor {
                 ephemeral_stake_account_info.clone(),
                 ephemeral_stake_account_signer_seeds,
                 system_program_info.clone(),
+                stake_space,
             )?;
             Self::stake_redelegate(
                 stake_pool_info.key,
@@ -2076,8 +2076,8 @@ impl Processor {
                 )?;
                 let destination_transient_stake_account_signer_seeds: &[&[_]] = &[
                     TRANSIENT_STAKE_SEED_PREFIX,
-                    &vote_account_address.to_bytes(),
-                    &stake_pool_info.key.to_bytes(),
+                    vote_account_address.as_ref(),
+                    stake_pool_info.key.as_ref(),
                     &destination_transient_stake_seed.to_le_bytes(),
                     &[destination_transient_stake_bump_seed],
                 ];
@@ -2085,6 +2085,7 @@ impl Processor {
                     destination_transient_stake_account_info.clone(),
                     destination_transient_stake_account_signer_seeds,
                     system_program_info.clone(),
+                    stake_space,
                 )?;
                 Self::stake_split(
                     stake_pool_info.key,
@@ -3560,7 +3561,7 @@ impl Processor {
             crate::find_withdraw_authority_program_address(program_id, stake_pool_info.key);
 
         let token_mint_authority_signer_seeds: &[&[_]] = &[
-            &stake_pool_info.key.to_bytes()[..32],
+            stake_pool_info.key.as_ref(),
             AUTHORITY_WITHDRAW,
             &[stake_withdraw_bump_seed],
         ];
@@ -3640,7 +3641,7 @@ impl Processor {
             crate::find_withdraw_authority_program_address(program_id, stake_pool_info.key);
 
         let token_mint_authority_signer_seeds: &[&[_]] = &[
-            &stake_pool_info.key.to_bytes()[..32],
+            stake_pool_info.key.as_ref(),
             AUTHORITY_WITHDRAW,
             &[stake_withdraw_bump_seed],
         ];
