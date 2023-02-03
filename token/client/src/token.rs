@@ -1491,28 +1491,18 @@ where
     pub async fn confidential_transfer_update_mint<S: Signer>(
         &self,
         authority: &S,
-        new_authority: Option<&S>,
         auto_approve_new_account: bool,
         auditor_encryption_pubkey: Option<EncryptionPubkey>,
     ) -> TokenResult<T::Output> {
-        let mut signers = vec![authority];
-        let new_authority_pubkey = if let Some(new_authority) = new_authority {
-            signers.push(new_authority);
-            Some(new_authority.pubkey())
-        } else {
-            None
-        };
-
         self.process_ixs(
             &[confidential_transfer::instruction::update_mint(
                 &self.program_id,
                 &self.pubkey,
                 &authority.pubkey(),
-                new_authority_pubkey.as_ref(),
                 auto_approve_new_account,
                 auditor_encryption_pubkey,
             )?],
-            &signers,
+            &[authority],
         )
         .await
     }

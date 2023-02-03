@@ -17,6 +17,7 @@ use {
             },
             BaseStateWithExtensions, ExtensionType,
         },
+        instruction,
         pod::EncryptionPubkey,
         solana_zk_token_sdk::{
             encryption::{auth_encryption::*, elgamal::*},
@@ -287,8 +288,6 @@ async fn check_withheld_amount_in_mint<T>(
 
 #[tokio::test]
 async fn ct_initialize_and_update_mint() {
-    let wrong_keypair = Keypair::new();
-
     let ConfidentialTransferMintWithKeypairs {
         ct_mint,
         ct_mint_authority,
@@ -317,87 +316,102 @@ async fn ct_initialize_and_update_mint() {
 
     // Change the authority
     let new_ct_mint_authority = Keypair::new();
-    let new_ct_mint = ConfidentialTransferMint {
-        authority: Some(new_ct_mint_authority.pubkey()).try_into().unwrap(),
-        ..ConfidentialTransferMint::default()
-    };
+    let wrong_keypair = Keypair::new();
 
     let err = token
-        .confidential_transfer_update_mint(
-            &wrong_keypair,
-            Some(&new_ct_mint_authority),
-            new_ct_mint.auto_approve_new_accounts.into(),
-            new_ct_mint
-                .withdraw_withheld_authority_encryption_pubkey
-                .into(),
+        .set_authority(
+            token.get_address(),
+            &wrong_keypair.pubkey(),
+            Some(&new_ct_mint_authority.pubkey()),
+            instruction::AuthorityType::ConfidentialTransfer,
+            &[&wrong_keypair],
         )
         .await
         .unwrap_err();
+
     assert_eq!(
         err,
         TokenClientError::Client(Box::new(TransportError::TransactionError(
-            TransactionError::InstructionError(0, InstructionError::MissingRequiredSignature)
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::OwnerMismatch as u32)
+            )
         )))
     );
+
     token
-        .confidential_transfer_update_mint(
-            &ct_mint_authority,
-            Some(&new_ct_mint_authority),
-            new_ct_mint.auto_approve_new_accounts.into(),
-            new_ct_mint
-                .withdraw_withheld_authority_encryption_pubkey
-                .into(),
+        .set_authority(
+            token.get_address(),
+            &ct_mint_authority.pubkey(),
+            Some(&new_ct_mint_authority.pubkey()),
+            instruction::AuthorityType::ConfidentialTransfer,
+            &[&ct_mint_authority],
         )
         .await
         .unwrap();
 
-    let state = token.get_mint_info().await.unwrap();
-    let extension = state.get_extension::<ConfidentialTransferMint>().unwrap();
-    assert_eq!(extension.authority, new_ct_mint.authority);
-    assert_eq!(
-        extension.auto_approve_new_accounts,
-        new_ct_mint.auto_approve_new_accounts
-    );
-    assert_eq!(
-        extension.auditor_encryption_pubkey,
-        new_ct_mint.auditor_encryption_pubkey
-    );
-    assert_eq!(
-        extension.withdraw_withheld_authority_encryption_pubkey,
-        ct_mint.withdraw_withheld_authority_encryption_pubkey,
-    );
-    assert_eq!(extension.withheld_amount, ct_mint.withheld_amount);
+    // New authority can change mint parameters while the old cannot
+    let new_auto_approve_new_accounts = false;
+    let new_auditor_encryption_pubkey = None;
 
-    // Clear the authority
-    let new_ct_mint = ConfidentialTransferMint::default();
+    let err = token
+        .confidential_transfer_update_mint(
+            &ct_mint_authority,
+            new_auto_approve_new_accounts,
+            new_auditor_encryption_pubkey,
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::OwnerMismatch as u32)
+            )
+        )))
+    );
+
     token
         .confidential_transfer_update_mint(
             &new_ct_mint_authority,
-            None,
-            new_ct_mint.auto_approve_new_accounts.into(),
-            new_ct_mint
-                .withdraw_withheld_authority_encryption_pubkey
-                .into(),
+            new_auto_approve_new_accounts,
+            new_auditor_encryption_pubkey,
         )
         .await
         .unwrap();
 
     let state = token.get_mint_info().await.unwrap();
     let extension = state.get_extension::<ConfidentialTransferMint>().unwrap();
-    assert_eq!(extension.authority, new_ct_mint.authority);
+    assert_eq!(
+        extension.authority,
+        Some(new_ct_mint_authority.pubkey()).try_into().unwrap()
+    );
     assert_eq!(
         extension.auto_approve_new_accounts,
-        new_ct_mint.auto_approve_new_accounts
+        new_auto_approve_new_accounts.try_into().unwrap(),
     );
     assert_eq!(
         extension.auditor_encryption_pubkey,
-        new_ct_mint.auditor_encryption_pubkey
+        new_auditor_encryption_pubkey.try_into().unwrap(),
     );
-    assert_eq!(
-        extension.withdraw_withheld_authority_encryption_pubkey,
-        ct_mint.withdraw_withheld_authority_encryption_pubkey,
-    );
-    assert_eq!(extension.withheld_amount, ct_mint.withheld_amount);
+
+    // Set new authority to None
+    token
+        .set_authority(
+            token.get_address(),
+            &new_ct_mint_authority.pubkey(),
+            None,
+            instruction::AuthorityType::ConfidentialTransfer,
+            &[&new_ct_mint_authority],
+        )
+        .await
+        .unwrap();
+
+    let state = token.get_mint_info().await.unwrap();
+    let extension = state.get_extension::<ConfidentialTransferMint>().unwrap();
+    assert_eq!(extension.authority, None.try_into().unwrap());
 }
 
 #[tokio::test]

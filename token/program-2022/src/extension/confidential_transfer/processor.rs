@@ -87,7 +87,6 @@ fn process_update_mint(
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
-    let new_authority_info = next_account_info(account_info_iter)?;
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
@@ -98,18 +97,14 @@ fn process_update_mint(
     let confidential_transfer_mint_authority =
         maybe_confidential_transfer_mint_authority.ok_or(TokenError::NoAuthorityExists)?;
 
-    if !authority_info.is_signer
-        || confidential_transfer_mint_authority != *authority_info.key
-        || (!new_authority_info.is_signer && *new_authority_info.key != Pubkey::default())
-    {
+    if !authority_info.is_signer {
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    if *new_authority_info.key == Pubkey::default() {
-        confidential_transfer_mint.authority = None.try_into()?;
-    } else {
-        confidential_transfer_mint.authority = Some(*new_authority_info.key).try_into()?;
+    if confidential_transfer_mint_authority != *authority_info.key {
+        return Err(TokenError::OwnerMismatch.into());
     }
+
     confidential_transfer_mint.auto_approve_new_accounts = auto_approve_new_account;
     confidential_transfer_mint.auditor_encryption_pubkey = *auditor_encryption_pubkey;
     Ok(())

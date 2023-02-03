@@ -5,7 +5,7 @@ use {
         check_program_account, cmp_pubkeys,
         error::TokenError,
         extension::{
-            confidential_transfer::{self, ConfidentialTransferAccount},
+            confidential_transfer::{self, ConfidentialTransferAccount, ConfidentialTransferMint},
             cpi_guard::{self, in_cpi, CpiGuard},
             default_account_state::{self, DefaultAccountState},
             immutable_owner::ImmutableOwner,
@@ -740,6 +740,22 @@ impl Processor {
                         account_info_iter.as_slice(),
                     )?;
                     extension.delegate = new_authority.try_into()?;
+                }
+                AuthorityType::ConfidentialTransfer => {
+                    let extension = mint.get_extension_mut::<ConfidentialTransferMint>()?;
+                    let maybe_confidential_transfer_mint_authority: Option<Pubkey> =
+                        extension.authority.into();
+                    let confidential_transfer_authority =
+                        maybe_confidential_transfer_mint_authority
+                            .ok_or(TokenError::AuthorityTypeNotSupported)?;
+                    Self::validate_owner(
+                        program_id,
+                        &confidential_transfer_authority,
+                        authority_info,
+                        authority_info_data_len,
+                        account_info_iter.as_slice(),
+                    )?;
+                    extension.authority = new_authority.try_into()?;
                 }
                 _ => {
                     return Err(TokenError::AuthorityTypeNotSupported.into());
