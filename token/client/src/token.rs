@@ -2400,23 +2400,19 @@ where
     pub async fn recover_lamports<S: Signers>(
         &self,
         source: &Pubkey,
-        destination: &Pubkey,
         authority: &Pubkey,
         wrapped_sol_ata: &Pubkey,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
-
-        // TODO @Dzonixy:
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-        //TODO @Dzonixy: Check which program owns the account
         self.process_ixs(
             &[spl_token::instruction::recover_lamports(
                 &spl_token::id(),
                 source,
-                wrapped_sol_ata,
                 authority,
+                wrapped_sol_ata,
                 multisig_signers,
             )?],
             signing_keypairs,

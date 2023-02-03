@@ -104,12 +104,6 @@ pub const MULTISIG_SIGNER_ARG: ArgConstant<'static> = ArgConstant {
     help: "Member signer of a multisig account",
 };
 
-pub const MULTISIG_ADDRESS: ArgConstant<'static> = ArgConstant {
-    name: "multisig_address",
-    long: "multisig-address",
-    help: "Address of the multisig account",
-};
-
 static VALID_TOKEN_PROGRAM_IDS: [Pubkey; 2] = [spl_token_2022::ID, spl_token::ID];
 
 #[derive(Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr)]
@@ -148,7 +142,7 @@ pub enum CommandName {
     UpdateDefaultAccountState,
     WithdrawWithheldTokens,
     SetTransferFee,
-    MigrateMultisigLamports,
+    RecoverLamports,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -2019,28 +2013,28 @@ async fn command_sync_native(config: &Config<'_>, native_account_address: Pubkey
 
 async fn command_recover_lamports(
     config: &Config<'_>,
-    multisig_account_address: Pubkey,
+    source_account: Pubkey,
+    authority: Pubkey,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     let token = native_token_client_from_config(config)?;
     let native_mint = token.get_address();
 
-    let wrapped_sol_ata = get_associated_token_address_with_program_id(
-        &multisig_account_address,
-        native_mint,
-        &spl_token::id(),
-    );
+    let wrapped_sol_ata =
+        get_associated_token_address_with_program_id(&authority, native_mint, &spl_token::id());
     println_display(
         config,
         format!(
-            "Migrating lamports from Multisig: {} to ATA: {}",
-            multisig_account_address, wrapped_sol_ata
+            "Recovering lamports from Account: {} to ATA: {}",
+            source_account, wrapped_sol_ata
         ),
     );
 
     let res = token
-        .recover_lamports(&multisig_account_address, &wrapped_sol_ata, &bulk_signers)
+        .recover_lamports(&source_account, &authority, &wrapped_sol_ata, &bulk_signers)
         .await?;
+
+    // TODO: Move sync native off chain here
 
     let tx_return = finish_tx(config, &res, false).await?;
 
@@ -3567,16 +3561,17 @@ fn app<'a, 'b>(
                 .arg(mint_decimals_arg())
         )
         .subcommand(
-            SubCommand::with_name(CommandName::MigrateMultisigLamports.into())
-                .about("Migrate native SOL from a multisig address to an associated token account")
+            SubCommand::with_name(CommandName::RecoverLamports.into())
+                .about("Recover lamports from a Token Program owned account to an associated token account")
                 .arg(
-                    Arg::with_name("multisig-address")
+                    Arg::with_name("source_account")
                         .validator(is_valid_pubkey)
-                        .value_name("MULTISIG_ADDRESS")
+                        .value_name("ADDRESS")
                         .takes_value(true)
                         .required(true)
-                        .help("Specify the address of the multisig account to sync"),
+                        .help("Specify the address of the account to recover lamports from"),
                 )
+                .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
         )
 }
@@ -4291,12 +4286,16 @@ async fn process_command<'a>(
             )
             .await
         }
-        (CommandName::MigrateMultisigLamports, arg_matches) => {
-            let multisig = config
-                .pubkey_or_default(arg_matches, "multisig-address", &mut wallet_manager)
-                .unwrap();
+        (CommandName::RecoverLamports, arg_matches) => {
+            let (signer, authority) =
+                config.signer_or_default(arg_matches, "signer", &mut wallet_manager);
+            if !bulk_signers.contains(&signer) {
+                bulk_signers.push(signer);
+            }
+            let source =
+                config.pubkey_or_default(arg_matches, "source_account", &mut wallet_manager)?;
 
-            command_recover_lamports(config, multisig, bulk_signers).await
+            command_recover_lamports(config, source, authority, bulk_signers).await
         }
     }
 }

@@ -1277,80 +1277,71 @@ impl Processor {
     /// Recover Lamports is used to recover Lamports transfered to any TokenProgram owned account
     /// by system program's transfer instruction by moving them to WrappedSol ATA owned by the authority
     /// of the source account.
+    #[allow(unused)]
     pub fn process_recover_lamports(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
-        let dest_token_account_info = next_account_info(account_info_iter)?;
+        let destination_token_account_info = next_account_info(account_info_iter)?;
         let source_account_info = next_account_info(account_info_iter)?;
-        let authority_info = next_account_info(account_info_iter)?;
 
         if source_account_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
         }
-
-        if dest_token_account_info.data_is_empty() {
+        if destination_token_account_info.data_is_empty() {
             return Err(ProgramError::UninitializedAccount);
         }
-        if dest_token_account_info.owner != program_id {
+        if destination_token_account_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        Self::validate_owner(
-            program_id,
-            authority_info.key,
-            authority_info,
-            authority_info.data_len(),
-            account_info_iter.as_slice(),
-        )?;
+        msg!("Recover Lamports 2022");
 
-        let dest_token_account = Account::unpack(&dest_token_account_info.data.borrow())?;
+        // match source_account_info.data_len() {
+        //     Multisig::LEN => {}
+        //     Mint::LEN | Account::LEN => {
+        //         let authority_info = next_account_info(account_info_iter)?;
+        //         Self::validate_owner(
+        //             program_id,
+        //             authority_info.key,
+        //             authority_info,
+        //             authority_info.data_len(),
+        //             account_info_iter.as_slice(),
+        //         )?;
+        //     }
 
-        if &dest_token_account.owner != authority_info.key {
-            return Err(TokenError::OwnerMismatch.into());
-        }
+        //     _ => return Err(ProgramError::InvalidAccountData),
+        // }
 
-        if !dest_token_account.is_native() {
-            return Err(TokenError::NonNativeNotSupported.into());
-        }
+        // let destination_token_account =
+        //     Account::unpack(&destination_token_account_info.data.borrow())?;
 
-        if let Ok(source_account) = Account::unpack(&dest_token_account_info.data.borrow()) {
-            if source_account.is_native() {
-                return Err(TokenError::NativeNotSupported.into());
-            }
-        }
-        if let Ok(_) = Multisig::unpack(&dest_token_account_info.data.borrow()) {
-            if source_account_info.key != authority_info.key {
-                return Err(TokenError::AuthorityTypeNotSupported.into());
-            }
-        }
-        if let Ok(mint_account) = Mint::unpack(&dest_token_account_info.data.borrow()) {
-            if &mint_account.mint_authority.ok_or(TokenError::InvalidMint)? != authority_info.key {
-                return Err(TokenError::AuthorityTypeNotSupported.into());
-            }
-        }
+        // if !destination_token_account.is_native() {
+        //     return Err(TokenError::NonNativeNotSupported.into());
+        // }
 
-        let source_rent_exempt_reserve =
-            Rent::get()?.minimum_balance(source_account_info.data_len());
+        // let source_rent_exempt_reserve =
+        //     Rent::get()?.minimum_balance(source_account_info.data_len());
 
-        let transfer_amount = source_account_info
-            .lamports()
-            .checked_sub(source_rent_exempt_reserve)
-            .ok_or(TokenError::NotRentExempt)?;
+        // let transfer_amount = source_account_info
+        //     .lamports()
+        //     .checked_sub(source_rent_exempt_reserve)
+        //     .ok_or(TokenError::NotRentExempt)?;
 
-        let source_starting_lamports = source_account_info.lamports();
-        **source_account_info.lamports.borrow_mut() = source_starting_lamports
-            .checked_sub(transfer_amount)
-            .ok_or(TokenError::Overflow)?;
+        // let source_starting_lamports = source_account_info.lamports();
+        // **source_account_info.lamports.borrow_mut() = source_starting_lamports
+        //     .checked_sub(transfer_amount)
+        //     .ok_or(TokenError::Overflow)?;
 
-        let dest_token_account_starting_lamports = dest_token_account_info.lamports();
-        **dest_token_account_info.lamports.borrow_mut() = dest_token_account_starting_lamports
-            .checked_add(transfer_amount)
-            .ok_or(TokenError::Overflow)?;
+        // let dest_token_account_starting_lamports = destination_token_account_info.lamports();
+        // **destination_token_account_info.lamports.borrow_mut() =
+        //     dest_token_account_starting_lamports
+        //         .checked_add(transfer_amount)
+        //         .ok_or(TokenError::Overflow)?;
 
-        Self::process_sync_native(accounts)?;
+        // Self::process_sync_native(accounts)?;
         Ok(())
     }
 
