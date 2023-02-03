@@ -367,9 +367,9 @@ fn token_client_from_config(
     );
 
     if let (Some(nonce_account), Some(nonce_authority)) =
-        (config.nonce_account, config.nonce_authority)
+        (config.nonce_account, &config.nonce_authority)
     {
-        Ok(token.with_nonce(&nonce_account, &nonce_authority))
+        Ok(token.with_nonce(&nonce_account, Arc::clone(nonce_authority)))
     } else {
         Ok(token)
     }
@@ -385,9 +385,9 @@ fn native_token_client_from_config(
     );
 
     if let (Some(nonce_account), Some(nonce_authority)) =
-        (config.nonce_account, config.nonce_authority)
+        (config.nonce_account, &config.nonce_authority)
     {
-        Ok(token.with_nonce(&nonce_account, &nonce_authority))
+        Ok(token.with_nonce(&nonce_account, Arc::clone(nonce_authority)))
     } else {
         Ok(token)
     }
@@ -4290,14 +4290,16 @@ mod tests {
         serial_test::serial,
         solana_sdk::{
             bpf_loader,
+            hash::Hash,
             program_pack::Pack,
             signature::{write_keypair_file, Keypair, Signer},
+            system_instruction,
             transaction::Transaction,
         },
         solana_test_validator::{ProgramInfo, TestValidator, TestValidatorGenesis},
         spl_token_2022::{extension::non_transferable::NonTransferable, state::Multisig},
         spl_token_client::client::{
-            ProgramClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
+            ProgramClient, ProgramOfflineClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
         },
         std::path::PathBuf,
         tempfile::NamedTempFile,
@@ -4383,6 +4385,37 @@ mod tests {
             program_id: *program_id,
             restrict_to_program_id: true,
         }
+    }
+
+    async fn create_nonce(config: &Config<'_>, authority: &Keypair) -> Pubkey {
+        let nonce = Keypair::new();
+
+        let nonce_rent = config
+            .rpc_client
+            .get_minimum_balance_for_rent_exemption(solana_sdk::nonce::State::size())
+            .await
+            .unwrap();
+        let instr = system_instruction::create_nonce_account(
+            &authority.pubkey(),
+            &nonce.pubkey(),
+            &authority.pubkey(), // Make the fee payer the nonce account authority
+            nonce_rent,
+        );
+
+        let blockhash = config.rpc_client.get_latest_blockhash().await.unwrap();
+        let tx = Transaction::new_signed_with_payer(
+            &instr,
+            Some(&authority.pubkey()),
+            &[&nonce, authority],
+            blockhash,
+        );
+
+        config
+            .rpc_client
+            .send_and_confirm_transaction(&tx)
+            .await
+            .unwrap();
+        nonce.pubkey()
     }
 
     async fn do_create_native_mint(config: &Config<'_>, program_id: &Pubkey, payer: &Keypair) {
@@ -6713,6 +6746,98 @@ mod tests {
             let account = config.rpc_client.get_account(&destination).await.unwrap();
             let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
             assert_eq!(token_account.base.amount, 10);
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn offline_multisig_transfer_with_nonce() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let m = 2;
+        let n = 3u8;
+
+        let (multisig_members, multisig_paths): (Vec<_>, Vec<_>) =
+            std::iter::repeat_with(Keypair::new)
+                .take(n as usize)
+                .map(|s| {
+                    let keypair_file = NamedTempFile::new().unwrap();
+                    write_keypair_file(&s, &keypair_file).unwrap();
+                    (s.pubkey(), keypair_file)
+                })
+                .unzip();
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let mut config = test_config_with_default_signer(&test_validator, &payer, program_id);
+            let token = create_token(&config, &payer).await;
+            let nonce = create_nonce(&config, &payer).await;
+
+            let nonce_account = config.rpc_client.get_account(&nonce).await.unwrap();
+            let start_hash_index = 4 + 4 + 32;
+            let blockhash = Hash::new(&nonce_account.data[start_hash_index..start_hash_index + 32]);
+
+            let multisig = Arc::new(Keypair::new());
+            let multisig_pubkey = multisig.pubkey();
+
+            command_create_multisig(&config, multisig, m, multisig_members.clone())
+                .await
+                .unwrap();
+
+            let source = create_associated_account(&config, &payer, &token, &multisig_pubkey).await;
+            let destination = create_auxiliary_account(&config, &payer, token).await;
+            let ui_amount = 100.0;
+            mint_tokens(&config, &payer, token, ui_amount, source).await;
+
+            let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
+                ProgramOfflineClient::new(blockhash, ProgramRpcClientSendTransaction),
+            );
+            config.program_client = program_client;
+            let result = exec_test_cmd(
+                &config,
+                &[
+                    "spl-token",
+                    CommandName::Transfer.into(),
+                    &token.to_string(),
+                    "10",
+                    &destination.to_string(),
+                    "--blockhash",
+                    &blockhash.to_string(),
+                    "--nonce",
+                    &nonce.to_string(),
+                    "--nonce-authority",
+                    &payer.pubkey().to_string(),
+                    "--sign-only",
+                    "--mint-decimals",
+                    &format!("{}", TEST_DECIMALS),
+                    "--multisig-signer",
+                    multisig_paths[1].path().to_str().unwrap(),
+                    "--multisig-signer",
+                    &multisig_members[2].to_string(),
+                    "--from",
+                    &source.to_string(),
+                    "--owner",
+                    &multisig_pubkey.to_string(),
+                    "--fee-payer",
+                    &multisig_members[0].to_string(),
+                ],
+            )
+            .await
+            .unwrap();
+            // the provided signer has a signature, denoted by the pubkey followed
+            // by "=" and the signature
+            assert!(result.contains(&format!("{}=", multisig_members[1])));
+
+            // other three expected signers are absent
+            let absent_signers_position = result.find("Absent Signers").unwrap();
+            let absent_signers = result.get(absent_signers_position..).unwrap();
+            assert!(absent_signers.contains(&multisig_members[0].to_string()));
+            assert!(absent_signers.contains(&multisig_members[2].to_string()));
+            assert!(absent_signers.contains(&payer.pubkey().to_string()));
+
+            // and nothing else is marked a signer
+            assert!(!absent_signers.contains(&multisig_pubkey.to_string()));
+            assert!(!absent_signers.contains(&nonce.to_string()));
+            assert!(!absent_signers.contains(&source.to_string()));
+            assert!(!absent_signers.contains(&destination.to_string()));
+            assert!(!absent_signers.contains(&token.to_string()));
         }
     }
 }

@@ -38,7 +38,7 @@ pub(crate) struct Config<'a> {
     pub(crate) output_format: OutputFormat,
     pub(crate) fee_payer: Option<Arc<dyn Signer>>,
     pub(crate) nonce_account: Option<Pubkey>,
-    pub(crate) nonce_authority: Option<Pubkey>,
+    pub(crate) nonce_authority: Option<Arc<dyn Signer>>,
     pub(crate) sign_only: bool,
     pub(crate) dump_transaction_message: bool,
     pub(crate) multisigner_pubkeys: Vec<&'a Pubkey>,
@@ -205,7 +205,7 @@ impl<'a> Config<'a> {
                 exit(1);
             });
         let nonce_authority = if nonce_account.is_some() {
-            let (signer, nonce_authority) = signer_from_path(
+            let (nonce_authority, _) = signer_from_path(
                 matches,
                 matches
                     .value_of(NONCE_AUTHORITY_ARG.name)
@@ -222,9 +222,6 @@ impl<'a> Config<'a> {
                 eprintln!("error: {}", e);
                 exit(1);
             });
-            if !bulk_signers.contains(&signer) {
-                bulk_signers.push(signer);
-            }
 
             Some(nonce_authority)
         } else {
