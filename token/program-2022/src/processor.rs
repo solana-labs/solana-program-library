@@ -741,16 +741,16 @@ impl Processor {
                     )?;
                     extension.delegate = new_authority.try_into()?;
                 }
-                AuthorityType::ConfidentialTransfer => {
+                AuthorityType::ConfidentialTransferMint => {
                     let extension = mint.get_extension_mut::<ConfidentialTransferMint>()?;
                     let maybe_confidential_transfer_mint_authority: Option<Pubkey> =
                         extension.authority.into();
-                    let confidential_transfer_authority =
+                    let confidential_transfer_mint_authority =
                         maybe_confidential_transfer_mint_authority
                             .ok_or(TokenError::AuthorityTypeNotSupported)?;
                     Self::validate_owner(
                         program_id,
-                        &confidential_transfer_authority,
+                        &confidential_transfer_mint_authority,
                         authority_info,
                         authority_info_data_len,
                         account_info_iter.as_slice(),

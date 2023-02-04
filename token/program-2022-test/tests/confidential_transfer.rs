@@ -323,7 +323,7 @@ async fn ct_initialize_and_update_mint() {
             token.get_address(),
             &wrong_keypair.pubkey(),
             Some(&new_ct_mint_authority.pubkey()),
-            instruction::AuthorityType::ConfidentialTransfer,
+            instruction::AuthorityType::ConfidentialTransferMint,
             &[&wrong_keypair],
         )
         .await
@@ -344,7 +344,7 @@ async fn ct_initialize_and_update_mint() {
             token.get_address(),
             &ct_mint_authority.pubkey(),
             Some(&new_ct_mint_authority.pubkey()),
-            instruction::AuthorityType::ConfidentialTransfer,
+            instruction::AuthorityType::ConfidentialTransferMint,
             &[&ct_mint_authority],
         )
         .await
@@ -403,7 +403,7 @@ async fn ct_initialize_and_update_mint() {
             token.get_address(),
             &new_ct_mint_authority.pubkey(),
             None,
-            instruction::AuthorityType::ConfidentialTransfer,
+            instruction::AuthorityType::ConfidentialTransferMint,
             &[&new_ct_mint_authority],
         )
         .await
