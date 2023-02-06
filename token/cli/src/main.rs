@@ -753,6 +753,7 @@ async fn command_authorize(
         AuthorityType::WithheldWithdraw => "withdraw withheld authority",
         AuthorityType::InterestRate => "interest rate authority",
         AuthorityType::PermanentDelegate => "permanent delegate",
+        AuthorityType::ConfidentialTransferMint => "confidential transfer mint authority",
     };
 
     let (mint_pubkey, previous_authority) = if !config.sign_only {
@@ -800,6 +801,7 @@ async fn command_authorize(
                         ))
                     }
                 }
+                AuthorityType::ConfidentialTransferMint => unimplemented!(),
             }?;
 
             Ok((account, previous_authority))
@@ -833,7 +835,8 @@ async fn command_authorize(
                 | AuthorityType::TransferFeeConfig
                 | AuthorityType::WithheldWithdraw
                 | AuthorityType::InterestRate
-                | AuthorityType::PermanentDelegate => Err(format!(
+                | AuthorityType::PermanentDelegate
+                | AuthorityType::ConfidentialTransferMint => Err(format!(
                     "Authority type `{}` not supported for SPL Token accounts",
                     auth_str
                 )),
