@@ -1,21 +1,36 @@
-[![Build status][travis-image]][travis-url]
-
-[travis-image]:
-https://travis-ci.org/solana-labs/solana-program-library.svg?branch=master
-[travis-url]: https://travis-ci.org/solana-labs/solana-program-library
-
 # Solana Program Library
 
 The Solana Program Library (SPL) is a collection of on-chain programs targeting
 the [Sealevel parallel
 runtime](https://medium.com/solana-labs/sealevel-parallel-processing-thousands-of-smart-contracts-d814b378192).
 These programs are tested against Solana's implementation of Sealevel,
-solana-runtime, and deployed to its mainnet.  As others implement Sealevel, we
+solana-runtime, and some are deployed to mainnet-beta.  As others implement Sealevel, we
 will graciously accept patches to ensure the programs here are portable across
 all implementations.
 
 For more information see the [SPL documentation](https://spl.solana.com) and the [Token TypeDocs](https://solana-labs.github.io/solana-program-library/token/js/).
 
+## Note
+
+Only a subset of programs within the Solana Program Library repo are deployed to
+the Solana Mainnet Beta and maintained by the team. Currently, this includes:
+
+* [associated-token-account](https://github.com/solana-labs/solana-program-library/tree/master/associated-token-account/program)
+* [feature-proposal](https://github.com/solana-labs/solana-program-library/tree/master/feature-proposal/program)
+* [governance](https://github.com/solana-labs/solana-program-library/tree/master/governance/program)
+* [memo](https://github.com/solana-labs/solana-program-library/tree/master/memo/program)
+* [name-service](https://github.com/solana-labs/solana-program-library/tree/master/name-service/program)
+* [stake-pool](https://github.com/solana-labs/solana-program-library/tree/master/stake-pool/program)
+* [token](https://github.com/solana-labs/solana-program-library/tree/master/token/program)
+
+All other programs are updated on a best-effort basis with community involvement.
+Many programs, including
+[token-swap](https://github.com/solana-labs/solana-program-library/tree/master/token-swap/program)
+and [token-lending](https://github.com/solana-labs/solana-program-library/tree/master/token-lending/program),
+are not audited, so fork and deploy them at your own risk.
+
+More information about the repository's security policy at
+[SECURITY.md](https://github.com/solana-labs/solana-program-library/tree/master/SECURITY.md).
 
 ## Development
 
@@ -68,6 +83,7 @@ Integration testing may be performed via the per-project .js bindings.  See the
 [token program's js project](token/js) for an example.
 
 ### Common Issues
+
 Solutions to a few issues you might run into are mentioned here.
 
 1. `Failed to open: ../../deploy/spl_<program-name>.so`
@@ -75,9 +91,9 @@ Solutions to a few issues you might run into are mentioned here.
     Update your Rust and Cargo to the latest versions and re-run `cargo build-sbf` in the relevant `<program-name>` directory,
     or run it at the repository root to rebuild all on-chain programs.
 
-2. [Error while loading shared libraries. (libssl.so.1.1)](https://github.com/project-serum/anchor/issues/1831)
+2. [Error while loading shared libraries. (libssl.so.1.1)](https://solana.stackexchange.com/questions/3029/anchor-test-error-while-loading-shared-libraries-libssl-so-1-1)
 
-    A working solution was mentioned [here](https://github.com/project-serum/anchor/issues/1831#issuecomment-1109124934).
+    A working solution was mentioned [here](https://solana.stackexchange.com/questions/3029/anchor-test-error-while-loading-shared-libraries-libssl-so-1-1).
     Install libssl.
     ```bash
     wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1l-1ubuntu1.2_amd64.deb
@@ -110,6 +126,7 @@ $ rustup toolchain install nightly-x86_64-apple-darwin
 
 
 ## Release Process
+
 SPL programs are currently tagged and released manually. Each program is
 versioned independently of the others, with all new development occurring on
 master. Once a program is tested and deemed ready for release:

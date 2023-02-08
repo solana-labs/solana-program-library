@@ -22,3 +22,7 @@ all large transaction tests, and comparing TPS numbers between:
 
 * using the program with no padding
 * using the program with data and account padding
+
+## Note
+
+This code is unaudited. Use at your own risk.

@@ -8,3 +8,7 @@ with a live cluster.
 
 The root [README](../../README.md) gives instructions on how to build and test
 these examples.
+
+## Note
+
+This code is unaudited. Use at your own risk.

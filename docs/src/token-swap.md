@@ -5,25 +5,21 @@ title: Token Swap Program
 A Uniswap-like exchange for the Token program on the Solana blockchain,
 implementing multiple automated market maker (AMM) curves.
 
+## Note
+
+This code is unaudited. Use at your own risk.
+
 ## Available Deployments
 
-
-| Network | Version | Program Address | Fee Owner Address |
+| Network | Version | Program Address |
 | --- | --- | --- |
-| Devnet, Testnet | 3.0.0 | `SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw` | Any |
-| All | 2.0.0 | `SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8` | `HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN` |
+| Testnet | 3.0.0 | `SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw` |
+| Devnet | 3.0.0 | `SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw` |
 
-The Token Swap Program was deployed to all networks by the Serum team at
-`SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8`, requiring a fee owner of
-`HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN`, but that version was deprecated
-in the middle of 2021.  Though that program still exists, it is not actively
-maintained.
+For mainnet, please use any other AMM project on Solana. Some were based on
+Token Swap!
 
-For devnet and testnet, please use the maintained deployment at
-`SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw`, and for mainnet, please use any
-other AMM project on Solana. Almost all of these were based on Token Swap!
-
-Check out
+Check out the
 [program repository](https://github.com/solana-labs/solana-program-library/tree/master/token-swap)
 for more developer information.
 
@@ -66,8 +62,7 @@ bindings](https://github.com/solana-labs/solana-program-library/blob/master/toke
 are available that support loading the Token Swap Program on to a chain and
 issuing instructions.
 
-Example user interface built and maintained by Serum team is available
-[here](https://github.com/project-serum/oyster-swap)
+Example user interface is available [here](https://github.com/solana-labs/oyster-swap).
 
 ## Operational overview
 

@@ -12,6 +12,10 @@ Now suppose the Bucks win Game 3, and the estimated probability of the Bucks win
 
 We'll discuss this mechanism in more detail later.
 
+## Note
+
+This code is unaudited. Use at your own risk.
+
 ## Client Setup 
 First, clone down the repository (TODO publish to PyPI)
 

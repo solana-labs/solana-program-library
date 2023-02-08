@@ -6,6 +6,10 @@ Full documentation is available at https://spl.solana.com/token-swap
 
 JavaScript bindings are available in the `./js` directory.
 
+## Note
+
+This code is unaudited. Use at your own risk.
+
 ## Building master
 
 To build a development version of the Token Swap program, you can use the normal
@@ -13,26 +17,6 @@ build command for Solana programs:
 
 ```sh
 cargo build-sbf
-```
-
-## Building mainnet v2.0.0
-
-For the version deployed to `SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8`,
-the Token Swap Program contains a `production` feature to fix constraints on fees
-and fee account owner. A developer can deploy the program, allow others to create
-pools, and earn a "protocol fee" on all activity.
-
-Since Solana programs cannot contain any modifiable state, we must hard-code
-all constraints into the program.  `SwapConstraints` in `program/src/constraints.rs`
-contains all hard-coded fields for fees.  Additionally the
-`SWAP_PROGRAM_OWNER_FEE_ADDRESS` environment variable specifies the public key
-that must own all fee accounts.
-
-You can build the production version of Token Swap running on devnet, testnet, and
-mainnet-beta using the following command:
-
-```sh
-SWAP_PROGRAM_OWNER_FEE_ADDRESS=HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN cargo build-sbf --features=production
 ```
 
 ## Testing
@@ -86,10 +70,4 @@ Then run all tests:
 
 ```sh
 npm run start-with-test-validator
-```
-
-If you are testing a production build, use:
-
-```sh
-SWAP_PROGRAM_OWNER_FEE_ADDRESS="HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN" npm run start-with-test-validator
 ```
