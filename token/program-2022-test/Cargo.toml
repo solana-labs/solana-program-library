@@ -11,6 +11,7 @@ version = "0.0.1"
 test-sbf = []
 default = ["zk-ops"]
 zk-ops = []
+proof-program = []
 
 [build-dependencies]
 walkdir = "2"

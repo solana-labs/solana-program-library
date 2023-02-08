@@ -1516,6 +1516,7 @@ where
     }
 
     /// Configures confidential transfers for a token account
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_configure_token_account<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -1532,6 +1533,7 @@ where
         .await
     }
 
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_configure_token_account_with_pending_counter<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -1554,6 +1556,7 @@ where
         .await
     }
 
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_configure_token_account_with_pending_counter_and_keypair<
         S: Signer,
     >(
@@ -1603,6 +1606,7 @@ where
     }
 
     /// Prepare a token account with the confidential transfer extension for closing
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_empty_account<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -1618,6 +1622,7 @@ where
         .await
     }
 
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_empty_account_with_keypair<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -1856,6 +1861,7 @@ where
     /// Withdraw SPL Tokens from the available balance of a confidential token account using the
     /// uniquely derived decryption key from a signer
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_withdraw<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -1886,6 +1892,7 @@ where
     /// Withdraw SPL Tokens from the available balance of a confidential token account using custom
     /// keys
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_withdraw_with_key<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -1930,6 +1937,7 @@ where
 
     /// Transfer tokens confidentially using the uniquely derived decryption keys from a signer
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_transfer<S: Signer>(
         &self,
         source_token_account: &Pubkey,
@@ -1964,6 +1972,7 @@ where
 
     /// Transfer tokens confidentially using custom decryption keys
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_transfer_with_key<S: Signer>(
         &self,
         source_token_account: &Pubkey,
@@ -2256,6 +2265,7 @@ where
     }
 
     /// Withdraw withheld confidential tokens from mint using the uniquely derived decryption key
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_withdraw_withheld_tokens_from_mint<S: Signer>(
         &self,
         withdraw_withheld_authority: &S,
@@ -2281,6 +2291,7 @@ where
     }
 
     /// Withdraw withheld confidential tokens from mint using a custom decryption key
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_withdraw_withheld_tokens_from_mint_with_key<S: Signer>(
         &self,
         withdraw_withheld_authority: &S,
@@ -2314,6 +2325,7 @@ where
 
     /// Withdraw withheld confidential tokens from accounts using the uniquely derived decryption
     /// key
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_withdraw_withheld_tokens_from_accounts<S: Signer>(
         &self,
         withdraw_withheld_authority: &S,
@@ -2341,6 +2353,7 @@ where
 
     /// Withdraw withheld confidential tokens from accounts using a custom decryption key
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_withdraw_withheld_tokens_from_accounts_with_key<
         S: Signer,
     >(
