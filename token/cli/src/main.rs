@@ -275,6 +275,12 @@ fn print_error_and_exit<T, E: Display>(e: E) -> T {
 type BulkSigners = Vec<Arc<dyn Signer>>;
 pub(crate) type CommandResult = Result<String, Error>;
 
+fn push_signer_with_dedup(signer: Arc<dyn Signer>, bulk_signers: &mut BulkSigners) {
+    if !bulk_signers.contains(&signer) {
+        bulk_signers.push(signer);
+    }
+}
+
 fn new_throwaway_signer() -> (Arc<dyn Signer>, Pubkey) {
     let keypair = Keypair::new();
     let pubkey = keypair.pubkey();
@@ -368,9 +374,9 @@ fn token_client_from_config(
     );
 
     if let (Some(nonce_account), Some(nonce_authority)) =
-        (config.nonce_account, config.nonce_authority)
+        (config.nonce_account, &config.nonce_authority)
     {
-        Ok(token.with_nonce(&nonce_account, &nonce_authority))
+        Ok(token.with_nonce(&nonce_account, Arc::clone(nonce_authority)))
     } else {
         Ok(token)
     }
@@ -386,9 +392,9 @@ fn native_token_client_from_config(
     );
 
     if let (Some(nonce_account), Some(nonce_authority)) =
-        (config.nonce_account, config.nonce_authority)
+        (config.nonce_account, &config.nonce_authority)
     {
-        Ok(token.with_nonce(&nonce_account, &nonce_authority))
+        Ok(token.with_nonce(&nonce_account, Arc::clone(nonce_authority)))
     } else {
         Ok(token)
     }
@@ -760,6 +766,7 @@ async fn command_authorize(
         AuthorityType::WithheldWithdraw => "withdraw withheld authority",
         AuthorityType::InterestRate => "interest rate authority",
         AuthorityType::PermanentDelegate => "permanent delegate",
+        AuthorityType::ConfidentialTransferMint => "confidential transfer mint authority",
     };
 
     let (mint_pubkey, previous_authority) = if !config.sign_only {
@@ -807,6 +814,7 @@ async fn command_authorize(
                         ))
                     }
                 }
+                AuthorityType::ConfidentialTransferMint => unimplemented!(),
             }?;
 
             Ok((account, previous_authority))
@@ -840,7 +848,8 @@ async fn command_authorize(
                 | AuthorityType::TransferFeeConfig
                 | AuthorityType::WithheldWithdraw
                 | AuthorityType::InterestRate
-                | AuthorityType::PermanentDelegate => Err(format!(
+                | AuthorityType::PermanentDelegate
+                | AuthorityType::ConfidentialTransferMint => Err(format!(
                     "Authority type `{}` not supported for SPL Token accounts",
                     auth_str
                 )),
@@ -3656,10 +3665,7 @@ async fn process_command<'a>(
             let (token_signer, token) =
                 get_signer(arg_matches, "token_keypair", &mut wallet_manager)
                     .unwrap_or_else(new_throwaway_signer);
-            if !bulk_signers.contains(&token_signer) {
-                bulk_signers.push(token_signer);
-            }
-
+            push_signer_with_dedup(token_signer, &mut bulk_signers);
             let default_account_state =
                 arg_matches
                     .value_of("default_account_state")
@@ -3712,9 +3718,7 @@ async fn process_command<'a>(
             // No need to add a signer when creating an associated token account
             let account = get_signer(arg_matches, "account_keypair", &mut wallet_manager).map(
                 |(signer, account)| {
-                    if !bulk_signers.contains(&signer) {
-                        bulk_signers.push(signer);
-                    }
+                    push_signer_with_dedup(signer, &mut bulk_signers);
                     account
                 },
             );
@@ -3769,8 +3773,8 @@ async fn process_command<'a>(
 
             let (authority_signer, authority) =
                 config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
-            if !bulk_signers.contains(&authority_signer) {
-                bulk_signers.push(authority_signer);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(authority_signer, &mut bulk_signers);
             }
 
             let new_authority =
@@ -3802,8 +3806,8 @@ async fn process_command<'a>(
 
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-            if !bulk_signers.contains(&owner_signer) {
-                bulk_signers.push(owner_signer);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
@@ -3843,8 +3847,8 @@ async fn process_command<'a>(
 
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-            if !bulk_signers.contains(&owner_signer) {
-                bulk_signers.push(owner_signer);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
@@ -3869,8 +3873,8 @@ async fn process_command<'a>(
         (CommandName::Mint, arg_matches) => {
             let (mint_authority_signer, mint_authority) =
                 config.signer_or_default(arg_matches, "mint_authority", &mut wallet_manager);
-            if !bulk_signers.contains(&mint_authority_signer) {
-                bulk_signers.push(mint_authority_signer);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(mint_authority_signer, &mut bulk_signers);
             }
 
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
@@ -3914,8 +3918,8 @@ async fn process_command<'a>(
         (CommandName::Freeze, arg_matches) => {
             let (freeze_authority_signer, freeze_authority) =
                 config.signer_or_default(arg_matches, "freeze_authority", &mut wallet_manager);
-            if !bulk_signers.contains(&freeze_authority_signer) {
-                bulk_signers.push(freeze_authority_signer);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(freeze_authority_signer, &mut bulk_signers);
             }
 
             let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
@@ -3935,8 +3939,8 @@ async fn process_command<'a>(
         (CommandName::Thaw, arg_matches) => {
             let (freeze_authority_signer, freeze_authority) =
                 config.signer_or_default(arg_matches, "freeze_authority", &mut wallet_manager);
-            if !bulk_signers.contains(&freeze_authority_signer) {
-                bulk_signers.push(freeze_authority_signer);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(freeze_authority_signer, &mut bulk_signers);
             }
 
             let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
@@ -3957,9 +3961,7 @@ async fn process_command<'a>(
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
             let account = if arg_matches.is_present("create_aux_account") {
                 let (signer, account) = new_throwaway_signer();
-                if !bulk_signers.contains(&signer) {
-                    bulk_signers.push(signer);
-                }
+                bulk_signers.push(signer);
                 Some(account)
             } else {
                 // No need to add a signer when creating an associated token account
@@ -3968,9 +3970,7 @@ async fn process_command<'a>(
 
             let (wallet_signer, wallet_address) =
                 config.signer_or_default(arg_matches, "wallet_keypair", &mut wallet_manager);
-            if !bulk_signers.contains(&wallet_signer) {
-                bulk_signers.push(wallet_signer);
-            }
+            push_signer_with_dedup(wallet_signer, &mut bulk_signers);
 
             command_wrap(
                 config,
@@ -3985,9 +3985,7 @@ async fn process_command<'a>(
         (CommandName::Unwrap, arg_matches) => {
             let (wallet_signer, wallet_address) =
                 config.signer_or_default(arg_matches, "wallet_keypair", &mut wallet_manager);
-            if !bulk_signers.contains(&wallet_signer) {
-                bulk_signers.push(wallet_signer);
-            }
+            push_signer_with_dedup(wallet_signer, &mut bulk_signers);
 
             let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager).unwrap();
             command_unwrap(config, wallet_address, account, bulk_signers).await
@@ -3995,8 +3993,8 @@ async fn process_command<'a>(
         (CommandName::Approve, arg_matches) => {
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-            if !bulk_signers.contains(&owner_signer) {
-                bulk_signers.push(owner_signer);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
             let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
@@ -4026,8 +4024,8 @@ async fn process_command<'a>(
         (CommandName::Revoke, arg_matches) => {
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-            if !bulk_signers.contains(&owner_signer) {
-                bulk_signers.push(owner_signer);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
             let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
@@ -4048,8 +4046,8 @@ async fn process_command<'a>(
         (CommandName::Close, arg_matches) => {
             let (close_authority_signer, close_authority) =
                 config.signer_or_default(arg_matches, "close_authority", &mut wallet_manager);
-            if !bulk_signers.contains(&close_authority_signer) {
-                bulk_signers.push(close_authority_signer);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(close_authority_signer, &mut bulk_signers);
             }
 
             let address = config
@@ -4065,8 +4063,8 @@ async fn process_command<'a>(
                 .unwrap();
             let (close_authority_signer, close_authority) =
                 config.signer_or_default(arg_matches, "close_authority", &mut wallet_manager);
-            if !bulk_signers.contains(&close_authority_signer) {
-                bulk_signers.push(close_authority_signer);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(close_authority_signer, &mut bulk_signers);
             }
             let recipient =
                 config.pubkey_or_default(arg_matches, "recipient", &mut wallet_manager)?;
@@ -4144,8 +4142,8 @@ async fn process_command<'a>(
 
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-            if !bulk_signers.contains(&owner_signer) {
-                bulk_signers.push(owner_signer);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
             command_gc(
@@ -4171,8 +4169,8 @@ async fn process_command<'a>(
         (CommandName::EnableRequiredTransferMemos, arg_matches) => {
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-            if !bulk_signers.contains(&owner_signer) {
-                bulk_signers.push(owner_signer);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
             // Since account is required argument it will always be present
             let token_account =
@@ -4182,8 +4180,8 @@ async fn process_command<'a>(
         (CommandName::DisableRequiredTransferMemos, arg_matches) => {
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-            if !bulk_signers.contains(&owner_signer) {
-                bulk_signers.push(owner_signer);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
             // Since account is required argument it will always be present
             let token_account =
@@ -4193,8 +4191,8 @@ async fn process_command<'a>(
         (CommandName::EnableCpiGuard, arg_matches) => {
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-            if !bulk_signers.contains(&owner_signer) {
-                bulk_signers.push(owner_signer);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
             // Since account is required argument it will always be present
             let token_account =
@@ -4204,8 +4202,8 @@ async fn process_command<'a>(
         (CommandName::DisableCpiGuard, arg_matches) => {
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-            if !bulk_signers.contains(&owner_signer) {
-                bulk_signers.push(owner_signer);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
             // Since account is required argument it will always be present
             let token_account =
@@ -4219,8 +4217,8 @@ async fn process_command<'a>(
                 .unwrap();
             let (freeze_authority_signer, freeze_authority) =
                 config.signer_or_default(arg_matches, "freeze_authority", &mut wallet_manager);
-            if !bulk_signers.contains(&freeze_authority_signer) {
-                bulk_signers.push(freeze_authority_signer);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(freeze_authority_signer, &mut bulk_signers);
             }
             let new_default_state = arg_matches.value_of("state").unwrap();
             let new_default_state = match new_default_state {
@@ -4243,8 +4241,8 @@ async fn process_command<'a>(
                 "withdraw_withheld_authority",
                 &mut wallet_manager,
             );
-            if !bulk_signers.contains(&authority_signer) {
-                bulk_signers.push(authority_signer);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(authority_signer, &mut bulk_signers);
             }
             // Since destination is required it will always be present
             let destination_token_account =
@@ -4359,13 +4357,16 @@ mod tests {
         serial_test::serial,
         solana_sdk::{
             bpf_loader,
+            hash::Hash,
+            program_pack::Pack,
             signature::{write_keypair_file, Keypair, Signer},
+            system_instruction,
             transaction::Transaction,
         },
         solana_test_validator::{ProgramInfo, TestValidator, TestValidatorGenesis},
-        spl_token_2022::extension::non_transferable::NonTransferable,
+        spl_token_2022::{extension::non_transferable::NonTransferable, state::Multisig},
         spl_token_client::client::{
-            ProgramClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
+            ProgramClient, ProgramOfflineClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
         },
         std::path::PathBuf,
         tempfile::NamedTempFile,
@@ -4451,6 +4452,37 @@ mod tests {
             program_id: *program_id,
             restrict_to_program_id: true,
         }
+    }
+
+    async fn create_nonce(config: &Config<'_>, authority: &Keypair) -> Pubkey {
+        let nonce = Keypair::new();
+
+        let nonce_rent = config
+            .rpc_client
+            .get_minimum_balance_for_rent_exemption(solana_sdk::nonce::State::size())
+            .await
+            .unwrap();
+        let instr = system_instruction::create_nonce_account(
+            &authority.pubkey(),
+            &nonce.pubkey(),
+            &authority.pubkey(), // Make the fee payer the nonce account authority
+            nonce_rent,
+        );
+
+        let blockhash = config.rpc_client.get_latest_blockhash().await.unwrap();
+        let tx = Transaction::new_signed_with_payer(
+            &instr,
+            Some(&authority.pubkey()),
+            &[&nonce, authority],
+            blockhash,
+        );
+
+        config
+            .rpc_client
+            .send_and_confirm_transaction(&tx)
+            .await
+            .unwrap();
+        nonce.pubkey()
     }
 
     async fn do_create_native_mint(config: &Config<'_>, program_id: &Pubkey, payer: &Keypair) {
@@ -4553,13 +4585,14 @@ mod tests {
     async fn create_associated_account(
         config: &Config<'_>,
         payer: &Keypair,
-        mint: Pubkey,
+        mint: &Pubkey,
+        owner: &Pubkey,
     ) -> Pubkey {
         let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(payer))];
-        command_create_account(config, mint, payer.pubkey(), None, false, bulk_signers)
+        command_create_account(config, *mint, *owner, None, false, bulk_signers)
             .await
             .unwrap();
-        get_associated_token_address_with_program_id(&payer.pubkey(), &mint, &config.program_id)
+        get_associated_token_address_with_program_id(owner, mint, &config.program_id)
     }
 
     async fn mint_tokens(
@@ -4783,7 +4816,8 @@ mod tests {
         for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
             let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
-            let _account = create_associated_account(&config, &payer, token).await;
+            let _account =
+                create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
             let result = process_test_command(
                 &config,
                 &payer,
@@ -4816,7 +4850,8 @@ mod tests {
         for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
             let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
-            let _account = create_associated_account(&config, &payer, token).await;
+            let _account =
+                create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
             let result = process_test_command(
                 &config,
                 &payer,
@@ -4836,7 +4871,7 @@ mod tests {
         for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
             let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
-            let account = create_associated_account(&config, &payer, token).await;
+            let account = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
             let mut amount = 0;
 
             // mint via implicit owner
@@ -4917,7 +4952,7 @@ mod tests {
         for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
             let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
-            let account = create_associated_account(&config, &payer, token).await;
+            let account = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
             let ui_amount = 100.0;
             mint_tokens(&config, &payer, token, ui_amount, account).await;
             let result = process_test_command(
@@ -4938,7 +4973,7 @@ mod tests {
         for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
             let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
-            let account = create_associated_account(&config, &payer, token).await;
+            let account = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
             let ui_amount = 100.0;
             mint_tokens(&config, &payer, token, ui_amount, account).await;
             let config = test_config_without_default_signer(&test_validator, program_id);
@@ -4967,9 +5002,11 @@ mod tests {
         for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
             let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token1 = create_token(&config, &payer).await;
-            let _account1 = create_associated_account(&config, &payer, token1).await;
+            let _account1 =
+                create_associated_account(&config, &payer, &token1, &payer.pubkey()).await;
             let token2 = create_token(&config, &payer).await;
-            let _account2 = create_associated_account(&config, &payer, token2).await;
+            let _account2 =
+                create_associated_account(&config, &payer, &token2, &payer.pubkey()).await;
             let token3 = create_token(&config, &payer).await;
             let result = process_test_command(
                 &config,
@@ -4991,9 +5028,11 @@ mod tests {
         for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
             let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token1 = create_token(&config, &payer).await;
-            let _account1 = create_associated_account(&config, &payer, token1).await;
+            let _account1 =
+                create_associated_account(&config, &payer, &token1, &payer.pubkey()).await;
             let token2 = create_token(&config, &payer).await;
-            let _account2 = create_associated_account(&config, &payer, token2).await;
+            let _account2 =
+                create_associated_account(&config, &payer, &token2, &payer.pubkey()).await;
             let token3 = create_token(&config, &payer).await;
             let config = test_config_without_default_signer(&test_validator, program_id);
             let result = process_test_command(
@@ -5088,7 +5127,7 @@ mod tests {
         for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
             let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
-            let source = create_associated_account(&config, &payer, token).await;
+            let source = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
             let destination = create_auxiliary_account(&config, &payer, token).await;
             let ui_amount = 100.0;
             mint_tokens(&config, &payer, token, ui_amount, source).await;
@@ -5122,7 +5161,7 @@ mod tests {
         for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
             let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
-            let source = create_associated_account(&config, &payer, token).await;
+            let source = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
             let recipient = Keypair::new().pubkey().to_string();
             let ui_amount = 100.0;
             mint_tokens(&config, &payer, token, ui_amount, source).await;
@@ -5160,13 +5199,19 @@ mod tests {
                 let mut config =
                     test_config_with_default_signer(&test_validator, &payer, other_program_id);
                 let wrong_program_token = create_token(&config, &payer).await;
-                let wrong_program_account =
-                    create_associated_account(&config, &payer, wrong_program_token).await;
+                let wrong_program_account = create_associated_account(
+                    &config,
+                    &payer,
+                    &wrong_program_token,
+                    &payer.pubkey(),
+                )
+                .await;
                 config.program_id = *program_id;
                 let config = config;
 
                 let token = create_token(&config, &payer).await;
-                let source = create_associated_account(&config, &payer, token).await;
+                let source =
+                    create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
                 let recipient = Keypair::new().pubkey();
                 let recipient_token_account = get_associated_token_address_with_program_id(
                     &recipient,
@@ -5309,7 +5354,7 @@ mod tests {
         let config = test_config_with_default_signer(&test_validator, &payer, &spl_token::id());
 
         let token = create_token(&config, &payer).await;
-        let source = create_associated_account(&config, &payer, token).await;
+        let source = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
         let recipient = Keypair::new().pubkey().to_string();
         let ui_amount = 100.0;
         mint_tokens(&config, &payer, token, ui_amount, source).await;
@@ -5421,7 +5466,7 @@ mod tests {
             )
             .get_address();
             let token = create_token(&config, &payer).await;
-            let source = create_associated_account(&config, &payer, token).await;
+            let source = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
             do_create_native_mint(&config, program_id, &payer).await;
             let ui_amount = 10.0;
             command_wrap(
@@ -5499,7 +5544,8 @@ mod tests {
         for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
             let mut config = test_config_with_default_signer(&test_validator, &payer, program_id);
             let token = create_token(&config, &payer).await;
-            let _account = create_associated_account(&config, &payer, token).await;
+            let _account =
+                create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
             let _aux1 = create_auxiliary_account(&config, &payer, token).await;
             let _aux2 = create_auxiliary_account(&config, &payer, token).await;
             let _aux3 = create_auxiliary_account(&config, &payer, token).await;
@@ -5540,7 +5586,7 @@ mod tests {
 
             // test implicit transfer
             let token = create_token(&config, &payer).await;
-            let ata = create_associated_account(&config, &payer, token).await;
+            let ata = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
             let aux = create_auxiliary_account(&config, &payer, token).await;
             mint_tokens(&config, &payer, token, 1.0, ata).await;
             mint_tokens(&config, &payer, token, 1.0, aux).await;
@@ -5562,7 +5608,7 @@ mod tests {
 
             // test ata closure
             let token = create_token(&config, &payer).await;
-            let ata = create_associated_account(&config, &payer, token).await;
+            let ata = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
 
             process_test_command(
                 &config,
@@ -5581,7 +5627,7 @@ mod tests {
 
             // test a tricky corner case of both
             let token = create_token(&config, &payer).await;
-            let ata = create_associated_account(&config, &payer, token).await;
+            let ata = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
             let aux = create_auxiliary_account(&config, &payer, token).await;
             mint_tokens(&config, &payer, token, 1.0, aux).await;
 
@@ -5610,7 +5656,7 @@ mod tests {
 
             // test that balance moves off an uncloseable account
             let token = create_token(&config, &payer).await;
-            let ata = create_associated_account(&config, &payer, token).await;
+            let ata = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
             let aux = create_auxiliary_account(&config, &payer, token).await;
             let close_authority = Keypair::new().pubkey();
             mint_tokens(&config, &payer, token, 1.0, aux).await;
@@ -5682,7 +5728,7 @@ mod tests {
             let config = test_config_with_default_signer(&test_validator, &payer, program_id);
 
             let token = create_token(&config, &payer).await;
-            let source = create_associated_account(&config, &payer, token).await;
+            let source = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
             let destination = create_auxiliary_account(&config, &payer, token).await;
             let delegate = Keypair::new();
 
@@ -5787,7 +5833,7 @@ mod tests {
             let config = test_config_with_default_signer(&test_validator, &payer, program_id);
 
             let token = create_token(&config, &payer).await;
-            let source = create_associated_account(&config, &payer, token).await;
+            let source = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
             let delegate = Keypair::new();
 
             let delegate_keypair_file = NamedTempFile::new().unwrap();
@@ -5950,7 +5996,9 @@ mod tests {
         write_keypair_file(&payer, &permanent_delegate_keypair_file).unwrap();
 
         let unknown_owner = Keypair::new();
-        let source = create_associated_account(&config, &unknown_owner, token).await;
+        let source =
+            create_associated_account(&config, &unknown_owner, &token, &unknown_owner.pubkey())
+                .await;
         let ui_amount = 100.0;
 
         mint_tokens(&config, &payer, token, ui_amount, source).await;
@@ -6019,8 +6067,10 @@ mod tests {
         .unwrap();
 
         let unknown_owner = Keypair::new();
-        let source = create_associated_account(&config, &unknown_owner, token).await;
-        let destination = create_associated_account(&config, &payer, token).await;
+        let source =
+            create_associated_account(&config, &unknown_owner, &token, &unknown_owner.pubkey())
+                .await;
+        let destination = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
 
         let permanent_delegate_keypair_file = NamedTempFile::new().unwrap();
         write_keypair_file(&payer, &permanent_delegate_keypair_file).unwrap();
@@ -6089,7 +6139,8 @@ mod tests {
         let program_id = spl_token_2022::id();
         let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
         let token = create_token(&config, &payer).await;
-        let token_account = create_associated_account(&config, &payer, token).await;
+        let token_account =
+            create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
         let source_account = create_auxiliary_account(&config, &payer, token).await;
         mint_tokens(&config, &payer, token, 100.0, source_account).await;
 
@@ -6189,7 +6240,8 @@ mod tests {
         let program_id = spl_token_2022::id();
         let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
         let token = create_token(&config, &payer).await;
-        let token_account = create_associated_account(&config, &payer, token).await;
+        let token_account =
+            create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
 
         // enable works
         process_test_command(
@@ -6260,7 +6312,7 @@ mod tests {
         do_create_native_mint(&config, &program_id, &payer).await;
 
         // cannot reassign an ata
-        let account = create_associated_account(&config, &payer, token).await;
+        let account = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
         let result = command_authorize(
             &config,
             account,
@@ -6373,7 +6425,8 @@ mod tests {
         let test_mint = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
         assert!(test_mint.get_extension::<NonTransferable>().is_ok());
 
-        let associated_account = create_associated_account(&config, &payer, token_pubkey).await;
+        let associated_account =
+            create_associated_account(&config, &payer, &token_pubkey, &payer.pubkey()).await;
         let aux_account = create_auxiliary_account(&config, &payer, token_pubkey).await;
         mint_tokens(&config, &payer, token_pubkey, 100.0, associated_account).await;
 
@@ -6429,7 +6482,8 @@ mod tests {
         let extension = mint.get_extension::<DefaultAccountState>().unwrap();
         assert_eq!(extension.state, u8::from(AccountState::Frozen));
 
-        let frozen_account = create_associated_account(&config, &payer, token_pubkey).await;
+        let frozen_account =
+            create_associated_account(&config, &payer, &token_pubkey, &payer.pubkey()).await;
         let token_account = config
             .rpc_client
             .get_account(&frozen_account)
@@ -6514,7 +6568,8 @@ mod tests {
 
         let total_amount = 1000.0;
         let transfer_amount = 100.0;
-        let token_account = create_associated_account(&config, &payer, token_pubkey).await;
+        let token_account =
+            create_associated_account(&config, &payer, &token_pubkey, &payer.pubkey()).await;
         let source_account = create_auxiliary_account(&config, &payer, token_pubkey).await;
         mint_tokens(&config, &payer, token_pubkey, total_amount, source_account).await;
 
@@ -6675,5 +6730,181 @@ mod tests {
             u64::from(extension.newer_transfer_fee.maximum_fee),
             new_maximum_fee
         );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn multisig_transfer() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let m = 3;
+        let n = 5u8;
+        // need to add "payer" to make the config provide the right signer
+        let (multisig_members, multisig_paths): (Vec<_>, Vec<_>) =
+            std::iter::once(clone_keypair(&payer))
+                .chain(std::iter::repeat_with(Keypair::new).take((n - 2) as usize))
+                .map(|s| {
+                    let keypair_file = NamedTempFile::new().unwrap();
+                    write_keypair_file(&s, &keypair_file).unwrap();
+                    (s.pubkey(), keypair_file)
+                })
+                .unzip();
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+            let token = create_token(&config, &payer).await;
+            let multisig = Arc::new(Keypair::new());
+            let multisig_pubkey = multisig.pubkey();
+
+            // add the multisig as a member to itself, make it self-owned
+            let multisig_members = std::iter::once(multisig_pubkey)
+                .chain(multisig_members.iter().cloned())
+                .collect::<Vec<_>>();
+            let multisig_path = NamedTempFile::new().unwrap();
+            write_keypair_file(&multisig, &multisig_path).unwrap();
+            let multisig_paths = std::iter::once(&multisig_path)
+                .chain(multisig_paths.iter())
+                .collect::<Vec<_>>();
+
+            command_create_multisig(&config, multisig, m, multisig_members)
+                .await
+                .unwrap();
+
+            let account = config
+                .rpc_client
+                .get_account(&multisig_pubkey)
+                .await
+                .unwrap();
+            let multisig = Multisig::unpack(&account.data).unwrap();
+            assert_eq!(multisig.m, m);
+            assert_eq!(multisig.n, n);
+
+            let source = create_associated_account(&config, &payer, &token, &multisig_pubkey).await;
+            let destination = create_auxiliary_account(&config, &payer, token).await;
+            let ui_amount = 100.0;
+            mint_tokens(&config, &payer, token, ui_amount, source).await;
+
+            exec_test_cmd(
+                &config,
+                &[
+                    "spl-token",
+                    CommandName::Transfer.into(),
+                    &token.to_string(),
+                    "10",
+                    &destination.to_string(),
+                    "--multisig-signer",
+                    multisig_paths[0].path().to_str().unwrap(),
+                    "--multisig-signer",
+                    multisig_paths[1].path().to_str().unwrap(),
+                    "--multisig-signer",
+                    multisig_paths[2].path().to_str().unwrap(),
+                    "--from",
+                    &source.to_string(),
+                    "--owner",
+                    &multisig_pubkey.to_string(),
+                    "--fee-payer",
+                    multisig_paths[1].path().to_str().unwrap(),
+                ],
+            )
+            .await
+            .unwrap();
+
+            let account = config.rpc_client.get_account(&source).await.unwrap();
+            let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+            assert_eq!(token_account.base.amount, 90);
+            let account = config.rpc_client.get_account(&destination).await.unwrap();
+            let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+            assert_eq!(token_account.base.amount, 10);
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn offline_multisig_transfer_with_nonce() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let m = 2;
+        let n = 3u8;
+
+        let (multisig_members, multisig_paths): (Vec<_>, Vec<_>) =
+            std::iter::repeat_with(Keypair::new)
+                .take(n as usize)
+                .map(|s| {
+                    let keypair_file = NamedTempFile::new().unwrap();
+                    write_keypair_file(&s, &keypair_file).unwrap();
+                    (s.pubkey(), keypair_file)
+                })
+                .unzip();
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let mut config = test_config_with_default_signer(&test_validator, &payer, program_id);
+            let token = create_token(&config, &payer).await;
+            let nonce = create_nonce(&config, &payer).await;
+
+            let nonce_account = config.rpc_client.get_account(&nonce).await.unwrap();
+            let start_hash_index = 4 + 4 + 32;
+            let blockhash = Hash::new(&nonce_account.data[start_hash_index..start_hash_index + 32]);
+
+            let multisig = Arc::new(Keypair::new());
+            let multisig_pubkey = multisig.pubkey();
+
+            command_create_multisig(&config, multisig, m, multisig_members.clone())
+                .await
+                .unwrap();
+
+            let source = create_associated_account(&config, &payer, &token, &multisig_pubkey).await;
+            let destination = create_auxiliary_account(&config, &payer, token).await;
+            let ui_amount = 100.0;
+            mint_tokens(&config, &payer, token, ui_amount, source).await;
+
+            let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
+                ProgramOfflineClient::new(blockhash, ProgramRpcClientSendTransaction),
+            );
+            config.program_client = program_client;
+            let result = exec_test_cmd(
+                &config,
+                &[
+                    "spl-token",
+                    CommandName::Transfer.into(),
+                    &token.to_string(),
+                    "10",
+                    &destination.to_string(),
+                    "--blockhash",
+                    &blockhash.to_string(),
+                    "--nonce",
+                    &nonce.to_string(),
+                    "--nonce-authority",
+                    &payer.pubkey().to_string(),
+                    "--sign-only",
+                    "--mint-decimals",
+                    &format!("{}", TEST_DECIMALS),
+                    "--multisig-signer",
+                    multisig_paths[1].path().to_str().unwrap(),
+                    "--multisig-signer",
+                    &multisig_members[2].to_string(),
+                    "--from",
+                    &source.to_string(),
+                    "--owner",
+                    &multisig_pubkey.to_string(),
+                    "--fee-payer",
+                    &multisig_members[0].to_string(),
+                ],
+            )
+            .await
+            .unwrap();
+            // the provided signer has a signature, denoted by the pubkey followed
+            // by "=" and the signature
+            assert!(result.contains(&format!("{}=", multisig_members[1])));
+
+            // other three expected signers are absent
+            let absent_signers_position = result.find("Absent Signers").unwrap();
+            let absent_signers = result.get(absent_signers_position..).unwrap();
+            assert!(absent_signers.contains(&multisig_members[0].to_string()));
+            assert!(absent_signers.contains(&multisig_members[2].to_string()));
+            assert!(absent_signers.contains(&payer.pubkey().to_string()));
+
+            // and nothing else is marked a signer
+            assert!(!absent_signers.contains(&multisig_pubkey.to_string()));
+            assert!(!absent_signers.contains(&nonce.to_string()));
+            assert!(!absent_signers.contains(&source.to_string()));
+            assert!(!absent_signers.contains(&destination.to_string()));
+            assert!(!absent_signers.contains(&token.to_string()));
+        }
     }
 }

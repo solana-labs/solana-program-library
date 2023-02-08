@@ -582,11 +582,17 @@ async fn fail_withdraw_from_transient() {
         tokens_to_withdraw,
     ) = setup_for_withdraw(spl_token::id()).await;
 
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
+
     // add a preferred withdraw validator, keep it empty, to be sure that this works
     let preferred_validator = simple_add_validator_to_pool(
         &mut context.banks_client,
         &context.payer,
-        &context.last_blockhash,
+        &last_blockhash,
         &stake_pool_accounts,
         None,
     )
@@ -596,11 +602,17 @@ async fn fail_withdraw_from_transient() {
         .set_preferred_validator(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             instruction::PreferredValidatorType::Withdraw,
             Some(preferred_validator.vote.pubkey()),
         )
         .await;
+
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&last_blockhash)
+        .await
+        .unwrap();
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
@@ -610,7 +622,7 @@ async fn fail_withdraw_from_transient() {
         .decrease_validator_stake(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &validator_stake_account.stake_account,
             &validator_stake_account.transient_stake_account,
             deposit_info.stake_lamports + stake_rent - 2,
@@ -625,7 +637,7 @@ async fn fail_withdraw_from_transient() {
         .withdraw_stake(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &user_stake_recipient.pubkey(),
             &user_transfer_authority,
             &deposit_info.pool_account.pubkey(),
@@ -657,11 +669,17 @@ async fn success_withdraw_from_transient() {
         tokens_to_withdraw,
     ) = setup_for_withdraw(spl_token::id()).await;
 
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
+
     // add a preferred withdraw validator, keep it empty, to be sure that this works
     let preferred_validator = simple_add_validator_to_pool(
         &mut context.banks_client,
         &context.payer,
-        &context.last_blockhash,
+        &last_blockhash,
         &stake_pool_accounts,
         None,
     )
@@ -680,12 +698,18 @@ async fn success_withdraw_from_transient() {
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
 
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&last_blockhash)
+        .await
+        .unwrap();
+
     // decrease all of stake
     let error = stake_pool_accounts
         .decrease_validator_stake(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &validator_stake_account.stake_account,
             &validator_stake_account.transient_stake_account,
             deposit_info.stake_lamports + stake_rent,
@@ -701,7 +725,7 @@ async fn success_withdraw_from_transient() {
         .withdraw_stake(
             &mut context.banks_client,
             &context.payer,
-            &context.last_blockhash,
+            &last_blockhash,
             &user_stake_recipient.pubkey(),
             &user_transfer_authority,
             &deposit_info.pool_account.pubkey(),

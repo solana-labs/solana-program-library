@@ -38,7 +38,7 @@ pub(crate) struct Config<'a> {
     pub(crate) output_format: OutputFormat,
     pub(crate) fee_payer: Option<Arc<dyn Signer>>,
     pub(crate) nonce_account: Option<Pubkey>,
-    pub(crate) nonce_authority: Option<Pubkey>,
+    pub(crate) nonce_authority: Option<Arc<dyn Signer>>,
     pub(crate) sign_only: bool,
     pub(crate) dump_transaction_message: bool,
     pub(crate) multisigner_pubkeys: Vec<&'a Pubkey>,
@@ -98,6 +98,26 @@ impl<'a> Config<'a> {
         .await
     }
 
+    fn extract_multisig_signers(
+        matches: &ArgMatches<'_>,
+        wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+        bulk_signers: &mut Vec<Arc<dyn Signer>>,
+        multisigner_ids: &'a mut Vec<Pubkey>,
+    ) -> Vec<&'a Pubkey> {
+        let multisig_signers = signers_of(matches, MULTISIG_SIGNER_ARG.name, wallet_manager)
+            .unwrap_or_else(|e| {
+                eprintln!("error: {}", e);
+                exit(1);
+            });
+        if let Some(mut multisig_signers) = multisig_signers {
+            multisig_signers.sort_by(|(_, lp), (_, rp)| lp.cmp(rp));
+            let (signers, pubkeys): (Vec<_>, Vec<_>) = multisig_signers.into_iter().unzip();
+            bulk_signers.extend(signers);
+            multisigner_ids.extend(pubkeys);
+        }
+        multisigner_ids.iter().collect::<Vec<_>>()
+    }
+
     pub(crate) async fn new_with_clients_and_ws_url(
         matches: &ArgMatches<'_>,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
@@ -117,18 +137,8 @@ impl<'a> Config<'a> {
         } else {
             solana_cli_config::Config::default()
         };
-        let multisig_signers = signers_of(matches, MULTISIG_SIGNER_ARG.name, wallet_manager)
-            .unwrap_or_else(|e| {
-                eprintln!("error: {}", e);
-                exit(1);
-            });
-        if let Some(mut multisig_signers) = multisig_signers {
-            multisig_signers.sort_by(|(_, lp), (_, rp)| lp.cmp(rp));
-            let (signers, pubkeys): (Vec<_>, Vec<_>) = multisig_signers.into_iter().unzip();
-            bulk_signers.extend(signers);
-            multisigner_ids.extend(pubkeys);
-        }
-        let multisigner_pubkeys = multisigner_ids.iter().collect::<Vec<_>>();
+        let multisigner_pubkeys =
+            Self::extract_multisig_signers(matches, wallet_manager, bulk_signers, multisigner_ids);
 
         let config = SignerFromPathConfig {
             allow_null_signer: !multisigner_pubkeys.is_empty(),
@@ -195,7 +205,7 @@ impl<'a> Config<'a> {
                 exit(1);
             });
         let nonce_authority = if nonce_account.is_some() {
-            let (signer, nonce_authority) = signer_from_path(
+            let (nonce_authority, _) = signer_from_path(
                 matches,
                 matches
                     .value_of(NONCE_AUTHORITY_ARG.name)
@@ -212,9 +222,6 @@ impl<'a> Config<'a> {
                 eprintln!("error: {}", e);
                 exit(1);
             });
-            if !bulk_signers.contains(&signer) {
-                bulk_signers.push(signer);
-            }
 
             Some(nonce_authority)
         } else {

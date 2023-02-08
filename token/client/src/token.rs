@@ -233,7 +233,7 @@ pub struct Token<T> {
     payer: Arc<dyn Signer>,
     program_id: Pubkey,
     nonce_account: Option<Pubkey>,
-    nonce_authority: Option<Pubkey>,
+    nonce_authority: Option<Arc<dyn Signer>>,
     memo: Arc<RwLock<Option<TokenMemo>>>,
 }
 
@@ -245,7 +245,10 @@ impl<T> fmt::Debug for Token<T> {
             .field("payer", &self.payer.pubkey())
             .field("program_id", &self.program_id)
             .field("nonce_account", &self.nonce_account)
-            .field("nonce_authority", &self.nonce_authority)
+            .field(
+                "nonce_authority",
+                &self.nonce_authority.as_ref().map(|s| s.pubkey()),
+            )
             .field("memo", &self.memo.read().unwrap())
             .finish()
     }
@@ -317,7 +320,7 @@ where
         &self.pubkey
     }
 
-    pub fn with_payer(&self, payer: Arc<dyn Signer>) -> Token<T> {
+    pub fn with_payer(self, payer: Arc<dyn Signer>) -> Token<T> {
         Token {
             client: Arc::clone(&self.client),
             pubkey: self.pubkey,
@@ -330,7 +333,7 @@ where
         }
     }
 
-    pub fn with_nonce(&self, nonce_account: &Pubkey, nonce_authority: &Pubkey) -> Token<T> {
+    pub fn with_nonce(self, nonce_account: &Pubkey, nonce_authority: Arc<dyn Signer>) -> Token<T> {
         Token {
             client: Arc::clone(&self.client),
             pubkey: self.pubkey,
@@ -338,7 +341,7 @@ where
             payer: self.payer.clone(),
             program_id: self.program_id,
             nonce_account: Some(*nonce_account),
-            nonce_authority: Some(*nonce_authority),
+            nonce_authority: Some(nonce_authority),
             memo: Arc::new(RwLock::new(None)),
         }
     }
@@ -388,9 +391,9 @@ where
     fn get_multisig_signers<'a, 'b>(
         &self,
         authority: &'b Pubkey,
-        signing_pubkeys: &'a Vec<Pubkey>,
+        signing_pubkeys: &'a [Pubkey],
     ) -> Vec<&'a Pubkey> {
-        if signing_pubkeys.as_ref() == [*authority] {
+        if signing_pubkeys == [*authority] {
             vec![]
         } else {
             signing_pubkeys.iter().collect::<Vec<_>>()
@@ -431,13 +434,13 @@ where
             .map_err(TokenError::Client)?;
 
         let message = if let (Some(nonce_account), Some(nonce_authority)) =
-            (self.nonce_account, self.nonce_authority)
+            (self.nonce_account, &self.nonce_authority)
         {
             let mut message = Message::new_with_nonce(
                 token_instructions.to_vec(),
                 fee_payer,
                 &nonce_account,
-                &nonce_authority,
+                &nonce_authority.pubkey(),
             );
             message.recent_blockhash = latest_blockhash;
             message
@@ -450,6 +453,11 @@ where
         transaction
             .try_partial_sign(&vec![self.payer.clone()], latest_blockhash)
             .map_err(|error| TokenError::Client(error.into()))?;
+        if let Some(nonce_authority) = &self.nonce_authority {
+            transaction
+                .try_partial_sign(&vec![nonce_authority.clone()], latest_blockhash)
+                .map_err(|error| TokenError::Client(error.into()))?;
+        }
         transaction
             .try_partial_sign(signing_keypairs, latest_blockhash)
             .map_err(|error| TokenError::Client(error.into()))?;
@@ -1491,28 +1499,18 @@ where
     pub async fn confidential_transfer_update_mint<S: Signer>(
         &self,
         authority: &S,
-        new_authority: Option<&S>,
         auto_approve_new_account: bool,
         auditor_encryption_pubkey: Option<EncryptionPubkey>,
     ) -> TokenResult<T::Output> {
-        let mut signers = vec![authority];
-        let new_authority_pubkey = if let Some(new_authority) = new_authority {
-            signers.push(new_authority);
-            Some(new_authority.pubkey())
-        } else {
-            None
-        };
-
         self.process_ixs(
             &[confidential_transfer::instruction::update_mint(
                 &self.program_id,
                 &self.pubkey,
                 &authority.pubkey(),
-                new_authority_pubkey.as_ref(),
                 auto_approve_new_account,
                 auditor_encryption_pubkey,
             )?],
-            &signers,
+            &[authority],
         )
         .await
     }

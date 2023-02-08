@@ -46,6 +46,8 @@ pub enum ConfidentialTransferInstruction {
 
     /// Updates the confidential transfer mint configuration for a mint.
     ///
+    /// Use `TokenInstruction::SetAuthority` to update the confidential transfer mint authority.
+    ///
     /// The `withdraw_withheld_authority_encryption_pubkey` and `withheld_amount` ciphertext are
     /// not updatable.
     ///
@@ -53,7 +55,6 @@ pub enum ConfidentialTransferInstruction {
     ///
     ///   0. `[writable]` The SPL Token mint.
     ///   1. `[signer]` Confidential transfer mint authority.
-    ///   2. `[signer]` New confidential transfer mint authority.
     ///
     /// Data expected by this instruction:
     ///   `UpdateMintData`
@@ -576,21 +577,15 @@ pub fn update_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
     authority: &Pubkey,
-    new_authority: Option<&Pubkey>,
     auto_approve_new_accounts: bool,
     auditor_encryption_pubkey: Option<EncryptionPubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
 
-    let mut accounts = vec![
+    let accounts = vec![
         AccountMeta::new(*mint, false),
         AccountMeta::new_readonly(*authority, true),
     ];
-    if let Some(new_authority) = new_authority {
-        accounts.push(AccountMeta::new_readonly(*new_authority, true));
-    } else {
-        accounts.push(AccountMeta::new_readonly(Pubkey::default(), false));
-    }
 
     Ok(encode_instruction(
         token_program_id,

@@ -1016,6 +1016,9 @@ pub enum AuthorityType {
     InterestRate,
     /// Authority to transfer or burn any tokens for a mint
     PermanentDelegate,
+    /// Authority to update confidential transfer mint and aprove accounts for confidential
+    /// transfers
+    ConfidentialTransferMint,
 }
 
 impl AuthorityType {
@@ -1030,6 +1033,7 @@ impl AuthorityType {
             AuthorityType::CloseMint => 6,
             AuthorityType::InterestRate => 7,
             AuthorityType::PermanentDelegate => 8,
+            AuthorityType::ConfidentialTransferMint => 9,
         }
     }
 
@@ -1044,6 +1048,7 @@ impl AuthorityType {
             6 => Ok(AuthorityType::CloseMint),
             7 => Ok(AuthorityType::InterestRate),
             8 => Ok(AuthorityType::PermanentDelegate),
+            9 => Ok(AuthorityType::ConfidentialTransferMint),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }

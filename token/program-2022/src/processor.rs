@@ -5,14 +5,14 @@ use {
         check_program_account, cmp_pubkeys,
         error::TokenError,
         extension::{
-            confidential_transfer::{self, ConfidentialTransferAccount},
+            confidential_transfer::{self, ConfidentialTransferAccount, ConfidentialTransferMint},
             cpi_guard::{self, in_cpi, CpiGuard},
             default_account_state::{self, DefaultAccountState},
             immutable_owner::ImmutableOwner,
             interest_bearing_mint::{self, InterestBearingConfig},
             memo_transfer::{self, check_previous_sibling_instruction_is_memo, memo_required},
             mint_close_authority::MintCloseAuthority,
-            non_transferable::NonTransferable,
+            non_transferable::{NonTransferable, NonTransferableAccount},
             permanent_delegate::{get_permanent_delegate, PermanentDelegate},
             reallocate,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
@@ -287,6 +287,12 @@ impl Processor {
         if source_account.base.amount < amount {
             return Err(TokenError::InsufficientFunds.into());
         }
+        if source_account
+            .get_extension::<NonTransferableAccount>()
+            .is_ok()
+        {
+            return Err(TokenError::NonTransferable.into());
+        }
         let (fee, maybe_permanent_delegate) = if let Some((mint_info, expected_decimals)) =
             expected_mint_info
         {
@@ -296,10 +302,6 @@ impl Processor {
 
             let mint_data = mint_info.try_borrow_data()?;
             let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
-
-            if mint.get_extension::<NonTransferable>().is_ok() {
-                return Err(TokenError::NonTransferable.into());
-            }
 
             if expected_decimals != mint.base.decimals {
                 return Err(TokenError::MintDecimalsMismatch.into());
@@ -738,6 +740,22 @@ impl Processor {
                         account_info_iter.as_slice(),
                     )?;
                     extension.delegate = new_authority.try_into()?;
+                }
+                AuthorityType::ConfidentialTransferMint => {
+                    let extension = mint.get_extension_mut::<ConfidentialTransferMint>()?;
+                    let maybe_confidential_transfer_mint_authority: Option<Pubkey> =
+                        extension.authority.into();
+                    let confidential_transfer_mint_authority =
+                        maybe_confidential_transfer_mint_authority
+                            .ok_or(TokenError::AuthorityTypeNotSupported)?;
+                    Self::validate_owner(
+                        program_id,
+                        &confidential_transfer_mint_authority,
+                        authority_info,
+                        authority_info_data_len,
+                        account_info_iter.as_slice(),
+                    )?;
+                    extension.authority = new_authority.try_into()?;
                 }
                 _ => {
                     return Err(TokenError::AuthorityTypeNotSupported.into());
