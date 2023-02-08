@@ -23,7 +23,7 @@ thiserror = "1.0"
 solana-program-test = "1.14.12"
 solana-sdk = "1.14.12"
 spl-token = { version = "3.5", path = "../../token/program", features = ["no-entrypoint"] }
-spl-token-client = { version = "0.3", path = "../../token/client" }
+spl-token-client = { version = "0.4", path = "../../token/client" }
 test-case = "2.2"
 
 [lib]
