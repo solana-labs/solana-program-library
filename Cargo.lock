@@ -6517,7 +6517,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-upgrade"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "num-derive",
  "num-traits",
@@ -6534,7 +6534,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-upgrade-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap 3.2.17",
  "futures-util",
