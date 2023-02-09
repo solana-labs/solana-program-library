@@ -23,23 +23,27 @@ import {
 chai.use(chaiAsPromised);
 const url = 'http://localhost:8899';
 
-describe('Name Service Program', () => {
-  let connection: Connection;
-  let payer: Keypair;
-  let owner: Keypair;
+describe('Name Service Program', async () => {
+  const connection = new Connection(url, 'confirmed');
+  const payer = Keypair.generate();
+  const owner = Keypair.generate();
+  const space = 20;
   let nameKey: PublicKey;
-  const name = '.sol';
+  let name: string;
   before(async () => {
-    connection = new Connection(url, 'confirmed');
-    payer = Keypair.generate();
     const airdropSignature = await connection.requestAirdrop(
       payer.publicKey,
-      4 * LAMPORTS_PER_SOL
+      LAMPORTS_PER_SOL
     );
-    await connection.confirmTransaction(airdropSignature, 'confirmed');
+    await connection.confirmTransaction({
+      signature: airdropSignature,
+      ...(await connection.getLatestBlockhash()),
+    });
+  });
+
+  beforeEach(async () => {
+    name = Math.random().toString() + '.sol';
     nameKey = await getNameKey(name);
-    owner = Keypair.generate();
-    const space = 20;
     const lamports = await connection.getMinimumBalanceForRentExemption(
       space + NameRegistryState.HEADER_LEN
     );
@@ -58,7 +62,7 @@ describe('Name Service Program', () => {
   it('Create Name Registery', async () => {
     const nameAccount = await NameRegistryState.retrieve(connection, nameKey);
     nameAccount.owner.equals(owner.publicKey);
-    expect(nameAccount.data?.length).to.eql(20);
+    expect(nameAccount.data?.length).to.eql(space);
   });
   it('Update Name Registery', async () => {
     const data = Buffer.from('@Dudl');
@@ -79,31 +83,30 @@ describe('Name Service Program', () => {
     await sendAndConfirmTransaction(connection, tx, [payer, owner]);
     const nameAccount = await NameRegistryState.retrieve(connection, nameKey);
     nameAccount.owner.equals(newOwner.publicKey);
-    owner = newOwner;
   });
   it('Realloc Name Account to bigger space', async () => {
     const inst = await reallocNameAccount(
       connection,
       name,
-      30,
+      space + 10,
       payer.publicKey
     );
     const tx = new Transaction().add(inst);
     await sendAndConfirmTransaction(connection, tx, [payer, owner]);
     const nameAccount = await NameRegistryState.retrieve(connection, nameKey);
-    expect(nameAccount.data?.length).to.eql(30);
+    expect(nameAccount.data?.length).to.eql(space + 10);
   });
   it('Realloc Name Account to smaller space', async () => {
     const inst = await reallocNameAccount(
       connection,
       name,
-      10,
+      space - 10,
       payer.publicKey
     );
     const tx = new Transaction().add(inst);
     await sendAndConfirmTransaction(connection, tx, [payer, owner]);
     const nameAccount = await NameRegistryState.retrieve(connection, nameKey);
-    expect(nameAccount.data?.length).to.eql(10);
+    expect(nameAccount.data?.length).to.eql(space - 10);
   });
   it('Delete Name Registry', async () => {
     const inst = await deleteNameRegistry(connection, name, payer.publicKey);
@@ -119,9 +122,9 @@ const getNameKey = async (
   nameClass?: PublicKey,
   parentName?: PublicKey
 ) => {
-  const hashed_name = await getHashedName(name);
+  const hashedName = await getHashedName(name);
   const nameAccountKey = await getNameAccountKey(
-    hashed_name,
+    hashedName,
     nameClass,
     parentName
   );

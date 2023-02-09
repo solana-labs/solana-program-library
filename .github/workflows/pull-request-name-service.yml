@@ -57,6 +57,13 @@ jobs:
       - name: Build and test
         run: ./ci/cargo-test-sbf.sh name-service
 
+      - name: Upload programs
+        uses: actions/upload-artifact@v2
+        with:
+          name: name-service-programs
+          path: "target/deploy/*.so"
+          if-no-files-found: error
+
   js-test:
     runs-on: ubuntu-latest
     env:
@@ -73,4 +80,9 @@ jobs:
           key: node-${{ hashFiles('name-service/js/yarn.lock') }}
           restore-keys: |
             node-
+      - name: Download programs
+        uses: actions/download-artifact@v2
+        with:
+          name: name-service-programs
+          path: target/deploy
       - run: ./ci/js-test-name-service.sh
