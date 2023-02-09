@@ -1667,8 +1667,14 @@ pub fn refund_proposal_deposit(
     }
 }
 
-/// Complete proposal when proposal is stuck in Succeeded
-#[allow(clippy::too_many_arguments)]
+/// Complete proposal when proposal is "stuck" in non-Completed state.
+///
+/// 1) It enables a way to move a proposal in `Succeeded` to `Completed` state
+/// when it contains no transactions while the `deny_vote_weight` is enabled.
+/// If the proposal contains an instruction then on the successful execution it's moved to `Completed` state.
+/// When `deny_vote_weight` is disabled the proposal is moved to `Completed` at time of finalized voting.
+/// In case of no transaction exists within proposal and `deny_vote_weight` is enabled
+/// the instruction complete_proposal can be used to move the proposal to `Completed` state.
 pub fn complete_proposal(
     program_id: &Pubkey,
     // Accounts
