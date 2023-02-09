@@ -1,6 +1,6 @@
-import pkg from 'js-sha3';
-import * as Collections from 'typescript-collections';
-import { PublicKey } from '@solana/web3.js';
+import pkg from "js-sha3";
+import * as Collections from "typescript-collections";
+import { PublicKey } from "@solana/web3.js";
 const { keccak_256 } = pkg;
 
 let CACHE_EMPTY_NODE = new Map<number, Buffer>();
@@ -62,7 +62,7 @@ export class MerkleTree {
   /**
    * This is the recommended way to create MerkleTrees.
    * If you're trying to match an on-chain MerkleTree,
-   * set `depth` to `ConcurrentMerkleTreeAccount.getMaxDepth()`
+   * set `depth` to `{@link ConcurrentMerkleTreeAccount}.getMaxDepth()`
    *
    * @param leaves leaves of the tree
    * @param depth number of levels in the tree
@@ -98,7 +98,7 @@ export class MerkleTree {
     let node = this.leaves[leafIndex];
 
     let height = 0;
-    while (typeof node.parent !== 'undefined') {
+    while (typeof node.parent !== "undefined") {
       if (minimizeProofHeight && height >= treeHeight) {
         break;
       }
@@ -113,7 +113,7 @@ export class MerkleTree {
         if (!hashed.equals(parent.node)) {
           console.log(hashed);
           console.log(parent.node);
-          throw new Error('Invariant broken when hashing left node');
+          throw new Error("Invariant broken when hashing left node");
         }
       } else {
         proof.push(parent.left!);
@@ -122,7 +122,7 @@ export class MerkleTree {
         if (!hashed.equals(parent.node)) {
           console.log(hashed);
           console.log(parent.node);
-          throw new Error('Invariant broken when hashing right node');
+          throw new Error("Invariant broken when hashing right node");
         }
       }
       node = parent;
@@ -143,7 +143,7 @@ export class MerkleTree {
     let node = leaf;
 
     var i = 0;
-    while (typeof node.parent !== 'undefined') {
+    while (typeof node.parent !== "undefined") {
       if (verbose) {
         console.log(`${i}: ${Uint8Array.from(node.node)}`);
       }
