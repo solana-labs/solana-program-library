@@ -1,6 +1,10 @@
 # Openbook DEX Dynamic market making curve for token-swap
 
-Implement a curve for token-swap that accepts CLOB dex for the same pair. Implementation should 'split'/'route' portion of order using predefined curve for the pool and the rest to the dex as IOC order. Dynamic curve should find ideal size of the order based on the curve parameters and market depth for a given DEX.
+Implement a curve for token-swap that accepts CLOB dex for the same pair.
+Implementation should 'split'/'route' portion of order using predefined curve
+for the pool and the rest to the dex as IOC order. Dynamic curve should find
+ideal size of the order based on the curve parameters and market depth for a
+given DEX.
 
 Ideas: 
 * CLOB fee discounts 

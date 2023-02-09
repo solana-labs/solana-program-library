@@ -16,8 +16,8 @@ This code is unaudited. Use at your own risk.
 | Testnet | 3.0.0 | `SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw` |
 | Devnet | 3.0.0 | `SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw` |
 
-For mainnet, please use any other AMM project on Solana. Some were based on
-Token Swap!
+While third-party deployments of token-swap exist on Mainnet Beta, the team has
+no plans to deploy it themselves.
 
 Check out the
 [program repository](https://github.com/solana-labs/solana-program-library/tree/master/token-swap)

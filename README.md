@@ -4,9 +4,9 @@ The Solana Program Library (SPL) is a collection of on-chain programs targeting
 the [Sealevel parallel
 runtime](https://medium.com/solana-labs/sealevel-parallel-processing-thousands-of-smart-contracts-d814b378192).
 These programs are tested against Solana's implementation of Sealevel,
-solana-runtime, and some are deployed to mainnet-beta.  As others implement Sealevel, we
-will graciously accept patches to ensure the programs here are portable across
-all implementations.
+solana-runtime, and some are deployed to Mainnet Beta.  As others implement
+Sealevel, we will graciously accept patches to ensure the programs here are
+portable across all implementations.
 
 For more information see the [SPL documentation](https://spl.solana.com) and the [Token TypeDocs](https://solana-labs.github.io/solana-program-library/token/js/).
 
@@ -23,8 +23,9 @@ the Solana Mainnet Beta and maintained by the team. Currently, this includes:
 * [stake-pool](https://github.com/solana-labs/solana-program-library/tree/master/stake-pool/program)
 * [token](https://github.com/solana-labs/solana-program-library/tree/master/token/program)
 
-All other programs are updated on a best-effort basis with community involvement.
-Many programs, including
+All other programs are maintained on a best-effort basis with community support
+and the team has no plans to deploy them to Mainnet Beta at this time. Many
+programs, including
 [token-swap](https://github.com/solana-labs/solana-program-library/tree/master/token-swap/program)
 and [token-lending](https://github.com/solana-labs/solana-program-library/tree/master/token-lending/program),
 are not audited, so fork and deploy them at your own risk.
@@ -91,9 +92,9 @@ Solutions to a few issues you might run into are mentioned here.
     Update your Rust and Cargo to the latest versions and re-run `cargo build-sbf` in the relevant `<program-name>` directory,
     or run it at the repository root to rebuild all on-chain programs.
 
-2. [Error while loading shared libraries. (libssl.so.1.1)](https://solana.stackexchange.com/questions/3029/anchor-test-error-while-loading-shared-libraries-libssl-so-1-1)
+2. [Error while loading shared libraries. (libssl.so.1.1)](https://solana.stackexchange.com/q/3029/36)
 
-    A working solution was mentioned [here](https://solana.stackexchange.com/questions/3029/anchor-test-error-while-loading-shared-libraries-libssl-so-1-1).
+    A working solution was mentioned [here](https://solana.stackexchange.com/q/3029/36).
     Install libssl.
     ```bash
     wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1l-1ubuntu1.2_amd64.deb
