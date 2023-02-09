@@ -68,6 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 14.x
+    needs: cargo-test-sbf
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
