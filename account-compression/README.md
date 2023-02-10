@@ -29,3 +29,8 @@ With a built local SDK, the test suite can be ran with:
 1. `yarn link @solana/spl-account-compression`
 2. `yarn`
 3. `yarn test`
+
+## Audit
+
+The repository [README](https://github.com/solana-labs/solana-program-library#audits)
+contains information about program audits.

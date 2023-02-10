@@ -11,6 +11,7 @@ token converts 1:1 with the deposit token if and only if the decider
 had set `pass` before the end of the decide term, otherwise the `Fail`
 token converts 1:1 with the deposit token.
 
-## Note
+## Audit
 
-This code is unaudited. Use at your own risk.
+The repository [README](https://github.com/solana-labs/solana-program-library#audits)
+contains information about program audits.

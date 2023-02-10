@@ -23,6 +23,7 @@ all large transaction tests, and comparing TPS numbers between:
 * using the program with no padding
 * using the program with data and account padding
 
-## Note
+## Audit
 
-This code is unaudited. Use at your own risk.
+The repository [README](https://github.com/solana-labs/solana-program-library#audits)
+contains information about program audits.

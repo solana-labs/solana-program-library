@@ -6,9 +6,10 @@ Full documentation is available at https://spl.solana.com/token-swap
 
 JavaScript bindings are available in the `./js` directory.
 
-## Note
+## Audit
 
-This code is unaudited. Use at your own risk.
+The repository [README](https://github.com/solana-labs/solana-program-library#audits)
+contains information about program audits.
 
 ## Building master
 

@@ -21,6 +21,7 @@ the offer off-chain.
 
 To cancel, the maker simply needs to cancel the delegation.
 
-## Note
+## Audit
 
-This code is unaudited. Use at your own risk.
+The repository [README](https://github.com/solana-labs/solana-program-library#audits)
+contains information about program audits.
