@@ -5,6 +5,7 @@ title: Token-Lending Program
 A lending protocol for the Token program on the Solana blockchain inspired by
 Aave and Compound.
 
-## Note
+## Audit
 
-This code is unaudited. Use at your own risk.
+The repository [README](https://github.com/solana-labs/solana-program-library#audits)
+contains information about program audits.

@@ -5,9 +5,10 @@ title: Token Swap Program
 A Uniswap-like exchange for the Token program on the Solana blockchain,
 implementing multiple automated market maker (AMM) curves.
 
-## Note
+## Audit
 
-This code is unaudited. Use at your own risk.
+The repository [README](https://github.com/solana-labs/solana-program-library#audits)
+contains information about program audits.
 
 ## Available Deployments
 

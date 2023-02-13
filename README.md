@@ -28,10 +28,9 @@ the Solana Mainnet Beta. Currently, this includes:
 | [name-service](https://github.com/solana-labs/solana-program-library/tree/master/name-service/program) | Not audited | [0.3.0](https://github.com/solana-labs/solana-program-library/releases/tag/name-service-v0.3.0) |
 | [memo](https://github.com/solana-labs/solana-program-library/tree/master/memo/program) | Not audited | [3.0.0](https://github.com/solana-labs/solana-program-library/releases/tag/memo-v3.0.0) |
 
-All other programs are updated on a best-effort basis with community support,
-and the team has no plans to deploy them to Mainnet Beta at this time. These
-programs are not audited, so fork and deploy them at your own risk. Here is the
-full list of unaudited programs:
+All other programs may be updated from time to time. These programs are not
+audited, so fork and deploy them at your own risk. Here is the full list of
+unaudited programs:
 
 * [binary-option](https://github.com/solana-labs/solana-program-library/tree/master/binary-option/program)
 * [binary-oracle-pair](https://github.com/solana-labs/solana-program-library/tree/master/binary-oracle-pair/program)
@@ -45,6 +44,9 @@ full list of unaudited programs:
 
 More information about the repository's security policy at
 [SECURITY.md](https://github.com/solana-labs/solana-program-library/tree/master/SECURITY.md).
+
+The [security-audits repo](https://github.com/solana-labs/security-audits) contains
+all past and present program audits.
 
 ## Development
 

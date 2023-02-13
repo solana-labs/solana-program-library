@@ -8,9 +8,10 @@ tokens from one mint to another.
 The program provides a simple mechanism for burning the original tokens and receiving
 an equal number of new tokens from an escrow account controlled by the program.
 
-## Note
+## Audit
 
-This code is unaudited. Use at your own risk.
+The repository [README](https://github.com/solana-labs/solana-program-library#audits)
+contains information about program audits.
 
 ## Background
 
