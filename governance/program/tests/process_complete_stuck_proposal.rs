@@ -9,7 +9,7 @@ use spl_governance::error::GovernanceError;
 use spl_governance::state::enums::ProposalState;
 
 #[tokio::test]
-async fn test_complete_proposal() {
+async fn test_complete_stuck_proposal() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -49,7 +49,7 @@ async fn test_complete_proposal() {
 
     // Act
     governance_test
-        .complete_proposal(&mut proposal_cookie)
+        .complete_stuck_proposal(&mut proposal_cookie)
         .await
         .unwrap();
 
@@ -65,7 +65,7 @@ async fn test_complete_proposal() {
 }
 
 #[tokio::test]
-async fn test_complete_proposal_with_wrong_state_error() {
+async fn test_complete_stuck_proposal_with_wrong_state_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -113,16 +113,19 @@ async fn test_complete_proposal_with_wrong_state_error() {
 
     // Act
     let err = governance_test
-        .complete_proposal(&mut proposal_cookie)
+        .complete_stuck_proposal(&mut proposal_cookie)
         .await
         .err()
         .unwrap();
 
-    assert_eq!(err, GovernanceError::InvalidStateForCompleteProposal.into());
+    assert_eq!(
+        err,
+        GovernanceError::InvalidStateForCompleteStuckProposal.into()
+    );
 }
 
 #[tokio::test]
-async fn test_complete_proposal_with_completed_state_transaction_exists_error() {
+async fn test_complete_stuck_proposal_with_completed_state_transaction_exists_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -187,10 +190,13 @@ async fn test_complete_proposal_with_completed_state_transaction_exists_error() 
 
     // Act
     let err = governance_test
-        .complete_proposal(&mut proposal_cookie)
+        .complete_stuck_proposal(&mut proposal_cookie)
         .await
         .err()
         .unwrap();
 
-    assert_eq!(err, GovernanceError::InvalidStateForCompleteProposal.into());
+    assert_eq!(
+        err,
+        GovernanceError::InvalidStateForCompleteStuckProposal.into()
+    );
 }

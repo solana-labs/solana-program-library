@@ -524,11 +524,18 @@ pub enum GovernanceInstruction {
     ///   2. `[writable]` Proposal deposit payer (beneficiary) account
     RefundProposalDeposit {},
 
-    /// Verify the state and move the Proposal to Completed.
+    /// Complete proposal when proposal is "stuck" in non-Completed state.
     /// Permission-less operation whoever could call.
     ///
+    /// 1) It enables a way to move a proposal in `Succeeded` to `Completed` state
+    /// when it contains no transactions while the `deny_vote_weight` is enabled.
+    /// If the proposal contains an instruction then on the successful execution it's moved to `Completed` state.
+    /// When `deny_vote_weight` is disabled the proposal is moved to `Completed` at time of finalized voting.
+    /// In case of no transaction exists within proposal and `deny_vote_weight` is enabled
+    /// the instruction CompleteStuckProposal can be used to move the proposal to `Completed` state.
+    ///
     ///   0. `[writable]` Proposal account.
-    CompleteProposal {},
+    CompleteStuckProposal {},
 }
 
 /// Creates CreateRealm instruction
@@ -1667,22 +1674,15 @@ pub fn refund_proposal_deposit(
     }
 }
 
-/// Complete proposal when proposal is "stuck" in non-Completed state.
-///
-/// 1) It enables a way to move a proposal in `Succeeded` to `Completed` state
-/// when it contains no transactions while the `deny_vote_weight` is enabled.
-/// If the proposal contains an instruction then on the successful execution it's moved to `Completed` state.
-/// When `deny_vote_weight` is disabled the proposal is moved to `Completed` at time of finalized voting.
-/// In case of no transaction exists within proposal and `deny_vote_weight` is enabled
-/// the instruction complete_proposal can be used to move the proposal to `Completed` state.
-pub fn complete_proposal(
+/// Creates CompleteStuckProposal instruction to move proposal from Succeeded to Completed
+pub fn complete_stuck_proposal(
     program_id: &Pubkey,
     // Accounts
     proposal: &Pubkey,
 ) -> Instruction {
     let accounts = vec![AccountMeta::new(*proposal, false)];
 
-    let instruction = GovernanceInstruction::CompleteProposal {};
+    let instruction = GovernanceInstruction::CompleteStuckProposal {};
 
     Instruction {
         program_id: *program_id,

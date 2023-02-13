@@ -13,8 +13,11 @@ use crate::{
     state::{enums::ProposalState, proposal::get_proposal_data},
 };
 
-/// Processes CompleteProposal instruction
-pub fn process_complete_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+/// Processes CompleteStuckProposal instruction
+pub fn process_complete_stuck_proposal(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
     let proposal_info = next_account_info(account_info_iter)?; // 0
@@ -33,7 +36,7 @@ pub fn process_complete_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
         proposal_data.closed_at = Some(clock.unix_timestamp);
         proposal_data.state = ProposalState::Completed;
     } else {
-        return Err(GovernanceError::InvalidStateForCompleteProposal.into());
+        return Err(GovernanceError::InvalidStateForCompleteStuckProposal.into());
     }
 
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
