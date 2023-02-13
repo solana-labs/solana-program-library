@@ -18,14 +18,14 @@ use solana_sdk::signature::{Keypair, Signer};
 
 use spl_governance::{
     instruction::{
-        add_signatory, cancel_proposal, cast_vote, create_governance, create_mint_governance,
-        create_native_treasury, create_program_governance, create_proposal, create_realm,
-        create_token_governance, create_token_owner_record, deposit_governing_tokens,
-        execute_transaction, finalize_vote, flag_transaction_error, insert_proposal_options,
-        insert_transaction, refund_proposal_deposit, relinquish_vote, remove_signatory,
-        remove_transaction, revoke_governing_tokens, set_governance_config,
-        set_governance_delegate, set_realm_authority, set_realm_config, sign_off_proposal,
-        upgrade_program_metadata, withdraw_governing_tokens,
+        add_proposal_options, add_signatory, cancel_proposal, cast_vote, create_governance,
+        create_mint_governance, create_native_treasury, create_program_governance, create_proposal,
+        create_realm, create_token_governance, create_token_owner_record, deposit_governing_tokens,
+        execute_transaction, finalize_vote, flag_transaction_error, insert_transaction,
+        refund_proposal_deposit, relinquish_vote, remove_signatory, remove_transaction,
+        revoke_governing_tokens, set_governance_config, set_governance_delegate,
+        set_realm_authority, set_realm_config, sign_off_proposal, upgrade_program_metadata,
+        withdraw_governing_tokens,
     },
     processor::process_instruction,
     state::{
@@ -2127,7 +2127,7 @@ impl GovernanceProgramTest {
             })
             .collect();
 
-        let mut insert_proposal_options_ix = insert_proposal_options(
+        let mut add_proposal_options_ix = add_proposal_options(
             &self.program_id,
             &proposal_cookie.address,
             &token_owner_record_cookie.address,
@@ -2135,10 +2135,10 @@ impl GovernanceProgramTest {
             &self.bench.payer.pubkey(),
             new_options,
         );
-        instruction_override(&mut insert_proposal_options_ix);
+        instruction_override(&mut add_proposal_options_ix);
 
         self.bench
-            .process_transaction(&[insert_proposal_options_ix], Some(&[governance_authority]))
+            .process_transaction(&[add_proposal_options_ix], Some(&[governance_authority]))
             .await?;
 
         // updating the proposal cookie with newly added options

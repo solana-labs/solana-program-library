@@ -760,7 +760,7 @@ impl ProposalV2 {
     }
 
     /// Checks if proposal option can be added
-    pub fn assert_can_insert_proposal_options(&self) -> Result<(), ProgramError> {
+    pub fn assert_can_add_proposal_options(&self) -> Result<(), ProgramError> {
         if self.assert_is_draft_state().is_err() {
             return Err(GovernanceError::InvalidStateCannotEditTransactions.into());
         }

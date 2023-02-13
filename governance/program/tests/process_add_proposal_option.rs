@@ -10,7 +10,7 @@ use spl_governance::{error::GovernanceError, state::proposal::VoteType};
 use spl_governance_test_sdk::tools::NopOverride;
 
 #[tokio::test]
-async fn test_insert_proposal_option() {
+async fn test_add_proposal_option() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -67,7 +67,7 @@ async fn test_insert_proposal_option() {
 }
 
 #[tokio::test]
-async fn test_insert_multi_proposal_option() {
+async fn test_add_multi_proposal_option() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -136,7 +136,7 @@ async fn test_insert_multi_proposal_option() {
 }
 
 #[tokio::test]
-async fn test_insert_proposal_option_with_not_editable_proposal_error() {
+async fn test_add_proposal_option_with_not_editable_proposal_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 

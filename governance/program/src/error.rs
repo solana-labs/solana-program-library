@@ -471,9 +471,9 @@ pub enum GovernanceError {
     #[error("Size of proposal data cannot be calculated")]
     CannotCalculateSizeOfProposalData, // 613
 
-    /// Cannot fit new options data to proposal account
-    #[error("New options data size exceeds allocated proposal account space")]
-    InsertProposalOptionsDataExceedsAccountSize, // 614
+    /// No options provided, nothing to add to proposal
+    #[error("No options provided, nothing to add to proposal")]
+    NoOptionsToAdd, // 614
 
     /// A proposal needs to have at least one option to be considered correct for voting
     #[error("At least one option is required to be inserted to proposal for voting")]

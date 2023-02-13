@@ -524,14 +524,19 @@ pub enum GovernanceInstruction {
     ///   2. `[writable]` Proposal deposit payer (beneficiary) account
     RefundProposalDeposit {},
 
-    /// Insert Options to proposal
+    /// Add Options to proposal when in draft state.
+    /// It works similar to InsertInstruction but it's used for adding options.
+    /// Options can be added to proposal directly at time of creation (instruction CreateProposal).
+    /// If the number of options or their size go over the limit of the Solana transaction size
+    /// or creating the option list goes over the computation limit of the Solana runtime
+    /// this instruction makes possible to add options in chunks.
     ///
     ///   0. `[writable]` Proposal account.
     ///   1. `[]` TokenOwnerRecord account of the Proposal owner
     ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     ///   3. `[writable, signer]` Payer
     ///   4. `[]` System
-    InsertProposalOptions {
+    AddProposalOptions {
         /// Options to be added into proposal account
         #[allow(dead_code)]
         options: Vec<String>,
@@ -968,12 +973,12 @@ pub fn create_proposal(
     }
 }
 
-/// Insert proposal options when proposal in draft
+/// Add proposal options when proposal in draft
 #[allow(clippy::too_many_arguments)]
-pub fn insert_proposal_options(
+pub fn add_proposal_options(
     program_id: &Pubkey,
     // Accounts
-    proposal_address: &Pubkey,
+    proposal: &Pubkey,
     proposal_owner_record: &Pubkey,
     governance_authority: &Pubkey,
     payer: &Pubkey,
@@ -982,14 +987,14 @@ pub fn insert_proposal_options(
     options: Vec<String>,
 ) -> Instruction {
     let accounts = vec![
-        AccountMeta::new(*proposal_address, false),
+        AccountMeta::new(*proposal, false),
         AccountMeta::new_readonly(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
 
-    let instruction = GovernanceInstruction::InsertProposalOptions { options };
+    let instruction = GovernanceInstruction::AddProposalOptions { options };
 
     Instruction {
         program_id: *program_id,

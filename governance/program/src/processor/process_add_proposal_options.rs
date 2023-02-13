@@ -16,8 +16,8 @@ use solana_program::{
 };
 use spl_governance_tools::account::{extend_account_size, AccountMaxSize};
 
-/// Processes InsertProposalOption
-pub fn process_insert_proposal_options(
+/// Processes AddProposalOption
+pub fn process_add_proposal_options(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     options: Vec<String>,
@@ -31,7 +31,7 @@ pub fn process_insert_proposal_options(
     let system_info = next_account_info(account_info_iter)?; // 4
 
     let mut proposal_data = get_proposal_data(program_id, proposal_info)?;
-    proposal_data.assert_can_insert_proposal_options()?;
+    proposal_data.assert_can_add_proposal_options()?;
 
     let token_owner_record_data = get_token_owner_record_data_for_proposal_owner(
         program_id,
@@ -42,6 +42,9 @@ pub fn process_insert_proposal_options(
     // Proposal owner (TokenOwner) or its governance_delegate must sign this transaction
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
+    if options.is_empty() {
+        return Err(GovernanceError::NoOptionsToAdd.into());
+    }
     for option_str in options {
         let po = ProposalOption {
             label: option_str.to_string(),
@@ -54,21 +57,17 @@ pub fn process_insert_proposal_options(
         proposal_data.options.push(po);
     }
 
-    let proposal_new_data_size = if let Some(proposal_data_size) = proposal_data.get_max_size() {
-        Ok(proposal_data_size)
-    } else {
-        Err(GovernanceError::CannotCalculateSizeOfProposalData)
-    }?;
-    if proposal_new_data_size > proposal_info.data.borrow().len() {
-        let rent = Rent::get()?;
-        extend_account_size(
-            proposal_info,
-            payer_info,
-            proposal_new_data_size,
-            &rent,
-            system_info,
-        )?;
-    }
+    let new_account_size = proposal_data
+        .get_max_size()
+        .ok_or(GovernanceError::CannotCalculateSizeOfProposalData)?;
+    let rent = Rent::get()?;
+    extend_account_size(
+        proposal_info,
+        payer_info,
+        new_account_size,
+        &rent,
+        system_info,
+    )?;
 
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
     Ok(())
