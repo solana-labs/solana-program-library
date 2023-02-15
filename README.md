@@ -86,7 +86,7 @@ all past and present program audits.
 | :-- | :-- | :--| :-- |
 | `@solana/spl-token` | Bindings for the token, token-2022, and associated-token-account programs | [![npm](https://img.shields.io/npm/v/@solana/spl-token.svg)](https://www.npmjs.com/package/@solana/spl-token) | [![Docs](https://img.shields.io/badge/docs-typedoc-blue)](https://solana-labs.github.io/solana-program-library/token/js) |
 | `@solana/spl-governance` | Bindings for the governance program | [![npm](https://img.shields.io/npm/v/@solana/spl-governance.svg)](https://www.npmjs.com/package/@solana/spl-governance) | N/A |
-| `@solana/spl-account-compression` | Bindings for the account-compression program | [![npm](https://img.shields.io/npm/v/@solana/spl-account-compression.svg)](https://www.npmjs.com/package/@solana/spl-account-compression) | N/A |
+| `@solana/spl-account-compression` | Bindings for the account-compression program | [![npm](https://img.shields.io/npm/v/@solana/spl-account-compression.svg)](https://www.npmjs.com/package/@solana/spl-account-compression) | [![Docs](https://img.shields.io/badge/docs-typedoc-blue)](https://solana-labs.github.io/solana-program-library/account-compression/sdk/docs) |
 | `@solana/spl-memo` | Bindings for the memo program | [![npm](https://img.shields.io/npm/v/@solana/spl-memo.svg)](https://www.npmjs.com/package/@solana/spl-memo) | N/A |
 | `@solana/spl-name-service` | Bindings for the name-service program | [![npm](https://img.shields.io/npm/v/@solana/spl-name-service.svg)](https://www.npmjs.com/package/@solana/spl-name-service) | N/A |
 | `@solana/spl-stake-pool` | Bindings for the stake-pool program | [![npm](https://img.shields.io/npm/v/@solana/spl-stake-pool.svg)](https://www.npmjs.com/package/@solana/spl-stake-pool) | N/A |
