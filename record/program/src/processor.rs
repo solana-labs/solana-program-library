@@ -6,7 +6,7 @@ use {
         instruction::RecordInstruction,
         state::{Data, RecordData},
     },
-    borsh::{BorshDeserialize, BorshSerialize},
+    borsh::BorshDeserialize,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
@@ -53,8 +53,7 @@ pub fn process_instruction(
 
             account_data.authority = *authority_info.key;
             account_data.version = RecordData::CURRENT_VERSION;
-            account_data
-                .serialize(&mut *data_info.data.borrow_mut())
+            borsh::to_writer(&mut data_info.data.borrow_mut()[..], &account_data)
                 .map_err(|e| e.into())
         }
 
@@ -90,8 +89,7 @@ pub fn process_instruction(
             }
             check_authority(authority_info, &account_data.authority)?;
             account_data.authority = *new_authority_info.key;
-            account_data
-                .serialize(&mut *data_info.data.borrow_mut())
+            borsh::to_writer(&mut data_info.data.borrow_mut()[..], &account_data)
                 .map_err(|e| e.into())
         }
 
@@ -113,8 +111,7 @@ pub fn process_instruction(
                 .checked_add(data_lamports)
                 .ok_or(RecordError::Overflow)?;
             account_data.data = Data::default();
-            account_data
-                .serialize(&mut *data_info.data.borrow_mut())
+            borsh::to_writer(&mut data_info.data.borrow_mut()[..], &account_data)
                 .map_err(|e| e.into())
         }
     }
