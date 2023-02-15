@@ -74,13 +74,13 @@ export class MerkleTree {
   ): MerkleTree {
     const _leaves: Buffer[] = [];
     for (let i = 0; i < 2 ** depth; i++) {
-      if (i < leaves.length) {
+      if (i >= leaves.length) {
         _leaves.push(leaves[i]);
       } else {
-        leaves.push(Buffer.alloc(32));
+        _leaves.push(Buffer.alloc(32));
       }
     }
-    return new MerkleTree(leaves);
+    return new MerkleTree(_leaves);
   }
 
   getRoot(): Buffer {
@@ -178,17 +178,17 @@ export class MerkleTree {
   static verify(
     root: string,
     merkleTreeProof: MerkleTreeProof,
-    verbose = false
+    verbose: boolean = false
   ): boolean {
     const node = MerkleTree.hashProof(merkleTreeProof, verbose);
     const rehashed = new PublicKey(node).toString();
     const received = new PublicKey(root).toString();
-    if (verbose) console.log(`hashed ${rehashed} got ${received}`);
     if (rehashed !== received) {
       throw new Error(
         `Roots don't match! Expected ${rehashed} got ${received}`
       );
     }
+    if (verbose) console.log(`Hashed ${rehashed} got ${received}`);
     return rehashed === received;
   }
 }
