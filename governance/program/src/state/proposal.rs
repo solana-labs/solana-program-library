@@ -109,11 +109,11 @@ pub enum VoteType {
 /// Type of MultiChoice.
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum MultiChoiceType {
-    /// Normal multi choice type that requires decision for only one option when voting.
+    /// Multiple options can be approved with full weight allocated to each approved option.
     Approval,
 
-    /// The multi weighted choice behaves the same way as the MultiChoice
-    /// while it considers the weight_percentage defined in the VoteChoice
+    /// Multiple options can be approved with weight allocated proportionally to the percentage of the total weight.
+    /// The full weight has to be voted among the approved options, i.e., 100% of the weight has to be allocated.
     Weighted,
     // Quadartic multi choice, not available yet
     // Quadratic,
@@ -2548,6 +2548,42 @@ mod test {
 
         // Assert
         assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_multi_choice_approval_vote() {
+        // Arrange
+        let mut proposal = create_test_multi_option_proposal();
+        proposal.vote_type = VoteType::MultiChoice {
+            choice_type: MultiChoiceType::Approval,
+            max_voter_options: 4,
+            max_winning_options: 4,
+        };
+        let choices = vec![
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 100,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 100,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 100,
+            },
+        ];
+
+        let vote = Vote::Approve(choices.clone());
+
+        // Ensure
+        assert_eq!(proposal.options.len(), choices.len());
+
+        // Act
+        let result = proposal.assert_valid_vote(&vote);
+
+        // Assert
+        assert_eq!(result, Ok(()));
     }
 
     #[test]

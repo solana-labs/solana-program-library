@@ -22,7 +22,7 @@ use crate::state::{
 };
 
 /// Voter choice for a proposal option
-/// In the current version only 1) Single choice, 2) Multiple choices proposals are supported and 3) Weighted voting
+/// In the current version only 1) Single choice, 2) Multiple choices proposals and 3) Weighted voting are supported
 /// In the future versions we can add support for 1) Quadratic voting and 2) Ranked choice voting
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct VoteChoice {
