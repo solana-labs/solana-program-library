@@ -74,7 +74,7 @@ export class MerkleTree {
   ): MerkleTree {
     const _leaves: Buffer[] = [];
     for (let i = 0; i < 2 ** depth; i++) {
-      if (i >= leaves.length) {
+      if (i < leaves.length) {
         _leaves.push(leaves[i]);
       } else {
         _leaves.push(Buffer.alloc(32));
