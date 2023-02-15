@@ -49,6 +49,7 @@
     "test:events": "start-server-and-test start-validator http://localhost:8899/health run-tests:events",
     "test:accounts": "start-server-and-test start-validator http://localhost:8899/health run-tests:accounts",
     "test:e2e": "start-server-and-test start-validator http://localhost:8899/health run-tests:e2e",
+    "test:merkle-tree": "jest tests/merkleTree.test.ts --detectOpenHandles",
     "test": "start-server-and-test start-validator http://localhost:8899/health run-tests"
   },
   "dependencies": {

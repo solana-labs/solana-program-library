@@ -1,6 +1,6 @@
-import pkg from "js-sha3";
-import * as Collections from "typescript-collections";
-import { PublicKey } from "@solana/web3.js";
+import pkg from 'js-sha3';
+import * as Collections from 'typescript-collections';
+import { PublicKey } from '@solana/web3.js';
 const { keccak_256 } = pkg;
 
 let CACHE_EMPTY_NODE = new Map<number, Buffer>();
@@ -98,7 +98,7 @@ export class MerkleTree {
     let node = this.leaves[leafIndex];
 
     let height = 0;
-    while (typeof node.parent !== "undefined") {
+    while (typeof node.parent !== 'undefined') {
       if (minimizeProofHeight && height >= treeHeight) {
         break;
       }
@@ -113,7 +113,7 @@ export class MerkleTree {
         if (!hashed.equals(parent.node)) {
           console.log(hashed);
           console.log(parent.node);
-          throw new Error("Invariant broken when hashing left node");
+          throw new Error('Invariant broken when hashing left node');
         }
       } else {
         proof.push(parent.left!);
@@ -122,7 +122,7 @@ export class MerkleTree {
         if (!hashed.equals(parent.node)) {
           console.log(hashed);
           console.log(parent.node);
-          throw new Error("Invariant broken when hashing right node");
+          throw new Error('Invariant broken when hashing right node');
         }
       }
       node = parent;
@@ -143,7 +143,7 @@ export class MerkleTree {
     let node = leaf;
 
     var i = 0;
-    while (typeof node.parent !== "undefined") {
+    while (typeof node.parent !== 'undefined') {
       if (verbose) {
         console.log(`${i}: ${Uint8Array.from(node.node)}`);
       }
@@ -175,8 +175,15 @@ export class MerkleTree {
     return node;
   }
 
+  /**
+   * Verifies that a root matches the proof.
+   * @param root Root of a MerkleTree
+   * @param merkleTreeProof Proof to a leaf in the MerkleTree
+   * @param verbose Whether to print hashed nodes
+   * @returns Whether the proof is valid
+   */
   static verify(
-    root: string,
+    root: Buffer,
     merkleTreeProof: MerkleTreeProof,
     verbose: boolean = false
   ): boolean {
@@ -184,9 +191,9 @@ export class MerkleTree {
     const rehashed = new PublicKey(node).toString();
     const received = new PublicKey(root).toString();
     if (rehashed !== received) {
-      throw new Error(
-        `Roots don't match! Expected ${rehashed} got ${received}`
-      );
+      if (verbose)
+        console.log(`Roots don't match! Expected ${rehashed} got ${received}`);
+      return false;
     }
     if (verbose) console.log(`Hashed ${rehashed} got ${received}`);
     return rehashed === received;
