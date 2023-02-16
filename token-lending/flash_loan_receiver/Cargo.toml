@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 arrayref = "0.3.6"
-solana-program = "1.14.12"
+solana-program = "1.15.2"
 spl-token = { version = "3.5", path = "../../token/program", features=["no-entrypoint"] }
 
 [lib]
