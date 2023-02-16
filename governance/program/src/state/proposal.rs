@@ -498,7 +498,7 @@ impl ProposalV2 {
                         let pass_level_vote_threshold_weight = get_min_vote_threshold_weight(
                             &VoteThreshold::AttendanceQuorum {
                                 threshold: (*pass_level as u16) * 100,
-                                pass_level: 0,
+                                pass_level: u8::MAX, // not used
                             },
                             max_vote_weight,
                         )
@@ -558,11 +558,35 @@ impl ProposalV2 {
         // None executable proposal is just a survey and is considered Completed once the vote ends and no more actions are available
         // There is no overall Success or Failure status for the Proposal however individual options still have their own status
         //
+        // For threshold AttendanceQuorum the survey is considered Completed when passes the threshold
+        // where result of options are not relevant for the survey and are set to None.
+        //
         // Note: An off-chain/manually executable Proposal has no instructions but it still must have the deny vote enabled to be binding
         // In such a case, if successful, the Proposal vote ends in Succeeded state and it must be manually transitioned to Completed state
         // by the Proposal owner once the external actions are executed
         if self.deny_vote_weight.is_none() {
-            final_state = ProposalState::Completed;
+            final_state = match vote_threshold {
+                VoteThreshold::YesVotePercentage(_) => ProposalState::Completed,
+                VoteThreshold::AttendanceQuorum {
+                    threshold: _,
+                    pass_level: _,
+                } => {
+                    if self.approve_vote_weight + self.deny_vote_weight.unwrap_or(0)
+                        >= min_vote_threshold_weight
+                    {
+                        ProposalState::Completed
+                    } else {
+                        ProposalState::Defeated
+                    }
+                }
+                _ => {
+                    // Disabled, this should not happen
+                    return Err(ProgramError::InvalidArgument);
+                }
+            };
+            self.options
+                .iter_mut()
+                .for_each(|o| o.vote_result = OptionVoteResult::None);
         }
 
         Ok(final_state)
@@ -725,7 +749,7 @@ impl ProposalV2 {
                 min_vote_threshold_weight = get_min_vote_threshold_weight(
                     &VoteThreshold::AttendanceQuorum {
                         threshold: (pass_level as u16) * 100,
-                        pass_level: 0,
+                        pass_level: u8::MAX, // not used
                     },
                     max_voter_weight,
                 )

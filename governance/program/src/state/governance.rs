@@ -616,10 +616,11 @@ pub fn assert_is_valid_vote_threshold(vote_threshold: &VoteThreshold) -> Result<
             pass_level,
         } => {
             if !(0..=10000).contains(&threshold) {
+                msg!("threshold (basispoints) has to be in interval [0,10000]");
                 return Err(GovernanceError::InvalidVoteThresholdBasisPoints.into());
             }
-            if !(1..=100).contains(&pass_level) {
-                msg!("pass_level has to be in interval [1,100]");
+            if !(0..=100).contains(&pass_level) {
+                msg!("pass_level (percent) has to be in interval [0,100]");
                 return Err(GovernanceError::InvalidVoteThresholdPercentage.into());
             }
         }

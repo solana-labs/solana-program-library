@@ -521,7 +521,7 @@ async fn test_finalize_vote_attendance_quorum() {
 
     let mut governance_config = governance_test.get_default_governance_config();
 
-    // Attendance quorum, all mint owners have to vote but then only 30% is enough for the vote passes
+    // Attendance quorum, all mint owners mustvote (100% of them), only 30% needed for an option being successful
     // Total 300 tokens; one token owner owns 100 that will be voted with
     governance_config.community_vote_threshold = VoteThreshold::AttendanceQuorum {
         threshold: 10000,
@@ -560,7 +560,7 @@ async fn test_finalize_vote_attendance_quorum() {
                 "option 2".to_string(),
                 "option 3".to_string(),
             ],
-            false,
+            true, // no transactions but not a survey
             VoteType::MultiChoice {
                 max_winning_options: 3,
                 max_voter_options: 3,
@@ -617,7 +617,6 @@ async fn test_finalize_vote_attendance_quorum() {
         },
     ]);
 
-    // Act
     governance_test
         .with_cast_vote(&proposal_cookie, &token_owner_record_cookie1, vote1)
         .await
@@ -657,10 +656,444 @@ async fn test_finalize_vote_attendance_quorum() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    // the transition move from Succeeded to Completed happens as deny vote is not permitted
-    assert_eq!(proposal_account.state, ProposalState::Completed);
+    // end state of non-survey proposal is succeeded
+    assert_eq!(proposal_account.state, ProposalState::Succeeded);
     assert_eq!(Some(300), proposal_account.max_vote_weight);
     for option in proposal_account.options {
         assert_eq!(OptionVoteResult::Succeeded, option.vote_result);
     }
+}
+
+#[tokio::test]
+async fn test_finalize_vote_attendance_quorum_as_survey() {
+    // the survey "type" of the proposal is one that contains no transactions
+    // and permits no deny votes
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let mut governance_config = governance_test.get_default_governance_config();
+
+    // Attendance quorum, 50% of owners has to vote, 50% needed for an option to be successful
+    // Total 300 tokens; one token owner owns 100 that will be voted with
+    governance_config.community_vote_threshold = VoteThreshold::AttendanceQuorum {
+        threshold: 5000,
+        pass_level: 100, // survey does not consider pass level
+    };
+
+    let token_owner_record_cookie1 = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+    let token_owner_record_cookie2 = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+    governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie1,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_multi_option_proposal(
+            &token_owner_record_cookie1,
+            &mut governance_cookie,
+            vec![
+                "option 1".to_string(),
+                "option 2".to_string(),
+                "option 3".to_string(),
+            ],
+            false, // a survey
+            VoteType::MultiChoice {
+                max_winning_options: 3,
+                max_voter_options: 3,
+            },
+        )
+        .await
+        .unwrap();
+
+    governance_test
+        .sign_off_proposal_by_owner(&proposal_cookie, &token_owner_record_cookie1)
+        .await
+        .unwrap();
+
+    let vote1 = Vote::Approve(vec![
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 100,
+        },
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 0,
+        },
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 0,
+        },
+    ]);
+    let vote2 = Vote::Approve(vec![
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 0,
+        },
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 100,
+        },
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 0,
+        },
+    ]);
+
+    governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie1, vote1)
+        .await
+        .unwrap();
+    governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie2, vote2)
+        .await
+        .unwrap();
+
+    // Ensure not tipped
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+    assert_eq!(ProposalState::Voting, proposal_account.state);
+
+    // advance time
+    let clock = governance_test.bench.get_clock().await;
+    governance_test
+        .advance_clock_past_timestamp(
+            clock.unix_timestamp + governance_cookie.account.config.voting_base_time as i64,
+        )
+        .await;
+
+    // Act
+    governance_test
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
+        .await
+        .unwrap();
+
+    // Assert
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    // the transition move from Succeeded to Completed happens as deny vote is not permitted
+    assert_eq!(proposal_account.state, ProposalState::Completed);
+    assert_eq!(Some(300), proposal_account.max_vote_weight);
+    assert_eq!(
+        OptionVoteResult::None,
+        proposal_account.options[0].vote_result
+    );
+    assert_eq!(
+        OptionVoteResult::None,
+        proposal_account.options[1].vote_result
+    );
+    assert_eq!(
+        OptionVoteResult::None,
+        proposal_account.options[2].vote_result
+    );
+}
+
+#[tokio::test]
+async fn test_finalize_vote_attendance_quorum_fail_threshold() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let mut governance_config = governance_test.get_default_governance_config();
+
+    // Attendance quorum, all must vote
+    governance_config.community_vote_threshold = VoteThreshold::AttendanceQuorum {
+        threshold: 10000,
+        pass_level: 0,
+    };
+
+    // 300 tokens for governance mint but no votes cast
+    let token_owner_record_cookie1 = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+    let token_owner_record_cookie2 = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+    governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie1,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_multi_option_proposal(
+            &token_owner_record_cookie1,
+            &mut governance_cookie,
+            vec![
+                "option 1".to_string(),
+                "option 2".to_string(),
+                "option 3".to_string(),
+            ],
+            true, // no transactions but not a survey
+            VoteType::MultiChoice {
+                max_winning_options: 3,
+                max_voter_options: 3,
+            },
+        )
+        .await
+        .unwrap();
+
+    governance_test
+        .sign_off_proposal_by_owner(&proposal_cookie, &token_owner_record_cookie1)
+        .await
+        .unwrap();
+
+    let vote = Vote::Approve(vec![
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 100,
+        },
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 0,
+        },
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 0,
+        },
+    ]);
+    governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie2, vote)
+        .await
+        .unwrap();
+
+    // advance time
+    let clock = governance_test.bench.get_clock().await;
+    governance_test
+        .advance_clock_past_timestamp(
+            clock.unix_timestamp + governance_cookie.account.config.voting_base_time as i64,
+        )
+        .await;
+
+    // Act
+    governance_test
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
+        .await
+        .unwrap();
+
+    // Assert
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    // end state of non-survey proposal is succeeded
+    assert_eq!(proposal_account.state, ProposalState::Defeated);
+    assert_eq!(Some(300), proposal_account.max_vote_weight);
+    for option in proposal_account.options {
+        assert_eq!(OptionVoteResult::Defeated, option.vote_result);
+    }
+}
+
+#[tokio::test]
+async fn test_finalize_vote_attendance_quorum_survey_fail_threshold() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let mut governance_config = governance_test.get_default_governance_config();
+
+    // Attendance quorum, somebody must vote
+    governance_config.community_vote_threshold = VoteThreshold::AttendanceQuorum {
+        threshold: 1,
+        pass_level: 0,
+    };
+
+    // 300 tokens for governance mint but no votes cast
+    let token_owner_record_cookie1 = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie1,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_multi_option_proposal(
+            &token_owner_record_cookie1,
+            &mut governance_cookie,
+            vec!["option 1".to_string(), "option 2".to_string()],
+            false, // a survey (no transactions, no deny votes)
+            VoteType::MultiChoice {
+                max_winning_options: 2,
+                max_voter_options: 2,
+            },
+        )
+        .await
+        .unwrap();
+
+    governance_test
+        .sign_off_proposal_by_owner(&proposal_cookie, &token_owner_record_cookie1)
+        .await
+        .unwrap();
+
+    // advance time
+    let clock = governance_test.bench.get_clock().await;
+    governance_test
+        .advance_clock_past_timestamp(
+            clock.unix_timestamp + governance_cookie.account.config.voting_base_time as i64,
+        )
+        .await;
+
+    // Act
+    governance_test
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
+        .await
+        .unwrap();
+
+    // Assert
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    // end state of non-survey proposal is succeeded
+    assert_eq!(proposal_account.state, ProposalState::Defeated);
+    assert_eq!(Some(100), proposal_account.max_vote_weight);
+    for option in proposal_account.options {
+        assert_eq!(OptionVoteResult::None, option.vote_result);
+    }
+}
+
+#[tokio::test]
+async fn test_finalize_vote_attendance_quorum_pass_level_0() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let mut governance_config = governance_test.get_default_governance_config();
+
+    // Attendance quorum, 50% of the votes must vote
+    governance_config.community_vote_threshold = VoteThreshold::AttendanceQuorum {
+        threshold: 50,
+        pass_level: 0, // pass level 0 still means 0% of the votes failed
+    };
+
+    // 300 tokens for governance mint but no votes cast
+    let token_owner_record_cookie1 = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+    let token_owner_record_cookie2 = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie1,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_multi_option_proposal(
+            &token_owner_record_cookie1,
+            &mut governance_cookie,
+            vec!["option 1".to_string(), "option 2".to_string()],
+            true, // no transactions but not a survey
+            VoteType::MultiChoice {
+                max_winning_options: 2,
+                max_voter_options: 2,
+            },
+        )
+        .await
+        .unwrap();
+
+    governance_test
+        .sign_off_proposal_by_owner(&proposal_cookie, &token_owner_record_cookie1)
+        .await
+        .unwrap();
+
+    let vote = Vote::Approve(vec![
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 100,
+        },
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 0,
+        },
+    ]);
+    governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie2, vote)
+        .await
+        .unwrap();
+
+    // advance time
+    let clock = governance_test.bench.get_clock().await;
+    governance_test
+        .advance_clock_past_timestamp(
+            clock.unix_timestamp + governance_cookie.account.config.voting_base_time as i64,
+        )
+        .await;
+
+    // Act
+    governance_test
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
+        .await
+        .unwrap();
+
+    // Assert
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    // end state of non-survey proposal is succeeded
+    assert_eq!(proposal_account.state, ProposalState::Succeeded);
+    assert_eq!(Some(200), proposal_account.max_vote_weight);
+    assert_eq!(
+        OptionVoteResult::Succeeded,
+        proposal_account.options[0].vote_result
+    );
+    assert_eq!(
+        OptionVoteResult::Defeated,
+        proposal_account.options[1].vote_result
+    );
 }

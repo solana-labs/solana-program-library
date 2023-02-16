@@ -265,7 +265,7 @@ async fn test_vote_on_none_executable_single_choice_proposal_with_multiple_optio
             &token_owner_record_cookie,
             &mut governance_cookie,
             vec!["option 1".to_string(), "option 2".to_string()],
-            false,
+            true, // not a survey
             VoteType::SingleChoice,
         )
         .await
@@ -328,8 +328,7 @@ async fn test_vote_on_none_executable_single_choice_proposal_with_multiple_optio
         proposal_account.options[1].vote_result
     );
 
-    // None executable proposal transitions to Completed when vote is finalized
-    assert_eq!(ProposalState::Completed, proposal_account.state);
+    assert_eq!(ProposalState::Succeeded, proposal_account.state);
 }
 
 #[tokio::test]
@@ -363,7 +362,7 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
                 "option 2".to_string(),
                 "option 3".to_string(),
             ],
-            false,
+            true,
             VoteType::MultiChoice {
                 choice_type: MultiChoiceType::FullWeight,
                 min_voter_options: 1,
@@ -440,8 +439,7 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
         proposal_account.options[2].vote_result
     );
 
-    // None executable proposal transitions to Completed when vote is finalized
-    assert_eq!(ProposalState::Completed, proposal_account.state);
+    assert_eq!(ProposalState::Succeeded, proposal_account.state);
 }
 
 #[tokio::test]
