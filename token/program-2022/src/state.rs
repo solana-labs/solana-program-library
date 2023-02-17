@@ -238,7 +238,7 @@ impl Pack for Multisig {
             signers: [Pubkey::new_from_array([0u8; 32]); MAX_SIGNERS],
         };
         for (src, dst) in signers_flat.chunks(32).zip(result.signers.iter_mut()) {
-            *dst = Pubkey::new(src);
+            *dst = Pubkey::try_from(src).map_err(|_| ProgramError::InvalidInstructionData)?;
         }
         Ok(result)
     }
@@ -395,7 +395,7 @@ pub(crate) mod test {
             m: 1,
             n: 2,
             is_initialized: true,
-            signers: [Pubkey::new(&[3; 32]); MAX_SIGNERS],
+            signers: [Pubkey::from([3; 32]); MAX_SIGNERS],
         };
         let mut packed = vec![0; Multisig::get_packed_len() + 1];
         assert_eq!(

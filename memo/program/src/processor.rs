@@ -44,7 +44,7 @@ mod tests {
 
     #[test]
     fn test_utf8_memo() {
-        let program_id = Pubkey::new(&[0; 32]);
+        let program_id = Pubkey::from([0; 32]);
 
         let string = b"letters and such";
         assert_eq!(Ok(()), process_instruction(&program_id, &[], string));
@@ -64,7 +64,7 @@ mod tests {
 
     #[test]
     fn test_signers() {
-        let program_id = Pubkey::new(&[0; 32]);
+        let program_id = Pubkey::from([0; 32]);
         let memo = "🐆".as_bytes();
 
         let pubkey0 = Pubkey::new_unique();

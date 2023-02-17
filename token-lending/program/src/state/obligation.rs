@@ -462,7 +462,8 @@ impl Pack for Obligation {
             let (deposit_reserve, deposited_amount, market_value) =
                 array_refs![deposits_flat, PUBKEY_BYTES, 8, 16];
             deposits.push(ObligationCollateral {
-                deposit_reserve: Pubkey::new(deposit_reserve),
+                deposit_reserve: Pubkey::try_from(deposit_reserve as &[u8])
+                    .map_err(|_| ProgramError::InvalidInstructionData)?,
                 deposited_amount: u64::from_le_bytes(*deposited_amount),
                 market_value: unpack_decimal(market_value),
             });
@@ -474,7 +475,8 @@ impl Pack for Obligation {
             let (borrow_reserve, cumulative_borrow_rate_wads, borrowed_amount_wads, market_value) =
                 array_refs![borrows_flat, PUBKEY_BYTES, 16, 16, 16];
             borrows.push(ObligationLiquidity {
-                borrow_reserve: Pubkey::new(borrow_reserve),
+                borrow_reserve: Pubkey::try_from(borrow_reserve as &[u8])
+                    .map_err(|_| ProgramError::InvalidInstructionData)?,
                 cumulative_borrow_rate_wads: unpack_decimal(cumulative_borrow_rate_wads),
                 borrowed_amount_wads: unpack_decimal(borrowed_amount_wads),
                 market_value: unpack_decimal(market_value),

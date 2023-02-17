@@ -869,7 +869,7 @@ mod test {
         let state = StateWithExtensions::<Mint>::unpack(MINT_WITH_EXTENSION).unwrap();
         assert_eq!(state.base, TEST_MINT);
         let extension = state.get_extension::<MintCloseAuthority>().unwrap();
-        let close_authority = OptionalNonZeroPubkey::try_from(Some(Pubkey::new(&[1; 32]))).unwrap();
+        let close_authority = OptionalNonZeroPubkey::try_from(Some(Pubkey::from([1; 32]))).unwrap();
         assert_eq!(extension.close_authority, close_authority);
         assert_eq!(
             state.get_extension::<TransferFeeConfig>(),
@@ -1010,7 +1010,7 @@ mod test {
         );
 
         // success write extension
-        let close_authority = OptionalNonZeroPubkey::try_from(Some(Pubkey::new(&[1; 32]))).unwrap();
+        let close_authority = OptionalNonZeroPubkey::try_from(Some(Pubkey::from([1; 32]))).unwrap();
         let extension = state.init_extension::<MintCloseAuthority>(true).unwrap();
         extension.close_authority = close_authority;
         assert_eq!(
@@ -1159,7 +1159,7 @@ mod test {
 
         let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
         // write extensions
-        let close_authority = OptionalNonZeroPubkey::try_from(Some(Pubkey::new(&[1; 32]))).unwrap();
+        let close_authority = OptionalNonZeroPubkey::try_from(Some(Pubkey::from([1; 32]))).unwrap();
         let extension = state.init_extension::<MintCloseAuthority>(true).unwrap();
         extension.close_authority = close_authority;
 
@@ -1203,7 +1203,7 @@ mod test {
         extension.older_transfer_fee = mint_transfer_fee.older_transfer_fee;
         extension.newer_transfer_fee = mint_transfer_fee.newer_transfer_fee;
 
-        let close_authority = OptionalNonZeroPubkey::try_from(Some(Pubkey::new(&[1; 32]))).unwrap();
+        let close_authority = OptionalNonZeroPubkey::try_from(Some(Pubkey::from([1; 32]))).unwrap();
         let extension = state.init_extension::<MintCloseAuthority>(true).unwrap();
         extension.close_authority = close_authority;
 
