@@ -4,6 +4,7 @@ solana_version = "1.14.12"
 [workspace]
 members = [
   "governance/program",
+  "governance/chat/program",
   "memo/program",
   "stake-pool/program",
   "token/program",
@@ -19,6 +20,7 @@ wallet = "~/.config/solana/id.json"
 
 [programs.mainnet]
 spl_governance = "GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw"
+spl_governance_chat = "gCHAtYKrUUktTVzE4hEnZdLV4LXrdBf6Hh9qMaJALET"
 spl_stake_pool = "SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy"
 spl_token = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 spl_token_2022 = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
