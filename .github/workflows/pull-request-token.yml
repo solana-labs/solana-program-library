@@ -114,6 +114,8 @@ jobs:
       - name: Build and test token-2022 twoxtx (TEMPORARY)
         run: |
           ./token/twoxtx-setup.sh
+          ./token/twoxtx-solana/cargo-build-sbf --manifest-path token/program-2022/Cargo.toml
+          ./token/twoxtx-solana/cargo-build-sbf --manifest-path instruction-padding/program/Cargo.toml
           ./token/twoxtx-solana/cargo-test-sbf --manifest-path token/program-2022-test/Cargo.toml -- --nocapture
 
   js-test:
