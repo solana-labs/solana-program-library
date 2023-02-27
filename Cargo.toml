@@ -41,6 +41,7 @@ members = [
   "token-upgrade/cli",
   "token-upgrade/program",
   "token/cli",
+  "token/permissioned-transfer",
   "token/program",
   "token/program-2022",
   "token/program-2022-test",
