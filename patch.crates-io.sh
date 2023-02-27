@@ -24,7 +24,12 @@ solana_dir=$(cd "$solana_dir" && pwd)
 cd "$(dirname "$0")"
 
 source "$solana_dir"/scripts/read-cargo-variable.sh
-cp "$solana_dir"/rust-toolchain.toml .
+
+# The toolchain file only exists in version >= 1.15
+toolchain_file="$solana_dir"/rust-toolchain.toml
+if [[ -f "$toolchain_file" ]]; then
+  cp "$toolchain_file" .
+fi
 
 # get version from Cargo.toml first. if it is empty, get it from other places.
 solana_ver="$(readCargoVariable version "$solana_dir"/Cargo.toml)"
