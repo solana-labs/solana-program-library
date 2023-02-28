@@ -688,7 +688,7 @@ fn display_ui_extension(
         }
         // ExtensionType::Uninitialized is a hack to ensure a mint/account is never the same length as a multisig
         UiExtension::Uninitialized => Ok(()),
-        UiExtension::UnparseableExtension => writeln_name_value(
+        _ => writeln_name_value(
             f,
             "    Unparseable extension:",
             "Consider upgrading to a newer version of spl-token",
