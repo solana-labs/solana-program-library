@@ -511,10 +511,13 @@ impl ReserveLiquidity {
     /// Calculate the liquidity utilization rate of the reserve
     pub fn utilization_rate(&self) -> Result<Rate, ProgramError> {
         let total_supply = self.total_supply()?;
-        if total_supply == Decimal::zero() {
+        if total_supply == Decimal::zero() || self.borrowed_amount_wads == Decimal::zero() {
             return Ok(Rate::zero());
         }
-        self.borrowed_amount_wads.try_div(total_supply)?.try_into()
+        let denominator = self
+            .borrowed_amount_wads
+            .try_add(Decimal::from(self.available_amount))?;
+        self.borrowed_amount_wads.try_div(denominator)?.try_into()
     }
 
     /// Compound current borrow rate over elapsed slots
