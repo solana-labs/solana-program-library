@@ -40,7 +40,7 @@ tokio = "1.14"
 solana-test-validator = "=1.14.12"
 assert_cmd = "2.0.4"
 serial_test = "0.8.0"
-tempfile = "3.3.0"
+tempfile = "3.4.0"
 
 [[bin]]
 name = "spl-token"
