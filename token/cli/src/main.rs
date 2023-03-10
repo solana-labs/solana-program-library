@@ -787,8 +787,24 @@ async fn command_authorize(
                         ))
                     }
                 }
-                AuthorityType::TransferFeeConfig => unimplemented!(),
-                AuthorityType::WithheldWithdraw => unimplemented!(),
+                AuthorityType::TransferFeeConfig => {
+                    if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
+                        Ok(COption::<Pubkey>::from(
+                            transfer_fee_config.transfer_fee_config_authority,
+                        ))
+                    } else {
+                        Err(format!("Mint `{}` does not support transfer fees", account))
+                    }
+                }
+                AuthorityType::WithheldWithdraw => {
+                    if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
+                        Ok(COption::<Pubkey>::from(
+                            transfer_fee_config.withdraw_withheld_authority,
+                        ))
+                    } else {
+                        Err(format!("Mint `{}` does not support transfer fees", account))
+                    }
+                }
                 AuthorityType::InterestRate => {
                     if let Ok(interest_rate_config) = mint.get_extension::<InterestBearingConfig>()
                     {
@@ -6665,6 +6681,54 @@ mod tests {
         assert_eq!(
             u64::from(extension.newer_transfer_fee.maximum_fee),
             new_maximum_fee
+        );
+
+        // disable transfer fee authority
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Authorize.into(),
+                "--disable",
+                &token_pubkey.to_string(),
+                "transfer-fee-config",
+            ],
+        )
+        .await
+        .unwrap();
+
+        let mint = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint.data).unwrap();
+        let extension = mint_state.get_extension::<TransferFeeConfig>().unwrap();
+
+        assert_eq!(
+            Option::<Pubkey>::try_from(extension.transfer_fee_config_authority).unwrap(),
+            None,
+        );
+
+        // disable withdraw withheld authority
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Authorize.into(),
+                "--disable",
+                &token_pubkey.to_string(),
+                "withheld-withdraw",
+            ],
+        )
+        .await
+        .unwrap();
+
+        let mint = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint.data).unwrap();
+        let extension = mint_state.get_extension::<TransferFeeConfig>().unwrap();
+
+        assert_eq!(
+            Option::<Pubkey>::try_from(extension.withdraw_withheld_authority).unwrap(),
+            None,
         );
     }
 
