@@ -642,6 +642,7 @@ pub fn inner_configure_account(
 /// Create a `ConfigureAccount` instruction
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_os = "solana"))]
+#[cfg(feature = "proof-program")]
 pub fn configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -650,7 +651,7 @@ pub fn configure_account(
     maximum_pending_balance_credit_counter: u64,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    #[cfg(feature = "proof-program")] proof_data: &PubkeyValidityData,
+    proof_data: &PubkeyValidityData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
         inner_configure_account(
@@ -723,12 +724,13 @@ pub fn inner_empty_account(
 }
 
 /// Create a `EmptyAccount` instruction
+#[cfg(feature = "proof-program")]
 pub fn empty_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    #[cfg(feature = "proof-program")] proof_data: &CloseAccountData,
+    proof_data: &CloseAccountData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
         inner_empty_account(
@@ -821,6 +823,7 @@ pub fn inner_withdraw(
 /// Create a `Withdraw` instruction
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_os = "solana"))]
+#[cfg(feature = "proof-program")]
 pub fn withdraw(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -830,7 +833,7 @@ pub fn withdraw(
     new_decryptable_available_balance: AeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    #[cfg(feature = "proof-program")] proof_data: &WithdrawData,
+    proof_data: &WithdrawData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
         inner_withdraw(
@@ -891,6 +894,7 @@ pub fn inner_transfer(
 /// Create a `Transfer` instruction with regular (no-fee) proof
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_os = "solana"))]
+#[cfg(feature = "proof-program")]
 pub fn transfer(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
@@ -899,7 +903,7 @@ pub fn transfer(
     new_source_decryptable_available_balance: AeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    #[cfg(feature = "proof-program")] proof_data: &TransferData,
+    proof_data: &TransferData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
         inner_transfer(
@@ -1123,13 +1127,14 @@ pub fn inner_withdraw_withheld_tokens_from_mint(
 }
 
 /// Create a `WithdrawWithheldTokensFromMint` instruction
+#[cfg(feature = "proof-program")]
 pub fn withdraw_withheld_tokens_from_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
     destination: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    #[cfg(feature = "proof-program")] proof_data: &WithdrawWithheldTokensData,
+    proof_data: &WithdrawWithheldTokensData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
         inner_withdraw_withheld_tokens_from_mint(
@@ -1188,6 +1193,7 @@ pub fn inner_withdraw_withheld_tokens_from_accounts(
 }
 
 /// Create a `WithdrawWithheldTokensFromAccounts` instruction
+#[cfg(feature = "proof-program")]
 pub fn withdraw_withheld_tokens_from_accounts(
     token_program_id: &Pubkey,
     mint: &Pubkey,
@@ -1195,7 +1201,7 @@ pub fn withdraw_withheld_tokens_from_accounts(
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     sources: &[&Pubkey],
-    #[cfg(feature = "proof-program")] proof_data: &WithdrawWithheldTokensData,
+    proof_data: &WithdrawWithheldTokensData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
         inner_withdraw_withheld_tokens_from_accounts(
