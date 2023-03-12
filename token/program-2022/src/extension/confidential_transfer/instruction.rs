@@ -642,6 +642,7 @@ pub fn inner_configure_account(
 /// Create a `ConfigureAccount` instruction
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_os = "solana"))]
+#[cfg(feature = "proof-program")]
 pub fn configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -663,6 +664,7 @@ pub fn configure_account(
             multisig_signers,
             1,
         )?,
+        #[cfg(feature = "proof-program")]
         verify_pubkey_validity(proof_data),
     ])
 }
@@ -722,6 +724,7 @@ pub fn inner_empty_account(
 }
 
 /// Create a `EmptyAccount` instruction
+#[cfg(feature = "proof-program")]
 pub fn empty_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -737,6 +740,7 @@ pub fn empty_account(
             multisig_signers,
             1,
         )?, // calls check_program_account
+        #[cfg(feature = "proof-program")]
         verify_close_account(proof_data),
     ])
 }
@@ -819,6 +823,7 @@ pub fn inner_withdraw(
 /// Create a `Withdraw` instruction
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_os = "solana"))]
+#[cfg(feature = "proof-program")]
 pub fn withdraw(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -842,6 +847,7 @@ pub fn withdraw(
             multisig_signers,
             1,
         )?, // calls check_program_account
+        #[cfg(feature = "proof-program")]
         verify_withdraw(proof_data),
     ])
 }
@@ -888,6 +894,7 @@ pub fn inner_transfer(
 /// Create a `Transfer` instruction with regular (no-fee) proof
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_os = "solana"))]
+#[cfg(feature = "proof-program")]
 pub fn transfer(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
@@ -909,6 +916,7 @@ pub fn transfer(
             multisig_signers,
             1,
         )?, // calls check_program_account
+        #[cfg(feature = "proof-program")]
         verify_transfer(proof_data),
     ])
 }
@@ -1119,6 +1127,7 @@ pub fn inner_withdraw_withheld_tokens_from_mint(
 }
 
 /// Create a `WithdrawWithheldTokensFromMint` instruction
+#[cfg(feature = "proof-program")]
 pub fn withdraw_withheld_tokens_from_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
@@ -1136,6 +1145,7 @@ pub fn withdraw_withheld_tokens_from_mint(
             multisig_signers,
             1,
         )?,
+        #[cfg(feature = "proof-program")]
         verify_withdraw_withheld_tokens(proof_data),
     ])
 }
@@ -1183,6 +1193,7 @@ pub fn inner_withdraw_withheld_tokens_from_accounts(
 }
 
 /// Create a `WithdrawWithheldTokensFromAccounts` instruction
+#[cfg(feature = "proof-program")]
 pub fn withdraw_withheld_tokens_from_accounts(
     token_program_id: &Pubkey,
     mint: &Pubkey,
@@ -1202,6 +1213,7 @@ pub fn withdraw_withheld_tokens_from_accounts(
             sources,
             1,
         )?,
+        #[cfg(feature = "proof-program")]
         verify_withdraw_withheld_tokens(proof_data),
     ])
 }

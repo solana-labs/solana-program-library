@@ -8,9 +8,10 @@ repository = "https://github.com/solana-labs/solana-program-library"
 version = "0.0.1"
 
 [features]
-test-sbf = []
+test-sbf = ["zk-ops"]
 default = ["zk-ops"]
 zk-ops = []
+proof-program = []
 
 [build-dependencies]
 walkdir = "2"
