@@ -924,6 +924,7 @@ pub fn transfer(
 /// Create a `Transfer` instruction with fee proof
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_os = "solana"))]
+#[cfg(feature = "proof-program")]
 pub fn transfer_with_fee(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,

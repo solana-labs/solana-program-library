@@ -5927,7 +5927,7 @@ dependencies = [
  "num-traits",
  "solana-program",
  "spl-token 3.5.0",
- "spl-token-2022 0.6.0",
+ "spl-token-2022 0.6.1",
  "thiserror",
 ]
 
@@ -5940,7 +5940,7 @@ dependencies = [
  "solana-sdk",
  "spl-associated-token-account 1.1.3",
  "spl-token 3.5.0",
- "spl-token-2022 0.6.0",
+ "spl-token-2022 0.6.1",
 ]
 
 [[package]]
@@ -6296,7 +6296,7 @@ dependencies = [
  "solana-vote-program",
  "spl-math",
  "spl-token 3.5.0",
- "spl-token-2022 0.6.0",
+ "spl-token-2022 0.6.1",
  "test-case",
  "thiserror",
 ]
@@ -6379,7 +6379,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-2022"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "arrayref",
  "bytemuck",
@@ -6412,7 +6412,7 @@ dependencies = [
  "spl-associated-token-account 1.1.3",
  "spl-instruction-padding",
  "spl-memo 3.0.1",
- "spl-token-2022 0.6.0",
+ "spl-token-2022 0.6.1",
  "spl-token-client",
  "walkdir",
 ]
@@ -6442,7 +6442,7 @@ dependencies = [
  "spl-associated-token-account 1.1.3",
  "spl-memo 3.0.1",
  "spl-token 3.5.0",
- "spl-token-2022 0.6.0",
+ "spl-token-2022 0.6.1",
  "spl-token-client",
  "strum",
  "strum_macros",
@@ -6453,7 +6453,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-client"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "async-trait",
  "solana-cli-output",
@@ -6463,7 +6463,7 @@ dependencies = [
  "spl-associated-token-account 1.1.3",
  "spl-memo 3.0.1",
  "spl-token 3.5.0",
- "spl-token-2022 0.6.0",
+ "spl-token-2022 0.6.1",
  "thiserror",
 ]
 
@@ -6519,7 +6519,7 @@ dependencies = [
  "solana-sdk",
  "spl-math",
  "spl-token 3.5.0",
- "spl-token-2022 0.6.0",
+ "spl-token-2022 0.6.1",
  "test-case",
  "thiserror",
 ]
@@ -6547,7 +6547,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-token 3.5.0",
- "spl-token-2022 0.6.0",
+ "spl-token-2022 0.6.1",
  "spl-token-client",
  "test-case",
  "thiserror",
@@ -6568,7 +6568,7 @@ dependencies = [
  "solana-test-validator",
  "spl-associated-token-account 1.1.3",
  "spl-token 3.5.0",
- "spl-token-2022 0.6.0",
+ "spl-token-2022 0.6.1",
  "spl-token-client",
  "spl-token-upgrade",
  "tokio",
