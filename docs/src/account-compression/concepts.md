@@ -10,7 +10,7 @@ To understand concurrent merkle trees we must first briefly understand merkle tr
 A merkle tree is a hash based data structure that encodes data into a tree.
 The tree has nodes that are hashes of it's children and each leaf node is a hash of the data.
 
-Each node has a 256 bit (32 byte) string represented by X<sub>i</sub> ∈ {0,1}^256 which is hashed using `H: {0, 1}^256 × {0, 1}^256 → {0, 1}^256`, meaning two child nodes with their 256 bit strings are hashed into one parent node with a 256 bit string. You can use can use any hash function that satisfies this property but we use SHA256.
+Each node has a 256 bit (32 byte) string represented by X<sub>i</sub> ∈ {0,1}^256 which is hashed using `H: {0, 1}^256 × {0, 1}^256 → {0, 1}^256`, meaning two child nodes with their 256 bit strings are hashed into one parent node with a 256 bit string. You can use any hash function that satisfies this property but we use SHA256.
 
 Important properties of merkle trees:
 - The tree must be a fully balanced binary tree
