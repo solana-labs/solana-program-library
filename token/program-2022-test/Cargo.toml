@@ -11,7 +11,7 @@ version = "0.0.1"
 test-sbf = ["zk-ops"]
 default = ["zk-ops"]
 zk-ops = []
-proof-program = []
+proof-program = ["spl-token-2022/proof-program"]
 
 [build-dependencies]
 walkdir = "2"

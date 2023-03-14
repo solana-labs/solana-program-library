@@ -24,4 +24,4 @@ thiserror = "1.0"
 [features]
 default = ["display"]
 display = ["dep:solana-cli-output"]
-proof-program = []
+proof-program = ["spl-token-2022/proof-program"]
