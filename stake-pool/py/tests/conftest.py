@@ -43,7 +43,6 @@ def solana_test_validator():
     shutil.rmtree(newpath)
 
 
-
 @pytest_asyncio.fixture
 async def validators(async_client, payer) -> List[PublicKey]:
     num_validators = 3

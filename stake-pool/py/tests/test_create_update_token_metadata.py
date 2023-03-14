@@ -8,7 +8,6 @@ from stake_pool.constants import find_metadata_account
 from solana.utils.helpers import decode_byte_string
 
 
-
 @pytest.mark.asyncio
 async def test_create_metadata_success(async_client: AsyncClient, payer: Keypair):
     fee = Fee(numerator=1, denominator=1000)
@@ -30,6 +29,7 @@ async def test_create_metadata_success(async_client: AsyncClient, payer: Keypair
     assert name == str(raw_data[69:101], "utf-8")[:len(name)]
     assert symbol == str(raw_data[105:115], "utf-8")[:len(symbol)]
     assert uri == str(raw_data[119:319], "utf-8")[:len(uri)]
+
 
 @pytest.mark.asyncio
 async def test_update_metadata_success(async_client: AsyncClient, payer: Keypair):
