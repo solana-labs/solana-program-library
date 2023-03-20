@@ -2564,6 +2564,50 @@ mod tests {
         )
         .unwrap();
 
+        // not a delegate of source account
+        assert_eq!(
+            Err(TokenError::OwnerMismatch.into()),
+            do_process_instruction(
+                #[allow(deprecated)]
+                transfer(
+                    &program_id,
+                    &account_key,
+                    &account2_key,
+                    &owner2_key, // <-- incorrect owner or delegate
+                    &[],
+                    1,
+                )
+                .unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut account2_account,
+                    &mut owner2_account,
+                ],
+            )
+        );
+
+        // insufficient funds approved via delegate
+        assert_eq!(
+            Err(TokenError::InsufficientFunds.into()),
+            do_process_instruction(
+                #[allow(deprecated)]
+                transfer(
+                    &program_id,
+                    &account_key,
+                    &account2_key,
+                    &delegate_key,
+                    &[],
+                    101
+                )
+                .unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut account2_account,
+                    &mut delegate_account,
+                ],
+            )
+        );
+
         // transfer via delegate
         do_process_instruction(
             #[allow(deprecated)]
@@ -2595,7 +2639,7 @@ mod tests {
                     &account2_key,
                     &delegate_key,
                     &[],
-                    100
+                    1
                 )
                 .unwrap(),
                 vec![
@@ -5100,18 +5144,31 @@ mod tests {
 
         // not a delegate of source account
         assert_eq!(
-            Err(TokenError::InsufficientFunds.into()),
+            Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
                 burn(
                     &program_id,
                     &account_key,
                     &mint_key,
-                    &owner_key,
+                    &owner2_key, // <-- incorrect owner or delegate
                     &[],
-                    100_000_000
+                    1,
                 )
                 .unwrap(),
-                vec![&mut account_account, &mut mint_account, &mut owner_account],
+                vec![&mut account_account, &mut mint_account, &mut owner2_account],
+            )
+        );
+
+        // insufficient funds approved via delegate
+        assert_eq!(
+            Err(TokenError::InsufficientFunds.into()),
+            do_process_instruction(
+                burn(&program_id, &account_key, &mint_key, &delegate_key, &[], 85).unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut mint_account,
+                    &mut delegate_account
+                ],
             )
         );
 
@@ -5136,15 +5193,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
-                burn(
-                    &program_id,
-                    &account_key,
-                    &mint_key,
-                    &delegate_key,
-                    &[],
-                    100
-                )
-                .unwrap(),
+                burn(&program_id, &account_key, &mint_key, &delegate_key, &[], 1).unwrap(),
                 vec![
                     &mut account_account,
                     &mut mint_account,
