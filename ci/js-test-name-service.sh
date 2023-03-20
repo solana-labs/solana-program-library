@@ -10,3 +10,4 @@ cd name-service/js
 yarn install --pure-lockfile
 yarn lint
 yarn build
+yarn test

@@ -8,6 +8,11 @@ tokens from one mint to another.
 The program provides a simple mechanism for burning the original tokens and receiving
 an equal number of new tokens from an escrow account controlled by the program.
 
+## Audit
+
+The repository [README](https://github.com/solana-labs/solana-program-library#audits)
+contains information about program audits.
+
 ## Background
 
 Token-2022 contains many new features for mint owners to customize the behavior

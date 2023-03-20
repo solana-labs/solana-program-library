@@ -366,6 +366,12 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         }
     }
 
+    /// Returns the Current Seq of the tree, the seq is the monotonic counter of the tree operations
+    /// that is incremented every time a mutable operation is performed on the tree.
+    pub fn get_seq(&self) -> u64 {
+        self.sequence_number
+    }
+
     /// Modifies the `proof` for leaf at `leaf_index`
     /// in place by fast-forwarding the given `proof` through the
     /// `changelog`s, starting at index `changelog_buffer_index`

@@ -20,3 +20,8 @@ To build the examples and run the tests:
 ```bash
 $ make
 ```
+
+## Audit
+
+The repository [README](https://github.com/solana-labs/solana-program-library#audits)
+contains information about program audits.

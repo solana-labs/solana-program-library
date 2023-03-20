@@ -1,4 +1,4 @@
-#![cfg(feature = "test-sbf")]
+#![cfg(all(feature = "test-sbf", feature = "proof-program"))]
 #![cfg(twoxtx)]
 
 mod program_test;

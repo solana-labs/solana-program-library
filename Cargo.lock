@@ -2196,6 +2196,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "io-lifetimes"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfa919a82ea574332e2de6e74b4c36e74d41982b335080fa59d4ef31be20fdf3"
+dependencies = [
+ "libc",
+ "windows-sys 0.45.0",
+]
+
+[[package]]
 name = "ipnet"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2377,9 +2387,9 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "libc"
-version = "0.2.132"
+version = "0.2.139"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8371e4e5341c3a96db127eb2465ac681ced4c433e01dd0e938adbef26ba93ba5"
+checksum = "201de327520df007757c1f0adce6e827fe8562fbc28bfd9c15571c66ca1f5f79"
 
 [[package]]
 name = "libloading"
@@ -2484,6 +2494,12 @@ name = "linked-hash-map"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
+
+[[package]]
+name = "linux-raw-sys"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f051f77a7c8e6957c0696eac88f26b0117e54f52d3fc682ab19397a8812846a4"
 
 [[package]]
 name = "lock_api"
@@ -2719,7 +2735,7 @@ dependencies = [
  "num-traits",
  "shank 0.0.11",
  "solana-program",
- "spl-associated-token-account 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-associated-token-account 1.1.2",
  "spl-token 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
 ]
@@ -3121,7 +3137,7 @@ dependencies = [
  "libc",
  "redox_syscall",
  "smallvec",
- "windows-sys",
+ "windows-sys 0.34.0",
 ]
 
 [[package]]
@@ -3835,15 +3851,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3f87b73ce11b1619a3c6332f45341e0047173771e8b8b73f87bfeefb7b56244"
 
 [[package]]
-name = "remove_dir_all"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3acd125665422973a33ac9d3dd2df85edad0f4ae9b00dafb1a05e43a9f5ef8e7"
-dependencies = [
- "winapi 0.3.9",
-]
-
-[[package]]
 name = "reqwest"
 version = "0.11.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3980,6 +3987,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "faf0c4a6ece9950b9abdb62b1cfcf2a68b3b67a10ba445b3bb85be2a293d0632"
 dependencies = [
  "nom",
+]
+
+[[package]]
+name = "rustix"
+version = "0.36.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd5c6ff11fecd55b40746d1995a02f2eb375bf8c00d192d521ee09f42bef37bc"
+dependencies = [
+ "bitflags",
+ "errno",
+ "io-lifetimes",
+ "libc",
+ "linux-raw-sys",
+ "windows-sys 0.45.0",
 ]
 
 [[package]]
@@ -4567,7 +4588,7 @@ dependencies = [
  "solana-sdk",
  "solana-vote-program",
  "spl-token 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-token-2022 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token-2022 0.5.0",
  "thiserror",
  "zstd",
 ]
@@ -4818,7 +4839,7 @@ dependencies = [
  "solana-transaction-status",
  "solana-version",
  "solana-vote-program",
- "spl-token-2022 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token-2022 0.5.0",
  "thiserror",
  "tokio",
  "tokio-stream",
@@ -5135,7 +5156,7 @@ dependencies = [
  "solana-transaction-status",
  "solana-vote-program",
  "spl-token 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-token-2022 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token-2022 0.5.0",
  "static_assertions",
  "tempfile",
  "thiserror",
@@ -5435,7 +5456,7 @@ dependencies = [
  "solana-version",
  "solana-vote-program",
  "spl-token 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-token-2022 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token-2022 0.5.0",
  "stream-cancel",
  "thiserror",
  "tokio",
@@ -5750,10 +5771,10 @@ dependencies = [
  "solana-metrics",
  "solana-sdk",
  "solana-vote-program",
- "spl-associated-token-account 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-associated-token-account 1.1.2",
  "spl-memo 3.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-token 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-token-2022 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token-2022 0.5.0",
  "thiserror",
 ]
 
@@ -5883,20 +5904,6 @@ dependencies = [
 [[package]]
 name = "spl-associated-token-account"
 version = "1.1.2"
-dependencies = [
- "assert_matches",
- "borsh",
- "num-derive",
- "num-traits",
- "solana-program",
- "spl-token 3.5.0",
- "spl-token-2022 0.5.0",
- "thiserror",
-]
-
-[[package]]
-name = "spl-associated-token-account"
-version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fbc000f0fdf1f12f99d77d398137c1751345b18c88258ce0f99b7872cf6c9bd6"
 dependencies = [
@@ -5906,7 +5913,21 @@ dependencies = [
  "num-traits",
  "solana-program",
  "spl-token 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-token-2022 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token-2022 0.5.0",
+ "thiserror",
+]
+
+[[package]]
+name = "spl-associated-token-account"
+version = "1.1.3"
+dependencies = [
+ "assert_matches",
+ "borsh",
+ "num-derive",
+ "num-traits",
+ "solana-program",
+ "spl-token 3.5.0",
+ "spl-token-2022 0.6.1",
  "thiserror",
 ]
 
@@ -5917,9 +5938,9 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 1.1.2",
+ "spl-associated-token-account 1.1.3",
  "spl-token 3.5.0",
- "spl-token-2022 0.5.0",
+ "spl-token-2022 0.6.1",
 ]
 
 [[package]]
@@ -5939,7 +5960,7 @@ dependencies = [
 
 [[package]]
 name = "spl-concurrent-merkle-tree"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "bytemuck",
  "rand 0.7.3",
@@ -6169,7 +6190,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-associated-token-account 1.1.2",
  "spl-token 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
  "tokio",
@@ -6275,7 +6296,7 @@ dependencies = [
  "solana-vote-program",
  "spl-math",
  "spl-token 3.5.0",
- "spl-token-2022 0.5.0",
+ "spl-token-2022 0.6.1",
  "test-case",
  "thiserror",
 ]
@@ -6300,7 +6321,7 @@ dependencies = [
  "solana-program",
  "solana-remote-wallet",
  "solana-sdk",
- "spl-associated-token-account 1.1.2",
+ "spl-associated-token-account 1.1.3",
  "spl-stake-pool",
  "spl-token 3.5.0",
 ]
@@ -6341,6 +6362,24 @@ dependencies = [
 [[package]]
 name = "spl-token-2022"
 version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0edb869dbe159b018f17fb9bfa67118c30f232d7f54a73742bc96794dff77ed8"
+dependencies = [
+ "arrayref",
+ "bytemuck",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "solana-program",
+ "solana-zk-token-sdk",
+ "spl-memo 3.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "thiserror",
+]
+
+[[package]]
+name = "spl-token-2022"
+version = "0.6.1"
 dependencies = [
  "arrayref",
  "bytemuck",
@@ -6363,24 +6402,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-token-2022"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0edb869dbe159b018f17fb9bfa67118c30f232d7f54a73742bc96794dff77ed8"
-dependencies = [
- "arrayref",
- "bytemuck",
- "num-derive",
- "num-traits",
- "num_enum",
- "solana-program",
- "solana-zk-token-sdk",
- "spl-memo 3.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-token 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "thiserror",
-]
-
-[[package]]
 name = "spl-token-2022-test"
 version = "0.0.1"
 dependencies = [
@@ -6388,17 +6409,17 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 1.1.2",
+ "spl-associated-token-account 1.1.3",
  "spl-instruction-padding",
  "spl-memo 3.0.1",
- "spl-token-2022 0.5.0",
+ "spl-token-2022 0.6.1",
  "spl-token-client",
  "walkdir",
 ]
 
 [[package]]
 name = "spl-token-cli"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "assert_cmd",
  "clap 2.34.0",
@@ -6418,10 +6439,10 @@ dependencies = [
  "solana-sdk",
  "solana-test-validator",
  "solana-transaction-status",
- "spl-associated-token-account 1.1.2",
+ "spl-associated-token-account 1.1.3",
  "spl-memo 3.0.1",
  "spl-token 3.5.0",
- "spl-token-2022 0.5.0",
+ "spl-token-2022 0.6.1",
  "spl-token-client",
  "strum",
  "strum_macros",
@@ -6432,17 +6453,17 @@ dependencies = [
 
 [[package]]
 name = "spl-token-client"
-version = "0.3.0"
+version = "0.4.1"
 dependencies = [
  "async-trait",
  "solana-cli-output",
  "solana-client",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 1.1.2",
+ "spl-associated-token-account 1.1.3",
  "spl-memo 3.0.1",
  "spl-token 3.5.0",
- "spl-token-2022 0.5.0",
+ "spl-token-2022 0.6.1",
  "thiserror",
 ]
 
@@ -6498,7 +6519,7 @@ dependencies = [
  "solana-sdk",
  "spl-math",
  "spl-token 3.5.0",
- "spl-token-2022 0.5.0",
+ "spl-token-2022 0.6.1",
  "test-case",
  "thiserror",
 ]
@@ -6517,7 +6538,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-upgrade"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "num-derive",
  "num-traits",
@@ -6526,7 +6547,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-token 3.5.0",
- "spl-token-2022 0.5.0",
+ "spl-token-2022 0.6.1",
  "spl-token-client",
  "test-case",
  "thiserror",
@@ -6534,7 +6555,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-upgrade-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap 3.2.17",
  "futures-util",
@@ -6545,9 +6566,9 @@ dependencies = [
  "solana-remote-wallet",
  "solana-sdk",
  "solana-test-validator",
- "spl-associated-token-account 1.1.2",
+ "spl-associated-token-account 1.1.3",
  "spl-token 3.5.0",
- "spl-token-2022 0.5.0",
+ "spl-token-2022 0.6.1",
  "spl-token-client",
  "spl-token-upgrade",
  "tokio",
@@ -6563,7 +6584,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 1.1.2",
+ "spl-associated-token-account 1.1.3",
  "spl-token 3.5.0",
  "thiserror",
 ]
@@ -6742,16 +6763,15 @@ dependencies = [
 
 [[package]]
 name = "tempfile"
-version = "3.3.0"
+version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cdb1ef4eaeeaddc8fbd371e5017057064af0911902ef36b39801f67cc6d79e4"
+checksum = "af18f7ae1acd354b992402e9ec5864359d693cd8a79dcbef59f76891701c1e95"
 dependencies = [
  "cfg-if 1.0.0",
  "fastrand",
- "libc",
  "redox_syscall",
- "remove_dir_all",
- "winapi 0.3.9",
+ "rustix",
+ "windows-sys 0.42.0",
 ]
 
 [[package]]
@@ -7708,12 +7728,57 @@ version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5acdd78cb4ba54c0045ac14f62d8f94a03d10047904ae2a40afa1e99d8f70825"
 dependencies = [
- "windows_aarch64_msvc",
- "windows_i686_gnu",
- "windows_i686_msvc",
- "windows_x86_64_gnu",
- "windows_x86_64_msvc",
+ "windows_aarch64_msvc 0.34.0",
+ "windows_i686_gnu 0.34.0",
+ "windows_i686_msvc 0.34.0",
+ "windows_x86_64_gnu 0.34.0",
+ "windows_x86_64_msvc 0.34.0",
 ]
+
+[[package]]
+name = "windows-sys"
+version = "0.42.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a3e1820f08b8513f676f7ab6c1f99ff312fb97b553d30ff4dd86f9f15728aa7"
+dependencies = [
+ "windows_aarch64_gnullvm",
+ "windows_aarch64_msvc 0.42.1",
+ "windows_i686_gnu 0.42.1",
+ "windows_i686_msvc 0.42.1",
+ "windows_x86_64_gnu 0.42.1",
+ "windows_x86_64_gnullvm",
+ "windows_x86_64_msvc 0.42.1",
+]
+
+[[package]]
+name = "windows-sys"
+version = "0.45.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75283be5efb2831d37ea142365f009c02ec203cd29a3ebecbc093d52315b66d0"
+dependencies = [
+ "windows-targets",
+]
+
+[[package]]
+name = "windows-targets"
+version = "0.42.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e2522491fbfcd58cc84d47aeb2958948c4b8982e9a2d8a2a35bbaed431390e7"
+dependencies = [
+ "windows_aarch64_gnullvm",
+ "windows_aarch64_msvc 0.42.1",
+ "windows_i686_gnu 0.42.1",
+ "windows_i686_msvc 0.42.1",
+ "windows_x86_64_gnu 0.42.1",
+ "windows_x86_64_gnullvm",
+ "windows_x86_64_msvc 0.42.1",
+]
+
+[[package]]
+name = "windows_aarch64_gnullvm"
+version = "0.42.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c9864e83243fdec7fc9c5444389dcbbfd258f745e7853198f365e3c4968a608"
 
 [[package]]
 name = "windows_aarch64_msvc"
@@ -7722,10 +7787,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17cffbe740121affb56fad0fc0e421804adf0ae00891205213b5cecd30db881d"
 
 [[package]]
+name = "windows_aarch64_msvc"
+version = "0.42.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c8b1b673ffc16c47a9ff48570a9d85e25d265735c503681332589af6253c6c7"
+
+[[package]]
 name = "windows_i686_gnu"
 version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2564fde759adb79129d9b4f54be42b32c89970c18ebf93124ca8870a498688ed"
+
+[[package]]
+name = "windows_i686_gnu"
+version = "0.42.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de3887528ad530ba7bdbb1faa8275ec7a1155a45ffa57c37993960277145d640"
 
 [[package]]
 name = "windows_i686_msvc"
@@ -7734,16 +7811,40 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9cd9d32ba70453522332c14d38814bceeb747d80b3958676007acadd7e166956"
 
 [[package]]
+name = "windows_i686_msvc"
+version = "0.42.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf4d1122317eddd6ff351aa852118a2418ad4214e6613a50e0191f7004372605"
+
+[[package]]
 name = "windows_x86_64_gnu"
 version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfce6deae227ee8d356d19effc141a509cc503dfd1f850622ec4b0f84428e1f4"
 
 [[package]]
+name = "windows_x86_64_gnu"
+version = "0.42.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1040f221285e17ebccbc2591ffdc2d44ee1f9186324dd3e84e99ac68d699c45"
+
+[[package]]
+name = "windows_x86_64_gnullvm"
+version = "0.42.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "628bfdf232daa22b0d64fdb62b09fcc36bb01f05a3939e20ab73aaf9470d0463"
+
+[[package]]
 name = "windows_x86_64_msvc"
 version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d19538ccc21819d01deaf88d6a17eae6596a12e9aafdbb97916fb49896d89de9"
+
+[[package]]
+name = "windows_x86_64_msvc"
+version = "0.42.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "447660ad36a13288b1db4d4248e857b510e8c3a225c822ba4fb748c0aafecffd"
 
 [[package]]
 name = "winreg"

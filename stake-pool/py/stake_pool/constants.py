@@ -17,6 +17,9 @@ MINIMUM_RESERVE_LAMPORTS: int = 1
 MINIMUM_ACTIVE_STAKE: int = MINIMUM_DELEGATION
 """Minimum active delegated staked required in a stake account"""
 
+METADATA_PROGRAM_ID: PublicKey = PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
+"""Public key that identifies the Metaplex Token Metadata program."""
+
 
 def find_deposit_authority_program_address(
     program_id: PublicKey,
@@ -75,9 +78,25 @@ def find_transient_stake_program_address(
     )
 
 
+def find_metadata_account(
+    mint_key: PublicKey
+) -> Tuple[PublicKey, int]:
+    """Generates the metadata account program address"""
+    return PublicKey.find_program_address(
+        [
+            METADATA_SEED_PREFIX,
+            bytes(METADATA_PROGRAM_ID),
+            bytes(mint_key)
+        ],
+        METADATA_PROGRAM_ID
+    )
+
+
 AUTHORITY_DEPOSIT = b"deposit"
 """Seed used to derive the default stake pool deposit authority."""
 AUTHORITY_WITHDRAW = b"withdraw"
 """Seed used to derive the stake pool withdraw authority."""
 TRANSIENT_STAKE_SEED_PREFIX = b"transient"
 """Seed used to derive transient stake accounts."""
+METADATA_SEED_PREFIX = b"metadata"
+"""Seed used to avoid certain collision attacks."""

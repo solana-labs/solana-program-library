@@ -9,3 +9,8 @@ utilize to create and use their own version of a name service of any kind.
 Full documentation is available at https://spl.solana.com/name-service
 
 JavaScript binding are available in the `./js` directory.
+
+## Audit
+
+The repository [README](https://github.com/solana-labs/solana-program-library#audits)
+contains information about program audits.

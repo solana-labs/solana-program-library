@@ -1,9 +1,7 @@
----
-title: Token-Lending Program
----
+# Token Upgrade
 
-A lending protocol for the Token program on the Solana blockchain inspired by
-Aave and Compound.
+The Token Upgrade Program provides a stateless protocol for permanently converting
+tokens from one mint to another.
 
 ## Audit
 

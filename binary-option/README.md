@@ -12,6 +12,11 @@ Now suppose the Bucks win Game 3, and the estimated probability of the Bucks win
 
 We'll discuss this mechanism in more detail later.
 
+## Audit
+
+The repository [README](https://github.com/solana-labs/solana-program-library#audits)
+contains information about program audits.
+
 ## Client Setup 
 First, clone down the repository (TODO publish to PyPI)
 

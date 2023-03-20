@@ -18,6 +18,12 @@ export class MerkleTree {
   root: Buffer;
   depth: number;
 
+  /**
+   * Please use `MerkleTree.sparseMerkleTreeFromLeaves` to
+   * create trees instead. This method is exposed for testing purposes,
+   * and for those that are familiar with the MerkleTree data structure.
+   * @param leaves leaf nodes of the tree
+   */
   constructor(leaves: Buffer[]) {
     let [nodes, finalLeaves] = buildLeaves(leaves);
     let seqNum = leaves.length;
@@ -51,6 +57,30 @@ export class MerkleTree {
     this.leaves = finalLeaves;
     this.root = nodes.peek()!.node;
     this.depth = nodes.peek()!.level + 1;
+  }
+
+  /**
+   * This is the recommended way to create MerkleTrees.
+   * If you're trying to match an on-chain MerkleTree,
+   * set `depth` to `{@link ConcurrentMerkleTreeAccount}.getMaxDepth()`
+   *
+   * @param leaves leaves of the tree
+   * @param depth number of levels in the tree
+   * @returns MerkleTree
+   */
+  static sparseMerkleTreeFromLeaves(
+    leaves: Buffer[],
+    depth: number
+  ): MerkleTree {
+    const _leaves: Buffer[] = [];
+    for (let i = 0; i < 2 ** depth; i++) {
+      if (i < leaves.length) {
+        _leaves.push(leaves[i]);
+      } else {
+        _leaves.push(Buffer.alloc(32));
+      }
+    }
+    return new MerkleTree(_leaves);
   }
 
   getRoot(): Buffer {
@@ -127,11 +157,10 @@ export class MerkleTree {
     this.root = node.node;
   }
 
-  verify(
-    root: string,
+  static hashProof(
     merkleTreeProof: MerkleTreeProof,
-    verbose = false
-  ): boolean {
+    verbose: boolean = false
+  ): Buffer {
     const { leaf, leafIndex, proof } = merkleTreeProof;
 
     let node = new PublicKey(leaf).toBuffer();
@@ -143,12 +172,30 @@ export class MerkleTree {
       }
       if (verbose) console.log(`node ${i} ${new PublicKey(node).toString()}`);
     }
+    return node;
+  }
+
+  /**
+   * Verifies that a root matches the proof.
+   * @param root Root of a MerkleTree
+   * @param merkleTreeProof Proof to a leaf in the MerkleTree
+   * @param verbose Whether to print hashed nodes
+   * @returns Whether the proof is valid
+   */
+  static verify(
+    root: Buffer,
+    merkleTreeProof: MerkleTreeProof,
+    verbose: boolean = false
+  ): boolean {
+    const node = MerkleTree.hashProof(merkleTreeProof, verbose);
     const rehashed = new PublicKey(node).toString();
     const received = new PublicKey(root).toString();
-    if (verbose) console.log(`hashed ${rehashed} got ${received}`);
     if (rehashed !== received) {
-      throw new Error("Roots don't match!!!");
+      if (verbose)
+        console.log(`Roots don't match! Expected ${rehashed} got ${received}`);
+      return false;
     }
+    if (verbose) console.log(`Hashed ${rehashed} got ${received}`);
     return rehashed === received;
   }
 }

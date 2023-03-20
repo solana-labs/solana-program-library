@@ -435,7 +435,7 @@ Account {
 A well-known limitation of using linearly-homomorphic ElGamal encryption is the
 inefficiency of decryption. Even with a proper secret key, in order to recover
 the originally encrypted value, one must solve a computational problem called
-the _discrete logarithm_, which requires an expoential time to solve. In the
+the _discrete logarithm_, which requires an exponential time to solve. In the
 confidential extension program, we address this issue in the following two ways:
 
 - Transfer amounts are restricted to 48-bit numbers.

@@ -1,9 +1,6 @@
----
-title: Token-Lending Program
----
+# Math
 
-A lending protocol for the Token program on the Solana blockchain inspired by
-Aave and Compound.
+Library with utilities for on-chain math.
 
 ## Audit
 
