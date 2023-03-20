@@ -2043,10 +2043,8 @@ async fn command_recover_lamports(
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     let token = native_token_client_from_config(config)?;
-    let native_mint = token.get_address();
+    let wrapped_sol_ata = token.get_associated_token_address(&authority);
 
-    let wrapped_sol_ata =
-        get_associated_token_address_with_program_id(&authority, native_mint, &spl_token::id());
     println_display(
         config,
         format!(
@@ -3596,7 +3594,7 @@ fn app<'a, 'b>(
                         .required(true)
                         .help("Specify the address of the account to recover lamports from"),
                 )
-                .arg(owner_address_arg())
+                // .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
         )
 }
@@ -4301,8 +4299,10 @@ async fn process_command<'a>(
             .await
         }
         (CommandName::RecoverLamports, arg_matches) => {
+            // TODO:
+
             let (signer, authority) =
-                config.signer_or_default(arg_matches, "signer", &mut wallet_manager);
+                config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             if !bulk_signers.contains(&signer) {
                 bulk_signers.push(signer);
             }
@@ -6968,6 +6968,123 @@ mod tests {
             assert!(!absent_signers.contains(&source.to_string()));
             assert!(!absent_signers.contains(&destination.to_string()));
             assert!(!absent_signers.contains(&token.to_string()));
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn recover_lamports() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let m = 3;
+        let n = 5u8;
+        // need to add "payer" to make the config provide the right signer
+        let (multisig_members, multisig_paths): (Vec<_>, Vec<_>) =
+            std::iter::once(clone_keypair(&payer))
+                .chain(std::iter::repeat_with(Keypair::new).take((n - 2) as usize))
+                .map(|s| {
+                    let keypair_file = NamedTempFile::new().unwrap();
+                    write_keypair_file(&s, &keypair_file).unwrap();
+                    (s.pubkey(), keypair_file)
+                })
+                .unzip();
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+            do_create_native_mint(&config, program_id, &payer).await;
+
+            let multisig = Arc::new(Keypair::new());
+            let multisig_pubkey = multisig.pubkey();
+
+            // add the multisig as a member to itself, make it self-owned
+            let multisig_members = std::iter::once(multisig_pubkey)
+                .chain(multisig_members.iter().cloned())
+                .collect::<Vec<_>>();
+            let multisig_path = NamedTempFile::new().unwrap();
+            write_keypair_file(&multisig, &multisig_path).unwrap();
+            let multisig_paths = std::iter::once(&multisig_path)
+                .chain(multisig_paths.iter())
+                .collect::<Vec<_>>();
+
+            command_create_multisig(&config, multisig, m, multisig_members)
+                .await
+                .unwrap();
+
+            let account = config
+                .rpc_client
+                .get_account(&multisig_pubkey)
+                .await
+                .unwrap();
+            let multisig = Multisig::unpack(&account.data).unwrap();
+            assert_eq!(multisig.m, m);
+            assert_eq!(multisig.n, n);
+
+            let native_mint = *Token::new_native(
+                config.program_client.clone(),
+                program_id,
+                config.fee_payer().unwrap().clone(),
+            )
+            .get_address();
+
+            let _destination =
+                create_associated_account(&config, &payer, &native_mint, &multisig_pubkey).await;
+
+            let signing_keypairs = &[&payer];
+
+            config
+                .rpc_client
+                .send_and_confirm_transaction(&Transaction::new_signed_with_payer(
+                    &[system_instruction::transfer(
+                        &payer.pubkey(),
+                        &multisig_pubkey,
+                        4000 * 1_000_000_000,
+                    )],
+                    Some(&payer.pubkey()),
+                    signing_keypairs,
+                    config.rpc_client.get_latest_blockhash().await.unwrap(),
+                ))
+                .await
+                .unwrap();
+
+            exec_test_cmd(
+                &config,
+                &[
+                    "spl-token",
+                    CommandName::RecoverLamports.into(),
+                    &multisig_pubkey.to_string(),
+                    "--multisig-signer",
+                    multisig_paths[0].path().to_str().unwrap(),
+                    "--multisig-signer",
+                    multisig_paths[1].path().to_str().unwrap(),
+                    "--multisig-signer",
+                    multisig_paths[2].path().to_str().unwrap(),
+                ],
+            )
+            .await
+            .unwrap();
+
+            // let account = config.rpc_client.get_account(&source).await.unwrap();
+            // let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+            // assert_eq!(token_account.base.amount, 90);
+            // let account = config.rpc_client.get_account(&destination).await.unwrap();
+            // let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+            // assert_eq!(token_account.base.amount, 10);
+
+            // let _result = process_test_command(
+            //     &config,
+            //     &payer,
+            //     &["spl-token", CommandName::Wrap.into(), "0.5"],
+            // )
+            // .await
+            // .unwrap();
+            // let account = get_associated_token_address_with_program_id(
+            //     &payer.pubkey(),
+            //     &native_mint,
+            //     &config.program_id,
+            // );
+            // let account = config.rpc_client.get_account(&account).await.unwrap();
+            // let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+            // assert_eq!(token_account.base.mint, native_mint);
+            // assert_eq!(token_account.base.owner, payer.pubkey());
+            // assert!(token_account.base.is_native());
         }
     }
 }

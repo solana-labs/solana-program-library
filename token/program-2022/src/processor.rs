@@ -1313,10 +1313,6 @@ impl Processor {
             return Err(ProgramError::MissingRequiredSignature);
         }
 
-        if destination_info.data_is_empty() {
-            return Err(ProgramError::UninitializedAccount);
-        }
-
         if destination_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
         }
@@ -1365,7 +1361,7 @@ impl Processor {
             Multisig::LEN => {
                 Self::validate_owner(
                     program_id,
-                    authority_info.key,
+                    source_info.key,
                     authority_info,
                     authority_info.data_len(),
                     account_info_iter.as_slice(),

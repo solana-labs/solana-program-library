@@ -1871,8 +1871,8 @@ pub(crate) fn encode_instruction<T: Into<u8>, D: Pod>(
 pub fn recover_lamports(
     token_program_id: &Pubkey,
     source_account: &Pubkey,
-    dest_token_account_pubkey: &Pubkey,
     authority: &Pubkey,
+    dest_token_account_pubkey: &Pubkey,
     signers: Vec<&Pubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;

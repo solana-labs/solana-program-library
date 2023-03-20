@@ -852,12 +852,8 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        // if !authority_info.is_signer {
-        //     return Err(ProgramError::MissingRequiredSignature);
-        // }
-
-        if destination_info.data_is_empty() {
-            return Err(ProgramError::UninitializedAccount);
+        if !authority_info.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
         }
 
         if destination_info.owner != program_id {
@@ -904,9 +900,10 @@ impl Processor {
                 }
             }
             Multisig::LEN => {
+                // Multisig signs for itself
                 Self::validate_owner(
                     program_id,
-                    authority_info.key,
+                    source_info.key,
                     authority_info,
                     account_info_iter.as_slice(),
                 )?;
