@@ -852,9 +852,9 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        if !authority_info.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
+        // if !authority_info.is_signer {
+        //     return Err(ProgramError::MissingRequiredSignature);
+        // }
 
         if destination_info.data_is_empty() {
             return Err(ProgramError::UninitializedAccount);
