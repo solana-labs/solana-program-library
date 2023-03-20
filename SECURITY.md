@@ -42,7 +42,7 @@ for details on classes of bugs and payment amounts.
 ## Scope
 
 Only a subset of programs within the Solana Program Library repo are deployed to
-the Solana Mainnet Beta and maintained by the team. Currently, this includes:
+the Solana Mainnet Beta. Currently, this includes:
 
 * [associated-token-account](https://github.com/solana-labs/solana-program-library/tree/master/associated-token-account/program)
 * [feature-proposal](https://github.com/solana-labs/solana-program-library/tree/master/feature-proposal/program)

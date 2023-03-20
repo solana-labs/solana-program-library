@@ -1,9 +1,7 @@
----
-title: Token-Lending Program
----
+# Record
 
-A lending protocol for the Token program on the Solana blockchain inspired by
-Aave and Compound.
+On-chain program for writing arbitrary data to an account, authorized by an
+owner of the account.
 
 ## Audit
 

@@ -197,3 +197,8 @@ the DAO until the token is distributed.
 ### Proposal Workflow
 
 ![Proposal Workflow](./resources/governance-workflow.jpg)
+
+## Audit
+
+The repository [README](https://github.com/solana-labs/solana-program-library#audits)
+contains information about program audits.

@@ -6,14 +6,15 @@ Full documentation is available at https://spl.solana.com/token-lending
 
 Web3 bindings are available in the `./js` directory.
 
-### On-chain programs
+## Audit
 
-Please note that only the lending program deployed to devnet is currently operational.
+The repository [README](https://github.com/solana-labs/solana-program-library#audits)
+contains information about program audits.
+
+### On-chain programs
 
 | Cluster | Program Address |
 | --- | --- |
-| Mainnet Beta | [`LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi`](https://explorer.solana.com/address/LendZqTs7gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi) |
-| Testnet | [`6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH`](https://explorer.solana.com/address/6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH?cluster=testnet) |
 | Devnet | [`6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH`](https://explorer.solana.com/address/6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH?cluster=devnet) |
 
 ### Documentation

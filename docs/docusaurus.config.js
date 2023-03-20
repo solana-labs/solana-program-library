@@ -21,7 +21,7 @@ module.exports = {
           position: "left",
         },
         {
-          href: "https://discordapp.com/invite/pquxPsq",
+          href: "https://solana.com/discord",
           label: "Chat",
           position: "right",
         },
@@ -41,7 +41,7 @@ module.exports = {
           items: [
             {
               label: "Discord",
-              href: "https://discordapp.com/invite/pquxPsq",
+              href: "https://solana.com/discord",
             },
             {
               label: "Twitter",

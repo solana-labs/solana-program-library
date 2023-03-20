@@ -259,6 +259,23 @@ impl ProposalV2 {
         Ok(())
     }
 
+    /// Checks the Proposal was finalized (no more state transition will happen)
+    pub fn assert_is_final_state(&self) -> Result<(), ProgramError> {
+        match self.state {
+            ProposalState::Completed
+            | ProposalState::Cancelled
+            | ProposalState::Defeated
+            | ProposalState::Vetoed => Ok(()),
+            ProposalState::Executing
+            | ProposalState::ExecutingWithErrors
+            | ProposalState::SigningOff
+            | ProposalState::Voting
+            | ProposalState::Draft
+            // state transition bug: non executable proposals could be stuck in Succeeded state
+            | ProposalState::Succeeded => Err(GovernanceError::InvalidStateNotFinal.into()),
+        }
+    }
+
     /// Checks if Proposal can be voted on
     pub fn assert_can_cast_vote(
         &self,

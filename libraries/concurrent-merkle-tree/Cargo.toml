@@ -1,6 +1,6 @@
 [package]
 name = "spl-concurrent-merkle-tree"
-version = "0.1.2"
+version = "0.1.3"
 description = "Solana Program Library Concurrent Merkle Tree"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -13,7 +13,7 @@ sol-log = [ "log" ]
 
 [dependencies]
 solana-program = "1.10.33"
-bytemuck = "1.8.0"
+bytemuck = "1.13.0"
 thiserror = "1.0.30"
 
 [dev-dependencies]

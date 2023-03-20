@@ -3,7 +3,6 @@ use {
     solana_program_test::tokio::time,
     solana_sdk::{
         account::Account as BaseAccount,
-        epoch_info::EpochInfo,
         hash::Hash,
         instruction::Instruction,
         message::Message,
@@ -26,20 +25,24 @@ use {
         },
         instruction,
         pod::EncryptionPubkey,
-        solana_zk_token_sdk::{
-            encryption::{auth_encryption::*, elgamal::*},
-            errors::ProofError,
-            instruction::transfer_with_fee::FeeParameters,
-        },
+        solana_zk_token_sdk::errors::ProofError,
         state::{Account, AccountState, Mint, Multisig},
     },
     std::{
-        convert::TryInto,
         fmt, io,
         sync::{Arc, RwLock},
         time::{Duration, Instant},
     },
     thiserror::Error,
+};
+#[cfg(feature = "proof-program")]
+use {
+    solana_sdk::epoch_info::EpochInfo,
+    spl_token_2022::solana_zk_token_sdk::{
+        encryption::{auth_encryption::*, elgamal::*},
+        instruction::transfer_with_fee::FeeParameters,
+    },
+    std::convert::TryInto,
 };
 
 #[derive(Error, Debug)]
@@ -233,7 +236,7 @@ pub struct Token<T> {
     payer: Arc<dyn Signer>,
     program_id: Pubkey,
     nonce_account: Option<Pubkey>,
-    nonce_authority: Option<Pubkey>,
+    nonce_authority: Option<Arc<dyn Signer>>,
     memo: Arc<RwLock<Option<TokenMemo>>>,
 }
 
@@ -245,7 +248,10 @@ impl<T> fmt::Debug for Token<T> {
             .field("payer", &self.payer.pubkey())
             .field("program_id", &self.program_id)
             .field("nonce_account", &self.nonce_account)
-            .field("nonce_authority", &self.nonce_authority)
+            .field(
+                "nonce_authority",
+                &self.nonce_authority.as_ref().map(|s| s.pubkey()),
+            )
             .field("memo", &self.memo.read().unwrap())
             .finish()
     }
@@ -317,7 +323,7 @@ where
         &self.pubkey
     }
 
-    pub fn with_payer(&self, payer: Arc<dyn Signer>) -> Token<T> {
+    pub fn with_payer(self, payer: Arc<dyn Signer>) -> Token<T> {
         Token {
             client: Arc::clone(&self.client),
             pubkey: self.pubkey,
@@ -330,7 +336,7 @@ where
         }
     }
 
-    pub fn with_nonce(&self, nonce_account: &Pubkey, nonce_authority: &Pubkey) -> Token<T> {
+    pub fn with_nonce(self, nonce_account: &Pubkey, nonce_authority: Arc<dyn Signer>) -> Token<T> {
         Token {
             client: Arc::clone(&self.client),
             pubkey: self.pubkey,
@@ -338,7 +344,7 @@ where
             payer: self.payer.clone(),
             program_id: self.program_id,
             nonce_account: Some(*nonce_account),
-            nonce_authority: Some(*nonce_authority),
+            nonce_authority: Some(nonce_authority),
             memo: Arc::new(RwLock::new(None)),
         }
     }
@@ -388,9 +394,9 @@ where
     fn get_multisig_signers<'a, 'b>(
         &self,
         authority: &'b Pubkey,
-        signing_pubkeys: &'a Vec<Pubkey>,
+        signing_pubkeys: &'a [Pubkey],
     ) -> Vec<&'a Pubkey> {
-        if signing_pubkeys.as_ref() == [*authority] {
+        if signing_pubkeys == [*authority] {
             vec![]
         } else {
             signing_pubkeys.iter().collect::<Vec<_>>()
@@ -431,13 +437,13 @@ where
             .map_err(TokenError::Client)?;
 
         let message = if let (Some(nonce_account), Some(nonce_authority)) =
-            (self.nonce_account, self.nonce_authority)
+            (self.nonce_account, &self.nonce_authority)
         {
             let mut message = Message::new_with_nonce(
                 token_instructions.to_vec(),
                 fee_payer,
                 &nonce_account,
-                &nonce_authority,
+                &nonce_authority.pubkey(),
             );
             message.recent_blockhash = latest_blockhash;
             message
@@ -450,6 +456,11 @@ where
         transaction
             .try_partial_sign(&vec![self.payer.clone()], latest_blockhash)
             .map_err(|error| TokenError::Client(error.into()))?;
+        if let Some(nonce_authority) = &self.nonce_authority {
+            transaction
+                .try_partial_sign(&vec![nonce_authority.clone()], latest_blockhash)
+                .map_err(|error| TokenError::Client(error.into()))?;
+        }
         transaction
             .try_partial_sign(signing_keypairs, latest_blockhash)
             .map_err(|error| TokenError::Client(error.into()))?;
@@ -1491,33 +1502,24 @@ where
     pub async fn confidential_transfer_update_mint<S: Signer>(
         &self,
         authority: &S,
-        new_authority: Option<&S>,
         auto_approve_new_account: bool,
         auditor_encryption_pubkey: Option<EncryptionPubkey>,
     ) -> TokenResult<T::Output> {
-        let mut signers = vec![authority];
-        let new_authority_pubkey = if let Some(new_authority) = new_authority {
-            signers.push(new_authority);
-            Some(new_authority.pubkey())
-        } else {
-            None
-        };
-
         self.process_ixs(
             &[confidential_transfer::instruction::update_mint(
                 &self.program_id,
                 &self.pubkey,
                 &authority.pubkey(),
-                new_authority_pubkey.as_ref(),
                 auto_approve_new_account,
                 auditor_encryption_pubkey,
             )?],
-            &signers,
+            &[authority],
         )
         .await
     }
 
     /// Configures confidential transfers for a token account
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_configure_token_account<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -1534,6 +1536,7 @@ where
         .await
     }
 
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_configure_token_account_with_pending_counter<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -1556,6 +1559,7 @@ where
         .await
     }
 
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_configure_token_account_with_pending_counter_and_keypair<
         S: Signer,
     >(
@@ -1587,6 +1591,7 @@ where
     }
 
     /// Approves a token account for confidential transfers
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_approve_account<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -1605,6 +1610,7 @@ where
     }
 
     /// Prepare a token account with the confidential transfer extension for closing
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_empty_account<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -1620,6 +1626,7 @@ where
         .await
     }
 
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_empty_account_with_keypair<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -1651,6 +1658,7 @@ where
 
     /// Fetch and decrypt the available balance of a confidential token account using the uniquely
     /// derived decryption key from a signer
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_get_available_balance<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -1668,6 +1676,7 @@ where
 
     /// Fetch and decrypt the available balance of a confidential token account using a custom
     /// decryption key
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_get_available_balance_with_key(
         &self,
         token_account: &Pubkey,
@@ -1690,6 +1699,7 @@ where
 
     /// Fetch and decrypt the pending balance of a confidential token account using the uniquely
     /// derived decryption key from a signer
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_get_pending_balance<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -1704,6 +1714,7 @@ where
 
     /// Fetch and decrypt the pending balance of a confidential token account using a custom
     /// decryption key
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_get_pending_balance_with_key(
         &self,
         token_account: &Pubkey,
@@ -1730,6 +1741,7 @@ where
         Ok(pending_balance)
     }
 
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_get_withheld_amount<S: Signer>(
         &self,
         withdraw_withheld_authority: &S,
@@ -1746,6 +1758,7 @@ where
         .await
     }
 
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_get_withheld_amount_with_key(
         &self,
         withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
@@ -1772,6 +1785,7 @@ where
     }
 
     /// Fetch the ElGamal public key associated with a confidential token account
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_get_encryption_pubkey<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -1788,6 +1802,7 @@ where
     }
 
     /// Fetch the ElGamal pubkey key of the auditor associated with a confidential token mint
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_get_auditor_encryption_pubkey<S: Signer>(
         &self,
     ) -> TokenResult<Option<ElGamalPubkey>> {
@@ -1808,6 +1823,7 @@ where
 
     /// Fetch the ElGamal pubkey key of the withdraw withheld authority associated with a
     /// confidential token mint
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_get_withdraw_withheld_authority_encryption_pubkey<
         S: Signer,
     >(
@@ -1829,6 +1845,7 @@ where
     }
 
     /// Deposit SPL Tokens into the pending balance of a confidential token account
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_deposit<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -1858,6 +1875,7 @@ where
     /// Withdraw SPL Tokens from the available balance of a confidential token account using the
     /// uniquely derived decryption key from a signer
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_withdraw<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -1888,6 +1906,7 @@ where
     /// Withdraw SPL Tokens from the available balance of a confidential token account using custom
     /// keys
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_withdraw_with_key<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -1932,6 +1951,7 @@ where
 
     /// Transfer tokens confidentially using the uniquely derived decryption keys from a signer
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_transfer<S: Signer>(
         &self,
         source_token_account: &Pubkey,
@@ -1966,6 +1986,7 @@ where
 
     /// Transfer tokens confidentially using custom decryption keys
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_transfer_with_key<S: Signer>(
         &self,
         source_token_account: &Pubkey,
@@ -2021,6 +2042,7 @@ where
     /// Transfer tokens confidentially with fee using the uniquely derived decryption keys from a
     /// signer
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_transfer_with_fee<S: Signer>(
         &self,
         source_token_account: &Pubkey,
@@ -2059,6 +2081,7 @@ where
 
     /// Transfer tokens confidential with fee using custom decryption keys
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_transfer_with_fee_with_key<S: Signer>(
         &self,
         source_token_account: &Pubkey,
@@ -2126,6 +2149,7 @@ where
 
     /// Applies the confidential transfer pending balance to the available balance using the
     /// uniquely derived decryption key
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_apply_pending_balance<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -2150,6 +2174,7 @@ where
 
     /// Applies the confidential transfer pending balance to the available balance using a custom
     /// decryption key
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_apply_pending_balance_with_key<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -2178,6 +2203,7 @@ where
     }
 
     /// Enable confidential transfer `Deposit` and `Transfer` instructions for a token account
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_enable_confidential_credits<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -2198,6 +2224,7 @@ where
     }
 
     /// Disable confidential transfer `Deposit` and `Transfer` instructions for a token account
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_disable_confidential_credits<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -2218,6 +2245,7 @@ where
     }
 
     /// Enable a confidential extension token account to receive non-confidential payments
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_enable_non_confidential_credits<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -2238,6 +2266,7 @@ where
     }
 
     /// Disable non-confidential payments for a confidential extension token account
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_disable_non_confidential_credits<S: Signer>(
         &self,
         token_account: &Pubkey,
@@ -2258,6 +2287,7 @@ where
     }
 
     /// Withdraw withheld confidential tokens from mint using the uniquely derived decryption key
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_withdraw_withheld_tokens_from_mint<S: Signer>(
         &self,
         withdraw_withheld_authority: &S,
@@ -2283,6 +2313,7 @@ where
     }
 
     /// Withdraw withheld confidential tokens from mint using a custom decryption key
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_withdraw_withheld_tokens_from_mint_with_key<S: Signer>(
         &self,
         withdraw_withheld_authority: &S,
@@ -2316,6 +2347,7 @@ where
 
     /// Withdraw withheld confidential tokens from accounts using the uniquely derived decryption
     /// key
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_withdraw_withheld_tokens_from_accounts<S: Signer>(
         &self,
         withdraw_withheld_authority: &S,
@@ -2343,6 +2375,7 @@ where
 
     /// Withdraw withheld confidential tokens from accounts using a custom decryption key
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_withdraw_withheld_tokens_from_accounts_with_key<
         S: Signer,
     >(
@@ -2379,6 +2412,7 @@ where
     }
 
     /// Harvest withheld confidential tokens to mint
+    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_harvest_withheld_tokens_to_mint(
         &self,
         sources: &[&Pubkey],

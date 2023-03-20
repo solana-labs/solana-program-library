@@ -137,31 +137,31 @@ pub enum GovernanceError {
 
     /// Invalid State: Can't vote
     #[error("Invalid State: Can't vote")]
-    InvalidStateCannotVote,
+    InvalidStateCannotVote, // 531
 
     /// Invalid State: Can't finalize vote
     #[error("Invalid State: Can't finalize vote")]
-    InvalidStateCannotFinalize,
+    InvalidStateCannotFinalize, // 532
 
     /// Invalid State: Can't cancel Proposal
     #[error("Invalid State: Can't cancel Proposal")]
-    InvalidStateCannotCancelProposal,
+    InvalidStateCannotCancelProposal, // 533
 
     /// Vote already relinquished
     #[error("Vote already relinquished")]
-    VoteAlreadyRelinquished,
+    VoteAlreadyRelinquished, // 534
 
     /// Can't finalize vote. Voting still in progress
     #[error("Can't finalize vote. Voting still in progress")]
-    CannotFinalizeVotingInProgress,
+    CannotFinalizeVotingInProgress, // 535
 
     /// Proposal voting time expired
     #[error("Proposal voting time expired")]
-    ProposalVotingTimeExpired,
+    ProposalVotingTimeExpired, // 536
 
     /// Invalid Signatory Mint
     #[error("Invalid Signatory Mint")]
-    InvalidSignatoryMint,
+    InvalidSignatoryMint, // 537
 
     /// Proposal does not belong to the given Governance
     #[error("Proposal does not belong to the given Governance")]
@@ -462,6 +462,10 @@ pub enum GovernanceError {
     ///Invalid deposit Payer for ProposalDeposit
     #[error("Invalid deposit Payer for ProposalDeposit")]
     InvalidDepositPayerForProposalDeposit, // 611
+
+    /// Invalid State: Proposal is not in final state
+    #[error("Invalid State: Proposal is not in final state")]
+    InvalidStateNotFinal, // 612
 }
 
 impl PrintProgramError for GovernanceError {

@@ -11,7 +11,7 @@ use {
             interest_bearing_mint::InterestBearingConfig,
             memo_transfer::MemoTransfer,
             mint_close_authority::MintCloseAuthority,
-            non_transferable::NonTransferable,
+            non_transferable::{NonTransferable, NonTransferableAccount},
             permanent_delegate::PermanentDelegate,
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
         },
@@ -531,6 +531,9 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             ExtensionType::TransferFeeAmount => {
                 self.init_extension::<TransferFeeAmount>(true).map(|_| ())
             }
+            ExtensionType::NonTransferableAccount => self
+                .init_extension::<NonTransferableAccount>(true)
+                .map(|_| ()),
             // ConfidentialTransfers are currently opt-in only, so this is a no-op for extra safety
             // on InitializeAccount
             ExtensionType::ConfidentialTransferAccount => Ok(()),
@@ -641,6 +644,8 @@ pub enum ExtensionType {
     CpiGuard,
     /// Includes an optional permanent delegate
     PermanentDelegate,
+    /// Indicates that the tokens in this account belong to a non-transferable mint
+    NonTransferableAccount,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -683,6 +688,7 @@ impl ExtensionType {
             ExtensionType::InterestBearingConfig => pod_get_packed_len::<InterestBearingConfig>(),
             ExtensionType::CpiGuard => pod_get_packed_len::<CpiGuard>(),
             ExtensionType::PermanentDelegate => pod_get_packed_len::<PermanentDelegate>(),
+            ExtensionType::NonTransferableAccount => pod_get_packed_len::<NonTransferableAccount>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -745,6 +751,7 @@ impl ExtensionType {
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
             | ExtensionType::MemoTransfer
+            | ExtensionType::NonTransferableAccount
             | ExtensionType::CpiGuard => AccountType::Account,
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => AccountType::Account,
@@ -758,10 +765,12 @@ impl ExtensionType {
     pub fn get_required_init_account_extensions(mint_extension_types: &[Self]) -> Vec<Self> {
         let mut account_extension_types = vec![];
         for extension_type in mint_extension_types {
-            #[allow(clippy::single_match)]
             match extension_type {
                 ExtensionType::TransferFeeConfig => {
                     account_extension_types.push(ExtensionType::TransferFeeAmount);
+                }
+                ExtensionType::NonTransferable => {
+                    account_extension_types.push(ExtensionType::NonTransferableAccount);
                 }
                 #[cfg(test)]
                 ExtensionType::MintPaddingTest => {

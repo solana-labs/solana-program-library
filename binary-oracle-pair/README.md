@@ -1,4 +1,4 @@
-Simple Oracle Pair Token
+# Simple Oracle Pair Token
 
 1. pick a deposit token
 2. pick the decider's pubkey
@@ -10,3 +10,8 @@ the mint term end slot.  After the decide term end slot the `Pass`
 token converts 1:1 with the deposit token if and only if the decider
 had set `pass` before the end of the decide term, otherwise the `Fail`
 token converts 1:1 with the deposit token.
+
+## Audit
+
+The repository [README](https://github.com/solana-labs/solana-program-library#audits)
+contains information about program audits.
