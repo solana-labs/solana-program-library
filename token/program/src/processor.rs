@@ -904,9 +904,12 @@ impl Processor {
                 }
             }
             Multisig::LEN => {
-                if source_info.key != authority_info.key {
-                    return Err(TokenError::OwnerMismatch.into());
-                }
+                Self::validate_owner(
+                    program_id,
+                    authority_info.key,
+                    authority_info,
+                    account_info_iter.as_slice(),
+                )?;
             }
             _ => {
                 return Err(TokenError::InvalidState.into());

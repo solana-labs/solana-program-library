@@ -3562,7 +3562,7 @@ fn app<'a, 'b>(
         )
         .subcommand(
             SubCommand::with_name(CommandName::RecoverLamports.into())
-                .about("Recover lamports from a Token Program owned account to an associated token account")
+                .about("Recover lamports from a Token Program owned account to an native ATA")
                 .arg(
                     Arg::with_name("source_account")
                         .validator(is_valid_pubkey)
