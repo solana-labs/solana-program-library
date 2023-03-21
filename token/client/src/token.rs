@@ -2443,7 +2443,7 @@ where
 
         self.process_ixs(
             &[spl_token::instruction::recover_lamports(
-                &spl_token::id(),
+                &self.program_id,
                 source,
                 authority,
                 wrapped_sol_ata,

@@ -1303,6 +1303,8 @@ impl Processor {
 
         let destination_info = next_account_info(account_info_iter)?;
         let source_info = next_account_info(account_info_iter)?;
+
+        // Authority is the signer (payer of fee) for the transaction
         let authority_info = next_account_info(account_info_iter)?;
 
         if source_info.owner != program_id {
