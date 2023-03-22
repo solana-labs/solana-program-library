@@ -2430,12 +2430,12 @@ where
         .await
     }
 
-    // TODO @Dzonixy:
+    // #[cfg(feature = "proof-program")]
     pub async fn recover_lamports<S: Signers>(
         &self,
         source: &Pubkey,
         authority: &Pubkey,
-        wrapped_sol_ata: &Pubkey,
+        destination: &Pubkey,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
@@ -2446,7 +2446,7 @@ where
                 &self.program_id,
                 source,
                 authority,
-                wrapped_sol_ata,
+                destination,
                 multisig_signers,
             )?],
             signing_keypairs,

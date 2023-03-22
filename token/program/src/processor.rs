@@ -848,18 +848,6 @@ impl Processor {
         let source_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
-        if source_info.owner != program_id {
-            return Err(ProgramError::IncorrectProgramId);
-        }
-
-        if !authority_info.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
-
-        if destination_info.owner != program_id {
-            return Err(ProgramError::IncorrectProgramId);
-        }
-
         let destination_ata = Account::unpack(&destination_info.data.borrow())?;
 
         if &destination_ata.owner != authority_info.key {

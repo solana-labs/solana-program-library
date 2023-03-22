@@ -1872,13 +1872,13 @@ pub fn recover_lamports(
     token_program_id: &Pubkey,
     source_account: &Pubkey,
     authority: &Pubkey,
-    dest_token_account_pubkey: &Pubkey,
+    destination_account: &Pubkey,
     signers: Vec<&Pubkey>,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    // check_program_account(token_program_id)?;
 
     let mut accounts = vec![
-        AccountMeta::new(*dest_token_account_pubkey, false),
+        AccountMeta::new(*destination_account, false),
         AccountMeta::new(*source_account, false),
         AccountMeta::new(*authority, false),
     ];
