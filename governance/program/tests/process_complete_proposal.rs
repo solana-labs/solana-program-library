@@ -9,7 +9,7 @@ use spl_governance::error::GovernanceError;
 use spl_governance::state::enums::ProposalState;
 
 #[tokio::test]
-async fn test_complete_stuck_proposal() {
+async fn test_complete_proposal() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -42,6 +42,7 @@ async fn test_complete_stuck_proposal() {
 
     let clock = governance_test.bench.get_clock().await;
 
+    // Ensure
     let proposal_account = governance_test
         .get_proposal_account(&proposal_cookie.address)
         .await;
@@ -49,7 +50,7 @@ async fn test_complete_stuck_proposal() {
 
     // Act
     governance_test
-        .complete_stuck_proposal(&mut proposal_cookie)
+        .complete_proposal(&mut proposal_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -58,14 +59,12 @@ async fn test_complete_stuck_proposal() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    let yes_option = proposal_account.options.first().unwrap();
-    assert_eq!(0, yes_option.transactions_count);
     assert_eq!(ProposalState::Completed, proposal_account.state);
     assert_eq!(Some(clock.unix_timestamp), proposal_account.closed_at);
 }
 
 #[tokio::test]
-async fn test_complete_stuck_proposal_with_wrong_state_error() {
+async fn test_complete_proposal_with_wrong_state_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -91,41 +90,24 @@ async fn test_complete_stuck_proposal_with_wrong_state_error() {
         .await
         .unwrap();
 
-    let proposal_transaction_cookie = governance_test
-        .with_transfer_tokens_transaction(
-            &governed_token_cookie,
-            &mut proposal_cookie,
-            &token_owner_record_cookie,
-            None,
-        )
-        .await
-        .unwrap();
-
+    // Ensure
     let proposal = governance_test
         .get_proposal_account(&proposal_cookie.address)
         .await;
     assert_eq!(ProposalState::Draft, proposal.state);
-    assert_eq!(
-        proposal_transaction_cookie.account.proposal,
-        proposal_cookie.address
-    );
-    assert!(!proposal_transaction_cookie.account.instructions.is_empty());
 
     // Act
     let err = governance_test
-        .complete_stuck_proposal(&mut proposal_cookie)
+        .complete_proposal(&mut proposal_cookie, &token_owner_record_cookie)
         .await
         .err()
         .unwrap();
 
-    assert_eq!(
-        err,
-        GovernanceError::InvalidStateForCompleteStuckProposal.into()
-    );
+    assert_eq!(err, GovernanceError::InvalidStateToCompleteProposal.into());
 }
 
 #[tokio::test]
-async fn test_complete_stuck_proposal_with_completed_state_transaction_exists_error() {
+async fn test_complete_proposal_with_completed_state_transaction_exists_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -182,21 +164,14 @@ async fn test_complete_stuck_proposal_with_completed_state_transaction_exists_er
         .get_proposal_account(&proposal_cookie.address)
         .await;
     assert_eq!(ProposalState::Succeeded, proposal.state);
-    assert_eq!(
-        proposal_transaction_cookie.account.proposal,
-        proposal_cookie.address
-    );
     assert!(!proposal_transaction_cookie.account.instructions.is_empty());
 
     // Act
     let err = governance_test
-        .complete_stuck_proposal(&mut proposal_cookie)
+        .complete_proposal(&mut proposal_cookie, &token_owner_record_cookie)
         .await
         .err()
         .unwrap();
 
-    assert_eq!(
-        err,
-        GovernanceError::InvalidStateForCompleteStuckProposal.into()
-    );
+    assert_eq!(err, GovernanceError::InvalidStateToCompleteProposal.into());
 }
