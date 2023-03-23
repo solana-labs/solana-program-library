@@ -630,13 +630,14 @@ pub enum TokenInstruction<'a> {
         /// Authority that may sign for `Transfer`s and `Burn`s on any account
         delegate: Pubkey,
     },
-    /// This instruction is to be used to rescue SOLs sent to multisig account with
-    /// system_instruction::transfer by sending them to a WrappedSol token account
-    /// and invoking sync_native, leaving behind only lamports for rent exemption.
+    /// This instruction is to be used to rescue SOLs sent to any TokenProgram
+    /// owned account with system_instruction::transfer by sending them to a
+    /// WrappedSol token account leaving behind only lamports for rent exemption.
     ///
-    /// 0. `[writable]` Destination WrappedSol token account owned by multisig
-    /// 1. `[writable]` Multisig
-    /// 2. ..2+M `[signer]` M signer accounts.
+    /// 0. `[writable]` Destination WrappedSol token account owned by signer
+    /// 1. `[writable]` Source Account
+    /// 2. `[signer]` Authority
+    /// 3. ..2+M `[signer]` M signer accounts.
     RecoverLamports,
 }
 impl<'a> TokenInstruction<'a> {
