@@ -1,6 +1,7 @@
 mod client;
 mod output;
 
+use std::{collections::HashMap, time::Duration};
 use {
     crate::{
         client::*,
@@ -20,7 +21,7 @@ use {
         keypair::{signer_from_path_with_config, SignerFromPathConfig},
     },
     solana_cli_output::OutputFormat,
-    solana_client::rpc_client::RpcClient,
+    solana_client::{nonblocking::rpc_client::RpcClient as AsyncRpcClient, rpc_client::RpcClient},
     solana_program::{
         borsh::{get_instance_packed_len, get_packed_len},
         instruction::Instruction,
@@ -51,12 +52,16 @@ use {
     },
     std::cmp::Ordering,
     std::{process::exit, sync::Arc},
+    thiserror::Error as ThisError,
 };
+
+use solana_client::client_error::ClientError;
 // use instruction::create_associated_token_account once ATA 1.0.5 is released
 #[allow(deprecated)]
 use spl_associated_token_account::create_associated_token_account;
+use tokio::{runtime::Runtime, time::sleep};
 
-pub(crate) struct Config {
+pub struct Config {
     rpc_client: RpcClient,
     verbose: bool,
     output_format: OutputFormat,
@@ -67,6 +72,13 @@ pub(crate) struct Config {
     fee_payer: Box<dyn Signer>,
     dry_run: bool,
     no_update: bool,
+    all_validators: bool,
+}
+
+#[derive(ThisError, Debug)]
+pub enum TransactionRetryError {
+    #[error("Transactions failed to execute after multiple retries")]
+    RetryError,
 }
 
 type Error = Box<dyn std::error::Error>;
@@ -142,30 +154,23 @@ fn get_signer(
     })
 }
 
-fn get_latest_blockhash(client: &RpcClient) -> Result<Hash, Error> {
-    Ok(client
-        .get_latest_blockhash_with_commitment(CommitmentConfig::confirmed())?
-        .0)
-}
-
-fn send_transaction_no_wait(
-    config: &Config,
-    transaction: Transaction,
-) -> solana_client::client_error::Result<()> {
-    if config.dry_run {
-        let result = config.rpc_client.simulate_transaction(&transaction)?;
-        println!("Simulate result: {:?}", result);
-    } else {
-        let signature = config.rpc_client.send_transaction(&transaction)?;
-        println!("Signature: {}", signature);
+fn get_latest_blockhash(client: &RpcClient) -> Result<Hash, ClientError> {
+    let mut result;
+    for _ in 1..4 {
+        result = client.get_latest_blockhash_with_commitment(CommitmentConfig::finalized());
+        if let Ok(blockhash) = result {
+            println!("fetching blockhash {}", blockhash.0);
+            return Ok(blockhash.0);
+        }
     }
-    Ok(())
+    result = client.get_latest_blockhash_with_commitment(CommitmentConfig::finalized());
+    match result {
+        Ok(b) => Ok(b.0),
+        Err(e) => Err(e),
+    }
 }
 
-fn send_transaction(
-    config: &Config,
-    transaction: Transaction,
-) -> solana_client::client_error::Result<()> {
+fn send_transaction(config: &Config, transaction: Transaction) -> Result<(), Error> {
     if config.dry_run {
         let result = config.rpc_client.simulate_transaction(&transaction)?;
         println!("Simulate result: {:?}", result);
@@ -189,7 +194,7 @@ fn checked_transaction_with_signers<T: Signers>(
         Some(&config.fee_payer.pubkey()),
         &recent_blockhash,
     );
-    check_fee_payer_balance(config, config.rpc_client.get_fee_for_message(&message)?)?;
+    // check_fee_payer_balance(config, config.rpc_client.get_fee_for_message(&message)?)?;
     let transaction = Transaction::new(signers, message, recent_blockhash);
     Ok(transaction)
 }
@@ -1061,7 +1066,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         .rpc_client
         .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
         + MINIMUM_RESERVE_LAMPORTS;
-    let cli_stake_pool_stake_account_infos = validator_list
+    let mut cli_stake_pool_stake_account_infos: Vec<CliStakePoolStakeAccountInfo> = validator_list
         .validators
         .iter()
         .map(|validator| {
@@ -1090,6 +1095,12 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
             }
         })
         .collect();
+    if !config.all_validators {
+        cli_stake_pool_stake_account_infos = cli_stake_pool_stake_account_infos
+            .into_iter()
+            .filter(|info| info.validator_lamports > 1_000_000)
+            .collect();
+    }
     let total_pool_tokens =
         spl_token::amount_to_ui_amount(stake_pool.pool_token_supply, pool_mint.decimals);
     let mut cli_stake_pool = CliStakePool::from((
@@ -1115,16 +1126,111 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     Ok(())
 }
 
-fn command_update(
+async fn get_latest_blockhash_with_retry(client: &AsyncRpcClient) -> Result<Hash, ClientError> {
+    let mut result;
+    for _ in 1..4 {
+        result = client
+            .get_latest_blockhash_with_commitment(CommitmentConfig::finalized())
+            .await;
+        if result.is_ok() {
+            return Ok(result?.0);
+        }
+    }
+    Ok(client
+        .get_latest_blockhash_with_commitment(CommitmentConfig::finalized())
+        .await?
+        .0)
+}
+
+async fn parallel_execute_instructions(
+    async_client: &AsyncRpcClient,
+    mut instructions: Vec<Instruction>,
+    config: &Config,
+    retry: u16,
+) -> Result<(), Error> {
+    const BATCH_SIZE: usize = 250;
+
+    for _ in 1..retry {
+        let mut executed_signatures = HashMap::new();
+        let mut index = 0usize;
+        for instruction_batch in instructions.chunks(BATCH_SIZE) {
+            // Convert instructions to transactions in batches and send them all, saving their signatures
+            let recent_blockhash = get_latest_blockhash_with_retry(&async_client).await?;
+            let transactions: Vec<Transaction> = instruction_batch
+                .iter()
+                .map(|ix| {
+                    Transaction::new_signed_with_payer(
+                        &[ix.to_owned()],
+                        Some(&config.fee_payer.pubkey()),
+                        &[config.fee_payer.as_ref()],
+                        recent_blockhash,
+                    )
+                })
+                .collect();
+
+            for (i, tx) in transactions.iter().enumerate() {
+                let signature = tx.signatures[0];
+                let res = async_client.send_transaction(tx).await;
+                executed_signatures.insert(signature, index + i);
+                if let Err(e) = res {
+                    println!("Transaction failed preflight with err: {:?}", e);
+                }
+            }
+
+            index += BATCH_SIZE;
+            tokio::time::sleep(Duration::from_secs(2)).await;
+        }
+        tokio::time::sleep(Duration::from_secs(30)).await;
+
+        let confirmation_futures: Vec<_> = executed_signatures
+            .clone()
+            .into_keys()
+            .map(|sig| async move {
+                (
+                    sig,
+                    async_client
+                        .get_signature_status_with_commitment(&sig, CommitmentConfig::confirmed())
+                        .await,
+                )
+            })
+            .collect();
+
+        let results = futures::future::join_all(confirmation_futures).await;
+
+        for (sig, result) in results.iter() {
+            if matches!(result, Ok(Some(Ok(())))) {
+                executed_signatures.remove(sig);
+            }
+        }
+        println!(
+            "{} transactions submitted, {} confirmed",
+            results.len(),
+            results.len() - executed_signatures.len()
+        );
+
+        // All have been executed
+        if executed_signatures.is_empty() {
+            return Ok(());
+        }
+
+        // Update instructions to the ones remaining
+        instructions = executed_signatures
+            .into_values()
+            .map(|i| instructions[i].clone())
+            .collect();
+    }
+    Err(Box::new(TransactionRetryError::RetryError))
+}
+
+pub async fn parallel_execute_stake_pool_update(
     config: &Config,
     stake_pool_address: &Pubkey,
     force: bool,
     no_merge: bool,
-) -> CommandResult {
-    if config.no_update {
-        println!("Update requested, but --no-update flag specified, so doing nothing");
-        return Ok(());
-    }
+) -> Result<(), Error> {
+    // CLI "update" command. Formerly `command_update`
+    // Creates and executes transactions to update validator list balance, update stake pool balance, and
+    // delete the removed validator accounts from ValidatorList
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let epoch_info = config.rpc_client.get_epoch_info()?;
 
@@ -1132,50 +1238,43 @@ fn command_update(
         if force {
             println!("Update not required, but --force flag specified, so doing it anyway");
         } else {
-            println!("Update not required");
             return Ok(());
         }
     }
 
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
+    let program_id = spl_stake_pool::id();
 
-    let (mut update_list_instructions, final_instructions) =
+    let (update_list_instructions, final_instructions) =
         spl_stake_pool::instruction::update_stake_pool(
-            &spl_stake_pool::id(),
+            &program_id,
             &stake_pool,
             &validator_list,
-            stake_pool_address,
+            &spl_stake_pool::id(),
             no_merge,
         );
 
-    let update_list_instructions_len = update_list_instructions.len();
-    if update_list_instructions_len > 0 {
-        let last_instruction = update_list_instructions.split_off(update_list_instructions_len - 1);
-        // send the first ones without waiting
-        for instruction in update_list_instructions {
-            let transaction = checked_transaction_with_signers(
-                config,
-                &[instruction],
-                &[config.fee_payer.as_ref()],
-            )?;
-            send_transaction_no_wait(config, transaction)?;
-        }
+    let async_rpc_client = AsyncRpcClient::new(config.rpc_client.url());
 
-        // wait on the last one
-        let transaction = checked_transaction_with_signers(
-            config,
-            &last_instruction,
-            &[config.fee_payer.as_ref()],
-        )?;
-        send_transaction(config, transaction)?;
-    }
-    let transaction = checked_transaction_with_signers(
-        config,
-        &final_instructions,
-        &[config.fee_payer.as_ref()],
-    )?;
-    send_transaction(config, transaction)?;
+    parallel_execute_instructions(&async_rpc_client, update_list_instructions, config, 10).await?;
+    parallel_execute_instructions(&async_rpc_client, final_instructions, config, 10).await?;
 
+    Ok(())
+}
+
+fn command_update(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    force: bool,
+    no_merge: bool,
+) -> CommandResult {
+    let runtime = Runtime::new().expect("Tokio runtime failed to create");
+
+    runtime.block_on(async {
+        return parallel_execute_stake_pool_update(config, stake_pool_address, force, no_merge)
+            .await
+            .expect("Stake pool update failed");
+    });
     Ok(())
 }
 
@@ -1954,6 +2053,15 @@ fn main() {
                 .validator(is_valid_signer)
                 .takes_value(true)
                 .help("Transaction fee payer account [default: cli config keypair]"),
+        )
+        .arg(
+            Arg::with_name("all_validators")
+            .long("all-validators")
+            .value_name("ALL_VALIDATORS")
+            .takes_value(false)
+            .requires("verbose")
+            .global(true)
+            .help("Show every validator in the stake pool instead of just staked validators"),
         )
         .subcommand(SubCommand::with_name("create-pool")
             .about("Create a new stake pool")
@@ -2746,6 +2854,7 @@ fn main() {
             });
         let dry_run = matches.is_present("dry_run");
         let no_update = matches.is_present("no_update");
+        let all_validators = matches.is_present("all_validators");
 
         Config {
             rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
@@ -2758,6 +2867,7 @@ fn main() {
             fee_payer,
             dry_run,
             no_update,
+            all_validators,
         }
     };
 

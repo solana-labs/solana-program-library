@@ -6046,6 +6046,7 @@ dependencies = [
  "borsh",
  "bs58",
  "clap 2.34.0",
+ "futures 0.3.21",
  "serde",
  "serde_derive",
  "serde_json",
@@ -6061,6 +6062,8 @@ dependencies = [
  "spl-associated-token-account 1.1.1",
  "spl-stake-pool",
  "spl-token 3.5.0",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -6545,18 +6548,18 @@ checksum = "b1141d4d61095b28419e22cb0bbf02755f5e54e0526f97f1e3d1d160e60885fb"
 
 [[package]]
 name = "thiserror"
-version = "1.0.32"
+version = "1.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5f6586b7f764adc0231f4c79be7b920e766bb2f3e51b3661cdb263828f19994"
+checksum = "6a9cd18aa97d5c45c6603caea1da6628790b37f7a34b6ca89522331c5180fed0"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.32"
+version = "1.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12bafc5b54507e0149cdf1b145a5d80ab80a90bcd9275df43d4fff68460f6c21"
+checksum = "1fb327af4685e4d03fa8cbcf1716380da910eeb2bb8be417e7f9fd3fb164f36f"
 dependencies = [
  "proc-macro2 1.0.43",
  "quote 1.0.21",
