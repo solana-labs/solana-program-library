@@ -175,3 +175,55 @@ async fn test_complete_proposal_with_completed_state_transaction_exists_error() 
 
     assert_eq!(err, GovernanceError::InvalidStateToCompleteProposal.into());
 }
+
+#[tokio::test]
+async fn test_complete_proposal_with_owner_or_delegate_must_sign_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let mut token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_cookie = governance_test
+        .with_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let mut proposal_cookie = governance_test
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    governance_test
+        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .await
+        .unwrap();
+
+    // Try to maliciously sign using different owner signature
+    let token_owner_record_cookie2 = governance_test
+        .with_council_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+    token_owner_record_cookie.token_owner = token_owner_record_cookie2.token_owner;
+
+    // Act
+    let err = governance_test
+        .complete_proposal(&mut proposal_cookie, &token_owner_record_cookie)
+        .await
+        .err()
+        .unwrap();
+
+    assert_eq!(
+        err,
+        GovernanceError::GoverningTokenOwnerOrDelegateMustSign.into()
+    );
+}

@@ -3152,33 +3152,20 @@ impl GovernanceProgramTest {
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
     ) -> Result<(), ProgramError> {
-        self.complete_proposal_using_instruction(
-            proposal_cookie,
-            token_owner_record_cookie,
-            NopOverride,
-        )
-        .await
-    }
+        let complete_proposal_authority = token_owner_record_cookie.get_governance_authority();
 
-    #[allow(dead_code)]
-    pub async fn complete_proposal_using_instruction<F: Fn(&mut Instruction)>(
-        &mut self,
-        proposal_cookie: &mut ProposalCookie,
-        token_owner_record_cookie: &TokenOwnerRecordCookie,
-        instruction_override: F,
-    ) -> Result<(), ProgramError> {
-        let complete_authority = token_owner_record_cookie.get_governance_authority();
-
-        let mut complete_proposal_ix = complete_proposal(
+        let complete_proposal_ix = complete_proposal(
             &self.program_id,
             &proposal_cookie.address,
             &proposal_cookie.account.token_owner_record,
-            &complete_authority.pubkey(),
+            &complete_proposal_authority.pubkey(),
         );
-        instruction_override(&mut complete_proposal_ix);
 
         self.bench
-            .process_transaction(&[complete_proposal_ix], Some(&[complete_authority]))
+            .process_transaction(
+                &[complete_proposal_ix],
+                Some(&[complete_proposal_authority]),
+            )
             .await?;
 
         Ok(())
