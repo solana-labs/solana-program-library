@@ -1,3 +1,4 @@
+#![allow(clippy::integer_arithmetic)]
 #![deny(missing_docs)]
 //! Governance Chat program
 

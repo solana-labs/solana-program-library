@@ -65,10 +65,10 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
     let clock = Clock::get()?;
 
     // If the Proposal is still being voted on then the token owner vote will be withdrawn and it won't count towards the vote outcome
-    // Note: If there is no tipping point the proposal can be still in Voting state but already past the configured max_voting_time
+    // Note: If there is no tipping point the proposal can be still in Voting state but already past the configured max voting time (base + cool off voting time)
     //       It means it awaits manual finalization (FinalizeVote) and it should no longer be possible to withdraw the vote
     if proposal_data.state == ProposalState::Voting
-        && !proposal_data.has_vote_time_ended(&governance_data.config, clock.unix_timestamp)
+        && !proposal_data.has_voting_max_time_ended(&governance_data.config, clock.unix_timestamp)
     {
         let governance_authority_info = next_account_info(account_info_iter)?; // 5
         let beneficiary_info = next_account_info(account_info_iter)?; // 6
@@ -109,12 +109,7 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
 
         proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
-        dispose_account(vote_record_info, beneficiary_info);
-
-        token_owner_record_data.total_votes_count = token_owner_record_data
-            .total_votes_count
-            .checked_sub(1)
-            .unwrap();
+        dispose_account(vote_record_info, beneficiary_info)?;
     } else {
         // After Proposal voting time ends and it's not tipped then it enters implicit (time based) Finalizing state
         // and releasing tokens in this state should be disallowed

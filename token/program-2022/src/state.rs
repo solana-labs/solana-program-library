@@ -468,7 +468,7 @@ pub(crate) mod test {
         let result = Account::unpack_account_owner(&src);
         assert!(result.is_none());
 
-        // Account data length is multi-sig data size with a valid extension and initalized,
+        // Account data length is multi-sig data size with a valid extension and initialized,
         // expect none
         let mut src: [u8; Multisig::LEN] = [0; Multisig::LEN];
         src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Initialized as u8;
@@ -502,7 +502,7 @@ pub(crate) mod test {
         let result = Account::unpack_account_mint(&src);
         assert_eq!(result, Option::None);
 
-        // Account data length > account data size with a valid extension and initalized,
+        // Account data length > account data size with a valid extension and initialized,
         // expect some key returned
         let mut src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
         src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Initialized as u8;
@@ -510,13 +510,13 @@ pub(crate) mod test {
         let result = Account::unpack_account_mint(&src);
         assert!(result.is_some());
 
-        // Account data length > account data size with a valid extension but uninitalized,
+        // Account data length > account data size with a valid extension but uninitialized,
         // expect none
         src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Uninitialized as u8;
         let result = Account::unpack_account_mint(&src);
         assert!(result.is_none());
 
-        // Account data length is multi-sig data size with a valid extension and initalized,
+        // Account data length is multi-sig data size with a valid extension and initialized,
         // expect none
         let mut src: [u8; Multisig::LEN] = [0; Multisig::LEN];
         src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Initialized as u8;

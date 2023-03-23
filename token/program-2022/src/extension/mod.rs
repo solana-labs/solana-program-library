@@ -5,12 +5,14 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
+            cpi_guard::CpiGuard,
             default_account_state::DefaultAccountState,
             immutable_owner::ImmutableOwner,
             interest_bearing_mint::InterestBearingConfig,
             memo_transfer::MemoTransfer,
             mint_close_authority::MintCloseAuthority,
-            non_transferable::NonTransferable,
+            non_transferable::{NonTransferable, NonTransferableAccount},
+            permanent_delegate::PermanentDelegate,
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
         },
         pod::*,
@@ -33,6 +35,8 @@ use serde::{Deserialize, Serialize};
 
 /// Confidential Transfer extension
 pub mod confidential_transfer;
+/// CPI Guard extension
+pub mod cpi_guard;
 /// Default Account State extension
 pub mod default_account_state;
 /// Immutable Owner extension
@@ -45,6 +49,8 @@ pub mod memo_transfer;
 pub mod mint_close_authority;
 /// Non Transferable extension
 pub mod non_transferable;
+/// Permanent Delegate extension
+pub mod permanent_delegate;
 /// Utility to reallocate token accounts
 pub mod reallocate;
 /// Transfer Fee extension
@@ -101,16 +107,17 @@ fn get_extension_indices<V: Extension>(
         let extension_type =
             ExtensionType::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
         let account_type = extension_type.get_account_type();
-        // got to an empty spot, can init here, or move forward if not initing
-        if extension_type == ExtensionType::Uninitialized {
+        if extension_type == V::TYPE {
+            // found an instance of the extension that we're initializing, return!
+            return Ok(tlv_indices);
+        // got to an empty spot, init here, or error if we're searching, since
+        // nothing is written after an Uninitialized spot
+        } else if extension_type == ExtensionType::Uninitialized {
             if init {
                 return Ok(tlv_indices);
             } else {
-                start_index = tlv_indices.length_start;
+                return Err(TokenError::ExtensionNotFound.into());
             }
-        } else if extension_type == V::TYPE {
-            // found an instance of the extension that we're initializing, return!
-            return Ok(tlv_indices);
         } else if v_account_type != account_type {
             return Err(TokenError::ExtensionTypeMismatch.into());
         } else {
@@ -129,20 +136,29 @@ fn get_extension_types(tlv_data: &[u8]) -> Result<Vec<ExtensionType>, ProgramErr
     let mut start_index = 0;
     while start_index < tlv_data.len() {
         let tlv_indices = get_tlv_indices(start_index);
-        if tlv_data.len() < tlv_indices.value_start {
-            return Ok(extension_types);
+        if tlv_data.len() < tlv_indices.length_start {
+            // not enough bytes to store the type, malformed
+            return Err(ProgramError::InvalidAccountData);
         }
         let extension_type =
             ExtensionType::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
         if extension_type == ExtensionType::Uninitialized {
             return Ok(extension_types);
         } else {
+            if tlv_data.len() < tlv_indices.value_start {
+                // not enough bytes to store the length, malformed
+                return Err(ProgramError::InvalidAccountData);
+            }
             extension_types.push(extension_type);
             let length = pod_from_bytes::<Length>(
                 &tlv_data[tlv_indices.length_start..tlv_indices.value_start],
             )?;
 
             let value_end_index = tlv_indices.value_start.saturating_add(usize::from(*length));
+            if value_end_index > tlv_data.len() {
+                // value blows past the size of the slice, malformed
+                return Err(ProgramError::InvalidAccountData);
+            }
             start_index = value_end_index;
         }
     }
@@ -244,7 +260,31 @@ fn get_extension<S: BaseState, V: Extension>(tlv_data: &[u8]) -> Result<&V, Prog
     // get_extension_indices has checked that tlv_data is long enough to include these indices
     let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
     let value_end = value_start.saturating_add(usize::from(*length));
+    if tlv_data.len() < value_end {
+        return Err(ProgramError::InvalidAccountData);
+    }
     pod_from_bytes::<V>(&tlv_data[value_start..value_end])
+}
+
+/// Trait for base state with extension
+pub trait BaseStateWithExtensions<S: BaseState> {
+    /// Get the buffer containing all extension data
+    fn get_tlv_data(&self) -> &[u8];
+
+    /// Unpack a portion of the TLV data as the desired type
+    fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
+        get_extension::<S, V>(self.get_tlv_data())
+    }
+
+    /// Iterates through the TLV entries, returning only the types
+    fn get_extension_types(&self) -> Result<Vec<ExtensionType>, ProgramError> {
+        get_extension_types(self.get_tlv_data())
+    }
+
+    /// Get just the first extension type, useful to track mixed initializations
+    fn get_first_extension_type(&self) -> Result<Option<ExtensionType>, ProgramError> {
+        get_first_extension_type(self.get_tlv_data())
+    }
 }
 
 /// Encapsulates owned immutable base state data (mint or account) with possible extensions
@@ -277,15 +317,11 @@ impl<S: BaseState> StateWithExtensionsOwned<S> {
             })
         }
     }
+}
 
-    /// Unpack a portion of the TLV data as the desired type
-    pub fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
-        get_extension::<S, V>(&self.tlv_data)
-    }
-
-    /// Iterates through the TLV entries, returning only the types
-    pub fn get_extension_types(&self) -> Result<Vec<ExtensionType>, ProgramError> {
-        get_extension_types(&self.tlv_data)
+impl<S: BaseState> BaseStateWithExtensions<S> for StateWithExtensionsOwned<S> {
+    fn get_tlv_data(&self) -> &[u8] {
+        &self.tlv_data
     }
 }
 
@@ -321,15 +357,10 @@ impl<'data, S: BaseState> StateWithExtensions<'data, S> {
             })
         }
     }
-
-    /// Unpack a portion of the TLV data as the desired type
-    pub fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
-        get_extension::<S, V>(self.tlv_data)
-    }
-
-    /// Iterates through the TLV entries, returning only the types
-    pub fn get_extension_types(&self) -> Result<Vec<ExtensionType>, ProgramError> {
-        get_extension_types(self.tlv_data)
+}
+impl<'a, S: BaseState> BaseStateWithExtensions<S> for StateWithExtensions<'a, S> {
+    fn get_tlv_data(&self) -> &[u8] {
+        self.tlv_data
     }
 }
 
@@ -435,25 +466,6 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         pod_from_bytes_mut::<V>(&mut self.tlv_data[value_start..value_end])
     }
 
-    /// Unpack a portion of the TLV data as the desired type
-    pub fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
-        if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        let TlvIndices {
-            type_start,
-            length_start,
-            value_start,
-        } = get_extension_indices::<V>(self.tlv_data, false)?;
-
-        if self.tlv_data[type_start..].len() < V::TYPE.get_tlv_len() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        let length = pod_from_bytes::<Length>(&self.tlv_data[length_start..value_start])?;
-        let value_end = value_start.saturating_add(usize::from(*length));
-        pod_from_bytes::<V>(&self.tlv_data[value_start..value_end])
-    }
-
     /// Packs base state data into the base data portion
     pub fn pack_base(&mut self) {
         S::pack_into_slice(&self.base, self.base_data);
@@ -491,7 +503,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
                 pod_from_bytes_mut::<Length>(&mut self.tlv_data[length_start..value_start])?;
             // maybe this becomes smarter later for dynamically sized extensions
             let length = pod_get_packed_len::<V>();
-            *length_ref = Length::try_from(length).unwrap();
+            *length_ref = Length::try_from(length)?;
 
             let value_end = value_start.saturating_add(length);
             let extension_ref =
@@ -519,6 +531,9 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             ExtensionType::TransferFeeAmount => {
                 self.init_extension::<TransferFeeAmount>(true).map(|_| ())
             }
+            ExtensionType::NonTransferableAccount => self
+                .init_extension::<NonTransferableAccount>(true)
+                .map(|_| ()),
             // ConfidentialTransfers are currently opt-in only, so this is a no-op for extra safety
             // on InitializeAccount
             ExtensionType::ConfidentialTransferAccount => Ok(()),
@@ -546,14 +561,10 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         }
         Ok(())
     }
-
-    /// Iterates through the TLV entries, returning only the types
-    pub fn get_extension_types(&self) -> Result<Vec<ExtensionType>, ProgramError> {
-        get_extension_types(self.tlv_data)
-    }
-
-    fn get_first_extension_type(&self) -> Result<Option<ExtensionType>, ProgramError> {
-        get_first_extension_type(self.tlv_data)
+}
+impl<'a, S: BaseState> BaseStateWithExtensions<S> for StateWithExtensionsMut<'a, S> {
+    fn get_tlv_data(&self) -> &[u8] {
+        self.tlv_data
     }
 }
 
@@ -629,6 +640,12 @@ pub enum ExtensionType {
     NonTransferable,
     /// Tokens accrue interest over time,
     InterestBearingConfig,
+    /// Locks privileged token operations from happening via CPI
+    CpiGuard,
+    /// Includes an optional permanent delegate
+    PermanentDelegate,
+    /// Indicates that the tokens in this account belong to a non-transferable mint
+    NonTransferableAccount,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -669,6 +686,9 @@ impl ExtensionType {
             ExtensionType::MemoTransfer => pod_get_packed_len::<MemoTransfer>(),
             ExtensionType::NonTransferable => pod_get_packed_len::<NonTransferable>(),
             ExtensionType::InterestBearingConfig => pod_get_packed_len::<InterestBearingConfig>(),
+            ExtensionType::CpiGuard => pod_get_packed_len::<CpiGuard>(),
+            ExtensionType::PermanentDelegate => pod_get_packed_len::<PermanentDelegate>(),
+            ExtensionType::NonTransferableAccount => pod_get_packed_len::<NonTransferableAccount>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -725,11 +745,14 @@ impl ExtensionType {
             | ExtensionType::ConfidentialTransferMint
             | ExtensionType::DefaultAccountState
             | ExtensionType::NonTransferable
-            | ExtensionType::InterestBearingConfig => AccountType::Mint,
+            | ExtensionType::InterestBearingConfig
+            | ExtensionType::PermanentDelegate => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
-            | ExtensionType::MemoTransfer => AccountType::Account,
+            | ExtensionType::MemoTransfer
+            | ExtensionType::NonTransferableAccount
+            | ExtensionType::CpiGuard => AccountType::Account,
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => AccountType::Account,
             #[cfg(test)]
@@ -742,10 +765,12 @@ impl ExtensionType {
     pub fn get_required_init_account_extensions(mint_extension_types: &[Self]) -> Vec<Self> {
         let mut account_extension_types = vec![];
         for extension_type in mint_extension_types {
-            #[allow(clippy::single_match)]
             match extension_type {
                 ExtensionType::TransferFeeConfig => {
                     account_extension_types.push(ExtensionType::TransferFeeAmount);
+                }
+                ExtensionType::NonTransferable => {
+                    account_extension_types.push(ExtensionType::NonTransferableAccount);
                 }
                 #[cfg(test)]
                 ExtensionType::MintPaddingTest => {
@@ -826,18 +851,17 @@ mod test {
     };
 
     const MINT_WITH_EXTENSION: &[u8] = &[
-        // base mint
-        1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 42, 0, 0, 0, 0, 0, 0, 0, 7, 1, 1, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, // padding
+        1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 42, 0, 0, 0, 0, 0, 0, 0, 7, 1, 1, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, // base mint
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // account type
-        1, // extension type
-        3, 0, // length
-        32, 0, // data
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // padding
+        1, // account type
+        3, 0, // extension type
+        32, 0, // length
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1,
+        1, 1, // data
     ];
 
     #[test]
@@ -933,6 +957,35 @@ mod test {
             state.get_extension::<TransferFeeConfig>(),
             Err(ProgramError::InvalidAccountData)
         );
+
+        // data buffer is too small
+        let buffer = &MINT_WITH_EXTENSION[..MINT_WITH_EXTENSION.len() - 1];
+        let state = StateWithExtensions::<Mint>::unpack(buffer).unwrap();
+        assert_eq!(
+            state.get_extension::<MintCloseAuthority>(),
+            Err(ProgramError::InvalidAccountData)
+        );
+    }
+
+    #[test]
+    fn get_extension_types_with_opaque_buffer() {
+        // incorrect due to the length
+        assert_eq!(
+            get_extension_types(&[1, 0, 1, 1]).unwrap_err(),
+            ProgramError::InvalidAccountData,
+        );
+        // incorrect due to the huge enum number
+        assert_eq!(
+            get_extension_types(&[0, 1, 0, 0]).unwrap_err(),
+            ProgramError::InvalidAccountData,
+        );
+        // correct due to the good enum number and zero length
+        assert_eq!(
+            get_extension_types(&[1, 0, 0, 0]).unwrap(),
+            vec![ExtensionType::try_from(1).unwrap()]
+        );
+        // correct since it's just uninitialized data at the end
+        assert_eq!(get_extension_types(&[0, 0]).unwrap(), vec![]);
     }
 
     #[test]
@@ -1568,12 +1621,21 @@ mod test {
         let err = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
 
-        let mut buffer = vec![0; BASE_ACCOUNT_LENGTH + 2];
+        // OK since there are two bytes for the type, which is `Uninitialized`
+        let mut buffer = vec![0; BASE_ACCOUNT_LENGTH + 3];
         let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
         let err = state.get_extension_mut::<MintCloseAuthority>().unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
 
         assert_eq!(state.get_extension_types().unwrap(), vec![]);
+
+        // malformed since there aren't two bytes for the type
+        let mut buffer = vec![0; BASE_ACCOUNT_LENGTH + 2];
+        let state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        assert_eq!(
+            state.get_extension_types().unwrap_err(),
+            ProgramError::InvalidAccountData
+        );
     }
 
     #[test]
@@ -1586,8 +1648,14 @@ mod test {
         state.base = TEST_ACCOUNT;
         state.pack_base();
         state.init_account_type().unwrap();
-        state.init_extension::<ImmutableOwner>(true).unwrap();
 
+        let err = state.get_extension::<ImmutableOwner>().unwrap_err();
+        assert_eq!(
+            err,
+            ProgramError::Custom(TokenError::ExtensionNotFound as u32)
+        );
+
+        state.init_extension::<ImmutableOwner>(true).unwrap();
         assert_eq!(
             get_first_extension_type(state.tlv_data).unwrap(),
             Some(ExtensionType::ImmutableOwner)

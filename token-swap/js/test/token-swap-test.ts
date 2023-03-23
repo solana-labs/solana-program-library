@@ -56,7 +56,7 @@ let currentFeeAmount = 0;
 // need to get slightly tweaked in the two cases.
 const SWAP_AMOUNT_IN = 100000;
 const SWAP_AMOUNT_OUT = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 90661 : 90674;
-const SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 22273 : 22277;
+const SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 22727 : 22730;
 const HOST_SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS
   ? Math.floor((SWAP_FEE * HOST_FEE_NUMERATOR) / HOST_FEE_DENOMINATOR)
   : 0;
@@ -522,7 +522,9 @@ function tradingTokensToPoolTokens(
 ): number {
   const tradingFee =
     (sourceAmount / 2) * (TRADING_FEE_NUMERATOR / TRADING_FEE_DENOMINATOR);
-  const sourceAmountPostFee = sourceAmount - tradingFee;
+  const ownerTradingFee =
+    (sourceAmount / 2) * (OWNER_TRADING_FEE_NUMERATOR / OWNER_TRADING_FEE_DENOMINATOR);
+  const sourceAmountPostFee = sourceAmount - tradingFee - ownerTradingFee;
   const root = Math.sqrt(sourceAmountPostFee / swapSourceAmount + 1);
   return Math.floor(poolAmount * (root - 1));
 }

@@ -1,3 +1,4 @@
+#![allow(clippy::integer_arithmetic)]
 #![deny(missing_docs)]
 #![cfg_attr(not(test), forbid(unsafe_code))]
 
@@ -52,12 +53,12 @@ pub fn amount_to_ui_amount_string_trimmed(amount: u64, decimals: u8) -> String {
     s
 }
 
-/// Try to convert a UI represenation of a token amount to its raw amount using the given decimals
+/// Try to convert a UI representation of a token amount to its raw amount using the given decimals
 /// field
 pub fn try_ui_amount_into_amount(ui_amount: String, decimals: u8) -> Result<u64, ProgramError> {
     let decimals = decimals as usize;
     let mut parts = ui_amount.split('.');
-    let mut amount_str = parts.next().unwrap().to_string(); // splitting a string, even an empty one, will always yield an iterator of at least len == 1
+    let mut amount_str = parts.next().unwrap().to_string(); // splitting a string, even an empty one, will always yield an iterator of at least length == 1
     let after_decimal = parts.next().unwrap_or("");
     let after_decimal = after_decimal.trim_end_matches('0');
     if (amount_str.is_empty() && after_decimal.is_empty())

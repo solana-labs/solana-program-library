@@ -1,35 +1,35 @@
 [package]
-authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 description = "SPL-Token Command-line Utility"
-edition = "2018"
+edition = "2021"
 homepage = "https://spl.solana.com/token"
 license = "Apache-2.0"
 name = "spl-token-cli"
 repository = "https://github.com/solana-labs/solana-program-library"
-version = "2.0.17"
+version = "2.3.0"
 
 [build-dependencies]
 walkdir = "2"
 
 [dependencies]
 clap = "2.33.3"
-console = "0.14.0"
+console = "0.15.0"
 indicatif = "0.16.2"
 serde = "1.0.130"
 serde_derive = "1.0.103"
 serde_json = "1.0.68"
-solana-account-decoder = "=1.11.6"
-solana-clap-utils = "=1.11.6"
-solana-cli-config = "=1.11.6"
-solana-cli-output = "=1.11.6"
-solana-client = "=1.11.6"
-solana-logger = "=1.11.6"
-solana-remote-wallet = "=1.11.6"
-solana-sdk = "=1.11.6"
-solana-transaction-status = "=1.11.6"
+solana-account-decoder = "=1.14.12"
+solana-clap-utils = "=1.14.12"
+solana-cli-config = "=1.14.12"
+solana-cli-output = "=1.14.12"
+solana-client = "=1.14.12"
+solana-logger = "=1.14.12"
+solana-remote-wallet = "=1.14.12"
+solana-sdk = "=1.14.12"
+solana-transaction-status = "=1.14.12"
 spl-token = { version = "3.5", path="../program", features = [ "no-entrypoint" ] }
-spl-token-2022 = { version = "0.4", path="../program-2022", features = [ "no-entrypoint" ] }
-spl-token-client = { version = "0.1", path="../client" }
+spl-token-2022 = { version = "0.6", path="../program-2022", features = [ "no-entrypoint" ] }
+spl-token-client = { version = "0.4", path="../client" }
 spl-associated-token-account = { version = "1.1", path="../../associated-token-account/program", features = [ "no-entrypoint" ] }
 spl-memo = { version = "3.0.1", path="../../memo/program", features = ["no-entrypoint"] }
 strum = "0.24"
@@ -37,7 +37,7 @@ strum_macros = "0.24"
 tokio = "1.14"
 
 [dev-dependencies]
-solana-test-validator = "=1.11.6"
+solana-test-validator = "=1.14.12"
 assert_cmd = "2.0.4"
 serial_test = "0.8.0"
 tempfile = "3.3.0"

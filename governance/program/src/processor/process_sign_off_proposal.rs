@@ -10,7 +10,7 @@ use solana_program::{
 
 use crate::state::{
     enums::ProposalState, governance::get_governance_data_for_realm,
-    proposal::get_proposal_data_for_governance, realm::get_realm_data,
+    proposal::get_proposal_data_for_governance, realm::assert_is_valid_realm,
     signatory_record::get_signatory_record_data_for_seeds,
     token_owner_record::get_token_owner_record_data_for_proposal_owner,
 };
@@ -27,9 +27,12 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
 
     let clock = Clock::get()?;
 
-    let mut realm_data = get_realm_data(program_id, realm_info)?;
+    assert_is_valid_realm(program_id, realm_info)?;
 
-    let mut governance_data =
+    // Governance account data is no longer used in the current version but we still have to load it to validate Realm -> Governance -> Proposal relationship
+    // It could be replaced with PDA check but the account is going to be needed in future versions once we support mandatory signatories
+    // and hence keeping it as it is
+    let _governance_data =
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
     let mut proposal_data =
@@ -85,15 +88,6 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
     }
 
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
-
-    realm_data.voting_proposal_count = realm_data.voting_proposal_count.checked_add(1).unwrap();
-    realm_data.serialize(&mut *realm_info.data.borrow_mut())?;
-
-    governance_data.voting_proposal_count = governance_data
-        .voting_proposal_count
-        .checked_add(1)
-        .unwrap();
-    governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
 
     Ok(())
 }

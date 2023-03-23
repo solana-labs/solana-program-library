@@ -2,7 +2,7 @@
 name = "solana-vaults"
 version = "1.1.3"
 description = "Solana Vaults"
-authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library/farms"
 license = "Apache-2.0"
 homepage = "https://solana.com/"
@@ -11,7 +11,6 @@ edition = "2021"
 [features]
 no-entrypoint = []
 debug = []
-test-sbf = []
 RDM-STAKE-LP-COMPOUND = []
 SBR-STAKE-LP-COMPOUND = []
 ORC-STAKE-LP-COMPOUND = []
@@ -29,4 +28,3 @@ solana-program-test = "1.9.18"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-

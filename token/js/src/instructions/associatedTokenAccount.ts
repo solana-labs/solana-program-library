@@ -3,7 +3,7 @@ import { SystemProgram, TransactionInstruction } from '@solana/web3.js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants.js';
 
 /**
- * Construct an AssociatedTokenAccount instruction
+ * Construct a CreateAssociatedTokenAccount instruction
  *
  * @param payer                    Payer of the initialization fees
  * @param associatedToken          New associated token account
@@ -22,6 +22,57 @@ export function createAssociatedTokenAccountInstruction(
     programId = TOKEN_PROGRAM_ID,
     associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
 ): TransactionInstruction {
+    return buildAssociatedTokenAccountInstruction(
+        payer,
+        associatedToken,
+        owner,
+        mint,
+        Buffer.alloc(0),
+        programId,
+        associatedTokenProgramId
+    );
+}
+
+/**
+ * Construct a CreateAssociatedTokenAccountIdempotent instruction
+ *
+ * @param payer                    Payer of the initialization fees
+ * @param associatedToken          New associated token account
+ * @param owner                    Owner of the new account
+ * @param mint                     Token mint account
+ * @param programId                SPL Token program account
+ * @param associatedTokenProgramId SPL Associated Token program account
+ *
+ * @return Instruction to add to a transaction
+ */
+export function createAssociatedTokenAccountIdempotentInstruction(
+    payer: PublicKey,
+    associatedToken: PublicKey,
+    owner: PublicKey,
+    mint: PublicKey,
+    programId = TOKEN_PROGRAM_ID,
+    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
+): TransactionInstruction {
+    return buildAssociatedTokenAccountInstruction(
+        payer,
+        associatedToken,
+        owner,
+        mint,
+        Buffer.from([1]),
+        programId,
+        associatedTokenProgramId
+    );
+}
+
+function buildAssociatedTokenAccountInstruction(
+    payer: PublicKey,
+    associatedToken: PublicKey,
+    owner: PublicKey,
+    mint: PublicKey,
+    instructionData: Buffer,
+    programId = TOKEN_PROGRAM_ID,
+    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
+): TransactionInstruction {
     const keys = [
         { pubkey: payer, isSigner: true, isWritable: true },
         { pubkey: associatedToken, isSigner: false, isWritable: true },
@@ -34,6 +85,6 @@ export function createAssociatedTokenAccountInstruction(
     return new TransactionInstruction({
         keys,
         programId: associatedTokenProgramId,
-        data: Buffer.alloc(0),
+        data: instructionData,
     });
 }

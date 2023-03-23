@@ -36,10 +36,10 @@ async fn setup_mint_and_account(
                 &mint.pubkey(),
                 rent.minimum_balance(space),
                 space as u64,
-                &token_program_id,
+                token_program_id,
             ),
             instruction::initialize_mint(
-                &token_program_id,
+                token_program_id,
                 &mint.pubkey(),
                 &mint_authority_pubkey,
                 None,
@@ -60,18 +60,18 @@ async fn setup_mint_and_account(
                 &token_account.pubkey(),
                 rent.minimum_balance(space),
                 space as u64,
-                &token_program_id,
+                token_program_id,
             ),
             instruction::initialize_account(
-                &token_program_id,
+                token_program_id,
                 &token_account.pubkey(),
                 &mint.pubkey(),
-                &owner,
+                owner,
             )
             .unwrap(),
         ],
         Some(&context.payer.pubkey()),
-        &[&context.payer, &token_account],
+        &[&context.payer, token_account],
         context.last_blockhash,
     );
     context.banks_client.process_transaction(tx).await.unwrap();
@@ -181,14 +181,12 @@ async fn fail_init_after_close_account() {
         &[&context.payer, &owner],
         context.last_blockhash,
     );
-    #[allow(clippy::useless_conversion)]
-    let error: TransactionError = context
+    let error = context
         .banks_client
         .process_transaction(tx)
         .await
         .unwrap_err()
-        .unwrap()
-        .into();
+        .unwrap();
     assert_eq!(
         error,
         TransactionError::InstructionError(2, InstructionError::InvalidAccountData)

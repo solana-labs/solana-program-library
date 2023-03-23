@@ -362,8 +362,9 @@ pub(crate) struct CliStakePoolValidator {
     pub active_stake_lamports: u64,
     pub transient_stake_lamports: u64,
     pub last_update_epoch: u64,
-    pub transient_seed_suffix_start: u64,
-    pub transient_seed_suffix_end: u64,
+    pub transient_seed_suffix: u64,
+    pub unused: u32,
+    pub validator_seed_suffix: u32,
     pub status: CliStakePoolValidatorStakeStatus,
     pub vote_account_address: String,
 }
@@ -374,8 +375,9 @@ impl From<ValidatorStakeInfo> for CliStakePoolValidator {
             active_stake_lamports: v.active_stake_lamports,
             transient_stake_lamports: v.transient_stake_lamports,
             last_update_epoch: v.last_update_epoch,
-            transient_seed_suffix_start: v.transient_seed_suffix_start,
-            transient_seed_suffix_end: v.transient_seed_suffix_end,
+            transient_seed_suffix: v.transient_seed_suffix,
+            unused: v.unused,
+            validator_seed_suffix: v.validator_seed_suffix,
             status: CliStakePoolValidatorStakeStatus::from(v.status),
             vote_account_address: v.vote_account_address.to_string(),
         }
@@ -390,6 +392,10 @@ impl From<StakeStatus> for CliStakePoolValidatorStakeStatus {
                 CliStakePoolValidatorStakeStatus::DeactivatingTransient
             }
             StakeStatus::ReadyForRemoval => CliStakePoolValidatorStakeStatus::ReadyForRemoval,
+            StakeStatus::DeactivatingValidator => {
+                CliStakePoolValidatorStakeStatus::DeactivatingValidator
+            }
+            StakeStatus::DeactivatingAll => CliStakePoolValidatorStakeStatus::DeactivatingAll,
         }
     }
 }
@@ -399,6 +405,8 @@ pub(crate) enum CliStakePoolValidatorStakeStatus {
     Active,
     DeactivatingTransient,
     ReadyForRemoval,
+    DeactivatingValidator,
+    DeactivatingAll,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -467,7 +475,8 @@ impl From<(Pubkey, StakePool, ValidatorList, Pubkey)> for CliStakePool {
             last_update_epoch: stake_pool.last_update_epoch,
             lockup: CliStakePoolLockup::from(stake_pool.lockup),
             epoch_fee: CliStakePoolFee::from(stake_pool.epoch_fee),
-            next_epoch_fee: stake_pool.next_epoch_fee.map(CliStakePoolFee::from),
+            next_epoch_fee: Option::<Fee>::from(stake_pool.next_epoch_fee)
+                .map(CliStakePoolFee::from),
             preferred_deposit_validator_vote_address: stake_pool
                 .preferred_deposit_validator_vote_address
                 .map(|x| x.to_string()),
@@ -476,8 +485,7 @@ impl From<(Pubkey, StakePool, ValidatorList, Pubkey)> for CliStakePool {
                 .map(|x| x.to_string()),
             stake_deposit_fee: CliStakePoolFee::from(stake_pool.stake_deposit_fee),
             stake_withdrawal_fee: CliStakePoolFee::from(stake_pool.stake_withdrawal_fee),
-            next_stake_withdrawal_fee: stake_pool
-                .next_stake_withdrawal_fee
+            next_stake_withdrawal_fee: Option::<Fee>::from(stake_pool.next_stake_withdrawal_fee)
                 .map(CliStakePoolFee::from),
             stake_referral_fee: stake_pool.stake_referral_fee,
             sol_deposit_authority: stake_pool.sol_deposit_authority.map(|x| x.to_string()),
@@ -485,8 +493,7 @@ impl From<(Pubkey, StakePool, ValidatorList, Pubkey)> for CliStakePool {
             sol_referral_fee: stake_pool.sol_referral_fee,
             sol_withdraw_authority: stake_pool.sol_withdraw_authority.map(|x| x.to_string()),
             sol_withdrawal_fee: CliStakePoolFee::from(stake_pool.sol_withdrawal_fee),
-            next_sol_withdrawal_fee: stake_pool
-                .next_sol_withdrawal_fee
+            next_sol_withdrawal_fee: Option::<Fee>::from(stake_pool.next_sol_withdrawal_fee)
                 .map(CliStakePoolFee::from),
             last_epoch_pool_token_supply: stake_pool.last_epoch_pool_token_supply,
             last_epoch_total_lamports: stake_pool.last_epoch_total_lamports,

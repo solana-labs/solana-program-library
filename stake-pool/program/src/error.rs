@@ -135,6 +135,15 @@ pub enum StakePoolError {
     /// Provided metadata account does not match metadata account derived for pool mint
     #[error("InvalidMetadataAccount")]
     InvalidMetadataAccount,
+    /// The mint has an unsupported extension
+    #[error("UnsupportedMintExtension")]
+    UnsupportedMintExtension,
+    /// The fee account has an unsupported extension
+    #[error("UnsupportedFeeAccountExtension")]
+    UnsupportedFeeAccountExtension,
+    /// Instruction exceeds desired slippage limit
+    #[error("Instruction exceeds desired slippage limit")]
+    ExceededSlippage,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {

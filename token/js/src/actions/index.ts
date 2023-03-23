@@ -6,6 +6,7 @@ export * from './burnChecked.js';
 export * from './closeAccount.js';
 export * from './createAccount.js';
 export * from './createAssociatedTokenAccount.js';
+export * from './createAssociatedTokenAccountIdempotent.js';
 export * from './createMint.js';
 export * from './createMultisig.js';
 export * from './createNativeMint.js';

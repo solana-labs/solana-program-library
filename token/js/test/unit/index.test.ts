@@ -16,6 +16,8 @@ import {
     TokenOwnerOffCurveError,
     getAccountLen,
     ExtensionType,
+    isMintExtension,
+    isAccountExtension,
     getAssociatedTokenAddressSync,
     createInitializeAccount2Instruction,
     createInitializeAccount3Instruction,
@@ -236,5 +238,15 @@ describe('extensionType', () => {
         expect(getAccountLen([ExtensionType.MintCloseAuthority, ExtensionType.TransferFeeConfig])).to.eql(314);
         expect(getAccountLen([])).to.eql(165);
         expect(getAccountLen([ExtensionType.ImmutableOwner])).to.eql(170);
+        expect(getAccountLen([ExtensionType.PermanentDelegate])).to.eql(202);
+    });
+
+    it('exclusive and exhaustive predicates', () => {
+        const exts = Object.values(ExtensionType).filter(Number.isInteger);
+        const mintExts = exts.filter((e: any): e is ExtensionType => isMintExtension(e));
+        const accountExts = exts.filter((e: any): e is ExtensionType => isAccountExtension(e));
+        const collectedExts = [ExtensionType.Uninitialized].concat(mintExts, accountExts);
+
+        expect(collectedExts.sort()).to.eql(exts.sort());
     });
 });

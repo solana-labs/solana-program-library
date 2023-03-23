@@ -1,7 +1,17 @@
 //! Anchor events are used to emit information necessary to
 //! index changes made to a SPL ConcurrentMerkleTree
-mod changelog_event;
-mod new_leaf_event;
 
-pub use changelog_event::ChangeLogEvent;
-pub use new_leaf_event::NewLeafEvent;
+use anchor_lang::prelude::*;
+
+mod application_data;
+mod changelog_event;
+
+pub use application_data::{ApplicationDataEvent, ApplicationDataEventV1};
+pub use changelog_event::{ChangeLogEvent, ChangeLogEventV1};
+
+#[derive(AnchorDeserialize, AnchorSerialize)]
+#[repr(C)]
+pub enum AccountCompressionEvent {
+    ChangeLog(ChangeLogEvent),
+    ApplicationData(ApplicationDataEvent),
+}

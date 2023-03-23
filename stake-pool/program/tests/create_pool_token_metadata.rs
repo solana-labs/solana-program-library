@@ -1,3 +1,4 @@
+#![allow(clippy::integer_arithmetic)]
 #![cfg(feature = "test-sbf")]
 mod helpers;
 
@@ -17,13 +18,14 @@ use {
         error::StakePoolError::{AlreadyInUse, SignatureMissing, WrongManager},
         instruction, MINIMUM_RESERVE_LAMPORTS,
     },
+    test_case::test_case,
 };
 
-async fn setup() -> (ProgramTestContext, StakePoolAccounts) {
+async fn setup(token_program_id: Pubkey) -> (ProgramTestContext, StakePoolAccounts) {
     let mut context = program_test_with_metadata_program()
         .start_with_context()
         .await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::new_with_token_program(token_program_id);
     stake_pool_accounts
         .initialize_stake_pool(
             &mut context.banks_client,
@@ -37,17 +39,19 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts) {
     (context, stake_pool_accounts)
 }
 
+#[test_case(spl_token::id(); "token")]
+//#[test_case(spl_token_2022::id(); "token-2022")] enable once metaplex supports token-2022
 #[tokio::test]
-async fn success_create_pool_token_metadata() {
-    let (mut context, stake_pool_accounts) = setup().await;
+async fn success(token_program_id: Pubkey) {
+    let (mut context, stake_pool_accounts) = setup(token_program_id).await;
 
     let name = "test_name";
     let symbol = "SYM";
     let uri = "test_uri";
 
-    let puffed_name = puffed_out_string(&name, MAX_NAME_LENGTH);
-    let puffed_symbol = puffed_out_string(&symbol, MAX_SYMBOL_LENGTH);
-    let puffed_uri = puffed_out_string(&uri, MAX_URI_LENGTH);
+    let puffed_name = puffed_out_string(name, MAX_NAME_LENGTH);
+    let puffed_symbol = puffed_out_string(symbol, MAX_SYMBOL_LENGTH);
+    let puffed_uri = puffed_out_string(uri, MAX_URI_LENGTH);
 
     let ix = instruction::create_token_metadata(
         &spl_stake_pool::id(),
@@ -79,14 +83,14 @@ async fn success_create_pool_token_metadata() {
     )
     .await;
 
-    assert_eq!(metadata.data.name.to_string(), puffed_name);
-    assert_eq!(metadata.data.symbol.to_string(), puffed_symbol);
-    assert_eq!(metadata.data.uri.to_string(), puffed_uri);
+    assert_eq!(metadata.data.name, puffed_name);
+    assert_eq!(metadata.data.symbol, puffed_symbol);
+    assert_eq!(metadata.data.uri, puffed_uri);
 }
 
 #[tokio::test]
 async fn fail_manager_did_not_sign() {
-    let (mut context, stake_pool_accounts) = setup().await;
+    let (mut context, stake_pool_accounts) = setup(spl_token::id()).await;
 
     let name = "test_name";
     let symbol = "SYM";
@@ -130,7 +134,7 @@ async fn fail_manager_did_not_sign() {
 
 #[tokio::test]
 async fn fail_wrong_manager_signed() {
-    let (mut context, stake_pool_accounts) = setup().await;
+    let (mut context, stake_pool_accounts) = setup(spl_token::id()).await;
 
     let name = "test_name";
     let symbol = "SYM";
@@ -174,7 +178,7 @@ async fn fail_wrong_manager_signed() {
 
 #[tokio::test]
 async fn fail_wrong_mpl_metadata_program() {
-    let (mut context, stake_pool_accounts) = setup().await;
+    let (mut context, stake_pool_accounts) = setup(spl_token::id()).await;
 
     let name = "test_name";
     let symbol = "SYM";
@@ -220,7 +224,7 @@ async fn fail_wrong_mpl_metadata_program() {
 
 #[tokio::test]
 async fn fail_create_metadata_twice() {
-    let (mut context, stake_pool_accounts) = setup().await;
+    let (mut context, stake_pool_accounts) = setup(spl_token::id()).await;
 
     let name = "test_name";
     let symbol = "SYM";

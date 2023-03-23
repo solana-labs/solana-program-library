@@ -86,7 +86,7 @@ jobs:
 
       - name: Set env vars
         run: |
-          echo "RUST_STABLE_VERSION=1.63.0" >> $GITHUB_ENV
+          echo "RUST_STABLE_VERSION=1.66.1" >> $GITHUB_ENV
           source ci/rust-version.sh
           echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
           source ci/solana-version.sh
@@ -94,7 +94,7 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ env.RUST_STABLE }}
+          toolchain: ${{ env.RUST_STABLE_VERSION }}
           override: true
           profile: minimal
 
@@ -103,7 +103,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE }}
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE_VERSION }}
 
       - name: Install dependencies
         run: |
@@ -114,7 +114,7 @@ jobs:
       - name: Build and test token-2022 twoxtx (TEMPORARY)
         run: |
           ./token/twoxtx-setup.sh
-          ./ci/cargo-test-sbf.sh token/program-2022-test
+          cargo +${{ env.RUST_STABLE_VERSION }} test-sbf --manifest-path token/program-2022-test/Cargo.toml -- --nocapture
 
   js-test:
     runs-on: ubuntu-latest

@@ -2,7 +2,9 @@
 use std::str::FromStr;
 
 use solana_program::{instruction::Instruction, program_pack::Pack, pubkey::Pubkey};
-use solana_program_test::{processor, tokio, ProgramTest, ProgramTestContext};
+use solana_program_test::{
+    processor, tokio, ProgramTest, ProgramTestBanksClientExt, ProgramTestContext,
+};
 
 use solana_program::hash::hashv;
 use solana_sdk::{
@@ -11,8 +13,8 @@ use solana_sdk::{
     transport::TransportError,
 };
 use spl_name_service::{
-    entrypoint::process_instruction,
-    instruction::{create, delete, transfer, update, NameRegistryInstruction},
+    instruction::{create, delete, realloc, transfer, update, NameRegistryInstruction},
+    processor::Processor,
     state::{get_seeds_and_key, NameRecordHeader, HASH_PREFIX},
 };
 
@@ -24,7 +26,7 @@ async fn test_name_service() {
     let program_test = ProgramTest::new(
         "spl_name_service",
         program_id,
-        processor!(process_instruction),
+        processor!(Processor::process_instruction),
     );
 
     let mut ctx = program_test.start_with_context().await;
@@ -49,7 +51,7 @@ async fn test_name_service() {
         program_id,
         NameRegistryInstruction::Create {
             hashed_name: hashed_root_name,
-            lamports: rent.minimum_balance(space + NameRecordHeader::LEN),
+            lamports: rent.minimum_balance(space.saturating_add(NameRecordHeader::LEN)),
             space: space as u32,
         },
         root_name_account_key,
@@ -65,8 +67,7 @@ async fn test_name_service() {
         .unwrap();
 
     let name_record_header = NameRecordHeader::unpack_from_slice(
-        &mut &ctx
-            .banks_client
+        &ctx.banks_client
             .get_account(root_name_account_key)
             .await
             .unwrap()
@@ -93,7 +94,7 @@ async fn test_name_service() {
         program_id,
         NameRegistryInstruction::Create {
             hashed_name,
-            lamports: rent.minimum_balance(space + NameRecordHeader::LEN),
+            lamports: rent.minimum_balance(space.saturating_add(NameRecordHeader::LEN)),
             space: space as u32,
         },
         name_account_key,
@@ -113,8 +114,7 @@ async fn test_name_service() {
     .unwrap();
 
     let name_record_header = NameRecordHeader::unpack_from_slice(
-        &mut &ctx
-            .banks_client
+        &ctx.banks_client
             .get_account(name_account_key)
             .await
             .unwrap()
@@ -140,8 +140,7 @@ async fn test_name_service() {
         .unwrap();
 
     let name_record_header = NameRecordHeader::unpack_from_slice(
-        &mut &ctx
-            .banks_client
+        &ctx.banks_client
             .get_account(name_account_key)
             .await
             .unwrap()
@@ -168,8 +167,7 @@ async fn test_name_service() {
     .unwrap();
 
     let name_record_header = NameRecordHeader::unpack_from_slice(
-        &mut &ctx
-            .banks_client
+        &ctx.banks_client
             .get_account(name_account_key)
             .await
             .unwrap()
@@ -178,6 +176,59 @@ async fn test_name_service() {
     )
     .unwrap();
     println!("Name Record Header: {:?}", name_record_header);
+
+    let data = "hello".as_bytes().to_vec();
+    let update_instruction = update(
+        program_id,
+        space as u32,
+        data,
+        name_account_key,
+        sol_subdomains_class.pubkey(),
+        Some(name_record_header.parent_name),
+    )
+    .unwrap();
+
+    sign_send_instruction(
+        &mut ctx,
+        update_instruction.clone(),
+        vec![&sol_subdomains_class],
+    )
+    .await
+    .unwrap_err();
+
+    let new_space = space.checked_mul(2).unwrap();
+    let payer_key = ctx.payer.pubkey();
+    let realloc_instruction = |space| {
+        realloc(
+            program_id,
+            payer_key,
+            name_account_key,
+            payer_key,
+            space as u32,
+        )
+        .unwrap()
+    };
+
+    sign_send_instruction(&mut ctx, realloc_instruction(new_space), vec![])
+        .await
+        .unwrap();
+
+    // update blockhash to prevent losing txn to dedup
+    ctx.last_blockhash = ctx
+        .banks_client
+        .get_new_latest_blockhash(&ctx.last_blockhash)
+        .await
+        .unwrap();
+
+    // resend update ix. Should succeed this time.
+    sign_send_instruction(&mut ctx, update_instruction, vec![&sol_subdomains_class])
+        .await
+        .unwrap();
+
+    // realloc to smaller this time
+    sign_send_instruction(&mut ctx, realloc_instruction(space / 2), vec![])
+        .await
+        .unwrap();
 
     let delete_instruction = delete(
         program_id,
@@ -203,7 +254,6 @@ pub async fn sign_send_instruction(
         payer_signers.push(s);
     }
     transaction.partial_sign(&payer_signers, ctx.last_blockhash);
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     ctx.banks_client
         .process_transaction(transaction)
         .await

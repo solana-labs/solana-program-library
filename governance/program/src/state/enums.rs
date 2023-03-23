@@ -60,7 +60,7 @@ pub enum GovernanceAccountType {
     /// Top level aggregation for governances with Community Token (and optional Council Token)
     /// V2 adds the following fields:
     /// 1) use_community_voter_weight_addin and use_max_community_voter_weight_addin to RealmConfig
-    /// 2) voting_proposal_count
+    /// 2) voting_proposal_count / replaced with legacy1 in V3
     /// 3) extra reserved space reserved_v2
     RealmV2,
 
@@ -87,6 +87,9 @@ pub enum GovernanceAccountType {
     /// Proposal Signatory account
     /// V2 adds extra reserved space reserved_v2
     SignatoryRecordV2,
+
+    /// Proposal deposit account
+    ProposalDeposit,
 }
 
 impl Default for GovernanceAccountType {
@@ -225,21 +228,20 @@ pub enum InstructionExecutionFlags {
 /// The source of max vote weight used for voting
 /// Values below 100% mint supply can be used when the governing token is fully minted but not distributed yet
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub enum MintMaxVoteWeightSource {
+pub enum MintMaxVoterWeightSource {
     /// Fraction (10^10 precision) of the governing mint supply is used as max vote weight
     /// The default is 100% (10^10) to use all available mint supply for voting
     SupplyFraction(u64),
 
-    /// Absolute value, irrelevant of the actual mint supply, is used as max vote weight
-    /// Note: this option is not implemented in the current version
+    /// Absolute value, irrelevant of the actual mint supply, is used as max voter weight
     Absolute(u64),
 }
 
-impl MintMaxVoteWeightSource {
+impl MintMaxVoterWeightSource {
     /// Base for mint supply fraction calculation
     pub const SUPPLY_FRACTION_BASE: u64 = 10_000_000_000;
 
     /// 100% of mint supply
-    pub const FULL_SUPPLY_FRACTION: MintMaxVoteWeightSource =
-        MintMaxVoteWeightSource::SupplyFraction(MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE);
+    pub const FULL_SUPPLY_FRACTION: MintMaxVoterWeightSource =
+        MintMaxVoterWeightSource::SupplyFraction(MintMaxVoterWeightSource::SUPPLY_FRACTION_BASE);
 }

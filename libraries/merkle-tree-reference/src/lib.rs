@@ -1,3 +1,4 @@
+#![allow(clippy::integer_arithmetic)]
 use solana_program::keccak::hashv;
 use std::cell::RefCell;
 use std::collections::VecDeque;

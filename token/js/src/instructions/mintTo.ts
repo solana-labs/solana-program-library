@@ -38,7 +38,7 @@ export function createMintToInstruction(
     destination: PublicKey,
     authority: PublicKey,
     amount: number | bigint,
-    multiSigners: Signer[] = [],
+    multiSigners: (Signer | PublicKey)[] = [],
     programId = TOKEN_PROGRAM_ID
 ): TransactionInstruction {
     const keys = addSigners(

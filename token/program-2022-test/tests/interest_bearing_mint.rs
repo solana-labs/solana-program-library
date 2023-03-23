@@ -23,7 +23,7 @@ use {
     },
     spl_token_2022::{
         error::TokenError,
-        extension::interest_bearing_mint::InterestBearingConfig,
+        extension::{interest_bearing_mint::InterestBearingConfig, BaseStateWithExtensions},
         instruction::{amount_to_ui_amount, ui_amount_to_amount, AuthorityType},
         processor::Processor,
     },
@@ -94,7 +94,7 @@ async fn update_rate() {
     // correct
     let middle_rate = 1_000;
     token
-        .update_interest_rate(&rate_authority, middle_rate)
+        .update_interest_rate(&rate_authority.pubkey(), middle_rate, &[&rate_authority])
         .await
         .unwrap();
     let state = token.get_mint_info().await.unwrap();
@@ -118,7 +118,7 @@ async fn update_rate() {
     // update again, pre_update_average_rate is between the two previous
     let new_rate = 2_000;
     token
-        .update_interest_rate(&rate_authority, new_rate)
+        .update_interest_rate(&rate_authority.pubkey(), new_rate, &[&rate_authority])
         .await
         .unwrap();
     let state = token.get_mint_info().await.unwrap();
@@ -131,8 +131,9 @@ async fn update_rate() {
     assert!(final_update_timestamp > last_update_timestamp);
 
     // wrong signer
+    let wrong_signer = Keypair::new();
     let err = token
-        .update_interest_rate(&Keypair::new(), 0)
+        .update_interest_rate(&wrong_signer.pubkey(), 0, &[&wrong_signer])
         .await
         .unwrap_err();
     assert_eq!(
@@ -179,11 +180,11 @@ async fn set_authority() {
         Some(new_rate_authority.pubkey()).try_into().unwrap(),
     );
     token
-        .update_interest_rate(&new_rate_authority, 10)
+        .update_interest_rate(&new_rate_authority.pubkey(), 10, &[&new_rate_authority])
         .await
         .unwrap();
     let err = token
-        .update_interest_rate(&rate_authority, 100)
+        .update_interest_rate(&rate_authority.pubkey(), 100, &[&rate_authority])
         .await
         .unwrap_err();
     assert_eq!(
@@ -213,7 +214,7 @@ async fn set_authority() {
 
     // now all fail
     let err = token
-        .update_interest_rate(&new_rate_authority, 50)
+        .update_interest_rate(&new_rate_authority.pubkey(), 50, &[&new_rate_authority])
         .await
         .unwrap_err();
     assert_eq!(
@@ -226,7 +227,7 @@ async fn set_authority() {
         )))
     );
     let err = token
-        .update_interest_rate(&rate_authority, 5)
+        .update_interest_rate(&rate_authority.pubkey(), 5, &[&rate_authority])
         .await
         .unwrap_err();
     assert_eq!(
@@ -314,14 +315,14 @@ async fn amount_conversions() {
     let TokenContext { token, .. } = context.token_context.take().unwrap();
 
     // warp forward, so interest is accrued
-    let warp_slot = 1_000;
-    let initial_num_warps = 10;
+    let warp_slot: u64 = 1_000;
+    let initial_num_warps: u64 = 10;
     for i in 1..initial_num_warps {
         context
             .context
             .lock()
             .await
-            .warp_to_slot(i * warp_slot)
+            .warp_to_slot(i.checked_mul(warp_slot).unwrap())
             .unwrap();
     }
 

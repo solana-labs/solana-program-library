@@ -1,14 +1,20 @@
+#![allow(clippy::integer_arithmetic)]
 use std::borrow::Borrow;
 
-use borsh::BorshDeserialize;
+use borsh::{BorshDeserialize, BorshSerialize};
 use cookies::{TokenAccountCookie, WalletCookie};
 use solana_program::{
     borsh::try_from_slice_unchecked, clock::Clock, instruction::Instruction,
     program_error::ProgramError, program_pack::Pack, pubkey::Pubkey, rent::Rent,
-    system_instruction, system_program, sysvar,
+    stake_history::Epoch, system_instruction, system_program, sysvar,
 };
 use solana_program_test::{ProgramTest, ProgramTestContext};
-use solana_sdk::{account::Account, signature::Keypair, signer::Signer, transaction::Transaction};
+use solana_sdk::{
+    account::{Account, AccountSharedData, WritableAccount},
+    signature::Keypair,
+    signer::Signer,
+    transaction::Transaction,
+};
 
 use bincode::deserialize;
 
@@ -74,7 +80,6 @@ impl ProgramTestBench {
 
         transaction.sign(&all_signers, recent_blockhash);
 
-        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
         self.context
             .banks_client
             .process_transaction(transaction)
@@ -342,6 +347,27 @@ impl ProgramTestBench {
             .await
             .map(|a| try_from_slice_unchecked(&a.data).unwrap())
             .unwrap_or_else(|| panic!("GET-TEST-ACCOUNT-ERROR: Account {} not found", address))
+    }
+
+    /// Overrides or creates Borsh serialized account with arbitrary account data subverting normal runtime checks
+    pub fn set_borsh_account<T: BorshSerialize>(
+        &mut self,
+        program_id: &Pubkey,
+        address: &Pubkey,
+        account: &T,
+    ) {
+        let mut account_data = vec![];
+        account.serialize(&mut account_data).unwrap();
+
+        let data = AccountSharedData::create(
+            self.rent.minimum_balance(account_data.len()),
+            account_data,
+            *program_id,
+            false,
+            Epoch::default(),
+        );
+
+        self.context.set_account(address, &data);
     }
 
     #[allow(dead_code)]

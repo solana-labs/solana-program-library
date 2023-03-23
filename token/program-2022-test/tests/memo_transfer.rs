@@ -17,7 +17,7 @@ use {
     },
     spl_token_2022::{
         error::TokenError,
-        extension::{memo_transfer::MemoTransfer, ExtensionType},
+        extension::{memo_transfer::MemoTransfer, BaseStateWithExtensions, ExtensionType},
     },
     spl_token_client::token::TokenError as TokenClientError,
     std::sync::Arc,
@@ -30,7 +30,6 @@ async fn test_memo_transfers(
     bob_account: Pubkey,
 ) {
     let TokenContext {
-        decimals,
         mint_authority,
         token,
         alice,
@@ -44,15 +43,14 @@ async fn test_memo_transfers(
             &alice_account,
             &mint_authority.pubkey(),
             4242,
-            Some(decimals),
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap();
 
     // require memo transfers into bob_account
     token
-        .enable_required_transfer_memos(&bob_account, &bob)
+        .enable_required_transfer_memos(&bob_account, &bob.pubkey(), &[&bob])
         .await
         .unwrap();
 
@@ -62,14 +60,7 @@ async fn test_memo_transfers(
 
     // attempt to transfer from alice to bob without memo
     let err = token
-        .transfer(
-            &alice_account,
-            &bob_account,
-            &alice.pubkey(),
-            10,
-            None,
-            &vec![&alice],
-        )
+        .transfer(&alice_account, &bob_account, &alice.pubkey(), 10, &[&alice])
         .await
         .unwrap_err();
     assert_eq!(
@@ -109,14 +100,12 @@ async fn test_memo_transfers(
             &[&ctx.payer, &alice],
             ctx.last_blockhash,
         );
-        #[allow(clippy::useless_conversion)]
-        let err: TransactionError = ctx
+        let err = ctx
             .banks_client
             .process_transaction(tx)
             .await
             .unwrap_err()
-            .unwrap()
-            .into();
+            .unwrap();
         drop(ctx);
         assert_eq!(
             err,
@@ -132,14 +121,7 @@ async fn test_memo_transfers(
     // transfer with memo
     token
         .with_memo("🦖", vec![alice.pubkey()])
-        .transfer(
-            &alice_account,
-            &bob_account,
-            &alice.pubkey(),
-            10,
-            None,
-            &vec![&alice],
-        )
+        .transfer(&alice_account, &bob_account, &alice.pubkey(), 10, &[&alice])
         .await
         .unwrap();
     let bob_state = token.get_account_info(&bob_account).await.unwrap();
@@ -174,20 +156,13 @@ async fn test_memo_transfers(
 
     // stop requiring memo transfers into bob_account
     token
-        .disable_required_transfer_memos(&bob_account, &bob)
+        .disable_required_transfer_memos(&bob_account, &bob.pubkey(), &[&bob])
         .await
         .unwrap();
 
     // transfer from alice to bob without memo
     token
-        .transfer(
-            &alice_account,
-            &bob_account,
-            &alice.pubkey(),
-            12,
-            None,
-            &vec![&alice],
-        )
+        .transfer(&alice_account, &bob_account, &alice.pubkey(), 12, &[&alice])
         .await
         .unwrap();
     let bob_state = token.get_account_info(&bob_account).await.unwrap();
@@ -244,8 +219,9 @@ async fn require_memo_transfers_with_realloc() {
         .token
         .reallocate(
             &token_context.bob.pubkey(),
-            &token_context.bob,
+            &token_context.bob.pubkey(),
             &[ExtensionType::MemoTransfer],
+            &[&token_context.bob],
         )
         .await
         .unwrap();

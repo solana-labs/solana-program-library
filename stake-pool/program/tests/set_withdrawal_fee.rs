@@ -1,3 +1,4 @@
+#![allow(clippy::integer_arithmetic)]
 #![cfg(feature = "test-sbf")]
 
 mod helpers;
@@ -13,14 +14,14 @@ use {
     },
     spl_stake_pool::{
         error, id, instruction,
-        state::{Fee, FeeType, StakePool},
+        state::{Fee, FeeType, FutureEpoch, StakePool},
         MINIMUM_RESERVE_LAMPORTS,
     },
 };
 
 async fn setup(fee: Option<Fee>) -> (ProgramTestContext, StakePoolAccounts, Fee) {
     let mut context = program_test().start_with_context().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
+    let mut stake_pool_accounts = StakePoolAccounts::default();
     if let Some(fee) = fee {
         stake_pool_accounts.withdrawal_fee = fee;
     }
@@ -98,10 +99,13 @@ async fn success() {
     assert_eq!(stake_pool.stake_withdrawal_fee, old_stake_withdrawal_fee);
     assert_eq!(
         stake_pool.next_stake_withdrawal_fee,
-        Some(new_withdrawal_fee)
+        FutureEpoch::Two(new_withdrawal_fee)
     );
     assert_eq!(stake_pool.sol_withdrawal_fee, old_sol_withdrawal_fee);
-    assert_eq!(stake_pool.next_sol_withdrawal_fee, Some(new_withdrawal_fee));
+    assert_eq!(
+        stake_pool.next_sol_withdrawal_fee,
+        FutureEpoch::Two(new_withdrawal_fee)
+    );
 
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
@@ -125,10 +129,45 @@ async fn success() {
     )
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    assert_eq!(stake_pool.stake_withdrawal_fee, old_stake_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_stake_withdrawal_fee,
+        FutureEpoch::One(new_withdrawal_fee)
+    );
+    assert_eq!(stake_pool.sol_withdrawal_fee, old_sol_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_sol_withdrawal_fee,
+        FutureEpoch::One(new_withdrawal_fee)
+    );
+
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
+    context
+        .warp_to_slot(first_normal_slot + 2 * slots_per_epoch)
+        .unwrap();
+    stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &last_blockhash,
+            &[],
+            false,
+        )
+        .await;
+
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
     assert_eq!(stake_pool.stake_withdrawal_fee, new_withdrawal_fee);
-    assert_eq!(stake_pool.next_stake_withdrawal_fee, None);
+    assert_eq!(stake_pool.next_stake_withdrawal_fee, FutureEpoch::None);
     assert_eq!(stake_pool.sol_withdrawal_fee, new_withdrawal_fee);
-    assert_eq!(stake_pool.next_sol_withdrawal_fee, None);
+    assert_eq!(stake_pool.next_sol_withdrawal_fee, FutureEpoch::None);
 }
 
 #[tokio::test]
@@ -188,10 +227,13 @@ async fn success_fee_cannot_increase_more_than_once() {
     assert_eq!(stake_pool.stake_withdrawal_fee, old_stake_withdrawal_fee);
     assert_eq!(
         stake_pool.next_stake_withdrawal_fee,
-        Some(new_withdrawal_fee)
+        FutureEpoch::Two(new_withdrawal_fee)
     );
     assert_eq!(stake_pool.sol_withdrawal_fee, old_sol_withdrawal_fee);
-    assert_eq!(stake_pool.next_sol_withdrawal_fee, Some(new_withdrawal_fee));
+    assert_eq!(
+        stake_pool.next_sol_withdrawal_fee,
+        FutureEpoch::Two(new_withdrawal_fee)
+    );
 
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
@@ -215,10 +257,46 @@ async fn success_fee_cannot_increase_more_than_once() {
     )
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    assert_eq!(stake_pool.stake_withdrawal_fee, old_stake_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_stake_withdrawal_fee,
+        FutureEpoch::One(new_withdrawal_fee)
+    );
+    assert_eq!(stake_pool.sol_withdrawal_fee, old_sol_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_sol_withdrawal_fee,
+        FutureEpoch::One(new_withdrawal_fee)
+    );
+
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
+    context
+        .warp_to_slot(first_normal_slot + 2 * slots_per_epoch)
+        .unwrap();
+    stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &last_blockhash,
+            &[],
+            false,
+        )
+        .await;
+
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+
     assert_eq!(stake_pool.stake_withdrawal_fee, new_withdrawal_fee);
-    assert_eq!(stake_pool.next_stake_withdrawal_fee, None);
+    assert_eq!(stake_pool.next_stake_withdrawal_fee, FutureEpoch::None);
     assert_eq!(stake_pool.sol_withdrawal_fee, new_withdrawal_fee);
-    assert_eq!(stake_pool.next_sol_withdrawal_fee, None);
+    assert_eq!(stake_pool.next_sol_withdrawal_fee, FutureEpoch::None);
 
     // try setting to the old fee in the same epoch
     let transaction = Transaction::new_signed_with_payer(
@@ -230,7 +308,7 @@ async fn success_fee_cannot_increase_more_than_once() {
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
-        context.last_blockhash,
+        last_blockhash,
     );
     context
         .banks_client
@@ -246,7 +324,7 @@ async fn success_fee_cannot_increase_more_than_once() {
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
-        context.last_blockhash,
+        last_blockhash,
     );
     context
         .banks_client
@@ -263,12 +341,12 @@ async fn success_fee_cannot_increase_more_than_once() {
     assert_eq!(stake_pool.stake_withdrawal_fee, new_withdrawal_fee);
     assert_eq!(
         stake_pool.next_stake_withdrawal_fee,
-        Some(old_stake_withdrawal_fee)
+        FutureEpoch::Two(old_stake_withdrawal_fee)
     );
     assert_eq!(stake_pool.sol_withdrawal_fee, new_withdrawal_fee);
     assert_eq!(
         stake_pool.next_sol_withdrawal_fee,
-        Some(old_sol_withdrawal_fee)
+        FutureEpoch::Two(old_sol_withdrawal_fee)
     );
 
     let error = stake_pool_accounts
@@ -290,12 +368,163 @@ async fn success_fee_cannot_increase_more_than_once() {
     assert_eq!(stake_pool.stake_withdrawal_fee, new_withdrawal_fee);
     assert_eq!(
         stake_pool.next_stake_withdrawal_fee,
-        Some(old_stake_withdrawal_fee)
+        FutureEpoch::Two(old_stake_withdrawal_fee)
     );
     assert_eq!(stake_pool.sol_withdrawal_fee, new_withdrawal_fee);
     assert_eq!(
         stake_pool.next_sol_withdrawal_fee,
-        Some(old_sol_withdrawal_fee)
+        FutureEpoch::Two(old_sol_withdrawal_fee)
+    );
+}
+
+#[tokio::test]
+async fn success_reset_fee_after_one_epoch() {
+    let (mut context, stake_pool_accounts, new_withdrawal_fee) = setup(None).await;
+
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    let old_stake_withdrawal_fee = stake_pool.stake_withdrawal_fee;
+    let old_sol_withdrawal_fee = stake_pool.sol_withdrawal_fee;
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::set_fee(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            FeeType::StakeWithdrawal(new_withdrawal_fee),
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
+    );
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::set_fee(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            FeeType::SolWithdrawal(new_withdrawal_fee),
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
+    );
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+
+    assert_eq!(stake_pool.stake_withdrawal_fee, old_stake_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_stake_withdrawal_fee,
+        FutureEpoch::Two(new_withdrawal_fee)
+    );
+    assert_eq!(stake_pool.sol_withdrawal_fee, old_sol_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_sol_withdrawal_fee,
+        FutureEpoch::Two(new_withdrawal_fee)
+    );
+
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+
+    context
+        .warp_to_slot(first_normal_slot + slots_per_epoch)
+        .unwrap();
+    stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &[],
+            false,
+        )
+        .await;
+
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    assert_eq!(stake_pool.stake_withdrawal_fee, old_stake_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_stake_withdrawal_fee,
+        FutureEpoch::One(new_withdrawal_fee)
+    );
+    assert_eq!(stake_pool.sol_withdrawal_fee, old_sol_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_sol_withdrawal_fee,
+        FutureEpoch::One(new_withdrawal_fee)
+    );
+
+    // Flip the two fees, resets the counter to two future epochs
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::set_fee(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            FeeType::StakeWithdrawal(old_sol_withdrawal_fee),
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
+    );
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::set_fee(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            FeeType::SolWithdrawal(old_stake_withdrawal_fee),
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
+    );
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    assert_eq!(stake_pool.stake_withdrawal_fee, old_stake_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_stake_withdrawal_fee,
+        FutureEpoch::Two(old_sol_withdrawal_fee)
+    );
+    assert_eq!(stake_pool.sol_withdrawal_fee, old_sol_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_sol_withdrawal_fee,
+        FutureEpoch::Two(old_stake_withdrawal_fee)
     );
 }
 
@@ -364,10 +593,13 @@ async fn success_increase_fee_from_0() {
     assert_eq!(stake_pool.stake_withdrawal_fee, old_stake_withdrawal_fee);
     assert_eq!(
         stake_pool.next_stake_withdrawal_fee,
-        Some(new_withdrawal_fee)
+        FutureEpoch::Two(new_withdrawal_fee)
     );
     assert_eq!(stake_pool.sol_withdrawal_fee, old_sol_withdrawal_fee);
-    assert_eq!(stake_pool.next_sol_withdrawal_fee, Some(new_withdrawal_fee));
+    assert_eq!(
+        stake_pool.next_sol_withdrawal_fee,
+        FutureEpoch::Two(new_withdrawal_fee)
+    );
 
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
@@ -391,10 +623,45 @@ async fn success_increase_fee_from_0() {
     )
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    assert_eq!(stake_pool.stake_withdrawal_fee, old_stake_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_stake_withdrawal_fee,
+        FutureEpoch::One(new_withdrawal_fee)
+    );
+    assert_eq!(stake_pool.sol_withdrawal_fee, old_sol_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_sol_withdrawal_fee,
+        FutureEpoch::One(new_withdrawal_fee)
+    );
+
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
+    context
+        .warp_to_slot(first_normal_slot + 2 * slots_per_epoch)
+        .unwrap();
+    stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &last_blockhash,
+            &[],
+            false,
+        )
+        .await;
+
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
     assert_eq!(stake_pool.stake_withdrawal_fee, new_withdrawal_fee);
-    assert_eq!(stake_pool.next_stake_withdrawal_fee, None);
+    assert_eq!(stake_pool.next_stake_withdrawal_fee, FutureEpoch::None);
     assert_eq!(stake_pool.sol_withdrawal_fee, new_withdrawal_fee);
-    assert_eq!(stake_pool.next_sol_withdrawal_fee, None);
+    assert_eq!(stake_pool.next_sol_withdrawal_fee, FutureEpoch::None);
 }
 
 #[tokio::test]
@@ -618,7 +885,7 @@ async fn fail_high_sol_fee_increase_from_0() {
 #[tokio::test]
 async fn fail_not_updated() {
     let mut context = program_test().start_with_context().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut context.banks_client,

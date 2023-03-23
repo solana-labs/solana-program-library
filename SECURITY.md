@@ -6,25 +6,43 @@
 1. [Incident Response Process](#process)
 
 <a name="reporting"></a>
-## Reporting security problems to Solana
+## Reporting security problems in the Solana Program Library
 
-**DO NOT CREATE AN ISSUE** to report a security problem. Instead, please send an
-email to security@solana.com and provide your github username so we can add you
-to a new draft security advisory for further discussion.
+**DO NOT CREATE A GITHUB ISSUE** to report a security problem.
 
-Expect a response as fast as possible, typically within 72 hours.
+Instead please use this [Report a Vulnerability](https://github.com/solana-labs/solana-program-library/security/advisories/new) link.
+Provide a helpful title and detailed description of the problem.
+
+If you haven't done so already, please **enable two-factor auth** in your GitHub account.
+
+Expect a response as fast as possible in the advisory, typically within 72 hours.
+
+--
+
+If you do not receive a response in the advisory, send an email to
+security@solana.com with the full URL of the advisory you have created.  DO NOT
+include attachments or provide detail sufficient for exploitation regarding the
+security issue in this email. **Only provide such details in the advisory**.
+
+If you do not receive a response from security@solana.com please followup with
+the team directly. You can do this in the `#core-technology` channel of the
+[Solana Tech discord server](https://solana.com/discord), by pinging the admins
+in the channel and referencing the fact that you submitted a security problem.
+
+
 
 <a name="bounty"></a>
 ## Security Bug Bounties
-We offer bounties for critical security issues. Please see the
-[Solana Security Bug Bounties](https://github.com/solana-labs/solana/security/policy#security-bug-bounties)
+The Solana Foundation offer bounties for critical Solana security issues. Please
+see the [Solana Security Bug
+Bounties](https://github.com/solana-labs/solana/security/policy#security-bug-bounties)
 for details on classes of bugs and payment amounts.
 
 <a name="scope"></a>
 ## Scope
 
 Only a subset of programs within the Solana Program Library repo are deployed to
-mainnet-beta and maintained by the team. Currently, this includes:
+the Solana Mainnet Beta. Currently, this includes:
 
 * [associated-token-account](https://github.com/solana-labs/solana-program-library/tree/master/associated-token-account/program)
 * [feature-proposal](https://github.com/solana-labs/solana-program-library/tree/master/feature-proposal/program)
@@ -51,4 +69,4 @@ may be affected and put you in touch the corresponding teams.
 
 In case an incident is discovered or reported, the
 [Solana Security Incident Response Process](https://github.com/solana-labs/solana/security/policy#incident-response-process)
-will be followed to contain, respond and remediate. 
+will be followed to contain, respond and remediate.

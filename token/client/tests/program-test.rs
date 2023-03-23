@@ -48,17 +48,12 @@ impl TestContext {
             Arc::clone(&client),
             &spl_token_2022::id(),
             &mint_account.pubkey(),
+            Some(decimals),
             Arc::new(keypair_clone(&payer)),
         );
 
         token
-            .create_mint(
-                &mint_authority_pubkey,
-                None,
-                decimals,
-                vec![],
-                &[&mint_account],
-            )
+            .create_mint(&mint_authority_pubkey, None, vec![], &[&mint_account])
             .await
             .expect("failed to create mint");
 
@@ -146,7 +141,6 @@ async fn get_or_create_associated_token_account() {
 #[tokio::test]
 async fn set_authority() {
     let TestContext {
-        decimals,
         mint_authority,
         token,
         alice,
@@ -165,8 +159,7 @@ async fn set_authority() {
             &alice_vault,
             &mint_authority.pubkey(),
             1,
-            Some(decimals),
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .expect("failed to mint token");
@@ -195,8 +188,7 @@ async fn set_authority() {
             &alice_vault,
             &mint_authority.pubkey(),
             2,
-            Some(decimals),
-            &vec![&mint_authority]
+            &[&mint_authority]
         )
         .await
         .is_err());
@@ -248,8 +240,7 @@ async fn mint_to() {
             &alice_vault,
             &mint_authority.pubkey(),
             mint_amount,
-            Some(decimals),
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .expect("failed to mint token");
@@ -296,8 +287,7 @@ async fn transfer() {
             &alice_vault,
             &mint_authority.pubkey(),
             mint_amount,
-            Some(decimals),
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .expect("failed to mint token");
@@ -309,8 +299,7 @@ async fn transfer() {
             &bob_vault,
             &alice.pubkey(),
             transfer_amount,
-            Some(decimals),
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .expect("failed to transfer");

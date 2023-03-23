@@ -1,3 +1,4 @@
+#![allow(clippy::integer_arithmetic)]
 #![cfg(feature = "test-sbf")]
 
 mod helpers;
@@ -22,7 +23,7 @@ use {
 
 async fn setup() -> (BanksClient, Keypair, Hash, StakePoolAccounts, Keypair) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -125,7 +126,6 @@ async fn fail_wrong_manager() {
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &new_staker], recent_blockhash);
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
@@ -166,7 +166,6 @@ async fn fail_set_staker_without_signature() {
 
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
     transaction.sign(&[&payer], recent_blockhash);
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await

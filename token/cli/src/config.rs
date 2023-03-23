@@ -31,18 +31,19 @@ pub(crate) struct MintInfo {
 }
 
 pub(crate) struct Config<'a> {
-    pub(crate) default_signer: Arc<dyn Signer>,
+    pub(crate) default_signer: Option<Arc<dyn Signer>>,
     pub(crate) rpc_client: Arc<RpcClient>,
     pub(crate) program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>>,
     pub(crate) websocket_url: String,
     pub(crate) output_format: OutputFormat,
-    pub(crate) fee_payer: Arc<dyn Signer>,
+    pub(crate) fee_payer: Option<Arc<dyn Signer>>,
     pub(crate) nonce_account: Option<Pubkey>,
-    pub(crate) nonce_authority: Option<Pubkey>,
+    pub(crate) nonce_authority: Option<Arc<dyn Signer>>,
     pub(crate) sign_only: bool,
     pub(crate) dump_transaction_message: bool,
     pub(crate) multisigner_pubkeys: Vec<&'a Pubkey>,
     pub(crate) program_id: Pubkey,
+    pub(crate) restrict_to_program_id: bool,
 }
 
 impl<'a> Config<'a> {
@@ -57,6 +58,8 @@ impl<'a> Config<'a> {
                 eprintln!("error: Could not find config file `{}`", config_file);
                 exit(1);
             })
+        } else if let Some(config_file) = &*solana_cli_config::CONFIG_FILE {
+            solana_cli_config::Config::load(config_file).unwrap_or_default()
         } else {
             solana_cli_config::Config::default()
         };
@@ -95,6 +98,26 @@ impl<'a> Config<'a> {
         .await
     }
 
+    fn extract_multisig_signers(
+        matches: &ArgMatches<'_>,
+        wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+        bulk_signers: &mut Vec<Arc<dyn Signer>>,
+        multisigner_ids: &'a mut Vec<Pubkey>,
+    ) -> Vec<&'a Pubkey> {
+        let multisig_signers = signers_of(matches, MULTISIG_SIGNER_ARG.name, wallet_manager)
+            .unwrap_or_else(|e| {
+                eprintln!("error: {}", e);
+                exit(1);
+            });
+        if let Some(mut multisig_signers) = multisig_signers {
+            multisig_signers.sort_by(|(_, lp), (_, rp)| lp.cmp(rp));
+            let (signers, pubkeys): (Vec<_>, Vec<_>) = multisig_signers.into_iter().unzip();
+            bulk_signers.extend(signers);
+            multisigner_ids.extend(pubkeys);
+        }
+        multisigner_ids.iter().collect::<Vec<_>>()
+    }
+
     pub(crate) async fn new_with_clients_and_ws_url(
         matches: &ArgMatches<'_>,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
@@ -109,21 +132,13 @@ impl<'a> Config<'a> {
                 eprintln!("error: Could not find config file `{}`", config_file);
                 exit(1);
             })
+        } else if let Some(config_file) = &*solana_cli_config::CONFIG_FILE {
+            solana_cli_config::Config::load(config_file).unwrap_or_default()
         } else {
             solana_cli_config::Config::default()
         };
-        let multisig_signers = signers_of(matches, MULTISIG_SIGNER_ARG.name, wallet_manager)
-            .unwrap_or_else(|e| {
-                eprintln!("error: {}", e);
-                exit(1);
-            });
-        if let Some(mut multisig_signers) = multisig_signers {
-            multisig_signers.sort_by(|(_, lp), (_, rp)| lp.cmp(rp));
-            let (signers, pubkeys): (Vec<_>, Vec<_>) = multisig_signers.into_iter().unzip();
-            bulk_signers.extend(signers);
-            multisigner_ids.extend(pubkeys);
-        }
-        let multisigner_pubkeys = multisigner_ids.iter().collect::<Vec<_>>();
+        let multisigner_pubkeys =
+            Self::extract_multisig_signers(matches, wallet_manager, bulk_signers, multisigner_ids);
 
         let config = SignerFromPathConfig {
             allow_null_signer: !multisigner_pubkeys.is_empty(),
@@ -131,9 +146,10 @@ impl<'a> Config<'a> {
 
         let default_keypair = cli_config.keypair_path.clone();
 
-        let default_signer: Arc<dyn Signer> = {
+        let default_signer: Option<Arc<dyn Signer>> = {
             if let Some(owner_path) = matches.value_of("owner") {
                 signer_from_path_with_config(matches, owner_path, "owner", wallet_manager, &config)
+                    .ok()
             } else {
                 signer_from_path_with_config(
                     matches,
@@ -142,26 +158,32 @@ impl<'a> Config<'a> {
                     wallet_manager,
                     &config,
                 )
+                .map_err(|e| {
+                    if std::fs::metadata(&default_keypair).is_ok() {
+                        eprintln!("error: {}", e);
+                        exit(1);
+                    } else {
+                        e
+                    }
+                })
+                .ok()
             }
         }
-        .map(Arc::from)
-        .unwrap_or_else(|e| {
-            eprintln!("error: {}", e);
-            exit(1);
-        });
+        .map(Arc::from);
 
-        let fee_payer = matches
+        let fee_payer: Option<Arc<dyn Signer>> = matches
             .value_of("fee_payer")
-            .map_or(Ok(default_signer.clone()), |path| {
-                signer_from_path(matches, path, "fee_payer", wallet_manager).map(Arc::from)
+            .map(|path| {
+                Arc::from(
+                    signer_from_path(matches, path, "fee_payer", wallet_manager).unwrap_or_else(
+                        |e| {
+                            eprintln!("error: {}", e);
+                            exit(1);
+                        },
+                    ),
+                )
             })
-            .unwrap_or_else(|e| {
-                eprintln!("error: {}", e);
-                exit(1);
-            });
-        if !bulk_signers.contains(&fee_payer) {
-            bulk_signers.push(fee_payer.clone());
-        }
+            .or_else(|| default_signer.clone());
 
         let verbose = matches.is_present("verbose");
         let output_format = matches
@@ -183,7 +205,7 @@ impl<'a> Config<'a> {
                 exit(1);
             });
         let nonce_authority = if nonce_account.is_some() {
-            let (signer, nonce_authority) = signer_from_path(
+            let (nonce_authority, _) = signer_from_path(
                 matches,
                 matches
                     .value_of(NONCE_AUTHORITY_ARG.name)
@@ -200,9 +222,6 @@ impl<'a> Config<'a> {
                 eprintln!("error: {}", e);
                 exit(1);
             });
-            if !bulk_signers.contains(&signer) {
-                bulk_signers.push(signer);
-            }
 
             Some(nonce_authority)
         } else {
@@ -213,24 +232,28 @@ impl<'a> Config<'a> {
         let dump_transaction_message = matches.is_present(DUMP_TRANSACTION_MESSAGE.name);
 
         let default_program_id = spl_token::id();
-        let program_id = if let Some(program_id) = value_of(matches, "program_id") {
-            program_id
-        } else if !sign_only {
-            if let Some(address) = value_of(matches, "token")
-                .or_else(|| value_of(matches, "account"))
-                .or_else(|| value_of(matches, "address"))
-            {
-                rpc_client
-                    .get_account(&address)
-                    .await
-                    .map(|account| account.owner)
-                    .unwrap_or(default_program_id)
+        let (program_id, restrict_to_program_id) =
+            if let Some(program_id) = value_of(matches, "program_id") {
+                (program_id, true)
+            } else if !sign_only {
+                if let Some(address) = value_of(matches, "token")
+                    .or_else(|| value_of(matches, "account"))
+                    .or_else(|| value_of(matches, "address"))
+                {
+                    (
+                        rpc_client
+                            .get_account(&address)
+                            .await
+                            .map(|account| account.owner)
+                            .unwrap_or(default_program_id),
+                        false,
+                    )
+                } else {
+                    (default_program_id, false)
+                }
             } else {
-                default_program_id
-            }
-        } else {
-            default_program_id
-        };
+                (default_program_id, false)
+            };
 
         Self {
             default_signer,
@@ -245,6 +268,31 @@ impl<'a> Config<'a> {
             dump_transaction_message,
             multisigner_pubkeys,
             program_id,
+            restrict_to_program_id,
+        }
+    }
+
+    // Returns Ok(default signer), or Err if there is no default signer configured
+    pub(crate) fn default_signer(&self) -> Result<Arc<dyn Signer>, Error> {
+        if let Some(default_signer) = &self.default_signer {
+            Ok(default_signer.clone())
+        } else {
+            Err("default signer is required, please specify a valid default signer by identifying a \
+                 valid configuration file using the --config-file argument, or by creating a valid \
+                 config at the default location of ~/.config/solana/cli/config.yml using the solana \
+                 config command".to_string().into())
+        }
+    }
+
+    // Returns Ok(fee payer), or Err if there is no fee payer configured
+    pub(crate) fn fee_payer(&self) -> Result<Arc<dyn Signer>, Error> {
+        if let Some(fee_payer) = &self.fee_payer {
+            Ok(fee_payer.clone())
+        } else {
+            Err("fee payer is required, please specify a valid fee payer using the --fee_payer argument, \
+                 or by identifying a valid configuration file using the --config-file argument, or by \
+                 creating a valid config at the default location of ~/.config/solana/cli/config.yml using \
+                 the solana config command".to_string().into())
         }
     }
 
@@ -255,7 +303,7 @@ impl<'a> Config<'a> {
         arg_matches: &ArgMatches<'_>,
         override_name: &str,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
-    ) -> Pubkey {
+    ) -> Result<Pubkey, Error> {
         let token = pubkey_of_signer(arg_matches, "token", wallet_manager).unwrap();
         self.associated_token_address_for_token_or_override(
             arg_matches,
@@ -274,42 +322,42 @@ impl<'a> Config<'a> {
         override_name: &str,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
         token: Option<Pubkey>,
-    ) -> Pubkey {
+    ) -> Result<Pubkey, Error> {
         if let Some(address) = pubkey_of_signer(arg_matches, override_name, wallet_manager).unwrap()
         {
-            return address;
+            return Ok(address);
         }
 
         let token = token.unwrap();
         let program_id = self.get_mint_info(&token, None).await.unwrap().program_id;
-        self.associated_token_address_for_token_and_program(&token, &program_id)
+        let owner = self.pubkey_or_default(arg_matches, "owner", wallet_manager)?;
+        self.associated_token_address_for_token_and_program(&token, &owner, &program_id)
     }
 
     pub(crate) fn associated_token_address_for_token_and_program(
         &self,
         token: &Pubkey,
+        owner: &Pubkey,
         program_id: &Pubkey,
-    ) -> Pubkey {
-        let owner = self.default_signer.pubkey();
-        get_associated_token_address_with_program_id(&owner, token, program_id)
+    ) -> Result<Pubkey, Error> {
+        Ok(get_associated_token_address_with_program_id(
+            owner, token, program_id,
+        ))
     }
 
-    // Checks if an explicit address was provided, otherwise return the default address.
+    // Checks if an explicit address was provided, otherwise return the default address if there is one
     pub(crate) fn pubkey_or_default(
         &self,
-        arg_matches: &ArgMatches,
+        arg_matches: &ArgMatches<'_>,
         address_name: &str,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
-    ) -> Pubkey {
-        if address_name != "owner" {
-            if let Some(address) =
-                pubkey_of_signer(arg_matches, address_name, wallet_manager).unwrap()
-            {
-                return address;
-            }
+    ) -> Result<Pubkey, Error> {
+        if let Some(address) = pubkey_of_signer(arg_matches, address_name, wallet_manager).unwrap()
+        {
+            return Ok(address);
         }
 
-        self.default_signer.pubkey()
+        Ok(self.default_signer()?.pubkey())
     }
 
     // Checks if an explicit signer was provided, otherwise return the default signer.
@@ -324,7 +372,7 @@ impl<'a> Config<'a> {
         let config = SignerFromPathConfig {
             allow_null_signer: !self.multisigner_pubkeys.is_empty(),
         };
-        let mut load_authority = move || -> Result<Arc<dyn Signer>, _> {
+        let mut load_authority = move || -> Result<Arc<dyn Signer>, Error> {
             if authority_name != "owner" {
                 if let Some(keypair_path) = arg_matches.value_of(authority_name) {
                     return signer_from_path_with_config(
@@ -334,11 +382,12 @@ impl<'a> Config<'a> {
                         wallet_manager,
                         &config,
                     )
-                    .map(Arc::from);
+                    .map(Arc::from)
+                    .map_err(|e| e.to_string().into());
                 }
             }
 
-            Ok(self.default_signer.clone())
+            self.default_signer()
         };
 
         let authority = load_authority().unwrap_or_else(|e| {

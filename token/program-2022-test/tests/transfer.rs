@@ -20,9 +20,9 @@ enum TestMode {
 
 async fn run_basic_transfers(context: TestContext, test_mode: TestMode) {
     let TokenContext {
-        decimals,
         mint_authority,
         token,
+        token_unchecked,
         alice,
         bob,
         ..
@@ -48,37 +48,22 @@ async fn run_basic_transfers(context: TestContext, test_mode: TestMode) {
             &alice_account,
             &mint_authority.pubkey(),
             amount,
-            Some(decimals),
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap();
 
     if test_mode == TestMode::All {
         // unchecked is ok
-        token
-            .transfer(
-                &alice_account,
-                &bob_account,
-                &alice.pubkey(),
-                1,
-                None,
-                &vec![&alice],
-            )
+        token_unchecked
+            .transfer(&alice_account, &bob_account, &alice.pubkey(), 1, &[&alice])
             .await
             .unwrap();
     }
 
     // checked is ok
     token
-        .transfer(
-            &alice_account,
-            &bob_account,
-            &alice.pubkey(),
-            1,
-            Some(decimals),
-            &vec![&alice],
-        )
+        .transfer(&alice_account, &bob_account, &alice.pubkey(), 1, &[&alice])
         .await
         .unwrap();
 
@@ -89,8 +74,7 @@ async fn run_basic_transfers(context: TestContext, test_mode: TestMode) {
             &bob_account,
             &alice.pubkey(),
             amount,
-            Some(decimals),
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap_err();
@@ -106,14 +90,7 @@ async fn run_basic_transfers(context: TestContext, test_mode: TestMode) {
 
     // wrong signer
     let error = token
-        .transfer(
-            &alice_account,
-            &bob_account,
-            &bob.pubkey(),
-            1,
-            Some(decimals),
-            &vec![&bob],
-        )
+        .transfer(&alice_account, &bob_account, &bob.pubkey(), 1, &[&bob])
         .await
         .unwrap_err();
     assert_eq!(
@@ -151,9 +128,9 @@ async fn basic_with_extension() {
 
 async fn run_self_transfers(context: TestContext, test_mode: TestMode) {
     let TokenContext {
-        decimals,
         mint_authority,
         token,
+        token_unchecked,
         alice,
         ..
     } = context.token_context.unwrap();
@@ -172,8 +149,7 @@ async fn run_self_transfers(context: TestContext, test_mode: TestMode) {
             &alice_account,
             &mint_authority.pubkey(),
             amount,
-            Some(decimals),
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap();
@@ -185,20 +161,18 @@ async fn run_self_transfers(context: TestContext, test_mode: TestMode) {
             &alice_account,
             &alice.pubkey(),
             1,
-            Some(decimals),
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap();
     if test_mode == TestMode::All {
-        token
+        token_unchecked
             .transfer(
                 &alice_account,
                 &alice_account,
                 &alice.pubkey(),
                 1,
-                None,
-                &vec![&alice],
+                &[&alice],
             )
             .await
             .unwrap();
@@ -210,9 +184,8 @@ async fn run_self_transfers(context: TestContext, test_mode: TestMode) {
             &alice_account,
             &alice_account,
             &alice.pubkey(),
-            amount + 1,
-            Some(decimals),
-            &vec![&alice],
+            amount.checked_add(1).unwrap(),
+            &[&alice],
         )
         .await
         .unwrap_err();
@@ -251,9 +224,9 @@ async fn self_transfer_with_extension() {
 
 async fn run_self_owned(context: TestContext, test_mode: TestMode) {
     let TokenContext {
-        decimals,
         mint_authority,
         token,
+        token_unchecked,
         alice,
         bob,
         ..
@@ -278,37 +251,22 @@ async fn run_self_owned(context: TestContext, test_mode: TestMode) {
             &alice_account,
             &mint_authority.pubkey(),
             amount,
-            Some(decimals),
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap();
 
     if test_mode == TestMode::All {
         // unchecked is ok
-        token
-            .transfer(
-                &alice_account,
-                &bob_account,
-                &alice.pubkey(),
-                1,
-                None,
-                &vec![&alice],
-            )
+        token_unchecked
+            .transfer(&alice_account, &bob_account, &alice.pubkey(), 1, &[&alice])
             .await
             .unwrap();
     }
 
     // checked is ok
     token
-        .transfer(
-            &alice_account,
-            &bob_account,
-            &alice.pubkey(),
-            1,
-            Some(decimals),
-            &vec![&alice],
-        )
+        .transfer(&alice_account, &bob_account, &alice.pubkey(), 1, &[&alice])
         .await
         .unwrap();
 
@@ -319,8 +277,7 @@ async fn run_self_owned(context: TestContext, test_mode: TestMode) {
             &alice_account,
             &alice.pubkey(),
             1,
-            Some(decimals),
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap();
@@ -353,7 +310,6 @@ async fn transfer_with_fee_on_mint_without_fee_configured() {
     let mut context = TestContext::new().await;
     context.init_token_with_mint(vec![]).await.unwrap();
     let TokenContext {
-        decimals,
         mint_authority,
         token,
         alice,
@@ -381,8 +337,7 @@ async fn transfer_with_fee_on_mint_without_fee_configured() {
             &alice_account,
             &mint_authority.pubkey(),
             amount,
-            Some(decimals),
-            &vec![&mint_authority],
+            &[&mint_authority],
         )
         .await
         .unwrap();
@@ -394,9 +349,8 @@ async fn transfer_with_fee_on_mint_without_fee_configured() {
             &bob_account,
             &alice.pubkey(),
             1,
-            decimals,
             0,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap();
@@ -408,9 +362,8 @@ async fn transfer_with_fee_on_mint_without_fee_configured() {
             &bob_account,
             &alice.pubkey(),
             2,
-            decimals,
             1,
-            &vec![&alice],
+            &[&alice],
         )
         .await
         .unwrap_err();

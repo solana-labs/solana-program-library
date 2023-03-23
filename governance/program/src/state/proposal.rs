@@ -5,14 +5,13 @@ use solana_program::account_info::next_account_info;
 use std::cmp::Ordering;
 use std::slice::Iter;
 
-use solana_program::borsh::try_from_slice_unchecked;
 use solana_program::clock::{Slot, UnixTimestamp};
 
 use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
     pubkey::Pubkey,
 };
-use spl_governance_tools::account::{get_account_data, AccountMaxSize};
+use spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize};
 
 use crate::addins::max_voter_weight::{
     assert_is_valid_max_voter_weight,
@@ -24,7 +23,7 @@ use crate::{
     error::GovernanceError,
     state::{
         enums::{
-            GovernanceAccountType, InstructionExecutionFlags, MintMaxVoteWeightSource,
+            GovernanceAccountType, InstructionExecutionFlags, MintMaxVoterWeightSource,
             ProposalState, TransactionExecutionStatus, VoteThreshold, VoteTipping,
         },
         governance::GovernanceConfig,
@@ -260,39 +259,102 @@ impl ProposalV2 {
         Ok(())
     }
 
+    /// Checks the Proposal was finalized (no more state transition will happen)
+    pub fn assert_is_final_state(&self) -> Result<(), ProgramError> {
+        match self.state {
+            ProposalState::Completed
+            | ProposalState::Cancelled
+            | ProposalState::Defeated
+            | ProposalState::Vetoed => Ok(()),
+            ProposalState::Executing
+            | ProposalState::ExecutingWithErrors
+            | ProposalState::SigningOff
+            | ProposalState::Voting
+            | ProposalState::Draft
+            // state transition bug: non executable proposals could be stuck in Succeeded state
+            | ProposalState::Succeeded => Err(GovernanceError::InvalidStateNotFinal.into()),
+        }
+    }
+
     /// Checks if Proposal can be voted on
     pub fn assert_can_cast_vote(
         &self,
         config: &GovernanceConfig,
+        vote: &Vote,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         self.assert_is_voting_state()
             .map_err(|_| GovernanceError::InvalidStateCannotVote)?;
 
-        // Check if we are still within the configured max_voting_time period
-        if self.has_vote_time_ended(config, current_unix_timestamp) {
+        // Check if we are still within the configured max voting time period
+        if self.has_voting_max_time_ended(config, current_unix_timestamp) {
             return Err(GovernanceError::ProposalVotingTimeExpired.into());
         }
 
-        Ok(())
+        match vote {
+            Vote::Approve(_) | Vote::Abstain => {
+                // Once the base voting time passes and we are in the voting cool off time approving votes are no longer accepted
+                // Abstain is considered as positive vote because when attendance quorum is used it can tip the scales
+                if self.has_voting_base_time_ended(config, current_unix_timestamp) {
+                    Err(GovernanceError::VoteNotAllowedInCoolOffTime.into())
+                } else {
+                    Ok(())
+                }
+            }
+            // Within voting cool off time only counter votes are allowed
+            Vote::Deny | Vote::Veto => Ok(()),
+        }
     }
 
-    /// Vote end time determined by the configured max_voting_time period
-    pub fn vote_end_time(&self, config: &GovernanceConfig) -> UnixTimestamp {
+    /// Checks if proposal has concluded so that security deposit is no longer needed
+    pub fn assert_can_refund_proposal_deposit(&self) -> Result<(), ProgramError> {
+        match self.state {
+            ProposalState::Succeeded
+            | ProposalState::Executing
+            | ProposalState::Completed
+            | ProposalState::Cancelled
+            | ProposalState::Defeated
+            | ProposalState::ExecutingWithErrors
+            | ProposalState::Vetoed => Ok(()),
+            ProposalState::Draft | ProposalState::SigningOff | ProposalState::Voting => {
+                Err(GovernanceError::CannotRefundProposalDeposit.into())
+            }
+        }
+    }
+
+    /// Expected base vote end time determined by the configured base_voting_time and actual voting start time
+    pub fn voting_base_time_end(&self, config: &GovernanceConfig) -> UnixTimestamp {
         self.voting_at
             .unwrap()
-            .checked_add(config.max_voting_time as i64)
+            .checked_add(config.voting_base_time as i64)
             .unwrap()
     }
 
-    /// Checks whether the voting time has ended for the proposal
-    pub fn has_vote_time_ended(
+    /// Checks whether the base voting time has ended for the proposal
+    pub fn has_voting_base_time_ended(
         &self,
         config: &GovernanceConfig,
         current_unix_timestamp: UnixTimestamp,
     ) -> bool {
-        // Check if we passed vote_end_time
-        self.vote_end_time(config) < current_unix_timestamp
+        // Check if we passed the configured base vote end time
+        self.voting_base_time_end(config) < current_unix_timestamp
+    }
+
+    /// Expected max vote end time determined by the configured base_voting_time, optional voting_cool_off_time and actual voting start time
+    pub fn voting_max_time_end(&self, config: &GovernanceConfig) -> UnixTimestamp {
+        self.voting_base_time_end(config)
+            .checked_add(config.voting_cool_off_time as i64)
+            .unwrap()
+    }
+
+    /// Checks whether the max voting time has ended for the proposal
+    pub fn has_voting_max_time_ended(
+        &self,
+        config: &GovernanceConfig,
+        current_unix_timestamp: UnixTimestamp,
+    ) -> bool {
+        // Check if we passed the max vote end time
+        self.voting_max_time_end(config) < current_unix_timestamp
     }
 
     /// Checks if Proposal can be finalized
@@ -305,7 +367,7 @@ impl ProposalV2 {
             .map_err(|_| GovernanceError::InvalidStateCannotFinalize)?;
 
         // We can only finalize the vote after the configured max_voting_time has expired and vote time ended
-        if !self.has_vote_time_ended(config, current_unix_timestamp) {
+        if !self.has_voting_max_time_ended(config, current_unix_timestamp) {
             return Err(GovernanceError::CannotFinalizeVotingInProgress.into());
         }
 
@@ -324,7 +386,7 @@ impl ProposalV2 {
         self.assert_can_finalize_vote(config, current_unix_timestamp)?;
 
         self.state = self.resolve_final_vote_state(max_voter_weight, vote_threshold)?;
-        self.voting_completed_at = Some(self.vote_end_time(config));
+        self.voting_completed_at = Some(self.voting_max_time_end(config));
 
         // Capture vote params to correctly display historical results
         self.max_vote_weight = Some(max_voter_weight);
@@ -432,26 +494,24 @@ impl ProposalV2 {
             return Ok(governing_token_mint_supply);
         }
 
-        match realm_data.config.community_mint_max_vote_weight_source {
-            MintMaxVoteWeightSource::SupplyFraction(fraction) => {
-                if fraction == MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE {
+        let max_voter_weight = match realm_data.config.community_mint_max_voter_weight_source {
+            MintMaxVoterWeightSource::SupplyFraction(fraction) => {
+                if fraction == MintMaxVoterWeightSource::SUPPLY_FRACTION_BASE {
                     return Ok(governing_token_mint_supply);
                 }
 
-                let max_voter_weight = (governing_token_mint_supply as u128)
+                (governing_token_mint_supply as u128)
                     .checked_mul(fraction as u128)
                     .unwrap()
-                    .checked_div(MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE as u128)
-                    .unwrap() as u64;
+                    .checked_div(MintMaxVoterWeightSource::SUPPLY_FRACTION_BASE as u128)
+                    .unwrap() as u64
+            }
+            MintMaxVoterWeightSource::Absolute(value) => value,
+        };
 
-                // When the fraction is used it's possible we can go over the calculated max_vote_weight
-                // and we have to adjust it in case more votes have been cast
-                Ok(self.coerce_max_voter_weight(max_voter_weight, vote_kind))
-            }
-            MintMaxVoteWeightSource::Absolute(_) => {
-                Err(GovernanceError::VoteWeightSourceNotSupported.into())
-            }
-        }
+        // When the fraction or absolute value is used it's possible we can go over the calculated max_vote_weight
+        // and we have to adjust it in case more votes have been cast
+        Ok(self.coerce_max_voter_weight(max_voter_weight, vote_kind))
     }
 
     /// Adjusts max voter weight to ensure it's not lower than total cast votes
@@ -661,7 +721,7 @@ impl ProposalV2 {
             ProposalState::Voting => {
                 // Note: If there is no tipping point the proposal can be still in Voting state but already past the configured max_voting_time
                 // In that case we treat the proposal as finalized and it's no longer allowed to be canceled
-                if self.has_vote_time_ended(config, current_unix_timestamp) {
+                if self.has_voting_max_time_ended(config, current_unix_timestamp) {
                     return Err(GovernanceError::ProposalVotingTimeExpired.into());
                 }
                 Ok(())
@@ -899,8 +959,7 @@ pub fn get_proposal_data(
     program_id: &Pubkey,
     proposal_info: &AccountInfo,
 ) -> Result<ProposalV2, ProgramError> {
-    let account_type: GovernanceAccountType =
-        try_from_slice_unchecked(&proposal_info.data.borrow())?;
+    let account_type: GovernanceAccountType = get_account_type(program_id, proposal_info)?;
 
     // If the account is V1 version then translate to V2
     if account_type == GovernanceAccountType::ProposalV1 {
@@ -995,13 +1054,13 @@ pub fn get_proposal_data_for_governance(
 pub fn get_proposal_address_seeds<'a>(
     governance: &'a Pubkey,
     governing_token_mint: &'a Pubkey,
-    proposal_index_le_bytes: &'a [u8],
+    proposal_seed: &'a Pubkey,
 ) -> [&'a [u8]; 4] {
     [
         PROGRAM_AUTHORITY_SEED,
         governance.as_ref(),
         governing_token_mint.as_ref(),
-        proposal_index_le_bytes,
+        proposal_seed.as_ref(),
     ]
 }
 
@@ -1010,10 +1069,10 @@ pub fn get_proposal_address<'a>(
     program_id: &Pubkey,
     governance: &'a Pubkey,
     governing_token_mint: &'a Pubkey,
-    proposal_index_le_bytes: &'a [u8],
+    proposal_seed: &'a Pubkey,
 ) -> Pubkey {
     Pubkey::find_program_address(
-        &get_proposal_address_seeds(governance, governing_token_mint, proposal_index_le_bytes),
+        &get_proposal_address_seeds(governance, governing_token_mint, proposal_seed),
         program_id,
     )
     .0
@@ -1057,7 +1116,7 @@ mod test {
     use solana_program::clock::Epoch;
 
     use crate::state::{
-        enums::{MintMaxVoteWeightSource, VoteThreshold},
+        enums::{MintMaxVoterWeightSource, VoteThreshold},
         legacy::ProposalV1,
         realm::RealmConfig,
         vote_record::VoteChoice,
@@ -1158,27 +1217,29 @@ mod test {
                 legacy1: 0,
                 legacy2: 0,
 
-                community_mint_max_vote_weight_source:
-                    MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
+                community_mint_max_voter_weight_source:
+                    MintMaxVoterWeightSource::FULL_SUPPLY_FRACTION,
                 min_community_weight_to_create_governance: 10,
             },
-            voting_proposal_count: 0,
+            legacy1: 0,
             reserved_v2: [0; 128],
         }
     }
 
     fn create_test_governance_config() -> GovernanceConfig {
         GovernanceConfig {
-            min_community_weight_to_create_proposal: 5,
-            min_council_weight_to_create_proposal: 1,
-            min_transaction_hold_up_time: 10,
-            max_voting_time: 5,
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
+            min_community_weight_to_create_proposal: 5,
+            min_transaction_hold_up_time: 10,
+            voting_base_time: 5,
             community_vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(60),
             council_veto_vote_threshold: VoteThreshold::YesVotePercentage(50),
+            min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::YesVotePercentage(40),
+            voting_cool_off_time: 0,
+            deposit_exempt_proposal_count: 0,
         }
     }
 
@@ -1653,7 +1714,7 @@ mod test {
             // Assert
             assert_eq!(proposal.state,test_case.expected_finalized_state,"CASE: {:?}",test_case);
             assert_eq!(
-                Some(proposal.vote_end_time(&governance_config)),
+                Some(proposal.voting_max_time_end(&governance_config)),
                 proposal.voting_completed_at
             );
 
@@ -1801,10 +1862,61 @@ mod test {
         let vote_tipping = VoteTipping::Strict;
 
         // reduce max vote weight to 100
-        realm.config.community_mint_max_vote_weight_source =
-            MintMaxVoteWeightSource::SupplyFraction(
-                MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
+        realm.config.community_mint_max_voter_weight_source =
+            MintMaxVoterWeightSource::SupplyFraction(
+                MintMaxVoterWeightSource::SUPPLY_FRACTION_BASE / 2,
             );
+
+        let max_voter_weight = proposal
+            .get_max_voter_weight_from_mint_supply(
+                &realm,
+                &governing_token_mint,
+                community_token_supply,
+                &vote_kind,
+            )
+            .unwrap();
+
+        let vote_threshold = &VoteThreshold::YesVotePercentage(60);
+        let vote_kind = VoteKind::Electorate;
+
+        // Act
+        proposal
+            .try_tip_vote(
+                max_voter_weight,
+                &vote_tipping,
+                current_timestamp,
+                vote_threshold,
+                &vote_kind,
+            )
+            .unwrap();
+
+        // Assert
+        assert_eq!(proposal.state, ProposalState::Succeeded);
+        assert_eq!(proposal.max_vote_weight, Some(100));
+    }
+
+    #[test]
+    fn test_try_tip_vote_with_reduced_absolute_community_mint_max_vote_weight() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+
+        proposal.options[0].vote_weight = 60;
+        proposal.deny_vote_weight = Some(10);
+
+        proposal.state = ProposalState::Voting;
+
+        let current_timestamp = 15_i64;
+
+        let community_token_supply = 200;
+
+        let mut realm = create_test_realm();
+        let governing_token_mint = proposal.governing_token_mint;
+        let vote_kind = VoteKind::Electorate;
+        let vote_tipping = VoteTipping::Strict;
+
+        // set max vote weight to 100
+        realm.config.community_mint_max_voter_weight_source =
+            MintMaxVoterWeightSource::Absolute(community_token_supply / 2);
 
         let max_voter_weight = proposal
             .get_max_voter_weight_from_mint_supply(
@@ -1854,9 +1966,9 @@ mod test {
         let vote_tipping = VoteTipping::Strict;
 
         // reduce max vote weight to 100
-        realm.config.community_mint_max_vote_weight_source =
-            MintMaxVoteWeightSource::SupplyFraction(
-                MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
+        realm.config.community_mint_max_voter_weight_source =
+            MintMaxVoterWeightSource::SupplyFraction(
+                MintMaxVoterWeightSource::SUPPLY_FRACTION_BASE / 2,
             );
 
         // vote above reduced supply
@@ -1891,6 +2003,60 @@ mod test {
     }
 
     #[test]
+    fn test_try_tip_vote_with_reduced_absolute_mint_max_vote_weight_and_vote_overflow() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+
+        // no vote weight
+        proposal.deny_vote_weight = Some(10);
+
+        proposal.state = ProposalState::Voting;
+
+        let current_timestamp = 15_i64;
+
+        let community_token_supply = 200;
+
+        let mut realm = create_test_realm();
+        let governing_token_mint = proposal.governing_token_mint;
+        let vote_kind = VoteKind::Electorate;
+        let vote_tipping = VoteTipping::Strict;
+
+        // reduce max vote weight to 100
+        realm.config.community_mint_max_voter_weight_source =
+            MintMaxVoterWeightSource::Absolute(community_token_supply / 2);
+
+        // vote above reduced supply
+        // Yes vote weight
+        proposal.options[0].vote_weight = 120;
+
+        let max_voter_weight = proposal
+            .get_max_voter_weight_from_mint_supply(
+                &realm,
+                &governing_token_mint,
+                community_token_supply,
+                &vote_kind,
+            )
+            .unwrap();
+
+        let vote_threshold = VoteThreshold::YesVotePercentage(60);
+
+        // Act
+        proposal
+            .try_tip_vote(
+                max_voter_weight,
+                &vote_tipping,
+                current_timestamp,
+                &vote_threshold,
+                &vote_kind,
+            )
+            .unwrap();
+
+        // Assert
+        assert_eq!(proposal.state, ProposalState::Succeeded);
+        assert_eq!(proposal.max_vote_weight, Some(130)); // Deny Vote 10 + Approve Vote 120
+    }
+
+    #[test]
     fn test_try_tip_vote_for_council_vote_with_reduced_community_mint_max_vote_weight() {
         // Arrange
         let mut proposal = create_test_proposal();
@@ -1909,9 +2075,9 @@ mod test {
         let vote_kind = VoteKind::Electorate;
         let vote_tipping = VoteTipping::Strict;
 
-        realm.config.community_mint_max_vote_weight_source =
-            MintMaxVoteWeightSource::SupplyFraction(
-                MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
+        realm.config.community_mint_max_voter_weight_source =
+            MintMaxVoterWeightSource::SupplyFraction(
+                MintMaxVoterWeightSource::SUPPLY_FRACTION_BASE / 2,
             );
         realm.config.council_mint = Some(proposal.governing_token_mint);
 
@@ -1961,9 +2127,9 @@ mod test {
         let vote_kind = VoteKind::Electorate;
 
         // reduce max vote weight to 100
-        realm.config.community_mint_max_vote_weight_source =
-            MintMaxVoteWeightSource::SupplyFraction(
-                MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
+        realm.config.community_mint_max_voter_weight_source =
+            MintMaxVoterWeightSource::SupplyFraction(
+                MintMaxVoterWeightSource::SUPPLY_FRACTION_BASE / 2,
             );
 
         let max_voter_weight = proposal
@@ -2012,9 +2178,9 @@ mod test {
         let vote_kind = VoteKind::Electorate;
 
         // reduce max vote weight to 100
-        realm.config.community_mint_max_vote_weight_source =
-            MintMaxVoteWeightSource::SupplyFraction(
-                MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
+        realm.config.community_mint_max_voter_weight_source =
+            MintMaxVoterWeightSource::SupplyFraction(
+                MintMaxVoterWeightSource::SUPPLY_FRACTION_BASE / 2,
             );
 
         // vote above reduced supply
@@ -2054,7 +2220,7 @@ mod test {
         let governance_config = create_test_governance_config();
 
         let current_timestamp =
-            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64;
+            proposal.voting_at.unwrap() + governance_config.voting_base_time as i64;
 
         let realm = create_test_realm();
         let governing_token_mint = proposal.governing_token_mint;
@@ -2089,7 +2255,7 @@ mod test {
         let governance_config = create_test_governance_config();
 
         let current_timestamp =
-            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64 + 1;
+            proposal.voting_at.unwrap() + governance_config.voting_base_time as i64 + 1;
 
         let realm = create_test_realm();
         let governing_token_mint = proposal.governing_token_mint;
@@ -2121,11 +2287,13 @@ mod test {
         let governance_config = create_test_governance_config();
 
         let current_timestamp =
-            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64 + 1;
+            proposal.voting_at.unwrap() + governance_config.voting_base_time as i64 + 1;
+
+        let vote = Vote::Approve(vec![]);
 
         // Act
         let err = proposal
-            .assert_can_cast_vote(&governance_config, current_timestamp)
+            .assert_can_cast_vote(&governance_config, &vote, current_timestamp)
             .err()
             .unwrap();
 
@@ -2141,10 +2309,99 @@ mod test {
         let governance_config = create_test_governance_config();
 
         let current_timestamp =
-            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64;
+            proposal.voting_at.unwrap() + governance_config.voting_base_time as i64;
+
+        let vote = Vote::Approve(vec![]);
 
         // Act
-        let result = proposal.assert_can_cast_vote(&governance_config, current_timestamp);
+        let result = proposal.assert_can_cast_vote(&governance_config, &vote, current_timestamp);
+
+        // Assert
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    pub fn test_assert_can_vote_approve_before_voting_cool_off_time() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.state = ProposalState::Voting;
+
+        let mut governance_config = create_test_governance_config();
+        governance_config.voting_cool_off_time = 2;
+
+        let current_timestamp =
+            proposal.voting_at.unwrap() + governance_config.voting_base_time as i64 - 1;
+
+        let vote = Vote::Approve(vec![]);
+
+        // Act
+        let result = proposal.assert_can_cast_vote(&governance_config, &vote, current_timestamp);
+
+        // Assert
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    pub fn test_assert_cannot_vote_approve_within_voting_cool_off_time() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.state = ProposalState::Voting;
+
+        let mut governance_config = create_test_governance_config();
+        governance_config.voting_cool_off_time = 2;
+
+        let current_timestamp =
+            proposal.voting_at.unwrap() + governance_config.voting_base_time as i64 + 1;
+
+        let vote = Vote::Approve(vec![]);
+
+        // Act
+        let err = proposal
+            .assert_can_cast_vote(&governance_config, &vote, current_timestamp)
+            .err()
+            .unwrap();
+
+        // Assert
+        assert_eq!(err, GovernanceError::VoteNotAllowedInCoolOffTime.into());
+    }
+
+    #[test]
+    pub fn test_assert_can_vote_veto_within_voting_cool_off_time() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.state = ProposalState::Voting;
+
+        let mut governance_config = create_test_governance_config();
+        governance_config.voting_cool_off_time = 2;
+
+        let current_timestamp =
+            proposal.voting_at.unwrap() + governance_config.voting_base_time as i64 + 1;
+
+        let vote = Vote::Veto;
+
+        // Act
+        let result = proposal.assert_can_cast_vote(&governance_config, &vote, current_timestamp);
+
+        // Assert
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    pub fn test_assert_can_vote_deny_within_voting_cool_off_time() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.state = ProposalState::Voting;
+
+        let mut governance_config = create_test_governance_config();
+        governance_config.voting_cool_off_time = 1;
+
+        let current_timestamp =
+            proposal.voting_at.unwrap() + governance_config.voting_base_time as i64 + 1;
+
+        let vote = Vote::Deny;
+
+        // Act
+        let result = proposal.assert_can_cast_vote(&governance_config, &vote, current_timestamp);
 
         // Assert
         assert_eq!(result, Ok(()));

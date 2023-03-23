@@ -57,7 +57,7 @@ pub fn process_cast_vote(
         return Err(GovernanceError::VoteAlreadyExists.into());
     }
 
-    let mut realm_data = get_realm_data_for_governing_token_mint(
+    let realm_data = get_realm_data_for_governing_token_mint(
         program_id,
         realm_info,
         vote_governing_token_mint_info.key,
@@ -82,7 +82,7 @@ pub fn process_cast_vote(
         governance_info.key,
         &proposal_governing_token_mint,
     )?;
-    proposal_data.assert_can_cast_vote(&governance_data.config, clock.unix_timestamp)?;
+    proposal_data.assert_can_cast_vote(&governance_data.config, &vote, clock.unix_timestamp)?;
 
     let mut voter_token_owner_record_data =
         get_token_owner_record_data_for_realm_and_governing_mint(
@@ -97,11 +97,6 @@ pub fn process_cast_vote(
     // Update TokenOwnerRecord vote counts
     voter_token_owner_record_data.unrelinquished_votes_count = voter_token_owner_record_data
         .unrelinquished_votes_count
-        .checked_add(1)
-        .unwrap();
-
-    voter_token_owner_record_data.total_votes_count = voter_token_owner_record_data
-        .total_votes_count
         .checked_add(1)
         .unwrap();
 
@@ -187,13 +182,9 @@ pub fn process_cast_vote(
                 .serialize(&mut *proposal_owner_record_info.data.borrow_mut())?;
         };
 
-        // Update Realm voting_proposal_count
-        realm_data.voting_proposal_count = realm_data.voting_proposal_count.saturating_sub(1);
-        realm_data.serialize(&mut *realm_info.data.borrow_mut())?;
-
-        // Update  Governance voting_proposal_count
-        governance_data.voting_proposal_count =
-            governance_data.voting_proposal_count.saturating_sub(1);
+        // If the proposal is tipped decrease Governance active_proposal_count
+        governance_data.active_proposal_count =
+            governance_data.active_proposal_count.saturating_sub(1);
         governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
     }
 
@@ -223,6 +214,7 @@ pub fn process_cast_vote(
         program_id,
         system_info,
         &rent,
+        0,
     )?;
 
     Ok(())

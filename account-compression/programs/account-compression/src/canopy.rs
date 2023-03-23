@@ -19,12 +19,12 @@
 use crate::error::AccountCompressionError;
 use crate::events::ChangeLogEvent;
 use anchor_lang::prelude::*;
-use bytemuck::cast_slice_mut;
+use bytemuck::{cast_slice, cast_slice_mut};
 use spl_concurrent_merkle_tree::node::{empty_node_cached, Node, EMPTY};
 use std::mem::size_of;
 
 #[inline(always)]
-pub fn check_canopy_bytes(canopy_bytes: &mut [u8]) -> Result<()> {
+pub fn check_canopy_bytes(canopy_bytes: &[u8]) -> Result<()> {
     if canopy_bytes.len() % size_of::<Node>() != 0 {
         msg!(
             "Canopy byte length {} is not a multiple of {}",
@@ -38,7 +38,7 @@ pub fn check_canopy_bytes(canopy_bytes: &mut [u8]) -> Result<()> {
 }
 
 #[inline(always)]
-fn get_cached_path_length(canopy: &mut [Node], max_depth: u32) -> Result<u32> {
+fn get_cached_path_length(canopy: &[Node], max_depth: u32) -> Result<u32> {
     // The offset of 2 is applied because the canopy is a full binary tree without the root node
     // Size: (2^n - 2) -> Size + 2 must be a power of 2
     let closest_power_of_2 = (canopy.len() + 2) as u32;
@@ -69,23 +69,27 @@ fn get_cached_path_length(canopy: &mut [Node], max_depth: u32) -> Result<u32> {
 pub fn update_canopy(
     canopy_bytes: &mut [u8],
     max_depth: u32,
-    change_log: Option<Box<ChangeLogEvent>>,
+    change_log: Option<&ChangeLogEvent>,
 ) -> Result<()> {
     check_canopy_bytes(canopy_bytes)?;
     let canopy = cast_slice_mut::<u8, Node>(canopy_bytes);
     let path_len = get_cached_path_length(canopy, max_depth)?;
-    if let Some(cl) = change_log {
-        // Update the canopy from the newest change log
-        for path_node in cl.path.iter().rev().skip(1).take(path_len as usize) {
-            // node_idx - 2 maps to the canopy index
-            canopy[(path_node.index - 2) as usize] = path_node.node;
+    if let Some(cl_event) = change_log {
+        match &*cl_event {
+            ChangeLogEvent::V1(cl) => {
+                // Update the canopy from the newest change log
+                for path_node in cl.path.iter().rev().skip(1).take(path_len as usize) {
+                    // node_idx - 2 maps to the canopy index
+                    canopy[(path_node.index - 2) as usize] = path_node.node;
+                }
+            }
         }
     }
     Ok(())
 }
 
 pub fn fill_in_proof_from_canopy(
-    canopy_bytes: &mut [u8],
+    canopy_bytes: &[u8],
     max_depth: u32,
     index: u32,
     proof: &mut Vec<Node>,
@@ -93,7 +97,7 @@ pub fn fill_in_proof_from_canopy(
     // 30 is hard coded as it is the current max depth that SPL Compression supports
     let mut empty_node_cache = Box::new([EMPTY; 30]);
     check_canopy_bytes(canopy_bytes)?;
-    let canopy = cast_slice_mut::<u8, Node>(canopy_bytes);
+    let canopy = cast_slice::<u8, Node>(canopy_bytes);
     let path_len = get_cached_path_length(canopy, max_depth)?;
 
     // We want to compute the node index (w.r.t. the canopy) where the current path
@@ -111,7 +115,6 @@ pub fn fill_in_proof_from_canopy(
         if canopy[cached_idx] == EMPTY {
             let level = max_depth - (31 - node_idx.leading_zeros());
             let empty_node = empty_node_cached::<30>(level, &mut empty_node_cache);
-            canopy[cached_idx] = empty_node;
             inferred_nodes.push(empty_node);
         } else {
             inferred_nodes.push(canopy[cached_idx]);

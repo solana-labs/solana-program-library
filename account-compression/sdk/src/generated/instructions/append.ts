@@ -5,8 +5,8 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet'
-import * as web3 from '@solana/web3.js'
+import * as beet from '@metaplex-foundation/beet';
+import * as web3 from '@solana/web3.js';
 
 /**
  * @category Instructions
@@ -14,8 +14,8 @@ import * as web3 from '@solana/web3.js'
  * @category generated
  */
 export type AppendInstructionArgs = {
-  leaf: number[] /* size: 32 */
-}
+  leaf: number[] /* size: 32 */;
+};
 /**
  * @category Instructions
  * @category Append
@@ -23,7 +23,7 @@ export type AppendInstructionArgs = {
  */
 export const appendStruct = new beet.BeetArgsStruct<
   AppendInstructionArgs & {
-    instructionDiscriminator: number[] /* size: 8 */
+    instructionDiscriminator: number[] /* size: 8 */;
   }
 >(
   [
@@ -31,26 +31,27 @@ export const appendStruct = new beet.BeetArgsStruct<
     ['leaf', beet.uniformFixedSizeArray(beet.u8, 32)],
   ],
   'AppendInstructionArgs'
-)
+);
 /**
  * Accounts required by the _append_ instruction
  *
  * @property [_writable_] merkleTree
  * @property [**signer**] authority
- * @property [] logWrapper
+ * @property [] noop
  * @category Instructions
  * @category Append
  * @category generated
  */
 export type AppendInstructionAccounts = {
-  merkleTree: web3.PublicKey
-  authority: web3.PublicKey
-  logWrapper: web3.PublicKey
-}
+  merkleTree: web3.PublicKey;
+  authority: web3.PublicKey;
+  noop: web3.PublicKey;
+  anchorRemainingAccounts?: web3.AccountMeta[];
+};
 
 export const appendInstructionDiscriminator = [
   149, 120, 18, 222, 236, 225, 88, 203,
-]
+];
 
 /**
  * Creates a _Append_ instruction.
@@ -65,12 +66,12 @@ export const appendInstructionDiscriminator = [
 export function createAppendInstruction(
   accounts: AppendInstructionAccounts,
   args: AppendInstructionArgs,
-  programId = new web3.PublicKey('GRoLLzvxpxxu2PGNJMMeZPyMxjAUH9pKqxGXV9DGiceU')
+  programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
 ) {
   const [data] = appendStruct.serialize({
     instructionDiscriminator: appendInstructionDiscriminator,
     ...args,
-  })
+  });
   const keys: web3.AccountMeta[] = [
     {
       pubkey: accounts.merkleTree,
@@ -83,16 +84,22 @@ export function createAppendInstruction(
       isSigner: true,
     },
     {
-      pubkey: accounts.logWrapper,
+      pubkey: accounts.noop,
       isWritable: false,
       isSigner: false,
     },
-  ]
+  ];
+
+  if (accounts.anchorRemainingAccounts != null) {
+    for (const acc of accounts.anchorRemainingAccounts) {
+      keys.push(acc);
+    }
+  }
 
   const ix = new web3.TransactionInstruction({
     programId,
     keys,
     data,
-  })
-  return ix
+  });
+  return ix;
 }

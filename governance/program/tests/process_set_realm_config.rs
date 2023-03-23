@@ -127,8 +127,10 @@ async fn test_set_realm_config_with_remove_council() {
 
     let mut realm_cookie = governance_test.with_realm().await;
 
-    let mut realm_setup_args = RealmSetupArgs::default();
-    realm_setup_args.use_council_mint = false;
+    let realm_setup_args = RealmSetupArgs {
+        use_council_mint: false,
+        ..Default::default()
+    };
 
     // Act
     governance_test
@@ -178,8 +180,10 @@ async fn test_set_realm_config_with_council_restore_error() {
 
     let mut realm_cookie = governance_test.with_realm().await;
 
-    let mut realm_setup_args = RealmSetupArgs::default();
-    realm_setup_args.use_council_mint = false;
+    let mut realm_setup_args = RealmSetupArgs {
+        use_council_mint: false,
+        ..Default::default()
+    };
 
     governance_test
         .set_realm_config(&mut realm_cookie, &realm_setup_args)
@@ -227,7 +231,7 @@ async fn test_set_realm_config_with_liquid_community_token_cannot_be_changed_to_
     // Assert
     assert_eq!(
         err,
-        GovernanceError::CannotChangeCommunityTokenTypeToMemebership.into()
+        GovernanceError::CannotChangeCommunityTokenTypeToMembership.into()
     );
 }
 
@@ -238,13 +242,14 @@ async fn test_set_realm_config_for_community_token_config() {
 
     let mut realm_cookie = governance_test.with_realm().await;
 
-    let mut realm_setup_args = RealmSetupArgs::default();
-
     // Change Community token type to Dormant and set plugins
-    realm_setup_args.community_token_config_args = GoverningTokenConfigAccountArgs {
-        voter_weight_addin: Some(Pubkey::new_unique()),
-        max_voter_weight_addin: Some(Pubkey::new_unique()),
-        token_type: GoverningTokenType::Dormant,
+    let realm_setup_args = RealmSetupArgs {
+        community_token_config_args: GoverningTokenConfigAccountArgs {
+            voter_weight_addin: Some(Pubkey::new_unique()),
+            max_voter_weight_addin: Some(Pubkey::new_unique()),
+            token_type: GoverningTokenType::Dormant,
+        },
+        ..Default::default()
     };
 
     // Act
@@ -291,13 +296,14 @@ async fn test_set_realm_config_for_council_token_config() {
 
     let mut realm_cookie = governance_test.with_realm().await;
 
-    let mut realm_setup_args = RealmSetupArgs::default();
-
     // Change Council token type to Membership and set plugins
-    realm_setup_args.council_token_config_args = GoverningTokenConfigAccountArgs {
-        voter_weight_addin: Some(Pubkey::new_unique()),
-        max_voter_weight_addin: Some(Pubkey::new_unique()),
-        token_type: GoverningTokenType::Membership,
+    let realm_setup_args = RealmSetupArgs {
+        council_token_config_args: GoverningTokenConfigAccountArgs {
+            voter_weight_addin: Some(Pubkey::new_unique()),
+            max_voter_weight_addin: Some(Pubkey::new_unique()),
+            token_type: GoverningTokenType::Membership,
+        },
+        ..Default::default()
     };
 
     // Act

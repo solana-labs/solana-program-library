@@ -1,24 +1,84 @@
-From aa223c645791be158a597efb8579270dbe5bdd82 Mon Sep 17 00:00:00 2001
+From e5f7a7a9584edd4eef3c06df2d33069b78770c4a Mon Sep 17 00:00:00 2001
 From: Jon Cinque <jon.cinque@gmail.com>
-Date: Wed, 31 Aug 2022 01:02:34 +0200
-Subject: [PATCH] [PATCH] feat: double PACKET_DATA_SIZE
+Date: Wed, 31 Aug 2022 01:44:22 +0200
+Subject: [PATCH] Multiply packet size by 2
 
-Try blind double of PACKET_DATA_SIZE; this double things across the
-board and is not a permanent solution.
 ---
+ ledger/src/shred.rs                  |  2 +-
+ ledger/src/shred/legacy.rs           |  6 +++---
+ ledger/src/shred/merkle.rs           |  2 +-
+ ledger/src/shred/shred_code.rs       |  2 +-
  rpc/src/rpc.rs                       | 16 +++++++++++-----
  sdk/src/packet.rs                    |  3 ++-
- web3.js/src/transaction/constants.ts |  2 +-
- 3 files changed, 14 insertions(+), 7 deletions(-)
+ 6 files changed, 19 insertions(+), 12 deletions(-)
 
+diff --git a/ledger/src/shred.rs b/ledger/src/shred.rs
+index 0695236214..1c52b164a9 100644
+--- a/ledger/src/shred.rs
++++ b/ledger/src/shred.rs
+@@ -112,7 +112,7 @@ const OFFSET_OF_SHRED_INDEX: usize = OFFSET_OF_SHRED_SLOT + SIZE_OF_SHRED_SLOT;
+ pub const DATA_SHREDS_PER_FEC_BLOCK: usize = 32;
+
+ // For legacy tests and benchmarks.
+-const_assert_eq!(LEGACY_SHRED_DATA_CAPACITY, 1051);
++const_assert_eq!(LEGACY_SHRED_DATA_CAPACITY, 2283);
+ pub const LEGACY_SHRED_DATA_CAPACITY: usize = legacy::ShredData::CAPACITY;
+
+ // LAST_SHRED_IN_SLOT also implies DATA_COMPLETE_SHRED.
+diff --git a/ledger/src/shred/legacy.rs b/ledger/src/shred/legacy.rs
+index ca6310bdcb..c0ab2b1de4 100644
+--- a/ledger/src/shred/legacy.rs
++++ b/ledger/src/shred/legacy.rs
+@@ -17,12 +17,12 @@ use {
+ // Code and data shreds have the same payload size.
+ pub(super) const SIGNED_MESSAGE_RANGE: Range<usize> = SIZE_OF_SIGNATURE..ShredData::SIZE_OF_PAYLOAD;
+ const_assert_eq!(ShredData::SIZE_OF_PAYLOAD, ShredCode::SIZE_OF_PAYLOAD);
+-const_assert_eq!(ShredData::SIZE_OF_PAYLOAD, 1228);
+-const_assert_eq!(ShredData::CAPACITY, 1051);
++const_assert_eq!(ShredData::SIZE_OF_PAYLOAD, 2460);
++const_assert_eq!(ShredData::CAPACITY, 2283);
+
+ // ShredCode::SIZE_OF_HEADERS bytes at the end of data shreds
+ // is never used and is not part of erasure coding.
+-const_assert_eq!(SIZE_OF_ERASURE_ENCODED_SLICE, 1139);
++const_assert_eq!(SIZE_OF_ERASURE_ENCODED_SLICE, 2371);
+ pub(super) const SIZE_OF_ERASURE_ENCODED_SLICE: usize =
+     ShredCode::SIZE_OF_PAYLOAD - ShredCode::SIZE_OF_HEADERS;
+
+diff --git a/ledger/src/shred/merkle.rs b/ledger/src/shred/merkle.rs
+index 90b686f5c8..ff47c745d1 100644
+--- a/ledger/src/shred/merkle.rs
++++ b/ledger/src/shred/merkle.rs
+@@ -39,7 +39,7 @@ const_assert_eq!(SIZE_OF_MERKLE_ROOT, 20);
+ const SIZE_OF_MERKLE_ROOT: usize = std::mem::size_of::<MerkleRoot>();
+ const_assert_eq!(SIZE_OF_MERKLE_PROOF_ENTRY, 20);
+ const SIZE_OF_MERKLE_PROOF_ENTRY: usize = std::mem::size_of::<MerkleProofEntry>();
+-const_assert_eq!(ShredData::SIZE_OF_PAYLOAD, 1203);
++const_assert_eq!(ShredData::SIZE_OF_PAYLOAD, 2435);
+
+ // Defense against second preimage attack:
+ // https://en.wikipedia.org/wiki/Merkle_tree#Second_preimage_attack
+diff --git a/ledger/src/shred/shred_code.rs b/ledger/src/shred/shred_code.rs
+index 3b01b8826d..3e3ebfbf78 100644
+--- a/ledger/src/shred/shred_code.rs
++++ b/ledger/src/shred/shred_code.rs
+@@ -17,7 +17,7 @@ const_assert_eq!(MAX_CODE_SHREDS_PER_SLOT, 32_768 * 17);
+ pub(crate) const MAX_CODE_SHREDS_PER_SLOT: usize =
+     MAX_DATA_SHREDS_PER_SLOT * (ERASURE_BATCH_SIZE[1] - 1);
+
+-const_assert_eq!(ShredCode::SIZE_OF_PAYLOAD, 1228);
++const_assert_eq!(ShredCode::SIZE_OF_PAYLOAD, 2460);
+
+ #[derive(Clone, Debug, Eq, PartialEq)]
+ pub enum ShredCode {
 diff --git a/rpc/src/rpc.rs b/rpc/src/rpc.rs
-index 8d5d12f033..9d46a315ce 100644
+index 1167b21eaf..c9689f7039 100644
 --- a/rpc/src/rpc.rs
 +++ b/rpc/src/rpc.rs
-@@ -4393,8 +4393,11 @@ pub mod rpc_obsolete_v1_7 {
+@@ -4478,8 +4478,11 @@ pub mod rpc_obsolete_v1_7 {
      }
  }
- 
+
 -const MAX_BASE58_SIZE: usize = 1683; // Golden, bump if PACKET_DATA_SIZE changes
 -const MAX_BASE64_SIZE: usize = 1644; // Golden, bump if PACKET_DATA_SIZE changes
 +// These values need to be updated if PACKET_DATA_SIZE changes. The correct values can
@@ -29,17 +89,17 @@ index 8d5d12f033..9d46a315ce 100644
  fn decode_and_deserialize<T>(
      encoded: String,
      encoding: TransactionBinaryEncoding,
-@@ -8285,7 +8288,7 @@ pub mod tests {
+@@ -8773,7 +8776,7 @@ pub mod tests {
      }
- 
+
      #[test]
 -    fn test_worst_case_encoded_tx_goldens() {
 +    fn test_max_encoded_tx_goldens() {
          let ff_tx = vec![0xffu8; PACKET_DATA_SIZE];
          let tx58 = bs58::encode(&ff_tx).into_string();
          assert_eq!(tx58.len(), MAX_BASE58_SIZE);
-@@ -8295,8 +8298,11 @@ pub mod tests {
- 
+@@ -8783,8 +8786,11 @@ pub mod tests {
+
      #[test]
      fn test_decode_and_deserialize_too_large_payloads_fail() {
 -        // +2 because +1 still fits in base64 encoded worst-case
@@ -50,10 +110,10 @@ index 8d5d12f033..9d46a315ce 100644
 +        let extra_bytes = 4 - (PACKET_DATA_SIZE % 3);
 +        let too_big = PACKET_DATA_SIZE + extra_bytes;
          let tx_ser = vec![0xffu8; too_big];
+
          let tx58 = bs58::encode(&tx_ser).into_string();
-         let tx58_len = tx58.len();
 diff --git a/sdk/src/packet.rs b/sdk/src/packet.rs
-index 412375e35f..112d962fe8 100644
+index 08389860f9..12714028d7 100644
 --- a/sdk/src/packet.rs
 +++ b/sdk/src/packet.rs
 @@ -15,7 +15,8 @@ static_assertions::const_assert_eq!(PACKET_DATA_SIZE, 1232);
@@ -63,22 +123,9 @@ index 412375e35f..112d962fe8 100644
 -pub const PACKET_DATA_SIZE: usize = 1280 - 40 - 8;
 +/// Double the minimum to support larger than MTU transactions
 +pub const PACKET_DATA_SIZE: usize = 2 * (1280 - 40 - 8);
- 
+
  bitflags! {
      #[repr(C)]
-diff --git a/web3.js/src/transaction/constants.ts b/web3.js/src/transaction/constants.ts
-index 075337e8dc..618d48cdfd 100644
---- a/web3.js/src/transaction/constants.ts
-+++ b/web3.js/src/transaction/constants.ts
-@@ -5,7 +5,7 @@
-  * 40 bytes is the size of the IPv6 header
-  * 8 bytes is the size of the fragment header
-  */
--export const PACKET_DATA_SIZE = 1280 - 40 - 8;
-+export const PACKET_DATA_SIZE = 2464;
- 
- export const VERSION_PREFIX_MASK = 0x7f;
- 
--- 
-2.37.2
+--
+2.38.1
 

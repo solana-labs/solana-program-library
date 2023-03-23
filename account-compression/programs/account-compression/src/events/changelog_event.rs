@@ -1,9 +1,16 @@
 use crate::state::PathNode;
+
 use anchor_lang::prelude::*;
 use spl_concurrent_merkle_tree::changelog::ChangeLog;
 
-#[event]
-pub struct ChangeLogEvent {
+#[derive(AnchorDeserialize, AnchorSerialize)]
+#[repr(C)]
+pub enum ChangeLogEvent {
+    V1(ChangeLogEventV1),
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize)]
+pub struct ChangeLogEventV1 {
     /// Public key of the ConcurrentMerkleTree
     pub id: Pubkey,
 
@@ -16,6 +23,17 @@ pub struct ChangeLogEvent {
 
     /// Bitmap of node parity (used when hashing)
     pub index: u32,
+}
+
+impl ChangeLogEvent {
+    pub fn new(id: Pubkey, path: Vec<PathNode>, seq: u64, index: u32) -> Self {
+        Self::V1(ChangeLogEventV1 {
+            id,
+            path,
+            seq,
+            index,
+        })
+    }
 }
 
 impl<const MAX_DEPTH: usize> From<(Box<ChangeLog<MAX_DEPTH>>, Pubkey, u64)>
@@ -36,11 +54,11 @@ impl<const MAX_DEPTH: usize> From<(Box<ChangeLog<MAX_DEPTH>>, Pubkey, u64)>
             })
             .collect();
         path.push(PathNode::new(changelog.root, 1));
-        Box::new(ChangeLogEvent {
+        Box::new(ChangeLogEvent::V1(ChangeLogEventV1 {
             id: tree_id,
             path,
             seq,
             index: changelog.index,
-        })
+        }))
     }
 }

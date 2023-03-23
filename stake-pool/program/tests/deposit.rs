@@ -1,9 +1,9 @@
+#![allow(clippy::integer_arithmetic)]
 #![cfg(feature = "test-sbf")]
 
 mod helpers;
 
 use {
-    bincode::deserialize,
     borsh::BorshSerialize,
     helpers::*,
     solana_program::{
@@ -18,14 +18,14 @@ use {
         transaction::{Transaction, TransactionError},
         transport::TransportError,
     },
-    spl_stake_pool::{
-        error::StakePoolError, id, instruction, minimum_stake_lamports, state,
-        MINIMUM_RESERVE_LAMPORTS,
-    },
+    spl_stake_pool::{error::StakePoolError, id, instruction, state, MINIMUM_RESERVE_LAMPORTS},
     spl_token::error as token_error,
+    test_case::test_case,
 };
 
-async fn setup() -> (
+async fn setup(
+    token_program_id: Pubkey,
+) -> (
     ProgramTestContext,
     StakePoolAccounts,
     ValidatorStakeAccount,
@@ -36,7 +36,7 @@ async fn setup() -> (
 ) {
     let mut context = program_test().start_with_context().await;
 
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::new_with_token_program(token_program_id);
     stake_pool_accounts
         .initialize_stake_pool(
             &mut context.banks_client,
@@ -52,13 +52,9 @@ async fn setup() -> (
         &context.payer,
         &context.last_blockhash,
         &stake_pool_accounts,
+        None,
     )
     .await;
-
-    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
-    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    let mut slot = first_normal_slot;
-    context.warp_to_slot(slot).unwrap();
 
     let user = Keypair::new();
     // make stake account
@@ -91,8 +87,8 @@ async fn setup() -> (
     )
     .await;
 
-    slot += slots_per_epoch;
-    context.warp_to_slot(slot).unwrap();
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    context.warp_to_slot(first_normal_slot).unwrap();
     stake_pool_accounts
         .update_all(
             &mut context.banks_client,
@@ -109,9 +105,11 @@ async fn setup() -> (
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &pool_token_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
+        &user,
+        &[],
     )
     .await
     .unwrap();
@@ -127,8 +125,10 @@ async fn setup() -> (
     )
 }
 
+#[test_case(spl_token::id(); "token")]
+#[test_case(spl_token_2022::id(); "token-2022")]
 #[tokio::test]
-async fn success() {
+async fn success(token_program_id: Pubkey) {
     let (
         mut context,
         stake_pool_accounts,
@@ -137,7 +137,7 @@ async fn success() {
         deposit_stake,
         pool_token_account,
         stake_lamports,
-    ) = setup().await;
+    ) = setup(token_program_id).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
@@ -235,8 +235,8 @@ async fn success() {
         .find(&validator_stake_account.vote.pubkey())
         .unwrap();
     assert_eq!(
-        post_validator_stake_item.stake_lamports(),
-        pre_validator_stake_item.stake_lamports() + stake_lamports - stake_rent,
+        post_validator_stake_item.stake_lamports().unwrap(),
+        pre_validator_stake_item.stake_lamports().unwrap() + stake_lamports - stake_rent,
     );
 
     // Check validator stake account actual SOL balance
@@ -245,18 +245,9 @@ async fn success() {
         &validator_stake_account.stake_account,
     )
     .await;
-    let stake_state =
-        deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
-    let meta = stake_state.meta().unwrap();
-    let stake_minimum_delegation = stake_get_minimum_delegation(
-        &mut context.banks_client,
-        &context.payer,
-        &context.last_blockhash,
-    )
-    .await;
     assert_eq!(
-        validator_stake_account.lamports - minimum_stake_lamports(&meta, stake_minimum_delegation),
-        post_validator_stake_item.stake_lamports()
+        validator_stake_account.lamports,
+        post_validator_stake_item.stake_lamports().unwrap()
     );
     assert_eq!(post_validator_stake_item.transient_stake_lamports, 0);
 
@@ -280,7 +271,7 @@ async fn success_with_extra_stake_lamports() {
         deposit_stake,
         pool_token_account,
         stake_lamports,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let extra_lamports = TEST_STAKE_AMOUNT * 3 + 1;
 
@@ -299,9 +290,11 @@ async fn success_with_extra_stake_lamports() {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &referrer_token_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &referrer.pubkey(),
+        &referrer,
+        &[],
     )
     .await
     .unwrap();
@@ -436,8 +429,8 @@ async fn success_with_extra_stake_lamports() {
         .find(&validator_stake_account.vote.pubkey())
         .unwrap();
     assert_eq!(
-        post_validator_stake_item.stake_lamports(),
-        pre_validator_stake_item.stake_lamports() + stake_lamports - stake_rent,
+        post_validator_stake_item.stake_lamports().unwrap(),
+        pre_validator_stake_item.stake_lamports().unwrap() + stake_lamports - stake_rent,
     );
 
     // Check validator stake account actual SOL balance
@@ -446,18 +439,9 @@ async fn success_with_extra_stake_lamports() {
         &validator_stake_account.stake_account,
     )
     .await;
-    let stake_state =
-        deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
-    let meta = stake_state.meta().unwrap();
-    let stake_minimum_delegation = stake_get_minimum_delegation(
-        &mut context.banks_client,
-        &context.payer,
-        &context.last_blockhash,
-    )
-    .await;
     assert_eq!(
-        validator_stake_account.lamports - minimum_stake_lamports(&meta, stake_minimum_delegation),
-        post_validator_stake_item.stake_lamports()
+        validator_stake_account.lamports,
+        post_validator_stake_item.stake_lamports().unwrap()
     );
     assert_eq!(post_validator_stake_item.transient_stake_lamports, 0);
 
@@ -484,7 +468,7 @@ async fn fail_with_wrong_stake_program_id() {
         deposit_stake,
         pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let wrong_stake_program = Pubkey::new_unique();
 
@@ -517,7 +501,6 @@ async fn fail_with_wrong_stake_program_id() {
     let mut transaction =
         Transaction::new_with_payer(&[instruction], Some(&context.payer.pubkey()));
     transaction.sign(&[&context.payer], context.last_blockhash);
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = context
         .banks_client
         .process_transaction(transaction)
@@ -544,7 +527,7 @@ async fn fail_with_wrong_token_program_id() {
         deposit_stake,
         pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let wrong_token_program = Keypair::new();
 
@@ -567,7 +550,6 @@ async fn fail_with_wrong_token_program_id() {
         Some(&context.payer.pubkey()),
     );
     transaction.sign(&[&context.payer, &user], context.last_blockhash);
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = context
         .banks_client
         .process_transaction(transaction)
@@ -594,7 +576,7 @@ async fn fail_with_wrong_validator_list_account() {
         deposit_stake,
         pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let wrong_validator_list = Keypair::new();
     stake_pool_accounts.validator_list = wrong_validator_list;
@@ -628,7 +610,7 @@ async fn fail_with_wrong_validator_list_account() {
 #[tokio::test]
 async fn fail_with_unknown_validator() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -644,6 +626,7 @@ async fn fail_with_unknown_validator() {
         &payer,
         &recent_blockhash,
         &stake_pool_accounts.stake_pool.pubkey(),
+        0,
     )
     .await;
 
@@ -653,9 +636,11 @@ async fn fail_with_unknown_validator() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &user_pool_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
+        &user,
+        &[],
     )
     .await
     .unwrap();
@@ -705,7 +690,7 @@ async fn fail_with_unknown_validator() {
         error,
         TransactionError::InstructionError(
             2,
-            InstructionError::Custom(StakePoolError::InvalidStakeAccountAddress as u32)
+            InstructionError::Custom(StakePoolError::ValidatorNotFound as u32)
         )
     );
 }
@@ -720,7 +705,7 @@ async fn fail_with_wrong_withdraw_authority() {
         deposit_stake,
         pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     stake_pool_accounts.withdraw_authority = Pubkey::new_unique();
 
@@ -757,7 +742,7 @@ async fn fail_with_wrong_mint_for_receiver_acc() {
         deposit_stake,
         _pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(spl_token::id()).await;
 
     let outside_mint = Keypair::new();
     let outside_withdraw_auth = Keypair::new();
@@ -768,8 +753,11 @@ async fn fail_with_wrong_mint_for_receiver_acc() {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &outside_mint,
         &outside_withdraw_auth.pubkey(),
+        0,
+        &[],
     )
     .await
     .unwrap();
@@ -778,9 +766,11 @@ async fn fail_with_wrong_mint_for_receiver_acc() {
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &outside_pool_fee_acc,
         &outside_mint.pubkey(),
-        &outside_manager.pubkey(),
+        &outside_manager,
+        &[],
     )
     .await
     .unwrap();
@@ -810,104 +800,10 @@ async fn fail_with_wrong_mint_for_receiver_acc() {
     }
 }
 
+#[test_case(spl_token::id(); "token")]
+#[test_case(spl_token_2022::id(); "token-2022")]
 #[tokio::test]
-async fn fail_with_uninitialized_validator_list() {} // TODO
-
-#[tokio::test]
-async fn fail_with_out_of_dated_pool_balances() {} // TODO
-
-#[tokio::test]
-async fn success_with_preferred_deposit() {
-    let (
-        mut context,
-        stake_pool_accounts,
-        validator_stake,
-        user,
-        deposit_stake,
-        pool_token_account,
-        _stake_lamports,
-    ) = setup().await;
-
-    stake_pool_accounts
-        .set_preferred_validator(
-            &mut context.banks_client,
-            &context.payer,
-            &context.last_blockhash,
-            instruction::PreferredValidatorType::Deposit,
-            Some(validator_stake.vote.pubkey()),
-        )
-        .await;
-
-    let error = stake_pool_accounts
-        .deposit_stake(
-            &mut context.banks_client,
-            &context.payer,
-            &context.last_blockhash,
-            &deposit_stake,
-            &pool_token_account,
-            &validator_stake.stake_account,
-            &user,
-        )
-        .await;
-    assert!(error.is_none());
-}
-
-#[tokio::test]
-async fn fail_with_wrong_preferred_deposit() {
-    let (
-        mut context,
-        stake_pool_accounts,
-        validator_stake,
-        user,
-        deposit_stake,
-        pool_token_account,
-        _stake_lamports,
-    ) = setup().await;
-
-    let preferred_validator = simple_add_validator_to_pool(
-        &mut context.banks_client,
-        &context.payer,
-        &context.last_blockhash,
-        &stake_pool_accounts,
-    )
-    .await;
-
-    stake_pool_accounts
-        .set_preferred_validator(
-            &mut context.banks_client,
-            &context.payer,
-            &context.last_blockhash,
-            instruction::PreferredValidatorType::Deposit,
-            Some(preferred_validator.vote.pubkey()),
-        )
-        .await;
-
-    let error = stake_pool_accounts
-        .deposit_stake(
-            &mut context.banks_client,
-            &context.payer,
-            &context.last_blockhash,
-            &deposit_stake,
-            &pool_token_account,
-            &validator_stake.stake_account,
-            &user,
-        )
-        .await
-        .unwrap()
-        .unwrap();
-    match error {
-        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
-            assert_eq!(
-                error_index,
-                StakePoolError::IncorrectDepositVoteAddress as u32
-            );
-        }
-        _ => panic!("Wrong error occurs while try to make a deposit with wrong stake program ID"),
-    }
-}
-
-#[tokio::test]
-async fn success_with_referral_fee() {
+async fn success_with_slippage(token_program_id: Pubkey) {
     let (
         mut context,
         stake_pool_accounts,
@@ -916,116 +812,92 @@ async fn success_with_referral_fee() {
         deposit_stake,
         pool_token_account,
         stake_lamports,
-    ) = setup().await;
+    ) = setup(token_program_id).await;
 
-    let referrer = Keypair::new();
-    let referrer_token_account = Keypair::new();
-    create_token_account(
-        &mut context.banks_client,
-        &context.payer,
-        &context.last_blockhash,
-        &referrer_token_account,
-        &stake_pool_accounts.pool_mint.pubkey(),
-        &referrer.pubkey(),
-    )
-    .await
-    .unwrap();
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
 
-    let referrer_balance_pre =
-        get_token_balance(&mut context.banks_client, &referrer_token_account.pubkey()).await;
-
-    let mut transaction = Transaction::new_with_payer(
-        &instruction::deposit_stake(
-            &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.validator_list.pubkey(),
-            &stake_pool_accounts.withdraw_authority,
-            &deposit_stake,
-            &user.pubkey(),
-            &validator_stake_account.stake_account,
-            &stake_pool_accounts.reserve_stake.pubkey(),
-            &pool_token_account,
-            &stake_pool_accounts.pool_fee_account.pubkey(),
-            &referrer_token_account.pubkey(),
-            &stake_pool_accounts.pool_mint.pubkey(),
-            &spl_token::id(),
-        ),
-        Some(&context.payer.pubkey()),
-    );
-    transaction.sign(&[&context.payer, &user], context.last_blockhash);
-    context
-        .banks_client
-        .process_transaction(transaction)
-        .await
-        .unwrap();
-
-    let referrer_balance_post =
-        get_token_balance(&mut context.banks_client, &referrer_token_account.pubkey()).await;
-    let stake_pool = get_account(
+    // Save stake pool state before depositing
+    let pre_stake_pool = get_account(
         &mut context.banks_client,
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(stake_pool.data.as_slice()).unwrap();
-    let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
-    let fee_tokens = stake_pool
-        .calc_pool_tokens_sol_deposit_fee(stake_rent)
-        .unwrap()
-        + stake_pool
+    let pre_stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(pre_stake_pool.data.as_slice()).unwrap();
+
+    let tokens_issued = stake_lamports; // For now tokens are 1:1 to stake
+    let tokens_issued_user = tokens_issued
+        - pre_stake_pool
+            .calc_pool_tokens_sol_deposit_fee(stake_rent)
+            .unwrap()
+        - pre_stake_pool
             .calc_pool_tokens_stake_deposit_fee(stake_lamports - stake_rent)
             .unwrap();
-    let referral_fee = stake_pool_accounts.calculate_referral_fee(fee_tokens);
-    assert!(referral_fee > 0);
-    assert_eq!(referrer_balance_pre + referral_fee, referrer_balance_post);
-}
 
-#[tokio::test]
-async fn fail_with_invalid_referrer() {
-    let (
-        mut context,
-        stake_pool_accounts,
-        validator_stake_account,
-        user,
-        deposit_stake,
-        pool_token_account,
-        _stake_lamports,
-    ) = setup().await;
-
-    let invalid_token_account = Keypair::new();
-
-    let mut transaction = Transaction::new_with_payer(
-        &instruction::deposit_stake(
-            &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.validator_list.pubkey(),
-            &stake_pool_accounts.withdraw_authority,
+    let error = stake_pool_accounts
+        .deposit_stake_with_slippage(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
             &deposit_stake,
-            &user.pubkey(),
-            &validator_stake_account.stake_account,
-            &stake_pool_accounts.reserve_stake.pubkey(),
             &pool_token_account,
-            &stake_pool_accounts.pool_fee_account.pubkey(),
-            &invalid_token_account.pubkey(),
-            &stake_pool_accounts.pool_mint.pubkey(),
-            &spl_token::id(),
-        ),
-        Some(&context.payer.pubkey()),
-    );
-    transaction.sign(&[&context.payer, &user], context.last_blockhash);
-    let transaction_error = context
-        .banks_client
-        .process_transaction(transaction)
+            &validator_stake_account.stake_account,
+            &user,
+            tokens_issued_user + 1,
+        )
         .await
-        .err()
         .unwrap()
         .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            2,
+            InstructionError::Custom(StakePoolError::ExceededSlippage as u32)
+        )
+    );
 
-    match transaction_error {
-        TransactionError::InstructionError(_, InstructionError::InvalidAccountData) => (),
-        _ => panic!(
-            "Wrong error occurs while try to make a deposit with an invalid referrer account"
-        ),
-    }
+    let error = stake_pool_accounts
+        .deposit_stake_with_slippage(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &deposit_stake,
+            &pool_token_account,
+            &validator_stake_account.stake_account,
+            &user,
+            tokens_issued_user,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // Original stake account should be drained
+    assert!(context
+        .banks_client
+        .get_account(deposit_stake)
+        .await
+        .expect("get_account")
+        .is_none());
+
+    // Stake pool should add its balance to the pool balance
+    let post_stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let post_stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(post_stake_pool.data.as_slice()).unwrap();
+    assert_eq!(
+        post_stake_pool.total_lamports,
+        pre_stake_pool.total_lamports + stake_lamports
+    );
+    assert_eq!(
+        post_stake_pool.pool_token_supply,
+        pre_stake_pool.pool_token_supply + tokens_issued
+    );
+
+    // Check minted tokens
+    let user_token_balance =
+        get_token_balance(&mut context.banks_client, &pool_token_account).await;
+    assert_eq!(user_token_balance, tokens_issued_user);
 }

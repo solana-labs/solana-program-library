@@ -40,7 +40,7 @@ pub fn process_remove_transaction(program_id: &Pubkey, accounts: &[AccountInfo])
         proposal_info.key,
     )?;
 
-    dispose_account(proposal_transaction_info, beneficiary_info);
+    dispose_account(proposal_transaction_info, beneficiary_info)?;
 
     let mut option = &mut proposal_data.options[proposal_transaction_data.option_index as usize];
     option.transactions_count = option.transactions_count.checked_sub(1).unwrap();

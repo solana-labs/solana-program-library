@@ -1,3 +1,4 @@
+#![allow(clippy::integer_arithmetic)]
 #![cfg(feature = "test-sbf")]
 
 mod helpers;
@@ -18,12 +19,15 @@ use {
         instruction::{self, FundingType},
         state, MINIMUM_RESERVE_LAMPORTS,
     },
+    test_case::test_case,
 };
 
-async fn setup() -> (ProgramTestContext, StakePoolAccounts, Keypair, Pubkey, u64) {
+async fn setup(
+    token_program_id: Pubkey,
+) -> (ProgramTestContext, StakePoolAccounts, Keypair, Pubkey, u64) {
     let mut context = program_test().start_with_context().await;
 
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::new_with_token_program(token_program_id);
     stake_pool_accounts
         .initialize_stake_pool(
             &mut context.banks_client,
@@ -42,9 +46,11 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts, Keypair, Pubkey, u64
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
         &pool_token_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
+        &user,
+        &[],
     )
     .await
     .unwrap();
@@ -73,9 +79,12 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts, Keypair, Pubkey, u64
     )
 }
 
+#[test_case(spl_token::id(); "token")]
+#[test_case(spl_token_2022::id(); "token-2022")]
 #[tokio::test]
-async fn success() {
-    let (mut context, stake_pool_accounts, user, pool_token_account, pool_tokens) = setup().await;
+async fn success(token_program_id: Pubkey) {
+    let (mut context, stake_pool_accounts, user, pool_token_account, pool_tokens) =
+        setup(token_program_id).await;
 
     // Save stake pool state before withdrawing
     let pre_stake_pool = get_account(
@@ -147,7 +156,7 @@ async fn success() {
 #[tokio::test]
 async fn fail_with_wrong_withdraw_authority() {
     let (mut context, mut stake_pool_accounts, user, pool_token_account, pool_tokens) =
-        setup().await;
+        setup(spl_token::id()).await;
 
     stake_pool_accounts.withdraw_authority = Pubkey::new_unique();
 
@@ -176,7 +185,8 @@ async fn fail_with_wrong_withdraw_authority() {
 
 #[tokio::test]
 async fn fail_overdraw_reserve() {
-    let (mut context, stake_pool_accounts, user, pool_token_account, _) = setup().await;
+    let (mut context, stake_pool_accounts, user, pool_token_account, _) =
+        setup(spl_token::id()).await;
 
     // add a validator and increase stake to drain the reserve
     let validator_stake = simple_add_validator_to_pool(
@@ -184,6 +194,7 @@ async fn fail_overdraw_reserve() {
         &context.payer,
         &context.last_blockhash,
         &stake_pool_accounts,
+        None,
     )
     .await;
 
@@ -229,7 +240,8 @@ async fn fail_overdraw_reserve() {
 
 #[tokio::test]
 async fn success_with_sol_withdraw_authority() {
-    let (mut context, stake_pool_accounts, user, pool_token_account, pool_tokens) = setup().await;
+    let (mut context, stake_pool_accounts, user, pool_token_account, pool_tokens) =
+        setup(spl_token::id()).await;
     let sol_withdraw_authority = Keypair::new();
 
     let transaction = Transaction::new_signed_with_payer(
@@ -266,7 +278,8 @@ async fn success_with_sol_withdraw_authority() {
 
 #[tokio::test]
 async fn fail_without_sol_withdraw_authority_signature() {
-    let (mut context, stake_pool_accounts, user, pool_token_account, pool_tokens) = setup().await;
+    let (mut context, stake_pool_accounts, user, pool_token_account, pool_tokens) =
+        setup(spl_token::id()).await;
     let sol_withdraw_authority = Keypair::new();
 
     let transaction = Transaction::new_signed_with_payer(
@@ -308,5 +321,74 @@ async fn fail_without_sol_withdraw_authority_signature() {
             0,
             InstructionError::Custom(StakePoolError::InvalidSolWithdrawAuthority as u32)
         )
+    );
+}
+
+#[test_case(spl_token::id(); "token")]
+#[test_case(spl_token_2022::id(); "token-2022")]
+#[tokio::test]
+async fn success_with_slippage(token_program_id: Pubkey) {
+    let (mut context, stake_pool_accounts, user, pool_token_account, pool_tokens) =
+        setup(token_program_id).await;
+
+    let amount_received = pool_tokens - stake_pool_accounts.calculate_withdrawal_fee(pool_tokens);
+
+    // Save reserve state before withdrawing
+    let pre_reserve_lamports = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+    )
+    .await
+    .lamports;
+
+    let error = stake_pool_accounts
+        .withdraw_sol_with_slippage(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user,
+            &pool_token_account,
+            pool_tokens,
+            amount_received + 1,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::ExceededSlippage as u32)
+        )
+    );
+
+    let error = stake_pool_accounts
+        .withdraw_sol_with_slippage(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user,
+            &pool_token_account,
+            pool_tokens,
+            amount_received,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // Check burned tokens
+    let user_token_balance =
+        get_token_balance(&mut context.banks_client, &pool_token_account).await;
+    assert_eq!(user_token_balance, 0);
+
+    // Check reserve
+    let post_reserve_lamports = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+    )
+    .await
+    .lamports;
+    assert_eq!(
+        post_reserve_lamports,
+        pre_reserve_lamports - amount_received
     );
 }

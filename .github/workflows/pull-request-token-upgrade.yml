@@ -1,0 +1,109 @@
+name: Token Upgrade Pull Request
+
+on:
+  pull_request:
+    paths:
+    - 'token-upgrade/**'
+    - 'token/**'
+    - 'ci/*-version.sh'
+    - '.github/workflows/pull-request-token-upgrade.yml'
+  push:
+    branches: [master]
+    paths:
+    - 'token-upgrade/**'
+    - 'token/**'
+    - 'ci/*-version.sh'
+    - '.github/workflows/pull-request-token-upgrade.yml'
+
+jobs:
+  cargo-test-sbf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+          source ci/solana-version.sh
+          echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_STABLE }}
+          override: true
+          profile: minimal
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE}}
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/rustfilt
+          key: cargo-sbf-bins-${{ runner.os }}
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/solana
+          key: solana-${{ env.SOLANA_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          ./ci/install-build-deps.sh
+          ./ci/install-program-deps.sh
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Build and test
+        run: ./ci/cargo-test-sbf.sh token-upgrade
+
+  cargo-build-test-cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+          source ci/solana-version.sh
+          echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_STABLE }}
+          override: true
+          profile: minimal
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE }}
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/solana
+          key: solana-${{ env.SOLANA_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          ./ci/install-build-deps.sh
+          ./ci/install-program-deps.sh
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Build dependent programs
+        run: |
+          cargo build-sbf --manifest-path ./token/program/Cargo.toml
+          cargo build-sbf --manifest-path ./token/program-2022/Cargo.toml
+          cargo build-sbf --manifest-path ./associated-token-account/program/Cargo.toml
+          cargo build-sbf --manifest-path ./token-upgrade/program/Cargo.toml
+
+      - name: Run CLI tests
+        run: |
+          cargo test --manifest-path ./token-upgrade/cli/Cargo.toml

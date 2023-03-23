@@ -88,8 +88,8 @@ class AddValidatorToPoolParams(NamedTuple):
     """`[w]` Stake pool."""
     staker: PublicKey
     """`[s]` Staker."""
-    funding_account: PublicKey
-    """`[ws]` Funding account (must be a system account)."""
+    reserve_stake: PublicKey
+    """`[w]` Reserve stake account."""
     withdraw_authority: PublicKey
     """`[]` Stake pool withdraw authority."""
     validator_list: PublicKey
@@ -111,6 +111,10 @@ class AddValidatorToPoolParams(NamedTuple):
     stake_program_id: PublicKey
     """`[]` Stake program."""
 
+    # Params
+    seed: Optional[int]
+    """Seed to used to create the validator stake account."""
+
 
 class RemoveValidatorFromPoolParams(NamedTuple):
     """(Staker only) Removes validator from the pool."""
@@ -123,16 +127,12 @@ class RemoveValidatorFromPoolParams(NamedTuple):
     """`[s]` Staker."""
     withdraw_authority: PublicKey
     """`[]` Stake pool withdraw authority."""
-    new_stake_authority: PublicKey
-    """`[]` New stake / withdraw authority on the split stake account."""
     validator_list: PublicKey
     """`[w]` Validator stake list storage account."""
     validator_stake: PublicKey
     """`[w]` Stake account to remove from the pool."""
     transient_stake: PublicKey
     """`[]` Transient stake account, to check that there's no activation ongoing."""
-    destination_stake: PublicKey
-    """`[w]` Destination stake account, to receive the minimum SOL from the validator stake account."""
     clock_sysvar: PublicKey
     """'[]' Stake config sysvar."""
     stake_program_id: PublicKey
@@ -492,6 +492,10 @@ AMOUNT_LAYOUT = Struct(
     "amount" / Int64ul
 )
 
+SEED_LAYOUT = Struct(
+    "seed" / Int32ul
+)
+
 INSTRUCTIONS_LAYOUT = Struct(
     "instruction_type" / Int8ul,
     "args"
@@ -499,7 +503,7 @@ INSTRUCTIONS_LAYOUT = Struct(
         lambda this: this.instruction_type,
         {
             InstructionType.INITIALIZE: INITIALIZE_LAYOUT,
-            InstructionType.ADD_VALIDATOR_TO_POOL: Pass,
+            InstructionType.ADD_VALIDATOR_TO_POOL: SEED_LAYOUT,
             InstructionType.REMOVE_VALIDATOR_FROM_POOL: Pass,
             InstructionType.DECREASE_VALIDATOR_STAKE: MOVE_STAKE_LAYOUT,
             InstructionType.INCREASE_VALIDATOR_STAKE: MOVE_STAKE_LAYOUT,
@@ -563,7 +567,7 @@ def add_validator_to_pool(params: AddValidatorToPoolParams) -> TransactionInstru
         keys=[
             AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.staker, is_signer=True, is_writable=False),
-            AccountMeta(pubkey=params.funding_account, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=params.reserve_stake, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.validator_stake, is_signer=False, is_writable=True),
@@ -579,7 +583,7 @@ def add_validator_to_pool(params: AddValidatorToPoolParams) -> TransactionInstru
         data=INSTRUCTIONS_LAYOUT.build(
             dict(
                 instruction_type=InstructionType.ADD_VALIDATOR_TO_POOL,
-                args=None
+                args={'seed': params.seed or 0}
             )
         )
     )
@@ -590,18 +594,19 @@ def add_validator_to_pool_with_vote(
     stake_pool: PublicKey,
     staker: PublicKey,
     validator_list: PublicKey,
-    funder: PublicKey,
-    validator: PublicKey
+    reserve_stake: PublicKey,
+    validator: PublicKey,
+    validator_stake_seed: Optional[int],
 ) -> TransactionInstruction:
     """Creates instruction to add a validator based on their vote account address."""
-    (withdraw_authority, seed) = find_withdraw_authority_program_address(program_id, stake_pool)
-    (validator_stake, seed) = find_stake_program_address(program_id, validator, stake_pool)
+    (withdraw_authority, _seed) = find_withdraw_authority_program_address(program_id, stake_pool)
+    (validator_stake, _seed) = find_stake_program_address(program_id, validator, stake_pool, validator_stake_seed)
     return add_validator_to_pool(
         AddValidatorToPoolParams(
             program_id=STAKE_POOL_PROGRAM_ID,
             stake_pool=stake_pool,
             staker=staker,
-            funding_account=funder,
+            reserve_stake=reserve_stake,
             withdraw_authority=withdraw_authority,
             validator_list=validator_list,
             validator_stake=validator_stake,
@@ -612,6 +617,7 @@ def add_validator_to_pool_with_vote(
             stake_config_sysvar=SYSVAR_STAKE_CONFIG_ID,
             system_program_id=SYS_PROGRAM_ID,
             stake_program_id=STAKE_PROGRAM_ID,
+            seed=validator_stake_seed,
         )
     )
 
@@ -623,11 +629,9 @@ def remove_validator_from_pool(params: RemoveValidatorFromPoolParams) -> Transac
             AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.staker, is_signer=True, is_writable=False),
             AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
-            AccountMeta(pubkey=params.new_stake_authority, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.validator_stake, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.transient_stake, is_signer=False, is_writable=False),
-            AccountMeta(pubkey=params.destination_stake, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.clock_sysvar, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.stake_program_id, is_signer=False, is_writable=False),
         ],
@@ -646,14 +650,13 @@ def remove_validator_from_pool_with_vote(
     stake_pool: PublicKey,
     staker: PublicKey,
     validator_list: PublicKey,
-    new_stake_authority: PublicKey,
     validator: PublicKey,
+    validator_stake_seed: Optional[int],
     transient_stake_seed: int,
-    destination_stake: PublicKey,
 ) -> TransactionInstruction:
     """Creates instruction to remove a validator based on their vote account address."""
     (withdraw_authority, seed) = find_withdraw_authority_program_address(program_id, stake_pool)
-    (validator_stake, seed) = find_stake_program_address(program_id, validator, stake_pool)
+    (validator_stake, seed) = find_stake_program_address(program_id, validator, stake_pool, validator_stake_seed)
     (transient_stake, seed) = find_transient_stake_program_address(
         program_id, validator, stake_pool, transient_stake_seed)
     return remove_validator_from_pool(
@@ -662,11 +665,9 @@ def remove_validator_from_pool_with_vote(
             stake_pool=stake_pool,
             staker=staker,
             withdraw_authority=withdraw_authority,
-            new_stake_authority=new_stake_authority,
             validator_list=validator_list,
             validator_stake=validator_stake,
             transient_stake=transient_stake,
-            destination_stake=destination_stake,
             clock_sysvar=SYSVAR_CLOCK_PUBKEY,
             stake_program_id=STAKE_PROGRAM_ID,
         )

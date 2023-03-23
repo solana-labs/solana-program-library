@@ -1,3 +1,4 @@
+#![allow(clippy::integer_arithmetic)]
 //! Large uint types
 
 // required for clippy

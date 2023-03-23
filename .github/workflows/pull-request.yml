@@ -77,7 +77,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -Zunstable-options --workspace --all-targets -- --deny=warnings
+          args: -Zunstable-options --workspace --all-targets --features test-sbf -- --deny=warnings --deny=clippy::integer_arithmetic
 
   audit:
     runs-on: ubuntu-latest

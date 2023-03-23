@@ -30,3 +30,4 @@ export * from './initializeMintCloseAuthority.js'; //  25
 export * from './reallocate.js'; //                    29
 export * from './createNativeMint.js'; //              31
 export * from './initializeNonTransferableMint.js'; // 32
+export * from './initializePermanentDelegate.js'; //   35

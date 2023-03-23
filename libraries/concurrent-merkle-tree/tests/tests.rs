@@ -1,3 +1,4 @@
+#![allow(clippy::integer_arithmetic)]
 use rand::thread_rng;
 use rand::{self, Rng};
 use spl_concurrent_merkle_tree::concurrent_merkle_tree::ConcurrentMerkleTree;
@@ -36,6 +37,56 @@ async fn test_initialize() {
     } else {
         panic!("Tree should not be able to be reinitialized");
     }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_bypass_initialize() {
+    let (mut cmt, off_chain_tree) = setup();
+    let mut rng = thread_rng();
+    let leaf = rng.gen::<[u8; 32]>();
+
+    assert_eq!(
+        ConcurrentMerkleTreeError::TreeNotInitialized,
+        cmt.append(leaf).unwrap_err(),
+        "Expected TreeNotInitialized error when appending to uninitialized tree"
+    );
+
+    assert_eq!(
+        ConcurrentMerkleTreeError::TreeNotInitialized,
+        cmt.set_leaf(
+            off_chain_tree.get_root(),
+            [0; 32],
+            leaf,
+            &off_chain_tree.get_proof_of_leaf(0),
+            0
+        )
+        .unwrap_err(),
+        "Expected TreeNotInitialized error when setting a leaf on an uninitialized tree"
+    );
+
+    assert_eq!(
+        ConcurrentMerkleTreeError::TreeNotInitialized,
+        cmt.prove_leaf(
+            off_chain_tree.get_root(),
+            leaf,
+            &off_chain_tree.get_proof_of_leaf(0),
+            0,
+        )
+        .unwrap_err(),
+        "Expected TreeNotInitialized error when proving a leaf exists on an uninitialized tree"
+    );
+
+    assert_eq!(
+        ConcurrentMerkleTreeError::TreeNotInitialized,
+        cmt.fill_empty_or_append(
+            off_chain_tree.get_root(),
+            leaf,
+            &off_chain_tree.get_proof_of_leaf(0),
+            0,
+        )
+        .unwrap_err(),
+        "Expected TreeNotInitialized error when filling an empty leaf or appending to uninitialized tree"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -387,4 +438,113 @@ async fn test_append_bug_repro_2() {
         println!("{:?}", &last_rmp);
     }
     assert_eq!(cmt.get_change_log().root, tree.get_root());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+/// Test that empty trees are checked properly by adding & removing leaves one by one
+async fn test_prove_tree_empty_incremental() {
+    let (mut cmt, mut tree) = setup();
+    let mut rng = thread_rng();
+    cmt.initialize().unwrap();
+
+    cmt.prove_tree_is_empty().unwrap();
+
+    // Append a random leaf & remove it, and make sure that the tree is empty at the end
+    let tree_size = 64;
+    for i in 0..tree_size {
+        let leaf = rng.gen::<[u8; 32]>();
+        cmt.append(leaf).unwrap();
+        tree.add_leaf(leaf, i);
+
+        match cmt.prove_tree_is_empty() {
+            Ok(_) => {
+                panic!("Tree has a leaf in it -- should not be possible to prove empty!")
+            }
+            Err(e) => match e {
+                ConcurrentMerkleTreeError::TreeNonEmpty => {}
+                _ => {
+                    panic!("Wrong error thrown. Expected TreeNonEmpty erro")
+                }
+            },
+        }
+
+        cmt.set_leaf(
+            tree.get_root(),
+            tree.get_leaf(i),
+            EMPTY,
+            &tree.get_proof_of_leaf(i),
+            i as u32,
+        )
+        .unwrap();
+        tree.add_leaf(EMPTY, i);
+
+        cmt.prove_tree_is_empty().unwrap();
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+/// Test that empty trees are checked properly by adding & removing leaves in a batch
+async fn test_prove_tree_empty_batched() {
+    let (mut cmt, mut tree) = setup();
+    let mut rng = thread_rng();
+    cmt.initialize().unwrap();
+
+    // Sanity check
+    cmt.prove_tree_is_empty().unwrap();
+
+    // Add random leaves to the tree
+    let tree_size = 64;
+    for i in 0..tree_size {
+        let leaf = rng.gen::<[u8; 32]>();
+        cmt.append(leaf).unwrap();
+        tree.add_leaf(leaf, i);
+
+        match cmt.prove_tree_is_empty() {
+            Ok(_) => {
+                panic!("Tree has a leaf in it -- should not be possible to prove empty!")
+            }
+            Err(e) => match e {
+                ConcurrentMerkleTreeError::TreeNonEmpty => {}
+                _ => {
+                    panic!("Wrong error thrown. Expected TreeNonEmpty erro")
+                }
+            },
+        }
+    }
+    // Remove random leaves
+    for i in 0..tree_size - 1 {
+        cmt.set_leaf(
+            tree.get_root(),
+            tree.get_leaf(i),
+            EMPTY,
+            &tree.get_proof_of_leaf(i),
+            i as u32,
+        )
+        .unwrap();
+        tree.add_leaf(EMPTY, i);
+
+        match cmt.prove_tree_is_empty() {
+            Ok(_) => {
+                panic!("Tree has a leaf in it -- should not be possible to prove empty!")
+            }
+            Err(e) => match e {
+                ConcurrentMerkleTreeError::TreeNonEmpty => {}
+                _ => {
+                    panic!("Wrong error thrown. Expected TreeNonEmpty erro")
+                }
+            },
+        }
+    }
+    cmt.set_leaf(
+        tree.get_root(),
+        tree.get_leaf(tree_size - 1),
+        EMPTY,
+        &tree.get_proof_of_leaf(tree_size - 1),
+        (tree_size - 1) as u32,
+    )
+    .unwrap();
+    tree.add_leaf(EMPTY, tree_size - 1);
+
+    // Check that the last leaf was successfully removed
+    cmt.prove_tree_is_empty().unwrap();
 }

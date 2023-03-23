@@ -1,3 +1,4 @@
+#![allow(clippy::integer_arithmetic)]
 #![cfg(feature = "test-sbf")]
 
 mod helpers;
@@ -21,6 +22,8 @@ use {
         transport::TransportError,
     },
     spl_stake_pool::{error, id, instruction, state, MINIMUM_RESERVE_LAMPORTS},
+    spl_token_2022::extension::ExtensionType,
+    test_case::test_case,
 };
 
 async fn create_required_accounts(
@@ -28,24 +31,31 @@ async fn create_required_accounts(
     payer: &Keypair,
     recent_blockhash: &Hash,
     stake_pool_accounts: &StakePoolAccounts,
+    mint_extensions: &[ExtensionType],
 ) {
     create_mint(
         banks_client,
         payer,
         recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_mint,
         &stake_pool_accounts.withdraw_authority,
+        stake_pool_accounts.pool_decimals,
+        mint_extensions,
     )
     .await
     .unwrap();
 
+    let required_extensions = ExtensionType::get_required_init_account_extensions(mint_extensions);
     create_token_account(
         banks_client,
         payer,
         recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_fee_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &stake_pool_accounts.manager.pubkey(),
+        &stake_pool_accounts.manager,
+        &required_extensions,
     )
     .await
     .unwrap();
@@ -65,10 +75,12 @@ async fn create_required_accounts(
     .await;
 }
 
+#[test_case(spl_token::id(); "token")]
+#[test_case(spl_token_2022::id(); "token-2022")]
 #[tokio::test]
-async fn success() {
+async fn success(token_program_id: Pubkey) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::new_with_token_program(token_program_id);
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -98,7 +110,7 @@ async fn success() {
 #[tokio::test]
 async fn fail_double_initialize() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -111,8 +123,10 @@ async fn fail_double_initialize() {
 
     let latest_blockhash = banks_client.get_latest_blockhash().await.unwrap();
 
-    let mut second_stake_pool_accounts = StakePoolAccounts::new();
-    second_stake_pool_accounts.stake_pool = stake_pool_accounts.stake_pool;
+    let second_stake_pool_accounts = StakePoolAccounts {
+        stake_pool: stake_pool_accounts.stake_pool,
+        ..Default::default()
+    };
 
     let transaction_error = second_stake_pool_accounts
         .initialize_stake_pool(
@@ -139,7 +153,7 @@ async fn fail_double_initialize() {
 #[tokio::test]
 async fn fail_with_already_initialized_validator_list() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -152,8 +166,10 @@ async fn fail_with_already_initialized_validator_list() {
 
     let latest_blockhash = banks_client.get_latest_blockhash().await.unwrap();
 
-    let mut second_stake_pool_accounts = StakePoolAccounts::new();
-    second_stake_pool_accounts.validator_list = stake_pool_accounts.validator_list;
+    let second_stake_pool_accounts = StakePoolAccounts {
+        validator_list: stake_pool_accounts.validator_list,
+        ..Default::default()
+    };
 
     let transaction_error = second_stake_pool_accounts
         .initialize_stake_pool(
@@ -180,10 +196,12 @@ async fn fail_with_already_initialized_validator_list() {
 #[tokio::test]
 async fn fail_with_high_fee() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
-    stake_pool_accounts.epoch_fee = state::Fee {
-        numerator: 100001,
-        denominator: 100000,
+    let stake_pool_accounts = StakePoolAccounts {
+        epoch_fee: state::Fee {
+            numerator: 100_001,
+            denominator: 100_000,
+        },
+        ..Default::default()
     };
 
     let transaction_error = stake_pool_accounts
@@ -211,10 +229,12 @@ async fn fail_with_high_fee() {
 #[tokio::test]
 async fn fail_with_high_withdrawal_fee() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
-    stake_pool_accounts.withdrawal_fee = state::Fee {
-        numerator: 100_001,
-        denominator: 100_000,
+    let stake_pool_accounts = StakePoolAccounts {
+        withdrawal_fee: state::Fee {
+            numerator: 100_001,
+            denominator: 100_000,
+        },
+        ..Default::default()
     };
 
     let transaction_error = stake_pool_accounts
@@ -244,13 +264,14 @@ async fn fail_with_high_withdrawal_fee() {
 #[tokio::test]
 async fn fail_with_wrong_max_validators() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
 
     create_required_accounts(
         &mut banks_client,
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        &[],
     )
     .await;
 
@@ -308,7 +329,6 @@ async fn fail_with_wrong_max_validators() {
         ],
         recent_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
@@ -331,7 +351,7 @@ async fn fail_with_wrong_max_validators() {
 #[tokio::test]
 async fn fail_with_wrong_mint_authority() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     let wrong_mint = Keypair::new();
 
     create_required_accounts(
@@ -339,6 +359,7 @@ async fn fail_with_wrong_mint_authority() {
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        &[],
     )
     .await;
 
@@ -347,8 +368,11 @@ async fn fail_with_wrong_mint_authority() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &wrong_mint,
         &stake_pool_accounts.withdraw_authority,
+        stake_pool_accounts.pool_decimals,
+        &[],
     )
     .await
     .unwrap();
@@ -360,6 +384,7 @@ async fn fail_with_wrong_mint_authority() {
         &stake_pool_accounts.stake_pool,
         &stake_pool_accounts.validator_list,
         &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.token_program_id,
         &wrong_mint.pubkey(),
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.manager,
@@ -383,7 +408,7 @@ async fn fail_with_wrong_mint_authority() {
             _,
             InstructionError::Custom(error_index),
         )) => {
-            let program_error = error::StakePoolError::WrongAccountMint as u32;
+            let program_error = error::StakePoolError::InvalidFeeAccount as u32;
             assert_eq!(error_index, program_error);
         }
         _ => panic!("Wrong error occurs while try to initialize stake pool with wrong mint authority of pool fee account"),
@@ -393,13 +418,14 @@ async fn fail_with_wrong_mint_authority() {
 #[tokio::test]
 async fn fail_with_freeze_authority() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
 
     create_required_accounts(
         &mut banks_client,
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        &[],
     )
     .await;
 
@@ -437,9 +463,11 @@ async fn fail_with_freeze_authority() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &pool_fee_account,
         &wrong_mint.pubkey(),
-        &stake_pool_accounts.manager.pubkey(),
+        &stake_pool_accounts.manager,
+        &[],
     )
     .await
     .unwrap();
@@ -451,6 +479,7 @@ async fn fail_with_freeze_authority() {
         &stake_pool_accounts.stake_pool,
         &stake_pool_accounts.validator_list,
         &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.token_program_id,
         &wrong_mint.pubkey(),
         &pool_fee_account.pubkey(),
         &stake_pool_accounts.manager,
@@ -480,9 +509,198 @@ async fn fail_with_freeze_authority() {
 }
 
 #[tokio::test]
+async fn success_with_supported_extensions() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let stake_pool_accounts = StakePoolAccounts::new_with_token_program(spl_token_2022::id());
+
+    let mint_extensions = vec![ExtensionType::TransferFeeConfig];
+    create_required_accounts(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts,
+        &mint_extensions,
+    )
+    .await;
+
+    let mut account_extensions =
+        ExtensionType::get_required_init_account_extensions(&mint_extensions);
+    account_extensions.push(ExtensionType::CpiGuard);
+    let pool_fee_account = Keypair::new();
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
+        &pool_fee_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.manager,
+        &account_extensions,
+    )
+    .await
+    .unwrap();
+
+    create_stake_pool(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.stake_pool,
+        &stake_pool_accounts.validator_list,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.token_program_id,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &pool_fee_account.pubkey(),
+        &stake_pool_accounts.manager,
+        &stake_pool_accounts.staker.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+        &None,
+        &stake_pool_accounts.epoch_fee,
+        &stake_pool_accounts.withdrawal_fee,
+        &stake_pool_accounts.deposit_fee,
+        stake_pool_accounts.referral_fee,
+        &stake_pool_accounts.sol_deposit_fee,
+        stake_pool_accounts.sol_referral_fee,
+        stake_pool_accounts.max_validators,
+    )
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn fail_with_unsupported_mint_extension() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let stake_pool_accounts = StakePoolAccounts::new_with_token_program(spl_token_2022::id());
+
+    let mint_extensions = vec![ExtensionType::NonTransferable];
+    create_required_accounts(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts,
+        &mint_extensions,
+    )
+    .await;
+
+    let required_extensions = ExtensionType::get_required_init_account_extensions(&mint_extensions);
+    let pool_fee_account = Keypair::new();
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
+        &pool_fee_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.manager,
+        &required_extensions,
+    )
+    .await
+    .unwrap();
+
+    let error = create_stake_pool(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.stake_pool,
+        &stake_pool_accounts.validator_list,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.token_program_id,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &pool_fee_account.pubkey(),
+        &stake_pool_accounts.manager,
+        &stake_pool_accounts.staker.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+        &None,
+        &stake_pool_accounts.epoch_fee,
+        &stake_pool_accounts.withdrawal_fee,
+        &stake_pool_accounts.deposit_fee,
+        stake_pool_accounts.referral_fee,
+        &stake_pool_accounts.sol_deposit_fee,
+        stake_pool_accounts.sol_referral_fee,
+        stake_pool_accounts.max_validators,
+    )
+    .await
+    .err()
+    .unwrap()
+    .unwrap();
+
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            2,
+            InstructionError::Custom(error::StakePoolError::UnsupportedMintExtension as u32),
+        )
+    );
+}
+
+#[tokio::test]
+async fn fail_with_unsupported_account_extension() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let stake_pool_accounts = StakePoolAccounts::new_with_token_program(spl_token_2022::id());
+
+    create_required_accounts(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts,
+        &[],
+    )
+    .await;
+
+    let extensions = vec![ExtensionType::MemoTransfer];
+    let pool_fee_account = Keypair::new();
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
+        &pool_fee_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.manager,
+        &extensions,
+    )
+    .await
+    .unwrap();
+
+    let error = create_stake_pool(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.stake_pool,
+        &stake_pool_accounts.validator_list,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.token_program_id,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &pool_fee_account.pubkey(),
+        &stake_pool_accounts.manager,
+        &stake_pool_accounts.staker.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+        &None,
+        &stake_pool_accounts.epoch_fee,
+        &stake_pool_accounts.withdrawal_fee,
+        &stake_pool_accounts.deposit_fee,
+        stake_pool_accounts.referral_fee,
+        &stake_pool_accounts.sol_deposit_fee,
+        stake_pool_accounts.sol_referral_fee,
+        stake_pool_accounts.max_validators,
+    )
+    .await
+    .err()
+    .unwrap()
+    .unwrap();
+
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            2,
+            InstructionError::Custom(error::StakePoolError::UnsupportedFeeAccountExtension as u32),
+        )
+    );
+}
+
+#[tokio::test]
 async fn fail_with_wrong_token_program_id() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
 
     let wrong_token_program = Keypair::new();
 
@@ -490,8 +708,11 @@ async fn fail_with_wrong_token_program_id() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_mint,
         &stake_pool_accounts.withdraw_authority,
+        stake_pool_accounts.pool_decimals,
+        &[],
     )
     .await
     .unwrap();
@@ -500,9 +721,11 @@ async fn fail_with_wrong_token_program_id() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_fee_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &stake_pool_accounts.manager.pubkey(),
+        &stake_pool_accounts.manager,
+        &[],
     )
     .await
     .unwrap();
@@ -561,7 +784,6 @@ async fn fail_with_wrong_token_program_id() {
         ],
         recent_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
@@ -582,7 +804,7 @@ async fn fail_with_wrong_token_program_id() {
 #[tokio::test]
 async fn fail_with_fee_owned_by_wrong_token_program_id() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
 
     let wrong_token_program = Keypair::new();
 
@@ -590,8 +812,11 @@ async fn fail_with_fee_owned_by_wrong_token_program_id() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_mint,
         &stake_pool_accounts.withdraw_authority,
+        stake_pool_accounts.pool_decimals,
+        &[],
     )
     .await
     .unwrap();
@@ -666,7 +891,6 @@ async fn fail_with_fee_owned_by_wrong_token_program_id() {
         ],
         recent_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
@@ -687,14 +911,17 @@ async fn fail_with_fee_owned_by_wrong_token_program_id() {
 #[tokio::test]
 async fn fail_with_wrong_fee_account() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
 
     create_mint(
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_mint,
         &stake_pool_accounts.withdraw_authority,
+        stake_pool_accounts.pool_decimals,
+        &[],
     )
     .await
     .unwrap();
@@ -724,6 +951,7 @@ async fn fail_with_wrong_fee_account() {
         &stake_pool_accounts.stake_pool,
         &stake_pool_accounts.validator_list,
         &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.manager,
@@ -745,16 +973,17 @@ async fn fail_with_wrong_fee_account() {
 
     assert_eq!(
         transaction_error,
-        TransactionError::InstructionError(2, InstructionError::IncorrectProgramId)
+        TransactionError::InstructionError(2, InstructionError::UninitializedAccount)
     );
 }
 
 #[tokio::test]
 async fn fail_with_wrong_withdraw_authority() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
-
-    stake_pool_accounts.withdraw_authority = Keypair::new().pubkey();
+    let stake_pool_accounts = StakePoolAccounts {
+        withdraw_authority: Keypair::new().pubkey(),
+        ..Default::default()
+    };
 
     let transaction_error = stake_pool_accounts
         .initialize_stake_pool(
@@ -784,13 +1013,14 @@ async fn fail_with_wrong_withdraw_authority() {
 #[tokio::test]
 async fn fail_with_not_rent_exempt_pool() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
 
     create_required_accounts(
         &mut banks_client,
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        &[],
     )
     .await;
 
@@ -862,13 +1092,14 @@ async fn fail_with_not_rent_exempt_pool() {
 #[tokio::test]
 async fn fail_with_not_rent_exempt_validator_list() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
 
     create_required_accounts(
         &mut banks_client,
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        &[],
     )
     .await;
 
@@ -942,13 +1173,14 @@ async fn fail_with_not_rent_exempt_validator_list() {
 #[tokio::test]
 async fn fail_without_manager_signature() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
 
     create_required_accounts(
         &mut banks_client,
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        &[],
     )
     .await;
 
@@ -1014,7 +1246,6 @@ async fn fail_without_manager_signature() {
         ],
         recent_blockhash,
     );
-    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
@@ -1039,15 +1270,18 @@ async fn fail_without_manager_signature() {
 #[tokio::test]
 async fn fail_with_pre_minted_pool_tokens() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     let mint_authority = Keypair::new();
 
     create_mint(
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_mint,
         &mint_authority.pubkey(),
+        stake_pool_accounts.pool_decimals,
+        &[],
     )
     .await
     .unwrap();
@@ -1056,9 +1290,11 @@ async fn fail_with_pre_minted_pool_tokens() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_fee_account,
         &stake_pool_accounts.pool_mint.pubkey(),
-        &stake_pool_accounts.manager.pubkey(),
+        &stake_pool_accounts.manager,
+        &[],
     )
     .await
     .unwrap();
@@ -1067,6 +1303,7 @@ async fn fail_with_pre_minted_pool_tokens() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &mint_authority,
@@ -1082,6 +1319,7 @@ async fn fail_with_pre_minted_pool_tokens() {
         &stake_pool_accounts.stake_pool,
         &stake_pool_accounts.validator_list,
         &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.token_program_id,
         &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.manager,
@@ -1115,7 +1353,7 @@ async fn fail_with_pre_minted_pool_tokens() {
 #[tokio::test]
 async fn fail_with_bad_reserve() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     let wrong_authority = Pubkey::new_unique();
 
     create_required_accounts(
@@ -1123,6 +1361,7 @@ async fn fail_with_bad_reserve() {
         &payer,
         &recent_blockhash,
         &stake_pool_accounts,
+        &[],
     )
     .await;
 
@@ -1149,6 +1388,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.stake_pool,
             &stake_pool_accounts.validator_list,
             &bad_stake.pubkey(),
+            &stake_pool_accounts.token_program_id,
             &stake_pool_accounts.pool_mint.pubkey(),
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
@@ -1200,6 +1440,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.stake_pool,
             &stake_pool_accounts.validator_list,
             &bad_stake.pubkey(),
+            &stake_pool_accounts.token_program_id,
             &stake_pool_accounts.pool_mint.pubkey(),
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
@@ -1254,6 +1495,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.stake_pool,
             &stake_pool_accounts.validator_list,
             &bad_stake.pubkey(),
+            &stake_pool_accounts.token_program_id,
             &stake_pool_accounts.pool_mint.pubkey(),
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
@@ -1309,6 +1551,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.stake_pool,
             &stake_pool_accounts.validator_list,
             &bad_stake.pubkey(),
+            &stake_pool_accounts.token_program_id,
             &stake_pool_accounts.pool_mint.pubkey(),
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
@@ -1341,7 +1584,7 @@ async fn fail_with_bad_reserve() {
 #[tokio::test]
 async fn success_with_extra_reserve_lamports() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = StakePoolAccounts::default();
     let init_lamports = 1_000_000_000_000;
     stake_pool_accounts
         .initialize_stake_pool(

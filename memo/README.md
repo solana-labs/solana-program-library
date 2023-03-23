@@ -7,3 +7,8 @@ record a string on-chain, stored in the instruction data of a successful
 transaction, and optionally verify the originator.
 
 Full documentation is available at https://spl.solana.com/memo
+
+## Audit
+
+The repository [README](https://github.com/solana-labs/solana-program-library#audits)
+contains information about program audits.

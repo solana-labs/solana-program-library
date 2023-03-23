@@ -16,6 +16,11 @@ This source code is an example that third parties can utilize to create and use 
 
 To quickly build, test and deploy Solana Farms and try it out in action, please follow the [Quick Start](https://github.com/solana-labs/solana-program-library/blob/master/farms/docs/quick_start.md) guide.
 
+## Audit
+
+The repository [README](https://github.com/solana-labs/solana-program-library#audits)
+contains information about program audits.
+
 ## Dive in
 
 If you want to learn more about the tools and building blocks of the Solana Farms suite, follow the links below:

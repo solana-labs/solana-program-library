@@ -57,7 +57,7 @@ describe('nonTransferable', () => {
         expect(nonTransferable).to.not.be.null;
 
         const owner = Keypair.generate();
-        const accountLen = getAccountLen([ExtensionType.ImmutableOwner]);
+        const accountLen = getAccountLen([ExtensionType.ImmutableOwner, ExtensionType.NonTransferableAccount]);
         const lamports = await connection.getMinimumBalanceForRentExemption(accountLen);
 
         const sourceKeypair = Keypair.generate();

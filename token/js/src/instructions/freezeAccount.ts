@@ -34,7 +34,7 @@ export function createFreezeAccountInstruction(
     account: PublicKey,
     mint: PublicKey,
     authority: PublicKey,
-    multiSigners: Signer[] = [],
+    multiSigners: (Signer | PublicKey)[] = [],
     programId = TOKEN_PROGRAM_ID
 ): TransactionInstruction {
     const keys = addSigners(

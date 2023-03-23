@@ -1,7 +1,7 @@
 [package]
-authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 description = "SPL-Stake-Pool Command-line Utility"
-edition = "2018"
+edition = "2021"
 homepage = "https://spl.solana.com/stake-pool"
 license = "Apache-2.0"
 name = "spl-stake-pool-cli"
@@ -17,16 +17,16 @@ futures = "0.3.21"
 serde = "1.0.130"
 serde_derive = "1.0.130"
 serde_json = "1.0.68"
-solana-account-decoder = "=1.11.6"
-solana-clap-utils = "=1.11.6"
-solana-cli-config = "=1.11.6"
-solana-cli-output = "=1.11.6"
-solana-client = "=1.11.6"
-solana-logger = "=1.11.6"
-solana-program = "=1.11.6"
-solana-remote-wallet = "=1.11.6"
-solana-sdk = "=1.11.6"
-spl-associated-token-account = { version = "=1.1.1", path="../../associated-token-account/program", features = [ "no-entrypoint" ] }
+solana-account-decoder = "=1.14.12"
+solana-clap-utils = "=1.14.12"
+solana-cli-config = "=1.14.12"
+solana-cli-output = "=1.14.12"
+solana-client = "=1.14.12"
+solana-logger = "=1.14.12"
+solana-program = "=1.14.12"
+solana-remote-wallet = "=1.14.12"
+solana-sdk = "=1.14.12"
+spl-associated-token-account = { version = "=1.1.2", path="../../associated-token-account/program", features = [ "no-entrypoint" ] }
 spl-stake-pool = { version = "=0.7.0", path="../program", features = [ "no-entrypoint" ] }
 spl-token = { version = "=3.5.0", path="../../token/program", features = [ "no-entrypoint" ]  }
 thiserror = "1.0.37"

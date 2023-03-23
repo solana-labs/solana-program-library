@@ -506,7 +506,7 @@ impl TestLendingMarket {
         );
 
         let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
-        transaction.sign(&[&payer, &lending_market_keypair], recent_blockhash);
+        transaction.sign(&[payer, &lending_market_keypair], recent_blockhash);
         assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
 
         TestLendingMarket {
@@ -628,7 +628,7 @@ impl TestLendingMarket {
 
         let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
         transaction.sign(
-            &[&payer, &user_accounts_owner, &user_transfer_authority],
+            &[payer, user_accounts_owner, &user_transfer_authority],
             recent_blockhash,
         );
         assert!(banks_client.process_transaction(transaction).await.is_ok());
@@ -1102,11 +1102,11 @@ pub fn add_oracle(
         product_pubkey,
         u32::MAX as u64,
         oracle_program_id.pubkey(),
-        &format!("{}.bin", product_pubkey.to_string()),
+        &format!("{}.bin", product_pubkey),
     );
 
     // Add Pyth price account after setting the price
-    let filename = &format!("{}.bin", price_pubkey.to_string());
+    let filename = &format!("{}.bin", price_pubkey);
     let mut pyth_price_data = read_file(find_file(filename).unwrap_or_else(|| {
         panic!("Unable to locate {}", filename);
     }));
@@ -1154,12 +1154,12 @@ pub async fn create_and_mint_to_token_account(
 ) -> Pubkey {
     if let Some(mint_authority) = mint_authority {
         let account_pubkey =
-            create_token_account(banks_client, mint_pubkey, &payer, Some(authority), None).await;
+            create_token_account(banks_client, mint_pubkey, payer, Some(authority), None).await;
 
         mint_to(
             banks_client,
             mint_pubkey,
-            &payer,
+            payer,
             account_pubkey,
             mint_authority,
             amount,
@@ -1171,7 +1171,7 @@ pub async fn create_and_mint_to_token_account(
         create_token_account(
             banks_client,
             mint_pubkey,
-            &payer,
+            payer,
             Some(authority),
             Some(amount),
         )
@@ -1213,7 +1213,7 @@ pub async fn create_token_account(
     );
 
     let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
-    transaction.sign(&[&payer, &token_keypair], recent_blockhash);
+    transaction.sign(&[payer, &token_keypair], recent_blockhash);
 
     assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
 

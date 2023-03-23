@@ -33,7 +33,7 @@ use spl_token_2022::{
     error::TokenError,
     extension::{
         mint_close_authority::MintCloseAuthority, transfer_fee::TransferFeeConfig,
-        StateWithExtensions,
+        BaseStateWithExtensions, StateWithExtensions,
     },
     state::{Account, Mint},
 };
@@ -552,19 +552,19 @@ impl Processor {
             source_mint_decimals,
         )?;
 
-        let mut pool_token_amount = token_swap
-            .swap_curve()
-            .withdraw_single_token_type_exact_out(
-                result.owner_fee,
-                swap_token_a_amount,
-                swap_token_b_amount,
-                to_u128(pool_mint.supply)?,
-                trade_direction,
-                token_swap.fees(),
-            )
-            .ok_or(SwapError::FeeCalculationFailure)?;
-
-        if pool_token_amount > 0 {
+        if result.owner_fee > 0 {
+            let mut pool_token_amount = token_swap
+                .swap_curve()
+                .calculator
+                .withdraw_single_token_type_exact_out(
+                    result.owner_fee,
+                    swap_token_a_amount,
+                    swap_token_b_amount,
+                    to_u128(pool_mint.supply)?,
+                    trade_direction,
+                    RoundDirection::Floor,
+                )
+                .ok_or(SwapError::FeeCalculationFailure)?;
             // Allow error to fall through
             if let Ok(host_fee_account_info) = next_account_info(account_info_iter) {
                 let host_fee_account = Self::unpack_token_account(
@@ -6184,16 +6184,21 @@ mod tests {
             initial_b + to_u64(results.destination_amount_swapped).unwrap()
         );
 
-        let first_fee = swap_curve
-            .withdraw_single_token_type_exact_out(
-                results.owner_fee,
-                token_a_amount.try_into().unwrap(),
-                token_b_amount.try_into().unwrap(),
-                initial_supply.try_into().unwrap(),
-                TradeDirection::AtoB,
-                &fees,
-            )
-            .unwrap();
+        let first_fee = if results.owner_fee > 0 {
+            swap_curve
+                .calculator
+                .withdraw_single_token_type_exact_out(
+                    results.owner_fee,
+                    token_a_amount.try_into().unwrap(),
+                    token_b_amount.try_into().unwrap(),
+                    initial_supply.try_into().unwrap(),
+                    TradeDirection::AtoB,
+                    RoundDirection::Floor,
+                )
+                .unwrap()
+        } else {
+            0
+        };
         let fee_account =
             StateWithExtensions::<Account>::unpack(&accounts.pool_fee_account.data).unwrap();
         assert_eq!(
@@ -6268,16 +6273,21 @@ mod tests {
                 - to_u64(results.source_amount_swapped).unwrap()
         );
 
-        let second_fee = swap_curve
-            .withdraw_single_token_type_exact_out(
-                results.owner_fee,
-                token_a_amount.try_into().unwrap(),
-                token_b_amount.try_into().unwrap(),
-                initial_supply.try_into().unwrap(),
-                TradeDirection::BtoA,
-                &fees,
-            )
-            .unwrap();
+        let second_fee = if results.owner_fee > 0 {
+            swap_curve
+                .calculator
+                .withdraw_single_token_type_exact_out(
+                    results.owner_fee,
+                    token_a_amount.try_into().unwrap(),
+                    token_b_amount.try_into().unwrap(),
+                    initial_supply.try_into().unwrap(),
+                    TradeDirection::BtoA,
+                    RoundDirection::Floor,
+                )
+                .unwrap()
+        } else {
+            0
+        };
         let fee_account =
             StateWithExtensions::<Account>::unpack(&accounts.pool_fee_account.data).unwrap();
         assert_eq!(

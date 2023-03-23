@@ -19,10 +19,9 @@ use crate::{
         },
         realm_config::{
             get_realm_config_address_seeds, resolve_governing_token_config, RealmConfigAccount,
-            Reserved110,
         },
     },
-    tools::spl_token::create_spl_token_account_signed,
+    tools::{spl_token::create_spl_token_account_signed, structs::Reserved110},
 };
 
 /// Processes CreateRealm instruction
@@ -88,7 +87,7 @@ pub fn process_create_realm(
         None
     };
 
-    // Create and serialzie RealmConfig
+    // Create and serialize RealmConfig
     let realm_config_info = next_account_info(account_info_iter)?; // 10
 
     // 11, 12
@@ -119,6 +118,7 @@ pub fn process_create_realm(
         program_id,
         system_info,
         rent,
+        0,
     )?;
 
     // Create and serialize Realm
@@ -132,14 +132,14 @@ pub fn process_create_realm(
         config: RealmConfig {
             council_mint: council_token_mint_address,
             reserved: [0; 6],
-            community_mint_max_vote_weight_source: realm_config_args
-                .community_mint_max_vote_weight_source,
+            community_mint_max_voter_weight_source: realm_config_args
+                .community_mint_max_voter_weight_source,
             min_community_weight_to_create_governance: realm_config_args
                 .min_community_weight_to_create_governance,
             legacy1: 0,
             legacy2: 0,
         },
-        voting_proposal_count: 0,
+        legacy1: 0,
         reserved_v2: [0; 128],
     };
 
@@ -151,6 +151,7 @@ pub fn process_create_realm(
         program_id,
         system_info,
         rent,
+        0,
     )?;
 
     Ok(())

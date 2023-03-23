@@ -11,7 +11,7 @@ use {
     },
 };
 
-/// Default Account State extension instructions
+/// Required Memo Transfers extension instructions
 #[derive(Clone, Copy, Debug, PartialEq, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum RequiredMemoTransfersInstruction {
@@ -31,7 +31,7 @@ pub enum RequiredMemoTransfersInstruction {
     Enable,
     /// Stop requiring memos for transfers into this Account.
     ///
-    /// Fails if the account does not have the extension present.
+    /// Implicitly initializes the extension in the case where it is not present.
     ///
     /// Accounts expected by this instruction:
     ///

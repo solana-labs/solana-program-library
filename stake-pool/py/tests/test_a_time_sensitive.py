@@ -12,10 +12,11 @@ from stake_pool.state import StakePool, ValidatorList
 
 @pytest.mark.asyncio
 async def test_increase_decrease_this_is_very_slow(async_client, validators, payer, stake_pool_addresses, waiter):
-    (stake_pool_address, validator_list_address) = stake_pool_addresses
+    (stake_pool_address, validator_list_address, _) = stake_pool_addresses
 
     resp = await async_client.get_minimum_balance_for_rent_exemption(STAKE_LEN)
     stake_rent_exemption = resp['result']
+    minimum_amount = MINIMUM_ACTIVE_STAKE + stake_rent_exemption
     increase_amount = MINIMUM_ACTIVE_STAKE * 4
     decrease_amount = increase_amount // 2
     deposit_amount = (increase_amount + stake_rent_exemption) * len(validators)
@@ -38,7 +39,7 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
     validator_list = ValidatorList.decode(data[0], data[1])
     for validator in validator_list.validators:
         assert validator.transient_stake_lamports == increase_amount + stake_rent_exemption
-        assert validator.active_stake_lamports == 0
+        assert validator.active_stake_lamports == minimum_amount
 
     print("Waiting for epoch to roll over")
     await waiter.wait_for_next_epoch(async_client)
@@ -50,7 +51,7 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
     for validator in validator_list.validators:
         assert validator.last_update_epoch != 0
         assert validator.transient_stake_lamports == 0
-        assert validator.active_stake_lamports == increase_amount  # rent exemption brought back to reserve
+        assert validator.active_stake_lamports == increase_amount + minimum_amount
 
     # decrease from all
     futures = [
@@ -64,7 +65,7 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
     validator_list = ValidatorList.decode(data[0], data[1])
     for validator in validator_list.validators:
         assert validator.transient_stake_lamports == decrease_amount
-        assert validator.active_stake_lamports == increase_amount - decrease_amount
+        assert validator.active_stake_lamports == increase_amount - decrease_amount + minimum_amount
 
     print("Waiting for epoch to roll over")
     await waiter.wait_for_next_epoch(async_client)
@@ -75,4 +76,4 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
     validator_list = ValidatorList.decode(data[0], data[1])
     for validator in validator_list.validators:
         assert validator.transient_stake_lamports == 0
-        assert validator.active_stake_lamports == increase_amount - decrease_amount
+        assert validator.active_stake_lamports == increase_amount - decrease_amount + minimum_amount

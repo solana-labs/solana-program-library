@@ -16,6 +16,7 @@ module.exports = {
     "token-swap",
     "token-lending",
     "associated-token-account",
+    "token-upgrade",
     "memo",
     "name-service",
     "shared-memory",
@@ -27,6 +28,7 @@ module.exports = {
         "stake-pool",
         "stake-pool/quickstart",
         "stake-pool/overview",
+        "stake-pool/fees",
         "stake-pool/cli",
       ],
     },
@@ -49,6 +51,16 @@ module.exports = {
           ],
         },
       ],
+    },
+    {
+      type: "category",
+      label: "Account Compression",
+      collapsed: true,
+      items: [
+        "account-compression",
+        "account-compression/concepts",
+        "account-compression/usage",
+      ]
     },
   ],
 };

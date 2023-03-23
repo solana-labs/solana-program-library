@@ -2,10 +2,10 @@
 name = "spl-merkle-tree-reference"
 version = "0.1.0"
 description = "Reference implementation of a merkle tree"
-authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 solana-program = "1.10.33"

@@ -81,9 +81,10 @@ async fn test_set_realm_max_voter_weight_addin_for_realm_without_council_and_add
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_with_max_voter_weight_addin().await;
 
-    let mut realm_setup_args = RealmSetupArgs::default();
-
-    realm_setup_args.use_council_mint = false;
+    let mut realm_setup_args = RealmSetupArgs {
+        use_council_mint: false,
+        ..Default::default()
+    };
 
     let mut realm_cookie = governance_test
         .with_realm_using_args(&realm_setup_args)

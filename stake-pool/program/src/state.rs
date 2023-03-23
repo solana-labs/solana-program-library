@@ -18,8 +18,10 @@ use {
         pubkey::{Pubkey, PUBKEY_BYTES},
         stake::state::Lockup,
     },
-    spl_math::checked_ceil_div::CheckedCeilDiv,
-    spl_token::state::{Account, AccountState},
+    spl_token_2022::{
+        extension::{BaseStateWithExtensions, ExtensionType, StateWithExtensions},
+        state::{Account, AccountState, Mint},
+    },
     std::{borrow::Borrow, convert::TryFrom, fmt, matches},
 };
 
@@ -60,7 +62,7 @@ pub struct StakePool {
     /// signed by this authority. If no deposit authority is specified,
     /// then the stake pool will default to the result of:
     /// `Pubkey::find_program_address(
-    ///     &[&stake_pool_address.to_bytes()[..32], b"deposit"],
+    ///     &[&stake_pool_address.as_ref(), b"deposit"],
     ///     program_id,
     /// )`
     pub stake_deposit_authority: Pubkey,
@@ -102,7 +104,7 @@ pub struct StakePool {
     pub epoch_fee: Fee,
 
     /// Fee for next epoch
-    pub next_epoch_fee: Option<Fee>,
+    pub next_epoch_fee: FutureEpoch<Fee>,
 
     /// Preferred deposit validator vote account pubkey
     pub preferred_deposit_validator_vote_address: Option<Pubkey>,
@@ -117,7 +119,7 @@ pub struct StakePool {
     pub stake_withdrawal_fee: Fee,
 
     /// Future stake withdrawal fee, to be set for the following epoch
-    pub next_stake_withdrawal_fee: Option<Fee>,
+    pub next_stake_withdrawal_fee: FutureEpoch<Fee>,
 
     /// Fees paid out to referrers on referred stake deposits.
     /// Expressed as a percentage (0 - 100) of deposit fees.
@@ -146,7 +148,7 @@ pub struct StakePool {
     pub sol_withdrawal_fee: Fee,
 
     /// Future SOL withdrawal fee, to be set for the following epoch
-    pub next_sol_withdrawal_fee: Option<Fee>,
+    pub next_sol_withdrawal_fee: FutureEpoch<Fee>,
 
     /// Last epoch's total pool tokens, used only for APR estimation
     pub last_epoch_pool_token_supply: u64,
@@ -172,7 +174,7 @@ impl StakePool {
     /// calculate lamports amount on withdrawal
     #[inline]
     pub fn calc_lamports_withdraw_amount(&self, pool_tokens: u64) -> Option<u64> {
-        // `checked_ceil_div` returns `None` for a 0 quotient result, but in this
+        // `checked_div` returns `None` for a 0 quotient result, but in this
         // case, a return of 0 is valid for small amounts of pool tokens. So
         // we check for that separately
         let numerator = (pool_tokens as u128).checked_mul(self.total_lamports as u128)?;
@@ -180,8 +182,7 @@ impl StakePool {
         if numerator < denominator || denominator == 0 {
             Some(0)
         } else {
-            let (quotient, _) = numerator.checked_ceil_div(denominator)?;
-            u64::try_from(quotient).ok()
+            u64::try_from(numerator.checked_div(denominator)?).ok()
         }
     }
 
@@ -254,6 +255,15 @@ impl StakePool {
         }
     }
 
+    /// Get the current value of pool tokens, rounded up
+    #[inline]
+    pub fn get_lamports_per_pool_token(&self) -> Option<u64> {
+        self.total_lamports
+            .checked_add(self.pool_token_supply)?
+            .checked_sub(1)?
+            .checked_div(self.pool_token_supply)
+    }
+
     /// Checks that the withdraw or deposit authority is valid
     fn check_program_derived_authority(
         authority_address: &Pubkey,
@@ -263,11 +273,7 @@ impl StakePool {
         bump_seed: u8,
     ) -> Result<(), ProgramError> {
         let expected_address = Pubkey::create_program_address(
-            &[
-                &stake_pool_address.to_bytes()[..32],
-                authority_seed,
-                &[bump_seed],
-            ],
+            &[stake_pool_address.as_ref(), authority_seed, &[bump_seed]],
             program_id,
         )?;
 
@@ -289,13 +295,21 @@ impl StakePool {
         &self,
         manager_fee_info: &AccountInfo,
     ) -> Result<(), ProgramError> {
-        let token_account = Account::unpack(&manager_fee_info.try_borrow_data()?)?;
+        let account_data = manager_fee_info.try_borrow_data()?;
+        let token_account = StateWithExtensions::<Account>::unpack(&account_data)?;
         if manager_fee_info.owner != &self.token_program_id
-            || token_account.state != AccountState::Initialized
-            || token_account.mint != self.pool_mint
+            || token_account.base.state != AccountState::Initialized
+            || token_account.base.mint != self.pool_mint
         {
             msg!("Manager fee account is not owned by token program, is not initialized, or does not match stake pool's mint");
             return Err(StakePoolError::InvalidFeeAccount.into());
+        }
+        let extensions = token_account.get_extension_types()?;
+        if extensions
+            .iter()
+            .any(|x| !is_extension_supported_for_fee_account(x))
+        {
+            return Err(StakePoolError::UnsupportedFeeAccountExtension.into());
         }
         Ok(())
     }
@@ -372,11 +386,13 @@ impl StakePool {
 
     /// Check mint is correct
     #[inline]
-    pub(crate) fn check_mint(&self, mint_info: &AccountInfo) -> Result<(), ProgramError> {
+    pub(crate) fn check_mint(&self, mint_info: &AccountInfo) -> Result<u8, ProgramError> {
         if *mint_info.key != self.pool_mint {
             Err(StakePoolError::WrongPoolMint.into())
         } else {
-            Ok(())
+            let mint_data = mint_info.try_borrow_data()?;
+            let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+            Ok(mint.base.decimals)
         }
     }
 
@@ -463,19 +479,58 @@ impl StakePool {
         match fee {
             FeeType::SolReferral(new_fee) => self.sol_referral_fee = *new_fee,
             FeeType::StakeReferral(new_fee) => self.stake_referral_fee = *new_fee,
-            FeeType::Epoch(new_fee) => self.next_epoch_fee = Some(*new_fee),
+            FeeType::Epoch(new_fee) => self.next_epoch_fee = FutureEpoch::new(*new_fee),
             FeeType::StakeWithdrawal(new_fee) => {
                 new_fee.check_withdrawal(&self.stake_withdrawal_fee)?;
-                self.next_stake_withdrawal_fee = Some(*new_fee)
+                self.next_stake_withdrawal_fee = FutureEpoch::new(*new_fee)
             }
             FeeType::SolWithdrawal(new_fee) => {
                 new_fee.check_withdrawal(&self.sol_withdrawal_fee)?;
-                self.next_sol_withdrawal_fee = Some(*new_fee)
+                self.next_sol_withdrawal_fee = FutureEpoch::new(*new_fee)
             }
             FeeType::SolDeposit(new_fee) => self.sol_deposit_fee = *new_fee,
             FeeType::StakeDeposit(new_fee) => self.stake_deposit_fee = *new_fee,
         };
         Ok(())
+    }
+}
+
+/// Checks if the given extension is supported for the stake pool mint
+pub fn is_extension_supported_for_mint(extension_type: &ExtensionType) -> bool {
+    const SUPPORTED_EXTENSIONS: [ExtensionType; 5] = [
+        ExtensionType::Uninitialized,
+        ExtensionType::TransferFeeConfig,
+        ExtensionType::ConfidentialTransferMint,
+        ExtensionType::DefaultAccountState, // ok, but a freeze authority is not
+        ExtensionType::InterestBearingConfig,
+    ];
+    if !SUPPORTED_EXTENSIONS.contains(extension_type) {
+        msg!(
+            "Stake pool mint account cannot have the {:?} extension",
+            extension_type
+        );
+        false
+    } else {
+        true
+    }
+}
+
+/// Checks if the given extension is supported for the stake pool's fee account
+pub fn is_extension_supported_for_fee_account(extension_type: &ExtensionType) -> bool {
+    // Note: this does not include the `ConfidentialTransferAccount` extension
+    // because it is possible to block non-confidential transfers with the
+    // extension enabled.
+    const SUPPORTED_EXTENSIONS: [ExtensionType; 4] = [
+        ExtensionType::Uninitialized,
+        ExtensionType::TransferFeeAmount,
+        ExtensionType::ImmutableOwner,
+        ExtensionType::CpiGuard,
+    ];
+    if !SUPPORTED_EXTENSIONS.contains(extension_type) {
+        msg!("Fee account cannot have the {:?} extension", extension_type);
+        false
+    } else {
+        true
     }
 }
 
@@ -514,12 +569,48 @@ pub enum StakeStatus {
     /// No more validator stake accounts exist, entry ready for removal during
     /// `UpdateStakePoolBalance`
     ReadyForRemoval,
+    /// Only the validator stake account is deactivating, no transient stake
+    /// account exists
+    DeactivatingValidator,
+    /// Both the transient and validator stake account are deactivating, when
+    /// a validator is removed with a transient stake active
+    DeactivatingAll,
 }
-
+impl StakeStatus {
+    /// Downgrade the status towards ready for removal by removing the validator stake
+    pub fn remove_validator_stake(&mut self) {
+        let new_self = match self {
+            Self::Active | Self::DeactivatingTransient | Self::ReadyForRemoval => *self,
+            Self::DeactivatingAll => Self::DeactivatingTransient,
+            Self::DeactivatingValidator => Self::ReadyForRemoval,
+        };
+        *self = new_self;
+    }
+    /// Downgrade the status towards ready for removal by removing the transient stake
+    pub fn remove_transient_stake(&mut self) {
+        let new_self = match self {
+            Self::Active | Self::DeactivatingValidator | Self::ReadyForRemoval => *self,
+            Self::DeactivatingAll => Self::DeactivatingValidator,
+            Self::DeactivatingTransient => Self::ReadyForRemoval,
+        };
+        *self = new_self;
+    }
+}
 impl Default for StakeStatus {
     fn default() -> Self {
         Self::Active
     }
+}
+
+/// Withdrawal type, figured out during process_withdraw_stake
+#[derive(Debug, PartialEq)]
+pub(crate) enum StakeWithdrawSource {
+    /// Some of an active stake account, but not all
+    Active,
+    /// Some of a transient stake account
+    Transient,
+    /// Take a whole validator stake account
+    ValidatorRemoval,
 }
 
 /// Information about a validator in the pool
@@ -533,9 +624,7 @@ impl Default for StakeStatus {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorStakeInfo {
-    /// Amount of active stake delegated to this validator, minus the minimum
-    /// required stake amount of rent-exemption +
-    /// `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    /// Amount of lamports on the validator stake account, including rent
     ///
     /// Note that if `last_update_epoch` does not match the current epoch then
     /// this field may not be accurate
@@ -550,11 +639,14 @@ pub struct ValidatorStakeInfo {
     /// Last epoch the active and transient stake lamports fields were updated
     pub last_update_epoch: u64,
 
-    /// Start of the validator transient account seed suffixess
-    pub transient_seed_suffix_start: u64,
+    /// Transient account seed suffix, used to derive the transient stake account address
+    pub transient_seed_suffix: u64,
 
-    /// End of the validator transient account seed suffixes
-    pub transient_seed_suffix_end: u64,
+    /// Unused space, initially meant to specify the end of seed suffixes
+    pub unused: u32,
+
+    /// Validator account seed suffix
+    pub validator_seed_suffix: u32, // really `Option<NonZeroU32>` so 0 is `None`
 
     /// Status of the validator stake account
     pub status: StakeStatus,
@@ -564,33 +656,35 @@ pub struct ValidatorStakeInfo {
 }
 
 impl ValidatorStakeInfo {
-    /// Get the total lamports delegated to this validator (active and transient)
-    pub fn stake_lamports(&self) -> u64 {
+    /// Get the total lamports on this validator (active and transient)
+    pub fn stake_lamports(&self) -> Result<u64, StakePoolError> {
         self.active_stake_lamports
             .checked_add(self.transient_stake_lamports)
-            .unwrap()
+            .ok_or(StakePoolError::CalculationFailure)
     }
 
     /// Performs a very cheap comparison, for checking if this validator stake
     /// info matches the vote account address
-    pub fn memcmp_pubkey(data: &[u8], vote_address_bytes: &[u8]) -> bool {
+    pub fn memcmp_pubkey(data: &[u8], vote_address: &Pubkey) -> bool {
         sol_memcmp(
-            &data[41..41 + PUBKEY_BYTES],
-            vote_address_bytes,
+            &data[41..41_usize.saturating_add(PUBKEY_BYTES)],
+            vote_address.as_ref(),
             PUBKEY_BYTES,
         ) == 0
     }
 
-    /// Performs a very cheap comparison, for checking if this validator stake
-    /// info does not have active lamports equal to the given bytes
-    pub fn active_lamports_not_equal(data: &[u8], lamports_le_bytes: &[u8]) -> bool {
-        sol_memcmp(&data[0..8], lamports_le_bytes, 8) != 0
+    /// Performs a comparison, used to check if this validator stake
+    /// info has more active lamports than some limit
+    pub fn active_lamports_greater_than(data: &[u8], lamports: &u64) -> bool {
+        // without this unwrap, compute usage goes up significantly
+        u64::try_from_slice(&data[0..8]).unwrap() > *lamports
     }
 
-    /// Performs a very cheap comparison, for checking if this validator stake
-    /// info does not have lamports equal to the given bytes
-    pub fn transient_lamports_not_equal(data: &[u8], lamports_le_bytes: &[u8]) -> bool {
-        sol_memcmp(&data[8..16], lamports_le_bytes, 8) != 0
+    /// Performs a comparison, used to check if this validator stake
+    /// info has more transient lamports than some limit
+    pub fn transient_lamports_greater_than(data: &[u8], lamports: &u64) -> bool {
+        // without this unwrap, compute usage goes up significantly
+        u64::try_from_slice(&data[8..16]).unwrap() > *lamports
     }
 
     /// Check that the validator stake info is valid
@@ -605,6 +699,8 @@ impl Pack for ValidatorStakeInfo {
     const LEN: usize = 73;
     fn pack_into_slice(&self, data: &mut [u8]) {
         let mut data = data;
+        // Removing this unwrap would require changing from `Pack` to some other
+        // trait or `bytemuck`, so it stays in for now
         self.serialize(&mut data).unwrap();
     }
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
@@ -627,8 +723,10 @@ impl ValidatorList {
 
     /// Calculate the number of validator entries that fit in the provided length
     pub fn calculate_max_validators(buffer_length: usize) -> usize {
-        let header_size = ValidatorListHeader::LEN + 4;
-        buffer_length.saturating_sub(header_size) / ValidatorStakeInfo::LEN
+        let header_size = ValidatorListHeader::LEN.saturating_add(4);
+        buffer_length
+            .saturating_sub(header_size)
+            .saturating_div(ValidatorStakeInfo::LEN)
     }
 
     /// Check if contains validator with particular pubkey
@@ -695,6 +793,62 @@ impl ValidatorListHeader {
     }
 }
 
+/// Wrapper type that "counts down" epochs, which is Borsh-compatible with the
+/// native `Option`
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
+pub enum FutureEpoch<T> {
+    /// Nothing is set
+    None,
+    /// Value is ready after the next epoch boundary
+    One(T),
+    /// Value is ready after two epoch boundaries
+    Two(T),
+}
+impl<T> Default for FutureEpoch<T> {
+    fn default() -> Self {
+        Self::None
+    }
+}
+impl<T> FutureEpoch<T> {
+    /// Create a new value to be unlocked in a two epochs
+    pub fn new(value: T) -> Self {
+        Self::Two(value)
+    }
+}
+impl<T: Clone> FutureEpoch<T> {
+    /// Update the epoch, to be done after `get`ting the underlying value
+    pub fn update_epoch(&mut self) {
+        match self {
+            Self::None => {}
+            Self::One(_) => {
+                // The value has waited its last epoch
+                *self = Self::None;
+            }
+            // The value still has to wait one more epoch after this
+            Self::Two(v) => {
+                *self = Self::One(v.clone());
+            }
+        }
+    }
+
+    /// Get the value if it's ready, which is only at `One` epoch remaining
+    pub fn get(&self) -> Option<&T> {
+        match self {
+            Self::None | Self::Two(_) => None,
+            Self::One(v) => Some(v),
+        }
+    }
+}
+impl<T> From<FutureEpoch<T>> for Option<T> {
+    fn from(v: FutureEpoch<T>) -> Option<T> {
+        match v {
+            FutureEpoch::None => None,
+            FutureEpoch::One(inner) | FutureEpoch::Two(inner) => Some(inner),
+        }
+    }
+}
+
 /// Fee rate as a ratio, minted on `UpdateStakePoolBalance` as a proportion of
 /// the rewards
 /// If either the numerator or the denominator is 0, the fee is considered to be 0
@@ -751,8 +905,8 @@ impl Fee {
         {
             msg!(
                 "Fee increase exceeds maximum allowed, proposed increase factor ({} / {})",
-                self.numerator * old_denom,
-                old_num * self.denominator,
+                self.numerator.saturating_mul(old_denom),
+                old_num.saturating_mul(self.denominator),
             );
             return Err(StakePoolError::FeeIncreaseTooHigh);
         }
@@ -820,6 +974,7 @@ impl FeeType {
 
 #[cfg(test)]
 mod test {
+    #![allow(clippy::integer_arithmetic)]
     use {
         super::*,
         proptest::prelude::*,
@@ -853,8 +1008,9 @@ mod test {
                     active_stake_lamports: u64::from_le_bytes([255; 8]),
                     transient_stake_lamports: u64::from_le_bytes([128; 8]),
                     last_update_epoch: u64::from_le_bytes([64; 8]),
-                    transient_seed_suffix_start: 0,
-                    transient_seed_suffix_end: 0,
+                    transient_seed_suffix: 0,
+                    unused: 0,
+                    validator_seed_suffix: 0,
                 },
                 ValidatorStakeInfo {
                     status: StakeStatus::DeactivatingTransient,
@@ -862,8 +1018,9 @@ mod test {
                     active_stake_lamports: 998877665544,
                     transient_stake_lamports: 222222222,
                     last_update_epoch: 11223445566,
-                    transient_seed_suffix_start: 0,
-                    transient_seed_suffix_end: 0,
+                    transient_seed_suffix: 0,
+                    unused: 0,
+                    validator_seed_suffix: 0,
                 },
                 ValidatorStakeInfo {
                     status: StakeStatus::ReadyForRemoval,
@@ -871,8 +1028,9 @@ mod test {
                     active_stake_lamports: 0,
                     transient_stake_lamports: 0,
                     last_update_epoch: 999999999999999,
-                    transient_seed_suffix_start: 0,
-                    transient_seed_suffix_end: 0,
+                    transient_seed_suffix: 0,
+                    unused: 0,
+                    validator_seed_suffix: 0,
                 },
             ],
         }
@@ -1033,7 +1191,7 @@ mod test {
         let fee_lamports = stake_pool
             .calc_lamports_withdraw_amount(pool_token_fee)
             .unwrap();
-        assert_eq!(fee_lamports, LAMPORTS_PER_SOL);
+        assert_eq!(fee_lamports, LAMPORTS_PER_SOL - 1); // off-by-one due to truncation
     }
 
     #[test]
@@ -1148,6 +1306,80 @@ mod test {
             stake_pool.pool_token_supply += deposit_result;
             let withdraw_result = stake_pool.calc_lamports_withdraw_amount(deposit_result).unwrap();
             assert!(withdraw_result <= deposit_stake);
+
+            // also test splitting the withdrawal in two operations
+            if deposit_result >= 2 {
+                let first_half_deposit = deposit_result / 2;
+                let first_withdraw_result = stake_pool.calc_lamports_withdraw_amount(first_half_deposit).unwrap();
+                stake_pool.total_lamports -= first_withdraw_result;
+                stake_pool.pool_token_supply -= first_half_deposit;
+                let second_half_deposit = deposit_result - first_half_deposit; // do the whole thing
+                let second_withdraw_result = stake_pool.calc_lamports_withdraw_amount(second_half_deposit).unwrap();
+                assert!(first_withdraw_result + second_withdraw_result <= deposit_stake);
+            }
         }
+    }
+
+    #[test]
+    fn specific_split_withdrawal() {
+        let total_lamports = 1_100_000_000_000;
+        let pool_token_supply = 1_000_000_000_000;
+        let deposit_stake = 3;
+        let mut stake_pool = StakePool {
+            total_lamports,
+            pool_token_supply,
+            ..StakePool::default()
+        };
+        let deposit_result = stake_pool
+            .calc_pool_tokens_for_deposit(deposit_stake)
+            .unwrap();
+        assert!(deposit_result > 0);
+        stake_pool.total_lamports += deposit_stake;
+        stake_pool.pool_token_supply += deposit_result;
+        let withdraw_result = stake_pool
+            .calc_lamports_withdraw_amount(deposit_result / 2)
+            .unwrap();
+        assert!(withdraw_result * 2 <= deposit_stake);
+    }
+
+    #[test]
+    fn withdraw_all() {
+        let total_lamports = 1_100_000_000_000;
+        let pool_token_supply = 1_000_000_000_000;
+        let mut stake_pool = StakePool {
+            total_lamports,
+            pool_token_supply,
+            ..StakePool::default()
+        };
+        // take everything out at once
+        let withdraw_result = stake_pool
+            .calc_lamports_withdraw_amount(pool_token_supply)
+            .unwrap();
+        assert_eq!(stake_pool.total_lamports, withdraw_result);
+
+        // take out 1, then the rest
+        let withdraw_result = stake_pool.calc_lamports_withdraw_amount(1).unwrap();
+        stake_pool.total_lamports -= withdraw_result;
+        stake_pool.pool_token_supply -= 1;
+        let withdraw_result = stake_pool
+            .calc_lamports_withdraw_amount(stake_pool.pool_token_supply)
+            .unwrap();
+        assert_eq!(stake_pool.total_lamports, withdraw_result);
+
+        // take out all except 1, then the rest
+        let mut stake_pool = StakePool {
+            total_lamports,
+            pool_token_supply,
+            ..StakePool::default()
+        };
+        let withdraw_result = stake_pool
+            .calc_lamports_withdraw_amount(pool_token_supply - 1)
+            .unwrap();
+        stake_pool.total_lamports -= withdraw_result;
+        stake_pool.pool_token_supply = 1;
+        assert_ne!(stake_pool.total_lamports, 0);
+
+        let withdraw_result = stake_pool.calc_lamports_withdraw_amount(1).unwrap();
+        assert_eq!(stake_pool.total_lamports, withdraw_result);
     }
 }

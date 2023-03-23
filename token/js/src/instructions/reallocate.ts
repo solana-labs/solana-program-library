@@ -30,7 +30,7 @@ export function createReallocateInstruction(
     payer: PublicKey,
     extensionTypes: ExtensionType[],
     owner: PublicKey,
-    multiSigners: Signer[] = [],
+    multiSigners: (Signer | PublicKey)[] = [],
     programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
