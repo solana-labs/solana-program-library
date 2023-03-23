@@ -630,10 +630,13 @@ pub enum TokenInstruction<'a> {
         /// Authority that may sign for `Transfer`s and `Burn`s on any account
         delegate: Pubkey,
     },
-    /// Recover lamports instruction.
+    /// This instruction is to be used to rescue SOLs sent to multisig account with
+    /// system_instruction::transfer by sending them to a WrappedSol token account
+    /// and invoking sync_native, leaving behind only lamports for rent exemption.
     ///
-    /// This instruction transfers all the lamports from a token program owned account (apart from rent exemption)
-    /// to a WrappedSol associated token account owned by the signer of the transaction.
+    /// 0. `[writable]` Destination WrappedSol token account owned by multisig
+    /// 1. `[writable]` Multisig
+    /// 2. ..2+M `[signer]` M signer accounts.
     RecoverLamports,
 }
 impl<'a> TokenInstruction<'a> {
@@ -1875,8 +1878,6 @@ pub fn recover_lamports(
     destination_account: &Pubkey,
     signers: Vec<&Pubkey>,
 ) -> Result<Instruction, ProgramError> {
-    // check_program_account(token_program_id)?;
-
     let mut accounts = vec![
         AccountMeta::new(*destination_account, false),
         AccountMeta::new(*source_account, false),

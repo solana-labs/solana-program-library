@@ -2071,7 +2071,6 @@ async fn command_recover_lamports(
             config.output_format.formatted_string(&sign_only_data)
         }
     })
-    // Ok("OK".to_string())
 }
 
 // both enables and disables required transfer memos, via enable_memos bool

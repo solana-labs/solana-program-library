@@ -464,13 +464,14 @@ pub enum TokenInstruction<'a> {
         /// The ui_amount of tokens to reformat.
         ui_amount: &'a str,
     },
-    /// This instruction is to be used to rescue SOLs sent to multisig account with
-    /// system_instruction::transfer by sending them to a WrappedSol token account
-    /// and invoking sync_native, leaving behind only lamports for rent exemption.
+    /// This instruction is to be used to rescue SOLs sent to any TokenProgram
+    /// owned account with system_instruction::transfer by sending them to a
+    /// WrappedSol token account leaving behind only lamports for rent exemption.
     ///
-    /// 0. `[writable]` Destination WrappedSol token account owned by multisig
-    /// 1. `[writable]` Multisig
-    /// 2. ..2+M `[signer]` M signer accounts.
+    /// 0. `[writable]` Destination WrappedSol token account owned by signer
+    /// 1. `[writable]` Source Account
+    /// 2. `[signer]` Authority
+    /// 3. ..2+M `[signer]` M signer accounts.
     RecoverLamports,
     // Any new variants also need to be added to program-2022 `TokenInstruction`, so that the
     // latter remains a superset of this instruction set. New variants also need to be added to
