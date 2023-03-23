@@ -918,7 +918,6 @@ impl Processor {
             .checked_add(transfer_amount)
             .ok_or(TokenError::Overflow)?;
 
-        Self::process_sync_native(program_id, accounts)?;
         Ok(())
     }
 

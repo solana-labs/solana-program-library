@@ -105,7 +105,6 @@ pub const MULTISIG_SIGNER_ARG: ArgConstant<'static> = ArgConstant {
 };
 
 static VALID_TOKEN_PROGRAM_IDS: [Pubkey; 2] = [spl_token_2022::ID, spl_token::ID];
-// static VALID_TOKEN_PROGRAM_IDS: [Pubkey; 1] = [spl_token::ID];
 
 #[derive(Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr)]
 #[strum(serialize_all = "kebab-case")]
@@ -2040,22 +2039,26 @@ async fn command_sync_native(config: &Config<'_>, native_account_address: Pubkey
 async fn command_recover_lamports(
     config: &Config<'_>,
     source_account: Pubkey,
+    destination_account: Pubkey,
     authority: Pubkey,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     let token = native_token_client_from_config(config)?;
-    let destination = token.get_associated_token_address(&authority);
-
     println_display(
         config,
         format!(
             "Recovering lamports from Account: {} to ATA: {}",
-            source_account, destination
+            source_account, destination_account
         ),
     );
 
     let res = token
-        .recover_lamports(&source_account, &authority, &destination, &bulk_signers)
+        .recover_lamports(
+            &source_account,
+            &authority,
+            &destination_account,
+            &bulk_signers,
+        )
         .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -2068,6 +2071,7 @@ async fn command_recover_lamports(
             config.output_format.formatted_string(&sign_only_data)
         }
     })
+    // Ok("OK".to_string())
 }
 
 // both enables and disables required transfer memos, via enable_memos bool
@@ -4318,7 +4322,17 @@ async fn process_command<'a>(
             let source =
                 config.pubkey_or_default(arg_matches, "source_account", &mut wallet_manager)?;
 
-            command_recover_lamports(config, source, authority, bulk_signers).await
+            let native_mint = *native_token_client_from_config(config)?.get_address();
+            let address = config
+                .associated_token_address_for_token_or_override(
+                    arg_matches,
+                    "destination",
+                    &mut wallet_manager,
+                    Some(native_mint),
+                )
+                .await?;
+
+            command_recover_lamports(config, source, address, authority, bulk_signers).await
         }
     }
 }
@@ -7048,13 +7062,9 @@ mod tests {
                     .data,
             )
             .unwrap();
-
-            // let initial_destination_amount = destination_associated_token.base.is_native.unwrap();
-
             assert_eq!(destination_associated_token.base.owner, multisig_pubkey);
 
             let excess_lamports = 4000 * 1_000_000_000;
-
             config
                 .rpc_client
                 .send_and_confirm_transaction(&Transaction::new_signed_with_payer(
@@ -7069,112 +7079,47 @@ mod tests {
                 ))
                 .await
                 .unwrap();
-            // let initial_amount = config
-            //     .rpc_client
-            //     .get_balance(&multisig_pubkey)
-            //     .await
-            //     .unwrap();
 
-            if program_id == &spl_token::id() {
-                exec_test_cmd(
-                    &config,
-                    &[
-                        "spl-token",
-                        CommandName::RecoverLamports.into(),
-                        &multisig_pubkey.to_string(),
-                        "--owner",
-                        &multisig_pubkey.to_string(),
-                        "--multisig-signer",
-                        multisig_paths[0].path().to_str().unwrap(),
-                        "--multisig-signer",
-                        multisig_paths[1].path().to_str().unwrap(),
-                        "--multisig-signer",
-                        multisig_paths[2].path().to_str().unwrap(),
-                        "--fee-payer",
-                        &fee_payer_keypair_file.path().to_str().unwrap(),
-                    ],
-                )
+            exec_test_cmd(
+                &config,
+                &[
+                    "spl-token",
+                    CommandName::RecoverLamports.into(),
+                    &multisig_pubkey.to_string(),
+                    "--owner",
+                    &multisig_pubkey.to_string(),
+                    "--multisig-signer",
+                    multisig_paths[0].path().to_str().unwrap(),
+                    "--multisig-signer",
+                    multisig_paths[1].path().to_str().unwrap(),
+                    "--multisig-signer",
+                    multisig_paths[2].path().to_str().unwrap(),
+                    "--fee-payer",
+                    &fee_payer_keypair_file.path().to_str().unwrap(),
+                    "--program-id",
+                    &program_id.to_string(),
+                ],
+            )
+            .await
+            .unwrap();
+
+            command_sync_native(&config, destination_pubkey)
                 .await
                 .unwrap();
-            } else {
-                process_test_command(
-                    &config,
-                    &payer,
-                    &[
-                        "spl-token",
-                        CommandName::RecoverLamports.into(),
-                        &multisig_pubkey.to_string(),
-                        "--owner",
-                        &multisig_pubkey.to_string(),
-                        "--multisig-signer",
-                        multisig_paths[0].path().to_str().unwrap(),
-                        "--multisig-signer",
-                        multisig_paths[1].path().to_str().unwrap(),
-                        "--multisig-signer",
-                        multisig_paths[2].path().to_str().unwrap(),
-                        "--fee-payer",
-                        &fee_payer_keypair_file.path().to_str().unwrap(),
-                    ],
+
+            assert_eq!(
+                excess_lamports,
+                StateWithExtensionsOwned::<Account>::unpack(
+                    config
+                        .rpc_client
+                        .get_account_data(&destination_pubkey)
+                        .await
+                        .unwrap()
                 )
-                .await
-                .unwrap();
-            }
-
-            // let remaining_amount = config
-            //     .rpc_client
-            //     .get_balance(&multisig_pubkey)
-            //     .await
-            //     .unwrap();
-
-            // let final_destination_associated_token = StateWithExtensionsOwned::<Account>::unpack(
-            //     config
-            //         .rpc_client
-            //         .get_account(&destination_pubkey)
-            //         .await
-            //         .unwrap()
-            //         .data,
-            // )
-            // .unwrap();
-
-            // let final_destination_amount = config
-            //     .rpc_client
-            //     .get_balance(&multisig_pubkey)
-            //     .await
-            //     .unwrap();
-
-            // let final_destination_amount =
-            //     final_destination_associated_token.base.is_native.unwrap();
-
-            // assert_eq!(remaining_amount, initial_amount - excess_lamports);
-            // assert_eq!(
-            //     final_destination_amount,
-            //     initial_destination_amount + excess_lamports
-            // );
-
-            // let account = config.rpc_client.get_account(&source).await.unwrap();
-            // let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
-            // assert_eq!(token_account.base.amount, 90);
-            // let account = config.rpc_client.get_account(&destination).await.unwrap();
-            // let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
-            // assert_eq!(token_account.base.amount, 10);
-
-            // let _result = process_test_command(
-            //     &config,
-            //     &payer,
-            //     &["spl-token", CommandName::Wrap.into(), "0.5"],
-            // )
-            // .await
-            // .unwrap();
-            // let account = get_associated_token_address_with_program_id(
-            //     &payer.pubkey(),
-            //     &native_mint,
-            //     &config.program_id,
-            // );
-            // let account = config.rpc_client.get_account(&account).await.unwrap();
-            // let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
-            // assert_eq!(token_account.base.mint, native_mint);
-            // assert_eq!(token_account.base.owner, payer.pubkey());
-            // assert!(token_account.base.is_native());
+                .unwrap()
+                .base
+                .amount
+            );
         }
     }
 }
