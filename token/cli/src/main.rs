@@ -4322,14 +4322,11 @@ async fn process_command<'a>(
                 config.pubkey_or_default(arg_matches, "source_account", &mut wallet_manager)?;
 
             let native_mint = *native_token_client_from_config(config)?.get_address();
-            let address = config
-                .associated_token_address_for_token_or_override(
-                    arg_matches,
-                    "destination",
-                    &mut wallet_manager,
-                    Some(native_mint),
-                )
-                .await?;
+            let address = config.associated_token_address_for_token_and_program(
+                &native_mint,
+                &authority,
+                &config.program_id,
+            )?;
 
             command_recover_lamports(config, source, address, authority, bulk_signers).await
         }
@@ -6995,7 +6992,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn recover_lamports() {
+    async fn recover_lamports_from_multisig() {
         let (test_validator, payer) = new_validator_for_test().await;
         let m = 3;
         let n = 5u8;
@@ -7095,6 +7092,106 @@ mod tests {
                     multisig_paths[2].path().to_str().unwrap(),
                     "--fee-payer",
                     &fee_payer_keypair_file.path().to_str().unwrap(),
+                    "--program-id",
+                    &program_id.to_string(),
+                ],
+            )
+            .await
+            .unwrap();
+
+            command_sync_native(&config, destination_pubkey)
+                .await
+                .unwrap();
+
+            assert_eq!(
+                excess_lamports,
+                StateWithExtensionsOwned::<Account>::unpack(
+                    config
+                        .rpc_client
+                        .get_account_data(&destination_pubkey)
+                        .await
+                        .unwrap()
+                )
+                .unwrap()
+                .base
+                .amount
+            );
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn recover_lamports_from_mint() {
+        let (test_validator, payer) = new_validator_for_test().await;
+
+        let owner_keypair_file = NamedTempFile::new().unwrap();
+        write_keypair_file(&payer, &owner_keypair_file).unwrap();
+
+        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
+            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+            do_create_native_mint(&config, program_id, &payer).await;
+            let native_mint = *Token::new_native(
+                config.program_client.clone(),
+                program_id,
+                config.fee_payer().unwrap().clone(),
+            )
+            .get_address();
+
+            let destination_pubkey =
+                create_associated_account(&config, &payer, &native_mint, &payer.pubkey()).await;
+
+            let destination_associated_token = StateWithExtensionsOwned::<Account>::unpack(
+                config
+                    .rpc_client
+                    .get_account(&destination_pubkey)
+                    .await
+                    .unwrap()
+                    .data,
+            )
+            .unwrap();
+            assert_eq!(destination_associated_token.base.owner, payer.pubkey());
+
+            let token_keypair = Keypair::new();
+            let token_path = NamedTempFile::new().unwrap();
+            write_keypair_file(&token_keypair, &token_path).unwrap();
+            let token_pubkey = token_keypair.pubkey();
+
+            process_test_command(
+                &config,
+                &payer,
+                &[
+                    "spl-token",
+                    CommandName::CreateToken.into(),
+                    &token_path.path().to_str().unwrap(),
+                ],
+            )
+            .await
+            .unwrap();
+
+            let excess_lamports = 4000 * 1_000_000_000;
+            config
+                .rpc_client
+                .send_and_confirm_transaction(&Transaction::new_signed_with_payer(
+                    &[system_instruction::transfer(
+                        &payer.pubkey(),
+                        &token_pubkey,
+                        excess_lamports,
+                    )],
+                    Some(&payer.pubkey()),
+                    &[&payer],
+                    config.rpc_client.get_latest_blockhash().await.unwrap(),
+                ))
+                .await
+                .unwrap();
+
+            exec_test_cmd(
+                &config,
+                &[
+                    "spl-token",
+                    CommandName::RecoverLamports.into(),
+                    &token_pubkey.to_string(),
+                    "--owner",
+                    &owner_keypair_file.path().to_str().unwrap(),
                     "--program-id",
                     &program_id.to_string(),
                 ],
