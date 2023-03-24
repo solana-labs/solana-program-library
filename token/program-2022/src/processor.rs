@@ -1316,19 +1316,6 @@ impl Processor {
 
         let source_data = source_info.data.borrow();
         match source_data.len() {
-            Account::LEN => {
-                let token_account = StateWithExtensions::<Account>::unpack(&source_data)?;
-                if token_account.base.is_native() {
-                    return Err(TokenError::NativeNotSupported.into());
-                }
-                Self::validate_owner(
-                    program_id,
-                    &token_account.base.owner,
-                    authority_info,
-                    authority_info.data_len(),
-                    account_info_iter.as_slice(),
-                )?;
-            }
             Mint::LEN => {
                 let mint_account = StateWithExtensions::<Mint>::unpack(&source_data)?;
                 if &mint_account.base.mint_authority.expect("No mint authority")
@@ -1358,7 +1345,17 @@ impl Processor {
                 )?;
             }
             _ => {
-                return Err(TokenError::InvalidState.into());
+                let token_account = StateWithExtensions::<Account>::unpack(&source_data)?;
+                if token_account.base.is_native() {
+                    return Err(TokenError::NativeNotSupported.into());
+                }
+                Self::validate_owner(
+                    program_id,
+                    &token_account.base.owner,
+                    authority_info,
+                    authority_info.data_len(),
+                    account_info_iter.as_slice(),
+                )?;
             }
         }
         let source_rent_exempt_reserve = Rent::get()?.minimum_balance(source_info.data_len());

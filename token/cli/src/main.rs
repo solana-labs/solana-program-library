@@ -6992,7 +6992,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn recover_lamports_from_multisig() {
+    async fn recover_lamports() {
         let (test_validator, payer) = new_validator_for_test().await;
         let m = 3;
         let n = 5u8;
@@ -7185,7 +7185,7 @@ mod tests {
             .await
             .unwrap();
 
-            command_sync_native(&config, destination_pubkey)
+            command_sync_native(&config, owner_destination_pubkey)
                 .await
                 .unwrap();
 
@@ -7194,7 +7194,58 @@ mod tests {
                 StateWithExtensionsOwned::<Account>::unpack(
                     config
                         .rpc_client
-                        .get_account_data(&destination_pubkey)
+                        .get_account_data(&owner_destination_pubkey)
+                        .await
+                        .unwrap()
+                )
+                .unwrap()
+                .base
+                .amount
+            );
+
+            let token_account =
+                create_associated_account(&config, &payer, &token_pubkey, &payer.pubkey()).await;
+
+            config
+                .rpc_client
+                .send_and_confirm_transaction(&Transaction::new_signed_with_payer(
+                    &[system_instruction::transfer(
+                        &payer.pubkey(),
+                        &token_account,
+                        excess_lamports,
+                    )],
+                    Some(&payer.pubkey()),
+                    &[&payer],
+                    config.rpc_client.get_latest_blockhash().await.unwrap(),
+                ))
+                .await
+                .unwrap();
+
+            exec_test_cmd(
+                &config,
+                &[
+                    "spl-token",
+                    CommandName::RecoverLamports.into(),
+                    &token_account.to_string(),
+                    "--owner",
+                    &owner_keypair_file.path().to_str().unwrap(),
+                    "--program-id",
+                    &program_id.to_string(),
+                ],
+            )
+            .await
+            .unwrap();
+
+            command_sync_native(&config, owner_destination_pubkey)
+                .await
+                .unwrap();
+
+            assert_eq!(
+                2 * excess_lamports,
+                StateWithExtensionsOwned::<Account>::unpack(
+                    config
+                        .rpc_client
+                        .get_account_data(&owner_destination_pubkey)
                         .await
                         .unwrap()
                 )
