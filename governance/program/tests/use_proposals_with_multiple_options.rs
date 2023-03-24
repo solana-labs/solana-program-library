@@ -94,6 +94,7 @@ async fn test_create_proposal_with_multiple_choice_options_and_without_deny_opti
             false,
             VoteType::MultiChoice {
                 choice_type: MultiChoiceType::Approval,
+                min_voter_options: 1,
                 max_winning_options: 2,
                 max_voter_options: 2,
             },
@@ -109,6 +110,7 @@ async fn test_create_proposal_with_multiple_choice_options_and_without_deny_opti
         proposal_account.vote_type,
         VoteType::MultiChoice {
             choice_type: MultiChoiceType::Approval,
+            min_voter_options: 1,
             max_winning_options: 2,
             max_voter_options: 2,
         }
@@ -364,6 +366,7 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
             false,
             VoteType::MultiChoice {
                 choice_type: MultiChoiceType::Approval,
+                min_voter_options: 1,
                 max_winning_options: 3,
                 max_voter_options: 3,
             },
@@ -493,6 +496,7 @@ async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_succ
             true,
             VoteType::MultiChoice {
                 choice_type: MultiChoiceType::Approval,
+                min_voter_options: 1,
                 max_winning_options: 3,
                 max_voter_options: 3,
             },
@@ -655,6 +659,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
             true,
             VoteType::MultiChoice {
                 choice_type: MultiChoiceType::Approval,
+                min_voter_options: 1,
                 max_winning_options: 3,
                 max_voter_options: 3,
             },
@@ -863,6 +868,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
             true,
             VoteType::MultiChoice {
                 choice_type: MultiChoiceType::Approval,
+                min_voter_options: 1,
                 max_winning_options: 3,
                 max_voter_options: 3,
             },
@@ -1029,6 +1035,7 @@ async fn test_create_proposal_with_10_options_and_cast_vote() {
             false,
             VoteType::MultiChoice {
                 choice_type: MultiChoiceType::Approval,
+                min_voter_options: 1,
                 max_winning_options: options_len,
                 max_voter_options: options_len,
             },
@@ -1080,6 +1087,7 @@ async fn test_create_proposal_with_10_options_and_cast_vote() {
         proposal_account.vote_type,
         VoteType::MultiChoice {
             choice_type: MultiChoiceType::Approval,
+            min_voter_options: 1,
             max_winning_options: options_len,
             max_voter_options: options_len,
         }
@@ -1128,6 +1136,7 @@ async fn test_vote_multi_weighted_choice_proposal_non_executable() {
             false,
             VoteType::MultiChoice {
                 choice_type: MultiChoiceType::Weighted,
+                min_voter_options: 1,
                 max_winning_options: 4,
                 max_voter_options: 4,
             },
@@ -1266,6 +1275,7 @@ async fn test_vote_multi_weighted_choice_proposal_with_partial_success() {
             true,
             VoteType::MultiChoice {
                 choice_type: MultiChoiceType::Weighted,
+                min_voter_options: 1,
                 max_winning_options: 4,
                 max_voter_options: 4,
             },
@@ -1486,6 +1496,7 @@ async fn test_vote_multi_weighted_choice_proposal_with_multi_success() {
             true,
             VoteType::MultiChoice {
                 choice_type: MultiChoiceType::Weighted,
+                min_voter_options: 1,
                 max_winning_options: 3,
                 max_voter_options: 3,
             },
@@ -1665,6 +1676,7 @@ async fn test_vote_multi_weighted_choice_proposal_executable_with_full_deny() {
             true,
             VoteType::MultiChoice {
                 choice_type: MultiChoiceType::Weighted,
+                min_voter_options: 1,
                 max_winning_options: 2,
                 max_voter_options: 2,
             },
