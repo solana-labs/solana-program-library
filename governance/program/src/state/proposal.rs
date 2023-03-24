@@ -109,14 +109,12 @@ pub enum VoteType {
 /// Type of MultiChoice.
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum MultiChoiceType {
-    /// Multiple options can be approved with full weight allocated to each approved option.
+    /// Multiple options can be approved with full weight allocated to each approved option
     Approval,
 
-    /// Multiple options can be approved with weight allocated proportionally to the percentage of the total weight.
-    /// The full weight has to be voted among the approved options, i.e., 100% of the weight has to be allocated.
+    /// Multiple options can be approved with weight allocated proportionally to the percentage of the total weight
+    /// The full weight has to be voted among the approved options, i.e., 100% of the weight has to be allocated
     Weighted,
-    // Quadartic multi choice, not available yet
-    // Quadratic,
 }
 
 /// Governance Proposal
