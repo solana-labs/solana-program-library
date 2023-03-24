@@ -1135,15 +1135,10 @@ async fn test_vote_multi_weighted_choice_proposal_non_executable() {
         .await
         .unwrap();
 
-    let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &token_owner_record_cookie)
-        .await
-        .unwrap();
-
     let clock = governance_test.bench.get_clock().await;
 
     governance_test
-        .sign_off_proposal(&proposal_cookie, &signatory_record_cookie)
+        .sign_off_proposal_by_owner(&proposal_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -1323,13 +1318,8 @@ async fn test_vote_multi_weighted_choice_proposal_with_partial_success() {
         .await
         .unwrap();
 
-    let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &token_owner_record_cookie1)
-        .await
-        .unwrap();
-
     governance_test
-        .sign_off_proposal(&proposal_cookie, &signatory_record_cookie)
+        .sign_off_proposal_by_owner(&proposal_cookie, &token_owner_record_cookie1)
         .await
         .unwrap();
 
@@ -1537,13 +1527,8 @@ async fn test_vote_multi_weighted_choice_proposal_with_multi_success() {
         .await
         .unwrap();
 
-    let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &token_owner_record_cookie1)
-        .await
-        .unwrap();
-
     governance_test
-        .sign_off_proposal(&proposal_cookie, &signatory_record_cookie)
+        .sign_off_proposal_by_owner(&proposal_cookie, &token_owner_record_cookie1)
         .await
         .unwrap();
 
@@ -1711,13 +1696,8 @@ async fn test_vote_multi_weighted_choice_proposal_executable_with_full_deny() {
         .await
         .unwrap();
 
-    let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &token_owner_record_cookie1)
-        .await
-        .unwrap();
-
     governance_test
-        .sign_off_proposal(&proposal_cookie, &signatory_record_cookie)
+        .sign_off_proposal_by_owner(&proposal_cookie, &token_owner_record_cookie1)
         .await
         .unwrap();
 

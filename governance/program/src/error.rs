@@ -475,9 +475,9 @@ pub enum GovernanceError {
     #[error("Ranked vote is not supported")]
     RankedVoteIsNotSupported, // 614
 
-    /// Vote weight must be 100%
-    #[error("Vote weight must be 100%")]
-    VoteWeightMustBe100Percent, // 615
+    /// Choice weight must be 100%
+    #[error("Choice weight must be 100%")]
+    ChoiceWeightMustBe100Percent, // 615
 
     /// Single choice only is allowed
     #[error("Single choice only is allowed")]

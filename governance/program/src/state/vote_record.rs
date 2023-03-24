@@ -317,12 +317,17 @@ mod test {
     }
 
     #[test]
-    fn test_vote_record_error() {
+    fn test_get_choice_weight_with_invalid_weight_percentage_error() {
+        // Arrange
         let vote_choice = VoteChoice {
             rank: 0,
             weight_percentage: 127,
         };
+
+        // Act
         let result = vote_choice.get_choice_weight(100);
+
+        // Assert
         assert_eq!(
             Err(GovernanceError::InvalidVoteChoiceWeightPercentage.into()),
             result
@@ -330,40 +335,65 @@ mod test {
     }
 
     #[test]
-    fn test_vote_record() {
+    fn test_get_choice_weight() {
+        // Arrange
         let vote_choice = VoteChoice {
             rank: 0,
             weight_percentage: 100,
         };
+
+        // Act
         let result = vote_choice.get_choice_weight(100);
+
+        // Assert
         assert_eq!(Ok(100_u64), result);
 
+        // Arrange
         let vote_choice = VoteChoice {
             rank: 0,
             weight_percentage: 0,
         };
+
+        // Act
         let result = vote_choice.get_choice_weight(100);
+
+        // Assert
         assert_eq!(Ok(0_u64), result);
 
+        // Arrange
         let vote_choice = VoteChoice {
             rank: 0,
             weight_percentage: 33,
         };
+
+        // Act
         let result = vote_choice.get_choice_weight(100);
+
+        // Assert
         assert_eq!(Ok(33_u64), result);
 
+        // Arrange
         let vote_choice = VoteChoice {
             rank: 0,
             weight_percentage: 34,
         };
+
+        // Act
         let result = vote_choice.get_choice_weight(100);
+
+        // Assert
         assert_eq!(Ok(34_u64), result);
 
+        // Arrange
         let vote_choice = VoteChoice {
             rank: 0,
             weight_percentage: 50,
         };
+
+        // Act
         let result = vote_choice.get_choice_weight(u64::MAX);
+
+        // Assert
         assert_eq!(Ok(u64::MAX / 2), result);
     }
 }

@@ -862,7 +862,9 @@ impl ProposalV2 {
                             }
                             _ => {
                                 if choice.weight_percentage != 100 {
-                                    return Err(GovernanceError::VoteWeightMustBe100Percent.into());
+                                    return Err(
+                                        GovernanceError::ChoiceWeightMustBe100Percent.into()
+                                    );
                                 }
                             }
                         }
@@ -2640,7 +2642,7 @@ mod test {
     }
 
     #[test]
-    pub fn test_assert_valid_vote_with_not_full_percentage_choices_error() {
+    pub fn test_assert_valid_vote_with_choice_weight_not_100_percent_error() {
         // Arrange
         let mut proposal = create_test_multi_option_proposal();
         proposal.vote_type = VoteType::MultiChoice {
@@ -2675,7 +2677,7 @@ mod test {
         // Assert
         assert_eq!(
             result,
-            Err(GovernanceError::VoteWeightMustBe100Percent.into())
+            Err(GovernanceError::ChoiceWeightMustBe100Percent.into())
         );
     }
 
