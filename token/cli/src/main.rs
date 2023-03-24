@@ -7010,6 +7010,9 @@ mod tests {
         let fee_payer_keypair_file = NamedTempFile::new().unwrap();
         write_keypair_file(&payer, &fee_payer_keypair_file).unwrap();
 
+        let owner_keypair_file = NamedTempFile::new().unwrap();
+        write_keypair_file(&payer, &owner_keypair_file).unwrap();
+
         for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
             let config = test_config_with_default_signer(&test_validator, &payer, program_id);
             do_create_native_mint(&config, program_id, &payer).await;
@@ -7116,40 +7119,23 @@ mod tests {
                 .base
                 .amount
             );
-        }
-    }
 
-    #[tokio::test]
-    #[serial]
-    async fn recover_lamports_from_mint() {
-        let (test_validator, payer) = new_validator_for_test().await;
-
-        let owner_keypair_file = NamedTempFile::new().unwrap();
-        write_keypair_file(&payer, &owner_keypair_file).unwrap();
-
-        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
-            do_create_native_mint(&config, program_id, &payer).await;
-            let native_mint = *Token::new_native(
-                config.program_client.clone(),
-                program_id,
-                config.fee_payer().unwrap().clone(),
-            )
-            .get_address();
-
-            let destination_pubkey =
+            let owner_destination_pubkey =
                 create_associated_account(&config, &payer, &native_mint, &payer.pubkey()).await;
 
-            let destination_associated_token = StateWithExtensionsOwned::<Account>::unpack(
+            let owner_destination_associated_token = StateWithExtensionsOwned::<Account>::unpack(
                 config
                     .rpc_client
-                    .get_account(&destination_pubkey)
+                    .get_account(&owner_destination_pubkey)
                     .await
                     .unwrap()
                     .data,
             )
             .unwrap();
-            assert_eq!(destination_associated_token.base.owner, payer.pubkey());
+            assert_eq!(
+                owner_destination_associated_token.base.owner,
+                payer.pubkey()
+            );
 
             let token_keypair = Keypair::new();
             let token_path = NamedTempFile::new().unwrap();
