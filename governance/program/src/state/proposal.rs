@@ -836,39 +836,45 @@ impl ProposalV2 {
         match vote {
             Vote::Approve(choices) => {
                 if self.options.len() != choices.len() {
-                    return Err(GovernanceError::InvalidVote.into());
+                    return Err(GovernanceError::InvalidNumberOfVoteChoices.into());
                 }
 
                 let mut choice_count = 0u16;
-                let mut choice_weight_percentage_sum = 0u8;
+                let mut total_choice_weight_percentage = 0u8;
 
                 for choice in choices {
                     if choice.rank > 0 {
-                        return Err(GovernanceError::InvalidVote.into());
+                        return Err(GovernanceError::RankedVoteIsNotSupported.into());
                     }
 
-                    if let VoteType::MultiChoice {
-                        choice_type: MultiChoiceType::Weighted,
-                        max_voter_options: _m,
-                        max_winning_options: _n,
-                    } = self.vote_type
-                    {
-                        // the sum of the percent numbers of all choices cannot be over 100%
-                        choice_weight_percentage_sum = choice_weight_percentage_sum
-                            .checked_add(choice.weight_percentage)
-                            .unwrap();
+                    if choice.weight_percentage > 0 {
                         choice_count = choice_count.checked_add(1).unwrap();
-                    } else if choice.weight_percentage == 100 {
-                        choice_count = choice_count.checked_add(1).unwrap();
-                    } else if choice.weight_percentage != 0 {
-                        return Err(GovernanceError::InvalidVote.into());
+
+                        match self.vote_type {
+                            VoteType::MultiChoice {
+                                choice_type: MultiChoiceType::Weighted,
+                                max_voter_options: _,
+                                max_winning_options: _,
+                            } => {
+                                // Calculate the total percentage for all choices for weighted choice vote
+                                // The total must add up to exactly 100%
+                                total_choice_weight_percentage = total_choice_weight_percentage
+                                    .checked_add(choice.weight_percentage)
+                                    .unwrap();
+                            }
+                            _ => {
+                                if choice.weight_percentage != 100 {
+                                    return Err(GovernanceError::VoteWeightMustBe100Percent.into());
+                                }
+                            }
+                        }
                     }
                 }
 
                 match self.vote_type {
                     VoteType::SingleChoice => {
                         if choice_count != 1 {
-                            return Err(GovernanceError::InvalidVote.into());
+                            return Err(GovernanceError::SingleChoiceOnlyIsAllowed.into());
                         }
                     }
                     VoteType::MultiChoice {
@@ -877,7 +883,7 @@ impl ProposalV2 {
                         max_winning_options: _m,
                     } => {
                         if choice_count == 0 {
-                            return Err(GovernanceError::InvalidVote.into());
+                            return Err(GovernanceError::AtLeastSingleChoiceIsRequired.into());
                         }
                     }
                     VoteType::MultiChoice {
@@ -886,17 +892,17 @@ impl ProposalV2 {
                         max_winning_options: _m,
                     } => {
                         if choice_count == 0 {
-                            return Err(GovernanceError::InvalidVote.into());
+                            return Err(GovernanceError::AtLeastSingleChoiceIsRequired.into());
                         }
-                        if choice_weight_percentage_sum != 100 {
-                            return Err(GovernanceError::InvalidVote.into());
+                        if total_choice_weight_percentage != 100 {
+                            return Err(GovernanceError::TotalVoteWeightMustBe100Percent.into());
                         }
                     }
                 }
             }
             Vote::Deny => {
                 if self.deny_vote_weight.is_none() {
-                    return Err(GovernanceError::InvalidVote.into());
+                    return Err(GovernanceError::DenyVoteIsNotAllowed.into());
                 }
             }
             Vote::Abstain => {
@@ -2466,7 +2472,7 @@ mod test {
         let result = proposal.assert_valid_vote(&vote);
 
         // Assert
-        assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+        assert_eq!(result, Err(GovernanceError::DenyVoteIsNotAllowed.into()));
     }
 
     #[test]
@@ -2494,7 +2500,10 @@ mod test {
         let result = proposal.assert_valid_vote(&vote);
 
         // Assert
-        assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+        assert_eq!(
+            result,
+            Err(GovernanceError::InvalidNumberOfVoteChoices.into())
+        );
     }
 
     #[test]
@@ -2516,7 +2525,10 @@ mod test {
         let result = proposal.assert_valid_vote(&vote);
 
         // Assert
-        assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+        assert_eq!(
+            result,
+            Err(GovernanceError::SingleChoiceOnlyIsAllowed.into())
+        );
     }
 
     #[test]
@@ -2547,7 +2559,10 @@ mod test {
         let result = proposal.assert_valid_vote(&vote);
 
         // Assert
-        assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+        assert_eq!(
+            result,
+            Err(GovernanceError::SingleChoiceOnlyIsAllowed.into())
+        );
     }
 
     #[test]
@@ -2620,7 +2635,10 @@ mod test {
         let result = proposal.assert_valid_vote(&vote);
 
         // Assert
-        assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+        assert_eq!(
+            result,
+            Err(GovernanceError::AtLeastSingleChoiceIsRequired.into())
+        );
     }
 
     #[test]
@@ -2657,7 +2675,10 @@ mod test {
         let result = proposal.assert_valid_vote(&vote);
 
         // Assert
-        assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+        assert_eq!(
+            result,
+            Err(GovernanceError::VoteWeightMustBe100Percent.into())
+        );
     }
 
     #[test]
@@ -2830,7 +2851,8 @@ mod test {
     }
 
     #[test]
-    pub fn test_assert_valid_vote_with_no_choices_for_multi_weighted_choice_error() {
+    pub fn test_assert_valid_vote_with_total_vote_weight_above_100_percent_for_multi_weighted_choice_error(
+    ) {
         // Arrange
         let mut proposal = create_test_multi_option_proposal();
         proposal.vote_type = VoteType::MultiChoice {
@@ -2862,7 +2884,10 @@ mod test {
         let result = proposal.assert_valid_vote(&vote);
 
         // Assert
-        assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+        assert_eq!(
+            result,
+            Err(GovernanceError::TotalVoteWeightMustBe100Percent.into())
+        );
     }
 
     #[test]
@@ -2899,7 +2924,10 @@ mod test {
         let result = proposal.assert_valid_vote(&vote);
 
         // Assert
-        assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+        assert_eq!(
+            result,
+            Err(GovernanceError::TotalVoteWeightMustBe100Percent.into())
+        );
     }
 
     #[test]

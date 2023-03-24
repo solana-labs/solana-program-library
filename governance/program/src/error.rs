@@ -355,9 +355,9 @@ pub enum GovernanceError {
     #[error("Proposal is not not executable")]
     ProposalIsNotExecutable, // 584
 
-    /// Invalid vote
-    #[error("Invalid vote")]
-    InvalidVote, // 585
+    /// Deny vote is not allowed
+    #[error("Deny vote is not allowed")]
+    DenyVoteIsNotAllowed, // 585
 
     /// Cannot execute defeated option
     #[error("Cannot execute defeated option")]
@@ -466,6 +466,30 @@ pub enum GovernanceError {
     /// Invalid State: Proposal is not in final state
     #[error("Invalid State: Proposal is not in final state")]
     InvalidStateNotFinal, // 612
+
+    /// Invalid number of vote choices
+    #[error("Invalid number of vote choices")]
+    InvalidNumberOfVoteChoices, // 613
+
+    /// Ranked vote is not supported
+    #[error("Ranked vote is not supported")]
+    RankedVoteIsNotSupported, // 614
+
+    /// Vote weight must be 100%
+    #[error("Vote weight must be 100%")]
+    VoteWeightMustBe100Percent, // 615
+
+    /// Single choice only is allowed
+    #[error("Single choice only is allowed")]
+    SingleChoiceOnlyIsAllowed, // 616
+
+    /// At least single choice is required
+    #[error("At least single choice is required")]
+    AtLeastSingleChoiceIsRequired, // 617
+
+    /// Total vote weight must be 100%
+    #[error("Total vote weight must be 100%")]
+    TotalVoteWeightMustBe100Percent, // 618
 }
 
 impl PrintProgramError for GovernanceError {

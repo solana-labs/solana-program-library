@@ -38,7 +38,9 @@ impl VoteChoice {
     /// Returns the choice weight given the voter's weight
     pub fn get_choice_weight(&self, voter_weight: u64) -> Result<u64, ProgramError> {
         Ok(match self.weight_percentage {
-            100 => voter_weight, // Avoid any rounding errors for full weight
+            // Avoid any rounding errors for full weight
+            100 => voter_weight,
+            // Note: The total weight for all choices might not equal voter_weight due to rounding errors
             0..=99 => (voter_weight as u128)
                 .checked_mul(self.weight_percentage as u128)
                 .unwrap()
