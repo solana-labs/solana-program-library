@@ -3,6 +3,7 @@
 mod helpers;
 
 use crate::solend_program_test::MintSupplyChange;
+use solend_sdk::math::Decimal;
 use std::collections::HashSet;
 
 use helpers::solend_program_test::{
@@ -87,7 +88,17 @@ async fn test_success() {
     let lending_market_post = test
         .load_account::<LendingMarket>(lending_market.pubkey)
         .await;
-    assert_eq!(lending_market.account, lending_market_post.account);
+    assert_eq!(
+        lending_market_post.account,
+        LendingMarket {
+            rate_limiter: {
+                let mut rate_limiter = lending_market.account.rate_limiter;
+                rate_limiter.update(1000, Decimal::from(1u64)).unwrap();
+                rate_limiter
+            },
+            ..lending_market.account
+        }
+    );
 
     let usdc_reserve_post = test.load_account::<Reserve>(usdc_reserve.pubkey).await;
     assert_eq!(
@@ -104,6 +115,14 @@ async fn test_success() {
             collateral: ReserveCollateral {
                 mint_total_supply: usdc_reserve.account.collateral.mint_total_supply - 1_000_000,
                 ..usdc_reserve.account.collateral
+            },
+            rate_limiter: {
+                let mut rate_limiter = usdc_reserve.account.rate_limiter;
+                rate_limiter
+                    .update(1000, Decimal::from(1_000_000u64))
+                    .unwrap();
+
+                rate_limiter
             },
             ..usdc_reserve.account
         }
@@ -123,9 +142,9 @@ async fn test_fail_redeem_too_much() {
 
     match res {
         // TokenError::Insufficient Funds
-        TransactionError::InstructionError(0, InstructionError::Custom(1)) => (),
+        TransactionError::InstructionError(1, InstructionError::Custom(1)) => (),
         // LendingError::TokenBurnFailed
-        TransactionError::InstructionError(0, InstructionError::Custom(19)) => (),
+        TransactionError::InstructionError(1, InstructionError::Custom(19)) => (),
         _ => panic!("Unexpected error: {:#?}", res),
     };
 }

@@ -63,10 +63,12 @@ async fn test_success_new() {
     // obligation gets liquidated if 100k * 0.55 = 10 SOL * sol_price => sol_price = 5.5k
     test.set_price(
         &wsol_mint::id(),
-        PriceArgs {
+        &PriceArgs {
             price: 5500,
             conf: 0,
             expo: 0,
+            ema_price: 5500,
+            ema_conf: 0,
         },
     )
     .await;
@@ -179,6 +181,7 @@ async fn test_success_new() {
                     .try_sub(Decimal::from(expected_borrow_repaid * LAMPORTS_TO_SOL))
                     .unwrap(),
                 market_price: Decimal::from(5500u64),
+                smoothed_market_price: Decimal::from(5500u64),
                 ..wsol_reserve.account.liquidity
             },
             ..wsol_reserve.account
@@ -210,6 +213,7 @@ async fn test_success_new() {
             .to_vec(),
             deposited_value: Decimal::from(100_000u64),
             borrowed_value: Decimal::from(55_000u64),
+            borrowed_value_upper_bound: Decimal::from(55_000u64),
             allowed_borrow_value: Decimal::from(50_000u64),
             unhealthy_borrow_value: Decimal::from(55_000u64),
             ..obligation.account
@@ -285,10 +289,12 @@ async fn test_success_insufficient_liquidity() {
     // obligation gets liquidated if 100k * 0.55 = 10 SOL * sol_price => sol_price == 5.5k
     test.set_price(
         &wsol_mint::id(),
-        PriceArgs {
+        &PriceArgs {
             price: 5500,
             conf: 0,
             expo: 0,
+            ema_price: 5500,
+            ema_conf: 0,
         },
     )
     .await;

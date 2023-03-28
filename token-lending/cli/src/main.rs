@@ -1,6 +1,7 @@
 use lending_state::SolendState;
 use solana_client::rpc_config::RpcSendTransactionConfig;
 use solana_sdk::{commitment_config::CommitmentLevel, compute_budget::ComputeBudgetInstruction};
+use solend_program::{instruction::set_lending_market_owner_and_config, state::RateLimiterConfig};
 use solend_sdk::{
     instruction::{
         liquidate_obligation_and_redeem_reserve_collateral, redeem_reserve_collateral,
@@ -88,6 +89,12 @@ struct PartialReserveConfig {
     pub protocol_liquidation_fee: Option<u8>,
     /// Protocol take rate is the amount borrowed interest protocol recieves, as a percentage  
     pub protocol_take_rate: Option<u8>,
+    /// Rate Limiter's max window size
+    pub rate_limiter_window_duration: Option<u64>,
+    /// Rate Limiter's max outflow per window
+    pub rate_limiter_max_outflow: Option<u64>,
+    /// Added borrow weight in basis points
+    pub added_borrow_weight_bps: Option<u64>,
 }
 
 /// Reserve Fees with optional fields
@@ -524,6 +531,55 @@ fn main() {
                 )
         )
         .subcommand(
+            SubCommand::with_name("set-lending-market-owner-and-config")
+                .about("Set lending market owner and config")
+                .arg(
+                    Arg::with_name("lending_market_owner")
+                        .long("market-owner")
+                        .validator(is_keypair)
+                        .value_name("KEYPAIR")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Owner of the lending market"),
+                )
+                .arg(
+                    Arg::with_name("lending_market")
+                        .long("market")
+                        .validator(is_pubkey)
+                        .value_name("PUBKEY")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Lending market address"),
+                )
+                .arg(
+                    Arg::with_name("new_lending_market_owner")
+                        .long("new-lending-market-owner")
+                        .validator(is_keypair)
+                        .value_name("KEYPAIR")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Owner of the lending market"),
+                )
+                .arg(
+                    Arg::with_name("rate_limiter_window_duration")
+                        .long("rate-limiter-window-duration")
+                        .validator(is_parsable::<u64>)
+                        .value_name("INTEGER")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Rate Limiter Window Duration in Slots"),
+                )
+                .arg(
+                    Arg::with_name("rate_limiter_max_outflow")
+                        .long("rate-limiter-max-outflow")
+                        .validator(is_parsable::<u64>)
+                        .value_name("INTEGER")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Rate Limiter max outflow denominated in dollars within 1 window"),
+                )
+        )
+        .subcommand(
             SubCommand::with_name("update-reserve")
                 .about("Update a reserve config")
                 .arg(
@@ -716,6 +772,33 @@ fn main() {
                         .required(false)
                         .help("Switchboard price feed account: https://switchboard.xyz/#/explorer"),
                 )
+                .arg(
+                    Arg::with_name("rate_limiter_window_duration")
+                        .long("rate-limiter-window-duration")
+                        .validator(is_parsable::<u64>)
+                        .value_name("INTEGER")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Rate Limiter Window Duration in Slots"),
+                )
+                .arg(
+                    Arg::with_name("rate_limiter_max_outflow")
+                        .long("rate-limiter-max-outflow")
+                        .validator(is_parsable::<u64>)
+                        .value_name("INTEGER")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Rate Limiter max outflow of token amounts within 1 window"),
+                )
+                .arg(
+                    Arg::with_name("added_borrow_weight_bps")
+                        .long("added-borrow-weight-bps")
+                        .validator(is_parsable::<u64>)
+                        .value_name("INTEGER")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Added borrow weight in basis points"),
+                )
         )
         .get_matches();
 
@@ -871,6 +954,7 @@ fn main() {
                     fee_receiver: liquidity_fee_receiver_keypair.pubkey(),
                     protocol_liquidation_fee,
                     protocol_take_rate,
+                    added_borrow_weight_bps: 10000,
                 },
                 source_liquidity_pubkey,
                 source_liquidity_owner_keypair,
@@ -881,6 +965,24 @@ fn main() {
                 switchboard_feed_pubkey,
                 liquidity_fee_receiver_keypair,
                 source_liquidity,
+            )
+        }
+        ("set-lending-market-owner-and-config", Some(arg_matches)) => {
+            let lending_market_owner_keypair =
+                keypair_of(arg_matches, "lending_market_owner").unwrap();
+            let lending_market_pubkey = pubkey_of(arg_matches, "lending_market").unwrap();
+            let new_lending_market_owner_keypair =
+                keypair_of(arg_matches, "new_lending_market_owner");
+            let rate_limiter_window_duration =
+                value_of(arg_matches, "rate_limiter_window_duration");
+            let rate_limiter_max_outflow = value_of(arg_matches, "rate_limiter_max_outflow");
+            command_set_lending_market_owner_and_config(
+                &mut config,
+                lending_market_pubkey,
+                lending_market_owner_keypair,
+                new_lending_market_owner_keypair,
+                rate_limiter_window_duration,
+                rate_limiter_max_outflow,
             )
         }
         ("update-reserve", Some(arg_matches)) => {
@@ -906,6 +1008,10 @@ fn main() {
             let pyth_product_pubkey = pubkey_of(arg_matches, "pyth_product");
             let pyth_price_pubkey = pubkey_of(arg_matches, "pyth_price");
             let switchboard_feed_pubkey = pubkey_of(arg_matches, "switchboard_feed");
+            let rate_limiter_window_duration =
+                value_of(arg_matches, "rate_limiter_window_duration");
+            let rate_limiter_max_outflow = value_of(arg_matches, "rate_limiter_max_outflow");
+            let added_borrow_weight_bps = value_of(arg_matches, "added_borrow_weight_bps");
 
             let borrow_fee_wad = borrow_fee.map(|fee| (fee * WAD as f64) as u64);
             let flash_loan_fee_wad = flash_loan_fee.map(|fee| (fee * WAD as f64) as u64);
@@ -930,6 +1036,9 @@ fn main() {
                     fee_receiver,
                     protocol_liquidation_fee,
                     protocol_take_rate,
+                    rate_limiter_window_duration,
+                    rate_limiter_max_outflow,
+                    added_borrow_weight_bps,
                 },
                 pyth_product_pubkey,
                 pyth_price_pubkey,
@@ -1437,6 +1546,50 @@ fn command_add_reserve(
     Ok(())
 }
 
+fn command_set_lending_market_owner_and_config(
+    config: &mut Config,
+    lending_market_pubkey: Pubkey,
+    lending_market_owner_keypair: Keypair,
+    new_lending_market_owner_keypair: Option<Keypair>,
+    rate_limiter_window_duration: Option<u64>,
+    rate_limiter_max_outflow: Option<u64>,
+) -> CommandResult {
+    let lending_market_info = config.rpc_client.get_account(&lending_market_pubkey)?;
+    let lending_market = LendingMarket::unpack_from_slice(lending_market_info.data.borrow())?;
+    println!("{:#?}", lending_market);
+
+    let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
+    let message = Message::new_with_blockhash(
+        &[set_lending_market_owner_and_config(
+            config.lending_program_id,
+            lending_market_pubkey,
+            lending_market_owner_keypair.pubkey(),
+            if let Some(owner) = new_lending_market_owner_keypair {
+                owner.pubkey()
+            } else {
+                lending_market.owner
+            },
+            RateLimiterConfig {
+                window_duration: rate_limiter_window_duration
+                    .unwrap_or(lending_market.rate_limiter.config.window_duration),
+                max_outflow: rate_limiter_max_outflow
+                    .unwrap_or(lending_market.rate_limiter.config.max_outflow),
+            },
+        )],
+        Some(&config.fee_payer.pubkey()),
+        &recent_blockhash,
+    );
+
+    let transaction = Transaction::new(
+        &vec![config.fee_payer.as_ref(), &lending_market_owner_keypair],
+        message,
+        recent_blockhash,
+    );
+
+    send_transaction(config, transaction)?;
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments, clippy::unnecessary_unwrap)]
 fn command_update_reserve(
     config: &mut Config,
@@ -1450,6 +1603,7 @@ fn command_update_reserve(
 ) -> CommandResult {
     let reserve_info = config.rpc_client.get_account(&reserve_pubkey)?;
     let mut reserve = Reserve::unpack_from_slice(reserve_info.data.borrow())?;
+    println!("Reserve: {:#?}", reserve);
     let mut no_change = true;
     if reserve_config.optimal_utilization_rate.is_some()
         && reserve.config.optimal_utilization_rate
@@ -1664,6 +1818,46 @@ fn command_update_reserve(
         );
         reserve.liquidity.switchboard_oracle_pubkey = switchboard_feed_pubkey.unwrap();
     }
+
+    if reserve_config.rate_limiter_window_duration.is_some()
+        && reserve.rate_limiter.config.window_duration
+            != reserve_config.rate_limiter_window_duration.unwrap()
+    {
+        no_change = false;
+        println!(
+            "Updating rate_limiter_window_duration from {} to {}",
+            reserve.rate_limiter.config.window_duration,
+            reserve_config.rate_limiter_window_duration.unwrap(),
+        );
+        reserve.rate_limiter.config.window_duration =
+            reserve_config.rate_limiter_window_duration.unwrap();
+    }
+
+    if reserve_config.rate_limiter_max_outflow.is_some()
+        && reserve.rate_limiter.config.max_outflow
+            != reserve_config.rate_limiter_max_outflow.unwrap()
+    {
+        no_change = false;
+        println!(
+            "Updating rate_limiter_max_outflow from {} to {}",
+            reserve.rate_limiter.config.max_outflow,
+            reserve_config.rate_limiter_max_outflow.unwrap(),
+        );
+        reserve.rate_limiter.config.max_outflow = reserve_config.rate_limiter_max_outflow.unwrap();
+    }
+
+    if reserve_config.added_borrow_weight_bps.is_some()
+        && reserve.config.added_borrow_weight_bps != reserve_config.added_borrow_weight_bps.unwrap()
+    {
+        no_change = false;
+        println!(
+            "Updating added_borrow_weight_bps from {} to {}",
+            reserve.config.added_borrow_weight_bps,
+            reserve_config.added_borrow_weight_bps.unwrap(),
+        );
+        reserve.config.added_borrow_weight_bps = reserve_config.added_borrow_weight_bps.unwrap();
+    }
+
     if no_change {
         println!("No changes made for reserve {}", reserve_pubkey);
         return Ok(());
@@ -1675,6 +1869,10 @@ fn command_update_reserve(
         &[update_reserve_config(
             config.lending_program_id,
             reserve.config,
+            RateLimiterConfig {
+                window_duration: reserve.rate_limiter.config.window_duration,
+                max_outflow: reserve.rate_limiter.config.max_outflow,
+            },
             reserve_pubkey,
             lending_market_pubkey,
             lending_market_owner_keypair.pubkey(),

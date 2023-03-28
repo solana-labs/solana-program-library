@@ -26,7 +26,7 @@ construct_uint! {
 }
 
 /// Large decimal values, precise to 18 digits
-#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, Copy, Default, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Decimal(pub U192);
 
 impl Decimal {
@@ -53,6 +53,11 @@ impl Decimal {
     /// Create scaled decimal from percent value
     pub fn from_percent(percent: u8) -> Self {
         Self(U192::from(percent as u64 * PERCENT_SCALER))
+    }
+
+    /// Create scaled decimal from bps value
+    pub fn from_bps(bps: u64) -> Self {
+        Self::from(bps).try_div(10_000).unwrap()
     }
 
     /// Return raw scaled value if it fits within u128
@@ -108,6 +113,12 @@ impl fmt::Display for Decimal {
             scaled_val.insert(scaled_val.len() - SCALE, '.');
         }
         f.write_str(&scaled_val)
+    }
+}
+
+impl fmt::Debug for Decimal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
@@ -233,6 +244,12 @@ mod test {
         let right = Decimal::from(20u64).try_div(Decimal::from(100u64)).unwrap();
 
         assert_eq!(left, right);
+    }
+
+    #[test]
+    fn test_from_bps() {
+        let left = Decimal::from_bps(190000);
+        assert_eq!(left, Decimal::from(19u64));
     }
 
     #[test]

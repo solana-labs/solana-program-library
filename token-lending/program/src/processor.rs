@@ -30,6 +30,7 @@ use solana_program::{
         Sysvar,
     },
 };
+use solend_sdk::state::{RateLimiter, RateLimiterConfig};
 use solend_sdk::{switchboard_v2_devnet, switchboard_v2_mainnet};
 use spl_token::state::Mint;
 use std::{cmp::min, result::Result};
@@ -53,9 +54,17 @@ pub fn process_instruction(
             msg!("Instruction: Init Lending Market");
             process_init_lending_market(program_id, owner, quote_currency, accounts)
         }
-        LendingInstruction::SetLendingMarketOwner { new_owner } => {
+        LendingInstruction::SetLendingMarketOwnerAndConfig {
+            new_owner,
+            rate_limiter_config,
+        } => {
             msg!("Instruction: Set Lending Market Owner");
-            process_set_lending_market_owner(program_id, new_owner, accounts)
+            process_set_lending_market_owner_and_config(
+                program_id,
+                new_owner,
+                rate_limiter_config,
+                accounts,
+            )
         }
         LendingInstruction::InitReserve {
             liquidity_amount,
@@ -128,9 +137,12 @@ pub fn process_instruction(
                 accounts,
             )
         }
-        LendingInstruction::UpdateReserveConfig { config } => {
+        LendingInstruction::UpdateReserveConfig {
+            config,
+            rate_limiter_config,
+        } => {
             msg!("Instruction: UpdateReserveConfig");
-            process_update_reserve_config(program_id, config, accounts)
+            process_update_reserve_config(program_id, config, rate_limiter_config, accounts)
         }
         LendingInstruction::LiquidateObligationAndRedeemReserveCollateral { liquidity_amount } => {
             msg!("Instruction: Liquidate Obligation and Redeem Reserve Collateral");
@@ -197,9 +209,10 @@ fn process_init_lending_market(
 }
 
 #[inline(never)] // avoid stack frame limit
-fn process_set_lending_market_owner(
+fn process_set_lending_market_owner_and_config(
     program_id: &Pubkey,
     new_owner: Pubkey,
+    rate_limiter_config: RateLimiterConfig,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -221,6 +234,11 @@ fn process_set_lending_market_owner(
     }
 
     lending_market.owner = new_owner;
+
+    if rate_limiter_config != lending_market.rate_limiter.config {
+        lending_market.rate_limiter = RateLimiter::new(rate_limiter_config, Clock::get()?.slot);
+    }
+
     LendingMarket::pack(lending_market, &mut lending_market_info.data.borrow_mut())?;
 
     Ok(())
@@ -310,7 +328,8 @@ fn process_init_reserve(
     validate_pyth_keys(&lending_market, pyth_product_info, pyth_price_info)?;
     validate_switchboard_keys(&lending_market, switchboard_feed_info)?;
 
-    let market_price = get_price(Some(switchboard_feed_info), pyth_price_info, clock)?;
+    let (market_price, smoothed_market_price) =
+        get_price(Some(switchboard_feed_info), pyth_price_info, clock)?;
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
@@ -341,12 +360,14 @@ fn process_init_reserve(
             pyth_oracle_pubkey: *pyth_price_info.key,
             switchboard_oracle_pubkey: *switchboard_feed_info.key,
             market_price,
+            smoothed_market_price: smoothed_market_price.unwrap_or(market_price),
         }),
         collateral: ReserveCollateral::new(NewReserveCollateralParams {
             mint_pubkey: *reserve_collateral_mint_info.key,
             supply_pubkey: *reserve_collateral_supply_info.key,
         }),
         config,
+        rate_limiter_config: RateLimiterConfig::default(),
     });
 
     let collateral_amount = reserve.deposit_liquidity(liquidity_amount)?;
@@ -462,7 +483,21 @@ fn _refresh_reserve<'a>(
         return Err(LendingError::InvalidOracleConfig.into());
     }
 
-    reserve.liquidity.market_price = get_price(switchboard_feed_info, pyth_price_info, clock)?;
+    let (market_price, smoothed_market_price) =
+        get_price(switchboard_feed_info, pyth_price_info, clock)?;
+
+    reserve.liquidity.market_price = market_price;
+
+    if let Some(smoothed_market_price) = smoothed_market_price {
+        reserve.liquidity.smoothed_market_price = smoothed_market_price;
+    }
+
+    // currently there's no way to support two prices without a pyth oracle. So if a reserve
+    // only supports switchboard, reserve.smoothed_market_price == reserve.market_price
+    if reserve.liquidity.pyth_oracle_pubkey == solend_program::NULL_PUBKEY {
+        reserve.liquidity.smoothed_market_price = market_price;
+    }
+
     Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
 
     _refresh_reserve_interest(program_id, reserve_info, clock)
@@ -659,7 +694,6 @@ fn process_redeem_reserve_collateral(
     }
     let token_program_id = next_account_info(account_info_iter)?;
 
-    _refresh_reserve_interest(program_id, reserve_info, clock)?;
     _redeem_reserve_collateral(
         program_id,
         collateral_amount,
@@ -673,6 +707,7 @@ fn process_redeem_reserve_collateral(
         user_transfer_authority_info,
         clock,
         token_program_id,
+        true,
     )?;
     let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
     reserve.last_update.mark_stale();
@@ -695,8 +730,9 @@ fn _redeem_reserve_collateral<'a>(
     user_transfer_authority_info: &AccountInfo<'a>,
     clock: &Clock,
     token_program_id: &AccountInfo<'a>,
+    check_rate_limits: bool,
 ) -> Result<u64, ProgramError> {
-    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    let mut lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
         msg!("Lending market provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
@@ -750,8 +786,31 @@ fn _redeem_reserve_collateral<'a>(
     }
 
     let liquidity_amount = reserve.redeem_collateral(collateral_amount)?;
+
+    if check_rate_limits {
+        lending_market
+            .rate_limiter
+            .update(
+                clock.slot,
+                reserve.market_value_upper_bound(Decimal::from(liquidity_amount))?,
+            )
+            .map_err(|err| {
+                msg!("Market outflow limit exceeded! Please try again later.");
+                err
+            })?;
+
+        reserve
+            .rate_limiter
+            .update(clock.slot, Decimal::from(liquidity_amount))
+            .map_err(|err| {
+                msg!("Reserve outflow limit exceeded! Please try again later.");
+                err
+            })?;
+    }
+
     reserve.last_update.mark_stale();
     Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
+    LendingMarket::pack(lending_market, &mut lending_market_info.data.borrow_mut())?;
 
     spl_token_burn(TokenBurnParams {
         mint: reserve_collateral_mint_info.clone(),
@@ -837,6 +896,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
 
     let mut deposited_value = Decimal::zero();
     let mut borrowed_value = Decimal::zero();
+    let mut borrowed_value_upper_bound = Decimal::zero();
     let mut allowed_borrow_value = Decimal::zero();
     let mut unhealthy_borrow_value = Decimal::zero();
 
@@ -866,25 +926,22 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             return Err(LendingError::ReserveStale.into());
         }
 
-        // @TODO: add lookup table https://git.io/JOCYq
-        let decimals = 10u64
-            .checked_pow(deposit_reserve.liquidity.mint_decimals as u32)
-            .ok_or(LendingError::MathOverflow)?;
-
-        let market_value = deposit_reserve
+        let liquidity_amount = deposit_reserve
             .collateral_exchange_rate()?
-            .decimal_collateral_to_liquidity(collateral.deposited_amount.into())?
-            .try_mul(deposit_reserve.liquidity.market_price)?
-            .try_div(decimals)?;
-        collateral.market_value = market_value;
+            .decimal_collateral_to_liquidity(collateral.deposited_amount.into())?;
+
+        let market_value = deposit_reserve.market_value(liquidity_amount)?;
+        let market_value_lower_bound =
+            deposit_reserve.market_value_lower_bound(liquidity_amount)?;
 
         let loan_to_value_rate = Rate::from_percent(deposit_reserve.config.loan_to_value_ratio);
         let liquidation_threshold_rate =
             Rate::from_percent(deposit_reserve.config.liquidation_threshold);
 
+        collateral.market_value = market_value;
         deposited_value = deposited_value.try_add(market_value)?;
         allowed_borrow_value =
-            allowed_borrow_value.try_add(market_value.try_mul(loan_to_value_rate)?)?;
+            allowed_borrow_value.try_add(market_value_lower_bound.try_mul(loan_to_value_rate)?)?;
         unhealthy_borrow_value =
             unhealthy_borrow_value.try_add(market_value.try_mul(liquidation_threshold_rate)?)?;
     }
@@ -917,18 +974,15 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
 
         liquidity.accrue_interest(borrow_reserve.liquidity.cumulative_borrow_rate_wads)?;
 
-        // @TODO: add lookup table https://git.io/JOCYq
-        let decimals = 10u64
-            .checked_pow(borrow_reserve.liquidity.mint_decimals as u32)
-            .ok_or(LendingError::MathOverflow)?;
-
-        let market_value = liquidity
-            .borrowed_amount_wads
-            .try_mul(borrow_reserve.liquidity.market_price)?
-            .try_div(decimals)?;
+        let market_value = borrow_reserve.market_value(liquidity.borrowed_amount_wads)?;
+        let market_value_upper_bound =
+            borrow_reserve.market_value_upper_bound(liquidity.borrowed_amount_wads)?;
         liquidity.market_value = market_value;
 
-        borrowed_value = borrowed_value.try_add(market_value)?;
+        borrowed_value =
+            borrowed_value.try_add(market_value.try_mul(borrow_reserve.borrow_weight())?)?;
+        borrowed_value_upper_bound = borrowed_value_upper_bound
+            .try_add(market_value_upper_bound.try_mul(borrow_reserve.borrow_weight())?)?;
     }
 
     if account_info_iter.peek().is_some() {
@@ -938,6 +992,7 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
 
     obligation.deposited_value = deposited_value;
     obligation.borrowed_value = borrowed_value;
+    obligation.borrowed_value_upper_bound = borrowed_value_upper_bound;
 
     let global_unhealthy_borrow_value = Decimal::from(70000000u64);
     let global_allowed_borrow_value = Decimal::from(65000000u64);
@@ -1273,49 +1328,13 @@ fn _withdraw_obligation_collateral<'a>(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    let withdraw_amount = if obligation.borrows.is_empty() {
-        if collateral_amount == u64::MAX {
-            collateral.deposited_amount
-        } else {
-            collateral.deposited_amount.min(collateral_amount)
-        }
-    } else if obligation.deposited_value == Decimal::zero() {
-        msg!("Obligation deposited value is zero");
-        return Err(LendingError::ObligationDepositsZero.into());
-    } else {
-        let max_withdraw_value = obligation.max_withdraw_value(Rate::from_percent(
-            withdraw_reserve.config.loan_to_value_ratio,
-        ))?;
+    let max_withdraw_amount = obligation.max_withdraw_amount(collateral, &withdraw_reserve)?;
+    let withdraw_amount = std::cmp::min(collateral_amount, max_withdraw_amount);
 
-        if max_withdraw_value == Decimal::zero() {
-            msg!("Maximum withdraw value is zero");
-            return Err(LendingError::WithdrawTooLarge.into());
-        }
-
-        let withdraw_amount = if collateral_amount == u64::MAX {
-            let withdraw_value = max_withdraw_value.min(collateral.market_value);
-            let withdraw_pct = withdraw_value.try_div(collateral.market_value)?;
-            withdraw_pct
-                .try_mul(collateral.deposited_amount)?
-                .try_floor_u64()?
-                .min(collateral.deposited_amount)
-        } else {
-            let withdraw_amount = collateral_amount.min(collateral.deposited_amount);
-            let withdraw_pct =
-                Decimal::from(withdraw_amount).try_div(collateral.deposited_amount)?;
-            let withdraw_value = collateral.market_value.try_mul(withdraw_pct)?;
-            if withdraw_value > max_withdraw_value {
-                msg!("Withdraw value cannot exceed maximum withdraw value");
-                return Err(LendingError::WithdrawTooLarge.into());
-            }
-            withdraw_amount
-        };
-        if withdraw_amount == 0 {
-            msg!("Withdraw amount is too small to transfer collateral");
-            return Err(LendingError::WithdrawTooSmall.into());
-        }
-        withdraw_amount
-    };
+    if withdraw_amount == 0 {
+        msg!("Maximum withdraw value is zero");
+        return Err(LendingError::WithdrawTooLarge.into());
+    }
 
     obligation.withdraw(withdraw_amount, collateral_index)?;
     obligation.last_update.mark_stale();
@@ -1359,7 +1378,7 @@ fn process_borrow_obligation_liquidity(
     }
     let token_program_id = next_account_info(account_info_iter)?;
 
-    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    let mut lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
         msg!("Lending market provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
@@ -1449,7 +1468,9 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    let remaining_borrow_value = obligation.remaining_borrow_value()?;
+    let remaining_borrow_value = obligation
+        .remaining_borrow_value()
+        .unwrap_or_else(|_| Decimal::zero());
     if remaining_borrow_value == Decimal::zero() {
         msg!("Remaining borrow value is zero");
         return Err(LendingError::BorrowTooLarge.into());
@@ -1476,6 +1497,30 @@ fn process_borrow_obligation_liquidity(
     }
 
     let cumulative_borrow_rate_wads = borrow_reserve.liquidity.cumulative_borrow_rate_wads;
+
+    // check outflow rate limits
+    {
+        lending_market
+            .rate_limiter
+            .update(
+                clock.slot,
+                borrow_reserve.market_value_upper_bound(borrow_amount)?,
+            )
+            .map_err(|err| {
+                msg!("Market outflow limit exceeded! Please try again later.");
+                err
+            })?;
+
+        borrow_reserve
+            .rate_limiter
+            .update(clock.slot, borrow_amount)
+            .map_err(|err| {
+                msg!("Reserve outflow limit exceeded! Please try again later");
+                err
+            })?;
+    }
+
+    LendingMarket::pack(lending_market, &mut lending_market_info.data.borrow_mut())?;
 
     borrow_reserve.liquidity.borrow(borrow_amount)?;
     borrow_reserve.last_update.mark_stale();
@@ -1885,6 +1930,7 @@ fn process_liquidate_obligation_and_redeem_reserve_collateral(
             user_transfer_authority_info,
             clock,
             token_program_id,
+            false,
         )?;
         let withdraw_reserve = Reserve::unpack(&withdraw_reserve_info.data.borrow())?;
         if &withdraw_reserve.config.fee_receiver != withdraw_reserve_liquidity_fee_receiver_info.key
@@ -1959,6 +2005,7 @@ fn process_withdraw_obligation_collateral_and_redeem_reserve_liquidity(
         user_transfer_authority_info,
         clock,
         token_program_id,
+        true,
     )?;
     Ok(())
 }
@@ -1967,6 +2014,7 @@ fn process_withdraw_obligation_collateral_and_redeem_reserve_liquidity(
 fn process_update_reserve_config(
     program_id: &Pubkey,
     config: ReserveConfig,
+    rate_limiter_config: RateLimiterConfig,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     validate_reserve_config(config)?;
@@ -2022,6 +2070,11 @@ fn process_update_reserve_config(
             "Derived lending market authority does not match the lending market authority provided"
         );
         return Err(LendingError::InvalidMarketAuthority.into());
+    }
+
+    // if window duration or max outflow are different, then create a new rate limiter instance.
+    if rate_limiter_config != reserve.rate_limiter.config {
+        reserve.rate_limiter = RateLimiter::new(rate_limiter_config, Clock::get()?.slot);
     }
 
     if *pyth_price_info.key != reserve.liquidity.pyth_oracle_pubkey {
@@ -2540,19 +2593,26 @@ fn get_pyth_product_quote_currency(
         })
 }
 
+/// get_price tries to load the oracle price from pyth, and if it fails, uses switchboard.
+/// The first element in the returned tuple is the market price, and the second is the optional
+/// smoothed price (eg ema, twap).
 fn get_price(
     switchboard_feed_info: Option<&AccountInfo>,
     pyth_price_account_info: &AccountInfo,
     clock: &Clock,
-) -> Result<Decimal, ProgramError> {
-    let pyth_price = get_pyth_price(pyth_price_account_info, clock).unwrap_or_default();
-    if pyth_price != Decimal::zero() {
-        return Ok(pyth_price);
+) -> Result<(Decimal, Option<Decimal>), ProgramError> {
+    if let Ok(prices) = get_pyth_price(pyth_price_account_info, clock) {
+        return Ok((prices.0, Some(prices.1)));
     }
 
     // if switchboard was not passed in don't try to grab the price
     if let Some(switchboard_feed_info_unwrapped) = switchboard_feed_info {
-        return get_switchboard_price(switchboard_feed_info_unwrapped, clock);
+        // TODO: add support for switchboard smoothed prices. Probably need to add a new
+        // switchboard account per reserve.
+        return match get_switchboard_price(switchboard_feed_info_unwrapped, clock) {
+            Ok(price) => Ok((price, None)),
+            Err(e) => Err(e),
+        };
     }
 
     Err(LendingError::InvalidOracleConfig.into())

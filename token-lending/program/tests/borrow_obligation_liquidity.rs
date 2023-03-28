@@ -1,8 +1,9 @@
 #![cfg(feature = "test-bpf")]
 
+use solend_program::math::TryDiv;
 mod helpers;
 
-use solend_program::state::ReserveFees;
+use solend_program::state::{RateLimiterConfig, ReserveFees};
 use std::collections::HashSet;
 
 use helpers::solend_program_test::{
@@ -31,8 +32,9 @@ async fn setup(
     User,
     Info<Obligation>,
     User,
+    User,
 ) {
-    let (mut test, lending_market, usdc_reserve, wsol_reserve, _, user) =
+    let (mut test, lending_market, usdc_reserve, wsol_reserve, lending_market_owner, user) =
         setup_world(&test_reserve_config(), wsol_reserve_config).await;
 
     let obligation = lending_market
@@ -98,21 +100,30 @@ async fn setup(
         user,
         obligation,
         host_fee_receiver,
+        lending_market_owner,
     )
 }
 
 #[tokio::test]
 async fn test_success() {
-    let (mut test, lending_market, usdc_reserve, wsol_reserve, user, obligation, host_fee_receiver) =
-        setup(&ReserveConfig {
-            fees: ReserveFees {
-                borrow_fee_wad: 100_000_000_000,
-                flash_loan_fee_wad: 0,
-                host_fee_percentage: 20,
-            },
-            ..test_reserve_config()
-        })
-        .await;
+    let (
+        mut test,
+        lending_market,
+        usdc_reserve,
+        wsol_reserve,
+        user,
+        obligation,
+        host_fee_receiver,
+        _,
+    ) = setup(&ReserveConfig {
+        fees: ReserveFees {
+            borrow_fee_wad: 100_000_000_000,
+            flash_loan_fee_wad: 0,
+            host_fee_percentage: 20,
+        },
+        ..test_reserve_config()
+    })
+    .await;
 
     let balance_checker = BalanceChecker::start(
         &mut test,
@@ -166,26 +177,54 @@ async fn test_success() {
     assert_eq!(mint_supply_changes, HashSet::new());
 
     // check program state
-    let lending_market_post = test.load_account(lending_market.pubkey).await;
-    assert_eq!(lending_market, lending_market_post);
+    let lending_market_post = test
+        .load_account::<LendingMarket>(lending_market.pubkey)
+        .await;
+    assert_eq!(
+        lending_market_post.account,
+        LendingMarket {
+            rate_limiter: {
+                let mut rate_limiter = lending_market.account.rate_limiter;
+                rate_limiter
+                    .update(
+                        1000,
+                        Decimal::from(10 * (4 * LAMPORTS_PER_SOL + 400))
+                            .try_div(Decimal::from(1_000_000_000_u64))
+                            .unwrap(),
+                    )
+                    .unwrap();
+                rate_limiter
+            },
+            ..lending_market.account
+        }
+    );
 
     let wsol_reserve_post = test.load_account::<Reserve>(wsol_reserve.pubkey).await;
-    assert_eq!(
-        wsol_reserve_post.account,
-        Reserve {
-            last_update: LastUpdate {
-                slot: 1000,
-                stale: true
-            },
-            liquidity: ReserveLiquidity {
-                available_amount: 6 * LAMPORTS_PER_SOL - (4 * LAMPORTS_PER_SOL + 400),
-                borrowed_amount_wads: Decimal::from(4 * LAMPORTS_PER_SOL + 400),
-                ..wsol_reserve.account.liquidity
-            },
-            ..wsol_reserve.account
+    let expected_wsol_reserve_post = Reserve {
+        last_update: LastUpdate {
+            slot: 1000,
+            stale: true,
         },
-        "{:#?}",
-        wsol_reserve_post
+        liquidity: ReserveLiquidity {
+            available_amount: 6 * LAMPORTS_PER_SOL - (4 * LAMPORTS_PER_SOL + 400),
+            borrowed_amount_wads: Decimal::from(4 * LAMPORTS_PER_SOL + 400),
+            ..wsol_reserve.account.liquidity
+        },
+        rate_limiter: {
+            let mut rate_limiter = wsol_reserve.account.rate_limiter;
+            rate_limiter
+                .update(1000, Decimal::from(4 * LAMPORTS_PER_SOL + 400))
+                .unwrap();
+
+            rate_limiter
+        },
+        ..wsol_reserve.account
+    };
+
+    assert_eq!(
+        wsol_reserve_post.account, expected_wsol_reserve_post,
+        "{:#?} {:#?}",
+        wsol_reserve_post, expected_wsol_reserve_post
     );
 
     let obligation_post = test.load_account::<Obligation>(obligation.pubkey).await;
@@ -220,16 +259,24 @@ async fn test_success() {
 // FIXME this should really be a unit test
 #[tokio::test]
 async fn test_borrow_max() {
-    let (mut test, lending_market, usdc_reserve, wsol_reserve, user, obligation, host_fee_receiver) =
-        setup(&ReserveConfig {
-            fees: ReserveFees {
-                borrow_fee_wad: 100_000_000_000,
-                flash_loan_fee_wad: 0,
-                host_fee_percentage: 20,
-            },
-            ..test_reserve_config()
-        })
-        .await;
+    let (
+        mut test,
+        lending_market,
+        usdc_reserve,
+        wsol_reserve,
+        user,
+        obligation,
+        host_fee_receiver,
+        _,
+    ) = setup(&ReserveConfig {
+        fees: ReserveFees {
+            borrow_fee_wad: 100_000_000_000,
+            flash_loan_fee_wad: 0,
+            host_fee_percentage: 20,
+        },
+        ..test_reserve_config()
+    })
+    .await;
 
     let balance_checker = BalanceChecker::start(
         &mut test,
@@ -286,7 +333,7 @@ async fn test_borrow_max() {
 
 #[tokio::test]
 async fn test_fail_borrow_over_reserve_borrow_limit() {
-    let (mut test, lending_market, _, wsol_reserve, user, obligation, host_fee_receiver) =
+    let (mut test, lending_market, _, wsol_reserve, user, obligation, host_fee_receiver, _) =
         setup(&ReserveConfig {
             borrow_limit: LAMPORTS_PER_SOL,
             ..test_reserve_config()
@@ -314,4 +361,113 @@ async fn test_fail_borrow_over_reserve_borrow_limit() {
             InstructionError::Custom(LendingError::InvalidAmount as u32)
         )
     );
+}
+
+#[tokio::test]
+async fn test_fail_reserve_borrow_rate_limit_exceeded() {
+    let (
+        mut test,
+        lending_market,
+        _,
+        wsol_reserve,
+        user,
+        obligation,
+        host_fee_receiver,
+        lending_market_owner,
+    ) = setup(&ReserveConfig {
+        ..test_reserve_config()
+    })
+    .await;
+
+    // ie, within 10 slots, the maximum outflow is 1 SOL
+    lending_market
+        .update_reserve_config(
+            &mut test,
+            &lending_market_owner,
+            &wsol_reserve,
+            wsol_reserve.account.config,
+            RateLimiterConfig {
+                window_duration: 10,
+                max_outflow: LAMPORTS_PER_SOL,
+            },
+            None,
+        )
+        .await
+        .unwrap();
+
+    // borrow maximum amount
+    lending_market
+        .borrow_obligation_liquidity(
+            &mut test,
+            &wsol_reserve,
+            &obligation,
+            &user,
+            &host_fee_receiver.get_account(&wsol_mint::id()).unwrap(),
+            LAMPORTS_PER_SOL,
+        )
+        .await
+        .unwrap();
+
+    // for the next 10 slots, we shouldn't be able to borrow anything.
+    let cur_slot = test.get_clock().await.slot;
+    for _ in cur_slot..(cur_slot + 10) {
+        let res = lending_market
+            .borrow_obligation_liquidity(
+                &mut test,
+                &wsol_reserve,
+                &obligation,
+                &user,
+                &host_fee_receiver.get_account(&wsol_mint::id()).unwrap(),
+                1,
+            )
+            .await
+            .err()
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(
+            res,
+            TransactionError::InstructionError(
+                3,
+                InstructionError::Custom(LendingError::OutflowRateLimitExceeded as u32)
+            )
+        );
+
+        test.advance_clock_by_slots(1).await;
+    }
+
+    // after 10 slots, we should be able to at borrow most 0.1 SOL
+    let res = lending_market
+        .borrow_obligation_liquidity(
+            &mut test,
+            &wsol_reserve,
+            &obligation,
+            &user,
+            &host_fee_receiver.get_account(&wsol_mint::id()).unwrap(),
+            LAMPORTS_PER_SOL / 10 + 1,
+        )
+        .await
+        .err()
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(
+        res,
+        TransactionError::InstructionError(
+            3,
+            InstructionError::Custom(LendingError::OutflowRateLimitExceeded as u32)
+        )
+    );
+
+    lending_market
+        .borrow_obligation_liquidity(
+            &mut test,
+            &wsol_reserve,
+            &obligation,
+            &user,
+            &host_fee_receiver.get_account(&wsol_mint::id()).unwrap(),
+            LAMPORTS_PER_SOL / 10,
+        )
+        .await
+        .unwrap();
 }

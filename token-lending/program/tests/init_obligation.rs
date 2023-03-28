@@ -45,6 +45,7 @@ async fn test_success() {
             borrows: Vec::new(),
             deposited_value: Decimal::zero(),
             borrowed_value: Decimal::zero(),
+            borrowed_value_upper_bound: Decimal::zero(),
             allowed_borrow_value: Decimal::zero(),
             unhealthy_borrow_value: Decimal::zero()
         }

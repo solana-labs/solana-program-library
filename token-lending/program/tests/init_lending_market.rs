@@ -12,11 +12,13 @@ use solana_sdk::signer::Signer;
 use solana_sdk::transaction::TransactionError;
 use solend_program::error::LendingError;
 use solend_program::instruction::init_lending_market;
-use solend_program::state::{LendingMarket, PROGRAM_VERSION};
+use solend_program::state::{LendingMarket, RateLimiter, PROGRAM_VERSION};
 
 #[tokio::test]
 async fn test_success() {
     let mut test = SolendProgramTest::start_new().await;
+    test.advance_clock_by_slots(1000).await;
+
     let lending_market_owner = User::new_with_balances(&mut test, &[]).await;
 
     let lending_market = test
@@ -33,6 +35,7 @@ async fn test_success() {
             token_program_id: spl_token::id(),
             oracle_program_id: mock_pyth_program::id(),
             switchboard_oracle_program_id: mock_pyth_program::id(),
+            rate_limiter: RateLimiter::default(),
         }
     );
 }
@@ -40,6 +43,8 @@ async fn test_success() {
 #[tokio::test]
 async fn test_already_initialized() {
     let mut test = SolendProgramTest::start_new().await;
+    test.advance_clock_by_slots(1000).await;
+
     let lending_market_owner = User::new_with_balances(&mut test, &[]).await;
 
     let keypair = Keypair::new();

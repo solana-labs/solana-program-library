@@ -2,6 +2,7 @@
 
 mod helpers;
 
+use crate::solend_program_test::PriceArgs;
 use std::collections::HashSet;
 
 use helpers::solend_program_test::{setup_world, BalanceChecker, Info, SolendProgramTest, User};
@@ -135,6 +136,30 @@ async fn setup() -> (
 async fn test_success() {
     let (mut test, lending_market, usdc_reserve, wsol_reserve, user, obligation) = setup().await;
 
+    test.set_price(
+        &usdc_mint::id(),
+        &PriceArgs {
+            price: 10,
+            conf: 1,
+            expo: -1,
+            ema_price: 9,
+            ema_conf: 1,
+        },
+    )
+    .await;
+
+    test.set_price(
+        &wsol_mint::id(),
+        &PriceArgs {
+            price: 10,
+            conf: 1,
+            expo: 0,
+            ema_price: 11,
+            ema_conf: 1,
+        },
+    )
+    .await;
+
     test.advance_clock_by_slots(1).await;
 
     let balance_checker =
@@ -165,6 +190,10 @@ async fn test_success() {
                 slot: 1001,
                 stale: false
             },
+            liquidity: ReserveLiquidity {
+                smoothed_market_price: Decimal::from_percent(90),
+                ..usdc_reserve.account.liquidity
+            },
             ..usdc_reserve.account
         }
     );
@@ -194,6 +223,7 @@ async fn test_success() {
                 available_amount: 0,
                 borrowed_amount_wads: new_borrowed_amount_wads,
                 cumulative_borrow_rate_wads: new_cumulative_borrow_rate,
+                smoothed_market_price: Decimal::from(11u64),
                 ..wsol_reserve.account.liquidity
             },
             ..wsol_reserve.account
@@ -221,7 +251,29 @@ async fn test_success() {
                 market_value: new_borrow_value
             }]
             .to_vec(),
-            borrowed_value: new_borrow_value,
+
+            borrowed_value: new_borrowed_amount_wads
+                .try_mul(Decimal::from(10u64))
+                .unwrap()
+                .try_div(Decimal::from(LAMPORTS_PER_SOL))
+                .unwrap(),
+
+            // uses max(10, 11) = 11 for sol price
+            borrowed_value_upper_bound: new_borrowed_amount_wads
+                .try_mul(Decimal::from(11u64))
+                .unwrap()
+                .try_div(Decimal::from(LAMPORTS_PER_SOL))
+                .unwrap(),
+
+            // uses min(1, 0.9) for usdc price
+            allowed_borrow_value: Decimal::from(100_000u64)
+                .try_mul(Decimal::from_percent(
+                    usdc_reserve.account.config.loan_to_value_ratio
+                ))
+                .unwrap()
+                .try_mul(Decimal::from_percent(90))
+                .unwrap(),
+
             ..obligation.account
         }
     );

@@ -53,11 +53,16 @@ pub fn test_reserve_config() -> ReserveConfig {
         fee_receiver: Keypair::new().pubkey(),
         protocol_liquidation_fee: 0,
         protocol_take_rate: 0,
+        added_borrow_weight_bps: 0,
     }
 }
 
 pub mod usdc_mint {
     solana_program::declare_id!("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+}
+
+pub mod usdt_mint {
+    solana_program::declare_id!("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB");
 }
 
 pub mod wsol_mint {

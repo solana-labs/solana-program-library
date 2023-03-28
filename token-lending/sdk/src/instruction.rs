@@ -2,7 +2,7 @@
 
 use crate::{
     error::LendingError,
-    state::{ReserveConfig, ReserveFees},
+    state::{RateLimiterConfig, ReserveConfig, ReserveFees},
 };
 use solana_program::{
     instruction::{AccountMeta, Instruction},
@@ -41,9 +41,11 @@ pub enum LendingInstruction {
     ///
     ///   0. `[writable]` Lending market account.
     ///   1. `[signer]` Current owner.
-    SetLendingMarketOwner {
+    SetLendingMarketOwnerAndConfig {
         /// The new owner
         new_owner: Pubkey,
+        /// The new config
+        rate_limiter_config: RateLimiterConfig,
     },
 
     // 2
@@ -379,6 +381,8 @@ pub enum LendingInstruction {
     UpdateReserveConfig {
         /// Reserve config to update to
         config: ReserveConfig,
+        /// Rate limiter config
+        rate_limiter_config: RateLimiterConfig,
     },
 
     // 17
@@ -478,8 +482,16 @@ impl LendingInstruction {
                 }
             }
             1 => {
-                let (new_owner, _rest) = Self::unpack_pubkey(rest)?;
-                Self::SetLendingMarketOwner { new_owner }
+                let (new_owner, rest) = Self::unpack_pubkey(rest)?;
+                let (window_duration, rest) = Self::unpack_u64(rest)?;
+                let (max_outflow, _rest) = Self::unpack_u64(rest)?;
+                Self::SetLendingMarketOwnerAndConfig {
+                    new_owner,
+                    rate_limiter_config: RateLimiterConfig {
+                        window_duration,
+                        max_outflow,
+                    },
+                }
             }
             2 => {
                 let (liquidity_amount, rest) = Self::unpack_u64(rest)?;
@@ -497,7 +509,8 @@ impl LendingInstruction {
                 let (borrow_limit, rest) = Self::unpack_u64(rest)?;
                 let (fee_receiver, rest) = Self::unpack_pubkey(rest)?;
                 let (protocol_liquidation_fee, rest) = Self::unpack_u8(rest)?;
-                let (protocol_take_rate, _rest) = Self::unpack_u8(rest)?;
+                let (protocol_take_rate, rest) = Self::unpack_u8(rest)?;
+                let (added_borrow_weight_bps, _rest) = Self::unpack_u64(rest)?;
                 Self::InitReserve {
                     liquidity_amount,
                     config: ReserveConfig {
@@ -518,6 +531,7 @@ impl LendingInstruction {
                         fee_receiver,
                         protocol_liquidation_fee,
                         protocol_take_rate,
+                        added_borrow_weight_bps,
                     },
                 }
             }
@@ -579,7 +593,11 @@ impl LendingInstruction {
                 let (borrow_limit, rest) = Self::unpack_u64(rest)?;
                 let (fee_receiver, rest) = Self::unpack_pubkey(rest)?;
                 let (protocol_liquidation_fee, rest) = Self::unpack_u8(rest)?;
-                let (protocol_take_rate, _rest) = Self::unpack_u8(rest)?;
+                let (protocol_take_rate, rest) = Self::unpack_u8(rest)?;
+                let (added_borrow_weight_bps, rest) = Self::unpack_u64(rest)?;
+                let (window_duration, rest) = Self::unpack_u64(rest)?;
+                let (max_outflow, _rest) = Self::unpack_u64(rest)?;
+
                 Self::UpdateReserveConfig {
                     config: ReserveConfig {
                         optimal_utilization_rate,
@@ -599,6 +617,11 @@ impl LendingInstruction {
                         fee_receiver,
                         protocol_liquidation_fee,
                         protocol_take_rate,
+                        added_borrow_weight_bps,
+                    },
+                    rate_limiter_config: RateLimiterConfig {
+                        window_duration,
+                        max_outflow,
                     },
                 }
             }
@@ -690,9 +713,14 @@ impl LendingInstruction {
                 buf.extend_from_slice(owner.as_ref());
                 buf.extend_from_slice(quote_currency.as_ref());
             }
-            Self::SetLendingMarketOwner { new_owner } => {
+            Self::SetLendingMarketOwnerAndConfig {
+                new_owner,
+                rate_limiter_config: config,
+            } => {
                 buf.push(1);
                 buf.extend_from_slice(new_owner.as_ref());
+                buf.extend_from_slice(&config.window_duration.to_le_bytes());
+                buf.extend_from_slice(&config.max_outflow.to_le_bytes());
             }
             Self::InitReserve {
                 liquidity_amount,
@@ -716,6 +744,7 @@ impl LendingInstruction {
                         fee_receiver,
                         protocol_liquidation_fee,
                         protocol_take_rate,
+                        added_borrow_weight_bps: borrow_weight_bps,
                     },
             } => {
                 buf.push(2);
@@ -735,6 +764,7 @@ impl LendingInstruction {
                 buf.extend_from_slice(&fee_receiver.to_bytes());
                 buf.extend_from_slice(&protocol_liquidation_fee.to_le_bytes());
                 buf.extend_from_slice(&protocol_take_rate.to_le_bytes());
+                buf.extend_from_slice(&borrow_weight_bps.to_le_bytes());
             }
             Self::RefreshReserve => {
                 buf.push(3);
@@ -785,7 +815,10 @@ impl LendingInstruction {
                 buf.push(15);
                 buf.extend_from_slice(&collateral_amount.to_le_bytes());
             }
-            Self::UpdateReserveConfig { config } => {
+            Self::UpdateReserveConfig {
+                config,
+                rate_limiter_config,
+            } => {
                 buf.push(16);
                 buf.extend_from_slice(&config.optimal_utilization_rate.to_le_bytes());
                 buf.extend_from_slice(&config.loan_to_value_ratio.to_le_bytes());
@@ -802,6 +835,9 @@ impl LendingInstruction {
                 buf.extend_from_slice(&config.fee_receiver.to_bytes());
                 buf.extend_from_slice(&config.protocol_liquidation_fee.to_le_bytes());
                 buf.extend_from_slice(&config.protocol_take_rate.to_le_bytes());
+                buf.extend_from_slice(&config.added_borrow_weight_bps.to_le_bytes());
+                buf.extend_from_slice(&rate_limiter_config.window_duration.to_le_bytes());
+                buf.extend_from_slice(&rate_limiter_config.max_outflow.to_le_bytes());
             }
             Self::LiquidateObligationAndRedeemReserveCollateral { liquidity_amount } => {
                 buf.push(17);
@@ -854,11 +890,12 @@ pub fn init_lending_market(
 }
 
 /// Creates a 'SetLendingMarketOwner' instruction.
-pub fn set_lending_market_owner(
+pub fn set_lending_market_owner_and_config(
     program_id: Pubkey,
     lending_market_pubkey: Pubkey,
     lending_market_owner: Pubkey,
     new_owner: Pubkey,
+    rate_limiter_config: RateLimiterConfig,
 ) -> Instruction {
     Instruction {
         program_id,
@@ -866,7 +903,11 @@ pub fn set_lending_market_owner(
             AccountMeta::new(lending_market_pubkey, false),
             AccountMeta::new_readonly(lending_market_owner, true),
         ],
-        data: LendingInstruction::SetLendingMarketOwner { new_owner }.pack(),
+        data: LendingInstruction::SetLendingMarketOwnerAndConfig {
+            new_owner,
+            rate_limiter_config,
+        }
+        .pack(),
     }
 }
 
@@ -1002,7 +1043,7 @@ pub fn redeem_reserve_collateral(
             AccountMeta::new(reserve_pubkey, false),
             AccountMeta::new(reserve_collateral_mint_pubkey, false),
             AccountMeta::new(reserve_liquidity_supply_pubkey, false),
-            AccountMeta::new_readonly(lending_market_pubkey, false),
+            AccountMeta::new(lending_market_pubkey, false),
             AccountMeta::new_readonly(lending_market_authority_pubkey, false),
             AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
             AccountMeta::new_readonly(spl_token::id(), false),
@@ -1155,7 +1196,7 @@ pub fn withdraw_obligation_collateral_and_redeem_reserve_collateral(
             AccountMeta::new(destination_collateral_pubkey, false),
             AccountMeta::new(withdraw_reserve_pubkey, false),
             AccountMeta::new(obligation_pubkey, false),
-            AccountMeta::new_readonly(lending_market_pubkey, false),
+            AccountMeta::new(lending_market_pubkey, false),
             AccountMeta::new_readonly(lending_market_authority_pubkey, false),
             AccountMeta::new(destination_liquidity_pubkey, false),
             AccountMeta::new(reserve_collateral_mint_pubkey, false),
@@ -1227,7 +1268,7 @@ pub fn borrow_obligation_liquidity(
         AccountMeta::new(borrow_reserve_pubkey, false),
         AccountMeta::new(borrow_reserve_liquidity_fee_receiver_pubkey, false),
         AccountMeta::new(obligation_pubkey, false),
-        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new(lending_market_pubkey, false),
         AccountMeta::new_readonly(lending_market_authority_pubkey, false),
         AccountMeta::new_readonly(obligation_owner_pubkey, true),
         AccountMeta::new_readonly(spl_token::id(), false),
@@ -1312,6 +1353,7 @@ pub fn liquidate_obligation(
 pub fn update_reserve_config(
     program_id: Pubkey,
     config: ReserveConfig,
+    rate_limiter_config: RateLimiterConfig,
     reserve_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     lending_market_owner_pubkey: Pubkey,
@@ -1335,7 +1377,11 @@ pub fn update_reserve_config(
     Instruction {
         program_id,
         accounts,
-        data: LendingInstruction::UpdateReserveConfig { config }.pack(),
+        data: LendingInstruction::UpdateReserveConfig {
+            config,
+            rate_limiter_config,
+        }
+        .pack(),
     }
 }
 

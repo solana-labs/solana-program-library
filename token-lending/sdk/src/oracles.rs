@@ -4,7 +4,8 @@ use crate::{
     error::LendingError,
     math::{Decimal, TryDiv, TryMul},
 };
-use pyth_sdk_solana;
+use pyth_sdk_solana::Price;
+// use pyth_sdk_solana;
 use solana_program::{
     account_info::AccountInfo, msg, program_error::ProgramError, sysvar::clock::Clock,
 };
@@ -13,7 +14,7 @@ use std::{convert::TryInto, result::Result};
 pub fn get_pyth_price(
     pyth_price_info: &AccountInfo,
     clock: &Clock,
-) -> Result<Decimal, ProgramError> {
+) -> Result<(Decimal, Decimal), ProgramError> {
     const PYTH_CONFIDENCE_RATIO: u64 = 10;
     const STALE_AFTER_SLOTS_ELAPSED: u64 = 240; // roughly 2 min
 
@@ -50,7 +51,28 @@ pub fn get_pyth_price(
         return Err(LendingError::InvalidOracleConfig.into());
     }
 
-    let market_price = if pyth_price.expo >= 0 {
+    let market_price = pyth_price_to_decimal(&pyth_price);
+    let ema_price = {
+        let price_feed = price_account.to_price_feed(pyth_price_info.key);
+        // this can be unchecked bc the ema price is only used to _limit_ borrows and withdraws.
+        // ie staleness doesn't _really_ matter for this field.
+        //
+        // the pyth EMA is also updated every time the regular spot price is updated anyways so in
+        // reality the staleness should never be an issue.
+        let ema_price = price_feed.get_ema_price_unchecked();
+        pyth_price_to_decimal(&ema_price)?
+    };
+
+    Ok((market_price?, ema_price))
+}
+
+fn pyth_price_to_decimal(pyth_price: &Price) -> Result<Decimal, ProgramError> {
+    let price: u64 = pyth_price.price.try_into().map_err(|_| {
+        msg!("Oracle price cannot be negative");
+        LendingError::InvalidOracleConfig
+    })?;
+
+    if pyth_price.expo >= 0 {
         let exponent = pyth_price
             .expo
             .try_into()
@@ -58,7 +80,7 @@ pub fn get_pyth_price(
         let zeros = 10u64
             .checked_pow(exponent)
             .ok_or(LendingError::MathOverflow)?;
-        Decimal::from(price).try_mul(zeros)?
+        Decimal::from(price).try_mul(zeros)
     } else {
         let exponent = pyth_price
             .expo
@@ -69,10 +91,8 @@ pub fn get_pyth_price(
         let decimals = 10u64
             .checked_pow(exponent)
             .ok_or(LendingError::MathOverflow)?;
-        Decimal::from(price).try_div(decimals)?
-    };
-
-    Ok(market_price)
+        Decimal::from(price).try_div(decimals)
+    }
 }
 
 #[cfg(test)]
@@ -80,6 +100,7 @@ mod test {
     use super::*;
     use bytemuck::bytes_of_mut;
     use proptest::prelude::*;
+    use pyth_sdk_solana::state::Rational;
     use pyth_sdk_solana::state::{
         AccountType, CorpAction, PriceAccount, PriceInfo, PriceStatus, PriceType, MAGIC, VERSION_2,
     };
@@ -89,7 +110,7 @@ mod test {
     struct PythPriceTestCase {
         price_account: PriceAccount,
         clock: Clock,
-        expected_result: Result<Decimal, ProgramError>,
+        expected_result: Result<(Decimal, Decimal), ProgramError>,
     }
 
     fn pyth_price_cases() -> impl Strategy<Value = PythPriceTestCase> {
@@ -102,6 +123,11 @@ mod test {
                     atype: AccountType::Price as u32,
                     ptype: PriceType::Price,
                     expo: 10,
+                    ema_price: Rational {
+                        val: 11,
+                        numer: 110,
+                        denom: 10,
+                    },
                     agg: PriceInfo {
                         price: 10,
                         conf: 1,
@@ -126,6 +152,11 @@ mod test {
                     atype: AccountType::Price as u32,
                     ptype: PriceType::Price,
                     expo: 10,
+                    ema_price: Rational {
+                        val: 11,
+                        numer: 110,
+                        denom: 10,
+                    },
                     agg: PriceInfo {
                         price: 10,
                         conf: 1,
@@ -149,6 +180,11 @@ mod test {
                     atype: AccountType::Product as u32,
                     ptype: PriceType::Price,
                     expo: 10,
+                    ema_price: Rational {
+                        val: 11,
+                        numer: 110,
+                        denom: 10,
+                    },
                     agg: PriceInfo {
                         price: 10,
                         conf: 1,
@@ -174,6 +210,11 @@ mod test {
                     ptype: PriceType::Price,
                     expo: 1,
                     timestamp: 0,
+                    ema_price: Rational {
+                        val: 11,
+                        numer: 110,
+                        denom: 10,
+                    },
                     agg: PriceInfo {
                         price: 200,
                         conf: 1,
@@ -187,7 +228,7 @@ mod test {
                     slot: 240,
                     ..Clock::default()
                 },
-                expected_result: Ok(Decimal::from(2000_u64))
+                expected_result: Ok((Decimal::from(2000_u64), Decimal::from(110_u64)))
             }),
             // case 7: success. most recent price has status == unknown, previous price not stale
             Just(PythPriceTestCase {
@@ -198,6 +239,11 @@ mod test {
                     ptype: PriceType::Price,
                     expo: 1,
                     timestamp: 20,
+                    ema_price: Rational {
+                        val: 11,
+                        numer: 110,
+                        denom: 10,
+                    },
                     agg: PriceInfo {
                         price: 200,
                         conf: 1,
@@ -214,7 +260,7 @@ mod test {
                     slot: 240,
                     ..Clock::default()
                 },
-                expected_result: Ok(Decimal::from(1900_u64))
+                expected_result: Ok((Decimal::from(1900_u64), Decimal::from(110_u64)))
             }),
             // case 8: failure. most recent price is stale
             Just(PythPriceTestCase {
@@ -225,6 +271,11 @@ mod test {
                     ptype: PriceType::Price,
                     expo: 1,
                     timestamp: 0,
+                    ema_price: Rational {
+                        val: 11,
+                        numer: 110,
+                        denom: 10,
+                    },
                     agg: PriceInfo {
                         price: 200,
                         conf: 1,
@@ -250,6 +301,11 @@ mod test {
                     ptype: PriceType::Price,
                     expo: 1,
                     timestamp: 1,
+                    ema_price: Rational {
+                        val: 11,
+                        numer: 110,
+                        denom: 10,
+                    },
                     agg: PriceInfo {
                         price: 200,
                         conf: 1,
@@ -277,6 +333,11 @@ mod test {
                     ptype: PriceType::Price,
                     expo: 1,
                     timestamp: 1,
+                    ema_price: Rational {
+                        val: 11,
+                        numer: 110,
+                        denom: 10,
+                    },
                     agg: PriceInfo {
                         price: -200,
                         conf: 1,
@@ -301,6 +362,11 @@ mod test {
                     ptype: PriceType::Price,
                     expo: 1,
                     timestamp: 1,
+                    ema_price: Rational {
+                        val: 11,
+                        numer: 110,
+                        denom: 10,
+                    },
                     agg: PriceInfo {
                         price: 200,
                         conf: 40,

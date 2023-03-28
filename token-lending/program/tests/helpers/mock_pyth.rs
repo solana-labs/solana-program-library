@@ -1,6 +1,6 @@
 use pyth_sdk_solana::state::{
-    AccountType, PriceAccount, PriceStatus, ProductAccount, MAGIC, PROD_ACCT_SIZE, PROD_ATTR_SIZE,
-    VERSION_2,
+    AccountType, PriceAccount, PriceStatus, ProductAccount, Rational, MAGIC, PROD_ACCT_SIZE,
+    PROD_ATTR_SIZE, VERSION_2,
 };
 /// mock oracle prices in tests with this program.
 use solana_program::{
@@ -34,7 +34,13 @@ pub enum MockPythInstruction {
 
     /// Accounts:
     /// 0: PriceAccount
-    SetPrice { price: i64, conf: u64, expo: i32 },
+    SetPrice {
+        price: i64,
+        conf: u64,
+        expo: i32,
+        ema_price: i64,
+        ema_conf: u64,
+    },
 
     /// Accounts:
     /// 0: AggregatorAccount
@@ -111,7 +117,13 @@ impl Processor {
 
                 Ok(())
             }
-            MockPythInstruction::SetPrice { price, conf, expo } => {
+            MockPythInstruction::SetPrice {
+                price,
+                conf,
+                expo,
+                ema_price,
+                ema_conf,
+            } => {
                 msg!("Mock Pyth: Set price");
                 let price_account_info = next_account_info(account_info_iter)?;
                 let data = &mut price_account_info.try_borrow_mut_data()?;
@@ -120,6 +132,19 @@ impl Processor {
                 price_account.agg.price = price;
                 price_account.agg.conf = conf;
                 price_account.expo = expo;
+
+                price_account.ema_price = Rational {
+                    val: ema_price,
+                    // these fields don't matter
+                    numer: 1,
+                    denom: 1,
+                };
+
+                price_account.ema_conf = Rational {
+                    val: ema_conf as i64,
+                    numer: 1,
+                    denom: 1,
+                };
 
                 price_account.last_slot = Clock::get()?.slot;
                 price_account.agg.pub_slot = Clock::get()?.slot;
@@ -201,10 +226,18 @@ pub fn set_price(
     price: i64,
     conf: u64,
     expo: i32,
+    ema_price: i64,
+    ema_conf: u64,
 ) -> Instruction {
-    let data = MockPythInstruction::SetPrice { price, conf, expo }
-        .try_to_vec()
-        .unwrap();
+    let data = MockPythInstruction::SetPrice {
+        price,
+        conf,
+        expo,
+        ema_price,
+        ema_conf,
+    }
+    .try_to_vec()
+    .unwrap();
     Instruction {
         program_id,
         accounts: vec![AccountMeta::new(price_account_pubkey, false)],

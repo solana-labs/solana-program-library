@@ -10,6 +10,8 @@ pub const WAD: u64 = 1_000_000_000_000_000_000;
 pub const HALF_WAD: u64 = 500_000_000_000_000_000;
 /// Scale for percentages
 pub const PERCENT_SCALER: u64 = 10_000_000_000_000_000;
+/// Scale for basis points
+pub const BPS_SCALER: u64 = 100_000_000_000_000;
 
 /// Try to subtract, return an error on underflow
 pub trait TrySub: Sized {

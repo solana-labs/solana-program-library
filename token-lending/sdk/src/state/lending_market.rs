@@ -25,6 +25,8 @@ pub struct LendingMarket {
     pub oracle_program_id: Pubkey,
     /// Oracle (Switchboard) program id
     pub switchboard_oracle_program_id: Pubkey,
+    /// Outflow rate limiter denominated in dollars
+    pub rate_limiter: RateLimiter,
 }
 
 impl LendingMarket {
@@ -44,6 +46,7 @@ impl LendingMarket {
         self.token_program_id = params.token_program_id;
         self.oracle_program_id = params.oracle_program_id;
         self.switchboard_oracle_program_id = params.switchboard_oracle_program_id;
+        self.rate_limiter = RateLimiter::default();
     }
 }
 
@@ -86,6 +89,7 @@ impl Pack for LendingMarket {
             token_program_id,
             oracle_program_id,
             switchboard_oracle_program_id,
+            rate_limiter,
             _padding,
         ) = mut_array_refs![
             output,
@@ -96,7 +100,8 @@ impl Pack for LendingMarket {
             PUBKEY_BYTES,
             PUBKEY_BYTES,
             PUBKEY_BYTES,
-            128
+            RATE_LIMITER_LEN,
+            128 - RATE_LIMITER_LEN
         ];
 
         *version = self.version.to_le_bytes();
@@ -106,6 +111,7 @@ impl Pack for LendingMarket {
         token_program_id.copy_from_slice(self.token_program_id.as_ref());
         oracle_program_id.copy_from_slice(self.oracle_program_id.as_ref());
         switchboard_oracle_program_id.copy_from_slice(self.switchboard_oracle_program_id.as_ref());
+        self.rate_limiter.pack_into_slice(rate_limiter);
     }
 
     /// Unpacks a byte buffer into a [LendingMarketInfo](struct.LendingMarketInfo.html)
@@ -120,6 +126,7 @@ impl Pack for LendingMarket {
             token_program_id,
             oracle_program_id,
             switchboard_oracle_program_id,
+            rate_limiter,
             _padding,
         ) = array_refs![
             input,
@@ -130,7 +137,8 @@ impl Pack for LendingMarket {
             PUBKEY_BYTES,
             PUBKEY_BYTES,
             PUBKEY_BYTES,
-            128
+            RATE_LIMITER_LEN,
+            128 - RATE_LIMITER_LEN
         ];
 
         let version = u8::from_le_bytes(*version);
@@ -147,6 +155,7 @@ impl Pack for LendingMarket {
             token_program_id: Pubkey::new_from_array(*token_program_id),
             oracle_program_id: Pubkey::new_from_array(*oracle_program_id),
             switchboard_oracle_program_id: Pubkey::new_from_array(*switchboard_oracle_program_id),
+            rate_limiter: RateLimiter::unpack_from_slice(rate_limiter)?,
         })
     }
 }

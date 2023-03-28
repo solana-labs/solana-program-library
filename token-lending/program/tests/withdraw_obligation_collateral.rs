@@ -7,8 +7,7 @@ use helpers::solend_program_test::{BalanceChecker, TokenBalanceChange};
 use helpers::*;
 
 use solana_program_test::*;
-use solana_sdk::{instruction::InstructionError, transaction::TransactionError};
-use solend_program::error::LendingError;
+
 use solend_program::state::{LastUpdate, Obligation, ObligationCollateral, Reserve};
 use std::collections::HashSet;
 use std::u64;
@@ -127,32 +126,5 @@ async fn test_success_withdraw_max() {
             .to_vec(),
             ..obligation.account
         }
-    );
-}
-
-#[tokio::test]
-async fn test_fail_withdraw_too_much() {
-    let (mut test, lending_market, usdc_reserve, _wsol_reserve, user, obligation) =
-        scenario_1(&test_reserve_config(), &test_reserve_config()).await;
-
-    let res = lending_market
-        .withdraw_obligation_collateral(
-            &mut test,
-            &usdc_reserve,
-            &obligation,
-            &user,
-            100_000_000_000 - 200_000_000 + 1,
-        )
-        .await
-        .err()
-        .unwrap()
-        .unwrap();
-
-    assert_eq!(
-        res,
-        TransactionError::InstructionError(
-            3,
-            InstructionError::Custom(LendingError::WithdrawTooLarge as u32)
-        )
     );
 }

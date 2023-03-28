@@ -89,23 +89,25 @@ async fn test_success() {
     assert_eq!(lending_market.account, lending_market_post.account);
 
     let usdc_reserve_post = test.load_account::<Reserve>(usdc_reserve.pubkey).await;
+    let expected_usdc_reserve_post = Reserve {
+        last_update: LastUpdate {
+            slot: 1000,
+            stale: true,
+        },
+        liquidity: ReserveLiquidity {
+            available_amount: usdc_reserve.account.liquidity.available_amount + 1_000_000,
+            ..usdc_reserve.account.liquidity
+        },
+        collateral: ReserveCollateral {
+            mint_total_supply: usdc_reserve.account.collateral.mint_total_supply + 1_000_000,
+            ..usdc_reserve.account.collateral
+        },
+        ..usdc_reserve.account
+    };
     assert_eq!(
-        usdc_reserve_post.account,
-        Reserve {
-            last_update: LastUpdate {
-                slot: 1000,
-                stale: true
-            },
-            liquidity: ReserveLiquidity {
-                available_amount: usdc_reserve.account.liquidity.available_amount + 1_000_000,
-                ..usdc_reserve.account.liquidity
-            },
-            collateral: ReserveCollateral {
-                mint_total_supply: usdc_reserve.account.collateral.mint_total_supply + 1_000_000,
-                ..usdc_reserve.account.collateral
-            },
-            ..usdc_reserve.account
-        }
+        usdc_reserve_post.account, expected_usdc_reserve_post,
+        "{:#?} {:#?}",
+        usdc_reserve_post.account, expected_usdc_reserve_post
     );
 }
 

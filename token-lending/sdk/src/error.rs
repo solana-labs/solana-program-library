@@ -192,6 +192,9 @@ pub enum LendingError {
     /// Deprecated instruction
     #[error("Instruction is deprecated")]
     DeprecatedInstruction,
+    /// Outflow Rate Limit Exceeded
+    #[error("Outflow Rate Limit Exceeded")]
+    OutflowRateLimitExceeded,
 }
 
 impl From<LendingError> for ProgramError {

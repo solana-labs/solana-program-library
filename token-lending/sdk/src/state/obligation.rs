@@ -13,7 +13,7 @@ use solana_program::{
     pubkey::{Pubkey, PUBKEY_BYTES},
 };
 use std::{
-    cmp::Ordering,
+    cmp::{min, Ordering},
     convert::{TryFrom, TryInto},
 };
 
@@ -37,11 +37,20 @@ pub struct Obligation {
     pub borrows: Vec<ObligationLiquidity>,
     /// Market value of deposits
     pub deposited_value: Decimal,
-    /// Market value of borrows
+    /// Risk-adjusted market value of borrows.
+    /// ie sum(b.borrowed_amount * b.current_spot_price * b.borrow_weight for b in borrows)
     pub borrowed_value: Decimal,
-    /// The maximum borrow value at the weighted average loan to value ratio
+    /// Risk-adjusted upper bound market value of borrows.
+    /// ie sum(b.borrowed_amount * max(b.current_spot_price, b.smoothed_price) * b.borrow_weight for b in borrows)
+    pub borrowed_value_upper_bound: Decimal,
+    /// The maximum open borrow value.
+    /// ie sum(d.deposited_amount * d.ltv * min(d.current_spot_price, d.smoothed_price) for d in deposits)
+    /// if borrowed_value_upper_bound >= allowed_borrow_value, then the obligation is unhealthy and
+    /// borrows and withdraws are disabled.
     pub allowed_borrow_value: Decimal,
-    /// The dangerous borrow value at the weighted average liquidation threshold
+    /// The dangerous borrow value at the weighted average liquidation threshold.
+    /// ie sum(d.deposited_amount * d.liquidation_threshold * d.current_spot_price for d in deposits)
+    /// if borrowed_value >= unhealthy_borrow_value, the obligation can be liquidated
     pub unhealthy_borrow_value: Decimal,
 }
 
@@ -90,25 +99,68 @@ impl Obligation {
         Ok(())
     }
 
-    /// Calculate the maximum collateral value that can be withdrawn
-    pub fn max_withdraw_value(
+    /// calculate the maximum amount of collateral that can be borrowed
+    pub fn max_withdraw_amount(
         &self,
-        withdraw_collateral_ltv: Rate,
-    ) -> Result<Decimal, ProgramError> {
-        if self.allowed_borrow_value <= self.borrowed_value {
-            return Ok(Decimal::zero());
+        collateral: &ObligationCollateral,
+        withdraw_reserve: &Reserve,
+    ) -> Result<u64, ProgramError> {
+        if self.allowed_borrow_value <= self.borrowed_value_upper_bound {
+            return Ok(0);
         }
-        if withdraw_collateral_ltv == Rate::zero() {
-            return Ok(self.deposited_value);
+
+        let loan_to_value_ratio = withdraw_reserve.loan_to_value_ratio();
+
+        if self.borrows.is_empty() || loan_to_value_ratio == Rate::zero() {
+            return Ok(collateral.deposited_amount);
         }
-        self.allowed_borrow_value
-            .try_sub(self.borrowed_value)?
-            .try_div(withdraw_collateral_ltv)
+
+        // max usd value that can be withdrawn
+        let max_withdraw_value = self
+            .allowed_borrow_value
+            .try_sub(self.borrowed_value_upper_bound)?
+            .try_div(loan_to_value_ratio)?;
+
+        // convert max_withdraw_value to max withdraw liquidity amount
+
+        // why is min used and not max? seems scary
+        //
+        // the tldr is that allowed borrow value is calculated with the minimum
+        // of the spot price and the smoothed price, so we have to use the min here to be
+        // consistent.
+        //
+        // note that safety-wise, it doesn't actually matter. if we used the max (which appears safer),
+        // the initial max withdraw would be lower, but the user can immediately make another max withdraw call
+        // because allowed_borrow_value is still greater than borrowed_value_upper_bound
+        // after a large amount of consecutive max withdraw calls, the end state of using max would be the same
+        // as using min.
+        //
+        // therefore, we use min for the better UX.
+        let price = min(
+            withdraw_reserve.liquidity.market_price,
+            withdraw_reserve.liquidity.smoothed_market_price,
+        );
+
+        let decimals = 10u64
+            .checked_pow(withdraw_reserve.liquidity.mint_decimals as u32)
+            .ok_or(LendingError::MathOverflow)?;
+
+        let max_withdraw_liquidity_amount = max_withdraw_value.try_mul(decimals)?.try_div(price)?;
+
+        // convert max withdraw liquidity amount to max withdraw collateral amount
+        Ok(min(
+            withdraw_reserve
+                .collateral_exchange_rate()?
+                .decimal_liquidity_to_collateral(max_withdraw_liquidity_amount)?
+                .try_floor_u64()?,
+            collateral.deposited_amount,
+        ))
     }
 
     /// Calculate the maximum liquidity value that can be borrowed
     pub fn remaining_borrow_value(&self) -> Result<Decimal, ProgramError> {
-        self.allowed_borrow_value.try_sub(self.borrowed_value)
+        self.allowed_borrow_value
+            .try_sub(self.borrowed_value_upper_bound)
     }
 
     /// Calculate the maximum liquidation amount for a given liquidity
@@ -366,6 +418,7 @@ impl Pack for Obligation {
             borrowed_value,
             allowed_borrow_value,
             unhealthy_borrow_value,
+            borrowed_value_upper_bound,
             _padding,
             deposits_len,
             borrows_len,
@@ -381,7 +434,8 @@ impl Pack for Obligation {
             16,
             16,
             16,
-            64,
+            16,
+            48,
             1,
             1,
             OBLIGATION_COLLATERAL_LEN + (OBLIGATION_LIQUIDITY_LEN * (MAX_OBLIGATION_RESERVES - 1))
@@ -395,6 +449,7 @@ impl Pack for Obligation {
         owner.copy_from_slice(self.owner.as_ref());
         pack_decimal(self.deposited_value, deposited_value);
         pack_decimal(self.borrowed_value, borrowed_value);
+        pack_decimal(self.borrowed_value_upper_bound, borrowed_value_upper_bound);
         pack_decimal(self.allowed_borrow_value, allowed_borrow_value);
         pack_decimal(self.unhealthy_borrow_value, unhealthy_borrow_value);
         *deposits_len = u8::try_from(self.deposits.len()).unwrap().to_le_bytes();
@@ -450,6 +505,7 @@ impl Pack for Obligation {
             borrowed_value,
             allowed_borrow_value,
             unhealthy_borrow_value,
+            borrowed_value_upper_bound,
             _padding,
             deposits_len,
             borrows_len,
@@ -465,7 +521,8 @@ impl Pack for Obligation {
             16,
             16,
             16,
-            64,
+            16,
+            48,
             1,
             1,
             OBLIGATION_COLLATERAL_LEN + (OBLIGATION_LIQUIDITY_LEN * (MAX_OBLIGATION_RESERVES - 1))
@@ -526,6 +583,7 @@ impl Pack for Obligation {
             borrows,
             deposited_value: unpack_decimal(deposited_value),
             borrowed_value: unpack_decimal(borrowed_value),
+            borrowed_value_upper_bound: unpack_decimal(borrowed_value_upper_bound),
             allowed_borrow_value: unpack_decimal(allowed_borrow_value),
             unhealthy_borrow_value: unpack_decimal(unhealthy_borrow_value),
         })
@@ -537,6 +595,7 @@ mod test {
     use super::*;
     use crate::math::TryAdd;
     use proptest::prelude::*;
+    use solana_program::native_token::LAMPORTS_PER_SOL;
 
     const MAX_COMPOUNDED_INTEREST: u64 = 100; // 10,000%
 
@@ -737,5 +796,171 @@ mod test {
                 .unwrap(),
             Decimal::from(MAX_LIQUIDATABLE_VALUE_AT_ONCE)
         );
+    }
+
+    #[derive(Debug, Clone)]
+    struct MaxWithdrawAmountTestCase {
+        obligation: Obligation,
+        reserve: Reserve,
+
+        expected_max_withdraw_amount: u64,
+    }
+
+    fn max_withdraw_amount_test_cases() -> impl Strategy<Value = MaxWithdrawAmountTestCase> {
+        prop_oneof![
+            // borrowed as much as we can already, so can't borrow anything more
+            Just(MaxWithdrawAmountTestCase {
+                obligation: Obligation {
+                    deposits: vec![ObligationCollateral {
+                        deposited_amount: 20 * LAMPORTS_PER_SOL,
+                        ..ObligationCollateral::default()
+                    }],
+                    deposited_value: Decimal::from(100u64),
+                    borrowed_value_upper_bound: Decimal::from(50u64),
+                    allowed_borrow_value: Decimal::from(50u64),
+                    ..Obligation::default()
+                },
+                reserve: Reserve::default(),
+                expected_max_withdraw_amount: 0,
+            }),
+            // regular case
+            Just(MaxWithdrawAmountTestCase {
+                obligation: Obligation {
+                    deposits: vec![ObligationCollateral {
+                        deposited_amount: 20 * LAMPORTS_PER_SOL,
+                        ..ObligationCollateral::default()
+                    }],
+                    borrows: vec![ObligationLiquidity {
+                        borrowed_amount_wads: Decimal::from(10u64),
+                        ..ObligationLiquidity::default()
+                    }],
+
+                    allowed_borrow_value: Decimal::from(100u64),
+                    borrowed_value_upper_bound: Decimal::from(50u64),
+                    ..Obligation::default()
+                },
+
+                reserve: Reserve {
+                    config: ReserveConfig {
+                        loan_to_value_ratio: 50,
+                        ..ReserveConfig::default()
+                    },
+                    liquidity: ReserveLiquidity {
+                        available_amount: 100 * LAMPORTS_PER_SOL,
+                        borrowed_amount_wads: Decimal::zero(),
+                        market_price: Decimal::from(10u64),
+                        smoothed_market_price: Decimal::from(5u64),
+                        mint_decimals: 9,
+                        ..ReserveLiquidity::default()
+                    },
+                    collateral: ReserveCollateral {
+                        mint_total_supply: 50 * LAMPORTS_PER_SOL,
+                        ..ReserveCollateral::default()
+                    },
+                    ..Reserve::default()
+                },
+
+                // deposited 20 cSOL
+                // => allowed borrow value: 20 cSOL * 2(SOL/cSOL) * 0.5(ltv) * $5 = $100
+                // => borrowed value upper bound: $50
+                // => max withdraw value: ($100 - $50) / 0.5 = $100
+                // => max withdraw liquidity amount: $100 / $5 = 20 SOL
+                // => max withdraw collateral amount: 20 SOL / 2(SOL/cSOL) = 10 cSOL
+                // after withdrawing, the new allowed borrow value is:
+                // 10 cSOL * 2(SOL/cSOL) * 0.5(ltv) * $5 = $50, which is exactly what we want.
+                expected_max_withdraw_amount: 10 * LAMPORTS_PER_SOL, // 10 cSOL
+            }),
+            // same case as above but this time we didn't deposit that much collateral
+            Just(MaxWithdrawAmountTestCase {
+                obligation: Obligation {
+                    deposits: vec![ObligationCollateral {
+                        deposited_amount: 2 * LAMPORTS_PER_SOL,
+                        ..ObligationCollateral::default()
+                    }],
+                    borrows: vec![ObligationLiquidity {
+                        borrowed_amount_wads: Decimal::from(10u64),
+                        ..ObligationLiquidity::default()
+                    }],
+
+                    allowed_borrow_value: Decimal::from(100u64),
+                    borrowed_value_upper_bound: Decimal::from(50u64),
+                    ..Obligation::default()
+                },
+
+                reserve: Reserve {
+                    config: ReserveConfig {
+                        loan_to_value_ratio: 50,
+                        ..ReserveConfig::default()
+                    },
+                    liquidity: ReserveLiquidity {
+                        available_amount: 100 * LAMPORTS_PER_SOL,
+                        borrowed_amount_wads: Decimal::zero(),
+                        market_price: Decimal::from(10u64),
+                        smoothed_market_price: Decimal::from(5u64),
+                        mint_decimals: 9,
+                        ..ReserveLiquidity::default()
+                    },
+                    collateral: ReserveCollateral {
+                        mint_total_supply: 50 * LAMPORTS_PER_SOL,
+                        ..ReserveCollateral::default()
+                    },
+                    ..Reserve::default()
+                },
+
+                expected_max_withdraw_amount: 2 * LAMPORTS_PER_SOL,
+            }),
+            // no borrows so we can withdraw everything
+            Just(MaxWithdrawAmountTestCase {
+                obligation: Obligation {
+                    deposits: vec![ObligationCollateral {
+                        deposited_amount: 100 * LAMPORTS_PER_SOL,
+                        ..ObligationCollateral::default()
+                    }],
+
+                    allowed_borrow_value: Decimal::from(100u64),
+                    ..Obligation::default()
+                },
+
+                reserve: Reserve {
+                    config: ReserveConfig {
+                        loan_to_value_ratio: 50,
+                        ..ReserveConfig::default()
+                    },
+                    ..Reserve::default()
+                },
+                expected_max_withdraw_amount: 100 * LAMPORTS_PER_SOL,
+            }),
+            // ltv is 0 so we can withdraw everything
+            Just(MaxWithdrawAmountTestCase {
+                obligation: Obligation {
+                    deposits: vec![ObligationCollateral {
+                        deposited_amount: 100 * LAMPORTS_PER_SOL,
+                        ..ObligationCollateral::default()
+                    }],
+                    borrows: vec![ObligationLiquidity {
+                        borrowed_amount_wads: Decimal::from(10u64),
+                        ..ObligationLiquidity::default()
+                    }],
+
+                    allowed_borrow_value: Decimal::from(100u64),
+                    ..Obligation::default()
+                },
+
+                reserve: Reserve::default(),
+                expected_max_withdraw_amount: 100 * LAMPORTS_PER_SOL,
+            }),
+        ]
+    }
+
+    proptest! {
+        #[test]
+        fn max_withdraw_amount(test_case in max_withdraw_amount_test_cases()) {
+            let max_withdraw_amount = test_case.obligation.max_withdraw_amount(
+                &test_case.obligation.deposits[0],
+                &test_case.reserve,
+            ).unwrap();
+
+            assert_eq!(max_withdraw_amount, test_case.expected_max_withdraw_amount);
+        }
     }
 }
