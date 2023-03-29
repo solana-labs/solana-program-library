@@ -1,7 +1,7 @@
 //! TLV structure manipulation
 
 use {
-    crate::{DISCRIMINATOR_LENGTH, error::PermissionedTransferError},
+    crate::{error::PermissionedTransferError, DISCRIMINATOR_LENGTH},
     bytemuck::{Pod, Zeroable},
     solana_program::program_error::ProgramError,
     std::mem::size_of,
@@ -48,8 +48,7 @@ pub struct Length(PodU32);
 impl TryFrom<Length> for usize {
     type Error = ProgramError;
     fn try_from(n: Length) -> Result<Self, Self::Error> {
-        Self::try_from(u32::from(n.0))
-            .map_err(|_| ProgramError::AccountDataTooSmall)
+        Self::try_from(u32::from(n.0)).map_err(|_| ProgramError::AccountDataTooSmall)
     }
 }
 impl TryFrom<usize> for Length {
@@ -61,8 +60,8 @@ impl TryFrom<usize> for Length {
     }
 }
 
-/// Helper function to get the current TlvIndices from the current spot
-fn get_tlv_indices(type_start: usize) -> TlvIndices {
+/// Get the current TlvIndices from the current spot
+fn get_indices_unchecked(type_start: usize) -> TlvIndices {
     let length_start = type_start.saturating_add(size_of::<Discriminator>());
     let value_start = length_start.saturating_add(size_of::<Length>());
     TlvIndices {
@@ -80,17 +79,15 @@ struct TlvIndices {
     pub length_start: usize,
     pub value_start: usize,
 }
-fn get_value_indices<V: Value>(
-    tlv_data: &[u8],
-    init: bool,
-) -> Result<TlvIndices, ProgramError> {
+fn get_indices<V: Value>(tlv_data: &[u8], init: bool) -> Result<TlvIndices, ProgramError> {
     let mut start_index = 0;
     while start_index < tlv_data.len() {
-        let tlv_indices = get_tlv_indices(start_index);
+        let tlv_indices = get_indices_unchecked(start_index);
         if tlv_data.len() < tlv_indices.value_start {
             return Err(ProgramError::InvalidAccountData);
         }
-        let discriminator = Discriminator::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
+        let discriminator =
+            Discriminator::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
         if discriminator == V::TYPE {
             // found an instance of the extension that we're initializing, return!
             return Ok(tlv_indices);
@@ -106,7 +103,9 @@ fn get_value_indices<V: Value>(
             let length = pod_from_bytes::<Length>(
                 &tlv_data[tlv_indices.length_start..tlv_indices.value_start],
             )?;
-            let value_end_index = tlv_indices.value_start.saturating_add(usize::try_from(*length)?);
+            let value_end_index = tlv_indices
+                .value_start
+                .saturating_add(usize::try_from(*length)?);
             start_index = value_end_index;
         }
     }
@@ -117,17 +116,18 @@ fn get_discriminators(tlv_data: &[u8]) -> Result<Vec<Discriminator>, ProgramErro
     let mut discriminators = vec![];
     let mut start_index = 0;
     while start_index < tlv_data.len() {
-        let tlv_indices = get_tlv_indices(start_index);
+        let tlv_indices = get_indices_unchecked(start_index);
         if tlv_data.len() < tlv_indices.length_start {
             // we got to the end, but there might be some uninitialized data after
             let remainder = &tlv_data[tlv_indices.type_start..];
             if remainder.iter().all(|&x| x == 0) {
-                return Ok(discriminators)
+                return Ok(discriminators);
             } else {
-                return Err(ProgramError::InvalidAccountData)
+                return Err(ProgramError::InvalidAccountData);
             }
         }
-        let discriminator = Discriminator::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
+        let discriminator =
+            Discriminator::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
         if discriminator == Discriminator::UNINITIALIZED {
             return Ok(discriminators);
         } else {
@@ -140,7 +140,9 @@ fn get_discriminators(tlv_data: &[u8]) -> Result<Vec<Discriminator>, ProgramErro
                 &tlv_data[tlv_indices.length_start..tlv_indices.value_start],
             )?;
 
-            let value_end_index = tlv_indices.value_start.saturating_add(usize::try_from(*length)?);
+            let value_end_index = tlv_indices
+                .value_start
+                .saturating_add(usize::try_from(*length)?);
             if value_end_index > tlv_data.len() {
                 // value blows past the size of the slice, malformed
                 return Err(ProgramError::InvalidAccountData);
@@ -156,8 +158,8 @@ fn get_value<V: Value>(tlv_data: &[u8]) -> Result<&V, ProgramError> {
         type_start: _,
         length_start,
         value_start,
-    } = get_value_indices::<V>(tlv_data, false)?;
-    // get_value_indices has checked that tlv_data is long enough to include these indices
+    } = get_indices::<V>(tlv_data, false)?;
+    // get_indices has checked that tlv_data is long enough to include these indices
     let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
     let value_end = value_start.saturating_add(usize::try_from(*length)?);
     if tlv_data.len() < value_end {
@@ -169,7 +171,7 @@ fn get_value<V: Value>(tlv_data: &[u8]) -> Result<&V, ProgramError> {
 fn check_initialized(tlv_data: &[u8]) -> Result<(), ProgramError> {
     let discriminators = get_discriminators(tlv_data)?;
     if discriminators.is_empty() {
-        Err(ProgramError::InvalidAccountData)
+        Err(PermissionedTransferError::TlvUninitialized.into())
     } else {
         Ok(())
     }
@@ -180,7 +182,7 @@ fn check_uninitialized(tlv_data: &[u8]) -> Result<(), ProgramError> {
     if discriminators.is_empty() {
         Ok(())
     } else {
-        Err(ProgramError::InvalidAccountData)
+        Err(PermissionedTransferError::TlvInitialized.into())
     }
 }
 
@@ -234,7 +236,7 @@ impl<'data> TlvStateBorrowed<'data> {
     /// Fails if no state is initialized or if data is too small
     pub fn unpack(data: &'data [u8]) -> Result<Self, ProgramError> {
         check_initialized(data)?;
-        Ok(Self { data, })
+        Ok(Self { data })
     }
 }
 impl<'a> TlvState for TlvStateBorrowed<'a> {
@@ -254,7 +256,7 @@ impl<'data> TlvStateMut<'data> {
     ///
     /// Fails if no state is initialized or if data is too small
     pub fn unpack(data: &'data mut [u8]) -> Result<Self, ProgramError> {
-        check_initialized(&data)?;
+        check_initialized(data)?;
         Ok(Self { data })
     }
 
@@ -262,7 +264,7 @@ impl<'data> TlvStateMut<'data> {
     ///
     /// Fails if any state has been initialized
     pub fn unpack_uninitialized(data: &'data mut [u8]) -> Result<Self, ProgramError> {
-        check_uninitialized(&data)?;
+        check_uninitialized(data)?;
         Ok(Self { data })
     }
 
@@ -272,9 +274,9 @@ impl<'data> TlvStateMut<'data> {
             type_start,
             length_start,
             value_start,
-        } = get_value_indices::<V>(self.data, false)?;
+        } = get_indices::<V>(self.data, false)?;
 
-        if self.data[type_start..].len() < size_of::<V>() {
+        if self.data[type_start..].len() < get_len::<V>() {
             return Err(ProgramError::InvalidAccountData);
         }
         let length = pod_from_bytes::<Length>(&self.data[length_start..value_start])?;
@@ -286,24 +288,21 @@ impl<'data> TlvStateMut<'data> {
     /// data buffer. If extension is already found in the buffer, it overwrites the existing
     /// extension with the default state if `overwrite` is set. If extension found, but
     /// `overwrite` is not set, it returns error.
-    pub fn init_value<V: Value>(
-        &mut self,
-        overwrite: bool,
-    ) -> Result<&mut V, ProgramError> {
+    pub fn init_value<V: Value>(&mut self, overwrite: bool) -> Result<&mut V, ProgramError> {
         let TlvIndices {
             type_start,
             length_start,
             value_start,
-        } = get_value_indices::<V>(self.data, true)?;
+        } = get_indices::<V>(self.data, true)?;
 
-        if self.data[type_start..].len() < size_of::<V>() {
+        if self.data[type_start..].len() < get_len::<V>() {
             return Err(ProgramError::InvalidAccountData);
         }
         let discriminator = Discriminator::try_from(&self.data[type_start..length_start])?;
         if discriminator == Discriminator::UNINITIALIZED || overwrite {
             // write type
             let discriminator_ref = &mut self.data[type_start..length_start];
-            discriminator_ref.copy_from_slice(&V::TYPE.as_ref());
+            discriminator_ref.copy_from_slice(V::TYPE.as_ref());
             // write length
             let length_ref =
                 pod_from_bytes_mut::<Length>(&mut self.data[length_start..value_start])?;
@@ -312,8 +311,7 @@ impl<'data> TlvStateMut<'data> {
             *length_ref = Length::try_from(length)?;
 
             let value_end = value_start.saturating_add(length);
-            let extension_ref =
-                pod_from_bytes_mut::<V>(&mut self.data[value_start..value_end])?;
+            let extension_ref = pod_from_bytes_mut::<V>(&mut self.data[value_start..value_end])?;
             *extension_ref = V::default();
             Ok(extension_ref)
         } else {
@@ -358,7 +356,9 @@ impl From<[u8; DISCRIMINATOR_LENGTH]> for Discriminator {
 impl TryFrom<&[u8]> for Discriminator {
     type Error = ProgramError;
     fn try_from(a: &[u8]) -> Result<Self, Self::Error> {
-        <[u8; DISCRIMINATOR_LENGTH]>::try_from(a).map(Self::from).map_err(|_| ProgramError::InvalidAccountData)
+        <[u8; DISCRIMINATOR_LENGTH]>::try_from(a)
+            .map(Self::from)
+            .map_err(|_| ProgramError::InvalidAccountData)
     }
 }
 
@@ -369,12 +369,15 @@ pub trait Value: Pod + Default {
     const TYPE: Discriminator;
 }
 
+/// Get the size required for this value as TLV
+pub fn get_len<V: Value>() -> usize {
+    let indices = get_indices_unchecked(0);
+    indices.value_start.saturating_add(size_of::<V>())
+}
+
 #[cfg(test)]
 mod test {
-    use {
-        super::*,
-        crate::state::ValidationPubkeys,
-    };
+    use super::*;
 
     const TEST_BUFFER: &[u8] = &[
         1, 1, 1, 1, 1, 1, 1, 1, // discriminator
@@ -384,20 +387,55 @@ mod test {
         0, 0, // empty, not enough for a discriminator
     ];
 
+    const TEST_BIG_BUFFER: &[u8] = &[
+        1, 1, 1, 1, 1, 1, 1, 1, // discriminator
+        32, 0, 0, 0, // length
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, // value
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, // empty, but enough for a discriminator and empty value
+    ];
+
     #[repr(C)]
     #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
     struct TestValue {
-        data: [u8; 32]
+        data: [u8; 32],
     }
     impl Value for TestValue {
         const TYPE: Discriminator = Discriminator::new([1; DISCRIMINATOR_LENGTH]);
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+    struct TestSmallValue {
+        data: [u8; 3],
+    }
+    impl Value for TestSmallValue {
+        const TYPE: Discriminator = Discriminator::new([2; DISCRIMINATOR_LENGTH]);
     }
 
     #[repr(transparent)]
     #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
     struct TestEmptyValue;
     impl Value for TestEmptyValue {
-        const TYPE: Discriminator = Discriminator::new([2; DISCRIMINATOR_LENGTH]);
+        const TYPE: Discriminator = Discriminator::new([3; DISCRIMINATOR_LENGTH]);
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+    struct TestNonZeroDefault {
+        data: [u8; 5],
+    }
+    const TEST_NON_ZERO_DEFAULT_DATA: [u8; 5] = [4; 5];
+    impl Value for TestNonZeroDefault {
+        const TYPE: Discriminator = Discriminator::new([4; DISCRIMINATOR_LENGTH]);
+    }
+    impl Default for TestNonZeroDefault {
+        fn default() -> Self {
+            Self {
+                data: TEST_NON_ZERO_DEFAULT_DATA,
+            }
+        }
     }
 
     #[test]
@@ -436,44 +474,38 @@ mod test {
             Err(ProgramError::InvalidAccountData)
         );
 
-        /*
-        // tweak the extension type
-        let mut buffer = MINT_WITH_EXTENSION.to_vec();
-        buffer[BASE_ACCOUNT_LENGTH + 1] = 2;
-        let state = StateWithExtensions::<Mint>::unpack(&buffer).unwrap();
+        // tweak the discriminator
+        let mut buffer = TEST_BUFFER.to_vec();
+        buffer[0] += 1;
+        let state = TlvStateMut::unpack(&mut buffer).unwrap();
         assert_eq!(
-            state.get_extension::<TransferFeeConfig>(),
-            Err(ProgramError::Custom(
-                TokenError::ExtensionTypeMismatch as u32
-            ))
+            state.get_value::<TestValue>(),
+            Err(ProgramError::InvalidAccountData)
         );
 
         // tweak the length, too big
-        let mut buffer = MINT_WITH_EXTENSION.to_vec();
-        buffer[BASE_ACCOUNT_LENGTH + 3] = 100;
-        let state = StateWithExtensions::<Mint>::unpack(&buffer).unwrap();
+        let mut buffer = TEST_BUFFER.to_vec();
+        buffer[DISCRIMINATOR_LENGTH] += 10;
         assert_eq!(
-            state.get_extension::<TransferFeeConfig>(),
+            TlvStateMut::unpack(&mut buffer),
             Err(ProgramError::InvalidAccountData)
         );
 
         // tweak the length, too small
-        let mut buffer = MINT_WITH_EXTENSION.to_vec();
-        buffer[BASE_ACCOUNT_LENGTH + 3] = 10;
-        let state = StateWithExtensions::<Mint>::unpack(&buffer).unwrap();
+        let mut buffer = TEST_BIG_BUFFER.to_vec();
+        buffer[DISCRIMINATOR_LENGTH] -= 1;
+        let state = TlvStateMut::unpack(&mut buffer).unwrap();
         assert_eq!(
-            state.get_extension::<TransferFeeConfig>(),
-            Err(ProgramError::InvalidAccountData)
+            state.get_value::<TestValue>(),
+            Err(ProgramError::InvalidArgument)
         );
 
-        // data buffer is too small
-        let buffer = &MINT_WITH_EXTENSION[..MINT_WITH_EXTENSION.len() - 1];
-        let state = StateWithExtensions::<Mint>::unpack(buffer).unwrap();
+        // data buffer is too small for type
+        let buffer = &TEST_BUFFER[..TEST_BUFFER.len() - 5];
         assert_eq!(
-            state.get_extension::<MintCloseAuthority>(),
+            TlvStateBorrowed::unpack(buffer),
             Err(ProgramError::InvalidAccountData)
         );
-        */
     }
 
     #[test]
@@ -489,339 +521,207 @@ mod test {
             vec![Discriminator::try_from(1).unwrap()]
         );
         // correct since it's just uninitialized data
-        assert_eq!(get_discriminators(&[0, 0, 0, 0, 0, 0, 0, 0]).unwrap(), vec![]);
+        assert_eq!(
+            get_discriminators(&[0, 0, 0, 0, 0, 0, 0, 0]).unwrap(),
+            vec![]
+        );
     }
 
     #[test]
     fn value_pack_unpack() {
-        /*
-        let mint_size = ExtensionType::get_account_len::<Mint>(&[
-            ExtensionType::MintCloseAuthority,
-            ExtensionType::TransferFeeConfig,
-        ]);
-        let mut buffer = vec![0; mint_size];
+        let account_size = get_len::<TestValue>() + get_len::<TestSmallValue>();
+        let mut buffer = vec![0; account_size];
 
-        // fail unpack
-        assert_eq!(
-            StateWithExtensionsMut::<Mint>::unpack(&mut buffer),
-            Err(ProgramError::UninitializedAccount),
-        );
+        let mut state = TlvStateMut::unpack_uninitialized(&mut buffer).unwrap();
 
-        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
-        // fail init account extension
-        assert_eq!(
-            state.init_extension::<TransferFeeAmount>(true),
-            Err(ProgramError::InvalidAccountData),
-        );
-
-        // success write extension
-        let close_authority = OptionalNonZeroPubkey::try_from(Some(Pubkey::new(&[1; 32]))).unwrap();
-        let extension = state.init_extension::<MintCloseAuthority>(true).unwrap();
-        extension.close_authority = close_authority;
-        assert_eq!(
-            &state.get_extension_types().unwrap(),
-            &[ExtensionType::MintCloseAuthority]
-        );
+        // success init and write value
+        let value = state.init_value::<TestValue>(false).unwrap();
+        let data = [100; 32];
+        value.data = data;
+        assert_eq!(&state.get_discriminators().unwrap(), &[TestValue::TYPE],);
+        assert_eq!(&state.get_value::<TestValue>().unwrap().data, &data,);
 
         // fail init extension when already initialized
         assert_eq!(
-            state.init_extension::<MintCloseAuthority>(false),
-            Err(ProgramError::Custom(
-                TokenError::ExtensionAlreadyInitialized as u32
-            ))
+            state.init_value::<TestValue>(false).unwrap_err(),
+            PermissionedTransferError::TypeAlreadyExists.into(),
         );
-
-        // fail unpack as account, a mint extension was written
-        assert_eq!(
-            StateWithExtensionsMut::<Account>::unpack_uninitialized(&mut buffer),
-            Err(ProgramError::Custom(
-                TokenError::ExtensionBaseMismatch as u32
-            ))
-        );
-
-        // fail unpack again, still no base data
-        assert_eq!(
-            StateWithExtensionsMut::<Mint>::unpack(&mut buffer.clone()),
-            Err(ProgramError::UninitializedAccount),
-        );
-
-        // write base mint
-        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
-        state.base = TEST_MINT;
-        state.pack_base();
-        state.init_account_type().unwrap();
 
         // check raw buffer
-        let mut expect = TEST_MINT_SLICE.to_vec();
-        expect.extend_from_slice(&[0; BASE_ACCOUNT_LENGTH - Mint::LEN]); // padding
-        expect.push(AccountType::Mint.into());
-        expect.extend_from_slice(&(ExtensionType::MintCloseAuthority as u16).to_le_bytes());
-        expect
-            .extend_from_slice(&(size_of::<MintCloseAuthority>() as u16).to_le_bytes());
-        expect.extend_from_slice(&[1; 32]); // data
-        expect.extend_from_slice(&[0; size_of::<ExtensionType>()]);
+        let mut expect = vec![];
+        expect.extend_from_slice(TestValue::TYPE.as_ref());
+        expect.extend_from_slice(&u32::try_from(size_of::<TestValue>()).unwrap().to_le_bytes());
+        expect.extend_from_slice(&data);
+        expect.extend_from_slice(&[0; size_of::<Discriminator>()]);
         expect.extend_from_slice(&[0; size_of::<Length>()]);
-        expect.extend_from_slice(&[0; size_of::<TransferFeeConfig>()]);
+        expect.extend_from_slice(&[0; size_of::<TestSmallValue>()]);
         assert_eq!(expect, buffer);
 
-        // unpack uninitialized will now fail because the Mint is now initialized
+        // unpack uninitialized will now fail because a value is initialized
         assert_eq!(
-            StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer.clone()),
-            Err(TokenError::AlreadyInUse.into()),
+            TlvStateMut::unpack_uninitialized(&mut buffer.clone()),
+            Err(PermissionedTransferError::TlvInitialized.into()),
         );
 
         // check unpacking
-        let mut state = StateWithExtensionsMut::<Mint>::unpack(&mut buffer).unwrap();
-
-        // update base
-        state.base = TEST_MINT;
-        state.base.supply += 100;
-        state.pack_base();
-
-        // check unpacking
-        let mut unpacked_extension = state.get_extension_mut::<MintCloseAuthority>().unwrap();
-        assert_eq!(*unpacked_extension, MintCloseAuthority { close_authority });
+        let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
+        let mut unpacked = state.get_value_mut::<TestValue>().unwrap();
+        assert_eq!(*unpacked, TestValue { data });
 
         // update extension
-        let close_authority = OptionalNonZeroPubkey::try_from(None).unwrap();
-        unpacked_extension.close_authority = close_authority;
+        let new_data = [101; 32];
+        unpacked.data = new_data;
 
         // check updates are propagated
-        let base = state.base;
-        let state = StateWithExtensions::<Mint>::unpack(&buffer).unwrap();
-        assert_eq!(state.base, base);
-        let unpacked_extension = state.get_extension::<MintCloseAuthority>().unwrap();
-        assert_eq!(*unpacked_extension, MintCloseAuthority { close_authority });
+        let state = TlvStateBorrowed::unpack(&buffer).unwrap();
+        let unpacked = state.get_value::<TestValue>().unwrap();
+        assert_eq!(*unpacked, TestValue { data: new_data });
 
         // check raw buffer
-        let mut expect = vec![0; Mint::LEN];
-        Mint::pack_into_slice(&base, &mut expect);
-        expect.extend_from_slice(&[0; BASE_ACCOUNT_LENGTH - Mint::LEN]); // padding
-        expect.push(AccountType::Mint.into());
-        expect.extend_from_slice(&(ExtensionType::MintCloseAuthority as u16).to_le_bytes());
-        expect
-            .extend_from_slice(&(size_of::<MintCloseAuthority>() as u16).to_le_bytes());
-        expect.extend_from_slice(&[0; 32]);
-        expect.extend_from_slice(&[0; size_of::<ExtensionType>()]);
+        let mut expect = vec![];
+        expect.extend_from_slice(TestValue::TYPE.as_ref());
+        expect.extend_from_slice(&u32::try_from(size_of::<TestValue>()).unwrap().to_le_bytes());
+        expect.extend_from_slice(&new_data);
+        expect.extend_from_slice(&[0; size_of::<Discriminator>()]);
         expect.extend_from_slice(&[0; size_of::<Length>()]);
-        expect.extend_from_slice(&[0; size_of::<TransferFeeConfig>()]);
+        expect.extend_from_slice(&[0; size_of::<TestSmallValue>()]);
         assert_eq!(expect, buffer);
 
-        // fail unpack as an account
-        assert_eq!(
-            StateWithExtensions::<Account>::unpack(&buffer),
-            Err(ProgramError::InvalidAccountData),
-        );
-
-        let mut state = StateWithExtensionsMut::<Mint>::unpack(&mut buffer).unwrap();
-        // init one more extension
-        let mint_transfer_fee = test_transfer_fee_config();
-        let new_extension = state.init_extension::<TransferFeeConfig>(true).unwrap();
-        new_extension.transfer_fee_config_authority =
-            mint_transfer_fee.transfer_fee_config_authority;
-        new_extension.withdraw_withheld_authority = mint_transfer_fee.withdraw_withheld_authority;
-        new_extension.withheld_amount = mint_transfer_fee.withheld_amount;
-        new_extension.older_transfer_fee = mint_transfer_fee.older_transfer_fee;
-        new_extension.newer_transfer_fee = mint_transfer_fee.newer_transfer_fee;
+        let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
+        // init one more value
+        let new_value = state.init_value::<TestSmallValue>(false).unwrap();
+        let small_data = [102; 3];
+        new_value.data = small_data;
 
         assert_eq!(
-            &state.get_extension_types().unwrap(),
-            &[
-                ExtensionType::MintCloseAuthority,
-                ExtensionType::TransferFeeConfig
-            ]
+            &state.get_discriminators().unwrap(),
+            &[TestValue::TYPE, TestSmallValue::TYPE]
         );
 
         // check raw buffer
-        let mut expect = vec![0; Mint::LEN];
-        Mint::pack_into_slice(&base, &mut expect);
-        expect.extend_from_slice(&[0; BASE_ACCOUNT_LENGTH - Mint::LEN]); // padding
-        expect.push(AccountType::Mint.into());
-        expect.extend_from_slice(&(ExtensionType::MintCloseAuthority as u16).to_le_bytes());
-        expect
-            .extend_from_slice(&(size_of::<MintCloseAuthority>() as u16).to_le_bytes());
-        expect.extend_from_slice(&[0; 32]); // data
-        expect.extend_from_slice(&(ExtensionType::TransferFeeConfig as u16).to_le_bytes());
-        expect.extend_from_slice(&(size_of::<TransferFeeConfig>() as u16).to_le_bytes());
-        expect.extend_from_slice(pod_bytes_of(&mint_transfer_fee));
+        let mut expect = vec![];
+        expect.extend_from_slice(TestValue::TYPE.as_ref());
+        expect.extend_from_slice(&u32::try_from(size_of::<TestValue>()).unwrap().to_le_bytes());
+        expect.extend_from_slice(&new_data);
+        expect.extend_from_slice(TestSmallValue::TYPE.as_ref());
+        expect.extend_from_slice(
+            &u32::try_from(size_of::<TestSmallValue>())
+                .unwrap()
+                .to_le_bytes(),
+        );
+        expect.extend_from_slice(&small_data);
         assert_eq!(expect, buffer);
 
         // fail to init one more extension that does not fit
-        let mut state = StateWithExtensionsMut::<Mint>::unpack(&mut buffer).unwrap();
+        let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
         assert_eq!(
-            state.init_extension::<MintPaddingTest>(true),
+            state.init_value::<TestEmptyValue>(true),
             Err(ProgramError::InvalidAccountData),
         );
-        */
     }
 
     #[test]
     fn value_any_order() {
-        /*
-        let mint_size = ExtensionType::get_account_len::<Mint>(&[
-            ExtensionType::MintCloseAuthority,
-            ExtensionType::TransferFeeConfig,
-        ]);
-        let mut buffer = vec![0; mint_size];
+        let account_size = get_len::<TestValue>() + get_len::<TestSmallValue>();
+        let mut buffer = vec![0; account_size];
 
-        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
-        // write extensions
-        let close_authority = OptionalNonZeroPubkey::try_from(Some(Pubkey::new(&[1; 32]))).unwrap();
-        let extension = state.init_extension::<MintCloseAuthority>(true).unwrap();
-        extension.close_authority = close_authority;
+        let mut state = TlvStateMut::unpack_uninitialized(&mut buffer).unwrap();
 
-        let mint_transfer_fee = test_transfer_fee_config();
-        let extension = state.init_extension::<TransferFeeConfig>(true).unwrap();
-        extension.transfer_fee_config_authority = mint_transfer_fee.transfer_fee_config_authority;
-        extension.withdraw_withheld_authority = mint_transfer_fee.withdraw_withheld_authority;
-        extension.withheld_amount = mint_transfer_fee.withheld_amount;
-        extension.older_transfer_fee = mint_transfer_fee.older_transfer_fee;
-        extension.newer_transfer_fee = mint_transfer_fee.newer_transfer_fee;
+        let data = [99; 32];
+        let small_data = [98; 3];
+
+        // write values
+        let value = state.init_value::<TestValue>(false).unwrap();
+        value.data = data;
+        let value = state.init_value::<TestSmallValue>(false).unwrap();
+        value.data = small_data;
 
         assert_eq!(
-            &state.get_extension_types().unwrap(),
-            &[
-                ExtensionType::MintCloseAuthority,
-                ExtensionType::TransferFeeConfig
-            ]
+            &state.get_discriminators().unwrap(),
+            &[TestValue::TYPE, TestSmallValue::TYPE,]
         );
 
-        // write base mint
-        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
-        state.base = TEST_MINT;
-        state.pack_base();
-        state.init_account_type().unwrap();
+        // write values in a different order
+        let mut other_buffer = vec![0; account_size];
+        let mut state = TlvStateMut::unpack_uninitialized(&mut other_buffer).unwrap();
 
-        let mut other_buffer = vec![0; mint_size];
-        let mut state =
-            StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut other_buffer).unwrap();
-
-        // write base mint
-        state.base = TEST_MINT;
-        state.pack_base();
-        state.init_account_type().unwrap();
-
-        // write extensions in a different order
-        let mint_transfer_fee = test_transfer_fee_config();
-        let extension = state.init_extension::<TransferFeeConfig>(true).unwrap();
-        extension.transfer_fee_config_authority = mint_transfer_fee.transfer_fee_config_authority;
-        extension.withdraw_withheld_authority = mint_transfer_fee.withdraw_withheld_authority;
-        extension.withheld_amount = mint_transfer_fee.withheld_amount;
-        extension.older_transfer_fee = mint_transfer_fee.older_transfer_fee;
-        extension.newer_transfer_fee = mint_transfer_fee.newer_transfer_fee;
-
-        let close_authority = OptionalNonZeroPubkey::try_from(Some(Pubkey::new(&[1; 32]))).unwrap();
-        let extension = state.init_extension::<MintCloseAuthority>(true).unwrap();
-        extension.close_authority = close_authority;
+        let value = state.init_value::<TestSmallValue>(false).unwrap();
+        value.data = small_data;
+        let value = state.init_value::<TestValue>(false).unwrap();
+        value.data = data;
 
         assert_eq!(
-            &state.get_extension_types().unwrap(),
-            &[
-                ExtensionType::TransferFeeConfig,
-                ExtensionType::MintCloseAuthority
-            ]
+            &state.get_discriminators().unwrap(),
+            &[TestSmallValue::TYPE, TestValue::TYPE,]
         );
 
         // buffers are NOT the same because written in a different order
         assert_ne!(buffer, other_buffer);
-        let state = StateWithExtensions::<Mint>::unpack(&buffer).unwrap();
-        let other_state = StateWithExtensions::<Mint>::unpack(&other_buffer).unwrap();
+        let state = TlvStateBorrowed::unpack(&buffer).unwrap();
+        let other_state = TlvStateBorrowed::unpack(&other_buffer).unwrap();
 
-        // BUT mint and extensions are the same
+        // BUT values are the same
         assert_eq!(
-            state.get_extension::<TransferFeeConfig>().unwrap(),
-            other_state.get_extension::<TransferFeeConfig>().unwrap()
+            state.get_value::<TestValue>().unwrap(),
+            other_state.get_value::<TestValue>().unwrap()
         );
         assert_eq!(
-            state.get_extension::<MintCloseAuthority>().unwrap(),
-            other_state.get_extension::<MintCloseAuthority>().unwrap()
+            state.get_value::<TestSmallValue>().unwrap(),
+            other_state.get_value::<TestSmallValue>().unwrap()
         );
-        assert_eq!(state.base, other_state.base);
-        */
     }
 
     #[test]
     fn init_nonzero_default() {
-        /*
-        let mint_size = ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintPaddingTest]);
-        let mut buffer = vec![0; mint_size];
-        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
-        state.base = TEST_MINT;
-        state.pack_base();
-        state.init_account_type().unwrap();
-        let extension = state.init_extension::<MintPaddingTest>(true).unwrap();
-        assert_eq!(extension.padding1, [1; 128]);
-        assert_eq!(extension.padding2, [2; 48]);
-        assert_eq!(extension.padding3, [3; 9]);
-        */
+        let account_size = get_len::<TestNonZeroDefault>();
+        let mut buffer = vec![0; account_size];
+        let mut state = TlvStateMut::unpack_uninitialized(&mut buffer).unwrap();
+        let value = state.init_value::<TestNonZeroDefault>(false).unwrap();
+        assert_eq!(value.data, TEST_NON_ZERO_DEFAULT_DATA);
     }
 
     #[test]
     fn init_buffer_too_small() {
-        /*
-        let mint_size =
-            ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]);
-        let mut buffer = vec![0; mint_size - 1];
-        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
-        let err = state
-            .init_extension::<MintCloseAuthority>(true)
-            .unwrap_err();
+        let account_size = get_len::<TestValue>();
+        let mut buffer = vec![0; account_size - 1];
+        let mut state = TlvStateMut::unpack_uninitialized(&mut buffer).unwrap();
+        let err = state.init_value::<TestValue>(true).unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
 
-        state.tlv_data[0] = 3;
-        state.tlv_data[2] = 32;
-        let err = state.get_extension_mut::<MintCloseAuthority>().unwrap_err();
+        // hack the buffer to look like it was initialized, still fails
+        let discriminator_ref = &mut state.data[0..DISCRIMINATOR_LENGTH];
+        discriminator_ref.copy_from_slice(TestValue::TYPE.as_ref());
+        state.data[DISCRIMINATOR_LENGTH] = 32;
+        let err = state.get_value::<TestValue>().unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
-
-        let mut buffer = vec![0; Mint::LEN + 2];
-        let err = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap_err();
-        assert_eq!(err, ProgramError::InvalidAccountData);
-
-        // OK since there are two bytes for the type, which is `Uninitialized`
-        let mut buffer = vec![0; BASE_ACCOUNT_LENGTH + 3];
-        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
-        let err = state.get_extension_mut::<MintCloseAuthority>().unwrap_err();
-        assert_eq!(err, ProgramError::InvalidAccountData);
-
-        assert_eq!(state.get_extension_types().unwrap(), vec![]);
-
-        // malformed since there aren't two bytes for the type
-        let mut buffer = vec![0; BASE_ACCOUNT_LENGTH + 2];
-        let state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
         assert_eq!(
-            state.get_extension_types().unwrap_err(),
+            state.get_discriminators().unwrap_err(),
             ProgramError::InvalidAccountData
         );
-        */
     }
 
     #[test]
     fn value_with_no_data() {
-        /*
-        let account_size =
-            ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]);
+        let account_size = get_len::<TestEmptyValue>();
         let mut buffer = vec![0; account_size];
-        let mut state =
-            StateWithExtensionsMut::<Account>::unpack_uninitialized(&mut buffer).unwrap();
-        state.base = TEST_ACCOUNT;
-        state.pack_base();
-        state.init_account_type().unwrap();
+        let mut state = TlvStateMut::unpack_uninitialized(&mut buffer).unwrap();
 
-        let err = state.get_extension::<ImmutableOwner>().unwrap_err();
         assert_eq!(
-            err,
-            ProgramError::Custom(TokenError::ExtensionNotFound as u32)
+            state.get_value::<TestEmptyValue>().unwrap_err(),
+            PermissionedTransferError::TypeNotFound.into(),
         );
 
-        state.init_extension::<ImmutableOwner>(true).unwrap();
+        // init without overwrite works
+        state.init_value::<TestEmptyValue>(false).unwrap();
+        state.get_value::<TestEmptyValue>().unwrap();
+
+        // re-init with overwrite works
+        state.init_value::<TestEmptyValue>(true).unwrap();
+
+        // re-init without overwrite fails
         assert_eq!(
-            get_first_extension_type(state.tlv_data).unwrap(),
-            Some(ExtensionType::ImmutableOwner)
+            state.init_value::<TestEmptyValue>(false).unwrap_err(),
+            PermissionedTransferError::TypeAlreadyExists.into(),
         );
-        assert_eq!(
-            get_extension_types(state.tlv_data).unwrap(),
-            vec![ExtensionType::ImmutableOwner]
-        );
-        */
     }
 }
