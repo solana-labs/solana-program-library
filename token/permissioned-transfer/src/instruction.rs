@@ -59,9 +59,7 @@ impl PermissionedTransferInstruction {
                     .ok_or(ProgramError::InvalidInstructionData)?;
                 Self::Validate { amount }
             }
-            INITIALIZE_VALIDATION_PUBKEYS_DISCRIMINATOR => {
-                Self::InitializeValidationPubkeys
-            }
+            INITIALIZE_VALIDATION_PUBKEYS_DISCRIMINATOR => Self::InitializeValidationPubkeys,
             _ => return Err(ProgramError::InvalidInstructionData),
         })
     }
@@ -70,9 +68,7 @@ impl PermissionedTransferInstruction {
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = vec![];
         match self {
-            Self::Validate {
-                amount,
-            } => {
+            Self::Validate { amount } => {
                 buf.extend_from_slice(VALIDATE_DISCRIMINATOR);
                 buf.extend_from_slice(&amount.to_le_bytes());
             }
@@ -104,7 +100,11 @@ pub fn validate(
         AccountMeta::new_readonly(*authority_pubkey, false),
         AccountMeta::new_readonly(*validate_state_pubkey, false),
     ];
-    accounts.extend(additional_pubkeys.iter().map(|pk| AccountMeta::new_readonly(**pk, false)));
+    accounts.extend(
+        additional_pubkeys
+            .iter()
+            .map(|pk| AccountMeta::new_readonly(**pk, false)),
+    );
 
     Instruction {
         program_id: *program_id,
@@ -128,7 +128,11 @@ pub fn initialize_validation_pubkeys(
         AccountMeta::new_readonly(*mint_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, false),
     ];
-    accounts.extend(additional_pubkeys.iter().map(|pk| AccountMeta::new_readonly(**pk, false)));
+    accounts.extend(
+        additional_pubkeys
+            .iter()
+            .map(|pk| AccountMeta::new_readonly(**pk, false)),
+    );
 
     Instruction {
         program_id: *program_id,
@@ -144,9 +148,7 @@ mod test {
     #[test]
     fn validate_packing() {
         let amount = 111_111_111;
-        let check = PermissionedTransferInstruction::Validate {
-            amount,
-        };
+        let check = PermissionedTransferInstruction::Validate { amount };
         let packed = check.pack();
         let preimage = hash::hashv(&[&format!("{NAMESPACE}:validate").as_bytes()]);
         let discriminator = &preimage.as_ref()[..DISCRIMINATOR_LENGTH];
@@ -162,7 +164,8 @@ mod test {
     fn initialize_validation_pubkeys_packing() {
         let check = PermissionedTransferInstruction::InitializeValidationPubkeys;
         let packed = check.pack();
-        let preimage = hash::hashv(&[&format!("{NAMESPACE}:initialize-validation-pubkeys").as_bytes()]);
+        let preimage =
+            hash::hashv(&[&format!("{NAMESPACE}:initialize-validation-pubkeys").as_bytes()]);
         let discriminator = &preimage.as_ref()[..DISCRIMINATOR_LENGTH];
         let mut expect = vec![];
         expect.extend_from_slice(&discriminator.as_ref());

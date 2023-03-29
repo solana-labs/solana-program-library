@@ -7,7 +7,7 @@ use {
         entrypoint::ProgramResult,
         msg,
         pubkey::Pubkey,
-    }
+    },
 };
 
 /// Processes a [Validate](enum.PermissionedTransferInstruction.html) instruction.
@@ -45,9 +45,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> P
     let instruction = PermissionedTransferInstruction::unpack(input)?;
 
     match instruction {
-        PermissionedTransferInstruction::Validate {
-            amount,
-        } => {
+        PermissionedTransferInstruction::Validate { amount } => {
             msg!("Instruction: Validate");
             process_validate(program_id, accounts, amount)
         }

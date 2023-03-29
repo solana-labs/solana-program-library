@@ -26,6 +26,14 @@ pub enum PermissionedTransferError {
     /// Type already exists in TLV data
     #[error("Type already exists in TLV data")]
     TypeAlreadyExists,
+    /// No value initialized in TLV data
+    #[error("No value initialized in TLV data")]
+    TlvUninitialized,
+
+    // 5
+    /// Some value initialized in TLV data
+    #[error("Some value initialized in TLV data")]
+    TlvInitialized,
 }
 impl From<PermissionedTransferError> for ProgramError {
     fn from(e: PermissionedTransferError) -> Self {
@@ -52,6 +60,8 @@ impl PrintProgramError for PermissionedTransferError {
             Self::NotEnoughAccounts => msg!("Not enough accounts provided"),
             Self::TypeNotFound => msg!("Type not found in TLV data"),
             Self::TypeAlreadyExists => msg!("Type already exists in TLV data"),
+            Self::TlvUninitialized => msg!("No value initialized in TLV data"),
+            Self::TlvInitialized => msg!("Some value initialized in TLV data"),
         }
     }
 }
