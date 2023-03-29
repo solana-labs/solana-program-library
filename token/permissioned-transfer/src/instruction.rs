@@ -81,6 +81,7 @@ impl PermissionedTransferInstruction {
 }
 
 /// Creates a `Validate` instruction.
+#[allow(clippy::too_many_arguments)]
 pub fn validate(
     program_id: &Pubkey,
     source_pubkey: &Pubkey,
@@ -150,10 +151,10 @@ mod test {
         let amount = 111_111_111;
         let check = PermissionedTransferInstruction::Validate { amount };
         let packed = check.pack();
-        let preimage = hash::hashv(&[&format!("{NAMESPACE}:validate").as_bytes()]);
+        let preimage = hash::hashv(&[format!("{NAMESPACE}:validate").as_bytes()]);
         let discriminator = &preimage.as_ref()[..DISCRIMINATOR_LENGTH];
         let mut expect = vec![];
-        expect.extend_from_slice(&discriminator.as_ref());
+        expect.extend_from_slice(discriminator.as_ref());
         expect.extend_from_slice(&amount.to_le_bytes());
         assert_eq!(packed, expect);
         let unpacked = PermissionedTransferInstruction::unpack(&expect).unwrap();
@@ -165,10 +166,10 @@ mod test {
         let check = PermissionedTransferInstruction::InitializeValidationPubkeys;
         let packed = check.pack();
         let preimage =
-            hash::hashv(&[&format!("{NAMESPACE}:initialize-validation-pubkeys").as_bytes()]);
+            hash::hashv(&[format!("{NAMESPACE}:initialize-validation-pubkeys").as_bytes()]);
         let discriminator = &preimage.as_ref()[..DISCRIMINATOR_LENGTH];
         let mut expect = vec![];
-        expect.extend_from_slice(&discriminator.as_ref());
+        expect.extend_from_slice(discriminator.as_ref());
         assert_eq!(packed, expect);
         let unpacked = PermissionedTransferInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);

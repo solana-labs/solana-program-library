@@ -40,7 +40,7 @@ pub(crate) fn get_validate_state_address_and_bump_seed(
     Pubkey::find_program_address(&collect_validate_state_seeds(mint), program_id)
 }
 
-pub(crate) fn collect_validate_state_seeds<'a>(mint: &'a Pubkey) -> [&'a [u8]; 2] {
+pub(crate) fn collect_validate_state_seeds(mint: &Pubkey) -> [&[u8]; 2] {
     [VALIDATE_STATE_SEED, mint.as_ref()]
 }
 

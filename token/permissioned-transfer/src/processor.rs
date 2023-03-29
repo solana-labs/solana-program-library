@@ -12,30 +12,30 @@ use {
 
 /// Processes a [Validate](enum.PermissionedTransferInstruction.html) instruction.
 pub fn process_validate(
-    program_id: &Pubkey,
+    _program_id: &Pubkey,
     accounts: &[AccountInfo],
-    amount: u64,
+    _amount: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
-    let source_account_info = next_account_info(account_info_iter)?;
-    let mint_info = next_account_info(account_info_iter)?;
-    let destination_account_info = next_account_info(account_info_iter)?;
-    let authority_info = next_account_info(account_info_iter)?;
+    let _source_account_info = next_account_info(account_info_iter)?;
+    let _mint_info = next_account_info(account_info_iter)?;
+    let _destination_account_info = next_account_info(account_info_iter)?;
+    let _authority_info = next_account_info(account_info_iter)?;
 
     Ok(())
 }
 
 /// Processes a [InitializeValidationPubkeys](enum.PermissionedTransferInstruction.html) instruction.
 pub fn process_initialize_validation_pubkeys(
-    program_id: &Pubkey,
+    _program_id: &Pubkey,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
-    let validation_pubkeys_info = next_account_info(account_info_iter)?;
-    let mint_info = next_account_info(account_info_iter)?;
-    let authority_info = next_account_info(account_info_iter)?;
+    let _validation_pubkeys_info = next_account_info(account_info_iter)?;
+    let _mint_info = next_account_info(account_info_iter)?;
+    let _authority_info = next_account_info(account_info_iter)?;
 
     Ok(())
 }

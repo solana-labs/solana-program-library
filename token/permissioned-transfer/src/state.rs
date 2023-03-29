@@ -33,7 +33,7 @@ mod test {
 
     #[test]
     fn discriminator() {
-        let preimage = hash::hashv(&[&format!("{NAMESPACE}:validation-pubkeys").as_bytes()]);
+        let preimage = hash::hashv(&[format!("{NAMESPACE}:validation-pubkeys").as_bytes()]);
         let discriminator =
             Discriminator::try_from(&preimage.as_ref()[..DISCRIMINATOR_LENGTH]).unwrap();
         assert_eq!(discriminator, ValidationPubkeys::TYPE);
