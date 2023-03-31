@@ -41,6 +41,12 @@ macro_rules! impl_int_conversion {
 pub struct PodU32([u8; 4]);
 impl_int_conversion!(PodU32, u32);
 
+/// `u16` type that can be used in `Pod`s
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+#[repr(transparent)]
+pub struct PodU16([u8; 2]);
+impl_int_conversion!(PodU16, u16);
+
 /// Length in TLV structure
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
@@ -165,25 +171,7 @@ fn get_value<V: Value>(tlv_data: &[u8]) -> Result<&V, ProgramError> {
     if tlv_data.len() < value_end {
         return Err(ProgramError::InvalidAccountData);
     }
-    pod_from_bytes::<V>(&tlv_data[value_start..value_end])
-}
-
-fn check_initialized(tlv_data: &[u8]) -> Result<(), ProgramError> {
-    let discriminators = get_discriminators(tlv_data)?;
-    if discriminators.is_empty() {
-        Err(PermissionedTransferError::TlvUninitialized.into())
-    } else {
-        Ok(())
-    }
-}
-
-fn check_uninitialized(tlv_data: &[u8]) -> Result<(), ProgramError> {
-    let discriminators = get_discriminators(tlv_data)?;
-    if discriminators.is_empty() {
-        Ok(())
-    } else {
-        Err(PermissionedTransferError::TlvInitialized.into())
-    }
+    V::try_from_bytes(&tlv_data[value_start..value_end])
 }
 
 /// Trait for all TLV state
@@ -213,7 +201,7 @@ impl TlvStateOwned {
     ///
     /// Fails if no state is initialized or if data is too small
     pub fn unpack(data: Vec<u8>) -> Result<Self, ProgramError> {
-        check_initialized(&data)?;
+        check_data(&data)?;
         Ok(Self { data })
     }
 }
@@ -235,7 +223,7 @@ impl<'data> TlvStateBorrowed<'data> {
     ///
     /// Fails if no state is initialized or if data is too small
     pub fn unpack(data: &'data [u8]) -> Result<Self, ProgramError> {
-        check_initialized(data)?;
+        check_data(data)?;
         Ok(Self { data })
     }
 }
@@ -256,15 +244,7 @@ impl<'data> TlvStateMut<'data> {
     ///
     /// Fails if no state is initialized or if data is too small
     pub fn unpack(data: &'data mut [u8]) -> Result<Self, ProgramError> {
-        check_initialized(data)?;
-        Ok(Self { data })
-    }
-
-    /// Unpacks uninitialized TLV state
-    ///
-    /// Fails if any state has been initialized
-    pub fn unpack_uninitialized(data: &'data mut [u8]) -> Result<Self, ProgramError> {
-        check_uninitialized(data)?;
+        check_data(data)?;
         Ok(Self { data })
     }
 
@@ -281,7 +261,7 @@ impl<'data> TlvStateMut<'data> {
         }
         let length = pod_from_bytes::<Length>(&self.data[length_start..value_start])?;
         let value_end = value_start.saturating_add(usize::try_from(*length)?);
-        pod_from_bytes_mut::<V>(&mut self.data[value_start..value_end])
+        V::try_from_bytes_mut(&mut self.data[value_start..value_end])
     }
 
     /// Packs the default extension data into an open slot if not already found in the
@@ -311,7 +291,7 @@ impl<'data> TlvStateMut<'data> {
             *length_ref = Length::try_from(length)?;
 
             let value_end = value_start.saturating_add(length);
-            let extension_ref = pod_from_bytes_mut::<V>(&mut self.data[value_start..value_end])?;
+            let extension_ref = V::try_from_bytes_mut(&mut self.data[value_start..value_end])?;
             *extension_ref = V::default();
             Ok(extension_ref)
         } else {
@@ -364,15 +344,29 @@ impl TryFrom<&[u8]> for Discriminator {
 
 /// Trait to be implemented by all value types in the TLV structure, specifying
 /// the discriminator to check against
-pub trait Value: Pod + Default {
+pub trait Value: Default {
     /// Associated value type enum, checked at the start of TLV entries
     const TYPE: Discriminator;
+
+    /// Turn raw bytes into a reference of the underlying type. If the type
+    /// implements `Pod`, then you can simply do `pod_from_bytes`.
+    fn try_from_bytes(bytes: &[u8]) -> Result<&Self, ProgramError>;
+
+    /// Turn raw bytes into a mutable reference of the underlying type. If the
+    /// type implements `Pod`, then you can simply do `pod_from_bytes`.
+    fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, ProgramError>;
 }
 
 /// Get the size required for this value as TLV
 pub fn get_len<V: Value>() -> usize {
     let indices = get_indices_unchecked(0);
     indices.value_start.saturating_add(size_of::<V>())
+}
+
+fn check_data(tlv_data: &[u8]) -> Result<(), ProgramError> {
+    // should be able to fetch discriminators
+    let _discriminators = get_discriminators(tlv_data)?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -403,6 +397,14 @@ mod test {
     }
     impl Value for TestValue {
         const TYPE: Discriminator = Discriminator::new([1; DISCRIMINATOR_LENGTH]);
+
+        fn try_from_bytes(bytes: &[u8]) -> Result<&Self, ProgramError> {
+            pod_from_bytes(bytes)
+        }
+
+        fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, ProgramError> {
+            pod_from_bytes_mut(bytes)
+        }
     }
 
     #[repr(C)]
@@ -412,6 +414,14 @@ mod test {
     }
     impl Value for TestSmallValue {
         const TYPE: Discriminator = Discriminator::new([2; DISCRIMINATOR_LENGTH]);
+
+        fn try_from_bytes(bytes: &[u8]) -> Result<&Self, ProgramError> {
+            pod_from_bytes(bytes)
+        }
+
+        fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, ProgramError> {
+            pod_from_bytes_mut(bytes)
+        }
     }
 
     #[repr(transparent)]
@@ -419,6 +429,14 @@ mod test {
     struct TestEmptyValue;
     impl Value for TestEmptyValue {
         const TYPE: Discriminator = Discriminator::new([3; DISCRIMINATOR_LENGTH]);
+
+        fn try_from_bytes(bytes: &[u8]) -> Result<&Self, ProgramError> {
+            pod_from_bytes(bytes)
+        }
+
+        fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, ProgramError> {
+            pod_from_bytes_mut(bytes)
+        }
     }
 
     #[repr(C)]
@@ -429,6 +447,14 @@ mod test {
     const TEST_NON_ZERO_DEFAULT_DATA: [u8; 5] = [4; 5];
     impl Value for TestNonZeroDefault {
         const TYPE: Discriminator = Discriminator::new([4; DISCRIMINATOR_LENGTH]);
+
+        fn try_from_bytes(bytes: &[u8]) -> Result<&Self, ProgramError> {
+            pod_from_bytes(bytes)
+        }
+
+        fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, ProgramError> {
+            pod_from_bytes_mut(bytes)
+        }
     }
     impl Default for TestNonZeroDefault {
         fn default() -> Self {
@@ -470,7 +496,7 @@ mod test {
             Err(ProgramError::InvalidAccountData)
         );
         assert_eq!(
-            TlvStateMut::unpack_uninitialized(&mut buffer),
+            TlvStateMut::unpack(&mut buffer),
             Err(ProgramError::InvalidAccountData)
         );
 
@@ -532,7 +558,7 @@ mod test {
         let account_size = get_len::<TestValue>() + get_len::<TestSmallValue>();
         let mut buffer = vec![0; account_size];
 
-        let mut state = TlvStateMut::unpack_uninitialized(&mut buffer).unwrap();
+        let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
         // success init and write value
         let value = state.init_value::<TestValue>(false).unwrap();
@@ -556,12 +582,6 @@ mod test {
         expect.extend_from_slice(&[0; size_of::<Length>()]);
         expect.extend_from_slice(&[0; size_of::<TestSmallValue>()]);
         assert_eq!(expect, buffer);
-
-        // unpack uninitialized will now fail because a value is initialized
-        assert_eq!(
-            TlvStateMut::unpack_uninitialized(&mut buffer.clone()),
-            Err(PermissionedTransferError::TlvInitialized.into()),
-        );
 
         // check unpacking
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
@@ -625,7 +645,7 @@ mod test {
         let account_size = get_len::<TestValue>() + get_len::<TestSmallValue>();
         let mut buffer = vec![0; account_size];
 
-        let mut state = TlvStateMut::unpack_uninitialized(&mut buffer).unwrap();
+        let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
         let data = [99; 32];
         let small_data = [98; 3];
@@ -643,7 +663,7 @@ mod test {
 
         // write values in a different order
         let mut other_buffer = vec![0; account_size];
-        let mut state = TlvStateMut::unpack_uninitialized(&mut other_buffer).unwrap();
+        let mut state = TlvStateMut::unpack(&mut other_buffer).unwrap();
 
         let value = state.init_value::<TestSmallValue>(false).unwrap();
         value.data = small_data;
@@ -675,7 +695,7 @@ mod test {
     fn init_nonzero_default() {
         let account_size = get_len::<TestNonZeroDefault>();
         let mut buffer = vec![0; account_size];
-        let mut state = TlvStateMut::unpack_uninitialized(&mut buffer).unwrap();
+        let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
         let value = state.init_value::<TestNonZeroDefault>(false).unwrap();
         assert_eq!(value.data, TEST_NON_ZERO_DEFAULT_DATA);
     }
@@ -684,7 +704,7 @@ mod test {
     fn init_buffer_too_small() {
         let account_size = get_len::<TestValue>();
         let mut buffer = vec![0; account_size - 1];
-        let mut state = TlvStateMut::unpack_uninitialized(&mut buffer).unwrap();
+        let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
         let err = state.init_value::<TestValue>(true).unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
 
@@ -704,7 +724,7 @@ mod test {
     fn value_with_no_data() {
         let account_size = get_len::<TestEmptyValue>();
         let mut buffer = vec![0; account_size];
-        let mut state = TlvStateMut::unpack_uninitialized(&mut buffer).unwrap();
+        let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
         assert_eq!(
             state.get_value::<TestEmptyValue>().unwrap_err(),

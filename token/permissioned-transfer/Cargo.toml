@@ -13,6 +13,7 @@ no-entrypoint = []
 test-sbf = []
 
 [dependencies]
+arrayref = "0.3.6"
 bytemuck = { version = "1.13.0", features = ["derive"] }
 num-derive = "0.3"
 num-traits = "0.2"

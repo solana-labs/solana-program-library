@@ -6268,6 +6268,7 @@ dependencies = [
 name = "spl-permissioned-transfer"
 version = "0.1.0"
 dependencies = [
+ "arrayref",
  "bytemuck",
  "num-derive",
  "num-traits",

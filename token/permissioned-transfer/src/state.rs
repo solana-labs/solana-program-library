@@ -1,13 +1,17 @@
 //! State transition types
 
 use {
-    crate::tlv::{Discriminator, Value},
+    crate::tlv::{pod_from_bytes, pod_from_bytes_mut, Discriminator, Value},
     bytemuck::{Pod, Zeroable},
-    solana_program::pubkey::Pubkey,
+    solana_program::{program_error::ProgramError, pubkey::Pubkey},
 };
 
-const NUM_KEYS: usize = 3;
+pub(crate) const MAX_NUM_KEYS: usize = 3;
 /// State for all pubkeys required to validate a transfer
+// TODO this should work with any number of pubkeys, but I'm being lazy and want
+// to use bytemuck to quickly prototype something.
+// We need to implement more functions on this in order to properly add to the slice
+// and all that, but it'll take some more time to get that working.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct ValidationPubkeys {
@@ -15,12 +19,20 @@ pub struct ValidationPubkeys {
     pub length: u16,
     /// Slice of required pubkeys to validate a transfer, along with the normal
     /// checked-transfer accounts and this account.
-    pub pubkeys: [Pubkey; NUM_KEYS],
+    pub pubkeys: [Pubkey; MAX_NUM_KEYS],
 }
 
 /// First 8 bytes of `hash::hashv(&["permissioned-transfer:validation-pubkeys"])`
 impl Value for ValidationPubkeys {
     const TYPE: Discriminator = Discriminator::new([250, 175, 124, 64, 235, 120, 63, 195]);
+
+    fn try_from_bytes(bytes: &[u8]) -> Result<&Self, ProgramError> {
+        pod_from_bytes(bytes)
+    }
+
+    fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, ProgramError> {
+        pod_from_bytes_mut(bytes)
+    }
 }
 
 #[cfg(test)]

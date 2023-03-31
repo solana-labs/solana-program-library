@@ -7,6 +7,7 @@
 #![cfg_attr(not(test), forbid(unsafe_code))]
 
 pub mod error;
+pub mod inline_spl_token;
 pub mod instruction;
 pub mod processor;
 pub mod state;

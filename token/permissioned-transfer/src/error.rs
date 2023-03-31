@@ -34,6 +34,23 @@ pub enum PermissionedTransferError {
     /// Some value initialized in TLV data
     #[error("Some value initialized in TLV data")]
     TlvInitialized,
+    /// Provided byte buffer too small for validation pubkeys
+    #[error("Provided byte buffer too small for validation pubkeys")]
+    BufferTooSmall,
+    /// Error in checked math operation
+    #[error("Error in checked math operation")]
+    CalculationFailure,
+    /// Mint has no mint authority
+    #[error("Mint has no mint authority")]
+    MintHasNoMintAuthority,
+    /// Incorrect mint authority has signed the instruction
+    #[error("Incorrect mint authority has signed the instruction")]
+    IncorrectMintAuthority,
+
+    // 10
+    /// Too many pubkeys provided
+    #[error("Too many pubkeys provided")]
+    TooManyPubkeys,
 }
 impl From<PermissionedTransferError> for ProgramError {
     fn from(e: PermissionedTransferError) -> Self {
@@ -62,6 +79,13 @@ impl PrintProgramError for PermissionedTransferError {
             Self::TypeAlreadyExists => msg!("Type already exists in TLV data"),
             Self::TlvUninitialized => msg!("No value initialized in TLV data"),
             Self::TlvInitialized => msg!("Some value initialized in TLV data"),
+            Self::BufferTooSmall => msg!("Provided byte buffer too small for validation pubkeys"),
+            Self::CalculationFailure => msg!("Error in checked math operation"),
+            Self::MintHasNoMintAuthority => msg!("Mint has no mint authority"),
+            Self::IncorrectMintAuthority => {
+                msg!("Incorrect mint authority has signed the instruction")
+            }
+            Self::TooManyPubkeys => msg!("Too many pubkeys provided"),
         }
     }
 }

@@ -6,6 +6,7 @@ use {
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
         pubkey::Pubkey,
+        system_program,
     },
     std::convert::TryInto,
 };
@@ -37,7 +38,8 @@ pub enum PermissionedTransferInstruction {
     ///   0. `[w]` Validate transfer account
     ///   1. `[]` Mint
     ///   2. `[s]` Mint authority
-    ///   3..3+M `[]` `M` additional accounts, to be written to validation data
+    ///   3. `[]` System program
+    ///   4..4+M `[]` `M` additional accounts, to be written to validation data
     ///
     InitializeValidationPubkeys,
 }
@@ -128,6 +130,7 @@ pub fn initialize_validation_pubkeys(
         AccountMeta::new(*validate_state_pubkey, false),
         AccountMeta::new_readonly(*mint_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new_readonly(system_program::id(), false),
     ];
     accounts.extend(
         additional_pubkeys
