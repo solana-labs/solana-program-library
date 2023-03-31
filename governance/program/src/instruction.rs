@@ -493,7 +493,7 @@ pub enum GovernanceInstruction {
     /// The account has no data and can be used as a payer for instructions signed by Governance PDAs or as a native SOL treasury
     ///
     ///  0. `[]` Governance account the treasury account is for
-    ///  1. `[writable]` NativeTreasury account. PDA seeds: ['treasury', governance]
+    ///  1. `[writable]` NativeTreasury account. PDA seeds: ['native-treasury', governance]
     ///  2. `[signer]` Payer
     ///  3. `[]` System
     CreateNativeTreasury,
