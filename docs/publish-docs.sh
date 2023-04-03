@@ -17,7 +17,7 @@ fi
 cat > "$CONFIG_FILE" <<EOF
 {
   "name": "$PROJECT_NAME",
-  "scope": "$VERCEL_SCOPE",
+  "scope": "$VERCEL_SCOPE"
 }
 EOF
 
