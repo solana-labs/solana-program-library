@@ -91,7 +91,7 @@ pub enum VoteType {
         #[allow(dead_code)]
         choice_type: MultiChoiceType,
 
-        /// The min number of options a voter mast choose, the default is 1
+        /// The min number of options a voter must choose, the default is 1
         /// Note: In the current version the limit is not supported and not enforced yet
         #[allow(dead_code)]
         min_voter_options: u8,
