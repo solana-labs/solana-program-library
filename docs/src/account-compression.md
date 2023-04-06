@@ -21,7 +21,7 @@ To solve the problem of the high on-chain storage cost per unit of these assets,
   - Program indexer
     - The indexer is in charge of indexing the latest writes to the tree on chain so you know which nodes have been replaced and which have been appended to so you can avoid proof collision
   - Off-chain Database
-    - The db stores the actual asset data on chain as we are only storing the merkle root on chain and we need to be able to verify the data on chain.
+    - The db stores the actual asset data off chain as we are only storing the merkle root on chain and we only need to be able to verify the data on chain.
 
 The crux of this is the concurrent merkle tree and we shall learn about it in the next section.
 
