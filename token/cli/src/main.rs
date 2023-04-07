@@ -2071,7 +2071,7 @@ async fn command_withdraw_excess_lamports(
     println_display(
         config,
         format!(
-            "Recovering lamports from Account: {} to ATA: {}",
+            "Recovering lamports from Account: {} to Account: {}",
             source_account, destination_account
         ),
     );
@@ -3626,14 +3626,22 @@ fn app<'a, 'b>(
         )
         .subcommand(
             SubCommand::with_name(CommandName::WithdrawExcessLamports.into())
-                .about("Recover lamports from a Token Program owned account to an native ATA")
+                .about("Withdraw lamports from a Token Program owned account")
                 .arg(
                     Arg::with_name("source_account")
                         .validator(is_valid_pubkey)
-                        .value_name("ADDRESS")
+                        .value_name("ACCOUNT")
                         .takes_value(true)
                         .required(true)
                         .help("Specify the address of the account to recover lamports from"),
+                )
+                .arg(
+                    Arg::with_name("destination_account")
+                        .validator(is_valid_pubkey)
+                        .value_name("REFUND_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Specify the address of the account to recover lamports to"),
                 )
                 .arg(
                     Arg::with_name("wallet_keypair")
@@ -4365,15 +4373,14 @@ async fn process_command<'a>(
 
             let source =
                 config.pubkey_or_default(arg_matches, "source_account", &mut wallet_manager)?;
-
-            let native_mint = *native_token_client_from_config(config)?.get_address();
-            let address = config.associated_token_address_for_token_and_program(
-                &native_mint,
-                &authority,
-                &config.program_id,
+            let destination = config.pubkey_or_default(
+                arg_matches,
+                "destination_account",
+                &mut wallet_manager,
             )?;
 
-            command_withdraw_excess_lamports(config, source, address, authority, bulk_signers).await
+            command_withdraw_excess_lamports(config, source, destination, authority, bulk_signers)
+                .await
         }
     }
 }
@@ -7148,13 +7155,6 @@ mod tests {
 
         let program_id = &spl_token_2022::id();
         let config = test_config_with_default_signer(&test_validator, &payer, program_id);
-        do_create_native_mint(&config, program_id, &payer).await;
-        let native_mint = *Token::new_native(
-            config.program_client.clone(),
-            program_id,
-            config.fee_payer().unwrap().clone(),
-        )
-        .get_address();
 
         let multisig = Arc::new(Keypair::new());
         let multisig_pubkey = multisig.pubkey();
@@ -7182,21 +7182,9 @@ mod tests {
         assert_eq!(multisig.m, m);
         assert_eq!(multisig.n, n);
 
-        let destination_pubkey =
-            create_associated_account(&config, &payer, &native_mint, &multisig_pubkey).await;
-
-        let destination_associated_token = StateWithExtensionsOwned::<Account>::unpack(
-            config
-                .rpc_client
-                .get_account(&destination_pubkey)
-                .await
-                .unwrap()
-                .data,
-        )
-        .unwrap();
-        assert_eq!(destination_associated_token.base.owner, multisig_pubkey);
-
+        let receiver = Keypair::new();
         let excess_lamports = 4000 * 1_000_000_000;
+
         config
             .rpc_client
             .send_and_confirm_transaction(&Transaction::new_signed_with_payer(
@@ -7218,6 +7206,7 @@ mod tests {
                 "spl-token",
                 CommandName::WithdrawExcessLamports.into(),
                 &multisig_pubkey.to_string(),
+                &receiver.pubkey().to_string(),
                 "--owner",
                 &multisig_pubkey.to_string(),
                 "--multisig-signer",
@@ -7235,39 +7224,13 @@ mod tests {
         .await
         .unwrap();
 
-        command_sync_native(&config, destination_pubkey)
-            .await
-            .unwrap();
-
         assert_eq!(
             excess_lamports,
-            StateWithExtensionsOwned::<Account>::unpack(
-                config
-                    .rpc_client
-                    .get_account_data(&destination_pubkey)
-                    .await
-                    .unwrap()
-            )
-            .unwrap()
-            .base
-            .amount
-        );
-
-        let owner_destination_pubkey =
-            create_associated_account(&config, &payer, &native_mint, &payer.pubkey()).await;
-
-        let owner_destination_associated_token = StateWithExtensionsOwned::<Account>::unpack(
             config
                 .rpc_client
-                .get_account(&owner_destination_pubkey)
+                .get_balance(&receiver.pubkey())
                 .await
                 .unwrap()
-                .data,
-        )
-        .unwrap();
-        assert_eq!(
-            owner_destination_associated_token.base.owner,
-            payer.pubkey()
         );
 
         let token_keypair = Keypair::new();
@@ -7309,6 +7272,7 @@ mod tests {
                 "spl-token",
                 CommandName::WithdrawExcessLamports.into(),
                 &token_pubkey.to_string(),
+                &receiver.pubkey().to_string(),
                 "--owner",
                 &owner_keypair_file.path().to_str().unwrap(),
                 "--program-id",
@@ -7318,22 +7282,13 @@ mod tests {
         .await
         .unwrap();
 
-        command_sync_native(&config, owner_destination_pubkey)
-            .await
-            .unwrap();
-
         assert_eq!(
-            excess_lamports,
-            StateWithExtensionsOwned::<Account>::unpack(
-                config
-                    .rpc_client
-                    .get_account_data(&owner_destination_pubkey)
-                    .await
-                    .unwrap()
-            )
-            .unwrap()
-            .base
-            .amount
+            2 * excess_lamports,
+            config
+                .rpc_client
+                .get_balance(&receiver.pubkey())
+                .await
+                .unwrap()
         );
 
         let token_account =
@@ -7360,6 +7315,7 @@ mod tests {
                 "spl-token",
                 CommandName::WithdrawExcessLamports.into(),
                 &token_account.to_string(),
+                &receiver.pubkey().to_string(),
                 "--owner",
                 &owner_keypair_file.path().to_str().unwrap(),
                 "--program-id",
@@ -7369,22 +7325,13 @@ mod tests {
         .await
         .unwrap();
 
-        command_sync_native(&config, owner_destination_pubkey)
-            .await
-            .unwrap();
-
         assert_eq!(
-            2 * excess_lamports,
-            StateWithExtensionsOwned::<Account>::unpack(
-                config
-                    .rpc_client
-                    .get_account_data(&owner_destination_pubkey)
-                    .await
-                    .unwrap()
-            )
-            .unwrap()
-            .base
-            .amount
+            3 * excess_lamports,
+            config
+                .rpc_client
+                .get_balance(&receiver.pubkey())
+                .await
+                .unwrap()
         );
     }
 }

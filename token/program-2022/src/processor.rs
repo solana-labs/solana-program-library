@@ -1305,15 +1305,6 @@ impl Processor {
         let source_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
-        let destination_data = destination_info.data.borrow();
-        let destination_ata = StateWithExtensions::<Account>::unpack(&destination_data)?;
-        if &destination_ata.base.owner != authority_info.key {
-            return Err(TokenError::OwnerMismatch.into());
-        }
-        if !destination_ata.base.is_native() {
-            return Err(TokenError::NonNativeNotSupported.into());
-        }
-
         let source_data = source_info.data.borrow();
         match source_data.len() {
             Mint::LEN => {
