@@ -143,7 +143,7 @@ pub enum CommandName {
     UpdateDefaultAccountState,
     WithdrawWithheldTokens,
     SetTransferFee,
-    RecoverLamports,
+    WithdrawExcessLamports,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -2060,7 +2060,7 @@ async fn command_sync_native(config: &Config<'_>, native_account_address: Pubkey
     })
 }
 
-async fn command_recover_lamports(
+async fn command_withdraw_excess_lamports(
     config: &Config<'_>,
     source_account: Pubkey,
     destination_account: Pubkey,
@@ -2077,7 +2077,7 @@ async fn command_recover_lamports(
     );
 
     let res = token
-        .recover_lamports(
+        .withdraw_excess_lamports(
             &source_account,
             &authority,
             &destination_account,
@@ -3625,7 +3625,7 @@ fn app<'a, 'b>(
                 .arg(mint_decimals_arg())
         )
         .subcommand(
-            SubCommand::with_name(CommandName::RecoverLamports.into())
+            SubCommand::with_name(CommandName::WithdrawExcessLamports.into())
                 .about("Recover lamports from a Token Program owned account to an native ATA")
                 .arg(
                     Arg::with_name("source_account")
@@ -4358,7 +4358,7 @@ async fn process_command<'a>(
             )
             .await
         }
-        (CommandName::RecoverLamports, arg_matches) => {
+        (CommandName::WithdrawExcessLamports, arg_matches) => {
             let (signer, authority) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             push_signer_with_dedup(signer, &mut bulk_signers);
@@ -4373,7 +4373,7 @@ async fn process_command<'a>(
                 &config.program_id,
             )?;
 
-            command_recover_lamports(config, source, address, authority, bulk_signers).await
+            command_withdraw_excess_lamports(config, source, address, authority, bulk_signers).await
         }
     }
 }
@@ -7125,7 +7125,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn recover_lamports() {
+    async fn withdraw_excess_lamports() {
         let (test_validator, payer) = new_validator_for_test().await;
         let m = 3;
         let n = 5u8;
@@ -7146,246 +7146,245 @@ mod tests {
         let owner_keypair_file = NamedTempFile::new().unwrap();
         write_keypair_file(&payer, &owner_keypair_file).unwrap();
 
-        for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-            let config = test_config_with_default_signer(&test_validator, &payer, program_id);
-            do_create_native_mint(&config, program_id, &payer).await;
-            let native_mint = *Token::new_native(
-                config.program_client.clone(),
-                program_id,
-                config.fee_payer().unwrap().clone(),
-            )
-            .get_address();
+        let program_id = &spl_token_2022::id();
+        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+        do_create_native_mint(&config, program_id, &payer).await;
+        let native_mint = *Token::new_native(
+            config.program_client.clone(),
+            program_id,
+            config.fee_payer().unwrap().clone(),
+        )
+        .get_address();
 
-            let multisig = Arc::new(Keypair::new());
-            let multisig_pubkey = multisig.pubkey();
+        let multisig = Arc::new(Keypair::new());
+        let multisig_pubkey = multisig.pubkey();
 
-            // add the multisig as a member to itself, make it self-owned
-            let multisig_members = std::iter::once(multisig_pubkey)
-                .chain(multisig_members.iter().cloned())
-                .collect::<Vec<_>>();
-            let multisig_path = NamedTempFile::new().unwrap();
-            write_keypair_file(&multisig, &multisig_path).unwrap();
-            let multisig_paths = std::iter::once(&multisig_path)
-                .chain(multisig_paths.iter())
-                .collect::<Vec<_>>();
+        // add the multisig as a member to itself, make it self-owned
+        let multisig_members = std::iter::once(multisig_pubkey)
+            .chain(multisig_members.iter().cloned())
+            .collect::<Vec<_>>();
+        let multisig_path = NamedTempFile::new().unwrap();
+        write_keypair_file(&multisig, &multisig_path).unwrap();
+        let multisig_paths = std::iter::once(&multisig_path)
+            .chain(multisig_paths.iter())
+            .collect::<Vec<_>>();
 
-            command_create_multisig(&config, multisig, m, multisig_members)
-                .await
-                .unwrap();
+        command_create_multisig(&config, multisig, m, multisig_members)
+            .await
+            .unwrap();
 
-            let account = config
+        let account = config
+            .rpc_client
+            .get_account(&multisig_pubkey)
+            .await
+            .unwrap();
+        let multisig = Multisig::unpack(&account.data).unwrap();
+        assert_eq!(multisig.m, m);
+        assert_eq!(multisig.n, n);
+
+        let destination_pubkey =
+            create_associated_account(&config, &payer, &native_mint, &multisig_pubkey).await;
+
+        let destination_associated_token = StateWithExtensionsOwned::<Account>::unpack(
+            config
                 .rpc_client
-                .get_account(&multisig_pubkey)
+                .get_account(&destination_pubkey)
                 .await
-                .unwrap();
-            let multisig = Multisig::unpack(&account.data).unwrap();
-            assert_eq!(multisig.m, m);
-            assert_eq!(multisig.n, n);
+                .unwrap()
+                .data,
+        )
+        .unwrap();
+        assert_eq!(destination_associated_token.base.owner, multisig_pubkey);
 
-            let destination_pubkey =
-                create_associated_account(&config, &payer, &native_mint, &multisig_pubkey).await;
+        let excess_lamports = 4000 * 1_000_000_000;
+        config
+            .rpc_client
+            .send_and_confirm_transaction(&Transaction::new_signed_with_payer(
+                &[system_instruction::transfer(
+                    &payer.pubkey(),
+                    &multisig_pubkey,
+                    excess_lamports,
+                )],
+                Some(&payer.pubkey()),
+                &[&payer],
+                config.rpc_client.get_latest_blockhash().await.unwrap(),
+            ))
+            .await
+            .unwrap();
 
-            let destination_associated_token = StateWithExtensionsOwned::<Account>::unpack(
+        exec_test_cmd(
+            &config,
+            &[
+                "spl-token",
+                CommandName::WithdrawExcessLamports.into(),
+                &multisig_pubkey.to_string(),
+                "--owner",
+                &multisig_pubkey.to_string(),
+                "--multisig-signer",
+                multisig_paths[0].path().to_str().unwrap(),
+                "--multisig-signer",
+                multisig_paths[1].path().to_str().unwrap(),
+                "--multisig-signer",
+                multisig_paths[2].path().to_str().unwrap(),
+                "--fee-payer",
+                &fee_payer_keypair_file.path().to_str().unwrap(),
+                "--program-id",
+                &program_id.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        command_sync_native(&config, destination_pubkey)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            excess_lamports,
+            StateWithExtensionsOwned::<Account>::unpack(
                 config
                     .rpc_client
-                    .get_account(&destination_pubkey)
+                    .get_account_data(&destination_pubkey)
                     .await
                     .unwrap()
-                    .data,
             )
-            .unwrap();
-            assert_eq!(destination_associated_token.base.owner, multisig_pubkey);
+            .unwrap()
+            .base
+            .amount
+        );
 
-            let excess_lamports = 4000 * 1_000_000_000;
+        let owner_destination_pubkey =
+            create_associated_account(&config, &payer, &native_mint, &payer.pubkey()).await;
+
+        let owner_destination_associated_token = StateWithExtensionsOwned::<Account>::unpack(
             config
                 .rpc_client
-                .send_and_confirm_transaction(&Transaction::new_signed_with_payer(
-                    &[system_instruction::transfer(
-                        &payer.pubkey(),
-                        &multisig_pubkey,
-                        excess_lamports,
-                    )],
-                    Some(&payer.pubkey()),
-                    &[&payer],
-                    config.rpc_client.get_latest_blockhash().await.unwrap(),
-                ))
+                .get_account(&owner_destination_pubkey)
                 .await
-                .unwrap();
+                .unwrap()
+                .data,
+        )
+        .unwrap();
+        assert_eq!(
+            owner_destination_associated_token.base.owner,
+            payer.pubkey()
+        );
 
-            exec_test_cmd(
-                &config,
-                &[
-                    "spl-token",
-                    CommandName::RecoverLamports.into(),
-                    &multisig_pubkey.to_string(),
-                    "--owner",
-                    &multisig_pubkey.to_string(),
-                    "--multisig-signer",
-                    multisig_paths[0].path().to_str().unwrap(),
-                    "--multisig-signer",
-                    multisig_paths[1].path().to_str().unwrap(),
-                    "--multisig-signer",
-                    multisig_paths[2].path().to_str().unwrap(),
-                    "--fee-payer",
-                    &fee_payer_keypair_file.path().to_str().unwrap(),
-                    "--program-id",
-                    &program_id.to_string(),
-                ],
-            )
+        let token_keypair = Keypair::new();
+        let token_path = NamedTempFile::new().unwrap();
+        write_keypair_file(&token_keypair, &token_path).unwrap();
+        let token_pubkey = token_keypair.pubkey();
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::CreateToken.into(),
+                &token_path.path().to_str().unwrap(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let excess_lamports = 4000 * 1_000_000_000;
+        config
+            .rpc_client
+            .send_and_confirm_transaction(&Transaction::new_signed_with_payer(
+                &[system_instruction::transfer(
+                    &payer.pubkey(),
+                    &token_pubkey,
+                    excess_lamports,
+                )],
+                Some(&payer.pubkey()),
+                &[&payer],
+                config.rpc_client.get_latest_blockhash().await.unwrap(),
+            ))
             .await
             .unwrap();
 
-            command_sync_native(&config, destination_pubkey)
-                .await
-                .unwrap();
+        exec_test_cmd(
+            &config,
+            &[
+                "spl-token",
+                CommandName::WithdrawExcessLamports.into(),
+                &token_pubkey.to_string(),
+                "--owner",
+                &owner_keypair_file.path().to_str().unwrap(),
+                "--program-id",
+                &program_id.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
 
-            assert_eq!(
-                excess_lamports,
-                StateWithExtensionsOwned::<Account>::unpack(
-                    config
-                        .rpc_client
-                        .get_account_data(&destination_pubkey)
-                        .await
-                        .unwrap()
-                )
-                .unwrap()
-                .base
-                .amount
-            );
+        command_sync_native(&config, owner_destination_pubkey)
+            .await
+            .unwrap();
 
-            let owner_destination_pubkey =
-                create_associated_account(&config, &payer, &native_mint, &payer.pubkey()).await;
-
-            let owner_destination_associated_token = StateWithExtensionsOwned::<Account>::unpack(
+        assert_eq!(
+            excess_lamports,
+            StateWithExtensionsOwned::<Account>::unpack(
                 config
                     .rpc_client
-                    .get_account(&owner_destination_pubkey)
+                    .get_account_data(&owner_destination_pubkey)
                     .await
                     .unwrap()
-                    .data,
             )
-            .unwrap();
-            assert_eq!(
-                owner_destination_associated_token.base.owner,
-                payer.pubkey()
-            );
+            .unwrap()
+            .base
+            .amount
+        );
 
-            let token_keypair = Keypair::new();
-            let token_path = NamedTempFile::new().unwrap();
-            write_keypair_file(&token_keypair, &token_path).unwrap();
-            let token_pubkey = token_keypair.pubkey();
+        let token_account =
+            create_associated_account(&config, &payer, &token_pubkey, &payer.pubkey()).await;
 
-            process_test_command(
-                &config,
-                &payer,
-                &[
-                    "spl-token",
-                    CommandName::CreateToken.into(),
-                    &token_path.path().to_str().unwrap(),
-                ],
-            )
+        config
+            .rpc_client
+            .send_and_confirm_transaction(&Transaction::new_signed_with_payer(
+                &[system_instruction::transfer(
+                    &payer.pubkey(),
+                    &token_account,
+                    excess_lamports,
+                )],
+                Some(&payer.pubkey()),
+                &[&payer],
+                config.rpc_client.get_latest_blockhash().await.unwrap(),
+            ))
             .await
             .unwrap();
 
-            let excess_lamports = 4000 * 1_000_000_000;
-            config
-                .rpc_client
-                .send_and_confirm_transaction(&Transaction::new_signed_with_payer(
-                    &[system_instruction::transfer(
-                        &payer.pubkey(),
-                        &token_pubkey,
-                        excess_lamports,
-                    )],
-                    Some(&payer.pubkey()),
-                    &[&payer],
-                    config.rpc_client.get_latest_blockhash().await.unwrap(),
-                ))
-                .await
-                .unwrap();
+        exec_test_cmd(
+            &config,
+            &[
+                "spl-token",
+                CommandName::WithdrawExcessLamports.into(),
+                &token_account.to_string(),
+                "--owner",
+                &owner_keypair_file.path().to_str().unwrap(),
+                "--program-id",
+                &program_id.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
 
-            exec_test_cmd(
-                &config,
-                &[
-                    "spl-token",
-                    CommandName::RecoverLamports.into(),
-                    &token_pubkey.to_string(),
-                    "--owner",
-                    &owner_keypair_file.path().to_str().unwrap(),
-                    "--program-id",
-                    &program_id.to_string(),
-                ],
-            )
+        command_sync_native(&config, owner_destination_pubkey)
             .await
             .unwrap();
 
-            command_sync_native(&config, owner_destination_pubkey)
-                .await
-                .unwrap();
-
-            assert_eq!(
-                excess_lamports,
-                StateWithExtensionsOwned::<Account>::unpack(
-                    config
-                        .rpc_client
-                        .get_account_data(&owner_destination_pubkey)
-                        .await
-                        .unwrap()
-                )
-                .unwrap()
-                .base
-                .amount
-            );
-
-            let token_account =
-                create_associated_account(&config, &payer, &token_pubkey, &payer.pubkey()).await;
-
-            config
-                .rpc_client
-                .send_and_confirm_transaction(&Transaction::new_signed_with_payer(
-                    &[system_instruction::transfer(
-                        &payer.pubkey(),
-                        &token_account,
-                        excess_lamports,
-                    )],
-                    Some(&payer.pubkey()),
-                    &[&payer],
-                    config.rpc_client.get_latest_blockhash().await.unwrap(),
-                ))
-                .await
-                .unwrap();
-
-            exec_test_cmd(
-                &config,
-                &[
-                    "spl-token",
-                    CommandName::RecoverLamports.into(),
-                    &token_account.to_string(),
-                    "--owner",
-                    &owner_keypair_file.path().to_str().unwrap(),
-                    "--program-id",
-                    &program_id.to_string(),
-                ],
+        assert_eq!(
+            2 * excess_lamports,
+            StateWithExtensionsOwned::<Account>::unpack(
+                config
+                    .rpc_client
+                    .get_account_data(&owner_destination_pubkey)
+                    .await
+                    .unwrap()
             )
-            .await
-            .unwrap();
-
-            command_sync_native(&config, owner_destination_pubkey)
-                .await
-                .unwrap();
-
-            assert_eq!(
-                2 * excess_lamports,
-                StateWithExtensionsOwned::<Account>::unpack(
-                    config
-                        .rpc_client
-                        .get_account_data(&owner_destination_pubkey)
-                        .await
-                        .unwrap()
-                )
-                .unwrap()
-                .base
-                .amount
-            );
-        }
+            .unwrap()
+            .base
+            .amount
+        );
     }
 }

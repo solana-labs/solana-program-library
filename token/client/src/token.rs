@@ -2430,8 +2430,7 @@ where
         .await
     }
 
-    // #[cfg(feature = "proof-program")]
-    pub async fn recover_lamports<S: Signers>(
+    pub async fn withdraw_excess_lamports<S: Signers>(
         &self,
         source: &Pubkey,
         authority: &Pubkey,
@@ -2442,7 +2441,7 @@ where
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
         self.process_ixs(
-            &[spl_token::instruction::recover_lamports(
+            &[spl_token_2022::instruction::withdraw_excess_lamports(
                 &self.program_id,
                 source,
                 authority,
