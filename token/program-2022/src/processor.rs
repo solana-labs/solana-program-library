@@ -1292,10 +1292,10 @@ impl Processor {
         Ok(())
     }
 
-    /// Recover Lamports is used to recover Lamports transfered to any TokenProgram owned account
+    /// Withdraw Excess Lamports is used to recover Lamports transfered to any TokenProgram owned account
     /// by system program's transfer instruction by moving them to WrappedSol ATA owned by the authority
     /// of the source account.
-    pub fn process_recover_lamports(
+    pub fn process_withdraw_excess_lamports(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
@@ -1545,9 +1545,9 @@ impl Processor {
                 msg!("Instruction: InitializePermanentDelegate");
                 Self::process_initialize_permanent_delegate(accounts, delegate)
             }
-            TokenInstruction::RecoverLamports => {
-                msg!("Instruction: RecoverLamports");
-                Self::process_recover_lamports(program_id, accounts)
+            TokenInstruction::WithdrawExcessLamports => {
+                msg!("Instruction: WithdrawExcessLamports");
+                Self::process_withdraw_excess_lamports(program_id, accounts)
             }
         }
     }

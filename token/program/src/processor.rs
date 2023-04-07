@@ -835,92 +835,6 @@ impl Processor {
         Ok(())
     }
 
-    /// Recover Lamports is used to recover Lamports transfered to any TokenProgram owned account
-    /// by system program's transfer instruction by moving them to WrappedSol ATA owned by the authority
-    /// of the source account.
-    pub fn process_recover_lamports(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo],
-    ) -> ProgramResult {
-        let account_info_iter = &mut accounts.iter();
-
-        let destination_info = next_account_info(account_info_iter)?;
-        let source_info = next_account_info(account_info_iter)?;
-        let authority_info = next_account_info(account_info_iter)?;
-
-        let destination_ata = Account::unpack(&destination_info.data.borrow())?;
-
-        if &destination_ata.owner != authority_info.key {
-            return Err(TokenError::OwnerMismatch.into());
-        }
-
-        if !destination_ata.is_native() {
-            return Err(TokenError::NonNativeNotSupported.into());
-        }
-
-        match source_info.data.borrow().len() {
-            Account::LEN => {
-                let token_account = Account::unpack(&source_info.data.borrow())?;
-                if token_account.is_native() {
-                    return Err(TokenError::NativeNotSupported.into());
-                }
-                Self::validate_owner(
-                    program_id,
-                    &token_account.owner,
-                    authority_info,
-                    account_info_iter.as_slice(),
-                )?;
-            }
-            Mint::LEN => {
-                let mint_account = Mint::unpack(&source_info.data.borrow())?;
-                if &mint_account.mint_authority.expect("No mint authority") != authority_info.key {
-                    return Err(TokenError::AuthorityTypeNotSupported.into());
-                }
-                if let COption::Some(mint_authority) = mint_account.mint_authority {
-                    Self::validate_owner(
-                        program_id,
-                        &mint_authority,
-                        authority_info,
-                        account_info_iter.as_slice(),
-                    )?;
-                } else {
-                    return Err(TokenError::AuthorityTypeNotSupported.into());
-                }
-            }
-            Multisig::LEN => {
-                // Multisig signs for itself
-                Self::validate_owner(
-                    program_id,
-                    source_info.key,
-                    authority_info,
-                    account_info_iter.as_slice(),
-                )?;
-            }
-            _ => {
-                return Err(TokenError::InvalidState.into());
-            }
-        }
-
-        let source_rent_exempt_reserve = Rent::get()?.minimum_balance(source_info.data_len());
-
-        let transfer_amount = source_info
-            .lamports()
-            .checked_sub(source_rent_exempt_reserve)
-            .ok_or(TokenError::NotRentExempt)?;
-
-        let source_starting_lamports = source_info.lamports();
-        **source_info.lamports.borrow_mut() = source_starting_lamports
-            .checked_sub(transfer_amount)
-            .ok_or(TokenError::Overflow)?;
-
-        let destination_starting_lamports = destination_info.lamports();
-        **destination_info.lamports.borrow_mut() = destination_starting_lamports
-            .checked_add(transfer_amount)
-            .ok_or(TokenError::Overflow)?;
-
-        Ok(())
-    }
-
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -1036,10 +950,6 @@ impl Processor {
             TokenInstruction::UiAmountToAmount { ui_amount } => {
                 msg!("Instruction: UiAmountToAmount");
                 Self::process_ui_amount_to_amount(program_id, accounts, ui_amount)
-            }
-            TokenInstruction::RecoverLamports => {
-                msg!("Instruction: RecoverLamports");
-                Self::process_recover_lamports(program_id, accounts)
             }
         }
     }

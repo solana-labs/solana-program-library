@@ -638,7 +638,7 @@ pub enum TokenInstruction<'a> {
     /// 1. `[writable]` Source Account
     /// 2. `[signer]` Authority
     /// 3. ..2+M `[signer]` M signer accounts.
-    RecoverLamports,
+    WithdrawExcessLamports,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -774,7 +774,7 @@ impl<'a> TokenInstruction<'a> {
                 let (delegate, _rest) = Self::unpack_pubkey(rest)?;
                 Self::InitializePermanentDelegate { delegate }
             }
-            36 => Self::RecoverLamports,
+            36 => Self::WithdrawExcessLamports,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -934,7 +934,7 @@ impl<'a> TokenInstruction<'a> {
                 buf.push(35);
                 buf.extend_from_slice(delegate.as_ref());
             }
-            &Self::RecoverLamports => {
+            &Self::WithdrawExcessLamports => {
                 buf.push(36);
             }
         };
@@ -1871,8 +1871,8 @@ pub(crate) fn encode_instruction<T: Into<u8>, D: Pod>(
     }
 }
 
-/// Creates a `RecoverLamports` Instruction
-pub fn recover_lamports(
+/// Creates a `WithdrawExcessLamports` Instruction
+pub fn withdraw_excess_lamports(
     token_program_id: &Pubkey,
     source_account: &Pubkey,
     authority: &Pubkey,
@@ -1892,7 +1892,7 @@ pub fn recover_lamports(
     Ok(Instruction {
         program_id: *token_program_id,
         accounts,
-        data: TokenInstruction::RecoverLamports.pack(),
+        data: TokenInstruction::WithdrawExcessLamports.pack(),
     })
 }
 

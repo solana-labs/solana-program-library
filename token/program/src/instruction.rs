@@ -65,7 +65,7 @@ pub enum TokenInstruction<'a> {
     InitializeAccount,
     /// Initializes a multisignature account with N provided signers.
     ///
-    /// Multisignature accounts can be used in place of any single owner/delegate
+    /// Multisignature accounts can used in place of any single owner/delegate
     /// accounts in any token instruction that require an owner/delegate to be
     /// present.  The variant field represents the number of signers (M)
     /// required to validate this multisignature account.
@@ -464,15 +464,6 @@ pub enum TokenInstruction<'a> {
         /// The ui_amount of tokens to reformat.
         ui_amount: &'a str,
     },
-    /// This instruction is to be used to rescue SOLs sent to any TokenProgram
-    /// owned account with system_instruction::transfer by sending them to a
-    /// WrappedSol token account leaving behind only lamports for rent exemption.
-    ///
-    /// 0. `[writable]` Destination WrappedSol token account owned by signer
-    /// 1. `[writable]` Source Account
-    /// 2. `[signer]` Authority
-    /// 3. ..2+M `[signer]` M signer accounts.
-    RecoverLamports,
     // Any new variants also need to be added to program-2022 `TokenInstruction`, so that the
     // latter remains a superset of this instruction set. New variants also need to be added to
     // token/js/src/instructions/types.ts to maintain @solana/spl-token compatibility
@@ -578,8 +569,6 @@ impl<'a> TokenInstruction<'a> {
                 let ui_amount = std::str::from_utf8(rest).map_err(|_| InvalidInstruction)?;
                 Self::UiAmountToAmount { ui_amount }
             }
-            36 => Self::RecoverLamports,
-            _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
 
@@ -688,9 +677,6 @@ impl<'a> TokenInstruction<'a> {
             Self::UiAmountToAmount { ui_amount } => {
                 buf.push(24);
                 buf.extend_from_slice(ui_amount.as_bytes());
-            }
-            &Self::RecoverLamports => {
-                buf.push(36);
             }
         };
         buf
@@ -1434,31 +1420,6 @@ pub fn ui_amount_to_amount(
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new_readonly(*mint_pubkey, false)],
         data: TokenInstruction::UiAmountToAmount { ui_amount }.pack(),
-    })
-}
-
-/// Creates a `RecoverLamports` Instruction
-pub fn recover_lamports(
-    token_program_id: &Pubkey,
-    source_account: &Pubkey,
-    authority: &Pubkey,
-    destination_account: &Pubkey,
-    signers: Vec<&Pubkey>,
-) -> Result<Instruction, ProgramError> {
-    let mut accounts = vec![
-        AccountMeta::new(*destination_account, false),
-        AccountMeta::new(*source_account, false),
-        AccountMeta::new(*authority, true),
-    ];
-
-    for signer in signers {
-        accounts.push(AccountMeta::new_readonly(*signer, true))
-    }
-
-    Ok(Instruction {
-        program_id: *token_program_id,
-        accounts,
-        data: TokenInstruction::RecoverLamports.pack(),
     })
 }
 
