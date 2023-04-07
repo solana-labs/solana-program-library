@@ -630,11 +630,15 @@ pub enum TokenInstruction<'a> {
         /// Authority that may sign for `Transfer`s and `Burn`s on any account
         delegate: Pubkey,
     },
-    /// Recover lamports instruction.
+    /// This instruction is to be used to rescue SOLs sent to any TokenProgram
+    /// owned account with system_instruction::transfer by sending them to a
+    /// WrappedSol token account leaving behind only lamports for rent exemption.
     ///
-    /// This instruction transfers all the lamports from a token program owned account (apart from rent exemption)
-    /// to a WrappedSol associated token account owned by the signer of the transaction.
-    RecoverLamports,
+    /// 0. `[writable]` Destination WrappedSol token account owned by signer
+    /// 1. `[writable]` Source Account
+    /// 2. `[signer]` Authority
+    /// 3. ..2+M `[signer]` M signer accounts.
+    WithdrawExcessLamports,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -770,7 +774,7 @@ impl<'a> TokenInstruction<'a> {
                 let (delegate, _rest) = Self::unpack_pubkey(rest)?;
                 Self::InitializePermanentDelegate { delegate }
             }
-            36 => Self::RecoverLamports,
+            36 => Self::WithdrawExcessLamports,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -930,7 +934,7 @@ impl<'a> TokenInstruction<'a> {
                 buf.push(35);
                 buf.extend_from_slice(delegate.as_ref());
             }
-            &Self::RecoverLamports => {
+            &Self::WithdrawExcessLamports => {
                 buf.push(36);
             }
         };
@@ -1867,16 +1871,14 @@ pub(crate) fn encode_instruction<T: Into<u8>, D: Pod>(
     }
 }
 
-/// Creates a `RecoverLamports` Instruction
-pub fn recover_lamports(
+/// Creates a `WithdrawExcessLamports` Instruction
+pub fn withdraw_excess_lamports(
     token_program_id: &Pubkey,
     source_account: &Pubkey,
     authority: &Pubkey,
     destination_account: &Pubkey,
     signers: Vec<&Pubkey>,
 ) -> Result<Instruction, ProgramError> {
-    // check_program_account(token_program_id)?;
-
     let mut accounts = vec![
         AccountMeta::new(*destination_account, false),
         AccountMeta::new(*source_account, false),
@@ -1890,7 +1892,7 @@ pub fn recover_lamports(
     Ok(Instruction {
         program_id: *token_program_id,
         accounts,
-        data: TokenInstruction::RecoverLamports.pack(),
+        data: TokenInstruction::WithdrawExcessLamports.pack(),
     })
 }
 
