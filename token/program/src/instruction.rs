@@ -569,6 +569,7 @@ impl<'a> TokenInstruction<'a> {
                 let ui_amount = std::str::from_utf8(rest).map_err(|_| InvalidInstruction)?;
                 Self::UiAmountToAmount { ui_amount }
             }
+            _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
 
