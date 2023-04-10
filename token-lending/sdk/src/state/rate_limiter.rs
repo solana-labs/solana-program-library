@@ -49,7 +49,12 @@ impl Default for RateLimiterConfig {
 impl RateLimiter {
     /// initialize rate limiter
     pub fn new(config: RateLimiterConfig, cur_slot: u64) -> Self {
-        let slot_start = cur_slot / config.window_duration * config.window_duration;
+        let slot_start = if config.window_duration != 0 {
+            cur_slot / config.window_duration * config.window_duration
+        } else {
+            cur_slot
+        };
+
         Self {
             config,
             prev_qty: Decimal::zero(),
