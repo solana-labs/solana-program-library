@@ -1,0 +1,13 @@
+#!/bin/bash
+
+diff=$(cargo +nightly fmt -- --check)
+result=$?
+
+if [[ ${result} -ne 0 ]] ; then
+    cat <<\EOF
+There are some code style issues, run `cargo +nightly fmt` first.
+EOF
+    exit 1
+fi
+
+exit 0
