@@ -4357,7 +4357,9 @@ async fn process_command<'a>(
         (CommandName::WithdrawExcessLamports, arg_matches) => {
             let (signer, authority) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
+        if config.multisigner_pubkeys.is_empty() {
             push_signer_with_dedup(signer, &mut bulk_signers);
+        }
 
             let source =
                 config.pubkey_or_default(arg_matches, "source_account", &mut wallet_manager)?;
