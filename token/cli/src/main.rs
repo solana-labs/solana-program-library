@@ -2080,8 +2080,8 @@ async fn command_withdraw_excess_lamports(
     let res = token
         .withdraw_excess_lamports(
             &source_account,
-            &authority,
             &destination_account,
+            &authority,
             &bulk_signers,
         )
         .await?;
