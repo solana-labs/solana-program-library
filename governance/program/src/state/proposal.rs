@@ -91,21 +91,25 @@ pub enum VoteType {
         #[allow(dead_code)]
         choice_type: MultiChoiceType,
 
-        /// The min number of options a voter must choose, the default is 1
-        /// Note: In the current version the limit is not supported and not enforced yet
+        /// The min number of options a voter must choose
+        ///
+        /// Note: In the current version the limit is not supported and not enforced
+        /// and must always be set to 1
         #[allow(dead_code)]
         min_voter_options: u8,
 
         /// The max number of options a voter can choose
-        /// By default it equals to the number of available options
-        /// Note: In the current version the limit is not supported and not enforced yet
+        ///
+        /// Note: In the current version the limit is not supported and not enforced
+        /// and must always be set to the number of available options
         #[allow(dead_code)]
         max_voter_options: u8,
 
         /// The max number of wining options
         /// For executable proposals it limits how many options can be executed for a Proposal
-        /// By default it equals to the number of available options
-        /// Note: In the current version the limit is not supported and not enforced yet
+        ///
+        /// Note: In the current version the limit is not supported and not enforced
+        /// and must always be set to the number of available options
         #[allow(dead_code)]
         max_winning_options: u8,
     },
@@ -1169,7 +1173,7 @@ pub fn assert_valid_proposal_options(
 
     if let VoteType::MultiChoice {
         choice_type: _,
-        min_voter_options: _,
+        min_voter_options,
         max_voter_options,
         max_winning_options,
     } = vote_type
@@ -1177,8 +1181,9 @@ pub fn assert_valid_proposal_options(
         if options.len() == 1
             || *max_voter_options as usize != options.len()
             || *max_winning_options as usize != options.len()
+            || *min_voter_options != 1
         {
-            return Err(GovernanceError::InvalidProposalOptions.into());
+            return Err(GovernanceError::InvalidMultiChoiceProposalParameters.into());
         }
     }
 
@@ -2735,7 +2740,10 @@ mod test {
         let result = assert_valid_proposal_options(&options, &vote_type);
 
         // Assert
-        assert_eq!(result, Err(GovernanceError::InvalidProposalOptions.into()));
+        assert_eq!(
+            result,
+            Err(GovernanceError::InvalidMultiChoiceProposalParameters.into())
+        );
     }
 
     #[test]
@@ -3033,7 +3041,10 @@ mod test {
         let result = assert_valid_proposal_options(&options, &vote_type);
 
         // Assert
-        assert_eq!(result, Err(GovernanceError::InvalidProposalOptions.into()));
+        assert_eq!(
+            result,
+            Err(GovernanceError::InvalidMultiChoiceProposalParameters.into())
+        );
     }
 
     #[test]
@@ -3126,25 +3137,6 @@ mod test {
             "option 10".to_string(),
             "option 11".to_string(),
         ];
-
-        // Act
-        let result = assert_valid_proposal_options(&options, &vote_type);
-
-        // Assert
-        assert_eq!(result, Err(GovernanceError::InvalidProposalOptions.into()));
-    }
-
-    #[test]
-    pub fn test_assert_same_label_options_for_multi_weighted_choice_error() {
-        // Arrange
-        let vote_type = VoteType::MultiChoice {
-            choice_type: MultiChoiceType::Weighted,
-            min_voter_options: 1,
-            max_voter_options: 1,
-            max_winning_options: 1,
-        };
-
-        let options = vec!["option 1".to_string(), "option 1".to_string()];
 
         // Act
         let result = assert_valid_proposal_options(&options, &vote_type);

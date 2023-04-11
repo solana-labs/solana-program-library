@@ -494,6 +494,10 @@ pub enum GovernanceError {
     /// Total vote weight must be 100%
     #[error("Total vote weight must be 100%")]
     TotalVoteWeightMustBe100Percent, // 619
+
+    /// Invalid multi choice proposal parameters
+    #[error("Invalid multi choice proposal parameters")]
+    InvalidMultiChoiceProposalParameters, // 620
 }
 
 impl PrintProgramError for GovernanceError {
