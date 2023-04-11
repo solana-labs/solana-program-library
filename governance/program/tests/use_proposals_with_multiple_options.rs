@@ -93,7 +93,7 @@ async fn test_create_proposal_with_multiple_choice_options_and_without_deny_opti
             options,
             false,
             VoteType::MultiChoice {
-                choice_type: MultiChoiceType::Approval,
+                choice_type: MultiChoiceType::FullWeight,
                 min_voter_options: 1,
                 max_winning_options: 2,
                 max_voter_options: 2,
@@ -109,7 +109,7 @@ async fn test_create_proposal_with_multiple_choice_options_and_without_deny_opti
     assert_eq!(
         proposal_account.vote_type,
         VoteType::MultiChoice {
-            choice_type: MultiChoiceType::Approval,
+            choice_type: MultiChoiceType::FullWeight,
             min_voter_options: 1,
             max_winning_options: 2,
             max_voter_options: 2,
@@ -365,7 +365,7 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
             ],
             false,
             VoteType::MultiChoice {
-                choice_type: MultiChoiceType::Approval,
+                choice_type: MultiChoiceType::FullWeight,
                 min_voter_options: 1,
                 max_winning_options: 3,
                 max_voter_options: 3,
@@ -495,7 +495,7 @@ async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_succ
             ],
             true,
             VoteType::MultiChoice {
-                choice_type: MultiChoiceType::Approval,
+                choice_type: MultiChoiceType::FullWeight,
                 min_voter_options: 1,
                 max_winning_options: 3,
                 max_voter_options: 3,
@@ -658,7 +658,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
             ],
             true,
             VoteType::MultiChoice {
-                choice_type: MultiChoiceType::Approval,
+                choice_type: MultiChoiceType::FullWeight,
                 min_voter_options: 1,
                 max_winning_options: 3,
                 max_voter_options: 3,
@@ -867,7 +867,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
             ],
             true,
             VoteType::MultiChoice {
-                choice_type: MultiChoiceType::Approval,
+                choice_type: MultiChoiceType::FullWeight,
                 min_voter_options: 1,
                 max_winning_options: 3,
                 max_voter_options: 3,
@@ -1034,7 +1034,7 @@ async fn test_create_proposal_with_10_options_and_cast_vote() {
             options,
             false,
             VoteType::MultiChoice {
-                choice_type: MultiChoiceType::Approval,
+                choice_type: MultiChoiceType::FullWeight,
                 min_voter_options: 1,
                 max_winning_options: options_len,
                 max_voter_options: options_len,
@@ -1086,7 +1086,7 @@ async fn test_create_proposal_with_10_options_and_cast_vote() {
     assert_eq!(
         proposal_account.vote_type,
         VoteType::MultiChoice {
-            choice_type: MultiChoiceType::Approval,
+            choice_type: MultiChoiceType::FullWeight,
             min_voter_options: 1,
             max_winning_options: options_len,
             max_voter_options: options_len,

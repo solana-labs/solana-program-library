@@ -115,7 +115,7 @@ pub enum VoteType {
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum MultiChoiceType {
     /// Multiple options can be approved with full weight allocated to each approved option
-    Approval,
+    FullWeight,
 
     /// Multiple options can be approved with weight allocated proportionally to the percentage of the total weight
     /// The full weight has to be voted among the approved options, i.e., 100% of the weight has to be allocated
@@ -907,7 +907,7 @@ impl ProposalV2 {
                         }
                     }
                     VoteType::MultiChoice {
-                        choice_type: MultiChoiceType::Approval,
+                        choice_type: MultiChoiceType::FullWeight,
                         min_voter_options: _,
                         max_voter_options: _,
                         max_winning_options: _,
@@ -1329,7 +1329,7 @@ mod test {
     fn test_max_size() {
         let mut proposal = create_test_proposal();
         proposal.vote_type = VoteType::MultiChoice {
-            choice_type: MultiChoiceType::Approval,
+            choice_type: MultiChoiceType::FullWeight,
             min_voter_options: 1,
             max_voter_options: 1,
             max_winning_options: 1,
@@ -1344,7 +1344,7 @@ mod test {
     fn test_multi_option_proposal_max_size() {
         let mut proposal = create_test_multi_option_proposal();
         proposal.vote_type = VoteType::MultiChoice {
-            choice_type: MultiChoiceType::Approval,
+            choice_type: MultiChoiceType::FullWeight,
             min_voter_options: 1,
             max_voter_options: 3,
             max_winning_options: 3,
@@ -2604,7 +2604,7 @@ mod test {
         // Arrange
         let mut proposal = create_test_multi_option_proposal();
         proposal.vote_type = VoteType::MultiChoice {
-            choice_type: MultiChoiceType::Approval,
+            choice_type: MultiChoiceType::FullWeight,
             min_voter_options: 1,
             max_voter_options: 4,
             max_winning_options: 4,
@@ -2641,7 +2641,7 @@ mod test {
         // Arrange
         let mut proposal = create_test_multi_option_proposal();
         proposal.vote_type = VoteType::MultiChoice {
-            choice_type: MultiChoiceType::Approval,
+            choice_type: MultiChoiceType::FullWeight,
             min_voter_options: 1,
             max_voter_options: 3,
             max_winning_options: 3,
@@ -2682,7 +2682,7 @@ mod test {
         // Arrange
         let mut proposal = create_test_multi_option_proposal();
         proposal.vote_type = VoteType::MultiChoice {
-            choice_type: MultiChoiceType::Approval,
+            choice_type: MultiChoiceType::FullWeight,
             min_voter_options: 1,
             max_voter_options: 3,
             max_winning_options: 3,
@@ -2723,7 +2723,7 @@ mod test {
     ) {
         // Arrange
         let vote_type = VoteType::MultiChoice {
-            choice_type: MultiChoiceType::Approval,
+            choice_type: MultiChoiceType::FullWeight,
             min_voter_options: 1,
             max_voter_options: 3,
             max_winning_options: 3,
@@ -2742,7 +2742,7 @@ mod test {
     pub fn test_assert_valid_proposal_options_with_no_options_for_multi_choice_vote_error() {
         // Arrange
         let vote_type = VoteType::MultiChoice {
-            choice_type: MultiChoiceType::Approval,
+            choice_type: MultiChoiceType::FullWeight,
             min_voter_options: 1,
             max_voter_options: 3,
             max_winning_options: 3,
@@ -2775,7 +2775,7 @@ mod test {
     pub fn test_assert_valid_proposal_options_for_multi_choice_vote() {
         // Arrange
         let vote_type = VoteType::MultiChoice {
-            choice_type: MultiChoiceType::Approval,
+            choice_type: MultiChoiceType::FullWeight,
             min_voter_options: 1,
             max_voter_options: 3,
             max_winning_options: 3,
@@ -2798,7 +2798,7 @@ mod test {
     pub fn test_assert_valid_proposal_options_for_multi_choice_vote_with_empty_option_error() {
         // Arrange
         let vote_type = VoteType::MultiChoice {
-            choice_type: MultiChoiceType::Approval,
+            choice_type: MultiChoiceType::FullWeight,
             min_voter_options: 1,
             max_voter_options: 3,
             max_winning_options: 3,
