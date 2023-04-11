@@ -470,7 +470,7 @@ pub enum GovernanceError {
     ///Invalid state for proposal state transition to Completed
     #[error("Invalid state for proposal state transition to Completed")]
     InvalidStateToCompleteProposal, // 613
-    
+
     /// Invalid number of vote choices
     #[error("Invalid number of vote choices")]
     InvalidNumberOfVoteChoices, // 614
