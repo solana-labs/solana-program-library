@@ -105,13 +105,16 @@ impl Obligation {
         collateral: &ObligationCollateral,
         withdraw_reserve: &Reserve,
     ) -> Result<u64, ProgramError> {
+        if self.borrows.is_empty() {
+            return Ok(collateral.deposited_amount);
+        }
+
         if self.allowed_borrow_value <= self.borrowed_value_upper_bound {
             return Ok(0);
         }
 
         let loan_to_value_ratio = withdraw_reserve.loan_to_value_ratio();
-
-        if self.borrows.is_empty() || loan_to_value_ratio == Rate::zero() {
+        if loan_to_value_ratio == Rate::zero() {
             return Ok(collateral.deposited_amount);
         }
 
@@ -815,12 +818,22 @@ mod test {
                         deposited_amount: 20 * LAMPORTS_PER_SOL,
                         ..ObligationCollateral::default()
                     }],
+                    borrows: vec![ObligationLiquidity {
+                        borrowed_amount_wads: Decimal::from(10u64),
+                        ..ObligationLiquidity::default()
+                    }],
                     deposited_value: Decimal::from(100u64),
                     borrowed_value_upper_bound: Decimal::from(50u64),
                     allowed_borrow_value: Decimal::from(50u64),
                     ..Obligation::default()
                 },
-                reserve: Reserve::default(),
+                reserve: Reserve {
+                    config: ReserveConfig {
+                        loan_to_value_ratio: 50,
+                        ..ReserveConfig::default()
+                    },
+                    ..Reserve::default()
+                },
                 expected_max_withdraw_amount: 0,
             }),
             // regular case
@@ -930,7 +943,7 @@ mod test {
                 },
                 expected_max_withdraw_amount: 100 * LAMPORTS_PER_SOL,
             }),
-            // ltv is 0 so we can withdraw everything
+            // ltv is 0 and the obligation is healthy so we can withdraw everything
             Just(MaxWithdrawAmountTestCase {
                 obligation: Obligation {
                     deposits: vec![ObligationCollateral {
@@ -943,11 +956,32 @@ mod test {
                     }],
 
                     allowed_borrow_value: Decimal::from(100u64),
+                    borrowed_value_upper_bound: Decimal::from(50u64),
                     ..Obligation::default()
                 },
 
                 reserve: Reserve::default(),
                 expected_max_withdraw_amount: 100 * LAMPORTS_PER_SOL,
+            }),
+            // ltv is 0 but the obligation is unhealthy so we can't withdraw anything
+            Just(MaxWithdrawAmountTestCase {
+                obligation: Obligation {
+                    deposits: vec![ObligationCollateral {
+                        deposited_amount: 100 * LAMPORTS_PER_SOL,
+                        ..ObligationCollateral::default()
+                    }],
+                    borrows: vec![ObligationLiquidity {
+                        borrowed_amount_wads: Decimal::from(10u64),
+                        ..ObligationLiquidity::default()
+                    }],
+
+                    allowed_borrow_value: Decimal::from(100u64),
+                    borrowed_value_upper_bound: Decimal::from(100u64),
+                    ..Obligation::default()
+                },
+
+                reserve: Reserve::default(),
+                expected_max_withdraw_amount: 0,
             }),
         ]
     }
