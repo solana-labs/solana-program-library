@@ -1877,7 +1877,7 @@ pub fn withdraw_excess_lamports(
     source_account: &Pubkey,
     destination_account: &Pubkey,
     authority: &Pubkey,
-    signers: Vec<&Pubkey>,
+    signers: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
     let mut accounts = vec![
         AccountMeta::new(*destination_account, false),
