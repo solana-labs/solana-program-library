@@ -2605,7 +2605,7 @@ mod test {
     }
 
     #[test]
-    pub fn test_assert_valid_multi_choice_approval_vote() {
+    pub fn test_assert_valid_multi_choice_full_weight_vote() {
         // Arrange
         let mut proposal = create_test_multi_option_proposal();
         proposal.vote_type = VoteType::MultiChoice {
