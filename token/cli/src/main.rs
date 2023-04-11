@@ -3629,7 +3629,7 @@ fn app<'a, 'b>(
             SubCommand::with_name(CommandName::WithdrawExcessLamports.into())
                 .about("Withdraw lamports from a Token Program owned account")
                 .arg(
-                    Arg::with_name("source_account")
+                    Arg::with_name("from")
                         .validator(is_valid_pubkey)
                         .value_name("ACCOUNT")
                         .takes_value(true)
