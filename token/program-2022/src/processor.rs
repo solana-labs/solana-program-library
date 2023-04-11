@@ -1301,54 +1301,48 @@ impl Processor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
-        let destination_info = next_account_info(account_info_iter)?;
         let source_info = next_account_info(account_info_iter)?;
+        let destination_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
         let source_data = source_info.data.borrow();
-        match source_data.len() {
-            Mint::LEN => {
-                let mint_account = StateWithExtensions::<Mint>::unpack(&source_data)?;
-                if &mint_account.base.mint_authority.expect("No mint authority")
-                    != authority_info.key
-                {
-                    return Err(TokenError::AuthorityTypeNotSupported.into());
-                }
-                if let COption::Some(mint_authority) = mint_account.base.mint_authority {
-                    Self::validate_owner(
-                        program_id,
-                        &mint_authority,
-                        authority_info,
-                        authority_info.data_len(),
-                        account_info_iter.as_slice(),
-                    )?;
-                } else {
-                    return Err(TokenError::AuthorityTypeNotSupported.into());
-                }
+
+        if let Ok(account) = StateWithExtensions::<Account>::unpack(&source_data) {
+            if account.base.is_native() {
+                return Err(TokenError::NativeNotSupported.into());
             }
-            Multisig::LEN => {
+            Self::validate_owner(
+                program_id,
+                &account.base.owner,
+                authority_info,
+                authority_info.data_len(),
+                account_info_iter.as_slice(),
+            )?;
+        } else if let Ok(mint) = StateWithExtensions::<Mint>::unpack(&source_data) {
+            if &mint.base.mint_authority.expect("No mint authority") != authority_info.key {
+                return Err(TokenError::AuthorityTypeNotSupported.into());
+            }
+            if let COption::Some(mint_authority) = mint.base.mint_authority {
                 Self::validate_owner(
                     program_id,
-                    source_info.key,
+                    &mint_authority,
                     authority_info,
                     authority_info.data_len(),
                     account_info_iter.as_slice(),
                 )?;
+            } else {
+                return Err(TokenError::AuthorityTypeNotSupported.into());
             }
-            _ => {
-                let token_account = StateWithExtensions::<Account>::unpack(&source_data)?;
-                if token_account.base.is_native() {
-                    return Err(TokenError::NativeNotSupported.into());
-                }
-                Self::validate_owner(
-                    program_id,
-                    &token_account.base.owner,
-                    authority_info,
-                    authority_info.data_len(),
-                    account_info_iter.as_slice(),
-                )?;
-            }
+        } else if source_data.len() == Multisig::LEN {
+            Self::validate_owner(
+                program_id,
+                source_info.key,
+                authority_info,
+                authority_info.data_len(),
+                account_info_iter.as_slice(),
+            )?;
         }
+
         let source_rent_exempt_reserve = Rent::get()?.minimum_balance(source_info.data_len());
 
         let transfer_amount = source_info

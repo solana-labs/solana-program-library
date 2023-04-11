@@ -2444,9 +2444,9 @@ where
             &[spl_token_2022::instruction::withdraw_excess_lamports(
                 &self.program_id,
                 source,
-                authority,
                 destination,
-                multisig_signers,
+                authority,
+                &multisig_signers,
             )?],
             signing_keypairs,
         )

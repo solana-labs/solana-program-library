@@ -1880,13 +1880,13 @@ pub fn withdraw_excess_lamports(
     signers: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
     let mut accounts = vec![
-        AccountMeta::new(*destination_account, false),
         AccountMeta::new(*source_account, false),
+        AccountMeta::new(*destination_account, false),
         AccountMeta::new(*authority, signers.is_empty()),
     ];
 
     for signer in signers {
-        accounts.push(AccountMeta::new_readonly(*signer, true))
+        accounts.push(AccountMeta::new_readonly(**signer, true))
     }
 
     Ok(Instruction {

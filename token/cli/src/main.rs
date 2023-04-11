@@ -4357,17 +4357,13 @@ async fn process_command<'a>(
         (CommandName::WithdrawExcessLamports, arg_matches) => {
             let (signer, authority) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-        if config.multisigner_pubkeys.is_empty() {
-            push_signer_with_dedup(signer, &mut bulk_signers);
-        }
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(signer, &mut bulk_signers);
+            }
 
-            let source =
-                config.pubkey_or_default(arg_matches, "source_account", &mut wallet_manager)?;
-            let destination = config.pubkey_or_default(
-                arg_matches,
-                "destination_account",
-                &mut wallet_manager,
-            )?;
+            let source = config.pubkey_or_default(arg_matches, "from", &mut wallet_manager)?;
+            let destination =
+                config.pubkey_or_default(arg_matches, "recipient", &mut wallet_manager)?;
 
             command_withdraw_excess_lamports(config, source, destination, authority, bulk_signers)
                 .await
@@ -7235,6 +7231,8 @@ mod tests {
                 "spl-token",
                 CommandName::CreateToken.into(),
                 &token_path.path().to_str().unwrap(),
+                "--program-id",
+                &program_id.to_string(),
             ],
         )
         .await
