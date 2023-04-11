@@ -3631,7 +3631,7 @@ fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("from")
                         .validator(is_valid_pubkey)
-                        .value_name("ACCOUNT")
+                        .value_name("SOURCE_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .required(true)
                         .help("Specify the address of the account to recover lamports from"),
