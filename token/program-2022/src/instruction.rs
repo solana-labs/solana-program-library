@@ -1875,8 +1875,8 @@ pub(crate) fn encode_instruction<T: Into<u8>, D: Pod>(
 pub fn withdraw_excess_lamports(
     token_program_id: &Pubkey,
     source_account: &Pubkey,
-    authority: &Pubkey,
     destination_account: &Pubkey,
+    authority: &Pubkey,
     signers: Vec<&Pubkey>,
 ) -> Result<Instruction, ProgramError> {
     let mut accounts = vec![
