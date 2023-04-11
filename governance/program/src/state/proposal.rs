@@ -887,7 +887,7 @@ impl ProposalV2 {
                                 // The total must add up to exactly 100%
                                 total_choice_weight_percentage = total_choice_weight_percentage
                                     .checked_add(choice.weight_percentage)
-                                    .unwrap();
+                                    .ok_or(GovernanceError::TotalVoteWeightMustBe100Percent)?;
                             }
                             _ => {
                                 if choice.weight_percentage != 100 {
@@ -2958,6 +2958,47 @@ mod test {
             VoteChoice {
                 rank: 0,
                 weight_percentage: 34,
+            },
+        ];
+        let vote = Vote::Approve(choices.clone());
+
+        // Ensure
+        assert_eq!(proposal.options.len(), choices.len());
+
+        // Act
+        let result = proposal.assert_valid_vote(&vote);
+
+        // Assert
+        assert_eq!(
+            result,
+            Err(GovernanceError::TotalVoteWeightMustBe100Percent.into())
+        );
+    }
+
+    #[test]
+    pub fn test_assert_valid_vote_with_overflow_weight_for_multi_weighted_choice_error() {
+        // Multi weighted choice does not permit vote with sum weight over 100%
+        // Arrange
+        let mut proposal = create_test_multi_option_proposal();
+        proposal.vote_type = VoteType::MultiChoice {
+            choice_type: MultiChoiceType::Weighted,
+            min_voter_options: 1,
+            max_voter_options: 3,
+            max_winning_options: 3,
+        };
+
+        let choices = vec![
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 100,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 100,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 100,
             },
         ];
         let vote = Vote::Approve(choices.clone());
