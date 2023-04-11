@@ -30,23 +30,23 @@ pub enum PermissionedTransferInstruction {
         /// Amount of tokens to transfer
         amount: u64,
     },
-    /// Initializes the validate pubkeys struct on an account, writing into
+    /// Initializes the extra account metas on an account, writing into
     /// the first open TLV space.
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[w]` Validate transfer account
+    ///   0. `[w]` Account with extra account metas
     ///   1. `[]` Mint
     ///   2. `[s]` Mint authority
     ///   3. `[]` System program
     ///   4..4+M `[]` `M` additional accounts, to be written to validation data
     ///
-    InitializeValidationPubkeys,
+    InitializeExtraAccountMetas,
 }
 /// First 8 bytes of `hash::hashv(&["permissioned-transfer:validate"])`
 const VALIDATE_DISCRIMINATOR: &[u8] = &[242, 240, 55, 155, 72, 84, 63, 231];
-/// First 8 bytes of `hash::hashv(&["permissioned-transfer:initialize-validation-pubkeys"])`
-const INITIALIZE_VALIDATION_PUBKEYS_DISCRIMINATOR: &[u8] = &[248, 8, 136, 21, 37, 96, 4, 61];
+/// First 8 bytes of `hash::hashv(&["permissioned-transfer:initialize-extra-account-metas"])`
+const INITIALIZE_EXTRA_ACCOUNT_METAS_DISCRIMINATOR: &[u8] = &[0, 136, 247, 239, 19, 93, 180, 21];
 
 impl PermissionedTransferInstruction {
     /// Unpacks a byte buffer into a [PermissionedTransferInstruction](enum.PermissionedTransferInstruction.html).
@@ -61,7 +61,7 @@ impl PermissionedTransferInstruction {
                     .ok_or(ProgramError::InvalidInstructionData)?;
                 Self::Validate { amount }
             }
-            INITIALIZE_VALIDATION_PUBKEYS_DISCRIMINATOR => Self::InitializeValidationPubkeys,
+            INITIALIZE_EXTRA_ACCOUNT_METAS_DISCRIMINATOR => Self::InitializeExtraAccountMetas,
             _ => return Err(ProgramError::InvalidInstructionData),
         })
     }
@@ -74,8 +74,8 @@ impl PermissionedTransferInstruction {
                 buf.extend_from_slice(VALIDATE_DISCRIMINATOR);
                 buf.extend_from_slice(&amount.to_le_bytes());
             }
-            Self::InitializeValidationPubkeys => {
-                buf.extend_from_slice(INITIALIZE_VALIDATION_PUBKEYS_DISCRIMINATOR);
+            Self::InitializeExtraAccountMetas => {
+                buf.extend_from_slice(INITIALIZE_EXTRA_ACCOUNT_METAS_DISCRIMINATOR);
             }
         };
         buf
@@ -116,20 +116,20 @@ pub fn validate(
     }
 }
 
-/// Creates a `InitializeValidationPubkeys` instruction.
-pub fn initialize_validation_pubkeys(
+/// Creates a `InitializeExtraAccountMetas` instruction.
+pub fn initialize_extra_account_metas(
     program_id: &Pubkey,
-    validate_state_pubkey: &Pubkey,
+    extra_account_metas_pubkey: &Pubkey,
     mint_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
     additional_pubkeys: &[&Pubkey],
 ) -> Instruction {
-    let data = PermissionedTransferInstruction::InitializeValidationPubkeys.pack();
+    let data = PermissionedTransferInstruction::InitializeExtraAccountMetas.pack();
 
     let mut accounts = vec![
-        AccountMeta::new(*validate_state_pubkey, false),
+        AccountMeta::new(*extra_account_metas_pubkey, false),
         AccountMeta::new_readonly(*mint_pubkey, false),
-        AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new_readonly(*authority_pubkey, true),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
     accounts.extend(
@@ -166,10 +166,10 @@ mod test {
 
     #[test]
     fn initialize_validation_pubkeys_packing() {
-        let check = PermissionedTransferInstruction::InitializeValidationPubkeys;
+        let check = PermissionedTransferInstruction::InitializeExtraAccountMetas;
         let packed = check.pack();
         let preimage =
-            hash::hashv(&[format!("{NAMESPACE}:initialize-validation-pubkeys").as_bytes()]);
+            hash::hashv(&[format!("{NAMESPACE}:initialize-extra-account-metas").as_bytes()]);
         let discriminator = &preimage.as_ref()[..DISCRIMINATOR_LENGTH];
         let mut expect = vec![];
         expect.extend_from_slice(discriminator.as_ref());

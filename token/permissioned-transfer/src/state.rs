@@ -14,7 +14,7 @@ pub(crate) const MAX_NUM_KEYS: usize = 3;
 // and all that, but it'll take some more time to get that working.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-pub struct ValidationPubkeys {
+pub struct ExtraAccountMetas {
     /// Number of `Pubkey` instances in the slice
     pub length: u16,
     /// Slice of required pubkeys to validate a transfer, along with the normal
@@ -23,7 +23,7 @@ pub struct ValidationPubkeys {
 }
 
 /// First 8 bytes of `hash::hashv(&["permissioned-transfer:validation-pubkeys"])`
-impl Value for ValidationPubkeys {
+impl Value for ExtraAccountMetas {
     const TYPE: Discriminator = Discriminator::new([250, 175, 124, 64, 235, 120, 63, 195]);
 
     fn try_from_bytes(bytes: &[u8]) -> Result<&Self, ProgramError> {
@@ -48,6 +48,6 @@ mod test {
         let preimage = hash::hashv(&[format!("{NAMESPACE}:validation-pubkeys").as_bytes()]);
         let discriminator =
             Discriminator::try_from(&preimage.as_ref()[..DISCRIMINATOR_LENGTH]).unwrap();
-        assert_eq!(discriminator, ValidationPubkeys::TYPE);
+        assert_eq!(discriminator, ExtraAccountMetas::TYPE);
     }
 }

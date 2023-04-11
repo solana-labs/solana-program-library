@@ -67,7 +67,7 @@ impl TryFrom<usize> for Length {
 }
 
 /// Get the current TlvIndices from the current spot
-fn get_indices_unchecked(type_start: usize) -> TlvIndices {
+const fn get_indices_unchecked(type_start: usize) -> TlvIndices {
     let length_start = type_start.saturating_add(size_of::<Discriminator>());
     let value_start = length_start.saturating_add(size_of::<Length>());
     TlvIndices {
