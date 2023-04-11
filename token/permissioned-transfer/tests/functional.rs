@@ -138,9 +138,9 @@ async fn success() {
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports = rent.minimum_balance(tlv::get_len::<ExtraAccountMetas>());
     let extra_account_pubkeys = [
-        &sysvar::instructions::id(),
-        &mint_authority_pubkey,
-        &extra_account_metas,
+        AccountMeta::new_readonly(sysvar::instructions::id(), false),
+        AccountMeta::new_readonly(mint_authority_pubkey, true),
+        AccountMeta::new(extra_account_metas, false),
     ];
     let transaction = Transaction::new_signed_with_payer(
         &[
@@ -182,7 +182,7 @@ async fn success() {
                 0,
             )],
             Some(&context.payer.pubkey()),
-            &[&context.payer],
+            &[&context.payer, &mint_authority],
             context.last_blockhash,
         );
         let error = context
@@ -203,9 +203,46 @@ async fn success() {
     // fail with wrong account
     {
         let extra_account_pubkeys = [
-            &sysvar::instructions::id(),
-            &mint_authority_pubkey,
-            &wallet.pubkey(),
+            AccountMeta::new_readonly(sysvar::instructions::id(), false),
+            AccountMeta::new_readonly(mint_authority_pubkey, true),
+            AccountMeta::new(wallet.pubkey(), false),
+        ];
+        let transaction = Transaction::new_signed_with_payer(
+            &[validate(
+                &spl_permissioned_transfer::id(),
+                &source,
+                token.get_address(),
+                &destination,
+                &wallet.pubkey(),
+                &extra_account_metas,
+                &extra_account_pubkeys,
+                0,
+            )],
+            Some(&context.payer.pubkey()),
+            &[&context.payer, &mint_authority],
+            context.last_blockhash,
+        );
+        let error = context
+            .banks_client
+            .process_transaction(transaction)
+            .await
+            .unwrap_err()
+            .unwrap();
+        assert_eq!(
+            error,
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(PermissionedTransferError::IncorrectAccount as u32),
+            )
+        );
+    }
+
+    // fail with not signer
+    {
+        let extra_account_pubkeys = [
+            AccountMeta::new_readonly(sysvar::instructions::id(), false),
+            AccountMeta::new_readonly(mint_authority_pubkey, false),
+            AccountMeta::new(extra_account_metas, false),
         ];
         let transaction = Transaction::new_signed_with_payer(
             &[validate(
@@ -251,7 +288,7 @@ async fn success() {
                 0,
             )],
             Some(&context.payer.pubkey()),
-            &[&context.payer],
+            &[&context.payer, &mint_authority],
             context.last_blockhash,
         );
         context
@@ -287,11 +324,6 @@ async fn fail_incorrect_derivation() {
     let mut context = context.lock().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports = rent.minimum_balance(tlv::get_len::<ExtraAccountMetas>());
-    let extra_account_pubkeys = [
-        &sysvar::instructions::id(),
-        &mint_authority_pubkey,
-        &extra_account_metas,
-    ];
 
     let transaction = Transaction::new_signed_with_payer(
         &[
@@ -305,7 +337,7 @@ async fn fail_incorrect_derivation() {
                 &extra_account_metas,
                 token.get_address(),
                 &mint_authority_pubkey,
-                &extra_account_pubkeys,
+                &[],
             ),
         ],
         Some(&context.payer.pubkey()),

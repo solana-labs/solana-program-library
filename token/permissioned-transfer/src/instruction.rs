@@ -91,7 +91,7 @@ pub fn validate(
     destination_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
     validate_state_pubkey: &Pubkey,
-    additional_pubkeys: &[&Pubkey],
+    additional_accounts: &[AccountMeta],
     amount: u64,
 ) -> Instruction {
     let data = PermissionedTransferInstruction::Validate { amount }.pack();
@@ -103,11 +103,7 @@ pub fn validate(
         AccountMeta::new_readonly(*authority_pubkey, false),
         AccountMeta::new_readonly(*validate_state_pubkey, false),
     ];
-    accounts.extend(
-        additional_pubkeys
-            .iter()
-            .map(|pk| AccountMeta::new_readonly(**pk, false)),
-    );
+    accounts.extend_from_slice(additional_accounts);
 
     Instruction {
         program_id: *program_id,
@@ -122,7 +118,7 @@ pub fn initialize_extra_account_metas(
     extra_account_metas_pubkey: &Pubkey,
     mint_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
-    additional_pubkeys: &[&Pubkey],
+    additional_accounts: &[AccountMeta],
 ) -> Instruction {
     let data = PermissionedTransferInstruction::InitializeExtraAccountMetas.pack();
 
@@ -132,11 +128,7 @@ pub fn initialize_extra_account_metas(
         AccountMeta::new_readonly(*authority_pubkey, true),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
-    accounts.extend(
-        additional_pubkeys
-            .iter()
-            .map(|pk| AccountMeta::new_readonly(**pk, false)),
-    );
+    accounts.extend_from_slice(additional_accounts);
 
     Instruction {
         program_id: *program_id,

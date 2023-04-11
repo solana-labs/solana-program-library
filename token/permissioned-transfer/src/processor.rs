@@ -7,7 +7,7 @@ use {
         get_extra_account_metas_address, get_extra_account_metas_address_and_bump_seed,
         inline_spl_token,
         instruction::PermissionedTransferInstruction,
-        state::{ExtraAccountMetas, MAX_NUM_KEYS},
+        state::{ExtraAccountMetas, PodAccountMeta, MAX_NUM_KEYS},
         tlv::{get_len, TlvState, TlvStateBorrowed, TlvStateMut},
     },
     solana_program::{
@@ -54,8 +54,7 @@ pub fn process_validate(
 
     // Let's assume that they're provided in the correct order
     for (i, account_info) in extra_account_infos.iter().enumerate() {
-        msg!("{} vs {}", account_info.key, validation_pubkeys.pubkeys[i]);
-        if *account_info.key != validation_pubkeys.pubkeys[i] {
+        if &validation_pubkeys.metas[i] != account_info {
             return Err(PermissionedTransferError::IncorrectAccount.into());
         }
     }
@@ -122,7 +121,7 @@ pub fn process_initialize_extra_account_metas(
         .try_into()
         .map_err(|_| ProgramError::from(PermissionedTransferError::CalculationFailure))?;
     for (i, account_info) in extra_account_infos.iter().enumerate() {
-        validation_pubkeys.pubkeys[i] = *account_info.key;
+        validation_pubkeys.metas[i] = PodAccountMeta::from(account_info);
     }
 
     Ok(())
