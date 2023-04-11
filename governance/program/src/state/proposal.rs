@@ -136,8 +136,12 @@ pub struct ProposalV2 {
 
     /// The total weight of the Proposal rejection votes
     /// If the proposal has no deny option then the weight is None
+    ///
     /// Only proposals with the deny option can have executable instructions attached to them
     /// Without the deny option a proposal is only non executable survey
+    ///
+    /// The deny options is also used for off-chain and/or manually executable proposal to make them binding
+    /// as opposed to survey only proposals
     pub deny_vote_weight: Option<u64>,
 
     /// Reserved space for future versions
@@ -271,7 +275,6 @@ impl ProposalV2 {
             | ProposalState::SigningOff
             | ProposalState::Voting
             | ProposalState::Draft
-            // state transition bug: non executable proposals could be stuck in Succeeded state
             | ProposalState::Succeeded => Err(GovernanceError::InvalidStateNotFinal.into()),
         }
     }
@@ -474,6 +477,10 @@ impl ProposalV2 {
 
         // None executable proposal is just a survey and is considered Completed once the vote ends and no more actions are available
         // There is no overall Success or Failure status for the Proposal however individual options still have their own status
+        //
+        // Note: An off-chain/manually executable Proposal has no instructions but it still must have the deny vote enabled to be binding
+        // In such a case, if successful, the Proposal vote ends in Succeeded state and it must be manually transitioned to Completed state
+        // by the Proposal owner once the external actions are executed
         if self.deny_vote_weight.is_none() {
             final_state = ProposalState::Completed;
         }
@@ -808,6 +815,21 @@ impl ProposalV2 {
 
         if proposal_transaction_data.execution_status == TransactionExecutionStatus::Error {
             return Err(GovernanceError::TransactionAlreadyFlaggedWithError.into());
+        }
+
+        Ok(())
+    }
+
+    /// Checks if Proposal with off-chain/manual actions can be transitioned to Completed
+    pub fn assert_can_complete(&self) -> Result<(), ProgramError> {
+        // Proposal vote must be successful
+        if self.state != ProposalState::Succeeded {
+            return Err(GovernanceError::InvalidStateToCompleteProposal.into());
+        }
+
+        // There must be no on-chain executable actions
+        if self.options.iter().any(|o| o.transactions_count != 0) {
+            return Err(GovernanceError::InvalidStateToCompleteProposal.into());
         }
 
         Ok(())
