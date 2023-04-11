@@ -2072,7 +2072,7 @@ async fn command_withdraw_excess_lamports(
     println_display(
         config,
         format!(
-            "Recovering lamports from Account: {} to Account: {}",
+            "Withdrawing excess lamports\n  Sender: {}\n  Destination: {}",
             source_account, destination_account
         ),
     );
