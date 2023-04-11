@@ -467,29 +467,33 @@ pub enum GovernanceError {
     #[error("Invalid State: Proposal is not in final state")]
     InvalidStateNotFinal, // 612
 
+    ///Invalid state for proposal state transition to Completed
+    #[error("Invalid state for proposal state transition to Completed")]
+    InvalidStateToCompleteProposal, // 613
+    
     /// Invalid number of vote choices
     #[error("Invalid number of vote choices")]
-    InvalidNumberOfVoteChoices, // 613
+    InvalidNumberOfVoteChoices, // 614
 
     /// Ranked vote is not supported
     #[error("Ranked vote is not supported")]
-    RankedVoteIsNotSupported, // 614
+    RankedVoteIsNotSupported, // 615
 
     /// Choice weight must be 100%
     #[error("Choice weight must be 100%")]
-    ChoiceWeightMustBe100Percent, // 615
+    ChoiceWeightMustBe100Percent, // 616
 
     /// Single choice only is allowed
     #[error("Single choice only is allowed")]
-    SingleChoiceOnlyIsAllowed, // 616
+    SingleChoiceOnlyIsAllowed, // 617
 
     /// At least single choice is required
     #[error("At least single choice is required")]
-    AtLeastSingleChoiceIsRequired, // 617
+    AtLeastSingleChoiceIsRequired, // 618
 
     /// Total vote weight must be 100%
     #[error("Total vote weight must be 100%")]
-    TotalVoteWeightMustBe100Percent, // 618
+    TotalVoteWeightMustBe100Percent, // 619
 }
 
 impl PrintProgramError for GovernanceError {

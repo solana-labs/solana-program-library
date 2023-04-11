@@ -3,6 +3,7 @@
 mod process_add_signatory;
 mod process_cancel_proposal;
 mod process_cast_vote;
+mod process_complete_proposal;
 mod process_create_governance;
 mod process_create_mint_governance;
 mod process_create_native_treasury;
@@ -34,6 +35,7 @@ use crate::instruction::GovernanceInstruction;
 use process_add_signatory::*;
 use process_cancel_proposal::*;
 use process_cast_vote::*;
+use process_complete_proposal::*;
 use process_create_governance::*;
 use process_create_mint_governance::*;
 use process_create_native_treasury::*;
@@ -226,6 +228,10 @@ pub fn process_instruction(
 
         GovernanceInstruction::RefundProposalDeposit {} => {
             process_refund_proposal_deposit(program_id, accounts)
+        }
+
+        GovernanceInstruction::CompleteProposal {} => {
+            process_complete_proposal(program_id, accounts)
         }
     }
 }

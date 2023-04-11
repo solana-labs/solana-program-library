@@ -132,7 +132,6 @@ export async function getNameOwner(
   return NameRegistryState.retrieve(connection, nameAccountKey);
 }
 
-//Taken from Serum
 export async function getFilteredProgramAccounts(
   connection: Connection,
   programId: PublicKey,

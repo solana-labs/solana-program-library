@@ -18,9 +18,9 @@ use solana_sdk::signature::{Keypair, Signer};
 
 use spl_governance::{
     instruction::{
-        add_signatory, cancel_proposal, cast_vote, create_governance, create_mint_governance,
-        create_native_treasury, create_program_governance, create_proposal, create_realm,
-        create_token_governance, create_token_owner_record, deposit_governing_tokens,
+        add_signatory, cancel_proposal, cast_vote, complete_proposal, create_governance,
+        create_mint_governance, create_native_treasury, create_program_governance, create_proposal,
+        create_realm, create_token_governance, create_token_owner_record, deposit_governing_tokens,
         execute_transaction, finalize_vote, flag_transaction_error, insert_transaction,
         refund_proposal_deposit, relinquish_vote, remove_signatory, remove_transaction,
         revoke_governing_tokens, set_governance_config, set_governance_delegate,
@@ -3144,5 +3144,30 @@ impl GovernanceProgramTest {
             Some(max_voter_weight_record_cookie.clone());
 
         Ok(max_voter_weight_record_cookie)
+    }
+
+    #[allow(dead_code)]
+    pub async fn complete_proposal(
+        &mut self,
+        proposal_cookie: &mut ProposalCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+    ) -> Result<(), ProgramError> {
+        let complete_proposal_authority = token_owner_record_cookie.get_governance_authority();
+
+        let complete_proposal_ix = complete_proposal(
+            &self.program_id,
+            &proposal_cookie.address,
+            &proposal_cookie.account.token_owner_record,
+            &complete_proposal_authority.pubkey(),
+        );
+
+        self.bench
+            .process_transaction(
+                &[complete_proposal_ix],
+                Some(&[complete_proposal_authority]),
+            )
+            .await?;
+
+        Ok(())
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "spl-token-2022"
-version = "0.6.0"
+version = "0.6.1"
 description = "Solana Program Library Token 2022"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -15,6 +15,7 @@ serde-traits = ["serde", "serde_with"]
 # Remove these features once the underlying syscalls are released on all networks
 default = ["zk-ops"]
 zk-ops = []
+proof-program = []
 
 [dependencies]
 arrayref = "0.3.6"
