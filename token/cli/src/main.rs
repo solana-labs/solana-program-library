@@ -3642,7 +3642,7 @@ fn app<'a, 'b>(
                         .value_name("REFUND_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .required(true)
-                        .help("Specify the address of the account to recover lamports to"),
+                        .help("Specify the address of the account to send lamports to"),
                 )
                 .arg(
                     Arg::with_name("wallet_keypair")
