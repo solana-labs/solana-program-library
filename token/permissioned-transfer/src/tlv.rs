@@ -1,51 +1,15 @@
 //! TLV structure manipulation
 
 use {
-    crate::{error::PermissionedTransferError, DISCRIMINATOR_LENGTH},
+    crate::{
+        error::PermissionedTransferError,
+        pod::{pod_from_bytes, pod_from_bytes_mut, PodU32},
+        DISCRIMINATOR_LENGTH,
+    },
     bytemuck::{Pod, Zeroable},
     solana_program::program_error::ProgramError,
     std::mem::size_of,
 };
-
-/// Convert a slice into a `Pod` (zero copy)
-pub fn pod_from_bytes<T: Pod>(bytes: &[u8]) -> Result<&T, ProgramError> {
-    bytemuck::try_from_bytes(bytes).map_err(|_| ProgramError::InvalidArgument)
-}
-/// Convert a slice into a mutable `Pod` (zero copy)
-pub fn pod_from_bytes_mut<T: Pod>(bytes: &mut [u8]) -> Result<&mut T, ProgramError> {
-    bytemuck::try_from_bytes_mut(bytes).map_err(|_| ProgramError::InvalidArgument)
-}
-
-/// Simple macro for implementing conversion functions between Pod* ints and standard ints.
-///
-/// The standard int types can cause alignment issues when placed in a `Pod`,
-/// so these replacements are usable in all `Pod`s.
-macro_rules! impl_int_conversion {
-    ($P:ty, $I:ty) => {
-        impl From<$I> for $P {
-            fn from(n: $I) -> Self {
-                Self(n.to_le_bytes())
-            }
-        }
-        impl From<$P> for $I {
-            fn from(pod: $P) -> Self {
-                Self::from_le_bytes(pod.0)
-            }
-        }
-    };
-}
-
-/// `u32` type that can be used in `Pod`s
-#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-#[repr(transparent)]
-pub struct PodU32([u8; 4]);
-impl_int_conversion!(PodU32, u32);
-
-/// `u16` type that can be used in `Pod`s
-#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-#[repr(transparent)]
-pub struct PodU16([u8; 2]);
-impl_int_conversion!(PodU16, u16);
 
 /// Length in TLV structure
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -256,9 +220,9 @@ impl<'data> TlvStateMut<'data> {
             value_start,
         } = get_indices::<V>(self.data, false)?;
 
-        if self.data[type_start..].len() < get_len::<V>() {
-            return Err(ProgramError::InvalidAccountData);
-        }
+        //        if self.data[type_start..].len() < get_len::<V>() {
+        //            return Err(ProgramError::InvalidAccountData);
+        //        }
         let length = pod_from_bytes::<Length>(&self.data[length_start..value_start])?;
         let value_end = value_start.saturating_add(usize::try_from(*length)?);
         V::try_from_bytes_mut(&mut self.data[value_start..value_end])
@@ -275,9 +239,9 @@ impl<'data> TlvStateMut<'data> {
             value_start,
         } = get_indices::<V>(self.data, true)?;
 
-        if self.data[type_start..].len() < get_len::<V>() {
-            return Err(ProgramError::InvalidAccountData);
-        }
+        //        if self.data[type_start..].len() < get_len::<V>() {
+        //            return Err(ProgramError::InvalidAccountData);
+        //        }
         let discriminator = Discriminator::try_from(&self.data[type_start..length_start])?;
         if discriminator == Discriminator::UNINITIALIZED || overwrite {
             // write type
@@ -292,7 +256,7 @@ impl<'data> TlvStateMut<'data> {
 
             let value_end = value_start.saturating_add(length);
             let extension_ref = V::try_from_bytes_mut(&mut self.data[value_start..value_end])?;
-            *extension_ref = V::default();
+            extension_ref.initialize();
             Ok(extension_ref)
         } else {
             // extension is already initialized, but no overwrite permission
@@ -344,7 +308,7 @@ impl TryFrom<&[u8]> for Discriminator {
 
 /// Trait to be implemented by all value types in the TLV structure, specifying
 /// the discriminator to check against
-pub trait Value: Default {
+pub trait Value {
     /// Associated value type enum, checked at the start of TLV entries
     const TYPE: Discriminator;
 
@@ -355,12 +319,15 @@ pub trait Value: Default {
     /// Turn raw bytes into a mutable reference of the underlying type. If the
     /// type implements `Pod`, then you can simply do `pod_from_bytes`.
     fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, ProgramError>;
+
+    /// Initialize all data to their "zero" state
+    fn initialize(&mut self);
 }
 
-/// Get the size required for this value as TLV
-pub fn get_len<V: Value>() -> usize {
+/// Get the base size required for TLV data
+pub fn get_base_len() -> usize {
     let indices = get_indices_unchecked(0);
-    indices.value_start.saturating_add(size_of::<V>())
+    indices.value_start
 }
 
 fn check_data(tlv_data: &[u8]) -> Result<(), ProgramError> {
@@ -405,6 +372,10 @@ mod test {
         fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, ProgramError> {
             pod_from_bytes_mut(bytes)
         }
+
+        fn initialize(&mut self) {
+            *self = Self::default();
+        }
     }
 
     #[repr(C)]
@@ -422,6 +393,10 @@ mod test {
         fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, ProgramError> {
             pod_from_bytes_mut(bytes)
         }
+
+        fn initialize(&mut self) {
+            *self = Self::default();
+        }
     }
 
     #[repr(transparent)]
@@ -436,6 +411,10 @@ mod test {
 
         fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, ProgramError> {
             pod_from_bytes_mut(bytes)
+        }
+
+        fn initialize(&mut self) {
+            *self = Self::default();
         }
     }
 
@@ -454,6 +433,10 @@ mod test {
 
         fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, ProgramError> {
             pod_from_bytes_mut(bytes)
+        }
+
+        fn initialize(&mut self) {
+            *self = Self::default();
         }
     }
     impl Default for TestNonZeroDefault {
@@ -555,7 +538,8 @@ mod test {
 
     #[test]
     fn value_pack_unpack() {
-        let account_size = get_len::<TestValue>() + get_len::<TestSmallValue>();
+        let account_size =
+            get_base_len() + size_of::<TestValue>() + get_base_len() + size_of::<TestSmallValue>();
         let mut buffer = vec![0; account_size];
 
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
@@ -642,7 +626,8 @@ mod test {
 
     #[test]
     fn value_any_order() {
-        let account_size = get_len::<TestValue>() + get_len::<TestSmallValue>();
+        let account_size =
+            get_base_len() + size_of::<TestValue>() + get_base_len() + size_of::<TestSmallValue>();
         let mut buffer = vec![0; account_size];
 
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
@@ -693,7 +678,7 @@ mod test {
 
     #[test]
     fn init_nonzero_default() {
-        let account_size = get_len::<TestNonZeroDefault>();
+        let account_size = get_base_len() + size_of::<TestNonZeroDefault>();
         let mut buffer = vec![0; account_size];
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
         let value = state.init_value::<TestNonZeroDefault>(false).unwrap();
@@ -702,7 +687,7 @@ mod test {
 
     #[test]
     fn init_buffer_too_small() {
-        let account_size = get_len::<TestValue>();
+        let account_size = get_base_len() + size_of::<TestValue>();
         let mut buffer = vec![0; account_size - 1];
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
         let err = state.init_value::<TestValue>(true).unwrap_err();
@@ -722,7 +707,7 @@ mod test {
 
     #[test]
     fn value_with_no_data() {
-        let account_size = get_len::<TestEmptyValue>();
+        let account_size = get_base_len() + size_of::<TestEmptyValue>();
         let mut buffer = vec![0; account_size];
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 

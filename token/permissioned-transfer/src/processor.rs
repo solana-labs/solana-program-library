@@ -7,8 +7,9 @@ use {
         get_extra_account_metas_address, get_extra_account_metas_address_and_bump_seed,
         inline_spl_token,
         instruction::PermissionedTransferInstruction,
-        state::{ExtraAccountMetas, PodAccountMeta, MAX_NUM_KEYS},
-        tlv::{get_len, TlvState, TlvStateBorrowed, TlvStateMut},
+        pod::PodAccountMeta,
+        state::ExtraAccountMetas,
+        tlv::{get_base_len, TlvState, TlvStateBorrowed, TlvStateMut},
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -48,13 +49,14 @@ pub fn process_validate(
 
     // if incorrect number of are provided, error
     let extra_account_infos = account_info_iter.as_slice();
-    if extra_account_infos.len() != validation_pubkeys.length as usize {
+    let account_metas = validation_pubkeys.data();
+    if extra_account_infos.len() != account_metas.len() {
         return Err(PermissionedTransferError::IncorrectAccount.into());
     }
 
     // Let's assume that they're provided in the correct order
     for (i, account_info) in extra_account_infos.iter().enumerate() {
-        if &validation_pubkeys.metas[i] != account_info {
+        if &account_metas[i] != account_info {
             return Err(PermissionedTransferError::IncorrectAccount.into());
         }
     }
@@ -96,7 +98,11 @@ pub fn process_initialize_extra_account_metas(
     // Create the account
     let bump_seed = [bump_seed];
     let signer_seeds = collect_extra_account_metas_signer_seeds(mint_info.key, &bump_seed);
-    let account_size = get_len::<ExtraAccountMetas>() as u64;
+    let extra_account_infos = account_info_iter.as_slice();
+    let length = extra_account_infos.len();
+    let account_size = get_base_len()
+        .checked_add(ExtraAccountMetas::byte_size_of(length)?)
+        .ok_or(PermissionedTransferError::CalculationFailure)? as u64;
     invoke_signed(
         &system_instruction::allocate(extra_account_metas_info.key, account_size),
         &[extra_account_metas_info.clone()],
@@ -112,16 +118,8 @@ pub fn process_initialize_extra_account_metas(
     let mut data = extra_account_metas_info.try_borrow_mut_data()?;
     let mut state = TlvStateMut::unpack(&mut data).unwrap();
     let mut validation_pubkeys = state.init_value::<ExtraAccountMetas>(false)?;
-    let extra_account_infos = account_info_iter.as_slice();
-    let length = extra_account_infos.len();
-    if length > MAX_NUM_KEYS {
-        return Err(PermissionedTransferError::TooManyPubkeys.into());
-    }
-    validation_pubkeys.length = length
-        .try_into()
-        .map_err(|_| ProgramError::from(PermissionedTransferError::CalculationFailure))?;
-    for (i, account_info) in extra_account_infos.iter().enumerate() {
-        validation_pubkeys.metas[i] = PodAccountMeta::from(account_info);
+    for account_info in extra_account_infos {
+        validation_pubkeys.push(PodAccountMeta::from(account_info));
     }
 
     Ok(())

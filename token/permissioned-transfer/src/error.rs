@@ -51,6 +51,9 @@ pub enum PermissionedTransferError {
     /// Too many pubkeys provided
     #[error("Too many pubkeys provided")]
     TooManyPubkeys,
+    /// Provided byte buffer too large for expected type
+    #[error("Provided byte buffer too large for expected type")]
+    BufferTooLarge,
 }
 impl From<PermissionedTransferError> for ProgramError {
     fn from(e: PermissionedTransferError) -> Self {
@@ -86,6 +89,7 @@ impl PrintProgramError for PermissionedTransferError {
                 msg!("Incorrect mint authority has signed the instruction")
             }
             Self::TooManyPubkeys => msg!("Too many pubkeys provided"),
+            Self::BufferTooLarge => msg!("Provided byte buffer too large for expected type"),
         }
     }
 }

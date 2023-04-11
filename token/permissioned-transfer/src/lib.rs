@@ -9,6 +9,7 @@
 pub mod error;
 pub mod inline_spl_token;
 pub mod instruction;
+pub mod pod;
 pub mod processor;
 pub mod state;
 pub mod tlv;
