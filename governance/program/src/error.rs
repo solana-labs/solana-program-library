@@ -466,6 +466,10 @@ pub enum GovernanceError {
     /// Invalid State: Proposal is not in final state
     #[error("Invalid State: Proposal is not in final state")]
     InvalidStateNotFinal, // 612
+
+    ///Invalid state for proposal state transition to Completed
+    #[error("Invalid state for proposal state transition to Completed")]
+    InvalidStateToCompleteProposal, // 613
 }
 
 impl PrintProgramError for GovernanceError {
