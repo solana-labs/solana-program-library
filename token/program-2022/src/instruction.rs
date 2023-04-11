@@ -1882,7 +1882,7 @@ pub fn withdraw_excess_lamports(
     let mut accounts = vec![
         AccountMeta::new(*destination_account, false),
         AccountMeta::new(*source_account, false),
-        AccountMeta::new(*authority, false),
+        AccountMeta::new(*authority, signers.is_empty()),
     ];
 
     for signer in signers {
