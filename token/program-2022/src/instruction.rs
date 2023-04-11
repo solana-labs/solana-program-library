@@ -634,8 +634,8 @@ pub enum TokenInstruction<'a> {
     /// owned account with system_instruction::transfer by sending them to a
     /// WrappedSol token account leaving behind only lamports for rent exemption.
     ///
-    /// 0. `[writable]` Destination WrappedSol token account owned by signer
-    /// 1. `[writable]` Source Account
+    /// 0. `[writable]` Source Account owned by the token program
+    /// 1. `[writable]` Destination account
     /// 2. `[signer]` Authority
     /// 3. ..2+M `[signer]` M signer accounts.
     WithdrawExcessLamports,
