@@ -3644,19 +3644,6 @@ fn app<'a, 'b>(
                         .required(true)
                         .help("Specify the address of the account to recover lamports to"),
                 )
-                .arg(
-                    Arg::with_name("wallet_keypair")
-                        .alias("owner")
-                        .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
-                        .takes_value(true)
-                        .help(
-                            "Specify the keypair for the wallet which owns both the source \
-                             and the destination accounts. \
-                             This may be a keypair file or the ASK keyword. \
-                             Defaults to the client keypair."
-                        ),
-                )
                 .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
         )
