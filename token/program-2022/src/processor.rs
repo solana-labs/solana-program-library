@@ -1293,7 +1293,7 @@ impl Processor {
     }
 
     /// Withdraw Excess Lamports is used to recover Lamports transfered to any TokenProgram owned account
-    /// by system program's transfer instruction by moving them to WrappedSol ATA owned by the authority
+    /// by moving them to another account
     /// of the source account.
     pub fn process_withdraw_excess_lamports(
         program_id: &Pubkey,
