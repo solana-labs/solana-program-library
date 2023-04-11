@@ -2067,7 +2067,8 @@ async fn command_withdraw_excess_lamports(
     authority: Pubkey,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
-    let token = native_token_client_from_config(config)?;
+    // default is safe here because withdraw_excess_lamports doesn't use it
+    let token = token_client_from_config(config, &Pubkey::default(), None)?;
     println_display(
         config,
         format!(
