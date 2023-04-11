@@ -631,8 +631,8 @@ pub enum TokenInstruction<'a> {
         delegate: Pubkey,
     },
     /// This instruction is to be used to rescue SOLs sent to any TokenProgram
-    /// owned account with system_instruction::transfer by sending them to a
-    /// WrappedSol token account leaving behind only lamports for rent exemption.
+    /// owned account by sending them to any other account, leaving behind only
+    /// lamports for rent exemption.
     ///
     /// 0. `[writable]` Source Account owned by the token program
     /// 1. `[writable]` Destination account
