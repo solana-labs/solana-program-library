@@ -7118,7 +7118,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn withdraw_excess_lamports() {
+    async fn withdraw_excess_lamports_from_multisig() {
         let (test_validator, payer) = new_validator_for_test().await;
         let m = 3;
         let n = 5u8;
@@ -7218,6 +7218,18 @@ mod tests {
                 .await
                 .unwrap()
         );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn withdraw_excess_lamports_from_mint() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let program_id = &spl_token_2022::id();
+        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+        let owner_keypair_file = NamedTempFile::new().unwrap();
+        write_keypair_file(&payer, &owner_keypair_file).unwrap();
+
+        let receiver = Keypair::new();
 
         let token_keypair = Keypair::new();
         let token_path = NamedTempFile::new().unwrap();
@@ -7271,14 +7283,46 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            2 * excess_lamports,
+            excess_lamports,
             config
                 .rpc_client
                 .get_balance(&receiver.pubkey())
                 .await
                 .unwrap()
         );
+    }
 
+    #[tokio::test]
+    #[serial]
+    async fn withdraw_excess_lamports_from_account() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let program_id = &spl_token_2022::id();
+        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+        let owner_keypair_file = NamedTempFile::new().unwrap();
+        write_keypair_file(&payer, &owner_keypair_file).unwrap();
+
+        let receiver = Keypair::new();
+
+        let token_keypair = Keypair::new();
+        let token_path = NamedTempFile::new().unwrap();
+        write_keypair_file(&token_keypair, &token_path).unwrap();
+        let token_pubkey = token_keypair.pubkey();
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::CreateToken.into(),
+                &token_path.path().to_str().unwrap(),
+                "--program-id",
+                &program_id.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let excess_lamports = 4000 * 1_000_000_000;
         let token_account =
             create_associated_account(&config, &payer, &token_pubkey, &payer.pubkey()).await;
 
@@ -7314,7 +7358,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            3 * excess_lamports,
+            excess_lamports,
             config
                 .rpc_client
                 .get_balance(&receiver.pubkey())
