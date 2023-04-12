@@ -46,18 +46,6 @@ members = [
   "utils/test-client",
   "token-lending/flash_loan_receiver",
 ]
-exclude = [
-  "farms/farm-client",
-  "farms/farm-ctrl",
-  "farms/farm-rpc",
-  "farms/farm-sdk",
-  "farms/fund",
-  "farms/router-main",
-  "farms/router-raydium",
-  "farms/router-saber",
-  "farms/router-orca",
-  "farms/vaults",
-]
 
 [profile.dev]
 split-debuginfo = "unpacked"
