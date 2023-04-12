@@ -5,7 +5,7 @@ import { createAssociatedTokenAccountInstruction } from '../instructions/associa
 import { createInitializeAccountInstruction } from '../instructions/initializeAccount.js';
 import { createSyncNativeInstruction } from '../instructions/syncNative.js';
 import { ACCOUNT_SIZE, getMinimumBalanceForRentExemptAccount } from '../state/account.js';
-import { getAssociatedTokenAddress } from '../state/mint.js';
+import { getAssociatedTokenAddressSync } from '../state/mint.js';
 import { createAccount } from './createAccount.js';
 
 /**
@@ -36,7 +36,7 @@ export async function createWrappedNativeAccount(
 
     // If a keypair isn't provided, create the account at the owner's ATA for the native mint and return its address
     if (!keypair) {
-        const associatedToken = await getAssociatedTokenAddress(
+        const associatedToken = getAssociatedTokenAddressSync(
             nativeMint,
             owner,
             false,

@@ -10,7 +10,7 @@ import {
 import { createAssociatedTokenAccountInstruction } from '../instructions/associatedTokenAccount.js';
 import type { Account } from '../state/account.js';
 import { getAccount } from '../state/account.js';
-import { getAssociatedTokenAddress } from '../state/mint.js';
+import { getAssociatedTokenAddressSync } from '../state/mint.js';
 
 /**
  * Retrieve the associated token account, or create it if it doesn't exist
@@ -38,7 +38,7 @@ export async function getOrCreateAssociatedTokenAccount(
     programId = TOKEN_PROGRAM_ID,
     associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
 ): Promise<Account> {
-    const associatedToken = await getAssociatedTokenAddress(
+    const associatedToken = getAssociatedTokenAddressSync(
         mint,
         owner,
         allowOwnerOffCurve,
