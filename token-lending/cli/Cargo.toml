@@ -9,7 +9,7 @@ repository = "https://github.com/solana-labs/solana-program-library"
 version = "0.2.0"
 
 [dependencies]
-clap = "2.33.3"
+clap = "3.2.17"
 solana-clap-utils = "=1.14.12"
 solana-cli-config = "=1.14.12"
 solana-client = "=1.14.12"
