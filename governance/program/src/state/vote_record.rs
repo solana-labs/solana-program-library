@@ -22,8 +22,8 @@ use crate::state::{
 };
 
 /// Voter choice for a proposal option
-/// In the current version only 1) Single choice and 2) Multiple choices proposals are supported
-/// In the future versions we can add support for 1) Quadratic voting, 2) Ranked choice voting and 3) Weighted voting
+/// In the current version only 1) Single choice, 2) Multiple choices proposals and 3) Weighted voting are supported
+/// In the future versions we can add support for 1) Quadratic voting and 2) Ranked choice voting
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct VoteChoice {
     /// The rank given to the choice by voter
@@ -38,8 +38,14 @@ impl VoteChoice {
     /// Returns the choice weight given the voter's weight
     pub fn get_choice_weight(&self, voter_weight: u64) -> Result<u64, ProgramError> {
         Ok(match self.weight_percentage {
+            // Avoid any rounding errors for full weight
             100 => voter_weight,
-            0 => 0,
+            // Note: The total weight for all choices might not equal voter_weight due to rounding errors
+            0..=99 => (voter_weight as u128)
+                .checked_mul(self.weight_percentage as u128)
+                .unwrap()
+                .checked_div(100)
+                .unwrap() as u64,
             _ => return Err(GovernanceError::InvalidVoteChoiceWeightPercentage.into()),
         })
     }
@@ -308,5 +314,86 @@ mod test {
             get_account_data::<VoteRecordV1>(&program_id, &account_info).unwrap();
 
         assert_eq!(vote_record_v1_source, vote_record_v1_target)
+    }
+
+    #[test]
+    fn test_get_choice_weight_with_invalid_weight_percentage_error() {
+        // Arrange
+        let vote_choice = VoteChoice {
+            rank: 0,
+            weight_percentage: 127,
+        };
+
+        // Act
+        let result = vote_choice.get_choice_weight(100);
+
+        // Assert
+        assert_eq!(
+            Err(GovernanceError::InvalidVoteChoiceWeightPercentage.into()),
+            result
+        );
+    }
+
+    #[test]
+    fn test_get_choice_weight() {
+        // Arrange
+        let vote_choice = VoteChoice {
+            rank: 0,
+            weight_percentage: 100,
+        };
+
+        // Act
+        let result = vote_choice.get_choice_weight(100);
+
+        // Assert
+        assert_eq!(Ok(100_u64), result);
+
+        // Arrange
+        let vote_choice = VoteChoice {
+            rank: 0,
+            weight_percentage: 0,
+        };
+
+        // Act
+        let result = vote_choice.get_choice_weight(100);
+
+        // Assert
+        assert_eq!(Ok(0_u64), result);
+
+        // Arrange
+        let vote_choice = VoteChoice {
+            rank: 0,
+            weight_percentage: 33,
+        };
+
+        // Act
+        let result = vote_choice.get_choice_weight(100);
+
+        // Assert
+        assert_eq!(Ok(33_u64), result);
+
+        // Arrange
+        let vote_choice = VoteChoice {
+            rank: 0,
+            weight_percentage: 34,
+        };
+
+        // Act
+        let result = vote_choice.get_choice_weight(100);
+
+        // Assert
+        assert_eq!(Ok(34_u64), result);
+
+        // Arrange
+        let vote_choice = VoteChoice {
+            rank: 0,
+            weight_percentage: 50,
+        };
+
+        // Act
+        let result = vote_choice.get_choice_weight(u64::MAX);
+
+        // Assert
+        assert_eq!(Ok(u64::MAX / 2), result);
     }
 }
